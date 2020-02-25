@@ -1,0 +1,59 @@
+/*!************************************************************************************************
+ * \file PMTInfoMap.h
+ * \brief Header file of the #PMTInfoMap class
+ * \author R. T. Thornton (LANL)
+ * \date February 24, 2020
+ **************************************************************************************************/
+#ifndef PMTInfoMap_h
+#define PMTInfoMap_h
+
+#include <fstream>
+#include <map>
+#include <cstring>
+#include <iostream>
+
+class TTree;
+class PMTInformation;
+
+
+/*!************************************************************************************************
+ * \class PMTInfoMap
+ * \brief Contains the map of #PMTInformation
+ *
+ * An indeividual PMT's information is stored in the #PMTInformation class.
+ * #PMTInfoMap is a class containing all the #PMTInformation's that are created.
+ * The class also has the ability to read in a csv file containing all the necessary information,
+ * write the information to a TFile, and create and decode the unique id of the PMT.
+ **************************************************************************************************/
+class PMTInfoMap
+{
+  public:
+    static bool IsActive(int digitizer, int channel);
+    static int CreateKey(int digit, int channel);
+    static void DecodeKey(int key, int & digit, int & channel);
+    static int ConvertHVBoardChanToKey(const int & box, const int & channel, bool veto = false);
+    static void ConvertKeyToHVBoardChan(const int key, int & box, int & channel);
+
+    static const PMTInformation * GetPMTInfo(size_t key);
+    static const PMTInformation * GetPMTInfo(int board, int channel);
+
+    static void DefaultFillPMTMap();
+    static void FillPMTMap(std::istream& file);
+    static void FillPMTMap(TTree * tree);
+
+    static void WritePMTMap(TTree *& tree);
+
+    static std::string TreeName() { return fgkTreeName; }
+    static std::string BranchName() { return fgkBranchName; }
+
+    static void ClearMap();
+
+  private:
+
+    static const std::string fgkTreeName; ///< Tree name for map
+    static const std::string fgkBranchName; ///< Branch name for map
+    static std::map<int,PMTInformation*> fgPMTInfo; ///< map to all the individual #PMTInformation
+
+};
+
+#endif // PMTInfoMap_h
