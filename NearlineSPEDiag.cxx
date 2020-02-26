@@ -112,7 +112,7 @@ void NearlineSPEDiag::CreatePEHists()
  * LED triggers you want to look at and the loop will quite once that many triggers has been processed. If
  * you did not pass enough files, then the total number of LED triggers will be less than \p numLEDTriggers.
  ***********************************************/
-void NearlineSPEDiag::MakeChainFillPulses(const std::vector<std::string> & fileList, bool ledRunFlag)
+void NearlineSPEDiag::MakeChainFillPulses(const std::vector<std::string> & fileList, bool ledRunFlag, int numLEDTriggers)
 {
 	TChain* chain=0;
 	TChain* chainRaw=0;
@@ -335,7 +335,7 @@ void NearlineSPEDiag::GetHistsToAdjust(std::string fileToAdjust, bool ledRunFlag
  * -# Based on when the SPE distribution peak is found, determine the fit range and calculate
  *  all the various rates.
  ***********************************************/
-void NearlineSPEDiag::CalculateRates(bool Adjustment_Run, int noiseRange)
+void NearlineSPEDiag::CalculateRates()
 {
   const double totalTime = static_cast<double>(fNEntries) * fWindow; 
   for (size_t i=0; i< fSizeOfCal; ++i) {

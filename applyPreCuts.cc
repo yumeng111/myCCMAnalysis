@@ -37,7 +37,7 @@ void Usage()
   (*usage) << "Usage: applyPreCuts [options] \n"
     << "options are:\n"
     << "  -i file.bin           : Add input data file\n"
-    << "  -o file.root          : Set output data file\n"
+    << "  -o file.root          : Set output data file\n";
 
   MsgError((char*)(usage->str().c_str()));
   delete usage;

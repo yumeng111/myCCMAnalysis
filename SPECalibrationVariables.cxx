@@ -15,7 +15,7 @@ SPECalibrationVariables::SPECalibrationVariables()
 		fPMTID = 0;
 		fPMTName = "";
 		fPMTRow = 0;
-		fPMTColumnumn = 0;
+		fPMTColumn = 0;
 		fADCBoard = 0;
 		fADCChannel = 0;
 		fPMTFlange = 0;
