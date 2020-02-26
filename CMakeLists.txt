@@ -30,8 +30,6 @@ target_link_libraries(Event ${ROOT_LIBRARIES})
 #---Create  a main program using the library
 add_executable(EnergyCalibration energyCalibration.cc)
 target_link_libraries(EnergyCalibration Event)
-add_executable(PlotWaveforms plotWaveforms.cc)
-target_link_libraries(PlotWaveforms Event)
 add_executable(NearlineDiag nearlineDiag.cc)
 target_link_libraries(NearlineDiag Event)
 add_executable(FindEvents findEvents.cc)
