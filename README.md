@@ -5,7 +5,9 @@ Also need CMAKE 3
 # Compile
 This code is designed to be compilable on a linux or mac
 
-To compile, go into build and run
+To compile:
+create a build directory where the source code resides
+go into build and run
 
 
 `cmake ../`
