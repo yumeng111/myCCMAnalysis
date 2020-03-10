@@ -161,8 +161,8 @@ int main(int argc, char ** argv)
 
   // Grab calibration information and fill \p calibrationValues map
   // Currently getting bottom and top LED data, but only using top LED data
-  TFile * calibrationFile = TFile::Open("root_out_2019ledData_run145_legFix_integral_all__.root","READ");
-  TFile * calibrationFileTop = TFile::Open("root_out_2019ledData_run179_legFix_integral_all_round4_.root","READ");
+  TFile * calibrationFile = TFile::Open("/usr/projects/w20_ccm_lanl/calibrationFiles/LED_2019/root_out_2019ledData_run145_legFix_integral_all__.root","READ");
+  TFile * calibrationFileTop = TFile::Open("/usr/projects/w20_ccm_lanl/calibrationFiles/LED_2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root","READ");
   std::map<int,std::pair<float,float>> calibrationValues;
   std::map<int,std::pair<float,float>> calibrationValuesTop;
   TTreeReader calibrationTree("spe",calibrationFile);
