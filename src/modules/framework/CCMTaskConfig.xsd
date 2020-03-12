@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>
+
+<xs:element name ="TPCTaskConfig" type="TPCTaskConfigST"/>
+
+<xs:complexType name = "InputfileST">
+  <xs:sequence minOccurs="1">
+    <xs:element name="Inputfile" type="xs:string"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name = "ModuleListST">
+  <xs:sequence minOccurs="1" maxOccurs:"10">
+    <xs:element name="Modules" type="xs:string"/>
+  </xs:sequence>
+</xs:complexType>
+
+
+<xs:complexType name = "OutputfileST">
+  <xs:sequence minOccurs="1">
+    <xs:element name="Outputfile" type="xs:string"/>
+  </xs:sequence>
+</xs:complexType>
+
+</xs:schema>

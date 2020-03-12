@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+  <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <Modules type="Reco"> CCMFindEvents </Modules>
+  -->
+
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+
+  <Config name="CCMNearlineDiag" version="default">
+    <Param name="InFileName"><string> fileListForLED.txt </string>
+      Name of the file that contains the list of files to loop over
+    </Param>
+    <Param name="WriteDBEntry"><int> 0 </int>
+      A flag, if non-zero, will try to add the file information to the database
+    </Param>
+    <Param name="DBHost"><string> mysql://neutrondaq.lanl.gov/ccmdb </string>
+      The name of the host the database sits on
+    </Param>
+    <Param name="DBUser"><string> ccmdaq </string>
+      The name of the user that will write the entry
+    </Param>
+    <Param name="DBPwd"><string> </string>
+      The password for the user (ask someone to get the password)
+    </Param>
+    <Param name="TriggerType"><string> LED </string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="HVOffList"><string> mappings/hv_off_2019.csv </string>
+      List of the HV channels that are off.
+    </Param>
+    <Param name="CalibrationFile"><string> mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root </string>
+      Name of the calibration file to use
+    </Param>
+    <Param name="DoLEDCalib"><int> 0 </int>
+      A flag, if non-zero, will calculate the LED calibration on the list of runs passed
+    </Param>
+    <Param name="CalculateRates"><int> 1 </int>
+      A flag, if non-zero, will calculate the SPE rates based off the CalibrationFile passed
+    </Param>
+    <Param name="RedoLEDCalib"><int> 0 </int>
+      A flag, if non-zero, will calculate the LED calibration on the histograms in the CalibrationFile instead
+      recreating the histograms from the list of runs passed. Only needed if DoLEDCalib is non-zero
+    </Param>
+    <Param name="DAQWindowStart"><double> 0.2 </double>
+      The time in the DAQ window in microseconds to start looking for single PE pulses. Only needed if DoLEDCalib is non-zero.
+      DAQ window starts at -9.92 and end at 6.08 microseconds.
+    </Param>
+    <Param name="DAQWindowEnd"><double> 0.4 </double>
+      The time in the DAQ window in microseconds to stop looking for single PE pulses. Only needed if DoLEDCalib is non-zero.
+      DAQ window ends at -9.92 and end at 6.08 microseconds.
+    </Param>
+    <Param name="SaveParameters"><string> peHists spe1DHist rate1DHist rootTree rootAndPDF </string>
+      List of flags that correspond to various histograms that can be created while doing the SPE calibration. Only needed if DoLEDCalib is non-zero.
+      List of possible options:
+        - rate2DHist
+        - spe2DHist
+        - peHists
+        - aDC2DHist
+        - flangeHists
+        - spe1DHist
+        - rate1DHist
+        - noisePeakHist
+        - noiseEndHist
+        - fitEndHist
+        - fitRMSHist
+        - noiseIntegralHist
+        - tailIntegralHist
+        - rootTree
+        - output file options below
+          - rootOnly
+          - pdfOnly
+          - rootAndPDF
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
+
+
+

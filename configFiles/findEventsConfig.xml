@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+  <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <Modules type="Reco"> CCMFindEvents </Modules>
+  -->
+
+  <Modules type="Reco"> CCMFindEvents </Modules>
+
+  <Config name="CCMFindEvents" version="default">
+    <Param name="InFileName"><string> /home/daquser/CCM/data/2019_data/PDSout_run000150-000000_11-06-1512_physics.root </string>
+      Name of the input root file (must be an output of CCMConvertBinary2ROOT or similar code)
+    </Param>
+    <Param name="OutFileName"><string> ROOT_Files/PDSout_run000150-000000_11-06-1512_physics_events.root </string>
+      Name of the output root file
+    </Param>
+    <Param name="TriggerType"><string> BEAM </string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="HVOffList"><string> mappings/hv_off_2019.csv </string>
+      List of the HV channels that are off.
+    </Param>
+    <Param name="CalibrationFile"><string> mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root </string>
+      Name of the calibration file to use
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
+

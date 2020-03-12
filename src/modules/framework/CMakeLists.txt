@@ -1,0 +1,41 @@
+set(XML_HEADERS
+  CCMTaskManager.h
+  CCMTaskConfig.h
+  CCMConfig.h
+  CCMConfigParam.h
+  CCMConfigTable.h
+  CCMModule.h
+  CCMModuleTable.h
+  )
+
+set(INCLUDE_DIRECTORIES ${ROOT_INCLUDE_DIR} ${CCMAnalysis_INCLUDE_DIRS})
+
+include_directories(${INCLUDE_DIRECTORIES})
+
+set(LINK_DIRECTORIES /usr/lib64/ ${ROOT_LIBRARY_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+
+link_directories(${LINK_DIRECTORIES})
+
+set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES}")
+
+set(XML_SRCS
+  CCMTaskManager.cxx
+  CCMTaskConfig.cxx
+  CCMConfig.cxx
+  CCMConfigParam.cxx
+  CCMConfigTable.cxx
+  CCMModule.cxx
+  CCMModuleTable.cxx
+  )
+
+set(XML_LINKDEF LinkDef.h)
+set(XML_DICTIONARY CCMXMLDict)
+ROOT_GENERATE_DICTIONARY("${XML_DICTIONARY}" "${XML_HEADERS}" LINKDEF "${XML_LINKDEF}")
+
+set(XML_SRCS ${XML_SRCS} ${XML_DICTIONARY}.cxx)
+
+add_library(CCMXML SHARED ${XML_SRCS})
+#CREATE_LIBTOOL_FILE(CCMXML ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+target_link_libraries(CCMXML ${ROOT_LIBRARIES} CCMUtils xerces-c)
+
+#install(FILES ${XML_HEADERS} DESTINATION $ENV{CCMINSTALL}/include)

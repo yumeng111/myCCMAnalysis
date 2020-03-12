@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+  <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <Modules type="Reco"> CCMFindEvents </Modules>
+  -->
+
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+
+  <Config name="CCMConvertBinary2ROOT" version="default">
+    <Param name="InFileName"><string> /home/daquser/CCM/data/2019_data/PDSout_run000002-000000_08-05-1441.bin </string>
+      Name of the input binary file to convert
+    </Param>
+    <Param name="OutFileName"><string> /home/daquser/CCM/data/2019_data/PDSout_run000002-000000_08-05-1441_physics.root </string>
+      Name of the output root file
+    </Param>
+    <Param name="WriteDBEntry"><int> 0 </int>
+      A flag, if non-zero, will try to add the file information to the database
+    </Param>
+    <Param name="DBHost"><string> mysql://neutrondaq.lanl.gov/ccmdb </string>
+      The name of the host the database sits on
+    </Param>
+    <Param name="DBUser"><string> ccmdaq </string>
+      The name of the user that will write the entry
+    </Param>
+    <Param name="DBPwd"><string> </string>
+      The password for the user (ask someone to get the password)
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
