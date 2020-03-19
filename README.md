@@ -19,15 +19,20 @@ if it finishes successfully then run
 `make`
 
 # Output and running with ROOT
-Add the following lines to your ~/.bash_profile, ~/.bashrc (if you are running tcsh then syntax needs to change and you put the code into ~/.tcshrc)
+Add the following lines to your ~/.bash_profile, ~/.bashrc (if you are running tcsh then syntax needs to change and you put the code into ~/.tcshrc). Also you must compile for gcc version 4.8.5 when running on LANL HPC computers, thanks to the version used when compiling ROOT.
 
 ```bash
-export CCMINSTALL="/Users/rtthorn/Documents/CCM/code" # change so it matches where the files are located on your computer
-export CCMINSTALLBuild=$CCMINSTALL/build" # change so it matches where the files are located on your computer
+#must have the XERCES environmental variables when running on LANL HPC Computers
+export XERCESINSTALL=$PROJECT/Software/xerces-c-3.2.2_install
+export XERCESINCLUDE=$XERCESINSTALL/include
+export XERCESLIB=$XERCESINSTALL/lib
 
-export LD_LIBRARY_PATH="$CCMINSTALLBuild:$LD_LIBRARY_PATH"
-export DYLD_LIBRARY_PATH="$CCMINSTALLBuild:$DYLD_LIBRARY_PATH"
-export PATH="$PATH:$CCMINSTALLBuild"
+export CCMINSTALL=$HOME/CCMCode/CCM_analysis_sw_dev_xmlConfig # change for your directory
+export CCMINSTALLBuild=$CCMINSTALL/build # change for your directory
+export LD_LIBRARY_PATH=$XERCESLIB:$CCMINSTALLBuild:$LD_LIBRARY_PATH
+export DYLD_LIBRARY_PATH=$XERCESINSTALL/lib:$CCMINSTALLBuild:$DYLD_LIBRARY_PATH
+export PATH=$XERCESINSTALL/bin:$CCMINSTALLBuild:$PATH
+
 ```
 Put the following lines in your ~/.rootlogon.C
 ```c++
