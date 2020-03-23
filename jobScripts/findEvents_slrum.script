@@ -1,0 +1,66 @@
+#!/bin/bash
+##############################################################
+#
+#  Template SLRUM submission script 
+#  This script will be proccessed by gjs. The
+#  following keywords 
+#  will be replaced by actual values.
+#  Do not remove any of them!
+#
+#  The user m u s t edit the 
+#   QUEUE
+#   CLUSTER
+# 
+#  entry and the name of the my_environment file
+#
+#    
+##############################################################
+#
+###                            Queue to submit to  <<<<<<<<<< queue and cluster name must be adapted to your system
+#SBATCH --time=1:00:00   # walltime
+
+
+#########       #SBATCH --array=1-50
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
+#SBATCH --ntasks-per-node=1   # number of tasks per node
+#SBATCH --job-name=findEvents_RUN   # job name
+#SBATCH --output=LOGFILELOCATION/out_findEvents_RUN_%j   # output file name
+#SBATCH --error=LOGFILELOCATION/error_findEvents_RUN_%j   # job name
+####SBATCH --qos=interactive   # qos name
+#
+
+###                     Declare job non-rerunable
+#SBATCH --no-requeue
+#SBATCH --signal=23@60  # send signal to job at [seconds] before end
+
+
+# FYI
+echo
+echo ---------------------- Job Info ------------------------------
+echo
+echo -e "Name of the working queue \t"    $SLURM_JOB_PARTITION
+echo -e "Job name                  \t"    $SLURM_JOB_NAME
+echo -e "Job identifier            \t"    $SLURM_JOB_ID
+echo -e "Working directory is      \t"    $SLURM_SUBMIT_DIR
+echo -e "Running on host           \t"    $SLURM_JOB_NODELIST
+echo -e "Array task id		   \t"    $SLURM_ARRAY_TASK_ID
+echo -e "Start time                \t"    `date`
+echo
+echo
+echo ---------------------- Job Output ----------------------------
+echo
+
+#source /users/rtthorn/.bash_profile
+source SOURCEFILE
+$CCMINSTALLBuild/CCMAnalysis -c CONFIGFILE
+#$CCMINSTALL/configFiles/local/findEventsConfig.xml
+
+echo ----------------------- DONE ---------------------------------
+echo
+echo -e "Time after job execution \t"     `date`
+
+exit 0
+
+
+

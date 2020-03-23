@@ -33,6 +33,16 @@ export LD_LIBRARY_PATH=$XERCESLIB:$CCMINSTALLBuild:$LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=$XERCESINSTALL/lib:$CCMINSTALLBuild:$DYLD_LIBRARY_PATH
 export PATH=$XERCESINSTALL/bin:$CCMINSTALLBuild:$PATH
 
+# the following is for HPC SLRUM job submission only.
+# I had created directories to copy rawFiles to and processFile to be stored
+# that made it easier for me in creating job submission scripts, but  is not needed
+export LUSTRETMP=/lustre/scratch3/turquoise/rtthorn
+export CCMRAW=$LUSTRETMP/rawFiles
+export CCMPROCESSED=$LUSTRETMP/processedFiles
+
+# need the following to compile the code
+module load cmake/3.14.0
+
 ```
 Put the following lines in your ~/.rootlogon.C
 ```c++
