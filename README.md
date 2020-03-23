@@ -91,11 +91,16 @@ as long as it has the same format as the default .csv files.
   - CCMNearlineDiag (calculate SPE rates and calculate SPE calibrations)
   - CCMFindEvents (find events and information about them)
   - CCMApplyPreCuts (apply cuts on the events that were found)
+- <b>If you want to develope your own module or suggest changes to an existing, please let me know.</b>
+
+# Analysis Directory
+Each user should create a personal directory under $CCMINSTALL/analysis to store their root and python scripts.
+Please do not directly modify someone elses scripts, copy to your directory and change from there.
 
 
 
-Let me know if you have any questions.
-Tyler Thornton
-P-25 LANL
-rtthorn@lanl.gov
+Let me know if you have any questions.<br>
+Tyler Thornton<br>
+P-25 LANL<br>
+rtthorn@lanl.gov<br>
 
