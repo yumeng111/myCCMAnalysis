@@ -24,9 +24,9 @@
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
 #SBATCH --ntasks-per-node=1   # number of tasks per node
-#SBATCH --job-name=findEvents_RUN   # job name
-#SBATCH --output=LOGFILELOCATION/out_findEvents_RUN_%j   # output file name
-#SBATCH --error=LOGFILELOCATION/error_findEvents_RUN_%j   # job name
+#SBATCH --job-name=JOBNAME   # job name
+#SBATCH --output=LOGFILELOCATION/out_JOBNAME_%j   # output file name
+#SBATCH --error=LOGFILELOCATION/error_JOBNAME_%j   # job name
 ####SBATCH --qos=interactive   # qos name
 #
 
@@ -51,10 +51,8 @@ echo
 echo ---------------------- Job Output ----------------------------
 echo
 
-#source /users/rtthorn/.bash_profile
 source SOURCEFILE
 $CCMINSTALLBuild/CCMAnalysis -c CONFIGFILE
-#$CCMINSTALL/configFiles/local/findEventsConfig.xml
 
 echo ----------------------- DONE ---------------------------------
 echo
