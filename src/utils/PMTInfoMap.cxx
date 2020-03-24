@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <sstream>
 
 const std::string PMTInfoMap::fgkTreeName = "pmtMap"; ///< Tree name for map
 const std::string PMTInfoMap::fgkBranchName = "pmtInfo"; ///< Branch name for map
@@ -43,10 +44,14 @@ void PMTInfoMap::DefaultFillPMTMap()
   std::string eightInchFile = env + "/mappings/mapping_master_8inch.csv";
   std::string oneInchFile = env + "/mappings/mapping_master_1inch.csv";
 
+  MsgInfo(MsgLog::Form("Loading 8in map from %s",eightInchFile.c_str()));
   infile.open(eightInchFile.c_str());
   FillPMTMap(infile);
   infile.close();
 
+  fgMapLoaded = false;
+
+  MsgInfo(MsgLog::Form("Loading 1in map from %s",oneInchFile.c_str()));
   infile.open(oneInchFile.c_str());
   FillPMTMap(infile);
   infile.close();
@@ -468,10 +473,19 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
     fileName = env + "/mappings/hv_off_2019.csv";
   }
 
+  MsgInfo(MsgLog::Form("hvOffList %s",fileName.c_str()));
   std::ifstream hvOffList(fileName.c_str());
+  MsgInfo(MsgLog::Form("hvOffList.good()? %d",hvOffList.good()));
   int board = 0;
   int chan = 0;
-  while (hvOffList >> board >> chan) {
+  std::string line;
+  while (hvOffList.good()) {
+    getline(hvOffList,line);
+    if (hvOffList.eof()) {
+      break;
+    }
+    std::stringstream ss(line);
+    ss >> board >> chan;
     int key = ConvertHVBoardChanToKey(board,chan);
 
     MsgInfo(MsgLog::Form("board %d channel %d key %d",board,chan,key));

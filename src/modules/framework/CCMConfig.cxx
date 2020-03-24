@@ -177,3 +177,4 @@ void CCMConfig::Copy(CCMConfig& dest, const CCMConfig& src,
   }
 
 }
+

@@ -313,7 +313,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       // keep track the number of times that pmt fired in the DAQ window
       if (pmtInfo->IsVeto()) {
         auto name = pmtInfo->GetLocName();
-        if (pulseIntegral  > 10) {
+        if (pulseIntegral  > 5) {
           int firstBin = std::max(time,0.0);
           int lastBin  = std::min(time + ccmPulses->GetPulseLength(loc),static_cast<double>(kNumBins));
           for (int bin = firstBin; bin <lastBin; ++bin) {
@@ -553,6 +553,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
         events->SetNumVetoBottom(vetoActivityBottom);
         events->SetNumVetoBack(vetoActivityCB);
         events->SetNumVetoFront(vetoActivityCT);
+
         outfile->cd();
         eventsTree->Fill();
         events->Reset();
@@ -637,15 +638,17 @@ void CCMFindEvents::Configure(const CCMConfig& c )
   {
     c("TriggerType").Get(fTriggerType);
 
-    std::locale loc;
-    for (auto & c : fTriggerType) {
-      std::toupper(c,loc);
-    }
-
-    c("HVOffList").Get(fHVOffList);
+    c("HVOffFile").Get(fHVOffList);
     c("CalibrationFile").Get(fCalibrationFile);
     c("OutFileName").Get(fOutFileName);
     c("InFileName").Get(fInFileName);
+
+    MsgInfo("Input parameter values");
+    MsgInfo(MsgLog::Form("-InFileName: %s",fInFileName.c_str()));
+    MsgInfo(MsgLog::Form("-OutFileName: %s",fOutFileName.c_str()));
+    MsgInfo(MsgLog::Form("-HVOffFile: %s",fHVOffList.c_str()));
+    MsgInfo(MsgLog::Form("-CalibrationFile: %s",fCalibrationFile.c_str()));
+    MsgInfo(MsgLog::Form("-TriggerType: %s",fTriggerType.c_str()));
 
     fIsInit = true;
   } else {

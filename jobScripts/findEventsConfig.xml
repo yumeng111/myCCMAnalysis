@@ -11,13 +11,13 @@
   <Modules type="Reco"> CCMFindEvents </Modules>
 
   <Config name="CCMFindEvents" version="default">
-    <Param name="InFileName"><string> INFILENAME </string>
+    <Param name="InFileName"><string>INFILENAME</string>
       Name of the input root file (must be an output of CCMConvertBinary2ROOT or similar code)
     </Param>
-    <Param name="OutFileName"><string> OUTFILENAME </string>
+    <Param name="OutFileName"><string>OUTFILENAME</string>
       Name of the output root file
     </Param>
-    <Param name="TriggerType"><string> TRIGGER </string>
+    <Param name="TriggerType"><string>TRIGGER</string>
       Only look at triggers with name passed.
       Options are:
        - BEAM
@@ -25,11 +25,11 @@
        - LED
       and any combination of the three, like BEAM STROBE
     </Param>
-    <Param name="HVOffList"><string> HVOFFLIST </string>
+    <Param name="HVOffFile"><string>HVOFFLIST</string>
       List of the HV channels that are off.
       For 2019-2020 runs use $CCMINSTALL/mappings/hv_off_2019.csv
     </Param>
-    <Param name="CalibrationFile"><string> CALIBRATIONFILE </string>
+    <Param name="CalibrationFile"><string>CALIBRATIONFILE</string>
       Name of the calibration file to use
       For 2019-2020 runs use $CCMINSTALL/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root
     </Param>
