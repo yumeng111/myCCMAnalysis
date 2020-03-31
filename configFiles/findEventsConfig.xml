@@ -25,7 +25,7 @@
        - LED
       and any combination of the three, like BEAM STROBE
     </Param>
-    <Param name="HVOffList"><string> mappings/hv_off_2019.csv </string>
+    <Param name="HVOffFile"><string> mappings/hv_off_2019.csv </string>
       List of the HV channels that are off.
     </Param>
     <Param name="CalibrationFile"><string> mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root </string>

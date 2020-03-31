@@ -149,6 +149,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
   auto vetoTopTime(pulsesTime);
   auto vetoCTTime(pulsesTime);
   auto vetoCBTime(pulsesTime);
+  auto vetoTotalTime(pulsesTime);
 
   auto itIntegralTimeBegin = integralTime.begin();
   auto itIntegralTimeEnd = integralTime.end();
@@ -164,11 +165,17 @@ CCMResult_t CCMFindEvents::ProcessEvent()
   auto itVetoCTTimeEnd = vetoCTTime.end();
   auto itVetoTopTimeBegin = vetoTopTime.begin();
   auto itVetoTopTimeEnd = vetoTopTime.end();
+  auto itVetoTotalTimeBegin = vetoTotalTime.begin();
+  auto itVetoTotalTimeEnd = vetoTotalTime.end();
 
   std::vector<std::vector<float>> pmtWaveform(160);
   for (int i=0; i < 160; ++i) {
     pmtWaveform[i].resize(pulsesTime.size(),0.0);
   }
+
+  int numEventsSTLater = 0;
+  int numEventsST20nsBefore = 0;
+  int numEventsSTFit = 0;
 
   ///////////////////////////////////////////////
   // Time to loop through all the triggers in the file.
@@ -204,6 +211,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
     std::fill(itIntegralDerBegin,itIntegralDerEnd,0.0);
     std::fill(itVetoBottomTimeBegin,itVetoBottomTimeEnd,0);
     std::fill(itVetoTopTimeBegin,itVetoTopTimeEnd,0);
+    std::fill(itVetoTotalTimeBegin,itVetoTotalTimeEnd,0);
     std::fill(itVetoCTTimeBegin,itVetoCTTimeEnd,0);
     std::fill(itVetoCBTimeBegin,itVetoCBTimeEnd,0);
 
@@ -315,11 +323,13 @@ CCMResult_t CCMFindEvents::ProcessEvent()
         auto name = pmtInfo->GetLocName();
         if (pulseIntegral  > 5) {
           int firstBin = std::max(time,0.0);
-          int lastBin  = std::min(time + ccmPulses->GetPulseLength(loc),static_cast<double>(kNumBins));
-          for (int bin = firstBin; bin <lastBin; ++bin) {
-            if (bin < 0 || bin >= static_cast<int>(kNumBins)) {
-              MsgFatal(MsgLog::Form("for veto pulse\tevent %ld pulse %zu key %d bin %d firstBin %d lastBin %d",e,loc,key,bin,firstBin,lastBin));
-            }
+          //int lastBin  = std::min(time + ccmPulses->GetPulseLength(loc),static_cast<double>(kNumBins));
+          int bin = firstBin;
+          //for (int bin = firstBin; bin <lastBin; ++bin) {
+          //  if (bin < 0 || bin >= static_cast<int>(kNumBins)) {
+          //    MsgFatal(MsgLog::Form("for veto pulse\tevent %ld pulse %zu key %d bin %d firstBin %d lastBin %d",
+          //    e,loc,key,bin,firstBin,lastBin));
+          //  }
             // veto top tubes
             if (name.find("VT") != std::string::npos) {
               ++vetoTopTime.at(bin);
@@ -332,7 +342,8 @@ CCMResult_t CCMFindEvents::ProcessEvent()
             } else {
               ++vetoBottomTime.at(bin);
             } // end if-else over where the veto is located
-          } // end for each bin the pulse is over
+            ++vetoTotalTime.at(bin);
+          //} // end for each bin the pulse is over
         } // end if pulseIntegral is greater than 10
 
         // move to the next event
@@ -399,6 +410,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
     /////////////////////////////////////////////
     int numBins20ns = 0.02/kBinWidth;
     int numBins90ns = 0.090/kBinWidth;
+    //int numBins30ns = 0.030/kBinWidth;
     //int numBins1p6us = 1.6/kBinWidth;
     //int prevStart = -1000;
 
@@ -411,7 +423,40 @@ CCMResult_t CCMFindEvents::ProcessEvent()
         int startBin = bin;
 
         if (startBin >= static_cast<int>(kNumBins)) {
-          MsgFatal(MsgLog::Form("event %ld bin %zu startBin %d",e,bin,startBin));
+          MsgFatal(MsgLog::Form("Start Bin is greater than or equal to total number of bins: event %ld bin %zu startBin %d",e,bin,startBin));
+        }
+
+        // find where the first peak is in the event
+        int peakLoc = startBin;
+        for (size_t bin2 = startBin; bin2 < kNumBins-1; ++bin2) {
+          if (integralTime.at(bin2+1) < integralTime.at(bin2)) {
+            peakLoc = bin2;
+            break;
+          } // end if integralTime.at(bin2+1) < ...
+        } // end for size_t bin2 = startBin
+
+        if ((peakLoc+startBin)/2-startBin > 3) {
+          std::vector<double> xPoints;
+          std::vector<double> yPoints;
+          for (int bin2 = startBin; bin2 < (peakLoc+startBin)/2; ++bin2) {
+            xPoints.push_back(bin2);
+            yPoints.push_back(integralTime.at(bin2));
+          }
+          double c0 = 0;
+          double c1 = 0;
+          Utility::LinearUnweightedLS(xPoints.size(),&xPoints.front(),&yPoints.front(),c0,c1);
+
+          if (static_cast<int>(-c0/c1) - startBin > 0) {
+            ++numEventsSTLater;
+          }
+          if (static_cast<int>(-c0/c1) - startBin < -10) {
+            ++numEventsST20nsBefore;
+          }
+          ++numEventsSTFit;
+
+          startBin = static_cast<int>(-c0/c1);
+          xPoints.clear();
+          yPoints.clear();
         }
 
         // find end of event: defined as two consecutive empty bins
@@ -432,10 +477,33 @@ CCMResult_t CCMFindEvents::ProcessEvent()
           start = 0;
         }
 
-        int vetoActivityTop = std::accumulate(itVetoTopTimeBegin+start,itVetoTopTimeBegin+endBin,0);
-        int vetoActivityCT = std::accumulate(itVetoCTTimeBegin+start,itVetoCTTimeBegin+endBin,0);
-        int vetoActivityCB = std::accumulate(itVetoCBTimeBegin+start,itVetoCBTimeBegin+endBin,0);
-        int vetoActivityBottom = std::accumulate(itVetoBottomTimeBegin+start,itVetoBottomTimeBegin+endBin,0);
+        int maxVeto = 0;
+        int maxVetoStart = 0;
+        int maxVetoEnd = 0;
+        for (int vetoBin = start; vetoBin < endBin+numBins90ns; ++vetoBin) {
+          auto current = std::accumulate(itVetoTotalTimeBegin+vetoBin,itVetoTotalTimeBegin+vetoBin+numBins90ns,0);
+          if (current > maxVeto) {
+            maxVeto = current;
+            maxVetoStart = vetoBin;
+            maxVetoEnd = vetoBin+numBins90ns;
+          }
+        }
+
+        int vetoActivityTop = std::accumulate(itVetoTopTimeBegin+maxVetoStart,itVetoTopTimeBegin+maxVetoEnd,0);
+        int vetoActivityCT = std::accumulate(itVetoCTTimeBegin+maxVetoStart,itVetoCTTimeBegin+maxVetoEnd,0);
+        int vetoActivityCB = std::accumulate(itVetoCBTimeBegin+maxVetoStart,itVetoCBTimeBegin+maxVetoEnd,0);
+        int vetoActivityBottom = std::accumulate(itVetoBottomTimeBegin+maxVetoStart,itVetoBottomTimeBegin+maxVetoEnd,0);
+
+        //int maxVetoBin = std::distance(itVetoTotalTimeBegin,std::max_element(itVetoTotalTimeBegin+start,itVetoTotalTimeBegin+endBin));
+        //int vetoActivityTop = *std::max_element(itVetoTopTimeBegin+start,itVetoTopTimeBegin+endBin);
+        //int vetoActivityCT = *std::max_element(itVetoCTTimeBegin+start,itVetoCTTimeBegin+endBin);
+        //int vetoActivityCB = *std::max_element(itVetoCBTimeBegin+start,itVetoCBTimeBegin+endBin);
+        //int vetoActivityBottom = *std::max_element(itVetoBottomTimeBegin+start,itVetoBottomTimeBegin+endBin);
+        //int vetoActivityTotal = *(itVetoTotalTimeBegin+maxVetoBin);
+        //int vetoActivityTop = *(itVetoTopTimeBegin+maxVetoBin);
+        //int vetoActivityCT = *(itVetoCTTimeBegin+maxVetoBin);
+        //int vetoActivityCB = *(itVetoCBTimeBegin+maxVetoBin);
+        //int vetoActivityBottom = *(itVetoBottomTimeBegin+maxVetoBin);
 
         //int maxBin = std::distance(itIntegralTimeBegin,std::max_element(itIntegralTimeBegin+startBin,itIntegralTimeBegin+endBin));
 
@@ -554,6 +622,9 @@ CCMResult_t CCMFindEvents::ProcessEvent()
         events->SetNumVetoBack(vetoActivityCB);
         events->SetNumVetoFront(vetoActivityCT);
 
+        //MsgInfo(MsgLog::Form("Veto: T: %d B %d CT %d CB %d To: %d",
+        //      vetoActivityTop,vetoActivityBottom,vetoActivityCT,vetoActivityCB,maxVeto));
+
         outfile->cd();
         eventsTree->Fill();
         events->Reset();
@@ -594,6 +665,9 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       } // end threshold if-else
     } // end for int bin
   } // end for e < nEntries
+
+  MsgInfo(MsgLog::Form("numEventsSTLater %d numEventsST20nsBefore %d numEventsSTFit %d",
+        numEventsSTLater,numEventsST20nsBefore,numEventsSTFit));
 
   // Save tree and histograms to file
   outfile->cd();

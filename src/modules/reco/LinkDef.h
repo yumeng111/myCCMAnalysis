@@ -5,4 +5,5 @@
 #pragma link C++ class CCMNearlineDiag-!;
 #pragma link C++ class CCMFindEvents-!;
 #pragma link C++ class CCMApplyPreCuts-!;
+#pragma link C++ class CCMNa22Cuts-!;
 #endif /* __CINT__ */

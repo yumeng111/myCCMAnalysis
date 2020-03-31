@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+  <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <Modules type="Reco"> CCMFindEvents </Modules>
+  -->
+
+  <Modules type="Reco"> CCMNa22Cuts </Modules>
+
+  <Config name="CCMNa22Cuts" version="default">
+    <Param name="InFileName"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/build/na22_20191221_files_short.txt</string>
+      Name of the input root file (must be an output of CCMFindEvents or similar code)
+    </Param>
+    <Param name="OutFileName"><string>/lustre/scratch3/turquoise/rtthorn/processedFiles/na22_20191221/cuts_histograms_short_position_energy.root</string>
+      Name of the output root file
+    </Param>
+    <Param name="ShiftTime"><int>1</int>
+      Flag to shift the calculated time by -9.92 microseconds.
+      Should be 0 for BEAM triggers and 1 for STROBE triggers
+    </Param>
+    <Param name="DoPrevCut"><int>1</int>
+      Flag to reject events based off previous activity in the same DAQ window
+    </Param>
+    <Param name="PrevCutTime"><double>1.6</double>
+      The time to reject the event if a previous event falls before by the amount specified.
+      The time should be in microseconds
+    </Param>
+    <Param name="DoVetoCut"><int>0</int>
+      Flag to turn on veto cut (0 = off, anything else = on)
+    </Param>
+    <Param name="NumVetoCut"><int>3</int>
+      Number of veto tubes to cut on (not needed if DoVetoCut = false)
+    </Param>
+    <Param name="ReverseVeto"><int>0</int>
+      Flag to reverse the veto cut or not (not needed if DoVetoCut = false)
+      Normally events are cut if grater than or equal to NumVetoCut
+      if ReverseVeto = 1 then events less than NumVetoCut would be removed
+    </Param>
+    <Param name="DoEnergyCut"><int>1</int>
+      Flag to turn on prompt energy cut (0 = off, anything else = on)
+    </Param>
+    <Param name="EnergyCutValueLow"><double>10</double>
+      Lowest prompt energy value allowed in PEs (not needed if DoEnergyCut = false)
+    </Param>
+    <Param name="EnergyCutValueHigh"><double>100</double>
+      Highest prompt energy value allowed in PEs (not needed if DoEnergyCut = false)
+    </Param>
+    <Param name="DoPositionCut"><int>1</int>
+      Flag to turn on a position cut (0 = off, anything else = on)
+    </Param>
+    <Param name="RadiusCutValueLow"><double>0</double>
+      Lowest radius value allowed in meters (not needed if DoPositionCut = false)
+    </Param>
+    <Param name="RadiusCutValueHigh"><double>0.2</double>
+      Highest radius value allowed in meters (not needed if DoPositionCut = false)
+    </Param>
+    <Param name="ZCutValueLow"><double>-0.15</double>
+      Lowest z-position value allowed in meters (not needed if DoPositionCut = false)
+    </Param>
+    <Param name="ZCutValueHigh"><double>0.15</double>
+      Highest z-position value allowed in meters (not needed if DoPositionCut = false)
+    </Param>
+    <Param name="DoTimeCut"><int>0</int>
+      Flag to turn on DAQ Time cut (0 = off, anything else = on)
+    </Param>
+    <Param name="TimeCutValueLow"><double>-9.92</double>
+      Lowest DAQ time value allowed in microseconds (not needed if DoTimeCut = false)
+    </Param>
+    <Param name="TimeCutValueHigh"><double>6.08</double>
+      Highest DAQ time value allowed in microseconds (not needed if DoTimeCut = false)
+    </Param>
+    <Param name="DoLengthCut"><int>0</int>
+      Flag to turn on event length cut (0 = off, anything else = on)
+    </Param>
+    <Param name="LengthCutValueLow"><double>0</double>
+      Lowest event length value allowed in microseconds (not needed if DoLengthCut = false)
+    </Param>
+    <Param name="LengthCutValueHigh"><double>0.1</double>
+      Highest event length value allowed in microseconds (not needed if DoLengthCut = false)
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
+
+

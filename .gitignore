@@ -1,3 +1,10 @@
 docs/
 build/
 old/
+.s*
+src/utils/*.s*
+src/ds/*.s*
+src/spe/*.s*
+src/modules/*.s*
+src/modules/framework/*.s*
+src/modules/reco/*.s*

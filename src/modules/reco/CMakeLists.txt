@@ -3,6 +3,7 @@ set(RECO_HEADERS
   CCMFindEvents.h
   CCMApplyPreCuts.h
   CCMNearlineDiag.h
+  CCMNa22Cuts.h
   )
 
 
@@ -21,6 +22,7 @@ set(RECO_SRCS
   CCMFindEvents.cxx
   CCMApplyPreCuts.cxx
   CCMNearlineDiag.cxx
+  CCMNa22Cuts.cxx
   )
 
 set(RECO_LINKDEF LinkDef.h)

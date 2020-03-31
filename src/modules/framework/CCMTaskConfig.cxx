@@ -210,8 +210,8 @@ int CCMTaskConfig::ReadConfigFile()
           }
           if(cuttype == "string") {	    
             //Convert the string to uppercase
-            if(parname.find("File") == std::string::npos)
-              std::transform(cutval.begin(), cutval.end(), cutval.begin(), toupper);
+            //if(parname.find("File") == std::string::npos)
+            //  std::transform(cutval.begin(), cutval.end(), cutval.begin(), toupper);
             cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),cutval,comment.c_str()));
             //if(cfgname.find("Setup") != std::string::npos)
             //  anaMan->SetParameter(parname,cutval);

@@ -13,7 +13,7 @@ import sys
 # -------- default settings ------------------------
 inputDir      = os.getenv("CCMRAW")+"/"
 outputDir     = os.getenv("CCMPROCESSED")+"/na22_20191221/"
-defaultSLRUM  = "findEvents_slrum.script"
+defaultSLURM  = "findEvents_slurm.script"
 defaultXML    = "findEventsConfig.xml"
 hvOffList     = os.getenv("CCMINSTALL")+"/mappings/hv_off_2019.csv"
 calibrationFile = os.getenv("CCMINSTALL")+"/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root"
@@ -29,13 +29,13 @@ inputDataRegex = "*run000193*.root"
 inputEndString = "_physics"
 
 def getOptions(args=sys.argv[1:]):
-  parser = argparse.ArgumentParser(description="Creates slrum and xml config file for the find events module. Submits the slrum script if --submit option is given.")
+  parser = argparse.ArgumentParser(description="Creates slurm and xml config file for the find events module. Submits the slurm script if --submit option is given.")
   parser.add_argument("--input-loc", default=inputDir,
       help="Directory location of the input files")
   parser.add_argument("--output-loc", default=outputDir,
       help="Directory location of the output files")
-  parser.add_argument("--default-slrum", default=defaultSLRUM,
-      help="Name of the default slrum script file")
+  parser.add_argument("--default-slurm", default=defaultSLURM,
+      help="Name of the default slurm script file")
   parser.add_argument("--default-xml", default=defaultXML,
       help="Name of the default xml script file")
   parser.add_argument("--hv-off-list", default=hvOffList,
@@ -43,7 +43,7 @@ def getOptions(args=sys.argv[1:]):
   parser.add_argument("--calibration-file", default=calibrationFile,
       help="Path to the calibration ROOT file to use") 
   parser.add_argument("--source-file", default=sourceFile,
-      help="Path to the source file to source in slrum script") 
+      help="Path to the source file to source in slurm script") 
   parser.add_argument("--log-file", default=logFileLoc,
       help="Path to the directory to save the log file. Default is a directory called log in the directory where the output files are saved")
   parser.add_argument("--job-name-prefix", default=jobNamePrefix,
@@ -77,7 +77,7 @@ outputDir  = os.path.abspath(options.output_loc)
 #  will need to change conditions on what to look for
 rawList  = glob.glob(os.path.join(inputDir, options.input_data_regex))
 
-slrumScripts = []
+slurmScripts = []
 
 for rawFile in rawList:
   baseName = os.path.basename(rawFile.replace(".root", "_%s.root"%(options.run_type)))
@@ -99,16 +99,18 @@ for rawFile in rawList:
 
   print("run ",run, " out ",outName)
 
-  slrumScript = outputDir+"/scripts/"+"findEvents_slrum_"+run+".script"
+  slurmScript = outputDir+"/scripts/"+"findEvents_slurm_"+run+".script"
   xmlScript = outputDir+"/scripts/"+"findEventsConfig_"+run+".xml"
 
-  slrumScripts.append(slrumScript)
+  slurmScripts.append(slurmScript)
 
-  if not os.path.exists(slrumScript) and options.rewrite:
-    print("\t\t\t replacing slrumScript")
+  if not os.path.exists(slurmScript) or options.rewrite:
 
-    fin = open(options.default_slrum,"rt")
-    fout = open(slrumScript,"wt")
+    if options.log_file == logFileLoc:
+      options.log_file = options.output_loc+"/log"
+
+    fin = open(options.default_slurm,"rt")
+    fout = open(slurmScript,"wt")
     for line in fin:
       copyLine = line
       copyLine = copyLine.replace('CONFIGFILE',xmlScript)
@@ -120,8 +122,7 @@ for rawFile in rawList:
     fin.close()
     fout.close()
 
-  if not os.path.exists(xmlScript) and options.rewrite:
-    print("\t\t\t replacing xmlScript")
+  if not os.path.exists(xmlScript) or options.rewrite:
     fin = open(options.default_xml,"rt")
     fout = open(xmlScript,"wt")
     for line in fin:
@@ -136,12 +137,19 @@ for rawFile in rawList:
     fin.close()
     fout.close()
 
+  if len(slurmScripts) == options.max_jobs:
+    break
+
+
 out = subprocess.run(["squeue","-l", "-u", options.user], stdout=PIPE, universal_newlines=True)
 numLines = len(re.findall("\w*"+options.user+"\w*",out.stdout))
 
-print("MaxNumJobs ",maxNumJobs," numLines ",numLines," numScripts ",len(slrumScripts))
-
 if options.submit:
-  n = min(maxNumJobs-numLines,len(slrumScripts))
-  for slrum in slrumScripts[:n]:
-    subprocess.call(["sbatch",slrum])
+  n = min(options.max_jobs,len(slurmScripts))
+  if n+numLines > maxNumJobs:
+    n = maxNumJobs-numLines
+  for slurm in slurmScripts[:n]:
+    subprocess.call(["sbatch",slurm])
+
+print("MaxNumJobs ",options.max_jobs," numLines ",numLines," numScripts ",len(slurmScripts))
+
