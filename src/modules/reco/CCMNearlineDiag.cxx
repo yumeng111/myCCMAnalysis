@@ -150,7 +150,7 @@ void CCMNearlineDiag::Configure(const CCMConfig& c )
       std::toupper(c,loc);
     }
 
-    c("HVOffList").Get(fHVOffList);
+    c("HVOffFile").Get(fHVOffList);
     c("CalibrationFile").Get(fCalibrationFile);
     c("InFileName").Get(fInFileName);
     c("DoLEDCalib").Get(fDoLEDCalib);

@@ -1,10 +1,16 @@
 docs/
 build/
 old/
-.s*
+log/
+analysis/rtthorn/local/
+configFiles/local/
+
+*.s*
 src/utils/*.s*
 src/ds/*.s*
 src/spe/*.s*
 src/modules/*.s*
 src/modules/framework/*.s*
 src/modules/reco/*.s*
+analysis/rtthorn/*.pdf
+analysis/rtthorn/*.s*
