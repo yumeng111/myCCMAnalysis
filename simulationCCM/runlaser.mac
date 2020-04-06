@@ -1,0 +1,76 @@
+# make sure laser in primary generator is set to true; make sure cylinder in detector construction is set to false in defaults.
+#
+#
+# macro file for Simulation of the Laser for both wavelengths and three positions. 
+#
+#initialize kernal
+/run/initialize
+#
+/tracking/verbose 0
+#
+#
+# set the random generator seeds to either recreate an earlier run 
+# (use the same seeds) or create a different one (use different ones)
+#
+/random/setSeeds 2842835.0 1582842.0
+#
+#
+#
+/ccm/detector/tpbfoil true
+/ccm/detector/reflector true
+/ccm/detector/setrod false
+#
+# Height for the middle position. Also turns the laser on.
+/ccm/detector/rodHeight 0 cm
+#
+# Energy setting for 213 nm wavelength.
+/gun/energy 5.82 eV
+/control/cout/setCoutFile tenkLaserRun10x_Middle-213-ef90ff50l50t90-bcone606-lilusa-absx10below5eV.txt
+#
+#
+/run/beamOn 25
+#
+# Height for the top Position
+/ccm/detector/rodHeight 48.3 cm
+/control/cout/setCoutFile tenkLaserRun10x_Top-213-ef90ff50l50t90-bcone606-lilusa-absx10below5eV.txt
+#
+#
+/run/beamOn 25
+#
+# Height for the bottom position.
+/ccm/detector/rodHeight -38.1 cm
+/control/cout/setCoutFile tenkLaserRun10x_Bottom-213-ef90ff50l50t90-bcone606-lilusa-absx10below5eV.txt
+#
+#
+/run/beamOn 25
+#
+#
+#
+#
+#
+#
+/ccm/detector/rodHeight 0 cm
+#
+# Energy setting for the 532 nm wavelength.
+/gun/energy 2.33 eV
+/control/cout/setCoutFile tenkLaserRun10x_Middle-532-ef90ff50l50t90-bcone606-lilusa-absx10below5eV.txt
+#
+#
+#
+#
+/run/beamOn 100
+#
+#
+/ccm/detector/rodHeight 48.3 cm
+/control/cout/setCoutFile tenkLaserRun10x_Top-532-ef90ff50l50t90-bcone606-lilusa-absx10below5eV.txt
+#
+#
+/run/beamOn 100
+#
+#
+/ccm/detector/rodHeight -38.1 cm
+/control/cout/setCoutFile tenkLaserRun10x_Bottom-532-ef90ff50l50t90-bcone606-lilusa-absx10below5eV.txt
+#
+#
+/run/beamOn 100
+#

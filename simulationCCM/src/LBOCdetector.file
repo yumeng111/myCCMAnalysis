@@ -1,0 +1,1222 @@
+/*
+  LBOC Detector Construction for CCM simulation
+
+most of the acctual simulation is done here. 
+This code builds the detector, including the optical physics and materials.
+The code also includes a number of methods for modifying the detector from macros (see detectorMessenger.cc)
+This code is very long, and should be split into a number of seperate portions each representing a different configuration.
+
+This version uses a cylinder of solid TPB with properties meant to emulate the mixing of TPB and acrylic to simulate the LBOC design. it can change between a single cylinder and a triple cylinder design using the same flag as the tpbcoating (which is always off in this version) and between a 120 and 200 pmt design. This version also comes with several options for simulating less than ideal liquid Argon, although they must be altered in the code as there are not ui options for making such a change. It also has functionality for source and laser calibrations.
+ */
+
+#include "detectorConstruction.hh"
+#include "detectorMessenger.hh"
+
+#include "G4SDManager.hh"
+#include "G4RunManager.hh"
+#include "G4Material.hh"
+#include "G4NistManager.hh"
+
+#include "G4GeometryManager.hh"
+#include "G4SolidStore.hh"
+#include "G4LogicalVolumeStore.hh"
+#include "G4PhysicalVolumeStore.hh"
+#include "G4LogicalBorderSurface.hh"
+#include "G4LogicalSkinSurface.hh"
+
+#include "G4OpticalSurface.hh"
+#include "G4MaterialTable.hh"
+#include "G4VisAttributes.hh"
+#include "G4Material.hh"
+#include "G4Box.hh"
+#include "G4Tubs.hh"
+#include "G4Cons.hh"
+#include "G4Sphere.hh"
+#include "G4LogicalVolume.hh"
+#include "G4ThreeVector.hh"
+#include "G4PVPlacement.hh"
+#include "globals.hh"
+#include "G4UImanager.hh"
+#include "G4PhysicalConstants.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4SubtractionSolid.hh"
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+//Constructor
+detectorConstruction::detectorConstruction()
+  : lAr_mt(nullptr), TPBProp(nullptr), TPBsProp(nullptr)
+{
+  wBox = nullptr;
+  wLog = nullptr;
+  wPhys = nullptr;
+  
+  fH = fC = fN = fO = nullptr;
+  lAr = alum = steel = fVacuum = nullptr;
+  ptfe = fGlass = fAir = tPB = tPBhundred = nullptr;
+  //tPBfoil = nullptr;
+  lAr2 = lAr1 = nullptr;
+
+  fCryoVessel = nullptr;
+  fLogicCryo = nullptr;
+  fArgonOuter = nullptr;
+  fLogicArout = nullptr;
+  fInnerFrame = nullptr;
+  fLogicFrame = nullptr;
+  fTPBSides = nullptr;
+  fLogicTPB = nullptr;
+  fFiducialAr = nullptr;
+  fLogicFiduc = nullptr;
+  lArFiducial = nullptr;
+  fFiducialAr1 = nullptr;
+  fLogicFiduc1 = nullptr;
+  lArFiducial1 = nullptr;
+  fFiducialAr2 = nullptr;
+  fLogicFiduc2 = nullptr;
+  lArFiducial2 = nullptr;
+  fFiducialAr3 = nullptr;
+  fLogicFiduc3 = nullptr;
+  lArFiducial3 = nullptr;
+  fFiducialAr4 = nullptr;
+  fLogicFiduc4 = nullptr;
+  lArFiducial4 = nullptr;
+  fFiducialAr5 = nullptr;
+  fLogicFiduc5 = nullptr;
+  lArFiducial5 = nullptr;
+  //A long series of nullptr's to clear all the pointers created in the header file.
+
+  SetDefaults();
+  //Sets a few defaults by calling a method that declears them below.
+
+  DefineMaterials();
+  fDetectorMessenger = new detectorMessenger(this);
+  //Calls the methods to define the materials and link the detector messenger to this detector.
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+//Deconstructor
+detectorConstruction::~detectorConstruction() {}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+//Defines the materials and many of the physics
+//Most notably defines TPB wavelength shifting and the lAR absorption lengths.
+void detectorConstruction::DefineMaterials(){
+  G4double a;  // atomic mass
+  G4double z;  // atomic number
+  G4double density;
+  //defines a few doubles for use later.
+
+  //Define the elements used in compounds.
+  fH = new G4Element("H", "H", z=1., a=1.01*g/mole);
+  fC = new G4Element("C", "C", z=6., a=12.01*g/mole);
+  fN = new G4Element("N", "N", z=7., a= 14.01*g/mole);
+  fO = new G4Element("O"  , "O", z=8., a= 16.00*g/mole);
+  
+  //G4cout << "Edwardnote: Defined Elements" << G4endl;
+
+  //Define the Materials from liquid Argon to tpb.
+  //Liquid Argon; three types defined for gradients of liquid argon absorption length
+  lAr = new G4Material("lAr",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
+
+  //Aluminum: for the frame
+  alum = new G4Material("Al",z=13.,a=26.98*g/mole,density=2.7*g/cm3);
+
+  //Steel: for the cryogen
+  G4NistManager* manager = G4NistManager::Instance();
+  steel = manager->FindOrBuildMaterial("G4_STAINLESS-STEEL");
+  //ptfe: for the reflector foils.
+  ptfe = manager->FindOrBuildMaterial("G4_TEFLON");
+  //Vacuum: for vacuum. 
+  fVacuum = new G4Material("Vacuum",z=1.,a=1.01*g/mole,
+                          density=universe_mean_density,kStateGas,0.1*kelvin,
+                          1.e-19*pascal);
+  //Air: potentially for tests of empty (air-filled) detector. As of yet not finished or useful.
+  fAir = new G4Material("Air", density= 1.29*mg/cm3, 2);
+  fAir->AddElement(fN, 70*perCent);
+  fAir->AddElement(fO, 30*perCent);
+  //Glass: for PMTs.
+  fGlass = new G4Material("Glass", density=1.032*g/cm3,2);
+  fGlass->AddElement(fC,91.533*perCent);
+  fGlass->AddElement(fH,8.467*perCent);
+  //TPB: TPB, wavelength shifting material (mostly defined in optical properties)
+  tPB = new G4Material("tpb", density= 1.079*g/cm3, 2);
+  tPB->AddElement(fC, 28);
+  tPB->AddElement(fH, 22);
+  //second kind of TPB for different optical properties.
+  tPBhundred = new G4Material("t100", density= 1.079*g/cm3, 2);
+  tPBhundred->AddElement(fC, 28);
+  tPBhundred->AddElement(fH, 22);
+  
+  //G4cout << "EdwardNote Defined Compounds" << G4endl;
+  //***Material properties tables
+  //these tables define the optical properties of the materials 
+  //defines refractive index, scintillation properties, absorption length with respect to energy.
+
+  //Values for liquid Argon (all types)
+  G4double lar_Energy_scin[] = { 3.87*eV , 4.51*eV , 4.74*eV , 5.03*eV , 5.36*eV , 5.55*eV , 5.82*eV , 6.06*eV , 6.54*eV , 6.79*eV , 7.03*eV , 7.36*eV , 7.76*eV , 7.98*eV , 8.33*eV , 8.71*eV , 8.96*eV , 9.33*eV , 9.91*eV , 10.31*eV , 10.61*eV , 10.88*eV , 11.27*eV , 11.81*eV , 12.40*eV , 13.05*eV , 13.78*eV , 14.59*eV , 15.50*eV }; //energies for scintillation spectrum
+  G4double lar_Energy_rin[]    = { 1.90*eV , 2.934*eV, 3.592*eV, 5.566*eV, 6.694*eV, 7.54*eV, 8.574*eV, 9.044*eV, 9.232*eV, 9.42*eV, 9.514*eV, 9.608*eV,9.702*eV, 9.796*eV, 9.89*eV, 9.984*eV, 10.08*eV, 10.45*eV, 10.74*eV, 10.92*eV  }; //energies for refractive index
+  G4double lar_Energy_rs[] = { 2.80*eV , 3.0*eV , 3.5*eV , 4.0*eV , 5.0*eV , 6.0*eV , 7.0*eV , 8.0*eV , 8.5*eV , 9.0*eV , 9.2*eV , 9.4*eV , 9.5*eV , 9.6*eV , 9.7*eV , 9.8*eV , 9.9*eV , 10.0*eV , 10.2*eV , 10.4*eV , 10.6*eV , 10.8*eV }; //energies for rayleigh scattering spectrum.
+  G4double lar_Energy_abs[]    = { 1.0*eV , 2.0*eV , 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 8.0*eV, 9.0*eV, 10.0*eV, 11.0*eV }; //Energies for absorption length spectrum
+
+  const G4int larscin = sizeof(lar_Energy_scin)/sizeof(G4double);
+  const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
+  const G4int larrs  =  sizeof(lar_Energy_rs)/sizeof(G4double);
+  const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
+  //defines a few integers to make some tests easier.
+
+  G4double lar_SCINT[] = { 0.00006, 0.00007, 0.00008, 0.00011, 0.00020, 0.00030, 0.00048, 0.00082, 0.00126, 0.00084, 0.00043, 0.00030, 0.00106, 0.00298, 0.00175, 0.00351, 0.01493, 0.12485, 0.49332, 0.20644, 0.07477, 0.04496, 0.01804, 0.00576, 0.00184, 0.00059, 0.00019, 0.00006, 0.00002 }; //liquid Argon scintillation spectrum. this one is centered at 128 nm (as it should be). 
+  assert(sizeof(lar_SCINT) == sizeof(lar_Energy_scin)); //makes sure the energy and spectrum of the scintillation values are the same size.
+  G4double lar_RIND[]  = { 1.232,  1.236,  1.240,  1.261,  1.282,  1.306,  1.353,  1.387,  1.404,  1.423,  1.434,  1.446,  1.459,  1.473,  1.488,  1.505,  1.524,  1.569,  1.627,  1.751,  1.879 }; //index of refraction spectrum.
+  assert(sizeof(lar_RIND) == sizeof(lar_Energy_rin)); 
+  G4double lar_RSL[]  = { 47923.0*cm, 35981.0*cm, 18825.0*cm, 10653.0*cm, 3972.0*cm, 1681.0*cm, 750.9*cm, 334.7*cm, 216.8*cm, 135.0*cm, 109.7*cm, 88.06*cm, 78.32*cm, 69.34*cm, 61.06*cm, 53.46*cm, 46.50*cm, 40.13*cm, 28.91*cm, 19.81*cm, 12.61*cm, 7.20*cm }; //spectrum of rayleigh scattering lengths. 
+  assert(sizeof(lar_RSL) == sizeof(lar_Energy_rsl));
+
+  //the following section defines the absorption lengths for the various liquid Argon contaminations.
+  G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm };//Absorption lengths for clean Argon
+  //G4double lar_ABSL[]  = { 400.*cm, 400.*cm, 400.*cm, 400.*cm, 400.*cm, 400.*cm, 400.*cm, 400.*cm, 400.*cm, 400.*cm, 400.*cm };//Absorption lengths for unclean Argon across all wavelengths (no idea what would physically make this.
+  //G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 200.*cm, 200.*cm, 200.*cm };//absorption lengths for 100 ppb oxygen or 50 ppb water
+  //G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 100.*cm, 100.*cm, 100.*cm };//Absorption lengths for 200 ppb oxygen
+  //G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 20.*cm, 20.*cm, 20.*cm };//Absorption lengths for 1 ppm oxygen with no ozone
+  //G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 200.*cm, 20.*cm, 20.*cm, 20.*cm };//absortion lengths for 1 ppm oxygen (plus some ozone) or 500 ppm water
+  assert(sizeof(lar_ABSL) == sizeof(lar_Energy_abs));
+
+  //Takes the defined values above and uses them to define a materials properties table.
+  lAr_mt = new G4MaterialPropertiesTable();//initiates the table
+  lAr_mt->AddProperty("FASTCOMPONENT", lar_Energy_scin, lar_SCINT, larscin);//adds a property; this is the fast component of the scinitillation. 
+  lAr_mt->AddProperty("SLOWCOMPONENT", lar_Energy_scin, lar_SCINT, larscin);
+  lAr_mt->AddProperty("RINDEX",        lar_Energy_rin,  lar_RIND,  larrin);
+  lAr_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar_ABSL,  larabs);
+  lAr_mt->AddProperty("RAYLEIGH",      lar_Energy_rs,   lar_RSL,   larrs);
+  G4double scint_yeild=1.0/(19.5*eV); //scintillation yeild: 50 per keV.
+  lAr_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+  lAr_mt->AddConstProperty("RESOLUTIONSCALE",0.11);//numbers from https://indico.cern.ch/event/44566/contributions/1101918/attachments/943057/1337650/dipompeo.pdf, slide on scintllation implementation.
+  lAr_mt->AddConstProperty("FASTTIMECONSTANT",7.*ns);
+  lAr_mt->AddConstProperty("SLOWTIMECONSTANT",1400.*ns);
+  lAr_mt->AddConstProperty("YIELDRATIO",0.25);//for e/m scintillation
+  //lAr_mt->AddConstProperty("YIELDRATIO",1.0);//for nucleonic scintillation
+  //note: if you switch between nucleonic and e/m, make sure to change in the main file as well.
+  lAr->SetMaterialPropertiesTable(lAr_mt);
+
+
+  // Set the Birks Constant for the lAr scintillator (from the same paper as above)
+  lAr->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
+
+  //Definition of MPT for Glass
+  G4double glass_Energy[] = { 7.0*eV, 7.07*eV, 7.14*eV };
+  G4int glassnum = sizeof(glass_Energy) / sizeof(G4double);
+  G4double glass_RIND[]={1.49,1.49,1.49};
+  assert(sizeof(glass_RIND) == sizeof(glass_Energy));
+  G4double glass_AbsLength[]={420.*cm,420.*cm,420.*cm};
+  assert(sizeof(glass_AbsLength) == sizeof(glass_Energy));
+  G4MaterialPropertiesTable *glass_mt = new G4MaterialPropertiesTable();
+  glass_mt->AddProperty("ABSLENGTH",glass_Energy,glass_AbsLength,glassnum);
+  glass_mt->AddProperty("RINDEX",glass_Energy,glass_RIND,glassnum);
+  fGlass->SetMaterialPropertiesTable(glass_mt);
+
+  //Vacuum
+  G4double vacuum_Energy[]={2.0*eV,7.0*eV,7.14*eV};
+  const G4int vacnum = sizeof(vacuum_Energy)/sizeof(G4double);
+  G4double vacuum_RIND[]={1.,1.,1.};
+  assert(sizeof(vacuum_RIND) == sizeof(vacuum_Energy));
+  G4MaterialPropertiesTable *vacuum_mt = new G4MaterialPropertiesTable();
+  vacuum_mt->AddProperty("RINDEX", vacuum_Energy, vacuum_RIND,vacnum);
+  fVacuum->SetMaterialPropertiesTable(vacuum_mt);
+  fAir->SetMaterialPropertiesTable(vacuum_mt);//Give air the same rindex as vacuum (close enough).
+
+  //Aluminum
+  G4double alum_energy[40] = { 1.53353916299*eV, 1.55836885306*eV, 1.58716054918*eV, 1.61709864659*eV, 1.65046713174*eV,    
+			       1.6817136839*eV,  1.71786713359*eV, 1.75433728722*eV, 1.79106381297*eV, 1.83220935967*eV, 
+			       1.87670110428*eV, 1.92033477064*eV, 1.96440460941*eV, 2.01566223496*eV, 2.06248774244*eV, 
+			       2.1191459895*eV,  2.17704608625*eV,  2.23198006977*eV, 2.29412813935*eV,2.37159279237*eV, 
+			       2.43945693286*eV, 2.51927088373*eV, 2.59881298342*eV, 2.68963236717*eV, 2.78391786144*eV, 
+			       2.88535232931*eV, 2.97955997826*eV, 3.08041053689*eV, 3.18832742402*eV, 3.26833943848*eV, 
+			       3.36191419687*eV, 3.46107669506*eV, 3.52980225748*eV, 3.60084752681*eV, 3.70923697374*eV, 
+			       3.75238245064*eV, 3.82680283055*eV, 3.9042347515*eV,  3.9111734511*eV, 20.6640330667*eV };
+  G4double alum_reflect[40] = {0.8866682, 0.8975349, 0.9091666, 0.9176283, 0.9260717, 
+			       0.9329575, 0.9398158, 0.9458907, 0.9511823, 0.9548705, 
+			       0.9609272, 0.9662096, 0.9722937, 0.9775578, 0.9836511, 
+			       0.9865376, 0.9886408, 0.9891864, 0.9905061, 0.9909877, 
+			       0.9907316, 0.9904481, 0.9901829, 0.9891068, 0.9856623, 
+			       0.9774627, 0.968507,  0.955589,  0.9426708, 0.9242781, 
+			       0.9058671, 0.8866637, 0.862769,  0.8436296, 0.8228502, 
+			       0.8005955, 0.7798801, 0.7591648, 0.001,     0.001 };
+  assert(sizeof(alum_energy) == sizeof(alum_reflect));
+  //Above: reflectivity of aluminum for frame. Below: absorption length for aluminum (very short).
+  G4double alum_abslen[2] = { 1.0e-3*cm, 1.0e-3*cm};
+  G4double alum_abseneg[2] = { 20.664*eV, 1.5498*eV };
+  assert(sizeof(alum_abseneg) == sizeof(alum_abslen));
+  G4MaterialPropertiesTable *alum_mt = new G4MaterialPropertiesTable();
+  alum_mt->AddProperty("REFLECTIVITY", alum_energy, alum_reflect,40);
+  alum_mt->AddProperty("ABSLENGTH", alum_abseneg, alum_abslen,2);
+  alum->SetMaterialPropertiesTable(alum_mt);
+  
+  //Definition of Material properties for TPB. 
+  const G4int nTPBEntries = 25;
+  // Comment: These are different energies than pretty much all the other arrays (at least from 2.583->2.980eV)...                        
+  G4double TPBEnergy[nTPBEntries] =
+    { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/, 
+      2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
+      2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
+      3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  4.953*eV/*(250nm)*/, 5.474*eV/*(227nm)*/,
+      6.262*eV/*(198nm)*/,  7.000*eV/*(177nm)*/,  8.300*eV/*(149nm)*/,  10.00*eV/*(124nm)*/, 12.60*eV/*(98nm)*/  };
+  //energy spectrum for TPB absorption and WLS absorption spectra.                                                                                 
+  //The following several dozen lines describe the WLS and normal absorption lengths for TPB over the above spectrum. It is generally divided into 2 sections: three lines for visible light (between 1800 and 340 nm; includes IR and low UV) that is not Wavelength shifted, and 2 lines for ultraviolet light which is (between 330 and 90 nm). There are a number of alternate verions of TPB which have been used over the course of the simulation; for convenience a selection have been left in to provide an example of how to alter the TPB properties.
+
+  //in this particular code, the TPB properties are not at all physically accurate. They instead represent an attemp to model the interaction of the combined TPB/acrylic bars which make up the LBOC cylinder. as such, they have high efficiency and absorption length, but different rindex and model internal reflection and transmission through the bar. There are a number of options in the Absorption spectrum, representing previous methods of modeling these bars to more accurately deal with the significantly reduced efficiency of the LBOC tpb in the forward direction.
+  G4double TPBWLSAbsorption[nTPBEntries] = {
+    0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+    1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+    10000.000*m, 10000.000*m, 10000.000*m, 10000.000*m, 100000.0*m,
+    100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00100*nm, //for 100% WLS efficiency
+    0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm
+  };//*/
+  
+  G4double TPBAbsorption[nTPBEntries] = { 
+    //for actual properties of bar (150cm Absorption length, use TPBRIndexAcr for losses)
+    150*cm, 150*cm, 150*cm, 150*cm, 150*cm, 
+    150*cm, 150*cm, 150*cm, 150*cm, 150*cm, 
+    150*cm, 150*cm, 150*cm, 150*cm, 150*cm, 
+    //for 50% transmittance through .5 cm glass. Use the normal RIndex if using this.
+    /*7.2*mm, 7.2*mm, 7.2*mm, 7.2*mm, 7.2*mm, 
+    7.2*mm, 7.2*mm, 7.2*mm, 7.2*mm, 7.2*mm, 
+    7.2*mm, 7.2*mm, 7.2*mm, 10.0000*mm, 100000.0*m,//*/
+    //for 90% transmission through .5 cm glass
+    /*4.75*cm, 4.75*cm, 4.75*cm, 4.75*cm, 4.75*cm, 
+    4.75*cm, 4.75*cm, 4.75*cm, 4.75*cm, 4.75*cm, 
+    4.75*cm, 4.75*cm, 4.75*cm, 10.0000*mm, 100000.0*m,//*/
+    100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m,
+    100000.0*m, 100.0000*m, 100.0000*m, 100.0000*m, 100.0000*m
+  /*  100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00100*nm, //these teo lines for 50% tpb Efficiency (as suggested occassionally)
+      0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm//*/
+  };
+  
+  //Emission spectrum for TPB; basically probabilities of photon being reemitted in the various energy bins.
+  G4double TPBEmission[nTPBEntries] = //TPB Emission spectrum 
+    {
+      0.0000, 0.0000, 0.0000, 0.0000, 0.0005,
+      0.0015, 0.0030, 0.0050, 0.0070, 0.0110,
+      0.0110, 0.0060, 0.0020, 0.0000, 0.0000,
+      0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+      0.0000, 0.0000, 0.0000, 0.0000, 0.0000
+    };
+  /*
+  G4double TPBRIndex[nTPBEntries] =  //Refractive index of normal TPB. if turning on, switch the value entered below in the TPB MPT.
+    {
+      1.4, 1.4, 1.4, 1.4, 1.4,
+      1.4, 1.4, 1.4, 1.4, 1.4,
+      1.4, 1.4, 1.4, 1.4, 1.4,
+      1.4, 1.4, 1.4, 1.4, 1.4,
+      1.4, 1.4, 1.4, 1.4, 1.4
+      };//*/
+
+  G4double TPBRIndexAcr[nTPBEntries] =  //refractive index of the LBOC bars.
+    {
+      1.49, 1.49, 1.49, 1.49, 1.49,
+      1.49, 1.49, 1.49, 1.49, 1.49,
+      1.49, 1.49, 1.49, 1.49, 1.49,
+      1.49, 1.49, 1.49, 1.49, 1.49,
+      1.49, 1.49, 1.49, 1.49, 1.49
+    };//*/
+
+  //defining the MPTs for the various types of TPB
+  TPBProp = new G4MaterialPropertiesTable();
+  TPBProp->AddProperty("RINDEX", TPBEnergy, TPBRIndexAcr, nTPBEntries);//Note that this also needs to be changed if switching on the TPBRIndex above
+  TPBProp->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption, nTPBEntries);
+  //TPBProp->AddProperty("REFLECTIVITY", TPBEnergy, TPBReflect, nTPBEntries);
+  //TPBProp->AddProperty("TRANSMITTANCE", TPBEnergy, TPBOSTransmit, nTPBEntries);  
+  //may try turning on reflect and transmit above.
+
+  //wavelength shifting for TPB                
+  TPBProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption, nTPBEntries);
+  TPBProp->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, nTPBEntries);
+  TPBProp->AddConstProperty("WLSTIMECONSTANT", 0.01*ns);
+  //TPBProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
+  //allows geant to produce multiple photons per incoming, with the mean number being 1.2. if off WLSabsorbed to emitted is 1:1
+
+  tPB->SetMaterialPropertiesTable(TPBProp);
+  
+  //Defines properties of the ptfe reflectors.
+  const G4int nTefEntries = 25;
+  G4double TefEnergy[nTefEntries] =
+    {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV,
+     2.138*eV, 2.25*eV,  2.38*eV,  2.48*eV, 
+     2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV, 
+     3.124*eV, 3.457*eV, 3.643*eV, 3.812*eV, 4.086*eV,
+     4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+     7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+  G4double TefReflect[nTefEntries] =
+    {0., 0., 0., 0., 
+     1., 1., 1., 1., 
+     1., 1., 0.99, 0.99,
+     0.99, 0.99, 0.99, 0.99, .99,
+     0.99, 0.99, 0.99, 0.99, 
+     0.99, 0.99, 0.99, 0.99};
+  G4double TefRIndex[nTefEntries] =
+    {1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35,
+     1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35,
+     1.35, 1.35, 1.35, 1.35, 1.35};
+  G4MaterialPropertiesTable *TefProp = new G4MaterialPropertiesTable();
+  TefProp->AddProperty("RINDEX", TefEnergy, TefRIndex, nTefEntries);
+  TefProp->AddProperty("REFLECTIVITY", TefEnergy, TefReflect, nTefEntries);
+  ptfe->SetMaterialPropertiesTable(TefProp);
+
+  //G4cout << "EdwardNote Defined Material properties" << G4endl;
+}
+
+
+//Construct method called in main code to actual build the detector using the materials defined above. 
+//Also contains the if-else statements that build parts of the detector that are not always on.
+G4VPhysicalVolume* detectorConstruction::Construct(){
+
+  //Create a box 10x10x10 meters in which to place the detector. In theory is much larger than it needs to be.
+  G4double expHall_x = 5*m;
+  G4double expHall_y = 5*m;
+  G4double expHall_z = 5*m;
+  wBox = new G4Box("expHall_box",expHall_x,expHall_y,expHall_z);
+  wLog = new G4LogicalVolume(wBox,fVacuum,"expHall_log",0,0,0);
+  wPhys = new G4PVPlacement(0,G4ThreeVector(),wLog,"expHall",0,false,0);
+
+  wLog->SetVisAttributes(G4VisAttributes::GetInvisible());
+  //makes the world volume invisible to visualization software (as it should be)
+
+  //G4cout << "EdwardNote Defined World" << G4endl;
+
+  //Place the main volume if it is on. (i.e. the CCM detector)
+  if(mainVolOn){
+    //add concentric cylinders to form CCM detector volume: cryo (G4_STAINLESS-STEEL), LAr, support (Aluminum, G4_Al), inner support (ptfe, G4_TEFLON), TPB coating (TPB, get properties), fiducial Argon.
+
+    //Outer cryogen
+    fCryoVessel = new G4Tubs("Cryogen", 0*cm, 138*cm, 131*cm, 0*deg,360*deg);
+    fLogicCryo  = new G4LogicalVolume(fCryoVessel, steel, "Cryogen");
+    new G4PVPlacement(0,
+		      G4ThreeVector(0*cm, 0*cm, 0*cm),
+		      fLogicCryo,
+		      "Cryogen",
+		      wLog,
+		      false,
+		      0,
+		      true);
+    
+    //Vacuum jacket
+    G4Tubs* vacuum = new G4Tubs("Vacuum", 0*cm, 135*cm, 126*cm, 0*deg, 360*deg);
+    G4LogicalVolume* fLogicVacuum = new G4LogicalVolume(vacuum, fVacuum, "Vacuum");
+    new G4PVPlacement(0,
+		      G4ThreeVector(0*cm, 0*cm, 0*cm),
+		      fLogicVacuum,
+		      "Vacuum",
+		      fLogicCryo,
+		      false,
+		      0,
+		      true);
+
+    //inner cryogen
+    G4Tubs* innerjack = new G4Tubs("innerjacket", 0*cm, 125*cm, 120*cm, 0*deg, 360*deg);
+    G4LogicalVolume* fLogicJacket = new G4LogicalVolume(innerjack, steel, "innerjacket");
+    new G4PVPlacement(0,
+		      G4ThreeVector(0*cm, 0*cm, 0*cm),
+		      fLogicJacket,
+		      "innerjacket",
+		      fLogicVacuum,
+		      false,
+		      0,
+		      true);
+
+    //Argon outside the fiducial volume
+    fArgonOuter = new G4Tubs("liquidArgon", 0*cm, 120*cm, 115*cm, 0*deg, 360*deg);
+    fLogicArout = new G4LogicalVolume(fArgonOuter, lAr, "liquidArgon");
+    new G4PVPlacement(0,
+		      G4ThreeVector(0*cm, 0*cm, 0*cm),
+		      fLogicArout,
+		      "liquidArgon",
+		      fLogicJacket,
+		      false,
+		      0,
+		      true);
+    
+    //Aluminum frame holding PMTs and instrumentation
+    fInnerFrame = new G4Tubs("Frame",0*cm, 106*cm, 75*cm, 0*deg, 360*deg);
+    fLogicFrame = new G4LogicalVolume(fInnerFrame,alum, "Frame");
+    new G4PVPlacement(0,
+		      G4ThreeVector(0,0,0),
+		      fLogicFrame,
+		      "Frame",
+		      fLogicArout,
+		      false,
+		      0,
+		      true);
+
+    //G4cout << "EdwardNote Defined Up to foils" << G4endl;
+    
+    
+    //define the fiducal volumes of liquid Argon.
+    fFiducialAr = new G4Tubs("Fiducial", 0*cm, 96*cm, 68.0*cm, 0*deg, 360*deg);//no ice
+    fLogicFiduc = new G4LogicalVolume(fFiducialAr,lAr,"Fiducial");
+
+    //defines the optical surface for the reflective foils. Does not use all the same values as the TPB in order to properly get reflectivity.
+    const G4int nAcTefEntries = 25;
+    G4OpticalSurface *reflfoilOS = new G4OpticalSurface("refl");
+    
+    reflfoilOS->SetModel(glisur); //Optical model                    
+    reflfoilOS->SetType(dielectric_metal);
+    reflfoilOS->SetFinish(ground);
+    reflfoilOS->SetSigmaAlpha(0.01);
+    
+    G4MaterialPropertiesTable *reflfoilMPT = new G4MaterialPropertiesTable();
+    G4double reflfoilOSEnergy[nAcTefEntries] =
+      {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
+       2.48*eV,  2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV,  3.124*eV, 3.457*eV,
+       3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+       7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+    G4double uvRf = 0.10; //change uvreflection
+    G4double vsRf = 0.95; //change visible reflectivity
+    //enter the uv and visible reflectivities defined above.
+    G4double reflfoilOSReflect[nAcTefEntries] =
+      {vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, 
+       vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, 
+       vsRf, vsRf, vsRf, vsRf, uvRf, uvRf, uvRf, 
+       uvRf, uvRf, uvRf, uvRf};
+    G4double reflfoilOSEff[nAcTefEntries] =
+      {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+       1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
+       1., 1., 1., 1., 1.};
+    reflfoilMPT->AddProperty("REFLECTIVITY", reflfoilOSEnergy, reflfoilOSReflect, nAcTefEntries);
+    reflfoilMPT->AddProperty("EFFICIENCY", reflfoilOSEnergy, reflfoilOSEff, nAcTefEntries);
+    reflfoilOS->SetMaterialPropertiesTable(reflfoilMPT);
+
+    //if the reflector is on, place it.
+    if (fReflectorOn) {
+      //Places reflector if reflector is on
+      G4Tubs* ffoilSides = new G4Tubs("ptfefoil", 0*cm, 96.05*cm, 68.05*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fLogicfoil = new G4LogicalVolume(ffoilSides,ptfe,"ptfefoil");
+      G4VPhysicalVolume* fPhysfoil = new G4PVPlacement(0,
+						       G4ThreeVector(0,0,0),
+						       fLogicfoil,
+						       "ptfefoil",
+						       fLogicFrame,
+						       false,
+						       0,
+						       true);
+
+      //G4cout << "EdwardNote Defined Reflector" << G4endl;
+      
+
+      //reflector On TPB off
+      lArFiducial = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fLogicFiduc, "Fiducial",fLogicfoil,	false,	0,true);
+      
+      new G4LogicalBorderSurface("refl", lArFiducial, fPhysfoil, reflfoilOS);
+    } else {
+      //places the lArFiducial Volume inside the Frame if both sets of foil are turned off.
+      lArFiducial = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fLogicFiduc, "Fiducial", fLogicFrame, false, 0, true);
+    }//end if-else for foils and fiducial volume
+
+    //places the calibration rod (with extension) if its turned on.
+    if (fRodin) {
+      //G4cout << "Edwardnote Placing rod"  << G4endl;
+
+      //main rod
+      G4Tubs* sourcerod = new G4Tubs("sourcerod", 0*cm, 3*cm, 45*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fLogicRod = new G4LogicalVolume(sourcerod, steel, "sourcerod");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, 75*cm),
+			fLogicRod,
+			"sourcerod",
+			fLogicFiduc,
+			false,
+			0,
+			true);
+      
+      //lAr inside the rod (it's hollow).
+      G4Tubs* hollowrod = new G4Tubs("hollowrod", 0*cm, 2*cm, 45*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fHoleRod = new G4LogicalVolume(hollowrod, lAr, "hollowrod");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, 0*cm),
+			fHoleRod,
+			"hollowrod",
+			fLogicRod,
+			false,
+			0,
+			true);
+
+      //endcap (that very large knut)
+      G4Tubs* sourcecap = new G4Tubs("sourcecap", 3*cm, 4*cm, 2*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fLogicCap = new G4LogicalVolume(sourcecap, steel, "sourcecap");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, 32*cm),
+			fLogicCap,
+			"sourcecap",
+			fLogicFiduc,
+			false,
+			0,
+			true);
+      
+      //the thinner extension
+      G4Tubs* sourceextend = new G4Tubs("sourceextend", 0*cm, 0.5*cm, 15*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fLogicExtend = new G4LogicalVolume(sourceextend, steel, "sourceextend");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, 15*cm),
+			fLogicExtend,
+			"sourceextend",
+			fLogicFiduc,
+			false,
+			0,
+			true);
+      
+      //extension is also hollow, or at least approximated as such.
+      G4Tubs* hollowextend = new G4Tubs("hollowextend", 0*cm, 0.25*cm, 14.9*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fHoleExtend = new G4LogicalVolume(hollowextend, lAr, "hollowextend");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, 0.2*cm),
+			fHoleExtend,
+			"hollowextend",
+			fLogicExtend,
+			false,
+			0,
+			true);
+      //G4cout << "Edwardnote Placed rod"  << G4endl;
+
+    } else if (fLaser) {
+      //creates a cone of foil around the top of the laser rod, created by the loose foils there not being allowed to return to rest. Not significant in the source calibrations, though its inclusion won't hurt either.
+      G4double coneheight = 6.7*cm;
+      if (rodHeight > 30*cm) {
+	coneheight = 3.87*cm;
+      }
+      G4double coneplace = 68*cm-coneheight;
+      
+      G4Cons* foilcone = new G4Cons("ptfecone", 1.8*cm, 1.81*cm, 1.8*cm, 15.2*cm, coneheight, 0*deg, 360*deg);
+      G4LogicalVolume* fFoilCone = new G4LogicalVolume(foilcone, ptfe, "ptfecone");
+
+      //place the cones of foil (ptfe) into the appropriate fiducial volume
+      G4VPhysicalVolume* foilConePhys = new G4PVPlacement(0,
+							 G4ThreeVector(0*cm, 0*cm, coneplace),
+							 fFoilCone,
+							 "foilcone",
+							 fLogicFiduc,
+							 false,
+							 0,
+							 true);  
+
+      //optical surfaces for the cone of foil
+      new G4LogicalBorderSurface("reflcone", lArFiducial, foilConePhys, reflfoilOS);
+      
+      //start creating and placing the laser rod, with variable height to be input by the user (default: 0*cm, center of detector).
+      G4double rodplace = (61.79*cm+rodHeight);
+      G4Tubs* sourcerod = new G4Tubs("sourcerod", 0*cm, 1.8*cm, 60*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fLogicRod = new G4LogicalVolume(sourcerod, steel, "sourcerod");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, rodplace),
+			fLogicRod,
+			"sourcerod",
+			fLogicFiduc,
+			false,
+			0,
+			true);
+
+      //this rod is also hollow
+      G4Tubs* hollowrod = new G4Tubs("hollowrod", 0*cm, 1.6*cm, 60*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fHoleRod = new G4LogicalVolume(hollowrod, lAr, "hollowrod");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, 0*cm),
+			fHoleRod,
+			"hollowrod",
+			fLogicRod,
+			false,
+			0,
+			true);
+      
+      //creates a cylinder with a sort of hollowed cone for the diffuser (geometry measurements from diffuser design diagram)
+      G4Tubs* diffuserBody = new G4Tubs("diffusermain", 0*cm, 1.905*cm, 1.79*cm, 0*deg, 360*deg);
+      G4Cons* diffuserCone = new G4Cons("diffusercone", 0*cm, 1.409*cm, 0*cm, .952*cm, .394*cm, 0*deg, 360*deg);
+      G4SubtractionSolid* diffuser = new G4SubtractionSolid("diffuser", diffuserBody, diffuserCone, 0, G4ThreeVector(0*cm, 0*cm, -1.396*cm));
+      G4LogicalVolume* fLogicDiff = new G4LogicalVolume(diffuser, steel, "diffuser");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, rodHeight),
+			fLogicDiff,
+			"diffuser",
+			fLogicFiduc,
+			false,
+			0,
+			true);
+      
+      //creates the diffuser plates out of glass (just in case you accidentally put the source of the photons inside them). 
+      G4Tubs* plates = new G4Tubs("plates", 0*cm, 1.33*cm, .305*cm, 0*deg, 360*deg);
+      G4LogicalVolume* logicPlates = new G4LogicalVolume(plates, fGlass, "plates");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, -.70*cm),
+			logicPlates,
+			"plates",
+			fLogicDiff,
+			false,
+			0,
+			true);
+    }//end laser placement if statement.
+
+    //G4cout << "Edwardnote after rod/laser ifelse"  << G4endl;
+
+    //create a loop to place PMTs according to pattern
+    G4double angle = 0.;
+    G4double pmtxx;
+    G4double pmtyy;
+    G4double pmtzz;
+    G4String pmtnm[120];//each pmt gets a unique name so they can be distinguished in the output.
+    G4bool pmtcoat;
+
+    G4double itang = 360.0/24;//interval angle; angle between two consecutive pmts
+    G4double radius = 96.0;//radius: outer radius of Fiducial volume
+    G4int zs = 0;//counter
+
+    //G4cout << "Placing PMTs" << G4endl;
+
+    //begin loop for creation of PMT names
+    for (G4int i=0; i<5; ++i) {
+      for (G4int n=0; n<24; ++n) {
+	zs = i*24+n;
+	pmtnm[zs] = "C"+std::to_string(n+1)+"R"+std::to_string(i+1);
+	//now all pmts are named according to column and row
+
+	//G4cout << pmtnm[zs];
+      }
+    }
+    zs = 0;
+
+    for (G4int i=0; i<120; ++i) {
+      if (i%24 == 0) {
+	angle = 0;
+      }
+      //defines the angular position according to the interval angle
+      G4double phi = angle*CLHEP::pi/180.0;
+      pmtxx = radius*std::cos(phi);
+      pmtyy = radius*std::sin(phi);
+
+      //define the pmtzz value to translate row 1 (i/24=0) to the top and row 5 (i/24=4) to the bottom
+      zs = 2-(i/24);
+      pmtzz = zs*23.11;
+      
+      //iterate the angle according to the interval
+      angle += itang;
+
+      //determine if the pmt is to be coated or uncoated.
+      if (cylinderOn){//All pmts are uncoated for the LBOC design
+	pmtcoat=false;
+      }
+      if (pmtcoat) {
+	pmtnm[i] = pmtnm[i]+"_coated";
+        //if coated, add coated to the name. Makes things much easier down the line. Shouldn't do anything in this version
+      }
+      if (fPMTsOn){
+	placePMT(pmtnm[i],pmtxx,pmtyy,pmtzz,pmtcoat);
+	//call the placePMT method to actually place the PMT at the chosen position with the chosen name and coating.
+      }
+    }
+
+    //now do another set of loops for the top and bottom pmts if CCM200 is being used.
+    if (ccm200) {      
+
+      //define outer ring of pmts for top and bottom. This format was chosen to make copy-pasting easier
+      G4String pmtnam;
+      G4String pmtnam1;//new names
+      G4int npmts = 20;//number of pmts in the ring
+      itang = 360./npmts;//new iterating angle
+      radius = 85.5;
+      angle = 0;
+
+      for (G4int n=0; n<npmts; ++n) {
+	if (n%2 == 0) {
+	  zs = 0;
+	  pmtzz = -68.0;
+	} else { 
+	  zs = 6;
+	  pmtzz = +68.0;
+	}//let 6 be bottom and 0 be top, alternating around the circle in every other position from the design of CCM220
+
+	pmtnam = "C"+std::to_string(n+1)+"R"+std::to_string(zs)+"4";
+	//define a new set of names, with the rows being R0x for the top (0 to indicate top, x for the circle there) and simuilarly R6x for the bottom.
+	
+	//define the position and coating and place the PMTs
+	angle = n*itang;
+	G4double phi = angle*CLHEP::pi/180.0;
+	pmtxx = radius*std::cos(phi);
+	pmtyy = radius*std::sin(phi);
+	pmtcoat = true;
+	if (cylinderOn) { pmtcoat=false; }//once more, turn all coatings off if using the LBOC design
+	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
+      }
+
+      //define the second ring of pmts on top and bottom. identical to the outer row, but with a slightly smaller circle
+      npmts = 15;
+      itang = 360./npmts;
+      radius = 64.2;
+      angle = 0;
+
+      for (G4int n=0; n<npmts; ++n) {
+	pmtnam = "C"+std::to_string(n+1)+"R63";
+	pmtnam1 = "C"+std::to_string(n+1)+"R03";
+	//G4cout << pmtnam << pmtnam1;
+	
+	angle = n*itang;
+	G4double phi = angle*CLHEP::pi/180.0;
+	pmtxx = radius*std::cos(phi);
+	pmtyy = radius*std::sin(phi);
+	pmtcoat = true;
+	if (n%3 == 0) { pmtcoat = false; }//every third pmt in the second row is uncoated. 10 total
+	if (cylinderOn) { pmtcoat=false; }
+	pmtzz = -68.0;
+	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
+	pmtzz = 68.0;
+	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
+      }
+
+      //third row on top and bottom. again smaller circle and npmts.
+      npmts = 10;
+      itang = 360./npmts;
+      radius = 42.0;
+      angle = 0;
+
+      for (G4int n=0; n<npmts; ++n) {
+	pmtnam = "C"+std::to_string(n+1)+"R62";
+	pmtnam1 = "C"+std::to_string(n+1)+"R02";
+	//G4cout << pmtnam << pmtnam1;
+	
+	angle = n*itang;
+	G4double phi = angle*CLHEP::pi/180.0;
+	pmtxx = radius*std::cos(phi);
+	pmtyy = radius*std::sin(phi);
+	pmtcoat = true;
+	if (n%3 == 2) { pmtcoat = false; }//every second pmt in the third row is uncoated, for another 10 total and thus all 20 uncoated on the top and bottom accounted for
+	if (cylinderOn) { pmtcoat=false; }
+	pmtzz = -68.0;
+	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
+	pmtzz = 68.0;
+	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
+      }
+
+      //fourth and final row on the top and bottom
+      npmts = 5;
+      itang = 360./npmts;
+      radius = 20.0;
+      angle = 0;
+
+      for (G4int n=0; n<npmts; ++n) {
+	pmtnam = "C"+std::to_string(n+1)+"R61";
+	pmtnam1 = "C"+std::to_string(n+1)+"R01";
+	//G4cout << pmtnam << pmtnam1;
+	
+	angle = n*itang;
+	G4double phi = angle*CLHEP::pi/180.0;
+	pmtxx = radius*std::cos(phi);
+	pmtyy = radius*std::sin(phi);
+	pmtcoat = true;
+	if (cylinderOn) { pmtcoat=false; }
+	pmtzz = -68.0;
+	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
+	pmtzz = 68.0;
+	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
+      }
+    }//*/
+    
+    //defines the optical surface of the TPB. Reflection, transmission, and efficiency of photons that intersect the surface.
+    //currently set to 1's and 0's so all physics occurs in the volume itself.
+    G4double TPBfoilOSEnergy[nAcTefEntries] =
+      {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV, 2.38*eV,
+       2.48*eV, 2.583*eV, 2.845*eV,  2.857*eV, 2.95*eV, 3.124*eV,  3.457*eV,
+       3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+       7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+    G4double TPBfoilOSTransmit[nAcTefEntries] =
+      {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+       1., 1., 1., 1., 1., 1.,
+       1., 1., 1., 1., 1., 1., 1., 1.}; //set to 1 and have all absorption in bulk
+    G4double TPBfoilOSReflect[nAcTefEntries] =
+      {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+       0.0, 0.0, 0.0, 0., 0., 0., 0., 0.}; //set to zero for the same
+    G4double TPBfoilOSEff[nAcTefEntries] =
+      {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+       1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
+       1., 1., 1., 1., 1.};
+    
+    G4OpticalSurface *TPBfoilOS = new G4OpticalSurface("TPB");
+    TPBfoilOS->SetModel(unified); //Optical model
+    TPBfoilOS->SetType(dielectric_dielectric);
+    TPBfoilOS->SetFinish(ground);
+    TPBfoilOS->SetSigmaAlpha(0.05);
+    
+    G4MaterialPropertiesTable *TPBfoilMPT = new G4MaterialPropertiesTable();
+    TPBfoilMPT->AddProperty("REFLECTIVITY", TPBfoilOSEnergy, TPBfoilOSReflect, nAcTefEntries);
+    TPBfoilMPT->AddProperty("TRANSMITTANCE", TPBfoilOSEnergy, TPBfoilOSTransmit, nAcTefEntries);
+    TPBfoilMPT->AddProperty("EFFICIENCY", TPBfoilOSEnergy, TPBfoilOSEff, nAcTefEntries);
+    TPBfoilOS->SetMaterialPropertiesTable(TPBfoilMPT);  
+
+    //G4cout << "Edwardnote Placed PMTs" << G4endl;
+      
+    //begin placing the cylinder for the LBOC design. Creates all three cylinders every time, does not necessarily place them. 
+    if (cylinderOn) {
+      //create the outermost cylinder so it has a top and bottom of the same thickness as the sides. If you want to turn the top and bottom off, just make the inner cylinder the same height as the outer (change 55*cm to 55.5*cm). 
+      G4Tubs* fInnerCyl = new G4Tubs("Cylin",0*cm, 82*cm, 55*cm, 0*deg, 360*deg);
+      G4Tubs* fOuterCyl = new G4Tubs("Cylout",0*cm, 82.5*cm, 55.5*cm, 0*deg, 360*deg);
+      G4SubtractionSolid* HollowCyl = new G4SubtractionSolid("hollowcyl",fOuterCyl,fInnerCyl);
+      G4LogicalVolume* fLogicCyl = new G4LogicalVolume(HollowCyl,tPBhundred, "hollowCyl");
+      
+      //create the second and third cylinders as simple thin cylinders. 
+      G4Tubs* fSecondCyl = new G4Tubs("secCyl",60*cm, 60.5*cm, 55*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fLogicCyl2 = new G4LogicalVolume(fSecondCyl,tPBhundred, "secondCyl");
+      
+      G4Tubs* fThirdCyl = new G4Tubs("thirdCyl",30*cm, 30.5*cm, 55*cm, 0*deg, 360*deg);
+      G4LogicalVolume* fLogicCyl3 = new G4LogicalVolume(fThirdCyl,tPBhundred, "thirdCyl");
+	
+      //place the main cylinder in the fiducial volume. 
+      G4VPhysicalVolume* fPhysCyl = new G4PVPlacement(0,
+						      G4ThreeVector(0,0,0),
+						      fLogicCyl,
+						      "hollowCyl",
+						      fLogicFiduc,
+						      false,
+						      0,
+						      true);
+      
+      //define optical surfaces for the main cylinder. 
+      new G4LogicalBorderSurface("TPBcyl", lArFiducial, fPhysCyl, TPBfoilOS);
+      new G4LogicalBorderSurface("TPB2cyl", fPhysCyl, lArFiducial, TPBfoilOS);
+
+      //if the triple cylinder is enabled (uses the tpb foil flag, because that one is connected to a ui command), place the other two. 
+      if (fTPBfoilOn) {
+	G4VPhysicalVolume* fPhysCyl2 = new G4PVPlacement(0,
+							 G4ThreeVector(0,0,0),
+							 fLogicCyl2,
+							 "hollowCyl2",
+							 fLogicFiduc,
+							 false,
+							 0,
+							 true);
+
+	new G4LogicalBorderSurface("TPBcyl2", lArFiducial, fPhysCyl2, TPBfoilOS);
+	new G4LogicalBorderSurface("TPB2cyl2", fPhysCyl2, lArFiducial, TPBfoilOS);
+
+	G4VPhysicalVolume* fPhysCyl3 = new G4PVPlacement(0,
+							 G4ThreeVector(0,0,0),
+							 fLogicCyl3,
+							 "hollowCyl3",
+							 fLogicFiduc,
+							 false,
+							 0,
+							 true);
+
+	new G4LogicalBorderSurface("TPBcyl3", lArFiducial, fPhysCyl3, TPBfoilOS);
+	new G4LogicalBorderSurface("TPB2cyl3", fPhysCyl3, lArFiducial, TPBfoilOS);      
+      }//end triple cylinder if statement
+
+      //G4cout << "Edwardnote Placing cylinder"  << G4endl;
+
+    }//end cylinder if statement
+
+    //G4cout << "Edwardnote after cylinder loop"  << G4endl;
+
+  }//end place main volumes
+
+  //G4cout << "Edwardnote Main Volume Done" << G4endl;
+
+  //G4cout << "Edwardnote Returning world" << G4endl;
+
+  return wPhys;
+}
+
+//Class for creating and placing PMT half sphere facing inwards (for the side 120 pmts)
+
+void detectorConstruction::placePMT(G4String name, 
+				    G4double pmt_x, G4double pmt_y, G4double pmt_z, 
+				    G4bool coated) {
+  //reset the angles to 0 for each new PMT
+  G4double init_angle = 0;
+  G4double fin_angle = 0;
+  G4double vert_angle = 0;
+
+  //sets the pmts to half spheres; 180 degrees from initial angle to final angle horizontally and vertically.
+  if (mainVolOn){
+    fin_angle = 180*deg;
+    vert_angle= 180*deg;
+  } else {
+    fin_angle = 360*deg;
+    vert_angle= 90*deg;
+  }
+
+  //set the outer radii of the glass and the thickness of the TPB.
+  G4double radout = 10.2*cm;
+  G4double tpbout = 0.00019*cm;
+
+  //define the initial angle so the pmt is facing inwards according to the position
+  init_angle = (std::atan(pmt_y/pmt_x)*180/CLHEP::pi)+90;
+  if (pmt_x < 0) {
+    init_angle+=180;
+  } 
+  init_angle = init_angle*deg;
+  
+  //defines the name of the PMT so it contains PMT
+  G4String namePMT = "PMT_"+name;
+  
+  //defines a three vector for the position.
+  G4ThreeVector trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
+
+  //creates the glass sphere properly oriented for the position
+  G4Sphere* pmt = new G4Sphere(namePMT, 0*cm, radout, init_angle, fin_angle, 0*deg, vert_angle);
+  G4LogicalVolume* pmtLogic = new G4LogicalVolume(pmt, fGlass, namePMT);
+
+  //begin defining the values for the tpb or ice optical surface (for some reason it won't pull it from the Construct method all the time).
+  const G4int nAcTefEntries = 25;
+  G4double TPBOSEnergy[nAcTefEntries] =
+    {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV, 2.38*eV,
+     2.48*eV, 2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV, 3.124*eV, 3.457*eV, 
+     3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+     7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+  G4double TPBOSTransmit[nAcTefEntries] =
+    {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1., 1., 1., 1.}; //set to 1 and have all absorption in bulk 
+  G4double TPBOSReflect[nAcTefEntries] =
+    {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
+  G4double TPBOSEff[nAcTefEntries] =
+    {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1.};
+
+  //add coating if coated; does nothing in this version ( no PMTs should be coated). 
+  if (coated) {
+    G4OpticalSurface* tpbCoat = new G4OpticalSurface("TPB Coat");
+    tpbCoat->SetModel(unified);
+    tpbCoat->SetType(dielectric_dielectric);
+    tpbCoat->SetFinish(ground);
+    tpbCoat->SetSigmaAlpha(0.05);
+
+    G4MaterialPropertiesTable *TPBMPT = new G4MaterialPropertiesTable();
+    TPBMPT->AddProperty("REFLECTIVITY", TPBOSEnergy, TPBOSReflect, nAcTefEntries);
+    TPBMPT->AddProperty("TRANSMITTANCE", TPBOSEnergy, TPBOSTransmit, nAcTefEntries);
+    TPBMPT->AddProperty("EFFICIENCY", TPBOSEnergy, TPBOSEff, nAcTefEntries);
+    tpbCoat->SetMaterialPropertiesTable(TPBMPT);//*/
+
+    //rename with coated if the pmt is coated and create a larger semisphere for the TPB
+    namePMT = "PMT_"+name+"_coated";
+    G4Sphere* tpbcoating = new G4Sphere("tpbcoat", 0*cm, (radout+tpbout), init_angle, fin_angle, 0*deg, vert_angle);//define pmttpb coating thickness
+    G4LogicalVolume* tpbLogic = new G4LogicalVolume(tpbcoating, tPBhundred, "tpbcoat");
+
+
+    //place the tpb half sphere and the optical surfaces with the Fiducial volume
+    G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
+						       trans,
+						       tpbLogic,
+						       "tpbcoat",
+						       fLogicFiduc,
+						       false,
+						       0,
+						       true);
+    
+    new G4LogicalBorderSurface("TPB Coat", 
+			       lArFiducial,
+			       tpbCoating,
+			       tpbCoat);
+    new G4LogicalBorderSurface("TPB2 Coat", 
+			       tpbCoating,
+			       lArFiducial,
+			       tpbCoat);//*/
+
+    //place the glass PMT inside the tpb semi-sphere
+    new G4PVPlacement(0,
+		      G4ThreeVector(0,0,0),
+		      pmtLogic,
+		      namePMT,
+		      tpbLogic,
+		      false,
+		      0,
+		      true);
+    
+  } else {
+    //place the uncoated PMT in the fiducial volume
+    new G4PVPlacement(0,
+		      trans,
+		      pmtLogic,
+		      namePMT,
+		      fLogicFiduc,
+		      false,
+		      0,
+		      true);
+    
+  }
+  //G4cout << "PMTplacement made: " << namePMT << G4endl;
+}
+
+//create and place the PMT half spheres on the top and bottom.
+
+void detectorConstruction::placeTopBot(G4String name, 
+				       G4double pmt_x, G4double pmt_y, G4double pmt_z, 
+				       G4bool coated) {
+  //reset the angles to 0 for each new PMT
+  G4double init_angle = 0;
+  G4double fin_angle = 0;
+  G4double vert_angle = 0;
+
+  //define the vertical angle so the PMT is facing either up or down.
+  if (pmt_z > 60) {
+    vert_angle = 90*deg;
+  } else {
+    vert_angle = 0*deg;
+  }
+
+  fin_angle = 360*deg;//all top/bottom pmts should be full circles in the horizontal.
+
+  //set the radii of the glass and the tpb thickness
+  G4double radout = 10.2*cm;
+  G4double tpbout = 0.00019*cm;
+
+  //add PMT to the name
+  G4String namePMT = "PMT_"+name;
+  
+  //define the position three-vector
+  G4ThreeVector trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
+
+  //redo the tpb optical surface properties.
+  const G4int nAcTefEntries = 25;
+  G4double TPBOSEnergy[nAcTefEntries] =
+    {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV, 2.38*eV,
+     2.48*eV, 2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV, 3.124*eV, 3.457*eV, 
+     3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+     7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+  G4double TPBOSTransmit[nAcTefEntries] =
+    {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1., 1., 1., 1.}; //set to 1 and have all absorption in bulk 
+  G4double TPBOSReflect[nAcTefEntries] =
+    {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
+  G4double TPBOSEff[nAcTefEntries] =
+    {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1.};
+
+  //create a properly oriented glass half sphere for the PMT
+  G4Sphere* pmt = new G4Sphere(namePMT, 0*cm, radout, init_angle, fin_angle, vert_angle, 90*deg);
+  G4LogicalVolume* pmtLogic = new G4LogicalVolume(pmt, fGlass, namePMT);
+
+  //if coated, add the coating and place the PMT
+  if (coated) {
+    namePMT = "PMT_"+name+"_coated";
+    G4Sphere* tpbcoating = new G4Sphere("tpbcoat", 0*cm, (radout+tpbout), init_angle, fin_angle, vert_angle, (vert_angle+90*deg));//define pmttpb coating thickness
+    G4LogicalVolume* tpbLogic = new G4LogicalVolume(tpbcoating, tPBhundred, "tpbcoat");
+    G4OpticalSurface* tpbCoat = new G4OpticalSurface("TPB Coat");
+    tpbCoat->SetModel(unified);
+    tpbCoat->SetType(dielectric_dielectric);
+    tpbCoat->SetFinish(ground);
+    tpbCoat->SetSigmaAlpha(0.05);
+
+    G4MaterialPropertiesTable *TPBMPT = new G4MaterialPropertiesTable();
+    TPBMPT->AddProperty("REFLECTIVITY", TPBOSEnergy, TPBOSReflect, nAcTefEntries);
+    TPBMPT->AddProperty("TRANSMITTANCE", TPBOSEnergy, TPBOSTransmit, nAcTefEntries);
+    TPBMPT->AddProperty("EFFICIENCY", TPBOSEnergy, TPBOSEff, nAcTefEntries);
+    tpbCoat->SetMaterialPropertiesTable(TPBMPT);//*/
+
+
+    G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
+						       trans,
+						       tpbLogic,
+						       "tpbcoat",
+						       fLogicFiduc,
+						       false,
+						       0,
+						       true);
+	
+    new G4PVPlacement(0,
+		      G4ThreeVector(0,0,0),
+		      pmtLogic,
+		      namePMT,
+		      tpbLogic,
+		      false,
+		      0,
+		      true);
+    
+    new G4LogicalBorderSurface("TPB Coat", 
+			       lArFiducial,
+			       tpbCoating,
+			       tpbCoat);
+    new G4LogicalBorderSurface("TPB2 Coat", 
+			       tpbCoating,
+			       lArFiducial,
+			       tpbCoat);
+	
+  } else {
+    new G4PVPlacement(0,
+		      trans,
+		      pmtLogic,
+		      namePMT,
+		      fLogicFiduc,
+		      false,
+		      0,
+		      true);
+    
+  }//*/
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void detectorConstruction::SetDefaults() {
+  //Resets to default values
+  fOuterRadius_pmt = 10.2*cm;
+
+  //G4cout << "Edwardnote: setting defaults" << G4endl;
+  
+  fTPBfoilOn = true;
+  fPMTsOn = true;
+  fReflectorOn = true;
+  mainVolOn = true;
+  fRodin = false;
+  cylinderOn = true;
+  fLaser=true;
+  fSodium=false;
+  fLayers=true;
+  ccm200 = false;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......                                          
+//methods to set the PMT radius as different (does not currently work) and the rodheight for the laser
+void detectorConstruction::SetPMTRadius(G4double outerRadius_pmt) {
+  fOuterRadius_pmt=outerRadius_pmt;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+void detectorConstruction::SetRodHeight(G4double rHeight) {
+  rodHeight=rHeight;
+  fLaser=true;
+  fRodin=false;//turns the calibration rod off. Running both of these at the same time works, but really shouldn't.
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+
+
+//turn PMTs on or off. turning them off results in no output, though, so be warned.
+void detectorConstruction::SetPMTsOn(G4bool b) {
+  fPMTsOn=b;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+//turn Sodium on or off.
+void detectorConstruction::SetSodiumOn(G4bool b) {
+  fSodium=b;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+//sets ccm200 on or off. off defaults to ccm120
+void detectorConstruction::SetCCM200(G4bool b) {
+  ccm200=b;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+//turns on the calibration rod. Also turns the laser rod off, helpfully.
+void detectorConstruction::SetRodin(G4bool b) {
+  fRodin=b;
+  fLaser=false;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+//turn the tpb on the foils on or off. The tpb on the pmts will remain even if this is false
+void detectorConstruction::SetTPBfoilOn(G4bool b) {
+  fTPBfoilOn=b;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+//turns the reflective foils on or off.
+void detectorConstruction::SetReflectorOn(G4bool b) {
+  fReflectorOn=b;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+}

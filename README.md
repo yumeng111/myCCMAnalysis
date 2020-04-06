@@ -1,6 +1,9 @@
 Requires C++11 and to read the processed files using ROOT6.
 Also need CMAKE3 and xerces-c
 
+This README is for the main analysis code. For the README on the simulation see the README.md
+in the simulationCCM directory.
+
 
 # Compile
 This code is designed to be compilable on a linux or mac

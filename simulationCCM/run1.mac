@@ -1,0 +1,15 @@
+# clean macro file for running the CCM simulation with all defaults (not recommended)
+#
+#initialize kernal
+/run/initialize
+#
+/tracking/verbose 1
+/run/beamOn 1
+#
+#
+#
+#
+# Creates a runs 100 ten MeV neutrons
+/gun/particle neutron
+/gun/energy 10 MeV
+/run/beamOn 100

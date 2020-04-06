@@ -1,0 +1,30 @@
+# macro file for running Sodium or Cobalt simulations.
+#
+#initialize kernal
+/run/initialize
+#
+/tracking/verbose 0
+#
+#
+#
+/ccm/detector/tpbfoil true
+/ccm/detector/reflector true
+/ccm/detector/setrod true
+#
+#Turn the Sodium source on and run it
+/ccm/detector/sodium true 
+/control/cout/setCoutFile tenkSodiumSimulation_idealDetector.txt
+/run/beamOn 10000
+#
+#
+#
+# Turn the Sodium source off and run a Cobalt source
+/ccm/detector/sodium false
+/control/cout/setCoutFile tenkCobaltSimulation_idealDetector.txt
+/gun/particle gamma
+/gun/energy 120 keV
+/run/beamOn 10000
+#
+#
+#
+#
