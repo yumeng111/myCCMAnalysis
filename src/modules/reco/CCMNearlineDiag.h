@@ -56,10 +56,10 @@ class CCMNearlineDiag : public CCMModule
     std::string fTriggerType;
     std::string fHVOffList;
     std::string fCalibrationFile;
-    bool fDoLEDCalib;
-    bool fRedoLEDCalib;
-    bool fCalculateRates;
-    bool fWriteDBEntry;
+    int fDoLEDCalib;
+    int fRedoLEDCalib;
+    int fCalculateRates;
+    int fWriteDBEntry;
     std::string fDBHost;
     std::string fDBUser;
     std::string fDBPwd;
