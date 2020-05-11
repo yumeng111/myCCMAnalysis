@@ -141,32 +141,27 @@ void CCMNearlineDiag::Configure(const CCMConfig& c )
   //Initialize any parameters here
   //by reading them from the CCMConfig object.
 
-  if (&c != 0)
-  {
-    c("TriggerType").Get(fTriggerType);
+  c("TriggerType").Get(fTriggerType);
 
-    std::locale loc;
-    for (auto & c : fTriggerType) {
-      std::toupper(c,loc);
-    }
-
-    c("HVOffFile").Get(fHVOffList);
-    c("CalibrationFile").Get(fCalibrationFile);
-    c("InFileName").Get(fInFileName);
-    c("DoLEDCalib").Get(fDoLEDCalib);
-    c("CalculateRates").Get(fCalculateRates);
-
-    if (fDoLEDCalib) {
-      c("RedoLEDCalib").Get(fRedoLEDCalib);
-      c("DAQWindowStart").Get(fDAQWindowStart);
-      c("DAQWindowEnd").Get(fDAQWindowEnd);
-      c("SaveParameters").Get(fSaveParameters);
-    }
-
-    fIsInit = true;
-  } else {
-    fIsInit = false;
+  std::locale loc;
+  for (auto & c : fTriggerType) {
+    std::toupper(c,loc);
   }
+
+  c("HVOffFile").Get(fHVOffList);
+  c("CalibrationFile").Get(fCalibrationFile);
+  c("InFileName").Get(fInFileName);
+  c("DoLEDCalib").Get(fDoLEDCalib);
+  c("CalculateRates").Get(fCalculateRates);
+
+  if (fDoLEDCalib) {
+    c("RedoLEDCalib").Get(fRedoLEDCalib);
+    c("DAQWindowStart").Get(fDAQWindowStart);
+    c("DAQWindowEnd").Get(fDAQWindowEnd);
+    c("SaveParameters").Get(fSaveParameters);
+  }
+
+  fIsInit = true;
 
 }
 

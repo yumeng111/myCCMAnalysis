@@ -75,8 +75,9 @@ CCMResult_t CCMTaskManager::Execute(int32_t nevt)
 {
   CCMResult_t status = kCCMSuccess;
 
-  if(nevt == 0)
+  if(nevt == 0) {
     return status;
+  }
 
   //if(fgkTaskConfig->ProcessType() == "EventDisplay")
   return ExecuteTask();
@@ -180,11 +181,9 @@ CCMResult_t CCMTaskManager::RegisterModules()
   }
 
   //Configure modules
-  std::list<CCMModule*>::iterator itr (fModuleList.begin());
-  std::list<CCMModule*>::iterator itrEnd (fModuleList.end());  
-  for (; itr!=itrEnd; itr++) {
-    MsgInfo("Configuring modules");
-    (*itr)->Configure(*(CCMConfigTable::Instance().GetConfig((*itr)->Name(),(*itr)->Version())));
+  MsgInfo("Configuring modules");
+  for (auto & module : fModuleList) {
+    module->Configure(*(CCMConfigTable::Instance().GetConfig(module->Name(),module->Version())));
   }
 
   return kCCMSuccess;
@@ -195,18 +194,15 @@ CCMResult_t CCMTaskManager::RegisterModules()
 void CCMTaskManager::ConnectDataToModules()
 {
   //Connect data vectors to the registered modules
-  std::list<CCMModule*>::iterator itr (fModuleList.begin());
-  std::list<CCMModule*>::iterator itrEnd (fModuleList.end());
-
-  for (; itr!=itrEnd; ++itr) {
-    //(*itr)->ConnectEvent(fEvent);
-    //(*itr)->ConnectHits(&fHitVec);
-    //(*itr)->ConnectBIBHits(&fBIBHitVec);
-    //(*itr)->ConnectWaveInfo(&fWaveInfoVec);
-    //(*itr)->ConnectBIBWaveInfo(&fBIBWaveInfoVec);
-    //(*itr)->ConnectEventTimeInfo(fEvtTimeInfo);
-    //(*itr)->ConnectPosTopology(fPosTop);
-  }
+  //for (auto & module : fModuleList) {
+    //module->ConnectEvent(fEvent);
+    //module->ConnectHits(&fHitVec);
+    //module->ConnectBIBHits(&fBIBHitVec);
+    //module->ConnectWaveInfo(&fWaveInfoVec);
+    //module->ConnectBIBWaveInfo(&fBIBWaveInfoVec);
+    //module->ConnectEventTimeInfo(fEvtTimeInfo);
+    //module->ConnectPosTopology(fPosTop);
+  //}
 
 }
 
@@ -216,12 +212,13 @@ CCMResult_t CCMTaskManager::ExecuteTask()
   //loop over registered modules and execute their ProcessEvent() methods
   CCMResult_t status = kCCMSuccess;
   int ctr = 0;
-  std::list<CCMModule*>::iterator itr (fModuleList.begin());
-  std::list<CCMModule*>::iterator itrEnd (fModuleList.end());  
-  for (; itr!=itrEnd; ++itr) {
-    status = (*itr)->ProcessEvent();
+  for (auto & module : fModuleList) {
+    status = module->ProcessEvent();
     ++ctr;
-    if(status == kCCMFailure) break;
+
+    if(status == kCCMFailure) {
+      break;
+    }
   }
 
   MsgDebug(2,MsgLog::Form("Processed %d modules",ctr));
@@ -238,12 +235,12 @@ CCMResult_t CCMTaskManager::FinishTask()
   //loop over registered modules and execute their EndOfJob() methods
   CCMResult_t passed = kCCMSuccess;
   int ctr = 0;
-  std::list<CCMModule*>::iterator itr (fModuleList.begin());
-  std::list<CCMModule*>::iterator itrEnd (fModuleList.end());  
-  for (; itr!=itrEnd; ++itr) {
-    passed = (*itr)->EndOfJob();
+  for (auto & module : fModuleList) {
+    passed = module->EndOfJob();
     ++ctr;
-    if(passed == kCCMFailure) break;
+    if(passed == kCCMFailure) {
+      break;
+    }
   }
 
   MsgDebug(2,MsgLog::Form("Finished job on %d modules",ctr));

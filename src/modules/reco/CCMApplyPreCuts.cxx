@@ -325,15 +325,10 @@ void CCMApplyPreCuts::Configure(const CCMConfig& c )
   //Initialize any parameters here
   //by reading them from the CCMConfig object.
 
-  if (&c != 0)
-  {
-    c("OutFileName").Get(fOutFileName);
-    c("InFileName").Get(fInFileName);
+  c("OutFileName").Get(fOutFileName);
+  c("InFileName").Get(fInFileName);
 
-    fIsInit = true;
-  } else {
-    fIsInit = false;
-  }
+  fIsInit = true;
 
 }
 

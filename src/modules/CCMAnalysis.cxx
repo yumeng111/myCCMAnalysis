@@ -29,6 +29,7 @@ void Usage() {
   (*usage) << "Usage: CCMAnalysis [options] \n"
     << "options are:\n"
     << "  -c configfile.xml     : Name of XML config file for job processing (REQUIRED)\n"
+    << "  -l outputLogFileName  : The name of the log file to save the output default is none"
     << "  -i file.root          : Add input data file\n"
     << "  -I file_list.txt      : Indirect file list\n"
     << "  -o file.root          : Set output data file\n"
@@ -66,6 +67,7 @@ int main (int argc, char** argv)
 {
 
   std::string cfgfile;
+  std::string outputLogFile = "";
   std::vector<std::string> outfileList;
   std::vector<std::string> infileList;
   int debug = 0;        //debugging level
@@ -75,6 +77,7 @@ int main (int argc, char** argv)
   static const int kInputOpt    = 'i';
   static const int kIndirectOpt = 'I';
   static const int kOutputOpt   = 'o';
+  static const int kOutputLogOpt   = 'l';
   static const int kDebugOpt    = 'd';
   static const int kNevtOpt     = 'n';
   static const int kHelpOpt     = 'h';
@@ -83,6 +86,7 @@ int main (int argc, char** argv)
     {"input",        required_argument, 0, kInputOpt},
     {"indirect",     required_argument, 0, kIndirectOpt},
     {"output",       required_argument, 0, kOutputOpt},
+    {"logout",       required_argument, 0, kOutputLogOpt},
     {"debug",        required_argument, 0, kDebugOpt},
     {"nevt",         required_argument, 0, kNevtOpt},
     {"help",         no_argument,       0, kHelpOpt},
@@ -92,7 +96,7 @@ int main (int argc, char** argv)
   while (1) {
     int c;
     int optindx = 0;
-    c = getopt_long(argc, argv, "c:i:o:I:d:n:h", long_options, &optindx);
+    c = getopt_long(argc, argv, "c:i:o:l:I:d:n:h", long_options, &optindx);
 
     if (c==-1) break;
     std::string fname;
@@ -103,6 +107,7 @@ int main (int argc, char** argv)
       case kIndirectOpt:  IndirectFileList(optarg,infileList);                break;
       case kOutputOpt:    fname             = std::string(optarg); 
                           outfileList.push_back(fname);                       break;
+      case kOutputLogOpt: outputLogFile     = std::string(optarg);            break;
       case kDebugOpt:     debug             = std::atoi(optarg);              break;
       case kNevtOpt:      nevents           = std::atoi(optarg);              break;
       case kHelpOpt:      Usage(); exit(0);                                   break;
@@ -124,6 +129,9 @@ int main (int argc, char** argv)
 
   MsgLog::SetGlobalDebugLevel(debug);
   MsgLog::SetPrintRepetitions(false);
+  if (!outputLogFile.empty()) {
+    MsgLog::SetFileOutput(outputLogFile.c_str());
+  }
 
   if(outfileList.empty()) {
     std::string outfile = "ccm-output.root";

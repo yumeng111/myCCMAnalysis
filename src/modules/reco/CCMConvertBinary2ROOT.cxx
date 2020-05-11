@@ -408,19 +408,14 @@ void CCMConvertBinary2ROOT::Configure(const CCMConfig& c )
   //Initialize any parameters here
   //by reading them from the CCMConfig object.
 
-  if (&c != 0)
-  {
-    c("InFileName").Get(fInFileName);
-    c("OutFileName").Get(fOutFileName);
-    c("WriteDBEntry").Get(fWriteDBEntry);
-    c("DBHost").Get(fDBHost);
-    c("DBUser").Get(fDBUser);
-    c("DBPwd").Get(fDBPwd);
+  c("InFileName").Get(fInFileName);
+  c("OutFileName").Get(fOutFileName);
+  c("WriteDBEntry").Get(fWriteDBEntry);
+  c("DBHost").Get(fDBHost);
+  c("DBUser").Get(fDBUser);
+  c("DBPwd").Get(fDBPwd);
 
-    fIsInit = true;
-  } else {
-    fIsInit = false;
-  }
+  fIsInit = true;
 
 }
 

@@ -62,6 +62,7 @@ class CCMNa22Cuts : public CCMModule
     int fShiftTime;
     int fDoLengthCut;
     int fDoTimeCut;
+    int fDoNicenessCut;
     int fReverseVeto;
 
     int fNumVetoCut;
@@ -76,6 +77,8 @@ class CCMNa22Cuts : public CCMModule
     double fLengthCutValueHigh;
     double fTimeCutValueLow;
     double fTimeCutValueHigh;
+    double fNicenessCutValueLow;
+    double fNicenessCutValueHigh;
     
 };
 
