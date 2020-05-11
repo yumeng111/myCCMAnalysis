@@ -2,6 +2,7 @@ set(UTILS_HEADERS
   MsgLog.h
   PMTInformation.h
   PMTInfoMap.h
+  CCMBeamInfo.h
   Utility.h
   )
 
@@ -19,13 +20,13 @@ set(UTILS_SRCS
   MsgLog.cxx
   PMTInformation.cxx
   PMTInfoMap.cxx
+  CCMBeamInfo.cxx
   Utility.cxx
   )
 
 set(UTILS_LINKDEF LinkDef.h)
 set(UTILS_DICTIONARY CCMUtilsDict)
 ROOT_GENERATE_DICTIONARY("${UTILS_DICTIONARY}" "${UTILS_HEADERS}" LINKDEF "${UTILS_LINKDEF}")
-#ROOT_GENERATE_DICTIONARY(${UTILS_DICTIONARY} PMTInfoMap.h PMTInformation.h MsgLog.h Utility.h LINKDEF ${UTILS_LINKDEF})
 
 set(UTILS_SRCS ${UTILS_SRCS} ${UTILS_DICTIONARY}.cxx)
 

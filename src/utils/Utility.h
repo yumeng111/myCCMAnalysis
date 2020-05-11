@@ -189,7 +189,7 @@ void Utility::FindQuartiles(std::vector<T> & vec, double & q1, double & q2, doub
 template<class T>
 float Utility::Smooth(const T * vector, int start, int length)
 {
-  T avg = std::accumulate(vector+start,vector+start+length,static_cast<T>(0));
+  auto avg = std::accumulate(vector+start,vector+start+length,static_cast<T>(0));
   return static_cast<float>(avg)/static_cast<float>(length);
 }
 

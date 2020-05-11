@@ -17,13 +17,13 @@
 ##############################################################
 #
 ###                            Queue to submit to  <<<<<<<<<< queue and cluster name must be adapted to your system
-#SBATCH --time=1:00:00   # walltime
+#SBATCH --time=0:10:00   # walltime
 
 
 #########       #SBATCH --array=1-50
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
-#SBATCH --ntasks-per-node=1   # number of tasks per node
+#########       #SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
+#########       #SBATCH --ntasks-per-node=1   # number of tasks per node
 #SBATCH --job-name=JOBNAME   # job name
 #SBATCH --output=LOGFILELOCATION/out_JOBNAME_%j   # output file name
 #SBATCH --error=LOGFILELOCATION/error_JOBNAME_%j   # job name
@@ -52,7 +52,9 @@ echo ---------------------- Job Output ----------------------------
 echo
 
 source SOURCEFILE
-$CCMINSTALLBuild/CCMAnalysis -c CONFIGFILE
+module load intel openmpi
+#$CCMINSTALLBuild/CCMAnalysis -c CONFIGFILE
+mpirun --app MPIAPP
 
 echo ----------------------- DONE ---------------------------------
 echo

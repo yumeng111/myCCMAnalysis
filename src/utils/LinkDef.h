@@ -8,5 +8,6 @@
 #pragma link C++ class PMTInfoMap;
 #pragma link C++ class PMTInformation+;
 #pragma link C++ class MsgLog+;
+#pragma link C++ class CCMBeamInfo+;
 
 #endif /* __CINT__ */
