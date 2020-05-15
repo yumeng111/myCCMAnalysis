@@ -133,8 +133,7 @@ for rawFile in rawList:
       fout = open(slurmScript,"wt")
       for line in fin:
         copyLine = line
-        copyLIne = copyLine.replace('SOURCEFILE',options.source_file)
-        copyLine = copyLine.replace('CONFIGFILE',xmlScript)
+        copyLine = copyLine.replace('SOURCEFILE',options.source_file)
         copyLine = copyLine.replace('JOBNAME',jobName)
         copyLine = copyLine.replace('LOGFILELOCATION',options.log_file)
         copyLine = copyLine.replace('MPIAPP',appScript)

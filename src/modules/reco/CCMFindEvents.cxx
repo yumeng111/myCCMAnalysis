@@ -144,7 +144,6 @@ CCMResult_t CCMFindEvents::ProcessEvent()
   TVector3 pos;
   auto pmtInfo = PMTInfoMap::GetPMTInfo(0);
   auto pmtWaveformBeginIter = fPMTWaveform.front().begin();
-  auto pmtWaveformEndIter = fPMTWaveform.front().end();
 
   double c0 = 0;
   double c1 = 0;
@@ -356,16 +355,24 @@ CCMResult_t CCMFindEvents::ProcessEvent()
   //int numBins1p6us = 1.6/fgkBinWidth;
   //int prevStart = -1000;
 
-  for (size_t bin = 0; bin < fgkNumBins; ++bin) {
-    if (-9.92 + static_cast<double>(bin)*fgkBinWidth >= static_cast<double>(7960-1600)*2e-3 - 9.92) {
+  for (size_t timeBin = 0; timeBin < fgkNumBins; ++timeBin) {
+    MsgDebug(3,MsgLog::Form("New Time bin = %zu time = %.3f limit = %.3f",timeBin,
+          -9.92 + static_cast<double>(timeBin)*fgkBinWidth,
+          static_cast<double>(7960-1600)*2e-3 - 9.92));
+    if (-9.92 + static_cast<double>(timeBin)*fgkBinWidth >= static_cast<double>(7960-1600)*2e-3 - 9.92) {
       break;
     }
-    if (fIntegralTime.at(bin) >= fThreshold) {
-      startBin = bin;
+    MsgDebug(3,"Passed DAQ time cut");
+    if (fIntegralTime.at(timeBin) >= fThreshold) {
+      MsgDebug(2,"Above threshold");
+
+      startBin = timeBin;
 
       if (startBin >= static_cast<int>(fgkNumBins)) {
         MsgFatal(MsgLog::Form("Start Bin is greater than or equal to total number of bins: event %ld bin %zu startBin %d",
-              fPulses->GetEventNumber(),bin,startBin));
+              fPulses->GetEventNumber(),timeBin,startBin));
+      } else {
+        MsgDebug(2,MsgLog::Form("event %ld bin %zu start bin = %d",fPulses->GetEventNumber(),timeBin,startBin));
       }
 
       // find where the first peak is in the event
@@ -376,20 +383,27 @@ CCMResult_t CCMFindEvents::ProcessEvent()
           break;
         } // end if fIntegralTime.at(bin2+1) < ...
       } // end for size_t bin2 = startBin
+      MsgDebug(2,MsgLog::Form("Peak Location = %d",peakLoc));
 
       if ((peakLoc+startBin)/2-startBin > 3) {
         for (bin2 = startBin; bin2 < (peakLoc+startBin)/2; ++bin2) {
+          MsgDebug(4,MsgLog::Form("Peak location loop bin %d",bin2));
           xPoints.push_back(bin2);
           yPoints.push_back(fIntegralTime.at(bin2));
         }
         Utility::LinearUnweightedLS(xPoints.size(),&xPoints.front(),&yPoints.front(),c0,c1);
+        MsgDebug(4,"Did LinearUnweightedLS");
 
         // find the first non-empty start bin
         // important for calculating position
         // and integrals
-        startBin = static_cast<int>(-c0/c1);
-        while (fPulsesTime.at(startBin) == 0) {
-          ++startBin;
+        MsgDebug(4,MsgLog::Form("Fit results: -c0 = %.3f c1 = %.3f start = %d",-c0,c1,static_cast<int>(-c0/c1)));
+        if (-c0/c1 > 0) {
+          startBin = static_cast<int>(-c0/c1);
+          while (fPulsesTime.at(startBin) == 0) {
+            ++startBin;
+          }
+          MsgDebug(4,MsgLog::Form("Final startBin = %d",startBin));
         }
 
         xPoints.clear();
@@ -398,7 +412,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
 
       // find end of event: defined as two consecutive empty bins
       endBin = fgkNumBins-1;
-      for (bin2 = bin; bin2 < fgkNumBins-10; ++bin2) {
+      for (bin2 = timeBin; bin2 < fgkNumBins-10; ++bin2) {
         if (std::accumulate(itPulsesTimeBegin+bin2,itPulsesTimeBegin+bin2+10,0.f) == 0) {
           endBin = bin2;
           break;
@@ -406,16 +420,20 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       } // end for size_t bin2 = bin
 
       if (endBin >= static_cast<int>(fgkNumBins)) {
-        MsgFatal(MsgLog::Form("event %ld bin %zu endBin %d",fPulses->GetEventNumber(),bin,endBin));
+        MsgFatal(MsgLog::Form("event %ld bin %zu endBin %d",fPulses->GetEventNumber(),timeBin,endBin));
+      } else {
+        MsgDebug(2,MsgLog::Form("event %ld bin %zu start bin = %d and end bin = %d",fPulses->GetEventNumber(),timeBin,startBin,endBin));
       }
 
       start = startBin - numBins90ns;
       if (start < 0) {
         start = 0;
       }
-      end90nsBin = (startBin+numBins90ns < fgkNumBins) ? startBin+numBins90ns : fgkNumBins;
-      end20nsBin = (startBin+numBins20ns < fgkNumBins) ? startBin+numBins20ns : fgkNumBins;
-      endTotalBin = (endBin < fgkNumBins) ? endBin : fgkNumBins;
+      end90nsBin = (startBin+numBins90ns < fgkNumBins) ? startBin+numBins90ns : fgkNumBins-1;
+      end20nsBin = (startBin+numBins20ns < fgkNumBins) ? startBin+numBins20ns : fgkNumBins-1;
+      endTotalBin = (endBin < fgkNumBins) ? endBin : fgkNumBins-1;
+
+      MsgDebug(2,MsgLog::Form("end90nsBin = %d end20nsBin = %d endTotalBin = %d",end90nsBin,end20nsBin,endTotalBin));
 
 
       maxVeto = 0;
@@ -425,6 +443,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       maxVetoPromptStart = 0;
       maxVetoPromptEnd = 0;
       vetoIntLength = std::min(numBins90ns,endBin-start);
+      MsgDebug(2,MsgLog::Form("Length of veto integral = %d",vetoIntLength));
       for (vetoBin = start; vetoBin+vetoIntLength <= endBin; ++vetoBin) {
         current = std::accumulate(itVetoTotalTimeBegin+vetoBin,itVetoTotalTimeBegin+vetoBin+vetoIntLength,0);
         if (current > maxVeto) {
@@ -442,6 +461,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
         }
       }
 
+      MsgDebug(1,MsgLog::Form("maxVetoStart %d maxVetoEnd %d",maxVetoStart,maxVetoEnd));
       vetoActivityTop = std::accumulate(itVetoTopTimeBegin+maxVetoStart,itVetoTopTimeBegin+maxVetoEnd,0);
       vetoActivityCRight = std::accumulate(itVetoCRightTimeBegin+maxVetoStart,itVetoCRightTimeBegin+maxVetoEnd,0);
       vetoActivityCLeft = std::accumulate(itVetoCLeftTimeBegin+maxVetoStart,itVetoCLeftTimeBegin+maxVetoEnd,0);
@@ -449,6 +469,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       vetoActivityCBack = std::accumulate(itVetoCBackTimeBegin+maxVetoStart,itVetoCBackTimeBegin+maxVetoEnd,0);
       vetoActivityBottom = std::accumulate(itVetoBottomTimeBegin+maxVetoStart,itVetoBottomTimeBegin+maxVetoEnd,0);
 
+      MsgDebug(1,"Veto prompt integral");
       vetoActivityPromptTop = std::accumulate(itVetoTopTimeBegin+maxVetoPromptStart,itVetoTopTimeBegin+maxVetoPromptEnd,0);
       vetoActivityPromptCRight = std::accumulate(itVetoCRightTimeBegin+maxVetoPromptStart,itVetoCRightTimeBegin+maxVetoPromptEnd,0);
       vetoActivityPromptCLeft = std::accumulate(itVetoCLeftTimeBegin+maxVetoPromptStart,itVetoCLeftTimeBegin+maxVetoPromptEnd,0);
@@ -456,6 +477,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       vetoActivityPromptCBack = std::accumulate(itVetoCBackTimeBegin+maxVetoPromptStart,itVetoCBackTimeBegin+maxVetoPromptEnd,0);
       vetoActivityPromptBottom = std::accumulate(itVetoBottomTimeBegin+maxVetoPromptStart,itVetoBottomTimeBegin+maxVetoPromptEnd,0);
 
+      MsgDebug(1,"Get first none empty bin for the veto tubes");
       vetoTimeTop = FindFirstNoneEmptyBin<int>(itVetoTopTimeBegin,itVetoTopTimeBegin+start,itVetoTopTimeBegin+endBin);
       vetoTimeCRight = FindFirstNoneEmptyBin<int>(itVetoCRightTimeBegin,itVetoCRightTimeBegin+start,itVetoCRightTimeBegin+endBin);
       vetoTimeCLeft = FindFirstNoneEmptyBin<int>(itVetoCLeftTimeBegin,itVetoCLeftTimeBegin+start,itVetoCLeftTimeBegin+endBin);
@@ -483,6 +505,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       if (vetoTimeBottom >= 0) {
         vetoTimeBottom = static_cast<double>(vetoTimeBottom - beamTime + 15)*fgkBinWidth;
       }
+      MsgDebug(2,"Got first none empty bin for the veto tubes");
 
       double startTime = static_cast<double>(startBin-beamTime+15)*fgkBinWidth;
       double endTime = static_cast<double>(endBin-beamTime+15)*fgkBinWidth;
@@ -505,6 +528,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       largestPMTFraction = 0.0;
       numPMTs = 0;
 
+      MsgDebug(3,"Loop over pmts");
       for (pmt=0; pmt < fgkNumPMTs; ++pmt) {
         pmtInfo = PMTInfoMap::GetPMTInfo(pmt);
         if (!pmtInfo) {
@@ -515,15 +539,17 @@ CCMResult_t CCMFindEvents::ProcessEvent()
         }
 
         pmtWaveformBeginIter = fPMTWaveform.at(pmt).begin();
-        pmtWaveformEndIter = fPMTWaveform.at(pmt).end();
 
         // find integral for the first 20 ns
+        MsgDebug(4,Form("PMT %d first 20ns",pmt));
         prompt = std::accumulate(pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+end20nsBin,0.f);
 
         // find integral for the first 90 ns
+        MsgDebug(4,Form("PMT %d first 90ns",pmt));
         prompt90 = std::accumulate(pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+end90nsBin,0.f);
 
         // find integral for the entire event window
+        MsgDebug(4,Form("PMT %d total",pmt));
         total = std::accumulate(pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+endTotalBin,0.f);
         time = FindFirstNoneEmptyBin<float>(pmtWaveformBeginIter,pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+endTotalBin);
 
@@ -560,6 +586,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       timeUncoated = static_cast<double>(timeUncoated - beamTime + 15)*fgkBinWidth;
       timeCoated = static_cast<double>(timeCoated - beamTime + 15)*fgkBinWidth;
 
+      MsgDebug(2,"Set events parameters");
       event->SetStartTime(startTime);
       event->SetStartTimeUncoated(timeUncoated);
       event->SetStartTimeCoated(timeCoated);
@@ -617,8 +644,10 @@ CCMResult_t CCMFindEvents::ProcessEvent()
 
       event->SetPMTHits(numPMTs,percentOfPMT);
 
+      MsgDebug(2,"Add Event");
       fEvents->AddSimplifiedEvent(SimplifiedEvent(*event));
 
+      MsgDebug(2,"Reset");
       event->Reset();
 
       // currently not using the commented out code
@@ -635,9 +664,10 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       //              std::pow(1.0/(static_cast<double>(percentOfPMT.size())-1.0)*sigmaPercent,3.0/2.0);
       //sigmaPercent = std::sqrt(1.0/(static_cast<double>(percentOfPMT.size())-1.0)*sigmaPercent);
 
-      bin = endBin;
+      MsgDebug(4,Form("End of bin loop, bin = %zu endBin = %d",timeBin,endBin));
+      timeBin = endBin;
     } // end threshold if-else
-  } // end for int bin
+  } // end for size_t timeBin
 
   return kCCMSuccess;
 }

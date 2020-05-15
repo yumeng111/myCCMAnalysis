@@ -51,9 +51,8 @@ echo
 echo ---------------------- Job Output ----------------------------
 echo
 
-source SOURCEFILE
-module load intel openmpi
-#$CCMINSTALLBuild/CCMAnalysis -c CONFIGFILE
+source /home/rtthorn/.bash_profile
+module load openmpi
 mpirun --app MPIAPP
 
 echo ----------------------- DONE ---------------------------------
