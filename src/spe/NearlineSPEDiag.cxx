@@ -101,8 +101,7 @@ void NearlineSPEDiag::CreatePEHists()
  * The \p ledRunFlag allows the user to state if the candidate triggers have to come from LED triggers or 
  * could come from any trigger. The flag also determines the DAQ window to look for events.
  * These numbers are hard coded which should be fixed. If \p ledRunFlag is true, it assumes only the 
- * 11th board (board number 10) has its waveforms saved. Should make this more generic like what is
- * in energyCalibration.cc and findEvents.cc (maybe incorporate it into #Utility::FindFirstSample).
+ * 11th board (board number 10) has its waveforms saved.
  * 
  * For looking at data with beam triggers, you may not know how many files to loop over, you just want to
  * stop looking at the data once you have so many LED triggers. Set the \p numLEDTriggers to the number of
@@ -161,8 +160,7 @@ void NearlineSPEDiag::MakeChainFillPulses(const std::vector<std::string> & fileL
       if (ledEntries  >= numLEDTriggers && numLEDTriggers != -1) {
         break;
       }
-      int firstLEDSample = Utility::FindFirstSample(3,rawData);
-      if (!firstLEDSample) {
+      if (!rawData->IsTriggerPresent("LED")) {
         ++totalSkipped;
         continue;
       }
@@ -222,6 +220,44 @@ void NearlineSPEDiag::MakeChainFillPulses(const std::vector<std::string> & fileL
   }// for e < fNEntries
   fNEntries -= totalSkipped; // remove from count the ones that were skipped
 }//end MakeChainFillPulses Function
+
+/*!**********************************************
+ * \brief Add the pulse that is passed to the correct CalibrationVariables object
+ * \param[in] pulse The pulse to add
+ * \param[in] windowStart The start time of the window
+ * \param[in] windowEnd The end time of the window
+ *
+ * This function is mainly used by #CCMSPECalc::ProcessEvent. Please use #MakeChainFillPulses to use
+ * this class in a standalone function.
+ ***********************************************/
+void NearlineSPEDiag::FillPulses(const Pulses & pulses, double windowStart, double windowEnd)
+{
+  fWindowStart = windowStart;
+  fWindowEnd = windowEnd;
+  fWindow = std::fabs(fWindowStart-fWindowEnd);   
+
+  size_t numPulses = pulses.GetNumPulses();
+  for (size_t pulse = 0; pulse < numPulses; ++pulse) {
+    float startTime = pulses.GetPulseTime(pulse)*2e-3 - 9.92;
+    float length = pulses.GetPulseLength(pulse);
+    if (length*2.0 < 20) {
+      continue;
+    }
+
+    if (startTime < fWindowStart) {
+      int key = pulses.GetKey(pulse);
+      float integral = pulses.GetPulseIntegral(pulse);
+      fCalBefore.at(key)->GetPEHistPtr()->Fill(integral);     
+      continue;
+    }
+    if (startTime > fWindowEnd) {
+      continue;
+    }
+    int key = pulses.GetKey(pulse);
+    float integral = pulses.GetPulseIntegral(pulse);
+    fCal.at(key)->GetPEHistPtr()->Fill(integral);     
+  }//end for pulse   
+}//end FillPulses Function
 
 /*!**********************************************
  * \fn void NearlineSPEDiag::GetHistsToAdjust(std::string fileToAdjust, bool ledRunFlag)

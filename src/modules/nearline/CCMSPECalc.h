@@ -1,30 +1,35 @@
-#ifndef CCMNearlineDiag_h
-#define CCMNearlineDiag_h
+#ifndef CCMSPECalc_h
+#define CCMSPECalc_h
 
 #include "Utility.h"
 #include "CCMModule.h"
 
+#include <memory>
 
 
-class CCMNearlineDiag : public CCMModule
+class RawData;
+class Pulses;
+class NearlineSPEDiag;
+
+class CCMSPECalc : public CCMModule
 {
   public:
     /*!
      *  \brief The constructor
      *  \param version FIXME
      */
-    CCMNearlineDiag(const char* version);
+    CCMSPECalc(const char* version);
 
     /*!
      *  \brief The copy constructor
      *  \param clufdr the object being copied
      */
-    CCMNearlineDiag(const CCMNearlineDiag& clufdr);
+    CCMSPECalc(const CCMSPECalc& clufdr);
 
     /*!
      *  \brief The destructor
      */
-    ~CCMNearlineDiag();
+    ~CCMSPECalc();
 
     /*!
      *  \brief This is where the action takes place
@@ -36,7 +41,7 @@ class CCMNearlineDiag : public CCMModule
      *  \brief Returns true of the job has ended
      *  \return CCMResult_t result if the Job had ended
      */
-    CCMResult_t EndOfJob() { return kCCMSuccess;}
+    CCMResult_t EndOfJob();
 
     /*!
      *  \brief Configures things that are hardware specific 
@@ -44,31 +49,29 @@ class CCMNearlineDiag : public CCMModule
      */
     void Configure(const CCMConfig& c);
 
+    void ConnectRawData(std::shared_ptr<RawData> rawData)  { fRawData = rawData; }
+    void ConnectPulses(std::shared_ptr<Pulses> pulses) {fPulses = pulses; }
+
   private:
 
     //private methods
-    void CalculateRates(const std::vector<std::string> & fileNames);
-    void LEDCalib(const std::vector<std::string> & fileNames);
 
   private:
 
     //private data members
+    std::shared_ptr<RawData> fRawData;
+    std::shared_ptr<Pulses> fPulses;
+
     std::string fTriggerType;
-    std::string fHVOffList;
     std::string fCalibrationFile;
-    int fDoLEDCalib;
     int fRedoLEDCalib;
-    int fCalculateRates;
-    int fWriteDBEntry;
-    std::string fDBHost;
-    std::string fDBUser;
-    std::string fDBPwd;
-    std::string fInFileName;
     double fDAQWindowStart;
     double fDAQWindowEnd;
     std::string fSaveParameters;
+
+    std::unique_ptr<NearlineSPEDiag> fSPEFinder;
     
 };
 
-#endif // CCMNearlineDiag_h
+#endif // CCMSPECalc_h
 

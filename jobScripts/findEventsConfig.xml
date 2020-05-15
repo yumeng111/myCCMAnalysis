@@ -10,28 +10,50 @@
 
   <Modules type="Reco"> CCMFindEvents </Modules>
 
+  <Config name="ROOTSetup" version="default">
+    <Param name="ReadBranches"><string>rawData pulses</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+    <Param name="SaveBranches"><string>events</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+  </Config>
+
+  <Config name="PMTMapSetup" version="default">
+    <Param name="MappingFile"><string>default</string>
+      The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
+      Must be the first param in this config
+    </Param>
+    <Param name="HVOffFile"><string>HVOFFLIST</string>
+      List of the HV channels that are off.
+    </Param>
+    <Param name="CalibrationFile"><string>CALIBRATIONFILE</string>
+      Name of the calibration file to use
+    </Param>
+  </Config>
+
   <Config name="CCMFindEvents" version="default">
-    <Param name="InFileName"><string>INFILENAME</string>
-      Name of the input root file (must be an output of CCMConvertBinary2ROOT or similar code)
-    </Param>
-    <Param name="OutFileName"><string>OUTFILENAME</string>
-      Name of the output root file
-    </Param>
     <Param name="TriggerType"><string>TRIGGER</string>
       Only look at triggers with name passed.
       Options are:
        - BEAM
        - STROBE
        - LED
+       - ALL
       and any combination of the three, like BEAM STROBE
     </Param>
-    <Param name="HVOffFile"><string>HVOFFLIST</string>
-      List of the HV channels that are off.
-      For 2019-2020 runs use $CCMINSTALL/mappings/hv_off_2019.csv
-    </Param>
-    <Param name="CalibrationFile"><string>CALIBRATIONFILE</string>
-      Name of the calibration file to use
-      For 2019-2020 runs use $CCMINSTALL/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root
+    <Param name="Threshold"><double>THRESHOLD</double>
+      The PE threshold for a 2ns bin to trigger event building
     </Param>
   </Config>
 

@@ -9,6 +9,8 @@
 
 #include <fstream>
 #include <iterator>
+#include <sstream>
+#include <iomanip>
 
 MapTimeDouble CCMBeamInfo::fgCurrentInfo;
 std::tm CCMBeamInfo::fgLocalTM = {0,0,0,1,1,119,0,0,1};
@@ -72,14 +74,15 @@ void CCMBeamInfo::LoadTable(std::string fileName)
 }
 
 /*!************************************************************************************************
- * \fn double CCMBeamInfo::GetCurrent(std::string time)
+ * \fn double CCMBeamInfo::GetCurrent(std::string time,std::string format)
  * \brief Return the average current down to the second recorded by the accelerator
  * \param[in] time The time as a string object
+ * \param[in] format The format the time is in
  * \return The current in microAmps
  **************************************************************************************************/
-double CCMBeamInfo::GetCurrent(std::string time)
+double CCMBeamInfo::GetCurrent(std::string time, std::string format)
 {
-  std::time_t localTime = ConvertStringToTime(time,true);
+  std::time_t localTime = ConvertStringToTime(time,format,true);
   MsgInfo(MsgLog::Form("Input: %s, %zu,\n sec %d min %d hour %d mday %d mon %d year %d isdst %d",
         time.c_str(),localTime,
         fgLocalTM.tm_sec,
@@ -131,13 +134,14 @@ void CCMBeamInfo::PrintTable(std::string options)
 }
 
 /*!************************************************************************************************
- * \fn std::time_t CCMBeamInfo::ConvertStringToTime(std::string time, bool print)
+ * \fn std::time_t CCMBeamInfo::ConvertStringToTime(std::string time, std::string format, bool print)
  * \brief Converts the time in the format %d-%b-%Y %H:%M:%S
  * \param[in] time The string to parse
+ * \param[in] format The format the time is in default is given in the details of the function
  * \param[in] print Flag to print the parsed string (default = false)
  * \return The time as a time_t object.
  *
- * Converts the time in the format %d-%b-%Y %X to time_t object.
+ * Converts the time to a time_t object (default format is %d-%b-%Y %X)
  * - %d = month day (1-31)
  * - %b = Month short name (e.g. Jan, Feb, May, Apr, etc.)
  * - %Y = Year in 4-digit format (e.g. 2020)
@@ -145,49 +149,13 @@ void CCMBeamInfo::PrintTable(std::string options)
  * - %M = minute in 2 digit format (e.g. 01, 03, 15)
  * - %S = second in 2 digit format (e.g. 01, 03, 15)
  **************************************************************************************************/
-std::time_t CCMBeamInfo::ConvertStringToTime(std::string time, bool print)
+std::time_t CCMBeamInfo::ConvertStringToTime(std::string time, std::string format, bool print)
 {
-  int mday = 0;
-  char month[3];
-  int year = 0;
-  int hour = 0;
-  int min = 0;
-  int sec = 0;
-  int monthInt = 0;
-  std::sscanf(time.c_str(),"%d-%3s-%d %d:%d:%d", &mday, month, &year, &hour, &min, &sec);
-  if (print) {
-    MsgInfo(MsgLog::Form("%02d-%s-%04d %02d:%02d:%02d",mday,month,year,hour,min,sec));
-  }
+  std::stringstream ss(time);
+  ss >> std::get_time(&fgLocalTM,format.c_str());
+  fgLocalTM.tm_isdst = -1; // to force mktime to determine if the time of day was during DST
 
-  year -= 1900;
-  std::string tempString(month);
-  if (tempString.find("Jan") != std::string::npos) {
-    monthInt = 0;
-  } else if (tempString.find("Feb") != std::string::npos) {
-    monthInt = 1;
-  } else if (tempString.find("Mar") != std::string::npos) {
-    monthInt = 2;
-  } else if (tempString.find("Apr") != std::string::npos) {
-    monthInt = 3;
-  } else if (tempString.find("May") != std::string::npos) {
-    monthInt = 4;
-  } else if (tempString.find("Jun") != std::string::npos) {
-    monthInt = 5;
-  } else if (tempString.find("Jul") != std::string::npos) {
-    monthInt = 6;
-  } else if (tempString.find("Aug") != std::string::npos) {
-    monthInt = 7;
-  } else if (tempString.find("Sep") != std::string::npos) {
-    monthInt = 8;
-  } else if (tempString.find("Oct") != std::string::npos) {
-    monthInt = 9;
-  } else if (tempString.find("Nov") != std::string::npos) {
-    monthInt = 10;
-  } else if (tempString.find("Dec") != std::string::npos) {
-    monthInt = 11;
-  }
-
-  return ConvertToTime(year,monthInt,mday,hour,min,sec,print);
+  return std::mktime(&fgLocalTM);
 
 }
 
@@ -280,13 +248,14 @@ int CCMBeamInfo::Previous()
 }
 
 /*!************************************************************************************************
- * \fn void CCMBeamInfo::Find(std::string time)
+ * \fn void CCMBeamInfo::Find(std::string time, std::string format)
  * \brief Move the iterator to the position right before the time pased (see #CCMBeamInfo::GetCurrent)
  * \param[in] time The time to searh for
+ * \param[in] format The format the time is in
  **************************************************************************************************/
-void CCMBeamInfo::Find(std::string time)
+void CCMBeamInfo::Find(std::string time, std::string format)
 {
-  Find(ConvertStringToTime(time));
+  Find(ConvertStringToTime(time,format));
 }
 
 /*!************************************************************************************************

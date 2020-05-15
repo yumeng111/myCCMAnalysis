@@ -6,11 +6,10 @@
  ***********************************************/
 #include "SimplifiedEvent.h"
 #include "MsgLog.h"
-//#include "BoardInfo.h"
-//#include "ChannelInfo.h"
 
 #include <iostream>
 #include <cmath>
+#include <iterator>
 
 ClassImp(SimplifiedEvent)
 
@@ -26,52 +25,24 @@ SimplifiedEvent::SimplifiedEvent() : TObject()
 //-------------------------------------------------------------------------------------------------
 SimplifiedEvent::SimplifiedEvent(const SimplifiedEvent & rhs) : TObject(rhs)
 {
-  fComputerSecIntoEpoch    = rhs.fComputerSecIntoEpoch;
-  fComputerNSIntoSec       = rhs.fComputerNSIntoSec;
   fThreshold               = rhs.fThreshold;
-  fTrigger                 = rhs.fTrigger;
   fStartTime               = rhs.fStartTime;
   fLength                  = rhs.fLength;
   fLargestPMTFraction      = rhs.fLargestPMTFraction;
-  fLargeSecLargePMTFraction      = rhs.fLargeSecLargePMTFraction;
-  fChargeSigma             = rhs.fChargeSigma;
-  fTimeSigma               = rhs.fTimeSigma;
   fCoatedStartTime         = rhs.fCoatedStartTime;
   fUncoatedStartTime       = rhs.fUncoatedStartTime;
-  fCoatedFittedStartTime   = rhs.fCoatedFittedStartTime;
-  fUncoatedFittedStartTime = rhs.fUncoatedFittedStartTime;
   fVetoBottomStartTime     = rhs.fVetoBottomStartTime;
   fVetoTopStartTime        = rhs.fVetoTopStartTime;
   fVetoBackStartTime       = rhs.fVetoBackStartTime;
   fVetoRightStartTime      = rhs.fVetoRightStartTime;
   fVetoLeftStartTime       = rhs.fVetoLeftStartTime;
   fVetoFrontStartTime      = rhs.fVetoFrontStartTime;
-  fCoatedAmp               = rhs.fCoatedAmp;
-  fUncoatedAmp             = rhs.fUncoatedAmp;
-  fVetoTopAmp              = rhs.fVetoTopAmp;
-  fVetoBottomAmp           = rhs.fVetoBottomAmp;
-  fVetoLeftAmp             = rhs.fVetoLeftAmp;
-  fVetoRightAmp            = rhs.fVetoRightAmp;
-  fVetoBackAmp             = rhs.fVetoBackAmp;
-  fVetoFrontAmp            = rhs.fVetoFrontAmp;
   fHitXPosition            = rhs.fHitXPosition;
   fHitYPosition            = rhs.fHitYPosition;
   fHitZPosition            = rhs.fHitZPosition;
-  fHitXPosTime             = rhs.fHitXPosTime;
-  fHitYPosTime             = rhs.fHitYPosTime;
-  fHitZPosTime             = rhs.fHitZPosTime;
-  fHitTPosTime             = rhs.fHitTPosTime;
   for (int i = 0; i <2; ++i) {
     fCoatedInt[i]          = rhs.fCoatedInt[i];
     fUncoatedInt[i]        = rhs.fUncoatedInt[i];
-    fCoatedFittedInt[i]    = rhs.fCoatedFittedInt[i];
-    fUncoatedFittedInt[i]  = rhs.fUncoatedFittedInt[i];
-    fVetoTopInt[i]         = rhs.fVetoTopInt[i];
-    fVetoBottomInt[i]      = rhs.fVetoBottomInt[i];
-    fVetoLeftInt[i]        = rhs.fVetoLeftInt[i];
-    fVetoRightInt[i]       = rhs.fVetoRightInt[i];
-    fVetoBackInt[i]        = rhs.fVetoBackInt[i];
-    fVetoFrontInt[i]       = rhs.fVetoFrontInt[i];
 
     fNCoated[i]            = rhs.fNCoated[i];
     fNUncoated[i]          = rhs.fNUncoated[i];
@@ -83,16 +54,13 @@ SimplifiedEvent::SimplifiedEvent(const SimplifiedEvent & rhs) : TObject(rhs)
     fNVetoFront[i]         = rhs.fNVetoFront[i];
   }
 
-  fOtherEvents             = rhs.fOtherEvents;
-  fOtherEventsTime         = rhs.fOtherEventsTime;
+  fPMTHits             = rhs.fPMTHits;
+  fPMTHitsVec         = rhs.fPMTHitsVec;
 
-  fPulses                  = rhs.fPulses;
-  fTimeToPositionCoated    = rhs.fTimeToPositionCoated;
-  fTimeToPositionUncoated  = rhs.fTimeToPositionUncoated;
-
-  fPassedThresholdCount    = rhs.fPassedThresholdCount;
-  fPassedThresholdInt      = rhs.fPassedThresholdInt;
-  fPassedThresholdIntDer   = rhs.fPassedThresholdIntDer;
+  fAccWaveformCount    = rhs.fAccWaveformCount;
+  fAccWaveformInt      = rhs.fAccWaveformInt;
+  fPMTWaveform         = rhs.fPMTWaveform;
+  fPMTWaveformItr     = rhs.fPMTWaveformItr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -107,15 +75,8 @@ SimplifiedEvent::~SimplifiedEvent()
  ***********************************************/
 void SimplifiedEvent::Reset()
 {
-  fComputerSecIntoEpoch = 0;
-  fComputerNSIntoSec = 0;
-
   fThreshold          = 0.f;
-  fTrigger            = 0;
   fLargestPMTFraction = 1.f;
-  fLargeSecLargePMTFraction = 1.f;
-  fChargeSigma = 1.f;
-  fTimeSigma = 1.f;
 
 
   // Time variables
@@ -124,8 +85,6 @@ void SimplifiedEvent::Reset()
   fLength                  = -1;
   fCoatedStartTime         = -1;
   fUncoatedStartTime       = -1;
-  fCoatedFittedStartTime   = -1;
-  fUncoatedFittedStartTime = -1;
   fVetoBottomStartTime     = -1;
   fVetoTopStartTime        = -1;
   fVetoBackStartTime       = -1;
@@ -133,50 +92,19 @@ void SimplifiedEvent::Reset()
   fVetoLeftStartTime       = -1;
   fVetoFrontStartTime      = -1;
 
-  // Amplitude variables
-  // The amplitude is calculated for the event only if the PMT was above threshold
-  fCoatedAmp     = 0.f;
-  fUncoatedAmp   = 0.f;
-  fVetoTopAmp    = 0.f;
-  fVetoBottomAmp = 0.f;
-  fVetoLeftAmp   = 0.f;
-  fVetoRightAmp  = 0.f;
-  fVetoBackAmp   = 0.f;
-  fVetoFrontAmp  = 0.f;
-
   // Integral variables
   // The integral is calculated for the event only if the PMT was above threshold
   // independent of the value of the integral or when the PMT crossed threshold
   fCoatedInt[0]         = 0.f;
   fUncoatedInt[0]       = 0.f;
-  fCoatedFittedInt[0]   = 0.f;
-  fUncoatedFittedInt[0] = 0.f;
-  fVetoTopInt[0]        = 0.f;
-  fVetoBottomInt[0]     = 0.f;
-  fVetoLeftInt[0]       = 0.f;
-  fVetoRightInt[0]      = 0.f;
-  fVetoBackInt[0]       = 0.f;
-  fVetoFrontInt[0]      = 0.f;
 
   fCoatedInt[1]         = 0.f;
   fUncoatedInt[1]       = 0.f;
-  fCoatedFittedInt[1]   = 0.f;
-  fUncoatedFittedInt[1] = 0.f;
-  fVetoTopInt[1]        = 0.f;
-  fVetoBottomInt[1]     = 0.f;
-  fVetoLeftInt[1]       = 0.f;
-  fVetoRightInt[1]      = 0.f;
-  fVetoBackInt[1]       = 0.f;
-  fVetoFrontInt[1]      = 0.f;
 
   // Position variables
   fHitXPosition = 0.f;
   fHitYPosition = 0.f;
   fHitZPosition = 0.f;
-  fHitXPosTime  = 0.f;
-  fHitYPosTime  = 0.f;
-  fHitZPosTime  = 0.f;
-  fHitTPosTime  = 0.f;
 
   // Multiplicity variables
   fNCoated[0]     = 0;
@@ -196,30 +124,19 @@ void SimplifiedEvent::Reset()
   fNVetoRight[1]  = 0;
   fNVetoFront[1]  = 0;
 
-  fOtherEvents = 0;
-  fOtherEventsTime.clear();
+  fPMTHits = 0;
+  fPMTHitsVec.clear();
 
-  if (!fTimeToPositionCoated.empty()) {
-    fTimeToPositionCoated.clear();
+  if (!fAccWaveformCount.empty()) {
+    fAccWaveformCount.clear();
   }
-  if (!fTimeToPositionUncoated.empty()) {
-    fTimeToPositionUncoated.clear();
-  }
-  if (!fPulses.empty()) {
-    fPulses.clear();
+  if (!fAccWaveformInt.empty()) {
+    fAccWaveformInt.clear();
   }
 
-  if (!fPassedThresholdCount.empty()) {
-    fPassedThresholdCount.clear();
+  if (!fPMTWaveform.empty()) {
+    fPMTWaveform.empty();
   }
-  if (!fPassedThresholdInt.empty()) {
-    fPassedThresholdInt.clear();
-  }
-
-  for (int i=0; i < 161; ++i) {
-    fPassedThresholdIntDer[i].fill(0);
-  }
-
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -299,27 +216,9 @@ double SimplifiedEvent::GetStartTimeVeto()
 }
 
 //-------------------------------------------------------------------------------------------------
-float SimplifiedEvent::GetAmplitudeTank() 
-{
-  return fCoatedAmp + fUncoatedAmp;
-}
-
-//-------------------------------------------------------------------------------------------------
-float SimplifiedEvent::GetAmplitudeVeto() 
-{
-  return fVetoBottomAmp + fVetoTopAmp + fVetoBackAmp + fVetoLeftAmp + fVetoFrontAmp + fVetoRightAmp;
-}
-
-//-------------------------------------------------------------------------------------------------
 float SimplifiedEvent::GetIntegralTank(bool prompt) 
 {
   return fCoatedInt[prompt] + fUncoatedInt[prompt];
-}
-
-//-------------------------------------------------------------------------------------------------
-float SimplifiedEvent::GetIntegralVeto(bool prompt) 
-{
-  return fVetoBottomInt[prompt] + fVetoTopInt[prompt] + fVetoBackInt[prompt] + fVetoLeftInt[prompt] + fVetoFrontInt[prompt] + fVetoRightInt[prompt];
 }
 
 /*!**********************************************
@@ -330,6 +229,65 @@ float SimplifiedEvent::GetIntegralVeto(bool prompt)
  ***********************************************/
 void SimplifiedEvent::AddWaveforms(const std::vector<float> & count, const std::vector<float> & integral)
 {
-  fPassedThresholdCount = count;
-  fPassedThresholdInt = integral;
+  fAccWaveformCount = count;
+  fAccWaveformInt = integral;
 }
+
+void SimplifiedEvent::AddPMTWaveforms(const int key, const std::vector<int> & count, const std::vector<float> & integral)
+{
+  auto iter = fPMTWaveform.find(key);
+  if (iter == fPMTWaveform.end()) {
+    fPMTWaveform.emplace(key,std::make_pair(integral,count));
+    return;
+  }
+  iter->second.second = count;
+  iter->second.first = integral;
+}
+
+
+void SimplifiedEvent::ResetPMTWaveformItr()
+{
+  fPMTWaveformItr = fPMTWaveform.cbegin();
+}
+
+void SimplifiedEvent::ResetPMTWaveformItr() const
+{
+  fPMTWaveformItr = fPMTWaveform.begin();
+}
+
+bool SimplifiedEvent::NextPMTWaveform()
+{
+  if (fPMTWaveformItr == fPMTWaveform.cend()) {
+    return false;
+  }
+
+  std::advance(fPMTWaveformItr,1);
+
+  return true;
+}
+
+bool SimplifiedEvent::NextPMTWaveform() const
+{
+  if (fPMTWaveformItr == fPMTWaveform.end()) {
+    return false;
+  }
+
+  std::advance(fPMTWaveformItr,1);
+
+  return true;
+}
+
+void SimplifiedEvent::GetPMTWaveform(int & key, std::vector<float> & vecInt, std::vector<int> & vecCount)
+{
+  key = fPMTWaveformItr->first;
+  vecInt = fPMTWaveformItr->second.first;
+  vecCount = fPMTWaveformItr->second.second;
+}
+
+void SimplifiedEvent::GetPMTWaveform(int & key, std::vector<float> & vecInt, std::vector<int> & vecCount) const
+{
+  key = fPMTWaveformItr->first;
+  vecInt = fPMTWaveformItr->second.first;
+  vecCount = fPMTWaveformItr->second.second;
+}
+

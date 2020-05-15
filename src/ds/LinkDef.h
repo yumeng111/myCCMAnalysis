@@ -8,10 +8,13 @@
 #pragma link C++ class Pulses+;
 #pragma link C++ class RawData+;
 #pragma link C++ class SimplifiedEvent+;
+#pragma link C++ class Events+;
 #pragma link C++ class std::vector<SinglePulse*>+;
 #pragma link C++ class std::vector<Pulses*>+;
 #pragma link C++ class std::vector<SimplifiedEvent*>+;
 #pragma link C++ class std::vector<unsigned short>+;
 #pragma link C++ class std::vector<vector<unsigned short>>+;
+#pragma link C++ class std::pair<std::vector<float>,std::vector<int>>+;
+#pragma link C++ class std::map<int,std::pair<std::vector<float>,std::vector<int>>>+;
 
 #endif /* __CINT__ */

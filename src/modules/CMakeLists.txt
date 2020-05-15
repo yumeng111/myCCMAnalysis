@@ -11,6 +11,7 @@
 # will talk through the project's entire directory structure.
 add_subdirectory(framework)
 add_subdirectory(reco)
+add_subdirectory(nearline)
 
 
 set(INCLUDE_DIRECTORIES ${ROOT_INCLUDE_DIR} $ENV{XERCESINCLUDE} ${CCMAnalysis_INCLUDE_DIRS})
@@ -24,5 +25,5 @@ link_directories(${LINK_DIRECTORIES})
 set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES} $ENV{XERCESLIB}")
 
 add_executable(CCMAnalysis CCMAnalysis.cxx)
-target_link_libraries(CCMAnalysis ${ROOT_LIBRARIES} CCMUtils CCMDS CCMSPE CCMXML CCMReco)
+target_link_libraries(CCMAnalysis ${ROOT_LIBRARIES} CCMUtils CCMDS CCMSPE CCMXML CCMReco CCMIO CCMNearline)
 

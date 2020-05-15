@@ -34,7 +34,6 @@ class Pulses : public TObject
     void ClearPulses();
 
     void RemovePulsesByThreshold();
-    void LoadCalibrationFile();
 
     /// \fn void SetEventNumber(unsigned int value)
     /// \brief Set the event (trigger) number of the DAQ window currently looking at

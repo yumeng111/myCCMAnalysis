@@ -66,6 +66,7 @@ Put the following lines in your ~/.rootlogon.C
   // use the following for linux
   gSystem->Load("${CCMINSTALLBuild}/src/utils/libCCMUtils.so");
   gSystem->Load("${CCMINSTALLBuild}/src/ds/libCCMDS.so");
+  gSystem->Load("${CCMINSTALLBuild}/src/ds/libCCMIO.so");
   gSystem->Load("${CCMINSTALLBuild}/src/spe/libCCMSPE.so");
   gSystem->Load("${CCMINSTALLBuild}/src/modules/framework/libCCMXML.so");
   gSystem->Load("${CCMINSTALLBuild}/src/modules/reco/libCCMReco.so");
@@ -90,10 +91,11 @@ as long as it has the same format as the default .csv files.
 # Module Code
 - The `CCMAnalysis` executable reads in the xml config file (examples are in configFiles) and runs the module you want to run
 - Current Modules
-  - CCMConvertBinary2ROOT (convert binary to ROOT files and creates pulses)
-  - CCMNearlineDiag (calculate SPE rates and calculate SPE calibrations)
+  - CCMFindPulses(convert binary to ROOT files and creates pulses)
+  - CCMSPECalc (calculate SPE calibrations)
+  - CCMSRateCalc (calculate SPE rates)
   - CCMFindEvents (find events and information about them)
-  - CCMApplyPreCuts (apply cuts on the events that were found)
+  - CCMNa22Cuts (apply cuts on the events that were found)
 - <b>If you want to develope your own module or suggest changes to an existing, please let me know.</b>
 
 # Analysis Directory

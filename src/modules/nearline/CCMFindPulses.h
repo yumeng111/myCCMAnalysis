@@ -1,5 +1,5 @@
-#ifndef CCMConvertBinary2ROOT_h
-#define CCMConvertBinary2ROOT_h
+#ifndef CCMFindPulses_h
+#define CCMFindPulses_h
 
 #include "Utility.h"
 #include "CCMModule.h"
@@ -11,25 +11,25 @@ class RawData;
 #include <vector>
 #include <map>
 
-class CCMConvertBinary2ROOT : public CCMModule
+class CCMFindPulses : public CCMModule
 {
   public:
     /*!
      *  \brief The constructor
      *  \param version FIXME
      */
-    CCMConvertBinary2ROOT(const char* version);
+    CCMFindPulses(const char* version);
 
     /*!
      *  \brief The copy constructor
      *  \param clufdr the object being copied
      */
-    CCMConvertBinary2ROOT(const CCMConvertBinary2ROOT& clufdr);
+    CCMFindPulses(const CCMFindPulses& clufdr);
 
     /*!
      *  \brief The destructor
      */
-    ~CCMConvertBinary2ROOT();
+    ~CCMFindPulses();
 
     /*!
      *  \brief This is where the action takes place
@@ -38,10 +38,16 @@ class CCMConvertBinary2ROOT : public CCMModule
     CCMResult_t ProcessEvent();
 
     /*!
+     *  \brief What to do if we start a new run
+     *  \return CCMResult_t the result of if everything happened
+     */
+    CCMResult_t NewRun(uint32_t run, uint32_t subRun);
+
+    /*!
      *  \brief Returns true of the job has ended
      *  \return CCMResult_t result if the Job had ended
      */
-    CCMResult_t EndOfJob() { return kCCMSuccess;}
+    CCMResult_t EndOfJob();
 
     /*!
      *  \brief Configures things that are hardware specific 
@@ -49,27 +55,39 @@ class CCMConvertBinary2ROOT : public CCMModule
      */
     void Configure(const CCMConfig& c);
 
+    void ConnectBinaryRawData(std::shared_ptr<RawData> rawData)  { fReadData = rawData; }
+    void ConnectRawData(std::shared_ptr<RawData> rawData)  { fRawData = rawData; }
+    void ConnectPulses(std::shared_ptr<Pulses> pulses) {fPulses = pulses; }
+
   private:
 
     //private methods
+    void WriteDB();
 
   private:
 
     //private data members
-    std::string fInFileName;
-    std::string fOutFileName;
+    int fTruncateWaveform;
+    int fFromRootFile;
+
 
     bool fWriteDBEntry;
     std::string fDBHost;
     std::string fDBUser;
     std::string fDBPwd;
 
-    event_t fReadData;
     std::vector<float> fTriggerTime;
-    Pulses * fPulses;
-    RawData * fRawData;
+    std::shared_ptr<RawData> fReadData;
+    std::shared_ptr<Pulses> fPulses;
+    std::shared_ptr<RawData> fRawData;
+
+    long fNEventsTotal;
+    long fNEventsSkipped;
+    unsigned short fHighestTemp;
+    std::time_t fFirstTriggerTime = 0;
+    std::time_t fLastTriggerTime = 0;
     
 };
 
-#endif // CCMConvertBinary2ROOT_h
+#endif // CCMFindPulses_h
 

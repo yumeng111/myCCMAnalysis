@@ -25,6 +25,7 @@ class RawData : public TObject
     ~RawData();
 
     void Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay,u_int32_t nsToSec);
+    void TruncateWaveform(size_t numberBoards = 1);
 
     void SetWaveform(int detector, const u_int16_t input[]);
     void SetOffset(const std::vector<float> & offsets);
@@ -70,6 +71,14 @@ class RawData : public TObject
     size_t GetNumBoards() const { return fSize.size(); }
     size_t GetNumChannels() const { return fSize.front().size(); }
     size_t GetNumSamples() const { return fWaveforms.front().size(); }
+
+    float GetEarliestOffset();
+    int FindFirstNIMSample(int channelNumber);
+    bool IsTriggerPresent(std::string triggerName);
+    int GetBCMTime();
+    int GetBoard10ChannelOffset();
+
+    RawData & operator=(const RawData & rhs);
 
   private:
 

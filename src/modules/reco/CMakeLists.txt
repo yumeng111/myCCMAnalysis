@@ -1,8 +1,6 @@
 set(RECO_HEADERS 
-  CCMConvertBinary2ROOT.h
   CCMFindEvents.h
   CCMApplyPreCuts.h
-  CCMNearlineDiag.h
   CCMNa22Cuts.h
   )
 
@@ -18,10 +16,8 @@ link_directories(${LINK_DIRECTORIES})
 set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES} $ENV{XERCESLIB}")
 
 set(RECO_SRCS
-  CCMConvertBinary2ROOT.cxx
   CCMFindEvents.cxx
   CCMApplyPreCuts.cxx
-  CCMNearlineDiag.cxx
   CCMNa22Cuts.cxx
   )
 
@@ -33,6 +29,6 @@ set(RECO_SRCS ${RECO_SRCS} ${RECO_DICTIONARY}.cxx)
 
 add_library(CCMReco SHARED ${RECO_SRCS})
 #CREATE_LIBTOOL_FILE(CCMRECO ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-target_link_libraries(CCMReco ${ROOT_LIBRARIES} CCMUtils CCMSPE CCMDS CCMXML)
+target_link_libraries(CCMReco ${ROOT_LIBRARIES} CCMUtils CCMDS CCMXML)
 
 #install(FILES ${RECO_HEADERS} DESTINATION $ENV{CCMINSTALL}/include)

@@ -11,34 +11,47 @@ Date: 14-May-2013
 
 -------------------------------------------------------*/
 #include "CCMTaskManager.h"
+#include "CCMRawIO.h"
+#include "CCMRootIO.h"
+#include "Events.h"
+#include "RawData.h"
+#include "Pulses.h"
+
+
 #include <cstdlib>
 #include <ctime>
 
-//------------------------------------------------------
-const char* tstamp()
-{
-  //======================================================================
-  // Provide a nicely formatted, current, time stamp string
-  //======================================================================
-  static char tbuff[32];
-  time_t t;
-  t = time(0);
-  strcpy(tbuff, ctime(&t));
-  tbuff[24] = '\0';
-  return tbuff;
-}
-
-const CCMTaskConfig* CCMTaskManager::fgkTaskConfig = 0;  //Static instance of config object
+std::unique_ptr<CCMTaskConfig> CCMTaskManager::fgkTaskConfig = nullptr;  //Static instance of config object
 //------------------------------------------------------
 CCMTaskManager::CCMTaskManager()
 {
   //default constructor
+  fRootIO = CCMRootIO::GetInstance();
+  fRawIO = CCMRawIO::GetInstance();
+  
+  fEvents = std::make_shared<Events>();
+  fPulses = std::make_shared<Pulses>();
+  fRawData = std::make_shared<RawData>();
+  fBinaryRawData = std::make_shared<RawData>();
+
+  fCurrentRunNum = 0;
+  fCurrentSubRunNum = 0;
 }
 
 //------------------------------------------------------
 CCMTaskManager::CCMTaskManager(const CCMTaskManager& task)
 {
   //copy constructor
+  fRootIO = CCMRootIO::GetInstance();
+  fRawIO = CCMRawIO::GetInstance();
+  
+  fEvents = std::make_shared<Events>();
+  fPulses = std::make_shared<Pulses>();
+  fRawData = std::make_shared<RawData>();
+  fBinaryRawData = std::make_shared<RawData>();
+
+  fCurrentRunNum = 0;
+  fCurrentSubRunNum = 0;
 }
 
 //------------------------------------------------------
@@ -48,26 +61,40 @@ CCMTaskManager::~CCMTaskManager()
 }
 
 //------------------------------------------------------
-CCMTaskManager::CCMTaskManager(std::string configfile, std::vector<std::string> infileList,
-    std::vector<std::string> outfileList)
+CCMTaskManager::CCMTaskManager(std::string configfile, 
+    std::vector<std::string> rootInfileList,
+    std::vector<std::string> rootOutfileList,
+    std::vector<std::string> rawInfileList,
+    std::vector<std::string> rawOutfileList)
 {
-  // currently not using an analysis manager because each module is assumed seperate
-  //fCCMAnaMan = CCMAnalysisManager::GetInstance(infileList);
-  SetTaskConfig(new CCMTaskConfig(configfile,infileList,outfileList));
-  //if(fgkTaskConfig->ProcessType() != "EventDisplay")
-  //  fCCMAnaMan->SetOutFile(outfileList.at(0));
+
+  fRootIO = CCMRootIO::GetInstance();
+  fRawIO = CCMRawIO::GetInstance();
+
+  SetTaskConfig(new CCMTaskConfig(configfile,rootInfileList,rootOutfileList,rawInfileList,rawOutfileList));
 
   CCMResult_t val = RegisterModules();
   if(val != kCCMSuccess)
   {
     MsgError("Error registering modules: ");
-    for(unsigned int i = 0; i < GetTaskConfig()->ModuleList().size(); i++) {
-      MsgError(MsgLog::Form("\t %s",GetTaskConfig()->ModuleList().at(i).c_str()));
+    for(unsigned int i = 0; i < GetTaskConfig().ModuleList().size(); i++) {
+      MsgError(MsgLog::Form("\t %s",GetTaskConfig().ModuleList().at(i).c_str()));
     }
     MsgError("Exiting gracefully");
     exit(0);
   }
 
+  // default set the objects, they may be just
+  // the default constructor values, but it makes
+  // it easier so that there are no condition statements
+  // in the ConnectDataToModules() function
+  fEvents = std::make_shared<Events>(fRootIO->GetEvents());
+  fPulses = std::make_shared<Pulses>(fRootIO->GetPulses());
+  fRawData = std::make_shared<RawData>(fRootIO->GetRawData());
+  fBinaryRawData = std::make_shared<RawData>(fRawIO->GetRawData());
+
+  fCurrentRunNum = 0;
+  fCurrentSubRunNum = 0;
 }
 
 //------------------------------------------------------
@@ -80,86 +107,187 @@ CCMResult_t CCMTaskManager::Execute(int32_t nevt)
   }
 
   //if(fgkTaskConfig->ProcessType() == "EventDisplay")
-  return ExecuteTask();
+  //return ExecuteTask();
 
-  /*
-  unsigned int fileListSize = fgkTaskConfig->InputFileList().size();
-  MsgInfo(MsgLog::Form("FileListSize %u",fileListSize));
-  int32_t count = 0;
-  for(unsigned int fileCount = 0; fileCount < fileListSize; ++fileCount, fCCMAnaMan->AdvanceFile())
-  {
-    MsgInfo(MsgLog::Form("File Name: %s",fCCMAnaMan->CurrentFileName()));
+  auto rootFileList = fgkTaskConfig->InputFileList();
+  auto rawFileList = fgkTaskConfig->RawInputFileList();
+  auto rootFileListOut = fgkTaskConfig->OutputFileList();
+  auto rawFileListOut = fgkTaskConfig->RawOutputFileList();
 
-    for(unsigned int c=0; fCCMAnaMan->ReadOK(kBIBTreeID); ++c,fCCMAnaMan->NextEvent(kBIBTreeID))
-    {
-      CCMHitInformation * hit = fCCMAnaMan->GetHit(0,kBIBTreeID);
-      if(hit)
-        fBIBHitVec.push_back(new CCMHitInformation(*hit));
+  bool outRoot = true;
+  if (rootFileListOut.empty() || !rawFileListOut.empty()) {
+    outRoot = false;
+  }
+
+  if (!rootFileList.empty()) {
+    return ExecuteRoot(nevt,rootFileList,outRoot);
+  } else if (!rawFileList.empty()) {
+    return ExecuteRaw(nevt,rawFileList,outRoot);
+  }
+
+  return status;
+}
+
+//------------------------------------------------------
+CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot)
+{
+  CCMResult_t status = kCCMSuccess;
+
+  MsgInfo(MsgLog::Form("FileListSize %zu",fileList.size()));
+  int32_t count = 1;
+  int digit = 1;
+  int exp = 0;
+  int run = 0;
+  int subRun = 0;
+  for (auto & file : fileList) {
+    MsgInfo(MsgLog::Form("File Name: %s",file.c_str()));
+
+    Utility::ParseStringForRunNumber(file,run,subRun);
+    if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
+      fCurrentRunNum = run;
+      fCurrentSubRunNum = subRun;
+      NewRun();
     }
 
-    for(fCCMAnaMan->NextEvent(kEventTreeID); // grab first event that passes cuts
-        fCCMAnaMan->ReadOK(kEventTreeID); // check to see if tree read is still ok
-        fCCMAnaMan->NextEvent(kEventTreeID)) // advance to next event that passes cuts
+    for(; // no initiation
+        fRawIO->ReadOK(); // check to see if tree read is still ok
+        fRawIO->Advance()) // advance to next event that passes cuts
     {
-      if(count == nevt && nevt != -1)
+      if(count == nevt && nevt != -1) {
         break;
-
-      if (count%1000 == 0)
-        MsgInfo(MsgLog::Form("[%d] %s /%d:%d/ %s",count,tstamp(), fCCMAnaMan->RunNumber(),
-              fCCMAnaMan->EventNumber(kEventTreeID), fCCMAnaMan->CurrentFileName()));
-
-      fEvent = fCCMAnaMan->GetEvent();
-      fEvtTimeInfo = fCCMAnaMan->GetEventTimeInfo();
-      fPosTop = fCCMAnaMan->GetPosTopology();
-
-
-      unsigned int numhits = fEvent->getnumhits();
-      for(unsigned int i=0; i< numhits; ++i)
-      {
-        CCMHitInformation * hit = fCCMAnaMan->GetHit(i);
-        if(hit)
-          fHitVec.push_back(new CCMHitInformation(*hit));
       }
+
+      int mod = digit*std::pow(10,exp);
+      if (count%mod == 0) {
+        MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count,Utility::tstamp(),
+              fRawIO->GetEventNumber(), fRawIO->CurrentFileName()));
+        ++digit;
+        if (digit == 10) {
+          digit = 1;
+          ++exp;
+        }
+      } // end count module
+
+      fBinaryRawData->operator=(fRawIO->GetRawData());
 
       ConnectDataToModules();
 
       status = ExecuteTask();
 
-      fCCMAnaMan->SetEvent(fEvent);
-      fCCMAnaMan->SetHitVec(&fHitVec);
-      fCCMAnaMan->SetEventTimeInfo(fEvtTimeInfo);
-      fCCMAnaMan->SetPosTopology(fPosTop);
-      fCCMAnaMan->Write(kEventTreeID);
+      if (status != kCCMFailure && status != kCCMDoNotWrite) {
+        //should not have to do these since a
+        //the objects are passed by reference, but it does not hurt
+        if (outRoot) {
+          fRootIO->SetEvents(*fEvents);
+          fRootIO->SetRawData(*fRawData);
+          fRootIO->SetPulses(*fPulses);
+          fRootIO->WriteEvent();
+        } else {
+          fRawIO->SetRawData(*fRawData);
+          fRawIO->WriteEvent();
+        }
+      }
       ++count;
 
-      ClearDataVectors();
+      // Don't think I need to do these
+      //ClearDataVectors();
     }
 
-    fCCMAnaMan->SetBIBHitVec(&fBIBHitVec);
-    fCCMAnaMan->Write(kBIBTreeID);
-
-    for(unsigned int i=0; i <fBIBHitVec.size(); ++i) 
-      delete fBIBHitVec.at(i);
-    if(fBIBHitVec.size() > 0)
-      fBIBHitVec.clear();
-
-    fCCMAnaMan->SaveOtherTrees();
-
-    if(count == nevt && nevt != -1)
+    if(count == nevt && nevt != -1) {
       break;
+    }
 
+    fRawIO->AdvanceFile();
   }
-  */
 
   return status;
 }
+
+//------------------------------------------------------
+CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot)
+{
+  CCMResult_t status = kCCMSuccess;
+
+  MsgInfo(MsgLog::Form("FileListSize %zu",fileList.size()));
+  int32_t count = 1;
+  int digit = 1;
+  int exp = 0;
+  int run = 0;
+  int subRun = 0;
+  for (auto & file : fileList) {
+    MsgInfo(MsgLog::Form("File Name: %s",file.c_str()));
+
+    Utility::ParseStringForRunNumber(file,run,subRun);
+    if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
+      fCurrentRunNum = run;
+      fCurrentSubRunNum = subRun;
+      NewRun();
+    }
+
+    for(; // no initiation
+        fRootIO->ReadOK(); // check to see if tree read is still ok
+        fRootIO->Advance()) // advance to next event that passes cuts
+    {
+      if(count == nevt && nevt != -1) {
+        break;
+      }
+
+      int mod = digit*std::pow(10,exp);
+      if (count%mod == 0) {
+        MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count,Utility::tstamp(),
+              fRootIO->GetEventNumber(), fRootIO->CurrentFileName()));
+        ++digit;
+        if (digit == 10) {
+          digit = 1;
+          ++exp;
+        }
+      } // end count module
+
+      fEvents->operator=(fRootIO->GetEvents());
+      fRawData->operator=(fRootIO->GetRawData());
+      fPulses->operator=(fRootIO->GetPulses());
+
+      ConnectDataToModules();
+
+      status = ExecuteTask();
+
+      if (status != kCCMFailure && status != kCCMDoNotWrite) {
+        //should not have to do these since a
+        //the objects are passed by reference, but it does not hurt
+        if (outRoot) {
+          fRootIO->SetEvents(*fEvents);
+          fRootIO->SetRawData(*fRawData);
+          fRootIO->SetPulses(*fPulses);
+          fRootIO->WriteEvent();
+        } else {
+          fRawIO->SetRawData(*fRawData);
+          fRawIO->WriteEvent();
+        }
+      }
+      ++count;
+
+      // Don't think I need to do these
+      //ClearDataVectors();
+    }
+
+    if(count == nevt && nevt != -1) {
+      break;
+    }
+
+    fRootIO->AdvanceFile();
+  }
+
+  return status;
+} // end ExecuteRoot
 
 //------------------------------------------------------
 CCMResult_t CCMTaskManager::Terminate()
 {
   CCMResult_t status = FinishTask();
 
-  //fCCMAnaMan->Close();
+  fRootIO->Close();
+  //fRawIO->Close();
+
   return status;
 }
 
@@ -167,8 +295,9 @@ CCMResult_t CCMTaskManager::Terminate()
 CCMResult_t CCMTaskManager::RegisterModules()
 {
   //Register and configure requested modules
-  if(!fgkTaskConfig)
+  if(!fgkTaskConfig) {
     MsgFatal("No configuration object available.  Aborting");
+  }
 
   for(unsigned int i = 0; i < fgkTaskConfig->ModuleList().size(); i++) {
     std::string name = fgkTaskConfig->ModuleList().at(i).c_str();
@@ -176,7 +305,7 @@ CCMResult_t CCMTaskManager::RegisterModules()
     if(mm == 0) {
       MsgFatal(MsgLog::Form("Attempt to request a non-existing module %s.  Aborting.",name.c_str()));
     }
-    fModuleList.push_back((*mm)("default")); // build the module
+    fModuleList.push_back(std::shared_ptr<CCMModule>((*mm)("default"))); // build the module
 
   }
 
@@ -194,15 +323,24 @@ CCMResult_t CCMTaskManager::RegisterModules()
 void CCMTaskManager::ConnectDataToModules()
 {
   //Connect data vectors to the registered modules
-  //for (auto & module : fModuleList) {
-    //module->ConnectEvent(fEvent);
-    //module->ConnectHits(&fHitVec);
-    //module->ConnectBIBHits(&fBIBHitVec);
-    //module->ConnectWaveInfo(&fWaveInfoVec);
-    //module->ConnectBIBWaveInfo(&fBIBWaveInfoVec);
-    //module->ConnectEventTimeInfo(fEvtTimeInfo);
-    //module->ConnectPosTopology(fPosTop);
-  //}
+  for (auto & module : fModuleList) {
+    module->ConnectBinaryRawData(fBinaryRawData);
+    module->ConnectEvents(fEvents);
+    module->ConnectRawData(fRawData);
+    module->ConnectPulses(fPulses);
+  }
+
+}
+
+//------------------------------------------------------
+void CCMTaskManager::NewRun()
+{
+  //Call the NewRun function for the modules as some of them
+  //do special things at the start/end of each run/subrun
+  //combination
+  for (auto & module : fModuleList) {
+    module->NewRun(fCurrentRunNum,fCurrentSubRunNum);
+  }
 
 }
 
@@ -219,7 +357,7 @@ CCMResult_t CCMTaskManager::ExecuteTask()
     if(status == kCCMFailure) {
       break;
     }
-  }
+  } // end for range-based for loop for fModuleList
 
   MsgDebug(2,MsgLog::Form("Processed %d modules",ctr));
 

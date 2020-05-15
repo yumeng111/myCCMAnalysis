@@ -295,7 +295,7 @@ int PMTInfoMap::CreateKey(int digit, int channel) {
  **************************************************************************************************/
 void PMTInfoMap::DecodeKey(int key, int & digit, int & channel) {
   digit = key/16;
-  channel = key - digit*10;
+  channel = key%16;
 
   return;
 }
@@ -452,9 +452,17 @@ void PMTInfoMap::ClearMap()
       delete mapIndex.second;
     }
   }
+
   if (!fgPMTInfo.empty()) {
     fgPMTInfo.clear();
   }
+
+  if (!fgHVOffList.empty()) {
+    fgHVOffList.clear();
+  }
+
+  fgMapLoaded = false;
+  fgBadListLoaded = false;
 }
 
 /*!************************************************************************************************
@@ -513,9 +521,10 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
  **************************************************************************************************/
 void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, double threshValue, double maxValue)
 {
-  // Grab calibration information and fill \p calibrationValues map
-  // Currently getting bottom and top LED data, but only using top LED data
   //TFile * calibrationFileTop = TFile::Open("root_out_2019ledData_run179_legFix_integral_all_round4_.root","READ");
+
+  MsgInfo(MsgLog::Form("Loading file from %s",fileName.c_str()));
+
   if (fileName == "") {
     MsgFatal("No file name passed. Exiting");
   }
@@ -555,5 +564,36 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
     }
   }
   delete calibrationFile;
+}
+
+//__________________________________________________
+void PMTInfoMap::SetParameter(std::string /*name*/, const int /*value*/)
+{
+  // nothing yet
+}
+
+//--------------------------------------------------------------------
+void PMTInfoMap::SetParameter(std::string /*name*/, const double /*value*/)
+{
+  // nothing yet
+}
+
+//--------------------------------------------------------------------
+void PMTInfoMap::SetParameter(std::string name, std::string value)
+{
+  if (name.compare("HVOffFile") == 0) {
+    LoadHVOffList(value);
+  } else if (name.compare("CalibrationFile") == 0) {
+    LoadCalibrationFile(value);
+  } else if (name.compare("MappingFile") == 0) {
+    ClearMap();
+    if (value.compare("default") == 0) {
+      DefaultFillPMTMap();
+    } else {
+      std::ifstream infile(value);
+      FillPMTMap(infile);
+      infile.close();
+    }
+  }
 }
 

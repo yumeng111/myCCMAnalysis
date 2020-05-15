@@ -39,6 +39,10 @@ enum HistInfo_t
 	kRootFile,
 };
 
+typedef enum {
+  kRawDataID = 0, kPulsesID = 1, kEventsID = 2, kNEventBranch = 3
+} CCMEventBranchID_t;
+
 /*!**********************************************
  * \struct HighVoltage_t
  * \brief Contains information about the HV status of a PMT
@@ -60,8 +64,6 @@ typedef enum {
   kCCMSuccess = 1, kCCMWarning = -1, kCCMError = -2, kCCMFailure = -3, kCCMDoNotWrite = 0, kCCMNewRun = -4
 } CCMOldResult_t;
 typedef int32_t CCMResult_t;
-
-class RawData;
 
 /*!**********************************************
  * \class Utility
@@ -92,7 +94,10 @@ class Utility
       return tbuff;
     }
 
-    static int FindFirstSample(int channelNumber, const RawData * rawData);
+    template<class T>
+    static T & Add(T & left, const T & right);
+
+    static void ParseStringForRunNumber(std::string name, int & run, int & subrun);
 
 };
 
@@ -191,6 +196,19 @@ float Utility::Smooth(const T * vector, int start, int length)
 {
   auto avg = std::accumulate(vector+start,vector+start+length,static_cast<T>(0));
   return static_cast<float>(avg)/static_cast<float>(length);
+}
+
+/*!**********************************************
+ * \fn T & Utility::Add(T & left, const T & right)
+ * \brief Add \p left and \p right and set the answer to \p left
+ * \param[in,out] left The left argument of the addition equation
+ * \param[in] right The right argument of the addition equation
+ * \return The sum of \p left and \p right
+ ***********************************************/
+template<class T>
+T & Utility::Add(T & left, const T & right)
+{
+  return left += right;
 }
 
 #endif // #ifndef Utility_h

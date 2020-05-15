@@ -5,8 +5,12 @@
  * \date February 25, 2020
  ***********************************************/
 #include "RawData.h"
+#include "Pulses.h"
+#include "MsgLog.h"
 
+#include <memory>
 #include <algorithm>
+#include <numeric>
 
 ClassImp(RawData)
 
@@ -66,8 +70,7 @@ void RawData::Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_i
   fGPSSecIntoDay   = secToDay;
 
   fOffset.resize(numBoards);
-  //fWaveforms.resize(numBoards*numChannels,std::vector<u_int16_t>(numSamples));
-  fWaveforms.resize(numChannels,std::vector<u_int16_t>(numSamples)); // only save the last board
+  fWaveforms.resize(numBoards*numChannels,std::vector<u_int16_t>(numSamples));
   fSize.resize(numBoards,std::vector<u_int16_t>(numChannels));
   fChannelMask.resize(numBoards,std::vector<u_int16_t>(numChannels));
   fTemp.resize(numBoards,std::vector<u_int16_t>(numChannels));
@@ -77,24 +80,23 @@ void RawData::Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_i
 }
 
 /*!**********************************************
+ * \fn void RawData::TruncateWaveform(size_t numBoards)
+ * \brief Truncates the number of waveforms saved to the numBoards passed * #fNumChannels
+ * \param[in] numBoards The number of digitizer boards to save
+ ***********************************************/
+void RawData::TruncateWaveform(size_t numBoards)
+{
+  fWaveforms.resize(numBoards*fNumChannels,std::vector<u_int16_t>(fNumSamples));
+}
+
+/*!**********************************************
  * \fn RawData::RawData(const RawData & rhs)
  * \brief Copy constuctor
  * \param[in] rhs The object to copy
  ***********************************************/
 RawData::RawData(const RawData & rhs) : TObject(rhs)
 {
-  fNumBoards       = rhs.fNumBoards;
-  fNumChannels     = rhs.fNumChannels;
-  fNumSamples      = rhs.fNumSamples;
-  fEventNumber     = rhs.fEventNumber;
-  fOffset          = rhs.fOffset;
-  fWaveforms       = rhs.fWaveforms;
-  fSize            = rhs.fSize;
-  fChannelMask     = rhs.fChannelMask;
-  fBoardEventNum   = rhs.fBoardEventNum;
-  fClockTime       = rhs.fClockTime;
-  fGPSNSIntoSec    = rhs.fGPSNSIntoSec;
-  fGPSSecIntoDay   = rhs.fGPSSecIntoDay;
+  this->operator=(rhs);
 }
 
 /*!**********************************************
@@ -148,4 +150,157 @@ void RawData::SetClockTime(const u_int32_t input[])
 {
   fClockTime.assign(input,input+fNumBoards);
 }
+
+/*!**********************************************
+ * \fn int RawData::FindFirstNIMSample(int channelNumber)
+ * \brief Find the first sample above threshold for a digitizer channel
+ * \param[in] channelNumber The channel number based on the total number of channels saved in #fWaveforms
+ * \return The sample number to the turn on of the NIM signal
+ *
+ * Assumes the pulse that is possibly in the window is a NIM signal
+ ***********************************************/
+int RawData::FindFirstNIMSample(int channelNumber)
+{
+  int firstSample = 0;
+  auto samples = GetSamples(channelNumber);
+  double avgChannelNoise = std::accumulate(samples.begin(),samples.begin()+500,0);
+  avgChannelNoise /= 500.0;
+  int sample = 0;
+  for (const auto & adc : samples) {
+    double adjustedADC = avgChannelNoise- static_cast<double>(adc);
+    //std::cout << "\t\t\t" << channelNumber << '\t' << sample << '\t' << adc << '\t' << adjustedADC << std::endl;
+    if (adjustedADC > 400) {
+      firstSample = sample;
+      break;
+    }
+    ++sample;
+  } // end for sample < 8000
+
+  return firstSample;
+}
+
+/*!**********************************************
+ * \fn bool RawData::IsTriggerPresent(std::string tirggerName)
+ * \brief Return true if the trigger is present
+ * \param[in] triggerName The name of the trigger
+ * \return True if the trigger is present
+ *
+ * The \p triggerName can be any combination of
+ * - BEAM
+ * - STROBE
+ * - LED
+ * - ALL
+ ***********************************************/
+bool RawData::IsTriggerPresent(std::string triggerName)
+{
+  int boardOffset = GetBoard10ChannelOffset();
+
+  int firstSampleStrobe = 0;
+  int firstSampleBeam = 0;
+  int firstSampleLED = 0;
+  if (triggerName.find("STROBE") != std::string::npos ||
+      triggerName.find("ALL") != std::string::npos) {
+    firstSampleStrobe = FindFirstNIMSample(boardOffset+1);
+  } 
+  if (triggerName.find("BEAM") != std::string::npos ||
+      triggerName.find("ALL") != std::string::npos) {
+    firstSampleBeam = FindFirstNIMSample(boardOffset+2);
+  } 
+  if (triggerName.find("LED") != std::string::npos ||
+      triggerName.find("ALL") != std::string::npos) {
+    firstSampleLED = FindFirstNIMSample(boardOffset+3);
+  } 
+
+  if (firstSampleStrobe == 0 && firstSampleBeam == 0 && firstSampleLED == 0) {
+    MsgDebug(1,MsgLog::Form("Trigger name is %s and could not be foud. Skipping Event", triggerName.c_str()));
+    return false;
+  }
+
+  return true;
+
+}
+
+/*!**********************************************
+ * \fn float RawData::GetEarliestOffset()
+ * \brief Return the time of the earliest board copy of the trigger
+ * \return Return the time of the earliest board copy of the trigger
+ ***********************************************/
+float RawData::GetEarliestOffset()
+{
+  return *std::min_element(fOffset.begin(),fOffset.end());
+}
+
+/*!**********************************************
+ * \fn bool RawData::GetBCMTime()
+ * \brief Return the sample number to the beam current monitor turn on
+ * \return The sample number to the beam current monitor turn on
+ *
+ * Uses the derivative of the waveform to find the turn on.
+ * Function dependent of the Pulses class
+ ***********************************************/
+int RawData::GetBCMTime()
+{
+  int boardOffset = GetBoard10ChannelOffset();
+
+  double offset = GetOffset(10) - GetEarliestOffset();
+  std::shared_ptr<Pulses> pulsesBeam = std::make_shared<Pulses>(0,0);
+  pulsesBeam->DerivativeFilter(&fWaveforms.at(boardOffset+0).front(),GetNumSamples(),0,3,2800,offset,1.0);
+
+  size_t beamTime = GetNumSamples()+1;
+  const size_t kNumPulses = pulsesBeam->GetNumPulses();
+  for (size_t pulse = 0; pulse < kNumPulses; ++pulse) {
+    auto time = pulsesBeam->GetPulseTime(pulse);
+    if (beamTime == GetNumSamples()+1) {
+      beamTime = time;
+      break;
+    }
+  }
+  pulsesBeam->Reset();
+
+  return beamTime;
+
+}
+
+/*!**********************************************
+ * \fn int RawData::GetBoard10ChannelOffset()
+ * \brief Return the number of channels board 10 starts at in the #fWaveforms vector
+ * \return Return the number of channels board 10 starts at in the #fWaveforms vector
+ *
+ * Sometimes the data is saved with all the boards and sometimes with just the
+ * 10 board has its sampels saved. This function returns the number of channels
+ * to offset the index in #fWaveforms by to get the right waveform
+ ***********************************************/
+int RawData::GetBoard10ChannelOffset()
+{
+  int boardOffset = 0;
+  if (GetNumWaveforms() != GetNumChannels()) {
+    boardOffset = (GetNumBoards()-1)*GetNumChannels();
+  }
+
+  return boardOffset;
+}
+
+/*!**********************************************
+ * \fn RawData & RawData::operator=(const RawData & rhs)
+ * \brief Copy assignment for the #RawData class
+ * \return Return reference to the current class
+ ***********************************************/
+RawData & RawData::operator=(const RawData & rhs)
+{
+  this->fNumBoards       = rhs.fNumBoards;
+  this->fNumChannels     = rhs.fNumChannels;
+  this->fNumSamples      = rhs.fNumSamples;
+  this->fEventNumber     = rhs.fEventNumber;
+  this->fOffset          = rhs.fOffset;
+  this->fWaveforms       = rhs.fWaveforms;
+  this->fSize            = rhs.fSize;
+  this->fChannelMask     = rhs.fChannelMask;
+  this->fBoardEventNum   = rhs.fBoardEventNum;
+  this->fClockTime       = rhs.fClockTime;
+  this->fGPSNSIntoSec    = rhs.fGPSNSIntoSec;
+  this->fGPSSecIntoDay   = rhs.fGPSSecIntoDay;
+
+  return *this;
+}
+
 

@@ -15,21 +15,11 @@
 #include "RawData.h"
 #include "Pulses.h"
 #include "PMTInfoMap.h"
-#include "SinglePulse.h"
 #include "PMTInformation.h"
 #include "SimplifiedEvent.h"
+#include "Events.h"
 #include "MsgLog.h"
 #include "Utility.h"
-
-#include "TFile.h"
-#include "TTree.h"
-#include "TH1D.h"
-#include "TChain.h"
-#include "TH2D.h"
-#include "TGraph.h"
-#include "TMultiGraph.h"
-#include "TSystemDirectory.h"
-#include "TSystemFile.h"
 
 #include <memory>
 #include <iostream>
@@ -46,23 +36,26 @@ MODULE_DECL(CCMFindEvents);
 CCMFindEvents::CCMFindEvents(const char* version) 
   : CCMModule("CCMFindEvents"),
     fTriggerType("BEAM"),
-    fHVOffList(""),
-    fCalibrationFile(""),
-    fOutFileName(""),
-    fInFileName("")
+    fThreshold(0.4),
+    fEvents(nullptr),
+    fRawData(nullptr),
+    fPulses(nullptr),
+    fNumTriggers(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
+  DefineVectors();
 }
 
 //_______________________________________________________________________________________
 CCMFindEvents::CCMFindEvents(const CCMFindEvents& clufdr) 
 : CCMModule(clufdr),
   fTriggerType(clufdr.fTriggerType),
-  fHVOffList(clufdr.fHVOffList),
-  fCalibrationFile(clufdr.fCalibrationFile),
-  fOutFileName(clufdr.fOutFileName),
-  fInFileName(clufdr.fInFileName)
+  fThreshold(clufdr.fThreshold),
+  fEvents(clufdr.fEvents),
+  fRawData(clufdr.fRawData),
+  fPulses(clufdr.fPulses),
+  fNumTriggers(clufdr.fNumTriggers)
 {
   // copy constructor
 }
@@ -77,626 +70,574 @@ CCMFindEvents::~CCMFindEvents()
 CCMResult_t CCMFindEvents::ProcessEvent()
 {
 
-  TH1::AddDirectory(0);
+  // create new Events object. This will delete
+  // if a previous object was created
+  fEvents->Reset();
 
-  // Create \p pulsesBeam as a smart pointer.
-  // Used if \p triggerType == "beam"
-  std::shared_ptr<Pulses> pulsesBeam = std::make_shared<Pulses>(0,0);
+  fEvents->SetEventNumber(fRawData->GetEventNumber());
+  fEvents->SetComputerSecIntoEpoch(fRawData->GetGPSSecIntoDay());
+  fEvents->SetComputerNSIntoSec(fRawData->GetGPSNSIntoSec());
 
-  // Fill #PMTInformation with default map
-  PMTInfoMap::DefaultFillPMTMap();
+  std::unique_ptr<SimplifiedEvent> event = std::make_unique<SimplifiedEvent>();
 
-  // Get the list of which HV are turned off.
-  // Could move this to #PMTInfoMap::IsActive() function
-  std::map<int,HighVoltage_t> highVoltage;
-  PMTInfoMap::LoadHVOffList(fHVOffList);
-  PMTInfoMap::LoadCalibrationFile(fCalibrationFile);
+  auto itIntegralTimeBegin = fIntegralTime.begin();
+  auto itIntegralTimeEnd = fIntegralTime.end();
+  auto itIntegralDerBegin = fIntegralDer.begin();
+  auto itIntegralDerEnd = fIntegralDer.end();
+  auto itPulsesTimeBegin = fPulsesTime.begin();
+  auto itPulsesTimeEnd = fPulsesTime.end();
+  auto itVetoBottomTimeBegin = fVetoBottomTime.begin();
+  auto itVetoBottomTimeEnd = fVetoBottomTime.end();
+  auto itVetoCLeftTimeBegin = fVetoCLeftTime.begin();
+  auto itVetoCLeftTimeEnd = fVetoCLeftTime.end();
+  auto itVetoCRightTimeBegin = fVetoCRightTime.begin();
+  auto itVetoCRightTimeEnd = fVetoCRightTime.end();
+  auto itVetoCFrontTimeBegin = fVetoCFrontTime.begin();
+  auto itVetoCFrontTimeEnd = fVetoCFrontTime.end();
+  auto itVetoCBackTimeBegin = fVetoCBackTime.begin();
+  auto itVetoCBackTimeEnd = fVetoCBackTime.end();
+  auto itVetoTopTimeBegin = fVetoTopTime.begin();
+  auto itVetoTopTimeEnd = fVetoTopTime.end();
+  auto itVetoTotalTimeBegin = fVetoTotalTime.begin();
+  auto itVetoTotalTimeEnd = fVetoTotalTime.end();
 
-  // Setup TFile to read in input root file and find the
-  // rawData and pulses TTrees
-  TFile * file = TFile::Open(fInFileName.c_str(),"READ");
-  TTree * tree = 0;
-  TTree * treePulses = 0;
-
-  file->GetObject("rawData",tree);
-  file->GetObject("pulses",treePulses);
-
-  if (!tree) {
-    MsgError("rawData tree was not loaded");
+  // Reset histograms and counters
+  for (auto & waveform : fPMTWaveform) {
+    std::fill(waveform.begin(),waveform.end(),0.f);
   }
-  if (!treePulses) {
-    MsgError("pulses tree was not loaded");
-  }
-
-  // Set where to point the \p tree and \p treePulses branch pointers
-  RawData * rawData = 0;
-  Pulses * ccmPulses = 0;
-
-  tree->SetBranchAddress("rawData",&rawData);
-  treePulses->SetBranchAddress("pulses",&ccmPulses);
-
-  long nEntries = tree->GetEntries();
-  long skipped = 0;
-  //long nEntries = 10;
-
-  long numTriggers = 0;
-
-  // Setup output files
-  std::shared_ptr<TFile> outfile = std::make_shared<TFile>(Form("%s",fOutFileName.c_str()),"RECREATE");
-  TTree * eventsTree = new TTree("events","events");
-  SimplifiedEvent* events = new SimplifiedEvent();
-  eventsTree->Branch("events",&events);
-
-  // Set the number of bins and bin width
-  // This is hard coded and should be taken 
-  // from either data_structures.hh or a data base
-  // since they (in principle) could change
-  const int kNumBins = 8000;
-  const double kBinWidth = 2e-3;
-
-  // Define Histograms and vectors that will be filled with
-  // various information below.
-  TH1D * twoNSDist = new TH1D("twoNSDist","",10000,0,100);
-  auto twoNSDistU = dynamic_cast<TH1D*>(twoNSDist->Clone("twoNSDistU"));
-  auto twoNSDistC = dynamic_cast<TH1D*>(twoNSDist->Clone("twoNSDistC"));
-
-  std::vector<float> pulsesTime(kNumBins,0);
-  auto integralTime = pulsesTime;
-  auto integralDer(integralTime);
-
-
-  auto vetoBottomTime(pulsesTime);
-  auto vetoTopTime(pulsesTime);
-  auto vetoCTTime(pulsesTime);
-  auto vetoCBTime(pulsesTime);
-  auto vetoTotalTime(pulsesTime);
-
-  auto itIntegralTimeBegin = integralTime.begin();
-  auto itIntegralTimeEnd = integralTime.end();
-  auto itIntegralDerBegin = integralDer.begin();
-  auto itIntegralDerEnd = integralDer.end();
-  auto itPulsesTimeBegin = pulsesTime.begin();
-  auto itPulsesTimeEnd = pulsesTime.end();
-  auto itVetoBottomTimeBegin = vetoBottomTime.begin();
-  auto itVetoBottomTimeEnd = vetoBottomTime.end();
-  auto itVetoCBTimeBegin = vetoCBTime.begin();
-  auto itVetoCBTimeEnd = vetoCBTime.end();
-  auto itVetoCTTimeBegin = vetoCTTime.begin();
-  auto itVetoCTTimeEnd = vetoCTTime.end();
-  auto itVetoTopTimeBegin = vetoTopTime.begin();
-  auto itVetoTopTimeEnd = vetoTopTime.end();
-  auto itVetoTotalTimeBegin = vetoTotalTime.begin();
-  auto itVetoTotalTimeEnd = vetoTotalTime.end();
-
-  std::vector<std::vector<float>> pmtWaveform(160);
-  for (int i=0; i < 160; ++i) {
-    pmtWaveform[i].resize(pulsesTime.size(),0.0);
+  for (auto & waveform : fPMTWaveformCount) {
+    std::fill(waveform.begin(),waveform.end(),0);
   }
 
-  int numEventsSTLater = 0;
-  int numEventsST20nsBefore = 0;
-  int numEventsSTFit = 0;
+  std::fill(itPulsesTimeBegin,itPulsesTimeEnd,0);
+  std::fill(itIntegralTimeBegin,itIntegralTimeEnd,0.f);
+  std::fill(itIntegralDerBegin,itIntegralDerEnd,0.f);
 
-  ///////////////////////////////////////////////
-  // Time to loop through all the triggers in the file.
-  // This loop builds the accumulated waveforms for the
-  // various triggers that equate to the \p fTriggerType
-  // that is passed from command line.
-  ///////////////////////////////////////////////
-  long e = 0;
-  for (e = 0; e < nEntries; ++e) {
-    if (e % 100 == 0) {
-      MsgInfo(MsgLog::Form("At trigger %ld out of %ld",e,nEntries));
-    }
-    int nBytes = tree->GetEntry(e);
-    if (nBytes <= 0) {
+  std::fill(itVetoBottomTimeBegin,itVetoBottomTimeEnd,0);
+  std::fill(itVetoTopTimeBegin,itVetoTopTimeEnd,0);
+  std::fill(itVetoTotalTimeBegin,itVetoTotalTimeEnd,0);
+  std::fill(itVetoCRightTimeBegin,itVetoCRightTimeEnd,0);
+  std::fill(itVetoCFrontTimeBegin,itVetoCFrontTimeEnd,0);
+  std::fill(itVetoCBackTimeBegin,itVetoCBackTimeEnd,0);
+  std::fill(itVetoCLeftTimeBegin,itVetoCLeftTimeEnd,0);
+
+  // Check which trigger occured in DAQ window
+  // make sure it is strobe
+  if (!fRawData->IsTriggerPresent(fTriggerType)) {
+    return kCCMDoNotWrite;
+  }
+
+
+  // If fTriggerType == beam
+  // Find when the BCM triggered in the DAQ window 
+  int beamTime = fgkNumBins+1;
+  if (fTriggerType.find("BEAM") != std::string::npos) {
+    beamTime = fRawData->GetBCMTime();
+  } else if (beamTime == fgkNumBins+1) {
+    beamTime = 0;
+  }
+
+  // count trigger
+  ++fNumTriggers;
+
+  // declear variables used in the for loops
+  TVector3 pos;
+  auto pmtInfo = PMTInfoMap::GetPMTInfo(0);
+  auto pmtWaveformBeginIter = fPMTWaveform.front().begin();
+  auto pmtWaveformEndIter = fPMTWaveform.front().end();
+
+  double c0 = 0;
+  double c1 = 0;
+  double hitFraction = 0;
+  double integral = 0;
+  double largestPMTFraction = 0.0;
+  double lastBin = 0;
+  double length = 0;
+  double middle = 0;
+  double pe = 0;
+  double prompt = 0;
+  double prompt90 = 0;
+  double promptCoated = 0.0;
+  double promptFit = 0;
+  double promptIntegral = 0;
+  double promptUncoated = 0.0;
+  double pulseIntegral = 0;
+  double threshold = 0;
+  double time = 0;
+  double timeCoated = 0.0;
+  double timeUncoated = 0.0;
+  double total = 0;
+  double totalCoated = 0.0;
+  double totalUncoated = 0.0;
+  double vetoTimeBottom = 0;
+  double vetoTimeCBack = 0;
+  double vetoTimeCFront = 0;
+  double vetoTimeCLeft = 0;
+  double vetoTimeCRight = 0;
+  double vetoTimeTop = 0;
+
+  int bin = 0;
+  int bin2 = 0;
+  int current = 0;
+  int end20nsBin = 0;
+  int end90nsBin = 0;
+  int endBin = 0;
+  int endTotalBin = 0;
+  int firstBin = 0;
+  int key = 0;
+  int maxVeto = 0;
+  int maxVetoEnd = 0;
+  int maxVetoPrompt = 0;
+  int maxVetoPromptEnd = 0;
+  int maxVetoPromptStart = 0;
+  int maxVetoStart = 0;
+  int numPMTs = 0;
+  int peakLoc = 0;
+  int pmt = 0;
+  int start = 0;
+  int startBin = 0;
+  int vetoActivityBottom = 0;
+  int vetoActivityCBack = 0;
+  int vetoActivityCFront = 0;
+  int vetoActivityCLeft = 0;
+  int vetoActivityCRight = 0;
+  int vetoActivityPromptBottom = 0;
+  int vetoActivityPromptCBack = 0;
+  int vetoActivityPromptCFront = 0;
+  int vetoActivityPromptCLeft = 0;
+  int vetoActivityPromptCRight = 0;
+  int vetoActivityPromptTop = 0;
+  int vetoActivityTop = 0;
+  int vetoBin = 0;
+  int vetoIntLength = 0;
+
+  std::vector<double> xPoints;
+  std::vector<double> yPoints;
+  std::vector<float> energy;
+  std::vector<float> hits;
+  std::vector<float> percentOfPMT;
+  std::vector<int> count;
+
+
+
+  // loop through the pulses
+  const size_t kNumPulses = fPulses->GetNumPulses();
+  for (size_t loc = 0; loc < kNumPulses; ++loc) {
+
+    // make sure the time is within the range of the DAQ window for analysis
+    time = fPulses->GetPulseTime(loc);
+    if (std::isnan(time) || std::isinf(time) || time > 7960.0) {
       continue;
     }
-    if (!rawData) {
-      MsgError("CCM RawData is set to 0");
+
+    // make sure the PMT is in the database
+    key = fPulses->GetKey(loc);
+    if (!PMTInfoMap::IsActive(key)) {
       continue;
     }
 
-    if (e % 1000 == 0) {
-      outfile->Flush();
-    }
-
-    // Reset histograms and counters
-    for (int i=0; i< 160; ++i) {
-      std::fill(pmtWaveform[i].begin(),pmtWaveform[i].end(),0.0);
-    }
-
-    std::fill(itPulsesTimeBegin,itPulsesTimeEnd,0);
-    std::fill(itIntegralTimeBegin,itIntegralTimeEnd,0.0);
-    std::fill(itIntegralDerBegin,itIntegralDerEnd,0.0);
-    std::fill(itVetoBottomTimeBegin,itVetoBottomTimeEnd,0);
-    std::fill(itVetoTopTimeBegin,itVetoTopTimeEnd,0);
-    std::fill(itVetoTotalTimeBegin,itVetoTotalTimeEnd,0);
-    std::fill(itVetoCTTimeBegin,itVetoCTTimeEnd,0);
-    std::fill(itVetoCBTimeBegin,itVetoCBTimeEnd,0);
-
-    // Check which trigger occured in DAQ window
-    // make sure it is strobe
-    size_t numWaveforms = rawData->GetNumWaveforms();
-    int boardOffset = 0;
-    if (numWaveforms != rawData->GetNumChannels()) {
-      boardOffset = (rawData->GetNumBoards()-1)*rawData->GetNumChannels();
-    }
-
-    int firstSample = 0;
-    if (fTriggerType.find("STROBE") != std::string::npos) {
-      firstSample = Utility::FindFirstSample(boardOffset+1,rawData);
-      if (!firstSample) {
-        ++skipped;
-        continue;
-      }
-    } else if (fTriggerType.find("BEAM") != std::string::npos) {
-      firstSample = Utility::FindFirstSample(boardOffset+2,rawData);
-      if (!firstSample) {
-        ++skipped;
-        continue;
-      }
-    } else if (fTriggerType.find("LED") != std::string::npos) {
-      firstSample = Utility::FindFirstSample(boardOffset+3,rawData);
-      if (!firstSample) {
-        ++skipped;
-        continue;
-      }
-    } else {
-      MsgWarning(MsgLog::Form("Trigger type is %s and does not equal strobe, beam, or led. Skipping Event",fTriggerType.c_str()));
+    pmtInfo = PMTInfoMap::GetPMTInfo(key);
+    if (!pmtInfo) {
       continue;
     }
 
-    // Load pulses Tree
-    // find board to board adjustments for the 11th board
-    nBytes = treePulses->GetEntry(e);
-    if (nBytes <= 0) {
-      continue;
-    }
-    if (!ccmPulses) {
-      MsgError("CCM Pulses is set to 0");
+    // get the integral of the pulse and make sure it is a real number
+    pulseIntegral = fPulses->GetPulseIntegral(loc);
+    if (std::isnan(pulseIntegral) || std::isinf(pulseIntegral)) {
       continue;
     }
 
-    int beamTime = 8001;
+    // get threshold and ADCtoPE for the PMT
+    threshold = pmtInfo->GetADCThreshold();
+    pe = pmtInfo->GetADCToPE();
 
-    // If \p fTriggerType == beam
-    // Find when the BCM triggered in the DAQ window 
-    if (fTriggerType.find("BEAM") != std::string::npos) {
-      double adjust11  = rawData->GetOffset(10) - ccmPulses->GetTriggerTime();
-      std::shared_ptr<Pulses> pulsesBeam = std::make_shared<Pulses>(0,0);
-      float offset = adjust11;
-      pulsesBeam->DerivativeFilter(&rawData->GetSamples(0).front(),8000,0,3,2800,offset,1.0);
+    //time = time*fgkBinWidth - 9.92; // convert time from bin number to us
 
-      for (size_t pulse = 0; pulse < pulsesBeam->GetNumPulses(); ++pulse) {
-        double time = pulsesBeam->GetPulseTime(pulse);
-        if (beamTime == 8001) {
-          beamTime = time;
-          break;
-        }
-      }
-      //beamTimeHist->AddBinContent(beamTime,100.0);
-      pulsesBeam->Reset();
-    } else if (beamTime == 8001) {
-      beamTime = 0;
-    }
-
-    // count trigger
-    ++numTriggers;
-
-    // loop through the pulses
-    const size_t kNumPulses = ccmPulses->GetNumPulses();
-    for (size_t loc = 0; loc < kNumPulses; ++loc) {
-
-      // make sure the time is within the range of the DAQ window for analysis
-      double time = ccmPulses->GetPulseTime(loc);
-      if (std::isnan(time) || std::isinf(time) || time > 7960.0) {
-        continue;
-      }
-
-      // make sure the PMT is in the database
-      int key = ccmPulses->GetKey(loc);
-      if (!PMTInfoMap::IsActive(key)) {
-        continue;
-      }
-
-      const PMTInformation * pmtInfo = PMTInfoMap::GetPMTInfo(key);
-      if (!pmtInfo) {
-        continue;
-      }
-
-      // get the integral of the pulse and make sure it is a real number
-      double pulseIntegral = ccmPulses->GetPulseIntegral(loc);
-      if (std::isnan(pulseIntegral) || std::isinf(pulseIntegral)) {
-        continue;
-      }
-
-      // get threshold and ADCtoPE for the PMT
-      double threshold = pmtInfo->GetADCThreshold();
-      double pe = pmtInfo->GetADCToPE();
-
-      //time = time*kBinWidth - 9.92; // convert time from bin number to us
-
-      // if the PMT was a veto pmt see if the integral is above 10
-      // keep track the number of times that pmt fired in the DAQ window
-      if (pmtInfo->IsVeto()) {
-        auto name = pmtInfo->GetLocName();
-        if (pulseIntegral  > 5) {
-          int firstBin = std::max(time,0.0);
-          //int lastBin  = std::min(time + ccmPulses->GetPulseLength(loc),static_cast<double>(kNumBins));
-          int bin = firstBin;
-          //for (int bin = firstBin; bin <lastBin; ++bin) {
-          //  if (bin < 0 || bin >= static_cast<int>(kNumBins)) {
-          //    MsgFatal(MsgLog::Form("for veto pulse\tevent %ld pulse %zu key %d bin %d firstBin %d lastBin %d",
-          //    e,loc,key,bin,firstBin,lastBin));
-          //  }
-            // veto top tubes
-            if (name.find("VT") != std::string::npos) {
-              ++vetoTopTime.at(bin);
-              // veto column top tubes
-            } else if (name.find("VCT") != std::string::npos) {
-              ++vetoCTTime.at(bin);
-              // veto column bottom tubes
-            } else if (name.find("VCB") != std::string::npos) {
-              ++vetoCBTime.at(bin);
-            } else {
-              ++vetoBottomTime.at(bin);
-            } // end if-else over where the veto is located
-            ++vetoTotalTime.at(bin);
-          //} // end for each bin the pulse is over
-        } // end if pulseIntegral is greater than 10
-
-        // move to the next event
-        continue;
-      } // end if pmtInfo->IsVeto()
-
-      // check if pulse integral is below threshold or
-      // the ADCtoPE calibration is negative or zero
-      // if either is true do not analyze the pulse
-      if (pulseIntegral < threshold || pe <= 0) {
-        continue;
-      }
-
-      // check length of pulse
-      // make sure it is greater than or equal to 20 ns
-      double length = ccmPulses->GetPulseLength(loc);
-      if (length*2.0 < 20.0) {
-        continue;
-      }
-
-      // apply the ADCtoPE to the pulse
-      pulseIntegral /= pe;
-
-      // get the first and last bin in the DAQ window the pulse spanned
-      int firstBin = std::max(time,0.0);
-      int lastBin  = std::min(time + length,static_cast<double>(kNumBins));
-      double middle = (lastBin + firstBin)/2.0;
-
-
-      // add the pulse to the integral and pmt histograms
-      // reconstruct the pulse for the integral histogram
-      // as a triangle where the area of the triangle is
-      // equal to to the pulseIntegral
-      for (int bin = firstBin; bin < lastBin; ++bin) {
-        double integral = 0.0;
-        double hitFraction = 0.0;
-        if (bin < middle) {
-          integral = 2.0*pulseIntegral/(lastBin-firstBin)*(static_cast<double>(bin - firstBin)/(middle - firstBin));
-          hitFraction = 2.0/(lastBin-firstBin)*(static_cast<double>(bin - firstBin)/(middle - firstBin));
-        } else if (bin != middle) {
-          integral = 2.0*pulseIntegral/(lastBin-firstBin)*(static_cast<double>(lastBin - bin)/(lastBin - middle));
-          hitFraction = 2.0/(lastBin-firstBin)*(static_cast<double>(lastBin - bin)/(lastBin - middle));
+    // if the PMT was a veto pmt see if the integral is above 10
+    // keep track the number of times that pmt fired in the DAQ window
+    if (pmtInfo->IsVeto()) {
+      auto name = pmtInfo->GetLocName();
+      if (pulseIntegral  > 5) {
+        firstBin = std::max(time,0.0);
+        ++fPMTWaveformCount.at(key).at(firstBin);
+        ++fPMTWaveform.at(key).at(firstBin);
+        // veto top tubes
+        if (name.find("VT") != std::string::npos) {
+          ++fVetoTopTime.at(firstBin);
+          // veto column top tubes
+        } else if (name.find("VC") != std::string::npos) {
+          // Back (columes 22 through 3)
+          // Left (columes 4 through 9)
+          // Right (columes 16 through 21)
+          // Front (columes 10 through 15)
+          int column = pmtInfo->GetColumn();
+          if (column >= 4 && column <= 9) {
+            ++fVetoCLeftTime.at(firstBin);
+          } else if (column >= 10 && column <= 15) {
+            ++fVetoCFrontTime.at(firstBin);
+          } else if (column >= 16 && column <= 21) {
+            ++fVetoCRightTime.at(firstBin);
+          } else if (column > 0) {
+            ++fVetoCBackTime.at(firstBin);
+          }
         } else {
-          integral = 2.0*pulseIntegral/(lastBin-firstBin);
-          hitFraction = 2.0/(lastBin-firstBin);
-        }
+          ++fVetoBottomTime.at(firstBin);
+        } // end if-else over where the veto is located
+        ++fVetoTotalTime.at(firstBin);
+      } // end if pulseIntegral is greater than 10
 
-        if (bin < 0 || bin >= static_cast<int>(kNumBins)) {
-          MsgFatal(MsgLog::Form("event %ld pulse %zu key %d bin %d firstBin %d lastBin %d middle %f",e,loc,key,bin,firstBin,lastBin,middle));
-        }
-        pmtWaveform.at(key).at(bin) += integral;
-        integralTime.at(bin) += integral;
-        pulsesTime.at(bin) += hitFraction;
+      // move to the next event
+      continue;
+    } // end if pmtInfo->IsVeto()
 
-      } // end for bin = firstBin
-    } // for over each pulse
-
-    for (int sampleLoc=2; sampleLoc<static_cast<int>(kNumBins)-1; ++sampleLoc) {
-      integralDer.at(sampleLoc) = (integralTime.at(sampleLoc+1) - integralTime.at(sampleLoc-1))/3.0/0.5;
+    // check if pulse integral is below threshold or
+    // the ADCtoPE calibration is negative or zero
+    // if either is true do not analyze the pulse
+    if (pulseIntegral < threshold || pe <= 0) {
+      continue;
     }
 
-    /////////////////////////////////////////////
-    // time to find events in the DAQ window
-    /////////////////////////////////////////////
-    int numBins20ns = 0.02/kBinWidth;
-    int numBins90ns = 0.090/kBinWidth;
-    //int numBins30ns = 0.030/kBinWidth;
-    //int numBins1p6us = 1.6/kBinWidth;
-    //int prevStart = -1000;
+    // check length of pulse
+    // make sure it is greater than or equal to 20 ns
+    length = fPulses->GetPulseLength(loc);
+    if (length*2.0 < 20.0) {
+      continue;
+    }
 
-    for (size_t bin = 0; bin < kNumBins; ++bin) {
-      if (-9.92 + static_cast<double>(bin)*kBinWidth >= static_cast<double>(7960-1600)*2e-3 - 9.92) {
-        break;
-      }
-      if (integralTime.at(bin) >= 0.4) {
-        TVector3 pos;
-        int startBin = bin;
+    // apply the ADCtoPE to the pulse
+    pulseIntegral /= pe;
 
-        if (startBin >= static_cast<int>(kNumBins)) {
-          MsgFatal(MsgLog::Form("Start Bin is greater than or equal to total number of bins: event %ld bin %zu startBin %d",e,bin,startBin));
-        }
+    // get the first and last bin in the DAQ window the pulse spanned
+    firstBin = std::max(time,0.0);
+    lastBin  = std::min(time + length,static_cast<double>(fgkNumBins));
+    middle = (lastBin + firstBin)/2.0;
 
-        // find where the first peak is in the event
-        int peakLoc = startBin;
-        for (size_t bin2 = startBin; bin2 < kNumBins-1; ++bin2) {
-          if (integralTime.at(bin2+1) < integralTime.at(bin2)) {
-            peakLoc = bin2;
-            break;
-          } // end if integralTime.at(bin2+1) < ...
-        } // end for size_t bin2 = startBin
 
-        if ((peakLoc+startBin)/2-startBin > 3) {
-          std::vector<double> xPoints;
-          std::vector<double> yPoints;
-          for (int bin2 = startBin; bin2 < (peakLoc+startBin)/2; ++bin2) {
-            xPoints.push_back(bin2);
-            yPoints.push_back(integralTime.at(bin2));
-          }
-          double c0 = 0;
-          double c1 = 0;
-          Utility::LinearUnweightedLS(xPoints.size(),&xPoints.front(),&yPoints.front(),c0,c1);
-
-          if (static_cast<int>(-c0/c1) - startBin > 0) {
-            ++numEventsSTLater;
-          }
-          if (static_cast<int>(-c0/c1) - startBin < -10) {
-            ++numEventsST20nsBefore;
-          }
-          ++numEventsSTFit;
-
-          startBin = static_cast<int>(-c0/c1);
-          xPoints.clear();
-          yPoints.clear();
-        }
-
-        // find end of event: defined as two consecutive empty bins
-        int endBin = kNumBins-1;
-        for (size_t bin2 = bin; bin2 < kNumBins-10; ++bin2) {
-          if (std::accumulate(itPulsesTimeBegin+bin2,itPulsesTimeBegin+bin2+10,0.f) == 0) {
-            endBin = bin2;
-            break;
-          } // end if no hits for 20 ns
-        } // end for size_t bin2 = bin
-
-        if (endBin >= static_cast<int>(kNumBins)) {
-          MsgFatal(MsgLog::Form("event %ld bin %zu endBin %d",e,bin,endBin));
-        }
-
-        int start = startBin - numBins90ns;
-        if (start < 0) {
-          start = 0;
-        }
-
-        int maxVeto = 0;
-        int maxVetoStart = 0;
-        int maxVetoEnd = 0;
-        for (int vetoBin = start; vetoBin < endBin+numBins90ns; ++vetoBin) {
-          auto current = std::accumulate(itVetoTotalTimeBegin+vetoBin,itVetoTotalTimeBegin+vetoBin+numBins90ns,0);
-          if (current > maxVeto) {
-            maxVeto = current;
-            maxVetoStart = vetoBin;
-            maxVetoEnd = vetoBin+numBins90ns;
-          }
-        }
-
-        int vetoActivityTop = std::accumulate(itVetoTopTimeBegin+maxVetoStart,itVetoTopTimeBegin+maxVetoEnd,0);
-        int vetoActivityCT = std::accumulate(itVetoCTTimeBegin+maxVetoStart,itVetoCTTimeBegin+maxVetoEnd,0);
-        int vetoActivityCB = std::accumulate(itVetoCBTimeBegin+maxVetoStart,itVetoCBTimeBegin+maxVetoEnd,0);
-        int vetoActivityBottom = std::accumulate(itVetoBottomTimeBegin+maxVetoStart,itVetoBottomTimeBegin+maxVetoEnd,0);
-
-        //int maxVetoBin = std::distance(itVetoTotalTimeBegin,std::max_element(itVetoTotalTimeBegin+start,itVetoTotalTimeBegin+endBin));
-        //int vetoActivityTop = *std::max_element(itVetoTopTimeBegin+start,itVetoTopTimeBegin+endBin);
-        //int vetoActivityCT = *std::max_element(itVetoCTTimeBegin+start,itVetoCTTimeBegin+endBin);
-        //int vetoActivityCB = *std::max_element(itVetoCBTimeBegin+start,itVetoCBTimeBegin+endBin);
-        //int vetoActivityBottom = *std::max_element(itVetoBottomTimeBegin+start,itVetoBottomTimeBegin+endBin);
-        //int vetoActivityTotal = *(itVetoTotalTimeBegin+maxVetoBin);
-        //int vetoActivityTop = *(itVetoTopTimeBegin+maxVetoBin);
-        //int vetoActivityCT = *(itVetoCTTimeBegin+maxVetoBin);
-        //int vetoActivityCB = *(itVetoCBTimeBegin+maxVetoBin);
-        //int vetoActivityBottom = *(itVetoBottomTimeBegin+maxVetoBin);
-
-        //int maxBin = std::distance(itIntegralTimeBegin,std::max_element(itIntegralTimeBegin+startBin,itIntegralTimeBegin+endBin));
-
-        //prevStart = startBin;
-        // + 15 to calibrate to EJ detectors
-        // subtract the beam time to remove the jitter of the beam timing
-        double startTime = static_cast<double>(startBin-beamTime+15-1)*kBinWidth;
-        double endTime = static_cast<double>(endBin-beamTime+15-1)*kBinWidth;
-
-        double promptIntegral = 0;
-        if (startBin+numBins90ns >= kNumBins) {
-          promptIntegral = std::accumulate(itIntegralTimeBegin+startBin,itIntegralTimeEnd,0.0);
-        } else {
-          promptIntegral = std::accumulate(itIntegralTimeBegin+startBin,itIntegralTimeBegin+startBin+numBins90ns,0.0);
-        }
-
-        //double integral = std::accumulate(itIntegralTimeBegin+startBin,itIntegralTimeBegin+endBin,0.0);
-
-        double promptCoated = 0.0;
-        double promptUncoated = 0.0;
-        double totalCoated = 0.0;
-        double totalUncoated = 0.0;
-        double promptFit = 0;
-        std::vector<float> percentOfPMT;
-        double largestPMTFraction = 0.0;
-        //double largestPMTCharge = 0.0;
-        //int largestPMT = 0.0;
-        int numPMTs = 0;
-
-        for (int i=0; i < 160; ++i) {
-          const PMTInformation * pmtInfo = PMTInfoMap::GetPMTInfo(i);
-          if (!pmtInfo) {
-            continue;
-          }
-          if (pmtInfo->IsVeto()) {
-            continue;
-          }
-          double prompt = 0;
-          double prompt90 = 0;
-          double total = 0; 
-          // find integral for the first 20 ns
-          if (startBin+numBins20ns < kNumBins) {
-            prompt = std::accumulate(pmtWaveform.at(i).begin()+startBin,pmtWaveform.at(i).begin()+startBin+numBins20ns,0.0);
-          } else {
-            prompt = std::accumulate(pmtWaveform.at(i).begin()+startBin,pmtWaveform.at(i).end(),0.0);
-          }
-
-          // find integral for the first 90 ns
-          if (startBin+numBins90ns < kNumBins) {
-            prompt90 = std::accumulate(pmtWaveform.at(i).begin()+startBin,pmtWaveform.at(i).begin()+startBin+numBins90ns,0.0);
-          } else {
-            prompt90= std::accumulate(pmtWaveform.at(i).begin()+startBin,pmtWaveform.at(i).end(),0.0);
-          }
-
-          // find integral for the entire event window
-          if (endBin < kNumBins) {
-            total = std::accumulate(pmtWaveform.at(i).begin()+startBin,pmtWaveform.at(i).begin()+endBin,0.0);
-          }  else {
-            total = std::accumulate(pmtWaveform.at(i).begin()+startBin,pmtWaveform.at(i).end(),0.0);
-          }
-
-          if (prompt90 != 0) {
-            ++numPMTs;
-            percentOfPMT.push_back(prompt90/promptIntegral);
-          }
-          if (prompt90/promptIntegral > largestPMTFraction) {
-            largestPMTFraction = prompt90/promptIntegral;
-            //largestPMT = i;
-            //largestPMTCharge = prompt90;
-          }
-
-          if (pmtInfo->IsUncoated()) {
-            promptUncoated += prompt90;
-            totalUncoated += total;
-          } else {
-            promptCoated += prompt90;
-            totalCoated += total;
-          }
-          if (prompt) {
-            pos += *(pmtInfo->GetPosition())*prompt*prompt;
-            promptFit += prompt*prompt;
-          }
-        } // end for over all digitizer channels
-        pos *= 1.0/promptFit;
-        events->SetTriggerNumber(rawData->GetEventNumber());
-        events->SetComputerSecIntoEpoch(rawData->GetGPSSecIntoDay());
-        events->SetComputerNSIntoSec(rawData->GetGPSNSIntoSec());
-        events->SetStartTime(startTime);
-        if (startBin+numBins90ns >= kNumBins) {
-          events->SetNumCoated(std::accumulate(itPulsesTimeBegin+startBin,itPulsesTimeEnd,0.f),true);
-        } else {
-          events->SetNumCoated(std::accumulate(itPulsesTimeBegin+startBin,itPulsesTimeBegin+startBin+numBins90ns,0.f),true);
-        }
-        if (endBin < kNumBins) {
-          events->SetNumCoated(std::accumulate(itPulsesTimeBegin+startBin,itPulsesTimeBegin+endBin,0.f),false);
-          std::vector<float> hits(itPulsesTimeBegin+startBin,itPulsesTimeBegin+endBin);
-          std::vector<float> energy(itIntegralTimeBegin+startBin,itIntegralTimeBegin+endBin);
-          events->AddWaveforms(hits,energy);
-        } else {
-          events->SetNumCoated(std::accumulate(itPulsesTimeBegin+startBin,itPulsesTimeEnd,0.f),false);
-          std::vector<float> hits(itPulsesTimeBegin+startBin,itPulsesTimeEnd);
-          std::vector<float> energy(itIntegralTimeBegin+startBin,itIntegralTimeEnd);
-          events->AddWaveforms(hits,energy);
-        }
-        events->SetLength(endTime-startTime);
-        events->SetLargestPMTFraction(largestPMTFraction);
-        events->SetIntegralCoated(promptCoated,true);
-        events->SetIntegralCoated(totalCoated,false);
-        events->SetIntegralUncoated(promptUncoated,true);
-        events->SetIntegralUncoated(totalUncoated,false);
-        events->SetXPosition(pos.X());
-        events->SetYPosition(pos.Y());
-        events->SetZPosition(pos.Z());
-        events->SetNumVetoTop(vetoActivityTop);
-        events->SetNumVetoBottom(vetoActivityBottom);
-        events->SetNumVetoBack(vetoActivityCB);
-        events->SetNumVetoFront(vetoActivityCT);
-
-        //MsgInfo(MsgLog::Form("Veto: T: %d B %d CT %d CB %d To: %d",
-        //      vetoActivityTop,vetoActivityBottom,vetoActivityCT,vetoActivityCB,maxVeto));
-
-        outfile->cd();
-        eventsTree->Fill();
-        events->Reset();
-        double avgPercent = std::accumulate(percentOfPMT.begin(),percentOfPMT.end(),0.0);
-        avgPercent /= static_cast<double>(percentOfPMT.size());
-        double sigmaPercent = 0.0;
-        double skewPercent = 0.0;
-        for (const auto & pmt : percentOfPMT) {
-          sigmaPercent += std::pow(pmt-avgPercent,2.0);
-          skewPercent += std::pow(pmt-avgPercent,3.0);
-        }
-        skewPercent = skewPercent/static_cast<double>(percentOfPMT.size())/std::pow(1.0/(static_cast<double>(percentOfPMT.size())-1.0)*sigmaPercent,3.0/2.0);
-        sigmaPercent = std::sqrt(1.0/(static_cast<double>(percentOfPMT.size())-1.0)*sigmaPercent);
-
-        bin = endBin;
+    // add the pulse to the integral and pmt histograms
+    // reconstruct the pulse for the integral histogram
+    // as a triangle where the area of the triangle is
+    // equal to to the pulseIntegral
+    ++fPMTWaveformCount.at(key).at(firstBin);
+    for (bin = firstBin; bin < lastBin; ++bin) {
+      integral = 0.0;
+      hitFraction = 0.0;
+      if (bin < middle) {
+        integral = 2.0*pulseIntegral/(lastBin-firstBin)*(static_cast<double>(bin - firstBin)/(middle - firstBin));
+        hitFraction = 2.0/(lastBin-firstBin)*(static_cast<double>(bin - firstBin)/(middle - firstBin));
+      } else if (bin != middle) {
+        integral = 2.0*pulseIntegral/(lastBin-firstBin)*(static_cast<double>(lastBin - bin)/(lastBin - middle));
+        hitFraction = 2.0/(lastBin-firstBin)*(static_cast<double>(lastBin - bin)/(lastBin - middle));
       } else {
-        twoNSDist->Fill(integralTime.at(bin));
-        if (bin >= 0 && bin < pmtWaveform.front().size()) {
-          for (int i=0; i < 160; ++i) {
-            const PMTInformation * pmtInfo = PMTInfoMap::GetPMTInfo(i);
-            if (!pmtInfo) {
-              continue;
-            }
-            if (pmtInfo->IsVeto()) {
-              continue;
-            }
-            double pe = pmtInfo->GetADCToPE();
-            if (pe <= 0) {
-              continue;
-            }
-            if (pmtInfo->IsUncoated()) {
-              twoNSDistU->Fill(pmtWaveform.at(i).at(bin));
-            } else {
-              twoNSDistC->Fill(pmtWaveform.at(i).at(bin));
-            } //end if-else IsUncoated
-          } // end for over all digitizer channels
-        } // end if bin is in vector range
-      } // end threshold if-else
-    } // end for int bin
-  } // end for e < nEntries
+        integral = 2.0*pulseIntegral/(lastBin-firstBin);
+        hitFraction = 2.0/(lastBin-firstBin);
+      }
 
-  MsgInfo(MsgLog::Form("numEventsSTLater %d numEventsST20nsBefore %d numEventsSTFit %d",
-        numEventsSTLater,numEventsST20nsBefore,numEventsSTFit));
+      if (bin < 0 || bin >= static_cast<int>(fgkNumBins)) {
+        MsgFatal(MsgLog::Form("event %ld pulse %zu key %d bin %d firstBin %d lastBin %d middle %f",
+              fPulses->GetEventNumber(),loc,key,bin,firstBin,lastBin,middle));
+      }
+      fPMTWaveform.at(key).at(bin) += integral;
+      fIntegralTime.at(bin) += integral;
+      fPulsesTime.at(bin) += hitFraction;
 
-  // Save tree and histograms to file
-  outfile->cd();
-  eventsTree->Write();
-  twoNSDist->Write();
-  twoNSDistC->Write();
-  twoNSDistU->Write();
-  outfile->Close();
+    } // end for bin = firstBin
+  } // for over each pulse
 
-  MsgInfo(MsgLog::Form("Num Triggers %ld",numTriggers));
-
-  if (file) {
-    delete file;
+  for (int sampleLoc=2; sampleLoc<static_cast<int>(fgkNumBins)-1; ++sampleLoc) {
+    fIntegralDer.at(sampleLoc) = (fIntegralTime.at(sampleLoc+1) - fIntegralTime.at(sampleLoc-1))/3.0/0.5;
   }
 
   /////////////////////////////////////////////
-  // delete histograms
+  // time to find events in the DAQ window
   /////////////////////////////////////////////
-  if (twoNSDist) {
-    delete twoNSDist;
-  }
-  if (twoNSDistC) {
-    delete twoNSDistC;
-  }
-  if (twoNSDistU) {
-    delete twoNSDistU;
-  }
+  int numBins20ns = 0.02/fgkBinWidth;
+  int numBins90ns = 0.090/fgkBinWidth;
+  //int numBins30ns = 0.030/fgkBinWidth;
+  //int numBins1p6us = 1.6/fgkBinWidth;
+  //int prevStart = -1000;
 
-  PMTInfoMap::ClearMap();
+  for (size_t bin = 0; bin < fgkNumBins; ++bin) {
+    if (-9.92 + static_cast<double>(bin)*fgkBinWidth >= static_cast<double>(7960-1600)*2e-3 - 9.92) {
+      break;
+    }
+    if (fIntegralTime.at(bin) >= fThreshold) {
+      startBin = bin;
+
+      if (startBin >= static_cast<int>(fgkNumBins)) {
+        MsgFatal(MsgLog::Form("Start Bin is greater than or equal to total number of bins: event %ld bin %zu startBin %d",
+              fPulses->GetEventNumber(),bin,startBin));
+      }
+
+      // find where the first peak is in the event
+      peakLoc = startBin;
+      for (bin2 = startBin; bin2 < fgkNumBins-1; ++bin2) {
+        if (fIntegralTime.at(bin2+1) < fIntegralTime.at(bin2)) {
+          peakLoc = bin2;
+          break;
+        } // end if fIntegralTime.at(bin2+1) < ...
+      } // end for size_t bin2 = startBin
+
+      if ((peakLoc+startBin)/2-startBin > 3) {
+        for (bin2 = startBin; bin2 < (peakLoc+startBin)/2; ++bin2) {
+          xPoints.push_back(bin2);
+          yPoints.push_back(fIntegralTime.at(bin2));
+        }
+        Utility::LinearUnweightedLS(xPoints.size(),&xPoints.front(),&yPoints.front(),c0,c1);
+
+        // find the first non-empty start bin
+        // important for calculating position
+        // and integrals
+        startBin = static_cast<int>(-c0/c1);
+        while (fPulsesTime.at(startBin) == 0) {
+          ++startBin;
+        }
+
+        xPoints.clear();
+        yPoints.clear();
+      }
+
+      // find end of event: defined as two consecutive empty bins
+      endBin = fgkNumBins-1;
+      for (bin2 = bin; bin2 < fgkNumBins-10; ++bin2) {
+        if (std::accumulate(itPulsesTimeBegin+bin2,itPulsesTimeBegin+bin2+10,0.f) == 0) {
+          endBin = bin2;
+          break;
+        } // end if no hits for 20 ns
+      } // end for size_t bin2 = bin
+
+      if (endBin >= static_cast<int>(fgkNumBins)) {
+        MsgFatal(MsgLog::Form("event %ld bin %zu endBin %d",fPulses->GetEventNumber(),bin,endBin));
+      }
+
+      start = startBin - numBins90ns;
+      if (start < 0) {
+        start = 0;
+      }
+      end90nsBin = (startBin+numBins90ns < fgkNumBins) ? startBin+numBins90ns : fgkNumBins;
+      end20nsBin = (startBin+numBins20ns < fgkNumBins) ? startBin+numBins20ns : fgkNumBins;
+      endTotalBin = (endBin < fgkNumBins) ? endBin : fgkNumBins;
+
+
+      maxVeto = 0;
+      maxVetoStart = 0;
+      maxVetoEnd = 0;
+      maxVetoPrompt = 0;
+      maxVetoPromptStart = 0;
+      maxVetoPromptEnd = 0;
+      vetoIntLength = std::min(numBins90ns,endBin-start);
+      for (vetoBin = start; vetoBin+vetoIntLength <= endBin; ++vetoBin) {
+        current = std::accumulate(itVetoTotalTimeBegin+vetoBin,itVetoTotalTimeBegin+vetoBin+vetoIntLength,0);
+        if (current > maxVeto) {
+          maxVeto = current;
+          maxVetoStart = vetoBin;
+          maxVetoEnd = vetoBin+vetoIntLength;
+        }
+        if (vetoBin <= startBin) {
+          current = std::accumulate(itVetoTotalTimeBegin+vetoBin,itVetoTotalTimeBegin+vetoBin+vetoIntLength,0);
+          if (current > maxVetoPrompt) {
+            maxVetoPrompt = current;
+            maxVetoPromptStart = vetoBin;
+            maxVetoPromptEnd = vetoBin+vetoIntLength;
+          }
+        }
+      }
+
+      vetoActivityTop = std::accumulate(itVetoTopTimeBegin+maxVetoStart,itVetoTopTimeBegin+maxVetoEnd,0);
+      vetoActivityCRight = std::accumulate(itVetoCRightTimeBegin+maxVetoStart,itVetoCRightTimeBegin+maxVetoEnd,0);
+      vetoActivityCLeft = std::accumulate(itVetoCLeftTimeBegin+maxVetoStart,itVetoCLeftTimeBegin+maxVetoEnd,0);
+      vetoActivityCFront = std::accumulate(itVetoCFrontTimeBegin+maxVetoStart,itVetoCFrontTimeBegin+maxVetoEnd,0);
+      vetoActivityCBack = std::accumulate(itVetoCBackTimeBegin+maxVetoStart,itVetoCBackTimeBegin+maxVetoEnd,0);
+      vetoActivityBottom = std::accumulate(itVetoBottomTimeBegin+maxVetoStart,itVetoBottomTimeBegin+maxVetoEnd,0);
+
+      vetoActivityPromptTop = std::accumulate(itVetoTopTimeBegin+maxVetoPromptStart,itVetoTopTimeBegin+maxVetoPromptEnd,0);
+      vetoActivityPromptCRight = std::accumulate(itVetoCRightTimeBegin+maxVetoPromptStart,itVetoCRightTimeBegin+maxVetoPromptEnd,0);
+      vetoActivityPromptCLeft = std::accumulate(itVetoCLeftTimeBegin+maxVetoPromptStart,itVetoCLeftTimeBegin+maxVetoPromptEnd,0);
+      vetoActivityPromptCFront = std::accumulate(itVetoCFrontTimeBegin+maxVetoPromptStart,itVetoCFrontTimeBegin+maxVetoPromptEnd,0);
+      vetoActivityPromptCBack = std::accumulate(itVetoCBackTimeBegin+maxVetoPromptStart,itVetoCBackTimeBegin+maxVetoPromptEnd,0);
+      vetoActivityPromptBottom = std::accumulate(itVetoBottomTimeBegin+maxVetoPromptStart,itVetoBottomTimeBegin+maxVetoPromptEnd,0);
+
+      vetoTimeTop = FindFirstNoneEmptyBin<int>(itVetoTopTimeBegin,itVetoTopTimeBegin+start,itVetoTopTimeBegin+endBin);
+      vetoTimeCRight = FindFirstNoneEmptyBin<int>(itVetoCRightTimeBegin,itVetoCRightTimeBegin+start,itVetoCRightTimeBegin+endBin);
+      vetoTimeCLeft = FindFirstNoneEmptyBin<int>(itVetoCLeftTimeBegin,itVetoCLeftTimeBegin+start,itVetoCLeftTimeBegin+endBin);
+      vetoTimeCFront = FindFirstNoneEmptyBin<int>(itVetoCFrontTimeBegin,itVetoCFrontTimeBegin+start,itVetoCFrontTimeBegin+endBin);
+      vetoTimeCBack = FindFirstNoneEmptyBin<int>(itVetoCBackTimeBegin,itVetoCBackTimeBegin+start,itVetoCBackTimeBegin+endBin);
+      vetoTimeBottom = FindFirstNoneEmptyBin<int>(itVetoBottomTimeBegin,itVetoBottomTimeBegin+start,itVetoBottomTimeBegin+endBin);
+
+      // + 15 to calibrate to EJ detectors
+      // subtract the beam time to remove the jitter of the beam timing
+      if (vetoTimeTop >= 0) {
+        vetoTimeTop = static_cast<double>(vetoTimeTop - beamTime + 15)*fgkBinWidth;
+      }
+      if (vetoTimeCRight >= 0) {
+        vetoTimeCRight = static_cast<double>(vetoTimeCRight - beamTime + 15)*fgkBinWidth;
+      }
+      if (vetoTimeCLeft >= 0) {
+        vetoTimeCLeft = static_cast<double>(vetoTimeCLeft - beamTime + 15)*fgkBinWidth;
+      }
+      if (vetoTimeCFront >= 0) {
+        vetoTimeCFront = static_cast<double>(vetoTimeCRight - beamTime + 15)*fgkBinWidth;
+      }
+      if (vetoTimeCBack >= 0) {
+        vetoTimeCBack = static_cast<double>(vetoTimeCBack - beamTime + 15)*fgkBinWidth;
+      }
+      if (vetoTimeBottom >= 0) {
+        vetoTimeBottom = static_cast<double>(vetoTimeBottom - beamTime + 15)*fgkBinWidth;
+      }
+
+      double startTime = static_cast<double>(startBin-beamTime+15)*fgkBinWidth;
+      double endTime = static_cast<double>(endBin-beamTime+15)*fgkBinWidth;
+
+      //MsgInfo(MsgLog::Form("Max Veto Location(Prompt) %d(%d) Amount(Prompt) %d(%d)",
+      //      maxVetoStart,maxVetoPromptStart,maxVeto,maxVetoPrompt));
+
+      promptIntegral = std::accumulate(itIntegralTimeBegin+startBin,itIntegralTimeBegin+end90nsBin,0.f);
+
+      timeCoated = 0.0;
+      timeUncoated = 0.0;
+      promptCoated = 0.0;
+      promptUncoated = 0.0;
+      totalCoated = 0.0;
+      totalUncoated = 0.0;
+      promptFit = 0;
+      if (!percentOfPMT.empty()) {
+        percentOfPMT.clear();
+      }
+      largestPMTFraction = 0.0;
+      numPMTs = 0;
+
+      for (pmt=0; pmt < fgkNumPMTs; ++pmt) {
+        pmtInfo = PMTInfoMap::GetPMTInfo(pmt);
+        if (!pmtInfo) {
+          continue;
+        }
+        if (pmtInfo->IsVeto()) {
+          continue;
+        }
+
+        pmtWaveformBeginIter = fPMTWaveform.at(pmt).begin();
+        pmtWaveformEndIter = fPMTWaveform.at(pmt).end();
+
+        // find integral for the first 20 ns
+        prompt = std::accumulate(pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+end20nsBin,0.f);
+
+        // find integral for the first 90 ns
+        prompt90 = std::accumulate(pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+end90nsBin,0.f);
+
+        // find integral for the entire event window
+        total = std::accumulate(pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+endTotalBin,0.f);
+        time = FindFirstNoneEmptyBin<float>(pmtWaveformBeginIter,pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+endTotalBin);
+
+        if (prompt90 != 0) {
+          ++numPMTs;
+          percentOfPMT.push_back(prompt90/promptIntegral);
+        }
+        if (prompt90 > largestPMTFraction) {
+          largestPMTFraction = prompt90;
+          //largestPMT = pmt;
+          //largestPMTCharge = prompt90;
+        }
+
+        if (pmtInfo->IsUncoated()) {
+          promptUncoated += prompt90;
+          totalUncoated += total;
+          if (time != -1) {
+            timeUncoated = std::min(time,timeUncoated);
+          }
+        } else {
+          promptCoated += prompt90;
+          totalCoated += total;
+          if (time != -1) {
+            timeCoated = std::min(time,timeCoated);
+          }
+        }
+        if (prompt) {
+          pos += *(pmtInfo->GetPosition())*prompt*prompt;
+          promptFit += prompt*prompt;
+        }
+      } // end for over all digitizer channels
+      pos *= 1.0/promptFit;
+
+      timeUncoated = static_cast<double>(timeUncoated - beamTime + 15)*fgkBinWidth;
+      timeCoated = static_cast<double>(timeCoated - beamTime + 15)*fgkBinWidth;
+
+      event->SetStartTime(startTime);
+      event->SetStartTimeUncoated(timeUncoated);
+      event->SetStartTimeCoated(timeCoated);
+      event->SetStartTimeVetoTop(vetoTimeTop);
+      event->SetStartTimeVetoRight(vetoTimeCRight);
+      event->SetStartTimeVetoLeft(vetoTimeCLeft);
+      event->SetStartTimeVetoFront(vetoTimeCFront);
+      event->SetStartTimeVetoBack(vetoTimeCBack);
+      event->SetStartTimeVetoBottom(vetoTimeBottom);
+
+      event->SetNumCoated(std::accumulate(itPulsesTimeBegin+startBin,itPulsesTimeBegin+end90nsBin,0.f),true);
+      event->SetNumCoated(std::accumulate(itPulsesTimeBegin+startBin,itPulsesTimeBegin+endTotalBin,0.f),false);
+
+      hits.resize(endTotalBin-startBin);
+      energy.resize(endTotalBin-startBin);
+      count.resize(endTotalBin-startBin);
+
+      hits.assign(itPulsesTimeBegin+startBin,itPulsesTimeBegin+endTotalBin);
+      energy.assign(itIntegralTimeBegin+startBin,itIntegralTimeBegin+endTotalBin);
+      event->AddWaveforms(hits,energy);
+      for (pmt=0; pmt < fgkNumPMTs; ++pmt) {
+        count.assign(fPMTWaveformCount.at(pmt).begin()+startBin,fPMTWaveformCount.at(pmt).begin()+endTotalBin);
+        if (std::accumulate(count.begin(),count.end(),0) == 0) {
+          continue;
+        }
+        energy.assign(fPMTWaveform.at(pmt).begin()+startBin,fPMTWaveform.at(pmt).begin()+endTotalBin);
+        event->AddPMTWaveforms(pmt,count,energy);
+      }
+
+      event->SetLength(endTime-startTime);
+      event->SetLargestPMTFraction(largestPMTFraction);
+
+      event->SetIntegralCoated(promptCoated,true);
+      event->SetIntegralCoated(totalCoated,false);
+      event->SetIntegralUncoated(promptUncoated,true);
+      event->SetIntegralUncoated(totalUncoated,false);
+
+      event->SetXPosition(pos.X());
+      event->SetYPosition(pos.Y());
+      event->SetZPosition(pos.Z());
+
+      event->SetNumVetoTop(vetoActivityTop,false);
+      event->SetNumVetoBottom(vetoActivityBottom,false);
+      event->SetNumVetoLeft(vetoActivityCLeft,false);
+      event->SetNumVetoRight(vetoActivityCRight,false);
+      event->SetNumVetoFront(vetoActivityCFront,false);
+      event->SetNumVetoBack(vetoActivityCBack,false);
+
+      event->SetNumVetoTop(vetoActivityPromptTop,true);
+      event->SetNumVetoBottom(vetoActivityPromptBottom,true);
+      event->SetNumVetoLeft(vetoActivityPromptCLeft,true);
+      event->SetNumVetoRight(vetoActivityPromptCRight,true);
+      event->SetNumVetoFront(vetoActivityPromptCFront,true);
+      event->SetNumVetoBack(vetoActivityPromptCBack,true);
+
+      event->SetPMTHits(numPMTs,percentOfPMT);
+
+      fEvents->AddSimplifiedEvent(SimplifiedEvent(*event));
+
+      event->Reset();
+
+      // currently not using the commented out code
+      //double avgPercent = std::accumulate(percentOfPMT.begin(),percentOfPMT.end(),0.0);
+      //avgPercent /= static_cast<double>(percentOfPMT.size());
+      //double sigmaPercent = 0.0;
+      //double skewPercent = 0.0;
+      //for (const auto & pmt : percentOfPMT) {
+      //  sigmaPercent += std::pow(pmt-avgPercent,2.0);
+      //  skewPercent += std::pow(pmt-avgPercent,3.0);
+      //}
+      //skewPercent = skewPercent /
+      //              static_cast<double>(percentOfPMT.size()) /
+      //              std::pow(1.0/(static_cast<double>(percentOfPMT.size())-1.0)*sigmaPercent,3.0/2.0);
+      //sigmaPercent = std::sqrt(1.0/(static_cast<double>(percentOfPMT.size())-1.0)*sigmaPercent);
+
+      bin = endBin;
+    } // end threshold if-else
+  } // end for int bin
 
   return kCCMSuccess;
 }
@@ -708,26 +649,49 @@ void CCMFindEvents::Configure(const CCMConfig& c )
   //Initialize any parameters here
   //by reading them from the CCMConfig object.
 
-  if (&c != 0)
-  {
-    c("TriggerType").Get(fTriggerType);
+  c("TriggerType").Get(fTriggerType);
+  c("Threshold").Get(fThreshold);
 
-    c("HVOffFile").Get(fHVOffList);
-    c("CalibrationFile").Get(fCalibrationFile);
-    c("OutFileName").Get(fOutFileName);
-    c("InFileName").Get(fInFileName);
 
-    MsgInfo("Input parameter values");
-    MsgInfo(MsgLog::Form("-InFileName: %s",fInFileName.c_str()));
-    MsgInfo(MsgLog::Form("-OutFileName: %s",fOutFileName.c_str()));
-    MsgInfo(MsgLog::Form("-HVOffFile: %s",fHVOffList.c_str()));
-    MsgInfo(MsgLog::Form("-CalibrationFile: %s",fCalibrationFile.c_str()));
-    MsgInfo(MsgLog::Form("-TriggerType: %s",fTriggerType.c_str()));
+  MsgInfo("Input parameter values");
+  MsgInfo(MsgLog::Form("-TriggerType: %s",fTriggerType.c_str()));
+  MsgInfo(MsgLog::Form("-Threshold: %f",fThreshold));
 
-    fIsInit = true;
-  } else {
-    fIsInit = false;
+  fIsInit = true;
+
+}
+
+//_______________________________________________________________________________________
+void CCMFindEvents::DefineVectors()
+{
+  fPulsesTime.resize(fgkNumBins,0.f);
+  fIntegralTime = fPulsesTime;
+  fIntegralDer = fPulsesTime;
+
+  fVetoBottomTime.resize(fgkNumBins,0);
+  fVetoTopTime.resize(fgkNumBins,0);
+  fVetoCRightTime.resize(fgkNumBins,0);
+  fVetoCLeftTime.resize(fgkNumBins,0);
+  fVetoCFrontTime.resize(fgkNumBins,0);
+  fVetoCBackTime.resize(fgkNumBins,0);
+  fVetoTotalTime.resize(fgkNumBins,0);
+
+  fPMTWaveform.resize(fgkNumPMTs,std::vector<float>());
+  for (auto & waveform : fPMTWaveform) {
+    waveform = fPulsesTime;
   }
 
+  fPMTWaveformCount.resize(fgkNumPMTs,std::vector<int>());
+  for (auto & waveform : fPMTWaveformCount) {
+    waveform.resize(fgkNumBins,0);
+  }
+}
+
+//_______________________________________________________________________________________
+CCMResult_t CCMFindEvents::EndOfJob() 
+{ 
+  MsgInfo(MsgLog::Form("Num Triggers %ld passed trigger type cut",fNumTriggers));
+
+  return kCCMSuccess;
 }
 

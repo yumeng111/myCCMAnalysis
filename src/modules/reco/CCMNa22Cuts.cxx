@@ -14,6 +14,7 @@
 #include "CCMNa22Cuts.h"
 #include "CCMModuleTable.h"
 
+#include "Events.h"
 #include "SimplifiedEvent.h"
 #include "MsgLog.h"
 
@@ -74,6 +75,7 @@ MODULE_DECL(CCMNa22Cuts);
 //_______________________________________________________________________________________
 CCMNa22Cuts::CCMNa22Cuts(const char* version) 
   : CCMModule("CCMNa22Cuts"),
+    fEvents(nullptr),
     fOutFileName(""),
     fDoVetoCut(false),
     fDoPositionCut(false),
@@ -97,20 +99,38 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
     fTimeCutValueLow(-std::numeric_limits<double>::max()),
     fTimeCutValueHigh(std::numeric_limits<double>::max()),
     fNicenessCutValueLow(-std::numeric_limits<double>::max()),
-    fNicenessCutValueHigh(std::numeric_limits<double>::max())
+    fNicenessCutValueHigh(std::numeric_limits<double>::max()),
+    fOutfile(nullptr),
+    fTree(nullptr),
+    fEnergy(0),
+    fLength(0),
+    fHits(0),
+    fNumPMTs(0),
+    fTime(0),
+    fVetoTop(0),
+    fVetoBottom(0),
+    fVetoCLeft(0),
+    fVetoCRight(0),
+    fVetoCFront(0),
+    fVetoCBack(0),
+    fWeight(0),
+    fX(0),
+    fY(0),
+    fZ(0),
+    fLargestPMTFraction(0),
+    fEpochSec(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
-  if (!fInFileNames.empty()) {
-    fInFileNames.clear();
-  }
+
+  SetupOutFile();
 }
 
 //_______________________________________________________________________________________
 CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr) 
 : CCMModule(clufdr),
+  fEvents(clufdr.fEvents),
   fOutFileName(clufdr.fOutFileName),
-  fInFileNames(clufdr.fInFileNames),
   fDoVetoCut(clufdr.fDoVetoCut),
   fDoPositionCut(clufdr.fDoPositionCut),
   fDoEnergyCut(clufdr.fDoEnergyCut),
@@ -133,7 +153,26 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
   fTimeCutValueLow(clufdr.fTimeCutValueLow),
   fTimeCutValueHigh(clufdr.fTimeCutValueHigh),
   fNicenessCutValueLow(clufdr.fNicenessCutValueLow),
-  fNicenessCutValueHigh(clufdr.fNicenessCutValueHigh)
+  fNicenessCutValueHigh(clufdr.fNicenessCutValueHigh),
+  fOutfile(clufdr.fOutfile),
+  fTree(clufdr.fTree),
+  fEnergy(clufdr.fEnergy),
+  fLength(clufdr.fLength),
+  fHits(clufdr.fHits),
+  fNumPMTs(clufdr.fNumPMTs),
+  fTime(clufdr.fTime),
+  fVetoTop(clufdr.fVetoTop),
+  fVetoBottom(clufdr.fVetoBottom),
+  fVetoCLeft(clufdr.fVetoCLeft),
+  fVetoCRight(clufdr.fVetoCRight),
+  fVetoCFront(clufdr.fVetoCFront),
+  fVetoCBack(clufdr.fVetoCBack),
+  fWeight(clufdr.fWeight),
+  fX(clufdr.fX),
+  fY(clufdr.fY),
+  fZ(clufdr.fZ),
+  fLargestPMTFraction(clufdr.fLargestPMTFraction),
+  fEpochSec(clufdr.fEpochSec)
 {
   // copy constructor
 }
@@ -147,159 +186,25 @@ CCMNa22Cuts::~CCMNa22Cuts()
 //_______________________________________________________________________________________
 CCMResult_t CCMNa22Cuts::ProcessEvent()
 {
-  TH1::AddDirectory(0);
-  TH1::SetDefaultSumw2(true);
+  const size_t kNumEvents = fEvents->GetNumEvents();
+  fEpochSec = fEvents->GetComputerSecIntoEpoch();
+  for (size_t e = 0; e < kNumEvents; ++e) {
+    auto simplifiedEvent = fEvents->GetSimplifiedEvent(e);
 
-  std::vector<std::shared_ptr<TF1>> weightFunction;
-  for (int i=0; i < 4; ++i) {
-    weightFunction.push_back(std::make_shared<TF1>(Form("weightFunction%d",i),"[0]*TMath::Exp(-(x-[1])*[2])",-9.92,6.08));
-    switch (i) {
-      case 0:
-        weightFunction.back()->FixParameter(0,8.63796e-7);
-        weightFunction.back()->FixParameter(1,2.45729e1);
-        weightFunction.back()->FixParameter(2,9.84429e-2);
-        break;
-      case 1:
-        weightFunction.back()->FixParameter(0,7.90765e-5);
-        weightFunction.back()->FixParameter(1,3.73707e1);
-        weightFunction.back()->FixParameter(2,8.74439e-2);
-        break;
-      case 2:
-        weightFunction.back()->FixParameter(0,2.14018e-4);
-        weightFunction.back()->FixParameter(1,3.70502e1);
-        weightFunction.back()->FixParameter(2,8.85969e-2);
-        break;
-      case 3:
-        weightFunction.back()->FixParameter(0,6.36795e-6);
-        weightFunction.back()->FixParameter(1,3.16871e1);
-        weightFunction.back()->FixParameter(2,9.26635e-2);
-        break;
-      default: break;
-    }// end switch
-  } // end for i < 4;
-
-  std::vector<double> energyBins;
-  energyBins.push_back(0.0);
-  for (double  value = 1; value < 20; value+=0.25) {
-    energyBins.push_back(value);
-  }
-  for (double  value = 20; value < 400; ++value) {
-    energyBins.push_back(value);
-  }
-  for (int exp = 0.0; exp < 5.0; ++exp) {
-    for (int digit = 0; digit < 36; ++digit) {
-      double value =(1.0+static_cast<double>(digit)/4.0)*std::pow(10.0,static_cast<double>(exp));
-      if (value < 400) {
-        continue;
-      }
-      energyBins.push_back(value);
-      if (value >= 500.0) {
-        ++digit;
-      }
-      //if (exp < 1) {
-      //  digit += 0.9;
-      //} else if (exp < 2) {
-      //  digit += 0.15;
-      //} else {
-      //  digit += 0.9;
-      //}
-    }
-  }
-
-  double energy = 0;
-  double length = 0;
-  double hits = 0;
-  int numPMTs = 0;
-  double time = 0;
-  int vetoTop = 0;
-  int vetoBottom = 0;
-  int vetoCT = 0;
-  int vetoCB = 0;
-  int vetoCFront = 0;
-  int vetoCBack = 0;
-  double weight = 0;
-  double x = 0;
-  double y = 0;
-  double z = 0;
-  double largestPMTFraction = 0;
-  unsigned int epochSec = 0;
-
-  auto outfile = TFile::Open(fOutFileName.c_str(),"RECREATE");
-  auto tree = new TTree("tree","tree");
-  tree->Branch("epochSec",&epochSec);
-  tree->Branch("energy",&energy);
-  tree->Branch("length",&length);
-  tree->Branch("hits",&hits);
-  tree->Branch("numPMTs",&numPMTs);
-  tree->Branch("time",&time);
-  tree->Branch("vetoTop",&vetoTop);
-  tree->Branch("vetoBottom",&vetoBottom);
-  tree->Branch("vetoCT",&vetoCT);
-  tree->Branch("vetoCB",&vetoCB);
-  tree->Branch("vetoCFront",&vetoCFront);
-  tree->Branch("vetoCBack",&vetoCBack);
-  tree->Branch("weight",&weight);
-  tree->Branch("x",&x);
-  tree->Branch("y",&y);
-  tree->Branch("z",&z);
-  tree->Branch("largestPMTFraction",&largestPMTFraction);
-
-  unsigned int prevSec = 0;
-  unsigned int prevNS = 0;
-  //double prevEvent = 0;
-
-  std::shared_ptr<TFile> file = nullptr;
-  TChain * chain = new TChain("events","chain");
-  for (const auto & fileName : fInFileNames) {
-    chain->AddFile(fileName.c_str());
-  }
-
-  SimplifiedEvent* events = 0;
-
-  chain->SetBranchAddress("events",&events);
-
-  int nEntries = chain->GetEntries();
-  MsgInfo(MsgLog::Form("Number of Events in Run is %d",nEntries));
-
-  //double numUncoated = 22.0;
-  //double numCoated = 77.0;
-
-  long e = 0;
-  for (e = 0; e < nEntries; ++e) {
-    if (e % 100000 == 0) {
-      MsgInfo(MsgLog::Form("%ld out of %ld (%.2f%%)",e,nEntries,static_cast<double>(e)/static_cast<double>(nEntries)*100.0));
-    }
-    chain->GetEntry(e);
-
-    unsigned int seconds = events->GetComputerSecIntoEpoch();
-    unsigned int nseconds = events->GetComputerNSIntoSec();
-
-    if (seconds != prevSec && nseconds != prevNS) {
-      prevSec = seconds;
-      prevNS = nseconds;
-    }
-
-    epochSec = seconds;
-
-
-    double st = events->GetStartTime();// - 9.92;
-    length = events->GetLength();
+    double st = simplifiedEvent.GetStartTime();// - 9.92;
+    fLength = simplifiedEvent.GetLength();
 
     double promptLength = 0.090;
-    bool longerThanPrompt = length > promptLength;
-    double promptIntegral = events->GetIntegralTank(longerThanPrompt);// - randomRate*promptLength;
-    double promptHits = events->GetNumCoated(longerThanPrompt);
+    bool longerThanPrompt = fLength > promptLength;
 
-    energy = promptIntegral;
-    hits = promptHits;
-    numPMTs = events->GetOtherEvents();
-
-    //RecalculateStartTime(events,st,promptIntegral,promptHits,length);
+    fEnergy = simplifiedEvent.GetIntegralTank(longerThanPrompt);// - randomRate*promptLength;
+    fHits = simplifiedEvent.GetNumCoated(longerThanPrompt);
+    fNumPMTs = simplifiedEvent.GetPMTHits();
 
     if (fShiftTime) {
       st -= 9.92;
     }
-    time = st;
+    fTime = st;
 
     if (fDoTimeCut) {
       if (st < fTimeCutValueLow || st > fTimeCutValueHigh) {
@@ -307,53 +212,51 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
       } // end time cut condition
     } // end fDoTimeCut
 
-    //prevEvent = st;
-
-    double et = st + length;
+    double et = st + fLength;
     if (et <= st) {
       continue;
     }
 
     if (fDoLengthCut) {
-      if (length < fLengthCutValueLow || length > fLengthCutValueHigh) {
+      if (fLength < fLengthCutValueLow || fLength > fLengthCutValueHigh) {
         continue;
       } // end length cut condition
     } // end if fDoLengthCut
 
-    x = events->GetXPosition();
-    y = events->GetYPosition();
-    z = events->GetZPosition();
+    fX = simplifiedEvent.GetXPosition();
+    fY = simplifiedEvent.GetYPosition();
+    fZ = simplifiedEvent.GetZPosition();
 
-    double radius = std::sqrt(x*x+y*y);
+    double radius = std::sqrt(fX*fX+fY*fY);
     if (fDoPositionCut) {
       if (radius < fRadiusCutValueLow || radius > fRadiusCutValueHigh ||
-          z < fZCutValueLow || z > fZCutValueHigh) {
+          fZ < fZCutValueLow || fZ > fZCutValueHigh) {
         continue;
       } // end position cut check
     } // end if fDoPositionCut
 
     if (fDoEnergyCut) {
-      if (promptIntegral < fEnergyCutValueLow || promptIntegral > fEnergyCutValueHigh) {
+      if (fEnergy < fEnergyCutValueLow || fEnergy > fEnergyCutValueHigh) {
         continue;
       }// end energy cut check
     }// end if fDoEnergyCut
 
-    if (promptHits < 3) {
+    if (fHits < 3) {
       continue;
     }
 
-    vetoTop = events->GetNumVetoTop();
-    vetoBottom = events->GetNumVetoBottom();
-    vetoCT = events->GetNumVetoFront();
-    vetoCBack = events->GetNumVetoRight();
-    vetoCFront = events->GetNumVetoLeft();
-    vetoCB = events->GetNumVetoBack();
-    int vetoTotal = events->GetNumVeto();
+    fVetoTop = simplifiedEvent.GetNumVetoTop();
+    fVetoBottom = simplifiedEvent.GetNumVetoBottom();
+    fVetoCLeft = simplifiedEvent.GetNumVetoLeft();
+    fVetoCBack = simplifiedEvent.GetNumVetoBack();
+    fVetoCFront = simplifiedEvent.GetNumVetoFront();
+    fVetoCRight = simplifiedEvent.GetNumVetoRight();
+    int vetoTotal = simplifiedEvent.GetNumVeto();
 
-    largestPMTFraction = events->GetLargestPMTFraction();
+    fLargestPMTFraction = simplifiedEvent.GetLargestPMTFraction();
     if (fDoNicenessCut) {
-      double uniform = promptIntegral/static_cast<double>(numPMTs);
-      double nice = (largestPMTFraction - uniform)/uniform;
+      double uniform = fEnergy/static_cast<double>(fNumPMTs);
+      double nice = (fLargestPMTFraction - uniform)/uniform;
       if (nice < fNicenessCutValueLow || nice > fNicenessCutValueHigh) {
         continue;
       }
@@ -365,27 +268,17 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
         continue;
       } // end veto cut check
     }// end if fDoVetoCut
-    //MsgInfo(MsgLog::Form("Veto: T: %d B %d CT %d CB %d To: %d",
-    //      vetoTop,vetoBottom,vetoCT,vetoCB,vetoTotal));
 
 
     bool reject = false;
     for (long e2 = e-1; e2 >= 0 && fDoPrevCut; --e2) {
-      chain->GetEntry(e2);
-      unsigned int sec2 = events->GetComputerSecIntoEpoch();
-      unsigned int nsec2 = events->GetComputerNSIntoSec();
+      auto simplifiedEvent2 = fEvents->GetSimplifiedEvent(e2);
 
-      if (sec2 != seconds || nsec2 != nseconds) {
-        break;
-      }
-
-      bool longerThanPrompt2 = events->GetLength() > promptLength;
-      double promptHits2 = events->GetNumCoated(longerThanPrompt2);
-      double st2 = events->GetStartTime();// - 9.92;
-      //double promptIntegral2 = events->GetIntegralTank(longerThanPrompt2);// - randomRate*promptLength;
-      //double length2 = events->GetLength();
-
-      //RecalculateStartTime(events,st2,promptIntegral2,promptHits2,length2);
+      bool longerThanPrompt2 = simplifiedEvent2.GetLength() > promptLength;
+      double promptHits2 = simplifiedEvent2.GetNumCoated(longerThanPrompt2);
+      double st2 = simplifiedEvent2.GetStartTime();// - 9.92;
+      //double promptIntegral2 = simplifiedEvent2.GetIntegralTank(longerThanPrompt2);// - randomRate*promptLength;
+      //double length2 = simplifiedEvent2.GetLength();
 
       if (fShiftTime) {
         st2 -= 9.92;
@@ -395,9 +288,9 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
         continue;
       }
 
-      double x2 = events->GetXPosition();
-      double y2 = events->GetYPosition();
-      double z2 = events->GetZPosition();
+      double x2 = simplifiedEvent2.GetXPosition();
+      double y2 = simplifiedEvent2.GetYPosition();
+      double z2 = simplifiedEvent2.GetZPosition();
       if (std::sqrt(x2*x2+y2*y2) > 0.8 || std::fabs(z2) > 0.35) {
         continue;
       }
@@ -415,17 +308,14 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
       continue;
     }
 
-    weight = 1.0;// /weightFunction.at(energyRegion)->Eval(st);
+    fWeight = 1.0;// /weightFunction.at(energyRegion)->Eval(st);
     //MsgInfo(MsgLog::Form("st %f weighFunction %g weight %g",st,weightFunction->Eval(st),weight));
 
-    outfile->cd();
-    tree->Fill();
-
+    if (fOutfile != nullptr) {
+      fOutfile->cd();
+      fTree->Fill();
+    }
   } // end e
-
-  outfile->cd();
-  tree->Write();
-  delete outfile;
 
   return kCCMSuccess;
 }
@@ -440,6 +330,7 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
   MsgInfo("Inside Coonfiguration file");
 
   c("OutFileName").Get(fOutFileName);
+  SetupOutFile();
 
   c("ShiftTime").Get(fShiftTime);
 
@@ -486,61 +377,97 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
     c("ReverseVeto").Get(fReverseVeto);
   }
 
-  std::string temp = "";
-  c("InFileName").Get(temp);
-
-  MsgInfo(MsgLog::Form("File List Name ....%s....",temp.c_str()));
-
-  std::ifstream infile(temp.c_str());
-  MsgInfo(MsgLog::Form("infile.good(): %d",infile.good()));
-  while (infile >> temp) {
-    MsgInfo(MsgLog::Form("Adding file %s",temp.c_str()));
-    fInFileNames.push_back(temp);
-  }
-  infile.close();
-  MsgInfo(MsgLog::Form("Size of fInFileNames: %zu",fInFileNames.size()));
-
   fIsInit = true;
 
 }
 
 /*!**********************************************
- * \fn void CCMNa22Cuts::RecalculateStartTime(SimplifiedEvent * events, double & st, double & charge, double & hits, double & length) 
- * \brief Recalcualte the start time of an event given a different method
- * \param[in] events The event to look at
- * \param[out] st The new start time
- * \param[out] charge The new integral of the event
- * \param[out] hits The new number of hits in the event
- * \param[out] length The new length of the event
+ * \fn void CCMNa22Cuts::SetupOutFile()
+ * \brief Setup the output file that gets saved
  ***********************************************/
-void CCMNa22Cuts::RecalculateStartTime(SimplifiedEvent * events, double & st, double & charge, double & hits, double & length) 
+void CCMNa22Cuts::SetupOutFile()
 {
-  const std::vector<float> & waveform = events->GetWaveformInt();
-  const std::vector<float> & waveformCount = events->GetWaveformCount();
-  bool crossed = false;
-  size_t stCount = 0;
-  charge = 0;
-  hits = 0;
-  for (size_t count = 0; count < waveform.size(); ++count) {
-    if (!crossed && waveform[count] >= 0.4) {
-      crossed = true;
-      st = events->GetStartTime()+static_cast<double>(count)*2e-3;
-      stCount = count;
-      charge = 0;
-      hits = 0;
-      length = (waveform.size() - count)*2e-3;
-    }
+  /*
+  std::vector<std::shared_ptr<TF1>> weightFunction;
+  for (int i=0; i < 4; ++i) {
+    weightFunction.push_back(std::make_shared<TF1>(Form("weightFunction%d",i),"[0]*TMath::Exp(-(x-[1])*[2])",-9.92,6.08));
+    switch (i) {
+      case 0:
+        weightFunction.back()->FixParameter(0,8.63796e-7);
+        weightFunction.back()->FixParameter(1,2.45729e1);
+        weightFunction.back()->FixParameter(2,9.84429e-2);
+        break;
+      case 1:
+        weightFunction.back()->FixParameter(0,7.90765e-5);
+        weightFunction.back()->FixParameter(1,3.73707e1);
+        weightFunction.back()->FixParameter(2,8.74439e-2);
+        break;
+      case 2:
+        weightFunction.back()->FixParameter(0,2.14018e-4);
+        weightFunction.back()->FixParameter(1,3.70502e1);
+        weightFunction.back()->FixParameter(2,8.85969e-2);
+        break;
+      case 3:
+        weightFunction.back()->FixParameter(0,6.36795e-6);
+        weightFunction.back()->FixParameter(1,3.16871e1);
+        weightFunction.back()->FixParameter(2,9.26635e-2);
+        break;
+      default: break;
+    }// end switch
+  } // end for i < 4;
+  */
 
-    if (crossed && count < stCount+45) {
-      charge += waveform[count];
-      hits += waveformCount[count];
-    } else if (crossed && count >= stCount+45) {
-      break;
-    }
-    ++count;
+  fEnergy = 0;
+  fLength = 0;
+  fHits = 0;
+  fNumPMTs = 0;
+  fTime = 0;
+  fVetoTop = 0;
+  fVetoBottom = 0;
+  fVetoCLeft = 0;
+  fVetoCRight = 0;
+  fVetoCFront = 0;
+  fVetoCBack = 0;
+  fWeight = 0;
+  fX = 0;
+  fY = 0;
+  fZ = 0;
+  fLargestPMTFraction = 0;
+  fEpochSec = 0;
+
+  if (!fOutFileName.empty()) {
+    MsgInfo(MsgLog::Form("Creating output file for cuts branch"));
+    fOutfile = TFile::Open(fOutFileName.c_str(),"RECREATE");
+    fTree = new TTree("tree","tree");
+    fTree->Branch("epochSec",&fEpochSec);
+    fTree->Branch("energy",&fEnergy);
+    fTree->Branch("length",&fLength);
+    fTree->Branch("hits",&fHits);
+    fTree->Branch("numPMTs",&fNumPMTs);
+    fTree->Branch("time",&fTime);
+    fTree->Branch("vetoTop",&fVetoTop);
+    fTree->Branch("vetoBottom",&fVetoBottom);
+    fTree->Branch("vetoCLeft",&fVetoCLeft);
+    fTree->Branch("vetoCRight",&fVetoCRight);
+    fTree->Branch("vetoCFront",&fVetoCFront);
+    fTree->Branch("vetoCBack",&fVetoCBack);
+    fTree->Branch("weight",&fWeight);
+    fTree->Branch("x",&fX);
+    fTree->Branch("y",&fY);
+    fTree->Branch("z",&fZ);
+    fTree->Branch("largestPMTFraction",&fLargestPMTFraction);
+  }
+}
+
+CCMResult_t CCMNa22Cuts::EndOfJob()
+{
+  if (fOutfile != nullptr) {
+    fOutfile->cd();
+    fTree->Write();
+    delete fOutfile;
   }
 
-  return;
-
+  return kCCMSuccess;
 }
+
 

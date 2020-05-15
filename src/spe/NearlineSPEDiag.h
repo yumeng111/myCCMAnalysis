@@ -49,6 +49,7 @@ class NearlineSPEDiag{
 		
 		void CreatePEHists();
     void SetClassVec(int value);
+    void FillPulses(const Pulses & pulses, double windowStart = -9, double windowEnd = -1);
     void MakeChainFillPulses(const std::vector<std::string> & fileList, bool ledRunFlag, double windowStart = -9, double windowEnd = -1, int numLEDTriggers = -1);
     void GetHistsToAdjust(std::string fileToAdjust, bool ledRunFlag, double windowStart = -9, double windowEnd = -1);
     void CalculateRates();

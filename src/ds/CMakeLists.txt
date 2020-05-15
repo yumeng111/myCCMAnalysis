@@ -4,6 +4,7 @@ set(DS_HEADERS
   RawData.h
   SimplifiedEvent.h
   SinglePulse.h
+  Events.h
   )
 
 set(INCLUDE_DIRECTORIES ${ROOT_INCLUDE_DIR} ${CCMAnalysis_INCLUDE_DIRS})
@@ -21,6 +22,7 @@ set(DS_SRCS
   RawData.cxx
   SimplifiedEvent.cxx
   SinglePulse.cxx
+  Events.cxx
   )
 
 set(DS_LINKDEF LinkDef.h)

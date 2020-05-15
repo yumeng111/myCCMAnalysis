@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <fstream>
+#include <cstring>
 
 #include "RConfigure.h"
 
@@ -23,6 +24,10 @@
 #include "CCMConfigParam.h"
 #include "CCMConfigTable.h"
 #include "Utility.h"
+#include "CCMRootIO.h"
+#include "CCMRawIO.h"
+#include "PMTInfoMap.h"
+//#include "CCMRawIO.h"
 //XML Parsing
 #include <xercesc/parsers/XercesDOMParser.hpp>
 #include <xercesc/dom/DOM.hpp>
@@ -56,8 +61,11 @@ CCMTaskConfig::~CCMTaskConfig()
 }
 
 //------------------------------------------------------
-CCMTaskConfig::CCMTaskConfig(std::string configfile,std::vector<std::string> infileList, std::vector<std::string> outfileList)
-  : fConfigFile(configfile),fInputFileList(infileList),fOutputFileList(outfileList)
+CCMTaskConfig::CCMTaskConfig(std::string configfile,
+    std::vector<std::string> rootInfileList, std::vector<std::string> rootOutfileList,
+    std::vector<std::string> rawInfileList, std::vector<std::string> rawOutfileList)
+  : fConfigFile(configfile),fInputFileList(rootInfileList),fOutputFileList(rootOutfileList),
+  fRawInputFileList(rawInfileList),fRawOutputFileList(rawOutfileList)
 {
   //constructor
   int status = ReadConfigFile();
@@ -130,15 +138,15 @@ int CCMTaskConfig::ReadConfigFile()
     return kCCMError;
   }
 
-  // Need Analysis Manager, because the xml file might contain information about cuts
-  //CCMAnalysisManager * anaMan = CCMAnalysisManager::GetInstance();
+  // Need CCMRootIO/CCMRawIO, because the xml file might contain information about cuts
+  std::shared_ptr<CCMRootIO> rootIO = CCMRootIO::GetInstance();
+  std::shared_ptr<CCMRawIO> rawIO = CCMRawIO::GetInstance();
 
   //We got the parser, now let's get the info out of it
   DOMDocument *doc = parser->getDocument();
 
   if(doc) {
     XMLCh xa[1000];
-    char* pEnd;
 
     //get the CCMConfigTable instance so we can add configurations to it
     CCMConfigTable& cfgTable = CCMConfigTable::Instance();
@@ -199,24 +207,39 @@ int CCMTaskConfig::ReadConfigFile()
         if(cuttype != "bool") {
 
           if(cuttype == "int") {
-            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),atoi(cutval.c_str()),comment.c_str()));	
-            //if(cfgname.find("Setup") != std::string::npos)
-            //  anaMan->SetParameter(parname,atoi(cutval.c_str()));
-          }
-          if(cuttype == "double" || cuttype == "float") {
-            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),strtod(cutval.c_str(),&pEnd),comment.c_str()));	
-            //if(cfgname.find("Setup") != std::string::npos)
-            //  anaMan->SetParameter(parname,strtod(cutval.c_str(), &pEnd));
-          }
-          if(cuttype == "string") {	    
+            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stoi(cutval),comment.c_str()));	
+            if(cfgname.find("ROOTSetup") != std::string::npos) {
+              rootIO->SetParameter(parname,std::stoi(cutval));
+            } else if(cfgname.find("RawSetup") != std::string::npos) {
+              rawIO->SetParameter(parname,std::stoi(cutval));
+            } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
+              PMTInfoMap::SetParameter(parname,std::stoi(cutval));
+            }
+          } else if(cuttype == "double" || cuttype == "float") {
+            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stod(cutval),comment.c_str()));	
+            if(cfgname.find("ROOTSetup") != std::string::npos) {
+              rootIO->SetParameter(parname,std::stod(cutval));
+            } else if(cfgname.find("RawSetup") != std::string::npos) {
+              rawIO->SetParameter(parname,std::stod(cutval));
+            } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
+              PMTInfoMap::SetParameter(parname,std::stod(cutval));
+            }
+          } else if(cuttype == "string") {	    
             //Convert the string to uppercase
             //if(parname.find("File") == std::string::npos)
             //  std::transform(cutval.begin(), cutval.end(), cutval.begin(), toupper);
+
             cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),cutval,comment.c_str()));
-            //if(cfgname.find("Setup") != std::string::npos)
-            //  anaMan->SetParameter(parname,cutval);
-          }
-        }
+
+            if(cfgname.find("ROOTSetup") != std::string::npos) {
+              rootIO->SetParameter(parname,cutval);
+            } else if(cfgname.find("RawSetup") != std::string::npos) {
+              rawIO->SetParameter(parname,cutval);
+            } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
+              PMTInfoMap::SetParameter(parname,cutval);
+            }
+          } // end if cuttype == 
+        } // end if cuttype != "bool"
       }
       //add the config object to the table
       cfgTable.AdoptConfig(cfgObj);
@@ -233,6 +256,26 @@ int CCMTaskConfig::ReadConfigFile()
   delete errHandler;
 
   XMLPlatformUtils::Terminate();
+  
+  //Load the input file
+  if (!fInputFileList.empty()) {
+    rootIO->SetInFileList(fInputFileList);
+    rootIO->SetupInputFile();
+  }
+  if (!fOutputFileList.empty()) {
+    rootIO->SetOutFileName(fOutputFileList.front());
+    rootIO->SetupOutputFile();
+  }
+
+  if (!fRawInputFileList.empty()) {
+    rawIO->SetInFileList(fRawInputFileList);
+    rawIO->SetupInputFile();
+  }
+  if (!fRawOutputFileList.empty()) {
+    rawIO->SetOutFileName(fRawOutputFileList.front());
+    rawIO->SetupOutputFile();
+  }
+
 
   return kCCMSuccess;
 
@@ -247,6 +290,9 @@ void CCMTaskConfig::Print()
   for(unsigned int i = 0; i < fInputFileList.size(); i++) {
     MsgInfo(MsgLog::Form("\tInput file[%d]: %s",i,fInputFileList[i].c_str()));
   }
+  for(unsigned int i = 0; i < fRawInputFileList.size(); i++) {
+    MsgInfo(MsgLog::Form("\tRaw Input file[%d]: %s",i,fRawInputFileList[i].c_str()));
+  }
   MsgInfo(MsgLog::Form("\tJob type: %s",fProcessType.c_str()));
   MsgInfo(MsgLog::Form("\tModules to run:"));
   for(unsigned int i = 0; i< fModuleList.size(); i++) {
@@ -254,6 +300,9 @@ void CCMTaskConfig::Print()
   }
   for(unsigned int i = 0; i < fOutputFileList.size(); i++) {
     MsgInfo(MsgLog::Form("\tOutput file[%d]: %s",i,fOutputFileList[i].c_str()));
+  }
+  for(unsigned int i = 0; i < fRawOutputFileList.size(); i++) {
+    MsgInfo(MsgLog::Form("\tRaw Output file[%d]: %s",i,fRawOutputFileList[i].c_str()));
   }
 
 }
@@ -318,3 +367,4 @@ int CCMTaskConfig::Split(const char* line, const char* tok,
   }
   return nfields;
 }
+

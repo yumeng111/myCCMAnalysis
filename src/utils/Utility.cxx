@@ -5,33 +5,37 @@
  * \date February 25, 2020
  ***********************************************/
 #include "Utility.h"
-#include "RawData.h"
 
 /*!**********************************************
- * \fn int Utility::FindFirstSample(int channelNumber, const RawData * rawData)
- * \brief Find the first sample above threshold for a digitizer channel
- * \param[in] channelNumber The channel number based on the total number of channels saved in the #RawData class
- * \param[in] rawData Pointer to the current #RawData information to look at
+ * \fn void Utility::ParseStringForRunNumber(std::string name, int & run int & subrun)
+ * \brief Parses the passed string to get the run and subrun numbers
+ * \param[in] name The string to parse
+ * \param[out] run The output run number
+ * \param[out] subrun The output subrun number
  *
- * Assumes the pulse that is possibly in the window is a NIM signal
+ * Assumes the format of the name is the same as to which was used
+ * during the 2019 run cycle, which was
+ * PDSout_run<RUNNUMBER>-<SUBRUNNUMBER>_<DATE>.bin(or root)
+ *
+ * where RUNNUMBER and SUBRUNNUMBER were 6 digit numbers
+ * and DATE was in the format of %m-%d-%H%M. This function
+ * currently does nothing with the DATE
  ***********************************************/
-int Utility::FindFirstSample(int channelNumber, const RawData * rawData)
+void Utility::ParseStringForRunNumber(std::string name, int & run, int & subrun)
 {
-  int firstSample = 0;
-  auto samples = rawData->GetSamples(channelNumber);
-  double avgChannelNoise = std::accumulate(samples.begin(),samples.begin()+500,0);
-  avgChannelNoise /= 500.0;
-  int sample = 0;
-  for (const auto & adc : samples) {
-    double adjustedADC = avgChannelNoise- static_cast<double>(adc);
-    //std::cout << "\t\t\t" << channelNumber << '\t' << sample << '\t' << adc << '\t' << adjustedADC << std::endl;
-    if (adjustedADC > 400) {
-      firstSample = sample;
-      break;
-    }
-    ++sample;
-  } // end for sample < 8000
+  // find where "run" occurs in the string
+  size_t locOfRun = name.find("run");
 
-  return firstSample;
+  // get the run number and the subrun number in string format
+  std::string runNumber = "";
+  std::string subRunNumber = "";
+  runNumber.assign(name,locOfRun+3,6);
+  subRunNumber.assign(name,locOfRun+3+6+1,6);
+
+  // convert the strings to int
+  run = std::stoi(runNumber);
+  subrun = std::stoi(subRunNumber);
+
+  return;
 }
 

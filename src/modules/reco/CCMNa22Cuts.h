@@ -4,7 +4,8 @@
 #include "Utility.h"
 #include "CCMModule.h"
 
-class SimplifiedEvent;
+class TTree;
+class TFile;
 
 
 class CCMNa22Cuts : public CCMModule
@@ -37,7 +38,7 @@ class CCMNa22Cuts : public CCMModule
      *  \brief Returns true of the job has ended
      *  \return CCMResult_t result if the Job had ended
      */
-    CCMResult_t EndOfJob() { return kCCMSuccess;}
+    CCMResult_t EndOfJob();
 
     /*!
      *  \brief Configures things that are hardware specific 
@@ -45,16 +46,21 @@ class CCMNa22Cuts : public CCMModule
      */
     void Configure(const CCMConfig& c);
 
+    void ConnectEvents(std::shared_ptr<Events> evt) { fEvents = evt; }
+
   private:
 
     //private methods
-    void RecalculateStartTime(SimplifiedEvent * events, double & st, double & charge, double & hits, double & length);
+    void SetupOutFile();
 
   private:
 
     //private data members
+
+    std::shared_ptr<Events> fEvents;
+
     std::string fOutFileName;
-    std::vector<std::string> fInFileNames;
+
     int fDoVetoCut;
     int fDoPositionCut;
     int fDoEnergyCut;
@@ -79,6 +85,28 @@ class CCMNa22Cuts : public CCMModule
     double fTimeCutValueHigh;
     double fNicenessCutValueLow;
     double fNicenessCutValueHigh;
+
+    // variables for the output tree
+    TFile * fOutfile;
+    TTree * fTree;
+    double fEnergy;
+    double fLength;
+    double fHits;
+    int fNumPMTs;
+    double fTime;
+    int fVetoTop;
+    int fVetoBottom;
+    int fVetoCLeft;
+    int fVetoCRight;
+    int fVetoCFront;
+    int fVetoCBack;
+    double fWeight;
+    double fX;
+    double fY;
+    double fZ;
+    double fLargestPMTFraction;
+    unsigned int fEpochSec;
+
     
 };
 

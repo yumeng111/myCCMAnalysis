@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <memory>
 
 //Include these her so we don't have to in the derived classes
 #include "CCMTaskConfig.h"
@@ -30,11 +31,12 @@
 
 #include "MsgLog.h"
 
-//class CCMAnalysisManager;
-//class CCMHitInformation;
-//class CCMEventTimeInfo;
-//class CCMPosTopology;
-//class CCMWaveformInformation;
+#include "Events.h"
+#include "RawData.h"
+#include "Pulses.h"
+
+class CCMRootIO;
+class CCMRawIO;
 
 class CCMTaskManager {
 
@@ -42,14 +44,17 @@ public:
 
   CCMTaskManager(); //default constructor
   CCMTaskManager(const CCMTaskManager& task); //copy constructor
-  CCMTaskManager(std::string configfile, std::vector<std::string> infileList,
-      std::vector<std::string> outfileList); // primary constructor
+  CCMTaskManager(std::string configfile, 
+      std::vector<std::string> rootInfileList,
+      std::vector<std::string> rootOutfileList,
+      std::vector<std::string> rawInfileList,
+      std::vector<std::string> rawOutfileList); // primary constructor
   virtual ~CCMTaskManager(); //destructor
 
   CCMResult_t Execute(int32_t nevt);
   CCMResult_t Terminate();
 
-  static const CCMTaskConfig* GetTaskConfig() { return fgkTaskConfig; }
+  static const CCMTaskConfig& GetTaskConfig() { return *fgkTaskConfig; }
 protected:
 
   CCMResult_t RegisterModules(); //these are called internally
@@ -57,30 +62,36 @@ protected:
 private:
 
   void ConnectDataToModules();
+  void NewRun();
 
-  static void SetTaskConfig(CCMTaskConfig* tskCfg) { fgkTaskConfig = tskCfg;}
+  static void SetTaskConfig(CCMTaskConfig* tskCfg) { fgkTaskConfig = std::unique_ptr<CCMTaskConfig>(tskCfg);}
 
-  std::list<CCMModule*> GetModuleList() const { return fModuleList;}
+  std::list<std::shared_ptr<CCMModule>> GetModuleList() const { return fModuleList;}
+  
+  CCMResult_t ExecuteRaw(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot = true);
+  CCMResult_t ExecuteRoot(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot = true);
 
   CCMResult_t ExecuteTask();
   CCMResult_t FinishTask();
 
   void ClearDataVectors();
 
-  static const CCMTaskConfig* fgkTaskConfig;  //configuration object
+  static std::unique_ptr<CCMTaskConfig> fgkTaskConfig;  //configuration object
 					      //(stores all task
 					      //parameters)
 
-  std::list<CCMModule*> fModuleList; //list of registered modules
+  std::list<std::shared_ptr<CCMModule>> fModuleList; //list of registered modules
 
-  //CCMAnalysisManager * fCCMAnaMan;
-  //CCMEvent * fEvent;
-  //CCMEventTimeInfo * fEvtTimeInfo;
-  //CCMPosTopology * fPosTop;
-  //HitVec fHitVec;
-  //HitVec fBIBHitVec;
-  //WaveInfoVec fWaveInfoVec;
-  //WaveInfoVec fBIBWaveInfoVec;
+  std::shared_ptr<CCMRootIO> fRootIO; // CCMRootIO is a single instance class
+  std::shared_ptr<CCMRawIO> fRawIO; // CCMRawIO is a single instance class
+
+  std::shared_ptr<Events>  fEvents;
+  std::shared_ptr<RawData>  fBinaryRawData;
+  std::shared_ptr<RawData>  fRawData;
+  std::shared_ptr<Pulses>  fPulses;
+  
+  int fCurrentRunNum;
+  int fCurrentSubRunNum;
 
 };
 

@@ -80,6 +80,23 @@ rawList  = glob.glob(os.path.join(inputDir, options.input_data_regex))
 slurmScripts = []
 currentXMLList = []
 
+xmlScript = outputDir+"/scripts/"+"findEventsConfig.xml"
+
+if not os.path.exists(xmlScript):
+  fin = open(options.default_xml,"rt")
+  fout = open(xmlScript,"wt")
+  for line in fin:
+    copyLine = line
+    copyLine = copyLine.replace('HVOFFLIST',options.hv_off_list)
+    copyLine = copyLine.replace('CALIBRATIONFILE',options.calibration_file)
+    copyLine = copyLine.replace('TRIGGER',options.trigger_type)
+    copyLine = copyLine.replace('THRESHOLD',"0.4")
+    fout.write(copyLine)
+
+  fin.close()
+  fout.close()
+
+
 count = 0
 for rawFile in rawList:
   baseName = os.path.basename(rawFile.replace(".root", "_%s.root"%(options.run_type)))
@@ -95,26 +112,9 @@ for rawFile in rawList:
 
   print("run ",run, " out ",outName)
 
-  xmlScript = outputDir+"/scripts/"+"findEventsConfig_"+run+".xml"
   logScript = outputDir+"/log/"+"findEvents_"+run+".log"
 
-
-  if not os.path.exists(xmlScript) or options.rewrite:
-    fin = open(options.default_xml,"rt")
-    fout = open(xmlScript,"wt")
-    for line in fin:
-      copyLine = line
-      copyLine = copyLine.replace('INFILENAME',rawFile)
-      copyLine = copyLine.replace('OUTFILENAME',outName)
-      copyLine = copyLine.replace('HVOFFLIST',options.hv_off_list)
-      copyLine = copyLine.replace('CALIBRATIONFILE',options.calibration_file)
-      copyLine = copyLine.replace('TRIGGER',options.trigger_type)
-      fout.write(copyLine)
-
-    fin.close()
-    fout.close()
-
-  currentXMLList.append("CCMAnalysis -c "+xmlScript+" -l "+logScript)
+  currentXMLList.append("CCMAnalysis -i "+rawFile+" -o "+outName+" -c "+xmlScript+" -l "+logScript)
 
   print("len(currentXMLList) ",len(currentXMLList))
 

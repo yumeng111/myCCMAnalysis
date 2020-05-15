@@ -10,26 +10,50 @@
 
   <Modules type="Reco"> CCMFindEvents </Modules>
 
+  <Config name="ROOTSetup" version="default">
+    <Param name="ReadBranches"><string>rawData pulses</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+    <Param name="SaveBranches"><string>events</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+  </Config>
+
+  <Config name="PMTMapSetup" version="default">
+    <Param name="MappingFile"><string>default</string>
+      The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
+      Must be the first param in this config
+    </Param>
+    <Param name="HVOffFile"><string>mappings/hv_off_2019.csv</string>
+      List of the HV channels that are off.
+    </Param>
+    <Param name="CalibrationFile"><string>mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
+      Name of the calibration file to use
+    </Param>
+  </Config>
+
   <Config name="CCMFindEvents" version="default">
-    <Param name="InFileName"><string> /home/daquser/CCM/data/2019_data/PDSout_run000150-000000_11-06-1512_physics.root </string>
-      Name of the input root file (must be an output of CCMConvertBinary2ROOT or similar code)
-    </Param>
-    <Param name="OutFileName"><string> ROOT_Files/PDSout_run000150-000000_11-06-1512_physics_events.root </string>
-      Name of the output root file
-    </Param>
-    <Param name="TriggerType"><string> BEAM </string>
+    <Param name="TriggerType"><string>BEAM</string>
       Only look at triggers with name passed.
       Options are:
        - BEAM
        - STROBE
        - LED
+       - ALL
       and any combination of the three, like BEAM STROBE
     </Param>
-    <Param name="HVOffFile"><string> mappings/hv_off_2019.csv </string>
-      List of the HV channels that are off.
-    </Param>
-    <Param name="CalibrationFile"><string> mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root </string>
-      Name of the calibration file to use
+    <Param name="Threshold"><double> 0.4 </double>
+      The PE threshold for a 2ns bin to trigger event building
     </Param>
   </Config>
 

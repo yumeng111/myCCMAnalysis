@@ -26,18 +26,18 @@ class CCMBeamInfo
 {
   public:
     static void LoadTable(std::string fileName);
-    static double GetCurrent(std::string time);
+    static double GetCurrent(std::string time, std::string format = "%d-%b-%Y %X");
     static double GetCurrent(std::time_t time);
     static void PrintTable(std::string options);
 
-    static std::time_t ConvertStringToTime(std::string time, bool print = false);
+    static std::time_t ConvertStringToTime(std::string time, std::string format = "%d-%b-%Y %X", bool print = false);
     static std::time_t ConvertToTime(int year, int mon, int day, int hour, int min, int sec, bool print = false);
     static std::time_t ConvertTimeSineEPOCHtoTime(unsigned long int time);
 
     static void Reset();
     static int Next();
     static int Previous();
-    static void Find(std::string time);
+    static void Find(std::string time, std::string format = "%d-%b-%Y %X");
     static void Find(std::time_t time);
 
     static std::pair<std::time_t, double> GetBeamInfo();

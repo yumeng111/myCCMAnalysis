@@ -52,6 +52,10 @@ class PMTInfoMap
 
     static void ClearMap();
 
+    static void SetParameter(std::string name, const int value);
+    static void SetParameter(std::string name, const double value);
+    static void SetParameter(std::string name, std::string value);
+
   private:
 
     static const std::string fgkTreeName; ///< Tree name for map

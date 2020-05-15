@@ -14,6 +14,7 @@
 #include "CCMApplyPreCuts.h"
 #include "CCMModuleTable.h"
 
+#include "Events.h"
 #include "SimplifiedEvent.h"
 #include "MsgLog.h"
 
@@ -34,17 +35,20 @@ MODULE_DECL(CCMApplyPreCuts);
 CCMApplyPreCuts::CCMApplyPreCuts(const char* version) 
   : CCMModule("CCMApplyPreCuts"),
     fOutFileName(""),
-    fInFileName("")
+    fEvents()
+    
 {
   //Default constructor
   this->SetCfgVersion(version);
+
+  SetupHists();
 }
 
 //_______________________________________________________________________________________
 CCMApplyPreCuts::CCMApplyPreCuts(const CCMApplyPreCuts& clufdr) 
 : CCMModule(clufdr),
   fOutFileName(clufdr.fOutFileName),
-  fInFileName(clufdr.fInFileName)
+  fEvents(clufdr.fEvents)
 {
   // copy constructor
 }
@@ -58,28 +62,186 @@ CCMApplyPreCuts::~CCMApplyPreCuts()
 //_______________________________________________________________________________________
 CCMResult_t CCMApplyPreCuts::ProcessEvent()
 {
-  TH1::AddDirectory(0);
 
-  TFile * file = TFile::Open(fInFileName.c_str(),"READ");
-
-  TTree * tree = 0;
-
-  file->GetObject("events",tree);
-
-  if (!tree) {
-    MsgError("rawData tree was not loaded");
+  const size_t kNumEvents = fEvents->GetNumEvents();
+  if (kNumEvents == 0) {
+    MsgWarning("Number of Events in the fEvents object is equal to zero, doing nothing");
+    return kCCMSuccess;
   }
 
-  SimplifiedEvent* events = 0;
+  for (size_t e = 0; e < kNumEvents; ++e) {
+    auto simplifiedEvent = fEvents->GetSimplifiedEvent(e);
 
-  tree->SetBranchAddress("events",&events);
+    double st = simplifiedEvent.GetStartTime();// - 9.92;
+    double length = simplifiedEvent.GetLength()+1e-4;
 
-  int nEntries = tree->GetEntries();
-  MsgInfo(MsgLog::Form("Number of Events in Run is %d",nEntries));
+    double promptLength = 0.090;
+    bool longerThanPrompt = length-1e-4 > promptLength;
+    double promptIntegral = simplifiedEvent.GetIntegralTank(longerThanPrompt);// - randomRate*promptLength;
+    double promptHits = simplifiedEvent.GetNumCoated(longerThanPrompt);
 
-  //double numUncoated = 22.0;
-  //double numCoated = 77.0;
+    std::cout << st << std::endl;
 
+    RecalculateStartTime(simplifiedEvent,st,promptIntegral,promptHits,length);
+
+    st -= 9.92;
+
+    //prevEvent = st;
+
+    double et = st + length;
+    if (et <= st) {// || length > 0.1) {
+      continue;
+    }
+
+
+
+    double x = simplifiedEvent.GetXPosition();
+    double y = simplifiedEvent.GetYPosition();
+    double z = simplifiedEvent.GetZPosition();
+
+    if (std::sqrt(x*x+y*y) > 0.85 || std::fabs(z) > 0.3) {
+      continue;
+    }
+
+    
+    if (promptHits < 3) {
+      continue;
+    }
+
+    bool reject = false;
+    for (long e2 = e-1; e2 >= 0 ; --e2) {
+      auto simplifiedEvent2 = fEvents->GetSimplifiedEvent(e2);
+      
+      bool longerThanPrompt2 = simplifiedEvent2.GetLength() > promptLength;
+      double promptHits2 = simplifiedEvent2.GetNumCoated(longerThanPrompt2);
+      double st2 = simplifiedEvent2.GetStartTime();// - 9.92;
+      double promptIntegral2 = simplifiedEvent2.GetIntegralTank(longerThanPrompt2);// - randomRate*promptLength;
+      double length2 = simplifiedEvent2.GetLength()+1e-4;
+
+      RecalculateStartTime(simplifiedEvent2,st2,promptIntegral2,promptHits2,length2);
+
+      st2 -= 9.92;
+
+      if (promptHits2 < 3) {
+        continue;
+      }
+
+      //if (st2 > -1) {
+      //  continue;
+      //}
+
+      double x2 = simplifiedEvent2.GetXPosition();
+      double y2 = simplifiedEvent2.GetYPosition();
+      double z2 = simplifiedEvent2.GetZPosition();
+      if (std::sqrt(x2*x2+y2*y2) > 0.85 || std::fabs(z2) > 0.3) {
+        continue;
+      }
+
+      //double stDiff = st2 - st;
+
+      double pIDiff = promptIntegral - promptIntegral2;
+      if (pIDiff < 1.6) {
+        reject = true;
+        break;
+      }
+    }
+
+    if (reject) {
+      continue;
+    }
+
+    if (promptIntegral < 3) {
+      fTimeHist[0]->Fill(st+1e-4,promptIntegral);
+    } else if (promptIntegral < 11) {
+      fTimeHist[1]->Fill(st+1e-4,promptIntegral);
+    } else if (promptIntegral < 300) {
+      fTimeHist[2]->Fill(st+1e-4,promptIntegral);
+    }
+
+    if (st < -0.8 && st >= -1) {
+      fPreEventHist->Fill(promptIntegral);
+    } else if (st >= -0.7 && st < -0.65) {
+      fBeamWindow1Hist->Fill(promptIntegral);
+    } else if (st >= -0.65 && st < -0.6) {
+      fBeamWindow2Hist->Fill(promptIntegral);
+    } else if (st >= -0.6 && st < -0.55) {
+      fBeamWindow3Hist->Fill(promptIntegral);
+    } else if (st >= -0.55 && st < -0.5) {
+      fBeamWindow4Hist->Fill(promptIntegral);
+    } else if (st >= -0.5 && st < -0.45) {
+      fBeamWindow5Hist->Fill(promptIntegral);
+    } else if (st >= -0.45 && st < -0.4) {
+      fBeamWindow6Hist->Fill(promptIntegral);
+    } else if (st >= -0.4 && st < -0.35) {
+      fBeamWindow7Hist->Fill(promptIntegral);
+    } else if (st >= -0.35 && st < -0.3) {
+      fBeamWindow8Hist->Fill(promptIntegral);
+    }
+
+  } // end e
+
+  return kCCMSuccess;
+}
+
+//_______________________________________________________________________________________
+void CCMApplyPreCuts::Configure(const CCMConfig& c ) 
+{
+
+  //Initialize any parameters here
+  //by reading them from the CCMConfig object.
+
+  c("OutFileName").Get(fOutFileName);
+
+  fIsInit = true;
+
+}
+
+/*!**********************************************
+ * \fn void CCMApplyPreCuts::RecalculateStartTime(const SimplifiedEvent & events, double & st, double & charge, double & hits, double & length) 
+ * \brief Recalcualte the start time of an event given a different method
+ * \param[in] events The event to look at
+ * \param[out] st The new start time
+ * \param[out] charge The new integral of the event
+ * \param[out] hits The new number of hits in the event
+ * \param[out] length The new length of the event
+ ***********************************************/
+void CCMApplyPreCuts::RecalculateStartTime(const SimplifiedEvent & events, double & st, double & charge, double & hits, double & length) 
+{
+  const std::vector<float> & waveform = events.GetWaveformInt();
+  const std::vector<float> & waveformCount = events.GetWaveformCount();
+  bool crossed = false;
+  size_t stCount = 0;
+  charge = 0;
+  hits = 0;
+  for (size_t count = 0; count < waveform.size(); ++count) {
+    if (!crossed && waveform[count] >= 0.4) {
+      crossed = true;
+      st = events.GetStartTime()+static_cast<double>(count)*2e-3;
+      stCount = count;
+      charge = 0;
+      hits = 0;
+      length = (waveform.size() - count)*2e-3;
+    }
+
+    if (crossed && count < stCount+45) {
+      charge += waveform[count];
+      hits += waveformCount[count];
+    } else if (crossed && count >= stCount+45) {
+      break;
+    }
+    ++count;
+  }
+
+  return;
+
+}
+
+/*!**********************************************
+ * \fn void CCMApplyPreCuts::SetupHists()
+ * \brief Setup the histograms to save the information
+ ***********************************************/
+void CCMApplyPreCuts::SetupHists()
+{
   std::vector<double> energyBins2;
   std::vector<double> energyBins;
   energyBins.push_back(0.0);
@@ -109,266 +271,43 @@ CCMResult_t CCMApplyPreCuts::ProcessEvent()
     }
   }
 
-  std::vector<TH1D*> timeHist;
-  TH1D* preEventHist = new TH1D("preEventHist",";Energy (PE);Count",energyBins.size()-1,&energyBins.front());
-  TH1D* beamWindow1Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow1Hist"));
-  TH1D* beamWindow2Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow2Hist"));
-  TH1D* beamWindow3Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow3Hist"));
-  TH1D* beamWindow4Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow4Hist"));
-  TH1D* beamWindow5Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow5Hist"));
-  TH1D* beamWindow6Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow6Hist"));
-  TH1D* beamWindow7Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow7Hist"));
-  TH1D* beamWindow8Hist = dynamic_cast<TH1D*>(preEventHist->Clone("beamWindow8Hist"));
+  fPreEventHist = new TH1D("PreEventHist",";Energy (PE);Count",energyBins.size()-1,&energyBins.front());
+  fBeamWindow1Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow1Hist"));
+  fBeamWindow2Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow2Hist"));
+  fBeamWindow3Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow3Hist"));
+  fBeamWindow4Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow4Hist"));
+  fBeamWindow5Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow5Hist"));
+  fBeamWindow6Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow6Hist"));
+  fBeamWindow7Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow7Hist"));
+  fBeamWindow8Hist = dynamic_cast<TH1D*>(fPreEventHist->Clone("BeamWindow8Hist"));
 
   for (int i=0; i < 3; ++i) {
-    timeHist.push_back(new TH1D(Form("timeHist%d",i),";Time (#mus);Count",8000,-9.92,6.08));
+    fTimeHist.push_back(new TH1D(Form("TimeHist%d",i),";Time (#mus);Count",8000,-9.92,6.08));
   }
-
-  unsigned int prevSec = 0;
-  unsigned int prevNS = 0;
-  //double prevEvent = 0;
-
-  long e = 0;
-  for (e = 0; e < nEntries; ++e) {
-    if (e % 100000 == 0) {
-      MsgInfo(MsgLog::Form("%ld out of %ld",e,nEntries));
-    }
-    tree->GetEntry(e);
-
-    unsigned int seconds = events->GetComputerSecIntoEpoch();
-    unsigned int nseconds = events->GetComputerNSIntoSec();
-
-    if (seconds != prevSec && nseconds != prevNS) {
-
-      //std::fill(integral.begin(),integral.end(),0.0);
-
-      prevSec = seconds;
-      prevNS = nseconds;
-      //prevEvent = 0.0;
-    }
+} // end CCMApplyPreCuts::SetupHists
 
 
-    double st = events->GetStartTime();// - 9.92;
-    double length = events->GetLength()+1e-4;
-
-    double promptLength = 0.090;
-    bool longerThanPrompt = length-1e-4 > promptLength;
-    double promptIntegral = events->GetIntegralTank(longerThanPrompt);// - randomRate*promptLength;
-    double promptHits = events->GetNumCoated(longerThanPrompt);
-
-    std::cout << st << std::endl;
-
-    RecalculateStartTime(events,st,promptIntegral,promptHits,length);
-
-    st -= 9.92;
-
-    //prevEvent = st;
-
-    double et = st + length;
-    if (et <= st) {// || length > 0.1) {
-      continue;
-    }
-
-
-
-    //double totalIntegral = events->GetIntegralTank(false);// - randomRate*(length-1e-4);
-
-    //double promptIntegralC = events->GetIntegralCoated(true);// - randomPromptC;
-    //double promptIntegralU = events->GetIntegralUncoated(true);// - randomPromptU;
-
-    //double totalIntegralC = events->GetIntegralCoated(false);// - randomTotalC;
-    //double totalIntegralU = events->GetIntegralUncoated(false);// - randomTotalU;
-
-    /*
-    const std::vector<float> & waveform = events->GetWaveformInt();
-    double totalWeight = 0.0;
-    double mean = 0;//std::accumulate(waveform.begin(),waveform.end(),0.f);
-    double sum = 0;
-    double count = 0;
-    double peakLoc = 0;
-    double peakValue = 0;
-    for (const auto & point : waveform) {
-      totalWeight += point*point;
-      sum += point*point*count*count;
-      mean += point*point*count;
-      if (point > peakValue) {
-        peakLoc = count;
-        peakValue = point;
-      }
-      ++count;
-    }
-    mean  /= totalWeight;
-    sum = std::sqrt(sum/totalWeight - mean*mean);
-    */
-
-    double x = events->GetXPosition();
-    double y = events->GetYPosition();
-    double z = events->GetZPosition();
-
-    if (std::sqrt(x*x+y*y) > 0.85 || std::fabs(z) > 0.3) {
-      continue;
-    }
-
-    
-    if (promptHits < 3) {
-      continue;
-    }
-
-    bool reject = false;
-    for (long e2 = e-1; e2 >= 0 ; --e2) {
-      tree->GetEntry(e2);
-      unsigned int sec2 = events->GetComputerSecIntoEpoch();
-      unsigned int nsec2 = events->GetComputerNSIntoSec();
-
-      if (sec2 != seconds || nsec2 != nseconds) {
-        break;
-      }
-
-      bool longerThanPrompt2 = events->GetLength() > promptLength;
-      double promptHits2 = events->GetNumCoated(longerThanPrompt2);
-      double st2 = events->GetStartTime();// - 9.92;
-      double promptIntegral2 = events->GetIntegralTank(longerThanPrompt2);// - randomRate*promptLength;
-      double length2 = events->GetLength()+1e-4;
-
-      RecalculateStartTime(events,st2,promptIntegral2,promptHits2,length2);
-
-      st2 -= 9.92;
-
-      if (promptHits2 < 3) {
-        continue;
-      }
-
-      //if (st2 > -1) {
-      //  continue;
-      //}
-
-      double x2 = events->GetXPosition();
-      double y2 = events->GetYPosition();
-      double z2 = events->GetZPosition();
-      if (std::sqrt(x2*x2+y2*y2) > 0.85 || std::fabs(z2) > 0.3) {
-        continue;
-      }
-
-      //double stDiff = st2 - st;
-
-      double pIDiff = promptIntegral - promptIntegral2;
-      if (pIDiff < 1.6) {
-        reject = true;
-        break;
-      }
-    }
-
-    if (reject) {
-      continue;
-    }
-
-    if (promptIntegral < 3) {
-      timeHist[0]->Fill(st+1e-4,promptIntegral);
-    } else if (promptIntegral < 11) {
-      timeHist[1]->Fill(st+1e-4,promptIntegral);
-    } else if (promptIntegral < 300) {
-      timeHist[2]->Fill(st+1e-4,promptIntegral);
-    }
-
-    if (st < -0.8 && st >= -1) {
-      preEventHist->Fill(promptIntegral);
-    } else if (st >= -0.7 && st < -0.65) {
-      beamWindow1Hist->Fill(promptIntegral);
-    } else if (st >= -0.65 && st < -0.6) {
-      beamWindow2Hist->Fill(promptIntegral);
-    } else if (st >= -0.6 && st < -0.55) {
-      beamWindow3Hist->Fill(promptIntegral);
-    } else if (st >= -0.55 && st < -0.5) {
-      beamWindow4Hist->Fill(promptIntegral);
-    } else if (st >= -0.5 && st < -0.45) {
-      beamWindow5Hist->Fill(promptIntegral);
-    } else if (st >= -0.45 && st < -0.4) {
-      beamWindow6Hist->Fill(promptIntegral);
-    } else if (st >= -0.4 && st < -0.35) {
-      beamWindow7Hist->Fill(promptIntegral);
-    } else if (st >= -0.35 && st < -0.3) {
-      beamWindow8Hist->Fill(promptIntegral);
-    }
-
-  } // end e
-
-  if (file) {
-    delete file;
-  }
-
-  //preEventHist->Scale(0.05/5.3);
-  preEventHist->Scale(50.0/200.0);
+CCMResult_t CCMApplyPreCuts::EndOfJob()
+{ 
+  //fPreEventHist->Scale(0.05/5.3);
+  fPreEventHist->Scale(50.0/200.0);
 
   TFile* outfile = TFile::Open(fOutFileName.c_str(),"RECREATE");
   outfile->cd();
-  for (auto & hist : timeHist) {
+  for (auto & hist : fTimeHist) {
     hist->Write();
   }
-  preEventHist->Write();
-  beamWindow1Hist->Write();
-  beamWindow2Hist->Write();
-  beamWindow3Hist->Write();
-  beamWindow4Hist->Write();
-  beamWindow5Hist->Write();
-  beamWindow6Hist->Write();
-  beamWindow7Hist->Write();
-  beamWindow8Hist->Write();
+  fPreEventHist->Write();
+  fBeamWindow1Hist->Write();
+  fBeamWindow2Hist->Write();
+  fBeamWindow3Hist->Write();
+  fBeamWindow4Hist->Write();
+  fBeamWindow5Hist->Write();
+  fBeamWindow6Hist->Write();
+  fBeamWindow7Hist->Write();
+  fBeamWindow8Hist->Write();
   delete outfile;
 
   return kCCMSuccess;
-}
-
-//_______________________________________________________________________________________
-void CCMApplyPreCuts::Configure(const CCMConfig& c ) 
-{
-
-  //Initialize any parameters here
-  //by reading them from the CCMConfig object.
-
-  c("OutFileName").Get(fOutFileName);
-  c("InFileName").Get(fInFileName);
-
-  fIsInit = true;
-
-}
-
-/*!**********************************************
- * \fn void CCMApplyPreCuts::RecalculateStartTime(SimplifiedEvent * events, double & st, double & charge, double & hits, double & length) 
- * \brief Recalcualte the start time of an event given a different method
- * \param[in] events The event to look at
- * \param[out] st The new start time
- * \param[out] charge The new integral of the event
- * \param[out] hits The new number of hits in the event
- * \param[out] length The new length of the event
- ***********************************************/
-void CCMApplyPreCuts::RecalculateStartTime(SimplifiedEvent * events, double & st, double & charge, double & hits, double & length) 
-{
-  const std::vector<float> & waveform = events->GetWaveformInt();
-  const std::vector<float> & waveformCount = events->GetWaveformCount();
-  bool crossed = false;
-  size_t stCount = 0;
-  charge = 0;
-  hits = 0;
-  for (size_t count = 0; count < waveform.size(); ++count) {
-    if (!crossed && waveform[count] >= 0.4) {
-      crossed = true;
-      st = events->GetStartTime()+static_cast<double>(count)*2e-3;
-      stCount = count;
-      charge = 0;
-      hits = 0;
-      length = (waveform.size() - count)*2e-3;
-    }
-
-    if (crossed && count < stCount+45) {
-      charge += waveform[count];
-      hits += waveformCount[count];
-    } else if (crossed && count >= stCount+45) {
-      break;
-    }
-    ++count;
-  }
-
-  return;
-
 }
 

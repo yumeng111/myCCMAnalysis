@@ -34,15 +34,17 @@ set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} $ENV{XERCESLIB}/libxerces-c.so)
 message("LIBRARIES ${LIBRARIES}")
 
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} $ENV{XERCESINCLUD})
-add_definitions(${ROOT_CXX_FLAGS} -std=c++11)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++11")
+add_definitions(${ROOT_CXX_FLAGS} -std=c++14)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14")
 
 set(CCMAnalysis_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/src/utils
   ${CMAKE_SOURCE_DIR}/src/ds
+  ${CMAKE_SOURCE_DIR}/src/io
   ${CMAKE_SOURCE_DIR}/src/spe
   ${CMAKE_SOURCE_DIR}/src/modules/framework
   ${CMAKE_SOURCE_DIR}/src/modules/reco
+  ${CMAKE_SOURCE_DIR}/src/modules/nearline
   )
 
 #Set the library version
@@ -76,6 +78,7 @@ add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_D
 # will talk through the project's entire directory structure.
 add_subdirectory(src/utils)
 add_subdirectory(src/ds)
+add_subdirectory(src/io)
 add_subdirectory(src/spe)
 add_subdirectory(src/modules)
 

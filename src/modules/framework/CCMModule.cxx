@@ -40,15 +40,16 @@ CCMResult_t CCMModule::ProcessEvent()
 }
 
 //------------------------------------------------------
-CCMResult_t CCMModule::NewRun(uint32_t run)
+CCMResult_t CCMModule::NewRun(uint32_t run, uint32_t subRun)
 {
   //Default NewRun method for all modules
   //doesn't do anything except set internal run number
   MsgDebug(2,MsgLog::Form("Calling default %s::NewRun().",fName.c_str()));
 
-  if(fCurrentRun != run) {
-    MsgDebug(2,MsgLog::Form("\tChanging run number from %d to %d",fCurrentRun,run));
+  if(fCurrentRun != run || fCurrentSubRun != subRun) {
+    MsgDebug(2,MsgLog::Form("\tChanging run number from %d-%d to %d-%d",fCurrentRun,fCurrentSubRun,run,subRun));
     fCurrentRun = run;
+    fCurrentSubRun = subRun;
   }
   
   return kCCMSuccess;
@@ -89,6 +90,34 @@ void CCMModule::CheckInit()
   if (fIsInit) return;
   MsgFatal(MsgLog::Form("Module %s/%s is not initialized.  Stopping execution.",fName.c_str(),
 			fCfgVersion.c_str()));
+
+}
+
+//------------------------------------------------------
+void CCMModule::ConnectEvents(std::shared_ptr<Events> /* evt */)
+{
+  //Connect the event to be processed
+
+}
+
+//------------------------------------------------------
+void CCMModule::ConnectBinaryRawData(std::shared_ptr<RawData> /* rawData */)
+{
+  //Connect the event to be processed
+
+}
+
+//------------------------------------------------------
+void CCMModule::ConnectRawData(std::shared_ptr<RawData> /* rawData */)
+{
+  //Connect the event to be processed
+
+}
+
+//------------------------------------------------------
+void CCMModule::ConnectPulses(std::shared_ptr<Pulses> /* pulses */)
+{
+  //Connect the event to be processed
 
 }
 

@@ -16,11 +16,15 @@
 
 #include <stdint.h>
 #include <string>
+#include <memory>
 
 #include "Utility.h"
 
 class CCMModule; //needed for typedef
 class CCMConfig;
+class Events;
+class RawData;
+class Pulses;
 
 #include <vector>
 
@@ -41,7 +45,7 @@ public:
   virtual void Configure(const CCMConfig& c); // Beginning of job
 
   // Start new run
-  virtual CCMResult_t NewRun(uint32_t run);
+  virtual CCMResult_t NewRun(uint32_t run, uint32_t subrun);
 
   //Finish any job related tasks
   virtual CCMResult_t EndOfJob();
@@ -49,17 +53,15 @@ public:
   virtual void CheckInit();
 
   //Methods to pass the data to process into the module
-  //virtual void ConnectEvent(CCMEvent* evt);
-  //virtual void ConnectHits(HitVec* hits);
-  //virtual void ConnectBIBHits(HitVec* hits);
-  //virtual void ConnectEventTimeInfo(CCMEventTimeInfo * evt);
-  //virtual void ConnectPosTopology(CCMPosTopology * evt);
-  //virtual void ConnectWaveInfo(WaveInfoVec* hits);
-  //virtual void ConnectBIBWaveInfo(WaveInfoVec* hits);
+  virtual void ConnectEvents(std::shared_ptr<Events> evt);
+  virtual void ConnectBinaryRawData(std::shared_ptr<RawData> rawData);
+  virtual void ConnectRawData(std::shared_ptr<RawData> rawData);
+  virtual void ConnectPulses(std::shared_ptr<Pulses> pulses);
 
   const char* Name()    const { return fName.c_str();       }
   const char* Version() const { return fCfgVersion.c_str(); }
   const uint32_t CurrentRun() const { return fCurrentRun; }
+  const uint32_t CurrentSubRun() const { return fCurrentSubRun; }
 
   void SetCfgVersion(const char* cfgv);
 
@@ -68,6 +70,7 @@ protected:
   std::string  fCfgVersion; ///< Version of configuration in use
   bool         fIsInit;     ///< Init to false constructor
   uint32_t     fCurrentRun; ///< Current run number
+  uint32_t     fCurrentSubRun; ///< Current subrun number
 
 };
 

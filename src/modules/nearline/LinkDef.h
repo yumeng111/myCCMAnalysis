@@ -2,7 +2,6 @@
 #pragma link off all globals;
 #pragma link off all classes;
 #pragma link off all functions;
-#pragma link C++ class CCMFindEvents-!;
-#pragma link C++ class CCMApplyPreCuts-!;
-#pragma link C++ class CCMNa22Cuts-!;
+#pragma link C++ class CCMRateCalc-!;
+#pragma link C++ class CCMSPECalc-!;
 #endif /* __CINT__ */
