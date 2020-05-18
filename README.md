@@ -66,7 +66,7 @@ Put the following lines in your ~/.rootlogon.C
   // use the following for linux
   gSystem->Load("${CCMINSTALLBuild}/src/utils/libCCMUtils.so");
   gSystem->Load("${CCMINSTALLBuild}/src/ds/libCCMDS.so");
-  gSystem->Load("${CCMINSTALLBuild}/src/ds/libCCMIO.so");
+  gSystem->Load("${CCMINSTALLBuild}/src/io/libCCMIO.so");
   gSystem->Load("${CCMINSTALLBuild}/src/spe/libCCMSPE.so");
   gSystem->Load("${CCMINSTALLBuild}/src/modules/framework/libCCMXML.so");
   gSystem->Load("${CCMINSTALLBuild}/src/modules/reco/libCCMReco.so");
