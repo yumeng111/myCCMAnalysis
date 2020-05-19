@@ -121,3 +121,15 @@ void CCMModule::ConnectPulses(std::shared_ptr<Pulses> /* pulses */)
 
 }
 
+//------------------------------------------------------
+void CCMModule::ConnectInFileName(std::string name)
+{
+  fInFileName = name;
+}
+
+//------------------------------------------------------
+void CCMModule::ConnectOutFileName(std::string name)
+{
+  fOutFileName = name;
+}
+

@@ -5,6 +5,7 @@
  * \date February 25, 2020
  ***********************************************/
 #include "Utility.h"
+#include "MsgLog.h"
 
 /*!**********************************************
  * \fn void Utility::ParseStringForRunNumber(std::string name, int & run int & subrun)
@@ -23,18 +24,24 @@
  ***********************************************/
 void Utility::ParseStringForRunNumber(std::string name, int & run, int & subrun)
 {
+  MsgDebug(2,MsgLog::Form("Input string: %s",name.c_str()));
   // find where "run" occurs in the string
-  size_t locOfRun = name.find("run");
+  size_t locOfRun = name.find("PDSout_run");
+  MsgDebug(2,MsgLog::Form("Location of run = %zu", locOfRun));
 
   // get the run number and the subrun number in string format
   std::string runNumber = "";
   std::string subRunNumber = "";
-  runNumber.assign(name,locOfRun+3,6);
-  subRunNumber.assign(name,locOfRun+3+6+1,6);
+  runNumber.assign(name,locOfRun+3+7,6);
+  subRunNumber.assign(name,locOfRun+3+7+6+1,6);
+
+  MsgDebug(2,MsgLog::Form("String form runNumber = %s, subRunNumber = %s",runNumber.c_str(),subRunNumber.c_str()));
 
   // convert the strings to int
   run = std::stoi(runNumber);
   subrun = std::stoi(subRunNumber);
+
+  MsgDebug(2,MsgLog::Form("Integer form runNumber %d subRunNumber = %d",run,subrun));
 
   return;
 }

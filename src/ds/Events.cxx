@@ -39,6 +39,7 @@ Events::Events() : TObject()
  ***********************************************/
 Events::Events(const Events & p) : TObject(p)
 {
+  MsgInfo("Called Copied Constructor")
   this->operator=(p);
 }
 

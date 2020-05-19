@@ -152,7 +152,6 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
       branch = fBranch[kPulsesID] = fPulsesTree->GetBranch("pulses");
     }
     if (branch != 0) {
-      MsgInfo("Got Pulses Branch");
       fBranch[kPulsesID]->SetAddress(&fPulses);
     }
   } else {
@@ -163,7 +162,6 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
       std::find(fReadBranches.begin(),fReadBranches.end(),"all") != fReadBranches.end()) {
     branch = fBranch[kEventsID] = fEventsTree->GetBranch("events");
     if(branch != 0) {
-      MsgInfo("Got Events Branch");
       fBranch[kEventsID]->SetAddress(&fEvents);
     }
   } else {
@@ -194,6 +192,10 @@ int CCMEventTreeHandle::SetupOutputFile(TFile & f)
   }
 
   fOutputFile->cd();
+  if (std::find(fSaveBranches.begin(),fSaveBranches.end(),"none") != fSaveBranches.end()) {
+    return 1;
+  }
+
   fOutEventTree = new TTree(gsEvents, gsEvents);
   if(fOutEventTree == nullptr) {
     MsgFatal("Problem setting up output tree!");

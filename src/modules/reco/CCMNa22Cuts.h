@@ -47,6 +47,7 @@ class CCMNa22Cuts : public CCMModule
     void Configure(const CCMConfig& c);
 
     void ConnectEvents(std::shared_ptr<Events> evt) { fEvents = evt; }
+    void ConnectOutFileName(std::string name) { fOutFileName = name; SetupOutFile(); }
 
   private:
 
@@ -100,14 +101,18 @@ class CCMNa22Cuts : public CCMModule
     int fVetoCRight;
     int fVetoCFront;
     int fVetoCBack;
+    int fVetoPromptTop;
+    int fVetoPromptBottom;
+    int fVetoPromptCLeft;
+    int fVetoPromptCRight;
+    int fVetoPromptCFront;
+    int fVetoPromptCBack;
     double fWeight;
     double fX;
     double fY;
     double fZ;
     double fLargestPMTFraction;
     unsigned int fEpochSec;
-
-    
 };
 
 #endif // CCMNa22Cuts_h

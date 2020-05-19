@@ -14,7 +14,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
-#include <list>
+#include <vector>
 #include <sstream>
 
 #include "MsgLog.h"
@@ -43,6 +43,7 @@ std::shared_ptr<CCMRootIO> CCMRootIO::GetInstance()
 //__________________________________________________
 CCMRootIO::CCMRootIO()
   : fEventHandle(std::make_unique<CCMEventTreeHandle>()),
+
   fFileIndex(-1),
   fInFile(0),
   fOwnHandle(true),
@@ -443,7 +444,22 @@ void CCMRootIO::Close()
     fInFile->Close();
     fInFile = nullptr;
   }
+}
 
+//__________________________________________________
+void CCMRootIO::Clear()
+{
+  if (fInFile != nullptr) {
+    fInFile->Flush();
+    fInFile->Close();
+    fInFile = nullptr;
+  }
+
+  if (!fInFileList.empty()) {
+    fInFileList.clear();
+    fFileIndex = 0;
+    fReadOK = false;
+  }
 }
 
 //__________________________________________________
@@ -517,7 +533,7 @@ void CCMRootIO::SetParameter(std::string name, std::string value)
   if (name.find("ReadBranches") != std::string::npos) {
     std::stringstream ss(value);
     std::string branchName = "";
-    std::list<std::string> branches;
+    std::vector<std::string> branches;
     while (ss >> branchName) {
       branches.emplace_back(branchName);
     }
@@ -525,7 +541,7 @@ void CCMRootIO::SetParameter(std::string name, std::string value)
   } else if (name.find("SaveBranches") != std::string::npos) {
     std::stringstream ss(value);
     std::string branchName = "";
-    std::list<std::string> branches;
+    std::vector<std::string> branches;
     while (ss >> branchName) {
       branches.emplace_back(branchName);
     }

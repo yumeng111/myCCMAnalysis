@@ -34,6 +34,8 @@ CCMTaskManager::CCMTaskManager()
   fRawData = std::make_shared<RawData>();
   fBinaryRawData = std::make_shared<RawData>();
 
+  fCurrentInFileName = "";
+  fCurrentOutFileName = "";
   fCurrentRunNum = 0;
   fCurrentSubRunNum = 0;
 }
@@ -50,6 +52,8 @@ CCMTaskManager::CCMTaskManager(const CCMTaskManager& task)
   fRawData = std::make_shared<RawData>();
   fBinaryRawData = std::make_shared<RawData>();
 
+  fCurrentInFileName = "";
+  fCurrentOutFileName = "";
   fCurrentRunNum = 0;
   fCurrentSubRunNum = 0;
 }
@@ -93,6 +97,8 @@ CCMTaskManager::CCMTaskManager(std::string configfile,
   fRawData = std::make_shared<RawData>(fRootIO->GetRawData());
   fBinaryRawData = std::make_shared<RawData>(fRawIO->GetRawData());
 
+  fCurrentInFileName = "";
+  fCurrentOutFileName = "";
   fCurrentRunNum = 0;
   fCurrentSubRunNum = 0;
 }
@@ -119,6 +125,12 @@ CCMResult_t CCMTaskManager::Execute(int32_t nevt)
     outRoot = false;
   }
 
+  if (!rootFileListOut.empty()) {
+    fCurrentOutFileName = rootFileListOut.front();
+  } else {
+    fCurrentOutFileName = rawFileListOut.front();
+  }
+
   if (!rootFileList.empty()) {
     return ExecuteRoot(nevt,rootFileList,outRoot);
   } else if (!rawFileList.empty()) {
@@ -141,6 +153,7 @@ CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::stri
   int subRun = 0;
   for (auto & file : fileList) {
     MsgInfo(MsgLog::Form("File Name: %s",file.c_str()));
+    fCurrentInFileName = file;
 
     Utility::ParseStringForRunNumber(file,run,subRun);
     if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
@@ -216,6 +229,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
   int subRun = 0;
   for (auto & file : fileList) {
     MsgInfo(MsgLog::Form("File Name: %s",file.c_str()));
+    fCurrentInFileName = file;
 
     Utility::ParseStringForRunNumber(file,run,subRun);
     if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
@@ -328,6 +342,8 @@ void CCMTaskManager::ConnectDataToModules()
     module->ConnectEvents(fEvents);
     module->ConnectRawData(fRawData);
     module->ConnectPulses(fPulses);
+    module->ConnectInFileName(fCurrentInFileName);
+    module->ConnectOutFileName(fCurrentOutFileName);
   }
 
 }

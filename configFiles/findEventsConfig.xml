@@ -34,10 +34,10 @@
       The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
       Must be the first param in this config
     </Param>
-    <Param name="HVOffFile"><string>mappings/hv_off_2019.csv</string>
+    <Param name="HVOffFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/hv_off_2019.csv</string>
       List of the HV channels that are off.
     </Param>
-    <Param name="CalibrationFile"><string>mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
+    <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
       Name of the calibration file to use
     </Param>
   </Config>

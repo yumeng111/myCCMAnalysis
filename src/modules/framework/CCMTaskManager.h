@@ -89,6 +89,9 @@ private:
   std::shared_ptr<RawData>  fBinaryRawData;
   std::shared_ptr<RawData>  fRawData;
   std::shared_ptr<Pulses>  fPulses;
+
+  std::string fCurrentInFileName;
+  std::string fCurrentOutFileName;
   
   int fCurrentRunNum;
   int fCurrentSubRunNum;

@@ -1,5 +1,5 @@
-#ifndef SBEEVENTTREEHANDLE_H
-#define SBEEVENTTREEHANDLE_H
+#ifndef CCMEEVENTTREEHANDLE_H
+#define CCMEEVENTTREEHANDLE_H
 /*----------------------------------------------------------
  *
  *   CCMEventTreeHandle
@@ -25,7 +25,6 @@
 class TFile;
 class TTree;
 class TBranch;
-class Event;
 class RawData;
 class Pulses;
 class Events;
@@ -48,8 +47,8 @@ class CCMEventTreeHandle
     uint32_t Advance(uint32_t n = 1);
     uint32_t Rewind(uint32_t n = 1);
 
-    void SetReadBranches(std::list<std::string> branchList) { fReadBranches = branchList; }
-    void SetSaveBranches(std::list<std::string> branchList) { fSaveBranches = branchList; }
+    void SetReadBranches(const std::vector<std::string> & branchList) { fReadBranches = branchList; }
+    void SetSaveBranches(const std::vector<std::string> & branchList) { fSaveBranches = branchList; }
 
     void SetCurrentEvents(const Events& event);
     void SetCurrentRawData(const RawData& rawData);
@@ -99,13 +98,13 @@ class CCMEventTreeHandle
     Pulses * fPulses;
     Events * fEvents;
 
-    std::list<std::string> fReadBranches;
-    std::list<std::string> fSaveBranches;
+    std::vector<std::string> fReadBranches;
+    std::vector<std::string> fSaveBranches;
 };
 
 //////////////////////////////////////////////////////////////
 // Template functions must be inlines
 //////////////////////////////////////////////////////////////
 
-#endif // SBEEVENTTREEHANDLE_H
+#endif // CCMEEVENTTREEHANDLE_H
 

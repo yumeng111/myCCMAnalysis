@@ -113,6 +113,12 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
     fVetoCRight(0),
     fVetoCFront(0),
     fVetoCBack(0),
+    fVetoPromptTop(0),
+    fVetoPromptBottom(0),
+    fVetoPromptCLeft(0),
+    fVetoPromptCRight(0),
+    fVetoPromptCFront(0),
+    fVetoPromptCBack(0),
     fWeight(0),
     fX(0),
     fY(0),
@@ -122,8 +128,6 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
 {
   //Default constructor
   this->SetCfgVersion(version);
-
-  SetupOutFile();
 }
 
 //_______________________________________________________________________________________
@@ -167,6 +171,12 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
   fVetoCRight(clufdr.fVetoCRight),
   fVetoCFront(clufdr.fVetoCFront),
   fVetoCBack(clufdr.fVetoCBack),
+  fVetoPromptTop(clufdr.fVetoPromptTop),
+  fVetoPromptBottom(clufdr.fVetoPromptBottom),
+  fVetoPromptCLeft(clufdr.fVetoPromptCLeft),
+  fVetoPromptCRight(clufdr.fVetoPromptCRight),
+  fVetoPromptCFront(clufdr.fVetoPromptCFront),
+  fVetoPromptCBack(clufdr.fVetoPromptCBack),
   fWeight(clufdr.fWeight),
   fX(clufdr.fX),
   fY(clufdr.fY),
@@ -186,6 +196,13 @@ CCMNa22Cuts::~CCMNa22Cuts()
 //_______________________________________________________________________________________
 CCMResult_t CCMNa22Cuts::ProcessEvent()
 {
+  // since the class does not own the TFile, always check to see if it is present
+  fOutfile = gROOT->GetFile(fOutFileName.c_str());
+  
+  std::vector<size_t> locationsToRemove;
+
+  const double kPromptLength = 0.090;
+
   const size_t kNumEvents = fEvents->GetNumEvents();
   fEpochSec = fEvents->GetComputerSecIntoEpoch();
   for (size_t e = 0; e < kNumEvents; ++e) {
@@ -194,12 +211,12 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     double st = simplifiedEvent.GetStartTime();// - 9.92;
     fLength = simplifiedEvent.GetLength();
 
-    double promptLength = 0.090;
-    bool longerThanPrompt = fLength > promptLength;
+    bool longerThanPrompt = fLength > kPromptLength;
 
-    fEnergy = simplifiedEvent.GetIntegralTank(longerThanPrompt);// - randomRate*promptLength;
+    fEnergy = simplifiedEvent.GetIntegralTank(longerThanPrompt);// - randomRate*kPromptLength;
     fHits = simplifiedEvent.GetNumCoated(longerThanPrompt);
     fNumPMTs = simplifiedEvent.GetPMTHits();
+    //MsgInfo(MsgLog::Form("e %zu energy %.2f hits %d numPTs %d length %.3f",e,fEnergy,fHits,fNumPMTs,fLength));
 
     if (fShiftTime) {
       st -= 9.92;
@@ -208,17 +225,20 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
 
     if (fDoTimeCut) {
       if (st < fTimeCutValueLow || st > fTimeCutValueHigh) {
+        locationsToRemove.emplace_back(e);
         continue;
       } // end time cut condition
     } // end fDoTimeCut
 
     double et = st + fLength;
     if (et <= st) {
+      locationsToRemove.emplace_back(e);
       continue;
     }
 
     if (fDoLengthCut) {
       if (fLength < fLengthCutValueLow || fLength > fLengthCutValueHigh) {
+        locationsToRemove.emplace_back(e);
         continue;
       } // end length cut condition
     } // end if fDoLengthCut
@@ -231,33 +251,44 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     if (fDoPositionCut) {
       if (radius < fRadiusCutValueLow || radius > fRadiusCutValueHigh ||
           fZ < fZCutValueLow || fZ > fZCutValueHigh) {
+        locationsToRemove.emplace_back(e);
         continue;
       } // end position cut check
     } // end if fDoPositionCut
 
     if (fDoEnergyCut) {
       if (fEnergy < fEnergyCutValueLow || fEnergy > fEnergyCutValueHigh) {
+        locationsToRemove.emplace_back(e);
         continue;
       }// end energy cut check
     }// end if fDoEnergyCut
 
     if (fHits < 3) {
+        locationsToRemove.emplace_back(e);
       continue;
     }
 
-    fVetoTop = simplifiedEvent.GetNumVetoTop();
-    fVetoBottom = simplifiedEvent.GetNumVetoBottom();
-    fVetoCLeft = simplifiedEvent.GetNumVetoLeft();
-    fVetoCBack = simplifiedEvent.GetNumVetoBack();
-    fVetoCFront = simplifiedEvent.GetNumVetoFront();
-    fVetoCRight = simplifiedEvent.GetNumVetoRight();
-    int vetoTotal = simplifiedEvent.GetNumVeto();
+    fVetoTop = simplifiedEvent.GetNumVetoTop(false);
+    fVetoBottom = simplifiedEvent.GetNumVetoBottom(false);
+    fVetoCLeft = simplifiedEvent.GetNumVetoLeft(false);
+    fVetoCBack = simplifiedEvent.GetNumVetoBack(false);
+    fVetoCFront = simplifiedEvent.GetNumVetoFront(false);
+    fVetoCRight = simplifiedEvent.GetNumVetoRight(false);
+
+    fVetoPromptTop = simplifiedEvent.GetNumVetoTop(true);
+    fVetoPromptBottom = simplifiedEvent.GetNumVetoBottom(true);
+    fVetoPromptCLeft = simplifiedEvent.GetNumVetoLeft(true);
+    fVetoPromptCBack = simplifiedEvent.GetNumVetoBack(true);
+    fVetoPromptCFront = simplifiedEvent.GetNumVetoFront(true);
+    fVetoPromptCRight = simplifiedEvent.GetNumVetoRight(true);
+    int vetoTotal = simplifiedEvent.GetNumVeto(false);
 
     fLargestPMTFraction = simplifiedEvent.GetLargestPMTFraction();
     if (fDoNicenessCut) {
       double uniform = fEnergy/static_cast<double>(fNumPMTs);
       double nice = (fLargestPMTFraction - uniform)/uniform;
       if (nice < fNicenessCutValueLow || nice > fNicenessCutValueHigh) {
+        locationsToRemove.emplace_back(e);
         continue;
       }
     } // end if fDoNicenessCut
@@ -265,6 +296,7 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     if (fDoVetoCut) {
       if ((vetoTotal >= fNumVetoCut && !fReverseVeto) || 
           (fReverseVeto && vetoTotal < fNumVetoCut)) {
+        locationsToRemove.emplace_back(e);
         continue;
       } // end veto cut check
     }// end if fDoVetoCut
@@ -274,10 +306,10 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     for (long e2 = e-1; e2 >= 0 && fDoPrevCut; --e2) {
       auto simplifiedEvent2 = fEvents->GetSimplifiedEvent(e2);
 
-      bool longerThanPrompt2 = simplifiedEvent2.GetLength() > promptLength;
+      bool longerThanPrompt2 = simplifiedEvent2.GetLength() > kPromptLength;
       double promptHits2 = simplifiedEvent2.GetNumCoated(longerThanPrompt2);
       double st2 = simplifiedEvent2.GetStartTime();// - 9.92;
-      //double promptIntegral2 = simplifiedEvent2.GetIntegralTank(longerThanPrompt2);// - randomRate*promptLength;
+      //double promptIntegral2 = simplifiedEvent2.GetIntegralTank(longerThanPrompt2);// - randomRate*kPromptLength;
       //double length2 = simplifiedEvent2.GetLength();
 
       if (fShiftTime) {
@@ -305,6 +337,7 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     } // end for e2
 
     if (reject) {
+      locationsToRemove.emplace_back(e);
       continue;
     }
 
@@ -312,10 +345,25 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     //MsgInfo(MsgLog::Form("st %f weighFunction %g weight %g",st,weightFunction->Eval(st),weight));
 
     if (fOutfile != nullptr) {
+      //MsgInfo("Filling the tree");
       fOutfile->cd();
       fTree->Fill();
     }
   } // end e
+
+  if (locationsToRemove.empty()) {
+    return kCCMSuccess;
+  }
+
+  for (auto it = locationsToRemove.rbegin();
+      it != locationsToRemove.rend();
+      ++it) {
+    fEvents->RemoveSimplifiedEvent(*it);
+  }
+
+  if (fEvents->GetNumEvents() == 0) {
+    return kCCMDoNotWrite;
+  }
 
   return kCCMSuccess;
 }
@@ -328,9 +376,6 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
   //by reading them from the CCMConfig object.
 
   MsgInfo("Inside Coonfiguration file");
-
-  c("OutFileName").Get(fOutFileName);
-  SetupOutFile();
 
   c("ShiftTime").Get(fShiftTime);
 
@@ -417,6 +462,14 @@ void CCMNa22Cuts::SetupOutFile()
   } // end for i < 4;
   */
 
+  if (fOutfile) {
+    if (fOutfile->GetName() != fOutFileName) {
+      MsgWarning(MsgLog::Form("New outfile name %s is different than old %s, this should not happen, sticking with ld",
+            fOutFileName.c_str(),fOutfile->GetName()));
+    }
+    return;
+  }
+
   fEnergy = 0;
   fLength = 0;
   fHits = 0;
@@ -428,6 +481,12 @@ void CCMNa22Cuts::SetupOutFile()
   fVetoCRight = 0;
   fVetoCFront = 0;
   fVetoCBack = 0;
+  fVetoPromptTop = 0;
+  fVetoPromptBottom = 0;
+  fVetoPromptCLeft = 0;
+  fVetoPromptCRight = 0;
+  fVetoPromptCFront = 0;
+  fVetoPromptCBack = 0;
   fWeight = 0;
   fX = 0;
   fY = 0;
@@ -436,8 +495,12 @@ void CCMNa22Cuts::SetupOutFile()
   fEpochSec = 0;
 
   if (!fOutFileName.empty()) {
-    MsgInfo(MsgLog::Form("Creating output file for cuts branch"));
-    fOutfile = TFile::Open(fOutFileName.c_str(),"RECREATE");
+    fOutfile = gROOT->GetFile(fOutFileName.c_str());
+    if (!fOutfile) {
+      MsgWarning(MsgLog::Form("Could not find ROOT file with name %s already opened",fOutFileName.c_str()));
+      return;
+    }
+    fOutfile->cd();
     fTree = new TTree("tree","tree");
     fTree->Branch("epochSec",&fEpochSec);
     fTree->Branch("energy",&fEnergy);
@@ -451,6 +514,12 @@ void CCMNa22Cuts::SetupOutFile()
     fTree->Branch("vetoCRight",&fVetoCRight);
     fTree->Branch("vetoCFront",&fVetoCFront);
     fTree->Branch("vetoCBack",&fVetoCBack);
+    fTree->Branch("vetoPromptTop",&fVetoPromptTop);
+    fTree->Branch("vetoPromptBottom",&fVetoPromptBottom);
+    fTree->Branch("vetoPromptCLeft",&fVetoPromptCLeft);
+    fTree->Branch("vetoPromptCRight",&fVetoPromptCRight);
+    fTree->Branch("vetoPromptCFront",&fVetoPromptCFront);
+    fTree->Branch("vetoPromptCBack",&fVetoPromptCBack);
     fTree->Branch("weight",&fWeight);
     fTree->Branch("x",&fX);
     fTree->Branch("y",&fY);
@@ -459,12 +528,13 @@ void CCMNa22Cuts::SetupOutFile()
   }
 }
 
+//------------------------------------------------------
 CCMResult_t CCMNa22Cuts::EndOfJob()
 {
+  fOutfile = gROOT->GetFile(fOutFileName.c_str());
   if (fOutfile != nullptr) {
     fOutfile->cd();
     fTree->Write();
-    delete fOutfile;
   }
 
   return kCCMSuccess;

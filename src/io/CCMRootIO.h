@@ -138,8 +138,14 @@ class CCMRootIO
     void Close();
 
     /*!
+     * \fn void Clear()
+     * \brief Clears the input file list
+     */
+    void Clear();
+
+    /*!
      * \fn bool ReadOK()
-     * \brief Returns true if the last read from the break-in-board tree was sucessful
+     * \brief Returns true if the last read from the event tree was sucessful
      */
     bool ReadOK()    { return fReadOK; }
 
@@ -149,7 +155,7 @@ class CCMRootIO
 
     /*!
      * \fn CCMEventTreeHandle& GetEventTree()
-     * \brief Returns current reference variable to the break-in-board tree handle class
+     * \brief Returns current reference variable to the event tree handle class
      */
     CCMEventTreeHandle& GetEventTree();
 
@@ -169,6 +175,8 @@ class CCMRootIO
     uint32_t Rewind(uint32_t n = 1);
     int Reload();
     int WriteEvent();
+
+    uint32_t NumInputFiles() { return fInFileList.size(); }
 
     uint32_t GetEventNumber() { return fEventNumber; }
 

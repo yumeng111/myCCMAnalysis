@@ -57,6 +57,8 @@ public:
   virtual void ConnectBinaryRawData(std::shared_ptr<RawData> rawData);
   virtual void ConnectRawData(std::shared_ptr<RawData> rawData);
   virtual void ConnectPulses(std::shared_ptr<Pulses> pulses);
+  virtual void ConnectInFileName(std::string name);
+  virtual void ConnectOutFileName(std::string name);
 
   const char* Name()    const { return fName.c_str();       }
   const char* Version() const { return fCfgVersion.c_str(); }
@@ -68,6 +70,8 @@ public:
 protected:
   std::string  fName;       ///< Name of module
   std::string  fCfgVersion; ///< Version of configuration in use
+  std::string  fInFileName; ///< Name of the current input file
+  std::string  fOutFileName; ///< Name of the current output file
   bool         fIsInit;     ///< Init to false constructor
   uint32_t     fCurrentRun; ///< Current run number
   uint32_t     fCurrentSubRun; ///< Current subrun number
