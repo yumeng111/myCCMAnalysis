@@ -55,9 +55,6 @@ class CCMFindEvents : public CCMModule
 
     //private methods
     void DefineVectors();
-    template<typename T>
-    int FindFirstNoneEmptyBin(typename std::vector<T>::iterator begin, 
-        typename std::vector<T>::iterator start, typename std::vector<T>::iterator end);
 
   private:
 
@@ -95,17 +92,6 @@ class CCMFindEvents : public CCMModule
     std::vector<std::vector<int>> fPMTWaveformCount;
     
 };
-
-template <class T>
-int CCMFindEvents::FindFirstNoneEmptyBin(typename std::vector<T>::iterator begin, 
-    typename std::vector<T>::iterator start, typename std::vector<T>::iterator end)
-{
-  auto time = std::find_if_not(start,end,[](const T & i){return i == static_cast<T>(0);});
-  if (std::distance(time,end) == 0) {
-    return -1;
-  }
-  return std::distance(begin,time);
-}
 
 #endif // CCMFindEvents_h
 

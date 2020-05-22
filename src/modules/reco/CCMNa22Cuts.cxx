@@ -214,7 +214,7 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     bool longerThanPrompt = fLength > kPromptLength;
 
     fEnergy = simplifiedEvent.GetIntegralTank(longerThanPrompt);// - randomRate*kPromptLength;
-    fHits = simplifiedEvent.GetNumCoated(longerThanPrompt);
+    fHits = simplifiedEvent.GetNumTank(longerThanPrompt);
     fNumPMTs = simplifiedEvent.GetPMTHits();
     //MsgInfo(MsgLog::Form("e %zu energy %.2f hits %d numPTs %d length %.3f",e,fEnergy,fHits,fNumPMTs,fLength));
 

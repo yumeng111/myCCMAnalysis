@@ -478,12 +478,12 @@ CCMResult_t CCMFindEvents::ProcessEvent()
       vetoActivityPromptBottom = std::accumulate(itVetoBottomTimeBegin+maxVetoPromptStart,itVetoBottomTimeBegin+maxVetoPromptEnd,0);
 
       MsgDebug(1,"Get first none empty bin for the veto tubes");
-      vetoTimeTop = FindFirstNoneEmptyBin<int>(itVetoTopTimeBegin,itVetoTopTimeBegin+start,itVetoTopTimeBegin+endBin);
-      vetoTimeCRight = FindFirstNoneEmptyBin<int>(itVetoCRightTimeBegin,itVetoCRightTimeBegin+start,itVetoCRightTimeBegin+endBin);
-      vetoTimeCLeft = FindFirstNoneEmptyBin<int>(itVetoCLeftTimeBegin,itVetoCLeftTimeBegin+start,itVetoCLeftTimeBegin+endBin);
-      vetoTimeCFront = FindFirstNoneEmptyBin<int>(itVetoCFrontTimeBegin,itVetoCFrontTimeBegin+start,itVetoCFrontTimeBegin+endBin);
-      vetoTimeCBack = FindFirstNoneEmptyBin<int>(itVetoCBackTimeBegin,itVetoCBackTimeBegin+start,itVetoCBackTimeBegin+endBin);
-      vetoTimeBottom = FindFirstNoneEmptyBin<int>(itVetoBottomTimeBegin,itVetoBottomTimeBegin+start,itVetoBottomTimeBegin+endBin);
+      vetoTimeTop = Utility::FindFirstNoneEmptyBin<int>(itVetoTopTimeBegin,itVetoTopTimeBegin+start,itVetoTopTimeBegin+endBin);
+      vetoTimeCRight = Utility::FindFirstNoneEmptyBin<int>(itVetoCRightTimeBegin,itVetoCRightTimeBegin+start,itVetoCRightTimeBegin+endBin);
+      vetoTimeCLeft = Utility::FindFirstNoneEmptyBin<int>(itVetoCLeftTimeBegin,itVetoCLeftTimeBegin+start,itVetoCLeftTimeBegin+endBin);
+      vetoTimeCFront = Utility::FindFirstNoneEmptyBin<int>(itVetoCFrontTimeBegin,itVetoCFrontTimeBegin+start,itVetoCFrontTimeBegin+endBin);
+      vetoTimeCBack = Utility::FindFirstNoneEmptyBin<int>(itVetoCBackTimeBegin,itVetoCBackTimeBegin+start,itVetoCBackTimeBegin+endBin);
+      vetoTimeBottom = Utility::FindFirstNoneEmptyBin<int>(itVetoBottomTimeBegin,itVetoBottomTimeBegin+start,itVetoBottomTimeBegin+endBin);
 
       // + 15 to calibrate to EJ detectors
       // subtract the beam time to remove the jitter of the beam timing
@@ -551,7 +551,7 @@ CCMResult_t CCMFindEvents::ProcessEvent()
         // find integral for the entire event window
         MsgDebug(4,Form("PMT %d total",pmt));
         total = std::accumulate(pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+endTotalBin,0.f);
-        time = FindFirstNoneEmptyBin<float>(pmtWaveformBeginIter,pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+endTotalBin);
+        time = Utility::FindFirstNoneEmptyBin<float>(pmtWaveformBeginIter,pmtWaveformBeginIter+startBin,pmtWaveformBeginIter+endTotalBin);
 
         if (prompt90 != 0) {
           ++numPMTs;

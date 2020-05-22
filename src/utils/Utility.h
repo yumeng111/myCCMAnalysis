@@ -15,6 +15,7 @@
 #include <vector>
 #include <cstring>
 #include <numeric>
+#include <iterator>
 
 /*!**********************************************
  * \enum HistInfo_t
@@ -66,38 +67,41 @@ typedef enum {
 typedef int32_t CCMResult_t;
 
 /*!**********************************************
- * \class Utility
+ * \namespace Utility
  * \brief A class with random algorithms that might be useful for different codes
  ***********************************************/
-class Utility
+namespace Utility
 {
-  public:
-    template<class T>
-    static void LinearUnweightedLS(size_t nPoints, T * x, T * y, T & par0, T & par1);
+  template<class T>
+   void LinearUnweightedLS(size_t nPoints, T * x, T * y, T & par0, T & par1);
 
-    template<class T>
-      static void FindQuartiles(std::vector<T> & vec, double & q1, double & q2, double & q3);
+  template<class T>
+   void FindQuartiles(std::vector<T> & vec, double & q1, double & q2, double & q3);
 
-    template<class T>
-      static float Smooth(const T * vector, int start, int length);
+  template<class T>
+   float Smooth(const T * vector, int start, int length);
 
-    static const char* tstamp()
-    {
-      //======================================================================
-      // Provide a nicely formatted, current, time stamp string
-      //======================================================================
-      static char tbuff[32];
-      time_t t;
-      t = time(0);
-      strcpy(tbuff, ctime(&t));
-      tbuff[24] = '\0';
-      return tbuff;
-    }
+  inline const char* tstamp()
+  {
+    //======================================================================
+    // Provide a nicely formatted, current, time stamp string
+    //======================================================================
+    static char tbuff[32];
+    time_t t;
+    t = time(0);
+    strcpy(tbuff, ctime(&t));
+    tbuff[24] = '\0';
+    return tbuff;
+  }
 
-    template<class T>
-    static T & Add(T & left, const T & right);
+  template<class T>
+   T & Add(T & left, const T & right);
 
-    static void ParseStringForRunNumber(std::string name, int & run, int & subrun);
+  extern void ParseStringForRunNumber(std::string name, int & run, int & subrun);
+
+  template<typename T>
+   int FindFirstNoneEmptyBin(typename std::vector<T>::iterator begin, 
+        typename std::vector<T>::iterator start, typename std::vector<T>::iterator end);
 
 };
 
@@ -209,6 +213,24 @@ template<class T>
 T & Utility::Add(T & left, const T & right)
 {
   return left += right;
+}
+
+/*!**********************************************
+ * \brief Loop the vector and find the first index that does not equal 0
+ * \param[in] begin Iterator to the start of the vector
+ * \param[in] start Iterator to where to start looking in the vector
+ * \param[in] end Iterator to where to stop looping in the vector
+ * \return The index of the first non-zero bin. Return value is -1 if all the bins equals zero
+ ***********************************************/
+template <class T>
+int Utility::FindFirstNoneEmptyBin(typename std::vector<T>::iterator begin, 
+    typename std::vector<T>::iterator start, typename std::vector<T>::iterator end)
+{
+  auto time = std::find_if_not(start,end,[](const T & i){return i == static_cast<T>(0);});
+  if (std::distance(time,end) == 0) {
+    return -1;
+  }
+  return std::distance(begin,time);
 }
 
 #endif // #ifndef Utility_h

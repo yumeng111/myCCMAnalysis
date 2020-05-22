@@ -263,6 +263,10 @@ bool SimplifiedEvent::NextPMTWaveform()
 
   std::advance(fPMTWaveformItr,1);
 
+  if (fPMTWaveformItr == fPMTWaveform.end()) {
+    return false;
+  }
+
   return true;
 }
 
@@ -273,6 +277,10 @@ bool SimplifiedEvent::NextPMTWaveform() const
   }
 
   std::advance(fPMTWaveformItr,1);
+  
+  if (fPMTWaveformItr == fPMTWaveform.end()) {
+    return false;
+  }
 
   return true;
 }
