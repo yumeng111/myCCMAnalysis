@@ -6,6 +6,7 @@
 
 class TTree;
 class TFile;
+class SimplifiedEvent;
 
 
 class CCMNa22Cuts : public CCMModule
@@ -53,6 +54,9 @@ class CCMNa22Cuts : public CCMModule
 
     //private methods
     void SetupOutFile();
+    void RecalculatePosition(const SimplifiedEvent & simplifiedEvent, 
+        const double fitLength, double & x, double & y, double & z);
+    int WaveformMaxPosition(const SimplifiedEvent & simplifiedEvent);
 
   private:
 
@@ -66,11 +70,11 @@ class CCMNa22Cuts : public CCMModule
     int fDoPositionCut;
     int fDoEnergyCut;
     int fDoPrevCut;
-    int fShiftTime;
     int fDoLengthCut;
     int fDoTimeCut;
     int fDoNicenessCut;
     int fReverseVeto;
+    int fWaveformMaxCut;
 
     int fNumVetoCut;
     double fRadiusCutValueLow;

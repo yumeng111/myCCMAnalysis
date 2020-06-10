@@ -67,11 +67,13 @@ class CCMFindPulses : public CCMModule
   private:
 
     //private data members
+    std::string fTriggerType;
     int fTruncateWaveform;
     int fFromRootFile;
+    int fResetPulses;
 
 
-    bool fWriteDBEntry;
+    int fWriteDBEntry;
     std::string fDBHost;
     std::string fDBUser;
     std::string fDBPwd;
@@ -84,8 +86,8 @@ class CCMFindPulses : public CCMModule
     long fNEventsTotal;
     long fNEventsSkipped;
     unsigned short fHighestTemp;
-    std::time_t fFirstTriggerTime = 0;
-    std::time_t fLastTriggerTime = 0;
+    std::time_t fFirstTriggerTime;
+    std::time_t fLastTriggerTime;
     
 };
 

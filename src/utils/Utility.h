@@ -72,6 +72,29 @@ typedef int32_t CCMResult_t;
  ***********************************************/
 namespace Utility
 {
+  // Set the number of bins and bin width
+  // This is hard coded and should be taken 
+  // from either data_structures.hh or a data base
+  // since they (in principle) could/will change
+  
+  /// The number of bins in the DAQ window
+  constexpr const int    fgkNumBins = 8000;
+
+  /// The width of each bin in the DAQ window in ns
+  constexpr const double fgkBinWidth = 2.0;
+
+  /// The number of digitizer channels that contains all the PMTs
+  constexpr const double fgkNumPMTs = 160;
+
+  /// The time in ns corresponding to the start of the DAQ window
+  constexpr const double fgkWindowStartTime = -9920;
+
+  /// The time in ns corresponding to the end of the DAQ window
+  constexpr const double fgkWindowEndTime = fgkWindowStartTime + static_cast<double>(fgkNumBins)*fgkBinWidth;
+
+  /// The time in bin number corresponding to the offset between CCM and FP3 detector
+  constexpr const double fgkFP3Offset = 15;
+
   template<class T>
    void LinearUnweightedLS(size_t nPoints, T * x, T * y, T & par0, T & par1);
 

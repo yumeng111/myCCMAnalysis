@@ -17,6 +17,8 @@
 #include "Events.h"
 #include "SimplifiedEvent.h"
 #include "MsgLog.h"
+#include "PMTInfoMap.h"
+#include "PMTInformation.h"
 
 #include <iostream>
 #include <cmath>
@@ -31,6 +33,7 @@
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TF1.h"
+#include "TVector3.h"
 
 /*
  * Fit results to weight the event based on when it occured in the DAQ window
@@ -81,11 +84,11 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
     fDoPositionCut(false),
     fDoEnergyCut(false),
     fDoPrevCut(false),
-    fShiftTime(false),
     fDoLengthCut(false),
     fDoTimeCut(false),
     fDoNicenessCut(false),
     fReverseVeto(false),
+    fWaveformMaxCut(false),
     fNumVetoCut(std::numeric_limits<int>::max()),
     fRadiusCutValueLow(-std::numeric_limits<double>::max()),
     fZCutValueLow(-std::numeric_limits<double>::max()),
@@ -139,11 +142,11 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
   fDoPositionCut(clufdr.fDoPositionCut),
   fDoEnergyCut(clufdr.fDoEnergyCut),
   fDoPrevCut(clufdr.fDoPrevCut),
-  fShiftTime(clufdr.fShiftTime),
   fDoLengthCut(clufdr.fDoLengthCut),
   fDoTimeCut(clufdr.fDoTimeCut),
   fDoNicenessCut(clufdr.fDoNicenessCut),
   fReverseVeto(clufdr.fReverseVeto),
+  fWaveformMaxCut(clufdr.fWaveformMaxCut),
   fNumVetoCut(clufdr.fNumVetoCut),
   fRadiusCutValueLow(clufdr.fRadiusCutValueLow),
   fZCutValueLow(clufdr.fZCutValueLow),
@@ -201,26 +204,35 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
   
   std::vector<size_t> locationsToRemove;
 
-  const double kPromptLength = 0.090;
-
   const size_t kNumEvents = fEvents->GetNumEvents();
   fEpochSec = fEvents->GetComputerSecIntoEpoch();
   for (size_t e = 0; e < kNumEvents; ++e) {
     auto simplifiedEvent = fEvents->GetSimplifiedEvent(e);
 
-    double st = simplifiedEvent.GetStartTime();// - 9.92;
+    double st = simplifiedEvent.GetStartTime();
     fLength = simplifiedEvent.GetLength();
 
-    bool longerThanPrompt = fLength > kPromptLength;
+    // time of length is in ns
+    double promptLength = std::min(90.0,fLength);
 
-    fEnergy = simplifiedEvent.GetIntegralTank(longerThanPrompt);// - randomRate*kPromptLength;
-    fHits = simplifiedEvent.GetNumTank(longerThanPrompt);
+    fEnergy = simplifiedEvent.GetIntegralTank(true);
+    fHits = simplifiedEvent.GetNumTank(true);
     fNumPMTs = simplifiedEvent.GetPMTHits();
     //MsgInfo(MsgLog::Form("e %zu energy %.2f hits %d numPTs %d length %.3f",e,fEnergy,fHits,fNumPMTs,fLength));
 
-    if (fShiftTime) {
-      st -= 9.92;
+    fX = simplifiedEvent.GetXPosition();
+    fY = simplifiedEvent.GetYPosition();
+    fZ = simplifiedEvent.GetZPosition();
+
+    if (fWaveformMaxCut) {
+      auto maxLoc = WaveformMaxPosition(simplifiedEvent);
+      if (static_cast<double>(maxLoc)*Utility::fgkBinWidth > promptLength) {
+        locationsToRemove.emplace_back(e);
+        continue;
+      }
     }
+
+
     fTime = st;
 
     if (fDoTimeCut) {
@@ -242,10 +254,6 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
         continue;
       } // end length cut condition
     } // end if fDoLengthCut
-
-    fX = simplifiedEvent.GetXPosition();
-    fY = simplifiedEvent.GetYPosition();
-    fZ = simplifiedEvent.GetZPosition();
 
     double radius = std::sqrt(fX*fX+fY*fY);
     if (fDoPositionCut) {
@@ -306,15 +314,8 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     for (long e2 = e-1; e2 >= 0 && fDoPrevCut; --e2) {
       auto simplifiedEvent2 = fEvents->GetSimplifiedEvent(e2);
 
-      bool longerThanPrompt2 = simplifiedEvent2.GetLength() > kPromptLength;
-      double promptHits2 = simplifiedEvent2.GetNumCoated(longerThanPrompt2);
-      double st2 = simplifiedEvent2.GetStartTime();// - 9.92;
-      //double promptIntegral2 = simplifiedEvent2.GetIntegralTank(longerThanPrompt2);// - randomRate*kPromptLength;
-      //double length2 = simplifiedEvent2.GetLength();
-
-      if (fShiftTime) {
-        st2 -= 9.92;
-      }
+      double promptHits2 = simplifiedEvent2.GetNumCoated(true);
+      double st2 = simplifiedEvent2.GetStartTime();
 
       if (promptHits2 < 3) {
         continue;
@@ -323,8 +324,12 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
       double x2 = simplifiedEvent2.GetXPosition();
       double y2 = simplifiedEvent2.GetYPosition();
       double z2 = simplifiedEvent2.GetZPosition();
-      if (std::sqrt(x2*x2+y2*y2) > 0.8 || std::fabs(z2) > 0.35) {
-        continue;
+      if (fDoPositionCut) {
+        double radius2 = std::sqrt(x2*x2+y2*y2);
+        if (radius2 < fRadiusCutValueLow || radius2 > fRadiusCutValueHigh ||
+            z2 < fZCutValueLow || z2 > fZCutValueHigh) {
+          continue;
+        } // end position cut check
       }
 
       double stDiff = st2 - st;
@@ -377,8 +382,6 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
 
   MsgInfo("Inside Coonfiguration file");
 
-  c("ShiftTime").Get(fShiftTime);
-
   c("DoLengthCut").Get(fDoLengthCut);
   if (fDoLengthCut) {
     c("LengthCutValueLow").Get(fLengthCutValueLow);
@@ -401,6 +404,8 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
   if (fDoPrevCut) {
     c("PrevCutTime").Get(fPrevCutTime);
   }
+
+  c("WaveformMaxCut").Get(fWaveformMaxCut);
 
   c("DoPositionCut").Get(fDoPositionCut);
   if (fDoPositionCut) {
@@ -432,36 +437,6 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
  ***********************************************/
 void CCMNa22Cuts::SetupOutFile()
 {
-  /*
-  std::vector<std::shared_ptr<TF1>> weightFunction;
-  for (int i=0; i < 4; ++i) {
-    weightFunction.push_back(std::make_shared<TF1>(Form("weightFunction%d",i),"[0]*TMath::Exp(-(x-[1])*[2])",-9.92,6.08));
-    switch (i) {
-      case 0:
-        weightFunction.back()->FixParameter(0,8.63796e-7);
-        weightFunction.back()->FixParameter(1,2.45729e1);
-        weightFunction.back()->FixParameter(2,9.84429e-2);
-        break;
-      case 1:
-        weightFunction.back()->FixParameter(0,7.90765e-5);
-        weightFunction.back()->FixParameter(1,3.73707e1);
-        weightFunction.back()->FixParameter(2,8.74439e-2);
-        break;
-      case 2:
-        weightFunction.back()->FixParameter(0,2.14018e-4);
-        weightFunction.back()->FixParameter(1,3.70502e1);
-        weightFunction.back()->FixParameter(2,8.85969e-2);
-        break;
-      case 3:
-        weightFunction.back()->FixParameter(0,6.36795e-6);
-        weightFunction.back()->FixParameter(1,3.16871e1);
-        weightFunction.back()->FixParameter(2,9.26635e-2);
-        break;
-      default: break;
-    }// end switch
-  } // end for i < 4;
-  */
-
   if (fOutfile) {
     if (fOutfile->GetName() != fOutFileName) {
       MsgWarning(MsgLog::Form("New outfile name %s is different than old %s, this should not happen, sticking with ld",
@@ -540,4 +515,115 @@ CCMResult_t CCMNa22Cuts::EndOfJob()
   return kCCMSuccess;
 }
 
+/*!**********************************************
+ * \fn void CCMNa22Cuts::RecalculatePosition(const SimplifiedEvent & simplifiedEvent, const double fitLength, double & x, double & y, double & z)
+ * \brief Recalcualte the position of the event based on the \p fitLength value passed to the function
+ * \param[in] simplifiedEvent The #SimplifiedEvent to recalculate the position for
+ * \param[in] fitLength The length of time to use to calculate the position
+ * \param[out] x The resulting x position
+ * \param[out] y The resulting y position
+ * \param[out] z The resulting z position
+ *
+ * Recalculate the position of the event based on the \p fitLength value passed to the function
+ * The current algorithm is a charge fitter
+ ***********************************************/
+void CCMNa22Cuts::RecalculatePosition(const SimplifiedEvent & simplifiedEvent, 
+    const double fitLength, double & x, double & y, double & z)
+{
+  int key = 0;
+  std::vector<float> pmtInt;
+  std::vector<int> pmtCount;
+
+  const size_t kNumBins = fitLength/2e-3;
+
+  std::vector<TVector3> pmtContribution;
+
+  simplifiedEvent.ResetPMTWaveformItr();
+  TVector3 pos;
+  double totalWeight = 0.0;
+  do
+  {
+    simplifiedEvent.GetPMTWaveform(key,pmtInt,pmtCount);
+    if (!PMTInfoMap::IsActive(key)) {
+      MsgWarning("PMT not Active: should not be here because this should have already been checked");
+      continue;
+    }
+    auto pmtInfo = PMTInfoMap::GetPMTInfo(key);
+    if (!pmtInfo) {
+      MsgWarning("PMTInformation does not exists: should not be here because this should have already been checked");
+      continue;
+    }
+    if (pmtInfo->IsVeto()) {
+      continue;
+    }
+    auto start = pmtInt.begin();
+    auto end = pmtInt.end();
+    if (kNumBins < pmtInt.size()) {
+      end = pmtInt.begin()+kNumBins;
+    }
+    float pmtEnergy = std::accumulate(start,end,0.f);
+
+    pos += *(pmtInfo->GetPosition())*pmtEnergy*pmtEnergy;
+    pmtContribution.push_back(*(pmtInfo->GetPosition())*pmtEnergy*pmtEnergy);
+    totalWeight += pmtEnergy*pmtEnergy;
+
+  } while (simplifiedEvent.NextPMTWaveform());
+
+  pos *= 1.0/totalWeight;
+
+  x = pos.X();
+  y = pos.Y();
+  z = pos.Z();
+
+  if (x == 0 && y == 0 && z == 0) {
+    for (const auto & vec : pmtContribution) {
+      vec.Print();
+    }
+    MsgInfo(MsgLog::Form("Total weight = %.3f",totalWeight));
+  }
+  return;
+}
+
+/*!**********************************************
+ * \fn int CCMNa22Cuts::WaveformMaxPosition(const SimplifiedEvent & simplifiedEvent)
+ * \brief Find where the waveform of the event is the largest
+ * \param[in] simplifiedEvent The #SimplifiedEvent to recalculate the position for
+ * \return The position of when the waveform is the largest
+ ***********************************************/
+int CCMNa22Cuts::WaveformMaxPosition(const SimplifiedEvent & simplifiedEvent)
+{
+  auto waveform = simplifiedEvent.GetWaveformInt();
+  auto max_iter = std::max_element(waveform.begin(),waveform.end());
+  return std::distance(waveform.begin(),max_iter);
+}
+
+/*
+   std::vector<std::shared_ptr<TF1>> weightFunction;
+   for (int i=0; i < 4; ++i) {
+   weightFunction.push_back(std::make_shared<TF1>(Form("weightFunction%d",i),"[0]*TMath::Exp(-(x-[1])*[2])",-9.92,6.08));
+   switch (i) {
+   case 0:
+   weightFunction.back()->FixParameter(0,8.63796e-7);
+   weightFunction.back()->FixParameter(1,2.45729e1);
+   weightFunction.back()->FixParameter(2,9.84429e-2);
+   break;
+   case 1:
+   weightFunction.back()->FixParameter(0,7.90765e-5);
+   weightFunction.back()->FixParameter(1,3.73707e1);
+   weightFunction.back()->FixParameter(2,8.74439e-2);
+   break;
+   case 2:
+   weightFunction.back()->FixParameter(0,2.14018e-4);
+   weightFunction.back()->FixParameter(1,3.70502e1);
+   weightFunction.back()->FixParameter(2,8.85969e-2);
+   break;
+   case 3:
+   weightFunction.back()->FixParameter(0,6.36795e-6);
+   weightFunction.back()->FixParameter(1,3.16871e1);
+   weightFunction.back()->FixParameter(2,9.26635e-2);
+   break;
+   default: break;
+   }// end switch
+   } // end for i < 4;
+   */
 

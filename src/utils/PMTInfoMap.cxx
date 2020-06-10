@@ -78,9 +78,11 @@ void PMTInfoMap::FillPMTMap(TTree * tree)
     tree->GetEntry(entry);
     int key = CreateKey(pmtInfo->GetBoard(),pmtInfo->GetBoardChan());
     if (fgPMTInfo.find(key) == fgPMTInfo.end()) {
-      MsgInfo(MsgLog::Form("Added key %3d board %2d chan %2d col %3d row %3d coated %1d name %s",
-            key,pmtInfo->GetBoard(),pmtInfo->GetBoardChan(),pmtInfo->GetColumn(),pmtInfo->GetRow(),
-            pmtInfo->IsUncoated(),pmtInfo->GetLocName().c_str()));
+      if (MsgLog::GetGlobalLogLevel() >= 1) {
+        MsgDebug(1,MsgLog::Form("Added key %3d board %2d chan %2d col %3d row %3d coated %1d name %s",
+              key,pmtInfo->GetBoard(),pmtInfo->GetBoardChan(),pmtInfo->GetColumn(),pmtInfo->GetRow(),
+              pmtInfo->IsUncoated(),pmtInfo->GetLocName().c_str()));
+      }
       fgPMTInfo.insert(std::make_pair(key,new PMTInformation(*pmtInfo)));
     }
   }
@@ -267,8 +269,10 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
       itMap->second->SetADCToPEDer(adcToPEDer);
       itMap->second->SetADCThreshold(adcThreshold);
       itMap->second->CreateNames();
-      MsgInfo(MsgLog::Form("Added key %3d hvBoard %2d hvChan %2d board %2d chan %2d col %3d row %3d coated %1d name %s",
-            key,hvBoard,hvChannel,adcBoardOrder,adcCH,col,row,coating,itMap->second->GetLocName().c_str()));
+      if (MsgLog::GetGlobalLogLevel() >= 1) {
+        MsgDebug(1,MsgLog::Form("Added key %3d hvBoard %2d hvChan %2d board %2d chan %2d col %3d row %3d coated %1d name %s",
+              key,hvBoard,hvChannel,adcBoardOrder,adcCH,col,row,coating,itMap->second->GetLocName().c_str()));
+      }
     } // end if fgPMTInfo.find(key) == fgPMTInfo.end()
   } // end for CSVIterator
 
@@ -483,7 +487,6 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
 
   MsgInfo(MsgLog::Form("hvOffList %s",fileName.c_str()));
   std::ifstream hvOffList(fileName.c_str());
-  MsgInfo(MsgLog::Form("hvOffList.good()? %d",hvOffList.good()));
   int board = 0;
   int chan = 0;
   std::string line;
@@ -496,7 +499,9 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
     ss >> board >> chan;
     int key = ConvertHVBoardChanToKey(board,chan);
 
-    MsgInfo(MsgLog::Form("board %d channel %d key %d",board,chan,key));
+    if (MsgLog::GetGlobalLogLevel() >= 1) {
+      MsgDebug(1,MsgLog::Form("To Remove HV board %d HV channel %d key %d",board,chan,key));
+    }
 
     if (key < 0) {
       continue;
@@ -523,11 +528,11 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
 {
   //TFile * calibrationFileTop = TFile::Open("root_out_2019ledData_run179_legFix_integral_all_round4_.root","READ");
 
-  MsgInfo(MsgLog::Form("Loading file from %s",fileName.c_str()));
-
   if (fileName == "") {
     MsgFatal("No file name passed. Exiting");
   }
+
+  MsgInfo(MsgLog::Form("Loading file from %s",fileName.c_str()));
 
   TFile * calibrationFile = TFile::Open(fileName.c_str(),"READ");
   if (!calibrationFile) {
@@ -562,6 +567,11 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
     } else {
       itMap->second->SetADCThreshold(*speThreshold);
     }
+
+    if (MsgLog::GetGlobalLogLevel() >= 1) {
+      MsgDebug(1,MsgLog::Form("PMT %d SPE %.2f Threshold %.2f",*pmtID,itMap->second->GetADCToPE(),itMap->second->GetADCThreshold()));
+    }
+    
   }
   delete calibrationFile;
 }

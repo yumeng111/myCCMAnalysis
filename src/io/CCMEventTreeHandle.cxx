@@ -119,6 +119,11 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
   // set up an event file to read events
   fInputFile = &f;
 
+  if (MsgLog::GetGlobalDebugLevel() >= 2) {
+    MsgDebug(2,"Printing Input File");
+    fInputFile->Print();
+  }
+
   //In with the new...
   fInputFile->GetObject(gsRawData,fEventsTree);
 
@@ -130,6 +135,15 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
   if(fEventsTree == nullptr) {
     fInputFile->ls();
     MsgFatal(MsgLog::Form("Failed to find %s or %s in file %s",gsRawData,gsEvents,fInputFile->GetName()));
+  }
+
+  if (MsgLog::GetGlobalDebugLevel() >= 2) {
+    MsgDebug(2,"Printing Events Tree");
+    fEventsTree->Print();
+    if (fPulsesTree != nullptr) {
+      MsgDebug(2,"Printing Pulses Tree");
+      fPulsesTree->Print();
+    }
   }
 
   TBranch * branch = 0;
@@ -166,6 +180,15 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
     }
   } else {
     fBranch[kEventsID] = nullptr;
+  }
+
+  if (MsgLog::GetGlobalDebugLevel() >= 2) {
+    MsgDebug(2,"Printing Branches");
+    for (const auto & branch : fBranch) {
+      if (branch != nullptr) {
+        branch->Print();
+      }
+    }
   }
 
   fNumOfEntries = (uint32_t)fEventsTree->GetEntries();

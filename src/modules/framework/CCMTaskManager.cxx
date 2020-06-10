@@ -152,7 +152,7 @@ CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::stri
   int run = 0;
   int subRun = 0;
   for (auto & file : fileList) {
-    MsgInfo(MsgLog::Form("File Name: %s",file.c_str()));
+    MsgDebug(2,MsgLog::Form("File Name: %s",file.c_str()));
     fCurrentInFileName = file;
 
     Utility::ParseStringForRunNumber(file,run,subRun);
@@ -228,7 +228,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
   int run = 0;
   int subRun = 0;
   for (auto & file : fileList) {
-    MsgInfo(MsgLog::Form("File Name: %s",file.c_str()));
+    MsgDebug(2,MsgLog::Form("File Name: %s",file.c_str()));
     fCurrentInFileName = file;
 
     Utility::ParseStringForRunNumber(file,run,subRun);

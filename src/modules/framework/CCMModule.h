@@ -62,8 +62,8 @@ public:
 
   const char* Name()    const { return fName.c_str();       }
   const char* Version() const { return fCfgVersion.c_str(); }
-  const uint32_t CurrentRun() const { return fCurrentRun; }
-  const uint32_t CurrentSubRun() const { return fCurrentSubRun; }
+  uint32_t CurrentRun() const { return fCurrentRun; }
+  uint32_t CurrentSubRun() const { return fCurrentSubRun; }
 
   void SetCfgVersion(const char* cfgv);
 

@@ -77,6 +77,13 @@ class Events : public TObject
     void RemoveSimplifiedEvent(std::vector<SimplifiedEvent>::iterator it) { fEvents.erase(it); --fNumEvents;}
     const SimplifiedEvent & GetSimplifiedEvent(size_t pos) { return fEvents[pos]; }
     const SimplifiedEvent & GetSimplifiedEvent(size_t pos) const { return fEvents[pos]; }
+    
+    void UpdatePosition(size_t index, double x, double y, double z) {
+      fEvents[index].SetXPosition(x);
+      fEvents[index].SetYPosition(y);
+      fEvents[index].SetZPosition(z);
+      return;
+    }
 
     Events & operator=(const Events & rhs);
 

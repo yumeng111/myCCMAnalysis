@@ -50,8 +50,10 @@ MODULE_DECL(CCMFindPulses);
 //_______________________________________________________________________________________
 CCMFindPulses::CCMFindPulses(const char* version) 
   : CCMModule("CCMFindPulses"),
+    fTriggerType("ALL"),
     fTruncateWaveform(false),
     fFromRootFile(false),
+    fResetPulses(true),
     fWriteDBEntry(false),
     fDBHost(""),
     fDBUser(""),
@@ -68,8 +70,10 @@ CCMFindPulses::CCMFindPulses(const char* version)
 //_______________________________________________________________________________________
 CCMFindPulses::CCMFindPulses(const CCMFindPulses& clufdr) 
 : CCMModule(clufdr),
+  fTriggerType(clufdr.fTriggerType),
   fTruncateWaveform(clufdr.fTruncateWaveform),
   fFromRootFile(clufdr.fFromRootFile),
+  fResetPulses(clufdr.fResetPulses),
   fWriteDBEntry(clufdr.fWriteDBEntry),
   fDBHost(clufdr.fDBHost),
   fDBUser(clufdr.fDBUser),
@@ -92,29 +96,36 @@ CCMFindPulses::~CCMFindPulses()
 CCMResult_t CCMFindPulses::ProcessEvent()
 {
 
-  size_t board = 0;
-  size_t channel = 0;
-  size_t sample = 0;
-
-  const size_t kNDigitizers = fReadData->GetNumBoards();
-  const size_t kNChannels = fReadData->GetNumChannels();
-  const size_t kNSamples = fReadData->GetNumSamples();
-
-  // fTriggerTime stores the time each board saw the trigger that is saved in channel 15
-  fTriggerTime.assign(kNDigitizers,9e9);
-
-  ++fNEventsTotal;
-
   RawData localCopy(*fReadData);
   if (fFromRootFile) {
     localCopy = *fRawData;
   }
 
+  if (!localCopy.IsTriggerPresent(fTriggerType)) {
+    return kCCMDoNotWrite;
+  }
+
+  // fTriggerTime stores the time each board saw the trigger that is saved in channel 15
+  ++fNEventsTotal;
+
+  size_t board = 0;
+  size_t channel = 0;
+  size_t sample = 0;
+
+  const size_t kNDigitizers = localCopy.GetNumBoards();
+  const size_t kNChannels = localCopy.GetNumChannels();
+  const size_t kNSamples = localCopy.GetNumSamples();
+
+  const size_t kNPMTs = localCopy.GetNumWaveforms();
+  const size_t kNEffDigitizers = (kNPMTs == kNChannels) ? 1 : kNDigitizers;
+
+  fTriggerTime.assign(kNDigitizers,9e9);
+
 
   // check to make sure all the board event numbers are the same
   int channelEvtNum0 = localCopy.GetBoardEventNum(0);
   bool evNumCheck = true;
-  for (board = 0; board < kNDigitizers; ++board) {
+  for (board = 0; board < kNDigitizers && !fFromRootFile; ++board) {
     int channelEvtNum = localCopy.GetBoardEventNum(board);
     if (channelEvtNum != channelEvtNum0) {
       evNumCheck = false;
@@ -135,40 +146,41 @@ CCMResult_t CCMFindPulses::ProcessEvent()
   // and shift all the other boards to line up with the earliest board
   /////////////////////////////////////////////////////////////////
 
-  // used if not saving trigger to channel 15
-  double channelClockTime = localCopy.GetClockTime(0)*8e-9;
-  for (board = 1; board < kNDigitizers; ++board) {
-    channelClockTime = std::min(channelClockTime,static_cast<double>(localCopy.GetClockTime(board)*8e-9));
-  }
-
   double minTriggerTime = 9e9;
   double maxTriggerTime = 9e9;
-  std::vector<double> times;
-  std::vector<double> amps;
-  double baseline = 0.0;
-  double adjustedADC = 0.0;
-  int firstSample = 0;
-  for (board = 0; board < kNDigitizers; ++board) {
-    channel = kNChannels - 1; // only look at beam trigger channel
-    int key = PMTInfoMap::CreateKey(board,channel);
-    baseline = 0.0;
-    for (sample = 0; sample < 50; ++sample) {
-      baseline += localCopy.GetSample(key,sample);
-    }
-    baseline /= 50.0;
-
-    firstSample = 0;
-    for (sample = 0; sample < kNSamples; ++sample) {
-      adjustedADC = baseline - static_cast<double>(localCopy.GetSample(key,sample));
-      if (adjustedADC > 400) {
-        firstSample = sample;
-        break;
+  // used if not saving trigger to channel 15
+  if (!fFromRootFile) {
+    std::vector<double> times;
+    std::vector<double> amps;
+    double baseline = 0.0;
+    double adjustedADC = 0.0;
+    int firstSample = 0;
+    for (board = 0; board < kNDigitizers; ++board) {
+      channel = kNChannels - 1; // only look at beam trigger channel
+      int key = PMTInfoMap::CreateKey(board,channel);
+      baseline = 0.0;
+      for (sample = 0; sample < 50; ++sample) {
+        baseline += localCopy.GetSample(key,sample);
       }
-    } // end for sample < kNSamples
+      baseline /= 50.0;
 
-    fTriggerTime.at(board) = firstSample;
+      firstSample = 0;
+      for (sample = 0; sample < kNSamples; ++sample) {
+        adjustedADC = baseline - static_cast<double>(localCopy.GetSample(key,sample));
+        if (adjustedADC > 400) {
+          firstSample = sample;
+          break;
+        }
+      } // end for sample < kNSamples
 
-  } // end for board < kNDigitizers
+      fTriggerTime.at(board) = firstSample;
+
+    } // end for board < kNDigitizers
+  } else {
+    for (board = 0; board < kNDigitizers; ++board) {
+      fTriggerTime.at(board) = localCopy.GetOffset(board);
+    }
+  }// end if !fFromRootFile
 
   // skips event if trigger time did not change (no channel 15 NIM signal)
   minTriggerTime = *std::min_element(fTriggerTime.begin(),fTriggerTime.end());
@@ -198,7 +210,9 @@ CCMResult_t CCMFindPulses::ProcessEvent()
   /////////////////////////////////////////////////////////////////
 
   // clear pulses and raw data for the new trigger window
-  fPulses->Reset();
+  if (fResetPulses) {
+    fPulses->Reset();
+  }
   fRawData->operator=(localCopy);
 
   fPulses->SetEventNumber(localCopy.GetEventNumber());
@@ -213,21 +227,23 @@ CCMResult_t CCMFindPulses::ProcessEvent()
     fRawData->TruncateWaveform(1);
   }
 
+  const size_t kBoardOffset = (kNEffDigitizers == kNDigitizers)? 0 : 10;
+
   // Loop through each board
-  for (board = 0; board < kNDigitizers; ++board) {
+  for (board = 0; board < kNEffDigitizers; ++board) {
     offset = 0.0;
 
     // determine the board time offset
-    offset = -(fTriggerTime[board] - minTriggerTime);
+    offset = -(fTriggerTime[board + kBoardOffset] - minTriggerTime);
 
     // loop through the channels
     for (channel = 0; channel < kNChannels; ++channel) {
 
-      auto key = PMTInfoMap::CreateKey(board,channel);
+      auto key = PMTInfoMap::CreateKey(board+kBoardOffset,channel);
 
-      fHighestTemp = std::max(fHighestTemp,fRawData->GetTemp(board,channel));
+      //fHighestTemp = std::max(fHighestTemp,localCopy.GetTemp(board+kBoardOffset,channel));
 
-      auto samples = localCopy.GetSamples(key);
+      auto samples = localCopy.GetSamples(PMTInfoMap::CreateKey(board,channel));
 
       // if fTruncateWaveform = true
       // only save fRawData information for the last board
@@ -244,28 +260,24 @@ CCMResult_t CCMFindPulses::ProcessEvent()
       // data analysis.
       // If so, skip the channel.
       if (!PMTInfoMap::IsActive(key)) {
-        continue;
-      }
-
-      // Get the #PMTInformation for the current board,channel
-      auto pmtInfo = PMTInfoMap::GetPMTInfo(board,channel);
-      // If not pmtInfo exists, move to the next channel
-      if (pmtInfo == nullptr) {
-        continue;
-      }
-
-      // Check to see if the current pmt is a 1 in pmt.
-      // If so, set pmtOffset to 21.0 becuse the 1 in pmts
-      // are 42 ns faster than the 8 in pmts based off the 
-      // data sheets provided by Hamamatsu 
-      if (pmtInfo->Is1in()) {
-        pmtOffset = 21.0;
-      } else {
-        pmtOffset = 0.0;
+        // Get the #PMTInformation for the current board,channel
+        auto pmtInfo = PMTInfoMap::GetPMTInfo(key);
+        // If not pmtInfo exists check to see of the 1in PMT time offset needs to be applied
+        if (pmtInfo != nullptr) {
+          // Check to see if the current pmt is a 1 in pmt.
+          // If so, set pmtOffset to 21.0 becuse the 1 in pmts
+          // are 42 ns faster than the 8 in pmts based off the 
+          // data sheets provided by Hamamatsu 
+          if (pmtInfo->Is1in()) {
+            pmtOffset = 21.0;
+          } else {
+            pmtOffset = 0.0;
+          }
+        }
       }
 
       // Tell the pulses object which board and channel is currently being looked at
-      fPulses->SetBoardChannel(board,channel);
+      fPulses->SetBoardChannel(board+kBoardOffset,channel);
 
       // Apply the #Pulses::DerivativeFilter to the pmt waveform at hand to find the pulses in the waveform
       // Parameters that are passed
@@ -303,12 +315,16 @@ void CCMFindPulses::Configure(const CCMConfig& c )
   //Initialize any parameters here
   //by reading them from the CCMConfig object.
 
+  c("TriggerType").Get(fTriggerType);
   c("TruncateWaveform").Get(fTruncateWaveform);
   c("FromRootFile").Get(fFromRootFile);
+  c("ResetPulses").Get(fResetPulses);
   c("WriteDBEntry").Get(fWriteDBEntry);
-  c("DBHost").Get(fDBHost);
-  c("DBUser").Get(fDBUser);
-  c("DBPwd").Get(fDBPwd);
+  if (fWriteDBEntry) {
+    c("DBHost").Get(fDBHost);
+    c("DBUser").Get(fDBUser);
+    c("DBPwd").Get(fDBPwd);
+  }
 
   fIsInit = true;
 

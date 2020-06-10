@@ -34,8 +34,9 @@
       The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
       Must be the first param in this config
     </Param>
-    <Param name="HVOffFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/hv_off_2019.csv</string>
+    <Param name="HVOffFile"><string>default</string>
       List of the HV channels that are off.
+      default is $CCMINSTALL/mappings/hv_off_2019.csv
     </Param>
     <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
       Name of the calibration file to use
@@ -54,6 +55,20 @@
     </Param>
     <Param name="Threshold"><double> 0.4 </double>
       The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="PulseRep"><int>0</int>
+      How to represent the pulses
+      0 = triangular
+      1 = all in start of pulse
+    </Param>
+    <Param name="PulseTimeCut"><int>0</int>
+      If true put a time cut on the pulse start time
+    </Param>
+    <Param name="PulseTimeLowValue"><double>9920</double>
+      The earliest in the DAQ window to allow the pulse to start in ns
+    </Param>
+    <Param name="PulseTimeHighValue"><double>6080</double>
+      The latest in the DAQ window to allow the pulse to start in ns
     </Param>
   </Config>
 

@@ -28,10 +28,10 @@ find_package(ROOT REQUIRED COMPONENTS MathCore RIO Hist Tree Net)
 include(${ROOT_USE_FILE})
 #message("INCLUDE ${ROOT_INCLUDE_DIR} LIBRARY ${ROOT_LIBRARY_DIR}")
 #message("LIBRARIES ${ROOT_LIBRARIES}")
-message("XERCESINCLUDE $ENV{XERCESINCLUDE}")
+#message("XERCESINCLUDE $ENV{XERCESINCLUDE}")
 include_directories(${ROOT_INCLUDE_DIR} $ENV{XERCESINCLUDE})
 set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} $ENV{XERCESLIB}/libxerces-c.so)
-message("LIBRARIES ${LIBRARIES}")
+#message("LIBRARIES ${LIBRARIES}")
 
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} $ENV{XERCESINCLUD})
 add_definitions(${ROOT_CXX_FLAGS} -std=c++14)
@@ -45,6 +45,7 @@ set(CCMAnalysis_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/src/modules/framework
   ${CMAKE_SOURCE_DIR}/src/modules/reco
   ${CMAKE_SOURCE_DIR}/src/modules/nearline
+  ${CMAKE_SOURCE_DIR}/src/modules/plots
   )
 
 #Set the library version
