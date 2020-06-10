@@ -347,12 +347,12 @@ void CCMFindEvents::BuildAccumulatedWaveform()
     // apply the ADCtoPE to the pulse
     pulseIntegral /= pe;
 
-    if (fPulseRep == 0) {
+    if (fPulseRep == 1) {
       ++fPMTWaveformCount.at(key).at(static_cast<int>(time));
       fPMTWaveform.at(key).at(static_cast<int>(time)) += pulseIntegral;
       fIntegralTime.at(static_cast<int>(time)) += pulseIntegral;
       ++fPulsesTime.at(static_cast<int>(time));
-    } else if (fPulseRep == 1) {
+    } else if (fPulseRep == 0) {
       firstBin = std::max(time,0.0);
       lastBin  = std::min(time+length,static_cast<double>(Utility::fgkNumBins));
       middle = (lastBin + firstBin)/2.0;
