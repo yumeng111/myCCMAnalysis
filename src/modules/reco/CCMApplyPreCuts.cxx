@@ -60,7 +60,7 @@ CCMApplyPreCuts::~CCMApplyPreCuts()
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMApplyPreCuts::ProcessEvent()
+CCMResult_t CCMApplyPreCuts::ProcessTrigger()
 {
 
   const size_t kNumEvents = fEvents->GetNumEvents();

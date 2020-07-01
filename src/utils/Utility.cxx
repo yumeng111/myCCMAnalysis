@@ -27,6 +27,12 @@ void Utility::ParseStringForRunNumber(std::string name, int & run, int & subrun)
   MsgDebug(2,MsgLog::Form("Input string: %s",name.c_str()));
   // find where "run" occurs in the string
   size_t locOfRun = name.find("PDSout_run");
+  if (locOfRun == std::string::npos) {
+    MsgDebug(2,"run number cannot be found from file name");
+    run = 0;
+    subrun = 0;
+    return;
+  }
   MsgDebug(2,MsgLog::Form("Location of run = %zu", locOfRun));
 
   // get the run number and the subrun number in string format

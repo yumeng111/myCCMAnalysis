@@ -93,7 +93,7 @@ CCMFindPulses::~CCMFindPulses()
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMFindPulses::ProcessEvent()
+CCMResult_t CCMFindPulses::ProcessTrigger()
 {
 
   RawData localCopy(*fReadData);

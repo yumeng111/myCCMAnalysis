@@ -30,7 +30,7 @@ CCMModule::CCMModule(const CCMModule& mod)
 }
   
 //------------------------------------------------------
-CCMResult_t CCMModule::ProcessEvent()
+CCMResult_t CCMModule::ProcessTrigger()
 {
   //Default Event method for all modules
   MsgError(MsgLog::Form("Calling default %s::Event().  Please overload",fName.c_str()));

@@ -70,7 +70,7 @@ CCMSumWaveforms::~CCMSumWaveforms()
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMSumWaveforms::ProcessEvent()
+CCMResult_t CCMSumWaveforms::ProcessTrigger()
 {
   if (fTimeHists.empty()) {
     for (size_t i=0; i < fRawData->GetNumBoards(); ++i) {

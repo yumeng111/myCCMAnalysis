@@ -5,6 +5,8 @@ log/
 analysis/rtthorn/local/
 configFiles/local/
 
+*core.*
+
 *.s*
 *.d*
 *ACLiC_dict*

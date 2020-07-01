@@ -40,7 +40,7 @@ public:
 
   virtual ~CCMModule() {}; //destructor
 
-  virtual CCMResult_t ProcessEvent(); // Process an individual event
+  virtual CCMResult_t ProcessTrigger(); // Process an individual event
 
   virtual void Configure(const CCMConfig& c); // Beginning of job
 

@@ -363,11 +363,11 @@ void CCMTaskManager::NewRun()
 //------------------------------------------------------
 CCMResult_t CCMTaskManager::ExecuteTask()
 {
-  //loop over registered modules and execute their ProcessEvent() methods
+  //loop over registered modules and execute their ProcessTrigger() methods
   CCMResult_t status = kCCMSuccess;
   int ctr = 0;
   for (auto & module : fModuleList) {
-    status = module->ProcessEvent();
+    status = module->ProcessTrigger();
     ++ctr;
 
     if(status == kCCMFailure) {

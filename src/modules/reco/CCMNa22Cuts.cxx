@@ -35,43 +35,6 @@
 #include "TF1.h"
 #include "TVector3.h"
 
-/*
- * Fit results to weight the event based on when it occured in the DAQ window
- * Function is [0]*TMath::Exp(-(x-[1])*[2])
- * FCN=37.4258 FROM HESSE     STATUS=NOT POSDEF     16 CALLS         341 TOTAL
- * EDM=1.13757e-07    STRATEGY= 1      ERR MATRIX NOT POS-DEF
- * EXT PARAMETER                APPROXIMATE        STEP         FIRST
- * NO.   NAME      VALUE            ERROR          SIZE      DERIVATIVE
- * 1  p0           8.63796e-07   2.06143e-07   8.85969e-12  -3.24369e+04
- * 2  p1           2.45729e+01   2.42758e+00   1.04140e-04  -2.75826e-03
- * 3  p2           9.84429e-02   6.69477e-03   3.60225e-07  -7.89168e-01
- *
- * FCN=69.1019 FROM HESSE     STATUS=NOT POSDEF     16 CALLS         436 TOTAL
- * EDM=1.63512e-10    STRATEGY= 1      ERR MATRIX NOT POS-DEF
- * EXT PARAMETER                APPROXIMATE        STEP         FIRST
- * NO.   NAME      VALUE            ERROR          SIZE      DERIVATIVE
- * 1  p0           7.90765e-05   1.34883e-06   7.65338e-11  -1.45708e+02
- * 2  p1           3.73707e+01   1.95086e-01   1.10682e-05  -1.00752e-03
- * 3  p2           8.74439e-02   3.66805e-04   2.34528e-08  -5.06801e-01
- *
- * FCN=53.9903 FROM HESSE     STATUS=NOT POSDEF     16 CALLS         418 TOTAL
- * EDM=3.36202e-08    STRATEGY= 1      ERR MATRIX NOT POS-DEF
- * EXT PARAMETER                APPROXIMATE        STEP         FIRST
- * NO.   NAME      VALUE            ERROR          SIZE      DERIVATIVE
- * 1  p0           2.14018e-04   2.19993e-06   1.10589e-10  -1.69884e+03
- * 2  p1           3.70502e+01   1.16125e-01   8.83345e-06  -3.21872e-02
- * 3  p2           8.85283e-02   2.22341e-04   2.11068e-08  -1.48715e+01
- * 
- * FCN=40.4078 FROM HESSE     STATUS=NOT POSDEF     16 CALLS         380 TOTAL
- * EDM=1.50743e-10    STRATEGY= 1      ERR MATRIX NOT POS-DEF
- * EXT PARAMETER                APPROXIMATE        STEP         FIRST
- * NO.   NAME      VALUE            ERROR          SIZE      DERIVATIVE
- * 1  p0           6.36795e-06   4.43500e-07   1.95030e-11  -5.56355e+02
- * 2  p1           3.16871e+01   7.51928e-01   3.30514e-05  -3.28286e-04
- * 3  p2           9.26635e-02   1.67588e-03   8.60329e-08  -1.26971e-01
- */
-
-
 //See CCMModuleTable for info
 MODULE_DECL(CCMNa22Cuts);
 
@@ -89,20 +52,29 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
     fDoNicenessCut(false),
     fReverseVeto(false),
     fWaveformMaxCut(false),
-    fNumVetoCut(std::numeric_limits<int>::max()),
-    fRadiusCutValueLow(-std::numeric_limits<double>::max()),
-    fZCutValueLow(-std::numeric_limits<double>::max()),
-    fRadiusCutValueHigh(std::numeric_limits<double>::max()),
-    fZCutValueHigh(std::numeric_limits<double>::max()),
-    fEnergyCutValueLow(-std::numeric_limits<double>::max()),
+    fPassedVetoCut(true),
+    fPassedPositionCut(true),
+    fPassedEnergyCut(true),
+    fPassedPrevCut(true),
+    fPassedLengthCut(true),
+    fPassedTimeCut(true),
+    fPassedNicenessCut(true),
+    fPassedWaveformMaxCut(true),
+    fPassedNumHitsCut(true),
+    fNumVetoCut(3),
+    fRadiusCutValueLow(0),
+    fRadiusCutValueHigh(0.95),
+    fZCutValueLow(-0.4),
+    fZCutValueHigh(0.4),
+    fEnergyCutValueLow(0),
     fEnergyCutValueHigh(std::numeric_limits<double>::max()),
-    fPrevCutTime(-std::numeric_limits<double>::max()),
+    fPrevCutTime(1600),
     fLengthCutValueLow(-std::numeric_limits<double>::max()),
     fLengthCutValueHigh(std::numeric_limits<double>::max()),
-    fTimeCutValueLow(-std::numeric_limits<double>::max()),
-    fTimeCutValueHigh(std::numeric_limits<double>::max()),
-    fNicenessCutValueLow(-std::numeric_limits<double>::max()),
-    fNicenessCutValueHigh(std::numeric_limits<double>::max()),
+    fTimeCutValueLow(-7000),
+    fTimeCutValueHigh(4000),
+    fNicenessCutValueLow(0),
+    fNicenessCutValueHigh(2.5),
     fOutfile(nullptr),
     fTree(nullptr),
     fEnergy(0),
@@ -147,10 +119,19 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
   fDoNicenessCut(clufdr.fDoNicenessCut),
   fReverseVeto(clufdr.fReverseVeto),
   fWaveformMaxCut(clufdr.fWaveformMaxCut),
+  fPassedVetoCut(clufdr.fPassedVetoCut),
+  fPassedPositionCut(clufdr.fPassedPositionCut),
+  fPassedEnergyCut(clufdr.fPassedEnergyCut),
+  fPassedPrevCut(clufdr.fPassedPrevCut),
+  fPassedLengthCut(clufdr.fPassedLengthCut),
+  fPassedTimeCut(clufdr.fPassedTimeCut),
+  fPassedNicenessCut(clufdr.fPassedNicenessCut),
+  fPassedWaveformMaxCut(clufdr.fPassedWaveformMaxCut),
+  fPassedNumHitsCut(clufdr.fPassedNumHitsCut),
   fNumVetoCut(clufdr.fNumVetoCut),
   fRadiusCutValueLow(clufdr.fRadiusCutValueLow),
-  fZCutValueLow(clufdr.fZCutValueLow),
   fRadiusCutValueHigh(clufdr.fRadiusCutValueHigh),
+  fZCutValueLow(clufdr.fZCutValueLow),
   fZCutValueHigh(clufdr.fZCutValueHigh),
   fEnergyCutValueLow(clufdr.fEnergyCutValueLow),
   fEnergyCutValueHigh(clufdr.fEnergyCutValueHigh),
@@ -197,7 +178,7 @@ CCMNa22Cuts::~CCMNa22Cuts()
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMNa22Cuts::ProcessEvent()
+CCMResult_t CCMNa22Cuts::ProcessTrigger()
 {
   // since the class does not own the TFile, always check to see if it is present
   fOutfile = gROOT->GetFile(fOutFileName.c_str());
@@ -206,7 +187,18 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
 
   const size_t kNumEvents = fEvents->GetNumEvents();
   fEpochSec = fEvents->GetComputerSecIntoEpoch();
+
   for (size_t e = 0; e < kNumEvents; ++e) {
+    fPassedVetoCut = true;
+    fPassedPositionCut = true;
+    fPassedEnergyCut = true;
+    fPassedPrevCut = true;
+    fPassedLengthCut = true;
+    fPassedTimeCut = true;
+    fPassedNicenessCut = true;
+    fPassedWaveformMaxCut = true;
+    fPassedNumHitsCut = true;
+
     auto simplifiedEvent = fEvents->GetSimplifiedEvent(e);
 
     double st = simplifiedEvent.GetStartTime();
@@ -218,7 +210,7 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     fEnergy = simplifiedEvent.GetIntegralTank(true);
     fHits = simplifiedEvent.GetNumTank(true);
     fNumPMTs = simplifiedEvent.GetPMTHits();
-    //MsgInfo(MsgLog::Form("e %zu energy %.2f hits %d numPTs %d length %.3f",e,fEnergy,fHits,fNumPMTs,fLength));
+    //MsgInfo(MsgLog::Form("e %zu energy %.2f hits %f numPTs %d length %.3f",e,fEnergy,fHits,fNumPMTs,fLength));
 
     fX = simplifiedEvent.GetXPosition();
     fY = simplifiedEvent.GetYPosition();
@@ -227,8 +219,11 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     if (fWaveformMaxCut) {
       auto maxLoc = WaveformMaxPosition(simplifiedEvent);
       if (static_cast<double>(maxLoc)*Utility::fgkBinWidth > promptLength) {
-        locationsToRemove.emplace_back(e);
-        continue;
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+          locationsToRemove.emplace_back(e);
+        }
+        fPassedWaveformMaxCut = false;
+        //continue;
       }
     }
 
@@ -237,21 +232,29 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
 
     if (fDoTimeCut) {
       if (st < fTimeCutValueLow || st > fTimeCutValueHigh) {
-        locationsToRemove.emplace_back(e);
-        continue;
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+          locationsToRemove.emplace_back(e);
+        }
+        fPassedTimeCut = false;
+        //continue;
       } // end time cut condition
     } // end fDoTimeCut
 
     double et = st + fLength;
     if (et <= st) {
-      locationsToRemove.emplace_back(e);
-      continue;
+      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        locationsToRemove.emplace_back(e);
+      }
+      //continue;
     }
 
     if (fDoLengthCut) {
       if (fLength < fLengthCutValueLow || fLength > fLengthCutValueHigh) {
-        locationsToRemove.emplace_back(e);
-        continue;
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+          locationsToRemove.emplace_back(e);
+        }
+        fPassedLengthCut = false;
+        //continue;
       } // end length cut condition
     } // end if fDoLengthCut
 
@@ -259,21 +262,30 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     if (fDoPositionCut) {
       if (radius < fRadiusCutValueLow || radius > fRadiusCutValueHigh ||
           fZ < fZCutValueLow || fZ > fZCutValueHigh) {
-        locationsToRemove.emplace_back(e);
-        continue;
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+          locationsToRemove.emplace_back(e);
+        }
+        fPassedPositionCut = false;
+        //continue;
       } // end position cut check
     } // end if fDoPositionCut
 
     if (fDoEnergyCut) {
       if (fEnergy < fEnergyCutValueLow || fEnergy > fEnergyCutValueHigh) {
-        locationsToRemove.emplace_back(e);
-        continue;
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+          locationsToRemove.emplace_back(e);
+        }
+        fPassedEnergyCut = false;
+        //continue;
       }// end energy cut check
     }// end if fDoEnergyCut
 
     if (fHits < 3) {
+      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
         locationsToRemove.emplace_back(e);
-      continue;
+      }
+      fPassedNumHitsCut = false;
+      //continue;
     }
 
     fVetoTop = simplifiedEvent.GetNumVetoTop(false);
@@ -289,23 +301,29 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     fVetoPromptCBack = simplifiedEvent.GetNumVetoBack(true);
     fVetoPromptCFront = simplifiedEvent.GetNumVetoFront(true);
     fVetoPromptCRight = simplifiedEvent.GetNumVetoRight(true);
-    int vetoTotal = simplifiedEvent.GetNumVeto(false);
+    int vetoTotal = simplifiedEvent.GetNumVeto(true);
 
     fLargestPMTFraction = simplifiedEvent.GetLargestPMTFraction();
     if (fDoNicenessCut) {
       double uniform = fEnergy/static_cast<double>(fNumPMTs);
       double nice = (fLargestPMTFraction - uniform)/uniform;
       if (nice < fNicenessCutValueLow || nice > fNicenessCutValueHigh) {
-        locationsToRemove.emplace_back(e);
-        continue;
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+          locationsToRemove.emplace_back(e);
+        }
+        fPassedNicenessCut = false;
+        //continue;
       }
     } // end if fDoNicenessCut
 
     if (fDoVetoCut) {
       if ((vetoTotal >= fNumVetoCut && !fReverseVeto) || 
           (fReverseVeto && vetoTotal < fNumVetoCut)) {
-        locationsToRemove.emplace_back(e);
-        continue;
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+          locationsToRemove.emplace_back(e);
+        }
+        fPassedVetoCut = false;
+        //continue;
       } // end veto cut check
     }// end if fDoVetoCut
 
@@ -318,7 +336,7 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
       double st2 = simplifiedEvent2.GetStartTime();
 
       if (promptHits2 < 3) {
-        continue;
+        //continue;
       }
 
       double x2 = simplifiedEvent2.GetXPosition();
@@ -328,11 +346,13 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
         double radius2 = std::sqrt(x2*x2+y2*y2);
         if (radius2 < fRadiusCutValueLow || radius2 > fRadiusCutValueHigh ||
             z2 < fZCutValueLow || z2 > fZCutValueHigh) {
-          continue;
+          //continue;
         } // end position cut check
       }
 
-      double stDiff = st2 - st;
+      double stDiff = std::fabs(st2 - st);
+
+      //MsgInfo(MsgLog::Form("Event (%ld) ST = %.0f Previous (%ld) ST = %.0f Diff = %.0f",e,st,e2,st2,stDiff));
 
       //double pIDiff = promptIntegral - promptIntegral2;
       if (stDiff < fPrevCutTime) {
@@ -342,8 +362,11 @@ CCMResult_t CCMNa22Cuts::ProcessEvent()
     } // end for e2
 
     if (reject) {
-      locationsToRemove.emplace_back(e);
-      continue;
+      fPassedPrevCut = false;
+      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        locationsToRemove.emplace_back(e);
+      }
+      //continue;
     }
 
     fWeight = 1.0;// /weightFunction.at(energyRegion)->Eval(st);
@@ -468,6 +491,15 @@ void CCMNa22Cuts::SetupOutFile()
   fZ = 0;
   fLargestPMTFraction = 0;
   fEpochSec = 0;
+  fPassedVetoCut = false;
+  fPassedPositionCut = false;
+  fPassedEnergyCut = false;
+  fPassedPrevCut = false;
+  fPassedLengthCut = false;
+  fPassedTimeCut = false;
+  fPassedNicenessCut = false;
+  fPassedWaveformMaxCut = false;
+  fPassedNumHitsCut = false;
 
   if (!fOutFileName.empty()) {
     fOutfile = gROOT->GetFile(fOutFileName.c_str());
@@ -500,6 +532,15 @@ void CCMNa22Cuts::SetupOutFile()
     fTree->Branch("y",&fY);
     fTree->Branch("z",&fZ);
     fTree->Branch("largestPMTFraction",&fLargestPMTFraction);
+    fTree->Branch("passedVetoCut",&fPassedVetoCut);
+    fTree->Branch("passedPositionCut",&fPassedPositionCut);
+    fTree->Branch("passedEnergyCut",&fPassedEnergyCut);
+    fTree->Branch("passedPrevCut",&fPassedPrevCut);
+    fTree->Branch("passedLengthCut",&fPassedLengthCut);
+    fTree->Branch("passedTimeCut",&fPassedTimeCut);
+    fTree->Branch("passedNicenessCut",&fPassedNicenessCut);
+    fTree->Branch("passedWaveformMaxCut",&fPassedWaveformMaxCut);
+    fTree->Branch("passedNumHitsCut",&fPassedNumHitsCut);
   }
 }
 

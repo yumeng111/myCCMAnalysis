@@ -164,6 +164,8 @@ class CCMRawIO
     RawData & GetRawData();
     void SetRawData(const RawData & rawData);
 
+    uint32_t NumberOfFiles() { return fInFileList.size(); }
+
 
   protected:
     /*!

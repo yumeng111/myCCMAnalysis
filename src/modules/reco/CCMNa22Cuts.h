@@ -33,7 +33,7 @@ class CCMNa22Cuts : public CCMModule
      *  \brief This is where the action takes place
      *  \return CCMResult_t the result of running this module
      */
-    CCMResult_t ProcessEvent();
+    CCMResult_t ProcessTrigger();
 
     /*!
      *  \brief Returns true of the job has ended
@@ -49,6 +49,31 @@ class CCMNa22Cuts : public CCMModule
 
     void ConnectEvents(std::shared_ptr<Events> evt) { fEvents = evt; }
     void ConnectOutFileName(std::string name) { fOutFileName = name; SetupOutFile(); }
+
+    void SetDoVetoCut(bool flag) {fDoVetoCut = flag;}
+    void SetDoPositionCut(bool flag) {fDoPositionCut = flag;}
+    void SetDoEnergyCut(bool flag) {fDoEnergyCut = flag;}
+    void SetDoPrevCut(bool flag) {fDoPrevCut = flag;}
+    void SetDoLengthCut(bool flag) {fDoLengthCut = flag;}
+    void SetDoTimeCut(bool flag) {fDoTimeCut = flag;}
+    void SetDoNicenessCut(bool flag) {fDoNicenessCut = flag;}
+    void SetReverseVetoCut(bool flag) {fReverseVeto = flag;}
+    void SetDoWaveformMaxCut(bool flag) {fWaveformMaxCut = flag;}
+
+    void SetNumVetoCut(int value) {fNumVetoCut = value;}
+    void SetPrevCutTime(double value) {fPrevCutTime = value;}
+    void SetZCutValueLow(double value) {fZCutValueLow = value;}
+    void SetZCutValueHigh(double value) {fZCutValueHigh = value;}
+    void SetTimeCutValueLow(double value) {fTimeCutValueLow = value;}
+    void SetTimeCutValueHigh(double value) {fTimeCutValueHigh = value;}
+    void SetEnergyCutValueLow(double value) {fEnergyCutValueLow = value;}
+    void SetEnergyCutValueHigh(double value) {fEnergyCutValueHigh = value;}
+    void SetLengthCutValueLow(double value) {fLengthCutValueLow = value;}
+    void SetLengthCutValueHigh(double value) {fLengthCutValueHigh = value;}
+    void SetRadiusCutValueLow(double value) {fRadiusCutValueLow = value;}
+    void SetRadiusCutValueHigh(double value) {fRadiusCutValueHigh = value;}
+    void SetNicenessCutValueLow(double value) {fNicenessCutValueLow = value;}
+    void SetNicenessCutValueHigh(double value) {fNicenessCutValueHigh = value;}
 
   private:
 
@@ -76,10 +101,20 @@ class CCMNa22Cuts : public CCMModule
     int fReverseVeto;
     int fWaveformMaxCut;
 
+    bool fPassedVetoCut;
+    bool fPassedPositionCut;
+    bool fPassedEnergyCut;
+    bool fPassedPrevCut;
+    bool fPassedLengthCut;
+    bool fPassedTimeCut;
+    bool fPassedNicenessCut;
+    bool fPassedWaveformMaxCut;
+    bool fPassedNumHitsCut;
+
     int fNumVetoCut;
     double fRadiusCutValueLow;
-    double fZCutValueLow;
     double fRadiusCutValueHigh;
+    double fZCutValueLow;
     double fZCutValueHigh;
     double fEnergyCutValueLow;
     double fEnergyCutValueHigh;

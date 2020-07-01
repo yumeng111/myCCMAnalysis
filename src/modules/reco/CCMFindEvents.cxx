@@ -96,7 +96,7 @@ CCMFindEvents::~CCMFindEvents()
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMFindEvents::ProcessEvent()
+CCMResult_t CCMFindEvents::ProcessTrigger()
 {
   // create new Events object. This will delete
   // if a previous object was created

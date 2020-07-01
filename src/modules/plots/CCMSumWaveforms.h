@@ -34,7 +34,7 @@ class CCMSumWaveforms : public CCMModule
      *  \brief This is where the action takes place
      *  \return CCMResult_t the result of running this module
      */
-    CCMResult_t ProcessEvent();
+    CCMResult_t ProcessTrigger();
 
     /*!
      *  \brief Returns true of the job has ended

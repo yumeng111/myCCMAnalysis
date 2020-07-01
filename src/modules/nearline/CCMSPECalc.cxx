@@ -71,7 +71,7 @@ CCMSPECalc::~CCMSPECalc()
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMSPECalc::ProcessEvent()
+CCMResult_t CCMSPECalc::ProcessTrigger()
 {
 
   if (!fRedoLEDCalib) {

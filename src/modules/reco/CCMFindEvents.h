@@ -8,9 +8,6 @@
 #include <iterator>
 #include <algorithm>
 
-class TFile;
-class TH1D;
-
 class CCMFindEvents : public CCMModule
 {
   public:
@@ -35,7 +32,7 @@ class CCMFindEvents : public CCMModule
      *  \brief This is where the action takes place
      *  \return CCMResult_t the result of running this module
      */
-    CCMResult_t ProcessEvent();
+    CCMResult_t ProcessTrigger();
 
     /*!
      *  \brief Returns true of the job has ended
@@ -52,8 +49,8 @@ class CCMFindEvents : public CCMModule
     void ConnectEvents(std::shared_ptr<Events> evt) { fEvents = evt; }
     void ConnectRawData(std::shared_ptr<RawData> rawData)  { fRawData = rawData; }
     void ConnectPulses(std::shared_ptr<Pulses> pulses) {fPulses = pulses; }
-    void ConnectOutFileName(std::string name) { fOutFileName = name; }
 
+    void SetBuildEventFlag(bool flag) { fBuildEventFlag = flag; }
     void SetThreshold(double threshold) { fThreshold = threshold; }
     void SetTriggerType(std::string triggerType) { fTriggerType = triggerType; }
     void SetPulseRepresentation(int rep) { fPulseRep = rep; }
@@ -129,7 +126,6 @@ class CCMFindEvents : public CCMModule
   private:
 
     //private data members
-    std::string fOutFileName;
     std::string fTriggerType;
     double fThreshold;
 
@@ -154,15 +150,13 @@ class CCMFindEvents : public CCMModule
     std::vector<std::vector<float>> fPMTWaveform;
     std::vector<std::vector<int>> fPMTWaveformCount;
 
+    int fBuildEventFlag;
     int fPulseRep;
     int fPulseTimeCut;
     double fPulseTimeLowValue;
     double fPulseTimeHighValue;
 
     int fBeamTime;
-    TFile * fOutfile;
-    std::shared_ptr<TH1D> fTimeHist;
-    
 };
 
 #endif // CCMFindEvents_h

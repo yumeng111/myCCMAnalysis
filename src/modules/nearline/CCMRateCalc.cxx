@@ -89,7 +89,7 @@ CCMRateCalc::~CCMRateCalc()
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMRateCalc::ProcessEvent()
+CCMResult_t CCMRateCalc::ProcessTrigger()
 {
 
   // Check which trigger occured in DAQ window
