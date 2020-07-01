@@ -23,7 +23,6 @@
 
 #include "TROOT.h"
 #include "TFile.h"
-#include "TH1D.h"
 
 #include <memory>
 #include <iostream>
@@ -41,13 +40,13 @@ const int gkMaxBinLoc = 7960;
 //_______________________________________________________________________________________
 CCMFindEvents::CCMFindEvents(const char* version) 
   : CCMModule("CCMFindEvents"),
-    fOutFileName(""),
     fTriggerType("BEAM"),
     fThreshold(0.4),
     fEvents(nullptr),
     fRawData(nullptr),
     fPulses(nullptr),
     fNumTriggers(0),
+    fBuildEventFlag(true),
     fPulseRep(0),
     fPulseTimeCut(false),
     fPulseTimeLowValue(Utility::fgkWindowStartTime),
@@ -57,18 +56,11 @@ CCMFindEvents::CCMFindEvents(const char* version)
   //Default constructor
   this->SetCfgVersion(version);
   DefineVectors();
-
-  fOutfile = 0;
-  fTimeHist = std::make_shared<TH1D>("timeHist",";Time (ns);Integral",
-      Utility::fgkNumBins,
-      Utility::fgkWindowStartTime,
-      Utility::fgkWindowEndTime);
 }
 
 //_______________________________________________________________________________________
 CCMFindEvents::CCMFindEvents(const CCMFindEvents& clufdr) 
 : CCMModule(clufdr),
-  fOutFileName(clufdr.fOutFileName),
   fTriggerType(clufdr.fTriggerType),
   fThreshold(clufdr.fThreshold),
   fEvents(clufdr.fEvents),
@@ -87,15 +79,14 @@ CCMFindEvents::CCMFindEvents(const CCMFindEvents& clufdr)
   fVetoTotalTime(clufdr.fVetoTotalTime),
   fPMTWaveform(clufdr.fPMTWaveform),
   fPMTWaveformCount(clufdr.fPMTWaveformCount),
+  fBuildEventFlag(clufdr.fBuildEventFlag),
   fPulseRep(clufdr.fPulseRep),
   fPulseTimeCut(clufdr.fPulseTimeCut),
   fPulseTimeLowValue(clufdr.fPulseTimeLowValue),
   fPulseTimeHighValue(clufdr.fPulseTimeHighValue),
-  fBeamTime(clufdr.fBeamTime),
-  fTimeHist(clufdr.fTimeHist)
+  fBeamTime(clufdr.fBeamTime)
 {
   // copy constructor
-  fOutfile = 0;
 }
 
 //_______________________________________________________________________________________
@@ -107,11 +98,6 @@ CCMFindEvents::~CCMFindEvents()
 //_______________________________________________________________________________________
 CCMResult_t CCMFindEvents::ProcessEvent()
 {
-  //fOutfile = gROOT->GetFile(fOutFileName.c_str());
-
-  //fTimeHist->Reset("ICESM");
-  //fTimeHist->SetName(Form("timeHist_%d",fRawData->GetEventNumber()));
-
   // create new Events object. This will delete
   // if a previous object was created
   fEvents->Reset();
@@ -148,14 +134,10 @@ CCMResult_t CCMFindEvents::ProcessEvent()
   // first build the accumulate waveforms
   BuildAccumulatedWaveform();
 
-  //for (int bin = 1; bin <= Utility::fgkNumBins; ++bin) {
-  //  fTimeHist->SetBinContent(bin,fIntegralTime.at(bin-1));
-  //}
-  //fOutfile->cd();
-  //fTimeHist->Write();
-
   // time to find events in the DAQ window
-  FindEvents();
+  if (fBuildEventFlag) {
+    FindEvents();
+  }
 
   return kCCMSuccess;
 }
@@ -170,6 +152,7 @@ void CCMFindEvents::Configure(const CCMConfig& c )
   c("TriggerType").Get(fTriggerType);
   c("Threshold").Get(fThreshold);
 
+  c("BuildEventFlag").Get(fBuildEventFlag);
   c("PulseRep").Get(fPulseRep);
   c("PulseTimeCut").Get(fPulseTimeCut);
 
@@ -187,6 +170,7 @@ void CCMFindEvents::Configure(const CCMConfig& c )
   MsgInfo(MsgLog::Form("-Threshold: %f",fThreshold));
   MsgInfo(MsgLog::Form("-NumBins: %d",Utility::fgkNumBins));
   MsgInfo(MsgLog::Form("-BinWidth: %f",Utility::fgkBinWidth));
+  MsgInfo(MsgLog::Form("-BuildEventFlag: %d",fBuildEventFlag));
   MsgInfo(MsgLog::Form("-PulseRep: %d",fPulseRep));
   MsgInfo(MsgLog::Form("-PulseTimeCut: %d",fPulseTimeCut));
   MsgInfo(MsgLog::Form("-PulseTimeLowValue: %f",fPulseTimeLowValue));
@@ -249,8 +233,6 @@ void CCMFindEvents::BuildAccumulatedWaveform()
   int lastBin = 0;
   int middle = 0;
   std::string name = "";
-
-
 
   // loop through the pulses
   const size_t kNumPulses = fPulses->GetNumPulses();
@@ -891,3 +873,4 @@ void CCMFindEvents::ResetVectors()
   std::fill(itVetoCBackTimeBegin,itVetoCBackTimeEnd,0);
   std::fill(itVetoCLeftTimeBegin,itVetoCLeftTimeEnd,0);
 }
+
