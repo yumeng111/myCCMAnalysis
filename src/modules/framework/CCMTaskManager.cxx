@@ -173,7 +173,7 @@ CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::stri
       int mod = digit*std::pow(10,exp);
       if (count%mod == 0) {
         MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count,Utility::tstamp(),
-              fRawIO->GetEventNumber(), fRawIO->CurrentFileName()));
+              fRawIO->GetTriggerNumber(), fRawIO->CurrentFileName()));
         ++digit;
         if (digit == 10) {
           digit = 1;
@@ -188,16 +188,14 @@ CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::stri
       status = ExecuteTask();
 
       if (status != kCCMFailure && status != kCCMDoNotWrite) {
-        //should not have to do these since a
-        //the objects are passed by reference, but it does not hurt
         if (outRoot) {
           fRootIO->SetEvents(*fEvents);
           fRootIO->SetRawData(*fRawData);
           fRootIO->SetPulses(*fPulses);
-          fRootIO->WriteEvent();
+          fRootIO->WriteTrigger();
         } else {
           fRawIO->SetRawData(*fRawData);
-          fRawIO->WriteEvent();
+          fRawIO->WriteTrigger();
         }
       }
       ++count;
@@ -249,7 +247,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
       int mod = digit*std::pow(10,exp);
       if (count%mod == 0) {
         MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count,Utility::tstamp(),
-              fRootIO->GetEventNumber(), fRootIO->CurrentFileName()));
+              fRootIO->GetTriggerNumber(), fRootIO->CurrentFileName()));
         ++digit;
         if (digit == 10) {
           digit = 1;
@@ -266,16 +264,14 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
       status = ExecuteTask();
 
       if (status != kCCMFailure && status != kCCMDoNotWrite) {
-        //should not have to do these since a
-        //the objects are passed by reference, but it does not hurt
         if (outRoot) {
           fRootIO->SetEvents(*fEvents);
           fRootIO->SetRawData(*fRawData);
           fRootIO->SetPulses(*fPulses);
-          fRootIO->WriteEvent();
+          fRootIO->WriteTrigger();
         } else {
           fRawIO->SetRawData(*fRawData);
-          fRawIO->WriteEvent();
+          fRawIO->WriteTrigger();
         }
       }
       ++count;

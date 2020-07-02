@@ -42,7 +42,7 @@ CCMRawIO::CCMRawIO()
   fOutSizeLimit(0),
   fRawData(std::make_unique<RawData>())
 {
-    fEventNumber = 0;
+    fTriggerNumber = 0;
     fReadOK = false;
     fNWrite = 0;
 }
@@ -206,20 +206,20 @@ uint32_t CCMRawIO::GoTo(uint32_t event)
   //Go to specified event
 
   //we're already there
-  if (fEventNumber == event) return 1;
+  if (fTriggerNumber == event) return 1;
 
   //Advance/Rewind in the data stream
-  while (event < fEventNumber) {
+  while (event < fTriggerNumber) {
     uint32_t nrew = this->Rewind(1);
     if (nrew == 0) break;
   }
-  while (event > fEventNumber) {
+  while (event > fTriggerNumber) {
     uint32_t nadv = this->Advance(1);
     if (nadv == 0) break;
   }
 
   //check if we've found the right event number
-  if (fEventNumber == event) 
+  if (fTriggerNumber == event) 
     return 1;
   else
     return 0;
@@ -263,7 +263,7 @@ uint32_t CCMRawIO::Advance(uint32_t n)
 
   ConvertEventToRawData();
 
-  fEventNumber += ndone;
+  fTriggerNumber += ndone;
   return ndone;
 }
 
@@ -302,7 +302,7 @@ uint32_t CCMRawIO::Rewind(uint32_t n)
 
   ConvertEventToRawData();
 
-  fEventNumber -= ndone;
+  fTriggerNumber -= ndone;
   return ndone;
 }
 
@@ -340,7 +340,7 @@ int CCMRawIO::SetupInputFile()
   }
 
   //Sync the event handle to the file
-  fEventNumber = 0;
+  fTriggerNumber = 0;
   fReadOK = true;
 
   return 1;
@@ -379,7 +379,7 @@ const char* CCMRawIO::FileName(int i) const
 }
 
 //__________________________________________________
-int CCMRawIO::WriteEvent()
+int CCMRawIO::WriteTrigger()
 {
   if (!fOutFile.is_open()) {
     MsgDebug(2,"No output file set.");
@@ -423,7 +423,7 @@ void CCMRawIO::Dump()
 
   printf("CCMRawIO::fCurrentFile = %s\n",fInFileList[fFileIndex].c_str());
 
-  printf("CCMRawIO::fEventNumber = %d\n",fEventNumber);
+  printf("CCMRawIO::fTriggerNumber = %d\n",fTriggerNumber);
 
   printf("CCMRawIO::fOutFileName = %s\n",fOutFileName.c_str());
 

@@ -53,7 +53,7 @@ CCMRootIO::CCMRootIO()
   fFlushFreq(100),
   fOutSizeLimit(0)
 {
-    fEventNumber = 0;
+    fTriggerNumber = 0;
     fReadOK = false;
     fNWrite = 0;
 }
@@ -223,25 +223,25 @@ uint32_t CCMRootIO::GoTo(uint32_t event)
   //Go to specified event
 
   //Get an initial guess at how many events to skip
-  this->UpdateEventNumbers();
+  this->UpdateTriggerNumbers();
 
   //we're already there
-  if (fEventNumber == event) return 1;
+  if (fTriggerNumber == event) return 1;
 
   //Advance/Rewind in the data stream
-  while (event < fEventNumber) {
+  while (event < fTriggerNumber) {
     uint32_t nrew = this->Rewind(1);
-    this->UpdateEventNumbers();
+    this->UpdateTriggerNumbers();
     if (nrew == 0) break;
   }
-  while (event > fEventNumber) {
+  while (event > fTriggerNumber) {
     uint32_t nadv = this->Advance(1);
-    this->UpdateEventNumbers();
+    this->UpdateTriggerNumbers();
     if (nadv == 0) break;
   }
 
   //check if we've found the right event number
-  if (fEventNumber == event) 
+  if (fTriggerNumber == event) 
     return 1;
   else
     return 0;
@@ -271,7 +271,7 @@ uint32_t CCMRootIO::Advance(uint32_t n)
     }
   }
 
-  this->UpdateEventNumbers();
+  this->UpdateTriggerNumbers();
   return ndone;
 }
 
@@ -296,7 +296,7 @@ uint32_t CCMRootIO::Rewind(uint32_t n)
       return ndone;
     }
   }
-  this->UpdateEventNumbers();
+  this->UpdateTriggerNumbers();
   return ndone;
 }
 
@@ -335,7 +335,7 @@ int CCMRootIO::SetupInputFile()
 
   //Sync the event handle to the file
   if (fEventHandle->SetupInputFile(*fInFile)) {
-    this->UpdateEventNumbers();
+    this->UpdateTriggerNumbers();
     fReadOK = true;
   } else {
     fReadOK = false;
@@ -394,15 +394,15 @@ CCMEventTreeHandle& CCMRootIO::GetEventTree()
 }
 
 //__________________________________________________
-void CCMRootIO::UpdateEventNumbers()
+void CCMRootIO::UpdateTriggerNumbers()
 {
-  fEventNumber = this->GetEventTree().Index();
+  fTriggerNumber = this->GetEventTree().Index();
   fReadOK = true;
 
 }
 
 //__________________________________________________
-int CCMRootIO::WriteEvent()
+int CCMRootIO::WriteTrigger()
 {
   if (fOutFile == 0) {
     MsgDebug(2,"No output file set.");
@@ -420,7 +420,7 @@ int CCMRootIO::WriteEvent()
     }
   }
 
-  UpdateEventNumbers();
+  UpdateTriggerNumbers();
 
   return aok;
 
@@ -470,7 +470,7 @@ void CCMRootIO::Dump()
 
   printf("CCMRootIO::fCurrentFile = %s\n",fInFileList[fFileIndex].c_str());
 
-  printf("Raw Tree    CCMRootIO::fEventNumber = %d\n",fEventNumber);
+  printf("CCMRootIO::fTriggerNumber = %d\n",fTriggerNumber);
 
   printf("CCMRootIO::fOutFileName = %s\n",fOutFileName.c_str());
 

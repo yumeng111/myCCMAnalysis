@@ -174,11 +174,11 @@ class CCMRootIO
     uint32_t Advance(uint32_t n = 1);
     uint32_t Rewind(uint32_t n = 1);
     int Reload();
-    int WriteEvent();
+    int WriteTrigger();
 
     uint32_t NumInputFiles() { return fInFileList.size(); }
 
-    uint32_t GetEventNumber() { return fEventNumber; }
+    uint32_t GetTriggerNumber() { return fTriggerNumber; }
 
     void SetParameter(std::string name, const int value);
     void SetParameter(std::string name, const double value);
@@ -192,11 +192,11 @@ class CCMRootIO
      */
     CCMRootIO();
 
-    virtual void UpdateEventNumbers();
+    virtual void UpdateTriggerNumbers();
 
 
     bool fReadOK;         ///< Next read should be OK?
-    uint32_t fEventNumber;    ///< Event number for current event
+    uint32_t fTriggerNumber;    ///< Trigger number for current event
 
     std::unique_ptr<CCMEventTreeHandle> fEventHandle;     ///< The break in board tree handle
 
