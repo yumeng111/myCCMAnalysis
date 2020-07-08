@@ -35,27 +35,47 @@
       The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
       Must be the first param in this config
     </Param>
-    <Param name="HVOffFile"><string>mappings/hv_off_2019.csv</string>
+    <Param name="HVOffFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/hv_off_2019.csv</string>
       List of the HV channels that are off.
     </Param>
-    <Param name="CalibrationFile"><string>mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
+    <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
       Name of the calibration file to use
     </Param>
   </Config>
+
   <Config name="CCMNa22Cuts" version="default">
-    <Param name="OutFileName"><string>default_na22.root</string>
-      Name of the output root file
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTriangle</string>
+      Which CCMAccumWaveformMethod to use in finding the events. 
+      Options are:
+       - CCMAccumWaveformTriangle
+       - CCMAccumWaveformTrianglePulseCut
+       - CCMAccumWaveformStart
+       - CCMAccumWaveformStartPulseCut
     </Param>
-    <Param name="ShiftTime"><int>0</int>
-      Flag to shift the calculated time by -9.92 microseconds.
-      Should be 0 for BEAM triggers and 1 for STROBE triggers
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+       - CCMDynamicLengthEvent
+       - CCMFixedLengthEvent
+    </Param>
+    <Param name="TreeName"><string>tree</string>
+      Name of the output tree
+    </Param>
+    <Param name="RemoveOtherEvents"><int>1</int>
+      Flag to remove events that were not built with the 
+      AccumWaveformMethodID/EventFinderID combination that 
+      is looked for
+    </Param>
+    <Param name="RemovePrimaryEvents"><int>1</int>
+      Flag to remove events match the
+      AccumWaveformMethodID/EventFinderID combination that 
+      is looked for but do not pass cuts
     </Param>
     <Param name="DoPrevCut"><int>1</int>
       Flag to reject events based off previous activity in the same DAQ window
     </Param>
-    <Param name="PrevCutTime"><double>1.6</double>
+    <Param name="PrevCutTime"><double>1600</double>
       The time to reject the event if a previous event falls before by the amount specified.
-      The time should be in microseconds
+      The time should be in nanoseconds 
     </Param>
     <Param name="DoNicenessCut"><int>0</int>
       Flag to reject the event if the charge distribution is not "nice"
@@ -80,6 +100,9 @@
     <Param name="EnergyCutValueHigh"><double>100</double>
       Highest prompt energy value allowed in PEs (not needed if DoEnergyCut = false)
     </Param>
+    <Param name="WaveformMaxCut"><int>0</int>
+      Flag if true will reject events if max of waveform is not in the prompt region
+    </Param>
     <Param name="DoPositionCut"><int>1</int>
       Flag to turn on a position cut (0 = off, anything else = on)
     </Param>
@@ -101,22 +124,26 @@
     <Param name="DoTimeCut"><int>1</int>
       Flag to turn on DAQ Time cut (0 = off, anything else = on)
     </Param>
-    <Param name="TimeCutValueLow"><double>-7</double>
-      Lowest DAQ time value allowed in microseconds (not needed if DoTimeCut = false)
+    <Param name="TimeCutValueLow"><double>-7000</double>
+      Lowest DAQ time value allowed in nanoseconds (not needed if DoTimeCut = false)
     </Param>
-    <Param name="TimeCutValueHigh"><double>4</double>
-      Highest DAQ time value allowed in microseconds (not needed if DoTimeCut = false)
+    <Param name="TimeCutValueHigh"><double>4000</double>
+      Highest DAQ time value allowed in nanoseconds (not needed if DoTimeCut = false)
     </Param>
-    <Param name="DoLengthCut"><int>0</int>
+    <Param name="DoLengthCut"><int>1</int>
       Flag to turn on event length cut (0 = off, anything else = on)
     </Param>
     <Param name="LengthCutValueLow"><double>0</double>
-      Lowest event length value allowed in microseconds (not needed if DoLengthCut = false)
+      Lowest event length value allowed in nanoseconds (not needed if DoLengthCut = false)
     </Param>
-    <Param name="LengthCutValueHigh"><double>1.0</double>
-      Highest event length value allowed in microseconds (not needed if DoLengthCut = false)
+    <Param name="LengthCutValueHigh"><double>100</double>
+      Highest event length value allowed in nanoseconds (not needed if DoLengthCut = false)
     </Param>
   </Config>
 
 
 </TestRecoConfig>
+
+
+
+
