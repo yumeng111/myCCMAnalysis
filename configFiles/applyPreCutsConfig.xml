@@ -6,9 +6,17 @@
   <Modules type="Reco"> CCMNearlineDiag </Modules>
   <Modules type="Reco"> CCMApplyPreCuts </Modules>
   <Modules type="Reco"> CCMFindEvents </Modules>
+
+
+
+  THIS MODULE HAS NOT BEEN UPDATED TO THE CURRENT VERSION OF THE FRAMEWORK
+  PLEASE USE CCMNa22Cuts (na22Cuts.xml) INSTEAD
+
+
   -->
 
   <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <ModuleVersion> default </ModuleVersion>
 
   <Config name="CCMApplyPreCuts" version="default">
     <Param name="InFileName"><string> ROOT_Files/PDSout_run000002-000000_08-05-1441_physics_events.root </string>

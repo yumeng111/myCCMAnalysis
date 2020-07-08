@@ -9,6 +9,7 @@
   -->
 
   <Modules type="Reco"> CCMNa22Cuts </Modules>
+  <ModuleVersion> default </ModuleVersion>
 
   <Config name="ROOTSetup" version="default">
     <Param name="ReadBranches"><string>events</string>

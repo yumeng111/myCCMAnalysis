@@ -20,6 +20,7 @@
 class TFile;
 class RawData;
 class Events;
+class AccumWaveform;
 class Pulses;
 
 /*!
@@ -159,10 +160,12 @@ class CCMRootIO
      */
     CCMEventTreeHandle& GetEventTree();
 
+    AccumWaveform& GetAccumWaveform();
     Events& GetEvents();
     RawData& GetRawData();
     Pulses& GetPulses();
 
+    void SetAccumWaveform(const AccumWaveform & accumWaveform);
     void SetEvents(const Events & event);
     void SetRawData(const RawData & rawData);
     void SetPulses(const Pulses & pulses);

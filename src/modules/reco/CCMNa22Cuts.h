@@ -75,6 +75,12 @@ class CCMNa22Cuts : public CCMModule
     void SetNicenessCutValueLow(double value) {fNicenessCutValueLow = value;}
     void SetNicenessCutValueHigh(double value) {fNicenessCutValueHigh = value;}
 
+    void SetEventFinderID(CCMEventFinderID_t evtFinder) { fEventFinderID = evtFinder; }
+    void SetAccumWaveformMethodID(CCMAccumWaveformMethod_t method) {fAccumWaveformMethodID = method; }
+    void SetTreeName(std::string treeName) { fTreeName = treeName; }
+    void SetRemoveOtherEventsFlag(bool flag) { fRemoveOtherEvents = flag;}
+    void SetRemovePrimaryEventsFlag(bool flag) { fRemovePrimaryEvents = flag;}
+
   private:
 
     //private methods
@@ -89,8 +95,14 @@ class CCMNa22Cuts : public CCMModule
 
     std::shared_ptr<Events> fEvents;
 
-    std::string fOutFileName;
+    CCMEventFinderID_t fEventFinderID;
+    CCMAccumWaveformMethod_t fAccumWaveformMethodID;
 
+    std::string fOutFileName;
+    std::string fTreeName;
+
+    int fRemovePrimaryEvents;
+    int fRemoveOtherEvents;
     int fDoVetoCut;
     int fDoPositionCut;
     int fDoEnergyCut;

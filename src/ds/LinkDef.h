@@ -9,6 +9,7 @@
 #pragma link C++ class RawData+;
 #pragma link C++ class SimplifiedEvent+;
 #pragma link C++ class Events+;
+#pragma link C++ class AccumWaveform+;
 #pragma link C++ class std::vector<SinglePulse*>+;
 #pragma link C++ class std::vector<Pulses*>+;
 #pragma link C++ class std::vector<SimplifiedEvent*>+;

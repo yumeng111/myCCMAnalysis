@@ -42,7 +42,12 @@ MODULE_DECL(CCMNa22Cuts);
 CCMNa22Cuts::CCMNa22Cuts(const char* version) 
   : CCMModule("CCMNa22Cuts"),
     fEvents(nullptr),
+    fEventFinderID(kCCMDynamicLengthEventID),
+    fAccumWaveformMethodID(kCCMAccumWaveformTriangleID),
     fOutFileName(""),
+    fTreeName("tree"),
+    fRemovePrimaryEvents(true),
+    fRemoveOtherEvents(false),
     fDoVetoCut(false),
     fDoPositionCut(false),
     fDoEnergyCut(false),
@@ -109,7 +114,12 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
 CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr) 
 : CCMModule(clufdr),
   fEvents(clufdr.fEvents),
+  fEventFinderID(clufdr.fEventFinderID),
+  fAccumWaveformMethodID(clufdr.fAccumWaveformMethodID),
   fOutFileName(clufdr.fOutFileName),
+  fTreeName(clufdr.fTreeName),
+  fRemovePrimaryEvents(clufdr.fRemovePrimaryEvents),
+  fRemoveOtherEvents(clufdr.fRemoveOtherEvents),
   fDoVetoCut(clufdr.fDoVetoCut),
   fDoPositionCut(clufdr.fDoPositionCut),
   fDoEnergyCut(clufdr.fDoEnergyCut),
@@ -201,6 +211,14 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     auto simplifiedEvent = fEvents->GetSimplifiedEvent(e);
 
+    if (simplifiedEvent.GetEventFinderMethod() != fEventFinderID ||
+        simplifiedEvent.GetAccumWaveformMethod() != fAccumWaveformMethodID) {
+      if (fRemoveOtherEvents) {
+        locationsToRemove.emplace_back(e);
+      }
+      continue;
+    }
+
     double st = simplifiedEvent.GetStartTime();
     fLength = simplifiedEvent.GetLength();
 
@@ -219,7 +237,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     if (fWaveformMaxCut) {
       auto maxLoc = WaveformMaxPosition(simplifiedEvent);
       if (static_cast<double>(maxLoc)*Utility::fgkBinWidth > promptLength) {
-        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
         fPassedWaveformMaxCut = false;
@@ -232,7 +250,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     if (fDoTimeCut) {
       if (st < fTimeCutValueLow || st > fTimeCutValueHigh) {
-        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
         fPassedTimeCut = false;
@@ -242,7 +260,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     double et = st + fLength;
     if (et <= st) {
-      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
         locationsToRemove.emplace_back(e);
       }
       //continue;
@@ -250,7 +268,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     if (fDoLengthCut) {
       if (fLength < fLengthCutValueLow || fLength > fLengthCutValueHigh) {
-        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
         fPassedLengthCut = false;
@@ -262,7 +280,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     if (fDoPositionCut) {
       if (radius < fRadiusCutValueLow || radius > fRadiusCutValueHigh ||
           fZ < fZCutValueLow || fZ > fZCutValueHigh) {
-        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
         fPassedPositionCut = false;
@@ -272,7 +290,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     if (fDoEnergyCut) {
       if (fEnergy < fEnergyCutValueLow || fEnergy > fEnergyCutValueHigh) {
-        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
         fPassedEnergyCut = false;
@@ -281,7 +299,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     }// end if fDoEnergyCut
 
     if (fHits < 3) {
-      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
         locationsToRemove.emplace_back(e);
       }
       fPassedNumHitsCut = false;
@@ -308,7 +326,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
       double uniform = fEnergy/static_cast<double>(fNumPMTs);
       double nice = (fLargestPMTFraction - uniform)/uniform;
       if (nice < fNicenessCutValueLow || nice > fNicenessCutValueHigh) {
-        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
         fPassedNicenessCut = false;
@@ -319,7 +337,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     if (fDoVetoCut) {
       if ((vetoTotal >= fNumVetoCut && !fReverseVeto) || 
           (fReverseVeto && vetoTotal < fNumVetoCut)) {
-        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+        if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
         fPassedVetoCut = false;
@@ -331,6 +349,11 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     bool reject = false;
     for (long e2 = e-1; e2 >= 0 && fDoPrevCut; --e2) {
       auto simplifiedEvent2 = fEvents->GetSimplifiedEvent(e2);
+
+      if (simplifiedEvent2.GetEventFinderMethod() != fEventFinderID ||
+          simplifiedEvent2.GetAccumWaveformMethod() != fAccumWaveformMethodID) {
+        continue;
+      }
 
       double promptHits2 = simplifiedEvent2.GetNumCoated(true);
       double st2 = simplifiedEvent2.GetStartTime();
@@ -363,7 +386,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     if (reject) {
       fPassedPrevCut = false;
-      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end()) {
+      if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
         locationsToRemove.emplace_back(e);
       }
       //continue;
@@ -404,6 +427,16 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
   //by reading them from the CCMConfig object.
 
   MsgInfo("Inside Coonfiguration file");
+
+  std::string tempString = "";
+  c("EventFinderID").Get(tempString);
+  fEventFinderID = Utility::ConvertStringToCCMEventFinderID(tempString);
+  c("AccumWaveformMethodID").Get(tempString);
+  fAccumWaveformMethodID = Utility::ConvertStringToCCMAccumWaveformMethod(tempString);
+
+  c("RemovePrimaryEvents").Get(fRemovePrimaryEvents);
+  c("RemoveOtherEvents").Get(fRemoveOtherEvents);
+  c("TreeName").Get(fTreeName);
 
   c("DoLengthCut").Get(fDoLengthCut);
   if (fDoLengthCut) {
@@ -508,7 +541,7 @@ void CCMNa22Cuts::SetupOutFile()
       return;
     }
     fOutfile->cd();
-    fTree = new TTree("tree","tree");
+    fTree = new TTree(fTreeName.c_str(),fTreeName.c_str());
     fTree->Branch("epochSec",&fEpochSec);
     fTree->Branch("energy",&fEnergy);
     fTree->Branch("length",&fLength);

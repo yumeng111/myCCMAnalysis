@@ -55,6 +55,23 @@
     <Param name="Threshold"><double>THRESHOLD</double>
       The PE threshold for a 2ns bin to trigger event building
     </Param>
+    <Param name="BuildEventFlag"><int>1</int>
+      Flag to build the events and not just create the accumulated waveform
+    </Param>
+    <Param name="PulseRep"><int>0</int>
+      How to represent the pulses
+      0 = triangular
+      1 = all in start of pulse
+    </Param>
+    <Param name="PulseTimeCut"><int>1</int>
+      If true put a time cut on the pulse start time
+    </Param>
+    <Param name="PulseTimeLowValue"><double>-9920</double>
+      The earliest in the DAQ window to allow the pulse to start in ns
+    </Param>
+    <Param name="PulseTimeHighValue"><double>-250</double>
+      The latest in the DAQ window to allow the pulse to start in ns
+    </Param>
   </Config>
 
 

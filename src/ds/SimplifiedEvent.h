@@ -9,6 +9,8 @@
 
 #include "SinglePulse.h"
 #include "TObject.h"
+#include "Utility.h"
+#include "MsgLog.h"
 
 #include <iostream>
 #include <vector>
@@ -17,6 +19,25 @@
 
 //class BoardInfo;
 //class ChannelInfo;
+
+
+// from Utility header we get the definition of the
+// different event builder types
+//typedef enum {
+//  kCCMDynamicLengthEventID = 0, 
+//  kCCMFixedLengthEventID = 1, 
+//} CCMEventFinderID_t;
+
+// from Utility header we get the definition
+// of the different accumulated waveform builder
+// types
+//typedef enum {
+//  kCCMAccumWaveformTriangleID = 0,
+//  kCCMAccumWaveformStartID = 1,
+//  kCCMAccumWaveformTrianglePulseCutID = 2,
+//  kCCMAccumWaveformStartPulseCutID = 3,
+//  kCCMAccumWaveformTotalID = 4
+//} CCMAccumWaveformMethod_t;
 
 /*!**********************************************
  * \class SimplifiedEvent
@@ -28,7 +49,7 @@
  ***********************************************/
 class SimplifiedEvent : public TObject
 {
-  public :
+  public:
     SimplifiedEvent();
     SimplifiedEvent(const SimplifiedEvent & rhs);
     ~SimplifiedEvent();
@@ -38,6 +59,8 @@ class SimplifiedEvent : public TObject
     ////////////////////////////////////
     // Set Functions
     ////////////////////////////////////
+    void SetEventFinderMethod  ( CCMEventFinderID_t value  ) { fEventFinderMethod = static_cast<int>(value); }
+    void SetAccumWaveformMethod  ( CCMAccumWaveformMethod_t value  ) { fAccumWaveformMethod = static_cast<int>(value); }
     void SetThreshold          ( float value  ) { fThreshold = value; }
     void SetLargestPMTFraction ( double value ) { fLargestPMTFraction = value; }
 
@@ -106,6 +129,9 @@ class SimplifiedEvent : public TObject
     ////////////////////////////////////
     // Get Functions
     ////////////////////////////////////
+    CCMEventFinderID_t GetEventFinderMethod  () { return static_cast<CCMEventFinderID_t>(fEventFinderMethod); }
+    CCMAccumWaveformMethod_t GetAccumWaveformMethod  () { return static_cast<CCMAccumWaveformMethod_t>(fAccumWaveformMethod); }
+
     float GetThreshold           ( ) { return fThreshold; }
     double GetLargestPMTFraction ( ) { return fLargestPMTFraction; }
 
@@ -153,10 +179,9 @@ class SimplifiedEvent : public TObject
     const std::vector<float> & GetPMTHitsVec () { return fPMTHitsVec; }
 
   protected:
-    static float fgkStartDAQWindow; //!
-    static float fgkSampleWidth; //!
-
-    float fThreshold;                    //!
+    int fEventFinderMethod;        ///< the event finder method converted from #CCMEventFinderID_t
+    int fAccumWaveformMethod;        ///< the method used to build the accumulated waveform #CCMAccumWaveformMethod_t
+    float fThreshold;                    ///< threshold used for finding the event
     int fPMTHits;                    ///< true if there is another triggerable event
     std::vector<float> fPMTHitsVec; ///< time of all the other events
     double fLargestPMTFraction;          ///< fraction of PMT with the most charge
@@ -200,7 +225,7 @@ class SimplifiedEvent : public TObject
     std::map<int,std::pair<std::vector<float>,std::vector<int>>> fPMTWaveform; //
     mutable std::map<int,std::pair<std::vector<float>,std::vector<int>>>::const_iterator fPMTWaveformItr; //! do not save to file
 
-  ClassDef(SimplifiedEvent,10)  //SimplifiedEvent class
+  ClassDef(SimplifiedEvent,11)  //SimplifiedEvent class
 };
 
 #endif

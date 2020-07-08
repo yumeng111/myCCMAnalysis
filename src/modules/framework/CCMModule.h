@@ -23,6 +23,7 @@
 class CCMModule; //needed for typedef
 class CCMConfig;
 class Events;
+class AccumWaveform;
 class RawData;
 class Pulses;
 
@@ -53,6 +54,7 @@ public:
   virtual void CheckInit();
 
   //Methods to pass the data to process into the module
+  virtual void ConnectAccumWaveform(std::shared_ptr<AccumWaveform> evt);
   virtual void ConnectEvents(std::shared_ptr<Events> evt);
   virtual void ConnectBinaryRawData(std::shared_ptr<RawData> rawData);
   virtual void ConnectRawData(std::shared_ptr<RawData> rawData);

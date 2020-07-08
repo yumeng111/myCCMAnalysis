@@ -151,6 +151,9 @@ int CCMTaskConfig::ReadConfigFile()
     //get the CCMConfigTable instance so we can add configurations to it
     CCMConfigTable& cfgTable = CCMConfigTable::Instance();
 
+    std::vector<std::string> moduleList;
+    std::vector<std::string> versionList;
+
     //Modules has attributes and a list of items
     XMLString::transcode("Modules",xa,99);
     DOMNodeList* xmlModList = doc->getElementsByTagName(xa);
@@ -158,7 +161,7 @@ int CCMTaskConfig::ReadConfigFile()
       DOMElement* modEle = (DOMElement*)(xmlModList->item(i));
       //      std::string mods = StrX(modEle->getChildNodes()->item(0)->getNodeValue()).localForm();
       char* modchar = XMLString::transcode(modEle->getChildNodes()->item(0)->getNodeValue());
-      /*int nmods =*/ Split(modchar," ,\n\t\r",fModuleList);
+      /*int nmods =*/ Split(modchar," ,\n\t\r",moduleList);
       XMLString::release(&modchar);
       XMLCh *type = XMLString::transcode("type");
       fProcessType = StrX(modEle->getAttribute(type)).localForm();
@@ -166,6 +169,24 @@ int CCMTaskConfig::ReadConfigFile()
       if(!(fProcessType == "DetSim" || fProcessType == "EventDisplay" || fProcessType == "Reco" ||
             fProcessType == "Calibration"))
         MsgFatal(MsgLog::Form("Unrecognized process type %s.  Check your XML config file.",fProcessType.c_str()));
+    }
+
+    XMLString::transcode("ModuleVersion",xa,99);
+    DOMNodeList* xmlVerList = doc->getElementsByTagName(xa);
+    for(unsigned int i = 0; i < xmlVerList->getLength(); i++) {
+      DOMElement* verEle = (DOMElement*)(xmlVerList->item(i));
+      //      std::string vers = StrX(verEle->getChildNodes()->item(0)->getNodeValue()).localForm();
+      char* verchar = XMLString::transcode(verEle->getChildNodes()->item(0)->getNodeValue());
+      /*int nvers =*/ Split(verchar," ,\n\t\r",versionList);
+    }
+
+    const size_t kNumModules = moduleList.size();
+    if (kNumModules != versionList.size()) {
+      MsgFatal("A different number of modules and versions were given");
+    }
+
+    for (size_t module = 0; module < kNumModules; ++module) {
+      fModuleList.emplace_back(moduleList.at(module),versionList.at(module));
     }
 
     //Config has attributes and an unknown number of parameters
@@ -296,7 +317,7 @@ void CCMTaskConfig::Print()
   MsgInfo(MsgLog::Form("\tJob type: %s",fProcessType.c_str()));
   MsgInfo(MsgLog::Form("\tModules to run:"));
   for(unsigned int i = 0; i< fModuleList.size(); i++) {
-    MsgInfo(MsgLog::Form("\t\t %s",fModuleList.at(i).c_str()));
+    MsgInfo(MsgLog::Form("\t\t %s version %s",fModuleList.at(i).first.c_str(),fModuleList.at(i).second.c_str()));
   }
   for(unsigned int i = 0; i < fOutputFileList.size(); i++) {
     MsgInfo(MsgLog::Form("\tOutput file[%d]: %s",i,fOutputFileList[i].c_str()));

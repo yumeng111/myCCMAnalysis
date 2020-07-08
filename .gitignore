@@ -3,6 +3,8 @@ build/
 old/
 log/
 analysis/rtthorn/local/
+analysis/rtthorn/*.root
+analysis/rtthorn/*.pdf
 configFiles/local/
 
 *core.*

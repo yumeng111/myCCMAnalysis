@@ -33,36 +33,34 @@ class Events : public TObject
     void Reset();
     void ClearEvents();
 
-    /// \fn void SetEventNumber(unsigned int value)
     /// \brief Set the event (trigger) number of the DAQ window currently looking at
     /// \param[in] value The event number
     void SetEventNumber(unsigned int value) { fEventNumber = value; }
-    /// \fn void SetComputerSecIntoEpoch(unsigned int value)
+
     /// \brief Set the computer time of the DAQ window in s
     /// \param[in] value The computer time in s
     void SetComputerSecIntoEpoch(unsigned int value) { fComputerSecIntoEpoch = value; }
-    /// \fn void SetComputerNSIntoSec(unsigned int value)
+
     /// \brief Set the computer time of the DAQ window in ns
     /// \param[in] value The computer time in ns
     void SetComputerNSIntoSec(unsigned int value) { fComputerNSIntoSec = value; }
 
-    /// \fn unsigned int GetEventNumber() const
     /// \return #fEventNumber
     unsigned int GetEventNumber() const { return fEventNumber; }
-    /// \fn unsigned int GetComputerSecIntoEpoch() const
+    
     /// \return #fComputerSecIntoEpoch
     unsigned int GetComputerSecIntoEpoch() const { return fComputerSecIntoEpoch; }
-    /// \fn unsigned int GetComputerNSIntoSec() const
+    
     /// \return #fComputerNSIntoSec
     unsigned int GetComputerNSIntoSec() const { return fComputerNSIntoSec; }
 
-    /// \fn unsigned int GetEventNumber()
+    
     /// \return #fEventNumber
     unsigned int GetEventNumber() { return fEventNumber; }
-    /// \fn unsigned int GetComputerSecIntoEpoch()
+    
     /// \return #fComputerSecIntoEpoch
     unsigned int GetComputerSecIntoEpoch() { return fComputerSecIntoEpoch; }
-    /// \fn unsigned int GetComputerNSIntoSec()
+    
     /// \return #fComputerNSIntoSec
     unsigned int GetComputerNSIntoSec() { return fComputerNSIntoSec; }
 

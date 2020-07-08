@@ -5,4 +5,5 @@
 #pragma link C++ class CCMFindEvents-!;
 #pragma link C++ class CCMApplyPreCuts-!;
 #pragma link C++ class CCMNa22Cuts-!;
+#pragma link C++ class CCMBuildAccumWaveform-!;
 #endif /* __CINT__ */

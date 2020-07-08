@@ -5,6 +5,7 @@ set(DS_HEADERS
   SimplifiedEvent.h
   SinglePulse.h
   Events.h
+  AccumWaveform.h
   )
 
 set(INCLUDE_DIRECTORIES ${ROOT_INCLUDE_DIR} ${CCMAnalysis_INCLUDE_DIRS})
@@ -23,6 +24,7 @@ set(DS_SRCS
   SimplifiedEvent.cxx
   SinglePulse.cxx
   Events.cxx
+  AccumWaveform.cxx
   )
 
 set(DS_LINKDEF LinkDef.h)

@@ -18,6 +18,7 @@
 #include "Pulses.h"
 #include "SimplifiedEvent.h"
 #include "Events.h"
+#include "AccumWaveform.h"
 #include "Utility.h"
 
 #include "TFile.h"
@@ -42,7 +43,8 @@ CCMEventTreeHandle::CCMEventTreeHandle()
   fObjectCnt(TProcessID::GetObjectCount()),
   fRawData(new RawData()),
   fPulses(new Pulses()),
-  fEvents(new Events())
+  fEvents(new Events()),
+  fAccumWaveform(new AccumWaveform())
 {
   //constructor
   for (int i = 0; i < kNEventBranch; i++) {
@@ -182,6 +184,16 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
     fBranch[kEventsID] = nullptr;
   }
 
+  if (std::find(fReadBranches.begin(),fReadBranches.end(),"accumWaveform") != fReadBranches.end() || 
+      std::find(fReadBranches.begin(),fReadBranches.end(),"all") != fReadBranches.end()) {
+    branch = fBranch[kAccumWaveformID] = fEventsTree->GetBranch("accumWaveform");
+    if(branch != 0) {
+      fBranch[kAccumWaveformID]->SetAddress(&fAccumWaveform);
+    }
+  } else {
+    fBranch[kAccumWaveformID] = nullptr;
+  }
+
   if (MsgLog::GetGlobalDebugLevel() >= 2) {
     MsgDebug(2,"Printing Branches");
     for (const auto & branch : fBranch) {
@@ -232,6 +244,13 @@ int CCMEventTreeHandle::SetupOutputFile(TFile & f)
       fEvents = new Events();
     }
     fOutEventTree->Branch("events", &fEvents, 320000, sLvl);
+  }
+  if (std::find(fSaveBranches.begin(),fSaveBranches.end(),"accumWaveform") != fSaveBranches.end() ||
+      std::find(fSaveBranches.begin(),fSaveBranches.end(),"all") != fSaveBranches.end()) {
+    if (fAccumWaveform == nullptr) {
+      fAccumWaveform = new AccumWaveform();
+    }
+    fOutEventTree->Branch("accumWaveform", &fAccumWaveform, 320000, sLvl);
   }
   if (std::find(fSaveBranches.begin(),fSaveBranches.end(),"rawData") != fSaveBranches.end() ||
       std::find(fSaveBranches.begin(),fSaveBranches.end(),"all") != fSaveBranches.end()) {
@@ -364,6 +383,13 @@ void CCMEventTreeHandle::Close()
 }
 
 //_____________________________________________________________
+AccumWaveform& CCMEventTreeHandle::CurrentAccumWaveform()
+{
+  this->Load(kAccumWaveformID);
+  return *fAccumWaveform;
+}
+
+//_____________________________________________________________
 Events& CCMEventTreeHandle::CurrentEvents()
 {
   this->Load(kEventsID);
@@ -382,6 +408,16 @@ Pulses& CCMEventTreeHandle::CurrentPulses()
 {
   this->Load(kPulsesID);
   return *fPulses;
+}
+
+//_____________________________________________________________
+void CCMEventTreeHandle::SetCurrentAccumWaveform(const AccumWaveform& accumWaveform)
+{
+  if (fAccumWaveform == nullptr) {
+    fAccumWaveform = new AccumWaveform(accumWaveform);
+    return;
+  }
+  fAccumWaveform->operator=(accumWaveform);
 }
 
 //_____________________________________________________________

@@ -8,7 +8,8 @@
   <Modules type="Reco"> CCMFindEvents </Modules>
   -->
 
-  <Modules type="Reco"> CCMFindEvents </Modules>
+  <Modules type="Reco"> CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
+  <ModuleVersion> default dynamic dynamic_pulseCut </ModuleVersion>
 
   <Config name="ROOTSetup" version="default">
     <Param name="ReadBranches"><string>rawData pulses</string>
@@ -16,6 +17,7 @@
       - events
       - rawData
       - pulses
+      - accumWaveform
       - all
       - none
     </Param>
@@ -24,6 +26,7 @@
       - events
       - rawData
       - pulses
+      - accumWaveform
       - all
       - none
     </Param>
@@ -43,7 +46,7 @@
     </Param>
   </Config>
 
-  <Config name="CCMFindEvents" version="default">
+  <Config name="CCMBuildAccumWaveform" version="default">
     <Param name="TriggerType"><string>BEAM</string>
       Only look at triggers with name passed.
       Options are:
@@ -53,22 +56,62 @@
        - ALL
       and any combination of the three, like BEAM STROBE
     </Param>
-    <Param name="Threshold"><double> 0.4 </double>
-      The PE threshold for a 2ns bin to trigger event building
+    <Param name="BuildMethods"><string>CCMAccumWaveformTriangle CCMAccumWaveformTrianglePulseCut</string>
+      The build methods to use. Options are:
+      CCMAccumWaveformTriangle
+      CCMAccumWaveformTrianglePulseCut
+      CCMAccumWaveformStart
+      CCMAccumWaveformStartPulseCut
     </Param>
-    <Param name="PulseRep"><int>0</int>
-      How to represent the pulses
-      0 = triangular
-      1 = all in start of pulse
-    </Param>
-    <Param name="PulseTimeCut"><int>0</int>
-      If true put a time cut on the pulse start time
-    </Param>
-    <Param name="PulseTimeLowValue"><double>9920</double>
+    <Param name="PulseTimeLowValue"><double>-9920</double>
       The earliest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
     </Param>
     <Param name="PulseTimeHighValue"><double>6080</double>
       The latest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
+    </Param>
+  </Config>
+
+  <Config name="CCMFindEvents" version="dynamic">
+    <Param name="Threshold"><double> 0.4 </double>
+      The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="ResetEvents"><int>1</int>
+      Flag to reset the Events class. Should only be used in the first instance of CCMFindEvents
+    </Param>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTriangle</string>
+      Which CCMAccumWaveformMethod to use in finding the events
+    </Param>
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+      CCMDynamicLengthEvent
+      CCMFixedLengthEvent
+    </Param>
+    <Param name="FixedLength"><int>0</int>
+      Number of bins for the required length of the event only needed if 
+      EventFinderID == CCMFixedLengthEvent
+    </Param>
+  </Config>
+
+  <Config name="CCMFindEvents" version="dynamic_pulseCut">
+    <Param name="Threshold"><double> 0.4 </double>
+      The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="ResetEvents"><int>0</int>
+      Flag to reset the Events class. Should only be used in the first instance of CCMFindEvents
+    </Param>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTrianglePulseCut</string>
+      Which CCMAccumWaveformMethod to use in finding the events
+    </Param>
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+      CCMDynamicLengthEvent
+      CCMFixedLengthEvent
+    </Param>
+    <Param name="FixedLength"><int>0</int>
+      Number of bins for the required length of the event only needed if 
+      EventFinderID == CCMFixedLengthEvent
     </Param>
   </Config>
 

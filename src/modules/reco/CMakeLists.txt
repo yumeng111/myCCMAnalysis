@@ -2,6 +2,7 @@ set(RECO_HEADERS
   CCMFindEvents.h
   CCMApplyPreCuts.h
   CCMNa22Cuts.h
+  CCMBuildAccumWaveform.h
   )
 
 
@@ -19,6 +20,7 @@ set(RECO_SRCS
   CCMFindEvents.cxx
   CCMApplyPreCuts.cxx
   CCMNa22Cuts.cxx
+  CCMBuildAccumWaveform.cxx
   )
 
 set(RECO_LINKDEF LinkDef.h)

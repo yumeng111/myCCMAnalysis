@@ -13,9 +13,6 @@
 
 ClassImp(SimplifiedEvent)
 
-float SimplifiedEvent::fgkStartDAQWindow = -9.92;
-float SimplifiedEvent::fgkSampleWidth = 2e-3;
-
 //-------------------------------------------------------------------------------------------------
 SimplifiedEvent::SimplifiedEvent() : TObject()
 {
@@ -25,6 +22,8 @@ SimplifiedEvent::SimplifiedEvent() : TObject()
 //-------------------------------------------------------------------------------------------------
 SimplifiedEvent::SimplifiedEvent(const SimplifiedEvent & rhs) : TObject(rhs)
 {
+  fEventFinderMethod       = rhs.fEventFinderMethod;
+  fAccumWaveformMethod     = rhs.fAccumWaveformMethod;
   fThreshold               = rhs.fThreshold;
   fStartTime               = rhs.fStartTime;
   fLength                  = rhs.fLength;
@@ -75,6 +74,9 @@ SimplifiedEvent::~SimplifiedEvent()
  ***********************************************/
 void SimplifiedEvent::Reset()
 {
+  fEventFinderMethod       = static_cast<int>(kCCMDynamicLengthEventID);
+  fAccumWaveformMethod     = static_cast<int>(kCCMAccumWaveformTotalID);
+
   fThreshold          = 0.f;
   fLargestPMTFraction = 1.f;
 

@@ -13,9 +13,6 @@ Date: 14-May-2013
 #include "CCMTaskManager.h"
 #include "CCMRawIO.h"
 #include "CCMRootIO.h"
-#include "Events.h"
-#include "RawData.h"
-#include "Pulses.h"
 
 
 #include <cstdlib>
@@ -29,6 +26,7 @@ CCMTaskManager::CCMTaskManager()
   fRootIO = CCMRootIO::GetInstance();
   fRawIO = CCMRawIO::GetInstance();
   
+  fAccumWaveform = std::make_shared<AccumWaveform>();
   fEvents = std::make_shared<Events>();
   fPulses = std::make_shared<Pulses>();
   fRawData = std::make_shared<RawData>();
@@ -47,6 +45,7 @@ CCMTaskManager::CCMTaskManager(const CCMTaskManager& task)
   fRootIO = CCMRootIO::GetInstance();
   fRawIO = CCMRawIO::GetInstance();
   
+  fAccumWaveform = std::make_shared<AccumWaveform>();
   fEvents = std::make_shared<Events>();
   fPulses = std::make_shared<Pulses>();
   fRawData = std::make_shared<RawData>();
@@ -81,8 +80,9 @@ CCMTaskManager::CCMTaskManager(std::string configfile,
   if(val != kCCMSuccess)
   {
     MsgError("Error registering modules: ");
-    for(unsigned int i = 0; i < GetTaskConfig().ModuleList().size(); i++) {
-      MsgError(MsgLog::Form("\t %s",GetTaskConfig().ModuleList().at(i).c_str()));
+    auto mList = GetTaskConfig().ModuleList();
+    for (auto & p : mList) {
+      MsgError(MsgLog::Form("\t %s %s",p.first.c_str(),p.second.c_str()));
     }
     MsgError("Exiting gracefully");
     exit(0);
@@ -92,6 +92,7 @@ CCMTaskManager::CCMTaskManager(std::string configfile,
   // the default constructor values, but it makes
   // it easier so that there are no condition statements
   // in the ConnectDataToModules() function
+  fAccumWaveform = std::make_shared<AccumWaveform>(fRootIO->GetAccumWaveform());
   fEvents = std::make_shared<Events>(fRootIO->GetEvents());
   fPulses = std::make_shared<Pulses>(fRootIO->GetPulses());
   fRawData = std::make_shared<RawData>(fRootIO->GetRawData());
@@ -189,6 +190,7 @@ CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::stri
 
       if (status != kCCMFailure && status != kCCMDoNotWrite) {
         if (outRoot) {
+          fRootIO->SetAccumWaveform(*fAccumWaveform);
           fRootIO->SetEvents(*fEvents);
           fRootIO->SetRawData(*fRawData);
           fRootIO->SetPulses(*fPulses);
@@ -255,6 +257,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
         }
       } // end count module
 
+      fAccumWaveform->operator=(fRootIO->GetAccumWaveform());
       fEvents->operator=(fRootIO->GetEvents());
       fRawData->operator=(fRootIO->GetRawData());
       fPulses->operator=(fRootIO->GetPulses());
@@ -265,6 +268,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
 
       if (status != kCCMFailure && status != kCCMDoNotWrite) {
         if (outRoot) {
+          fRootIO->SetAccumWaveform(*fAccumWaveform);
           fRootIO->SetEvents(*fEvents);
           fRootIO->SetRawData(*fRawData);
           fRootIO->SetPulses(*fPulses);
@@ -309,14 +313,15 @@ CCMResult_t CCMTaskManager::RegisterModules()
     MsgFatal("No configuration object available.  Aborting");
   }
 
-  for(unsigned int i = 0; i < fgkTaskConfig->ModuleList().size(); i++) {
-    std::string name = fgkTaskConfig->ModuleList().at(i).c_str();
+  auto mList = fgkTaskConfig->ModuleList();
+  for(size_t i = 0; i < mList.size(); ++i) {
+    std::string name = mList.at(i).first;
+    std::string version = mList.at(i).second;
     ModuleMaker_t mm = CCMModuleTable::Instance().Lookup(name.c_str());
     if(mm == 0) {
       MsgFatal(MsgLog::Form("Attempt to request a non-existing module %s.  Aborting.",name.c_str()));
     }
-    fModuleList.push_back(std::shared_ptr<CCMModule>((*mm)("default"))); // build the module
-
+    fModuleList.push_back(std::shared_ptr<CCMModule>((*mm)(version.c_str()))); // build the module
   }
 
   //Configure modules
@@ -335,6 +340,7 @@ void CCMTaskManager::ConnectDataToModules()
   //Connect data vectors to the registered modules
   for (auto & module : fModuleList) {
     module->ConnectBinaryRawData(fBinaryRawData);
+    module->ConnectAccumWaveform(fAccumWaveform);
     module->ConnectEvents(fEvents);
     module->ConnectRawData(fRawData);
     module->ConnectPulses(fPulses);

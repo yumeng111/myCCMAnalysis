@@ -41,7 +41,7 @@ enum HistInfo_t
 };
 
 typedef enum {
-  kRawDataID = 0, kPulsesID = 1, kEventsID = 2, kNEventBranch = 3
+  kRawDataID = 0, kPulsesID = 1, kEventsID = 2, kAccumWaveformID = 3, kNEventBranch = 4
 } CCMEventBranchID_t;
 
 /*!**********************************************
@@ -65,6 +65,35 @@ typedef enum {
   kCCMSuccess = 1, kCCMWarning = -1, kCCMError = -2, kCCMFailure = -3, kCCMDoNotWrite = 0, kCCMNewRun = -4
 } CCMOldResult_t;
 typedef int32_t CCMResult_t;
+
+typedef enum {
+  kCCMDynamicLengthEventID = 0,
+  kCCMFixedLengthEventID = 1,
+  kCCMNoneEventID = 1,
+} CCMEventFinderID_t;
+
+typedef enum {
+    kCCMPulsesTimeID = 0,
+    kCCMIntegralTimeID = 1,
+    kCCMIntegralDerID = 2,
+    kCCMVetoBottomTimeID = 3,
+    kCCMVetoTopTimeID = 4,
+    kCCMVetoCRightTimeID = 5,
+    kCCMVetoCLeftTimeID = 6,
+    kCCMVetoCFrontTimeID = 7,
+    kCCMVetoCBackTimeID = 8,
+    kCCMVetoTotalTimeID = 9,
+    kCCMPMTWaveformID = 10,
+    kCCMPMTWaveformCountID = 11
+} CCMAccWaveform_t;
+
+typedef enum {
+  kCCMAccumWaveformTriangleID = 0,
+  kCCMAccumWaveformStartID = 1,
+  kCCMAccumWaveformTrianglePulseCutID = 2,
+  kCCMAccumWaveformStartPulseCutID = 3,
+  kCCMAccumWaveformTotalID = 4
+} CCMAccumWaveformMethod_t;
 
 /*!**********************************************
  * \namespace Utility
@@ -125,6 +154,17 @@ namespace Utility
   template<typename T>
    int FindFirstNoneEmptyBin(typename std::vector<T>::iterator begin, 
         typename std::vector<T>::iterator start, typename std::vector<T>::iterator end);
+
+  template<typename T>
+   int FindFirstNoneEmptyBin(typename std::array<T,Utility::fgkNumBins>::iterator begin, 
+        typename std::array<T,Utility::fgkNumBins>::iterator start, typename std::array<T,Utility::fgkNumBins>::iterator end);
+
+  extern std::string ConvertCCMEventFinderIDToString(CCMEventFinderID_t evtFinder);
+  extern CCMEventFinderID_t ConvertStringToCCMEventFinderID(std::string name);
+  extern std::string ConvertCCMAccumWaveformMethodToString(CCMAccumWaveformMethod_t accumWaveform);
+  extern CCMAccumWaveformMethod_t ConvertStringToCCMAccumWaveformMethod(std::string name);
+
+  extern double ShiftTime(int start, int beamTime);
 
 };
 
@@ -248,6 +288,24 @@ T & Utility::Add(T & left, const T & right)
 template <class T>
 int Utility::FindFirstNoneEmptyBin(typename std::vector<T>::iterator begin, 
     typename std::vector<T>::iterator start, typename std::vector<T>::iterator end)
+{
+  auto time = std::find_if_not(start,end,[](const T & i){return i == static_cast<T>(0);});
+  if (std::distance(time,end) == 0) {
+    return -1;
+  }
+  return std::distance(begin,time);
+}
+
+/*!**********************************************
+ * \brief Loop the vector and find the first index that does not equal 0
+ * \param[in] begin Iterator to the start of the vector
+ * \param[in] start Iterator to where to start looking in the vector
+ * \param[in] end Iterator to where to stop looping in the vector
+ * \return The index of the first non-zero bin. Return value is -1 if all the bins equals zero
+ ***********************************************/
+template<typename T>
+int Utility::FindFirstNoneEmptyBin(typename std::array<T,Utility::fgkNumBins>::iterator begin, 
+    typename std::array<T,Utility::fgkNumBins>::iterator start, typename std::array<T,Utility::fgkNumBins>::iterator end)
 {
   auto time = std::find_if_not(start,end,[](const T & i){return i == static_cast<T>(0);});
   if (std::distance(time,end) == 0) {

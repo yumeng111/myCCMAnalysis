@@ -33,6 +33,7 @@ public:
   int Split(const char* line, const char* tok, std::vector<std::string>& fields);
 
   std::string ConfigFile() const { return fConfigFile; }
+
   std::vector<std::string> InputFileList() const { return fInputFileList; }
   std::vector<std::string> OutputFileList() const { return fOutputFileList; }
   std::string InputFileName(unsigned int i) const { if (fInputFileList.size() > i) return fInputFileList[i]; else return "";}
@@ -41,8 +42,9 @@ public:
   std::vector<std::string> RawOutputFileList() const { return fRawOutputFileList; }
   std::string RawInputFileName(unsigned int i) const { if (fRawInputFileList.size() > i) return fRawInputFileList[i]; else return "";}
   std::string RawOutputFile(unsigned int i) const { if (fRawOutputFileList.size() > i) return fRawOutputFileList[i]; else return "";}
+
   std::string ProcessType() const { return fProcessType; } 
-  std::vector<std::string> ModuleList() const { return fModuleList; }
+  std::vector<std::pair<std::string,std::string>> ModuleList() const { return fModuleList; }
   std::string ConfigInfo() const { return fConfigInfo;}
 
 protected:
@@ -56,7 +58,7 @@ private:
   std::vector<std::string> fRawOutputFileList;   //list of output binary file names
   std::string fProcessType;                  //type of run to process:
 					     //DetSim, Reco, Ana, etc.
-  std::vector<std::string> fModuleList;      //list of modules to be run
+  std::vector<std::pair<std::string,std::string>> fModuleList;      //list of modules to be run
   std::string fConfigInfo;                   //string containing all
 					     //config info for this job
 };

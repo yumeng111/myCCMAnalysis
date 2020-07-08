@@ -21,6 +21,7 @@
 #include "CCMRootIO.h"
 #include "RawData.h"
 #include "Pulses.h"
+#include "AccumWaveform.h"
 #include "Events.h"
 #include "SimplifiedEvent.h"
 
@@ -479,6 +480,12 @@ void CCMRootIO::Dump()
 }
 
 //__________________________________________________
+AccumWaveform& CCMRootIO::GetAccumWaveform()
+{
+  return fEventHandle->CurrentAccumWaveform();
+}
+
+//__________________________________________________
 Events& CCMRootIO::GetEvents()
 {
   return fEventHandle->CurrentEvents();
@@ -494,6 +501,12 @@ RawData& CCMRootIO::GetRawData()
 Pulses& CCMRootIO::GetPulses()
 {
   return fEventHandle->CurrentPulses();
+}
+
+//__________________________________________________
+void CCMRootIO::SetAccumWaveform(const AccumWaveform & accumWaveform)
+{
+  fEventHandle->SetCurrentAccumWaveform(accumWaveform);
 }
 
 //__________________________________________________

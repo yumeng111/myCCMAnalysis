@@ -94,6 +94,13 @@ void CCMModule::CheckInit()
 }
 
 //------------------------------------------------------
+void CCMModule::ConnectAccumWaveform(std::shared_ptr<AccumWaveform> /* evt */)
+{
+  //Connect the event to be processed
+
+}
+
+//------------------------------------------------------
 void CCMModule::ConnectEvents(std::shared_ptr<Events> /* evt */)
 {
   //Connect the event to be processed
