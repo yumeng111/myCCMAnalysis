@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+  
+  <Modules type="Reco"> CCMTemplateAna </Modules>
+
+  
+  <!-- KEEP THESE IN ALL .XML PARAMETER FILES -->  
+  <Config name="ROOTSetup" version="default">
+    <Param name="ReadBranches"><string>rawData pulses</string>
+    The branches to read in options are
+    - events
+    - rawData
+    - pulses
+    - all
+    - none
+    </Param>
+    <Param name="SaveBranches"><string>events</string>
+    The branches to read in options are
+    - events
+    - rawData
+    - pulses
+    - all
+    - none
+    </Param>
+  </Config>
+  
+  <Config name="PMTMapSetup" version="default">
+    <Param name="MappingFile"><string>default</string>
+    The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
+    Must be the first param in this config
+    </Param>
+    <Param name="HVOffFile"><string>default</string>
+    List of the HV channels that are off.
+    default is $CCMINSTALL/mappings/hv_off_2019.csv
+    </Param>
+    <Param name="CalibrationFile"><string>/users/hray/CCMCode/CCM_analysis_sw_dev/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
+    Name of the calibration file to use
+    </Param>
+  </Config>
+  <!-- END MANDATORY KEEP THESE IN ALL .XML PARAMETER FILES -->  
+  
+  
+  
+  <!-- HERE YOU PUT ALL OF YOUR INPUT PARAMETERS -->  
+  <Config name="CCMTemplateAna" version="default">
+    
+    <Param name="MyDouble"><double> 0.4 </double>
+    Example double input parameter
+    </Param>
+    
+    <Param name="MyString"><string>BEAM</string>
+    Example string input parameter
+    </Param>
+    
+    <Param name="MyBool"><int>0</int>
+    Bool flag to do a cut or not do a cut
+    </Param>
+
+    
+    <Param name="MyLowValue"><double>9920</double>
+    Parameter needed if a bool do cut is true
+    </Param>
+    <Param name="MyHighValue"><double>6080</double>
+    Parameter needed if a bool do cut is true
+    </Param>
+    
+
+    <!-- DON'T NEED OUTPUT FILE NAME HERE; GET OUTPUT FILE
+	 NAME FROM COMMAND LINE WHEN LAUNCH JOB -->
+    
+    <Param name="MyTreeName"><string>tree</string>
+    Name of the output tree
+    </Param>
+
+    
+  </Config>
+
+
+</TestRecoConfig>
+
+
