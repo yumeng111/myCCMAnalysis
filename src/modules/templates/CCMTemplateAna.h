@@ -171,7 +171,11 @@ class CCMTemplateAna : public CCMModule
   TFile * fOutfile;
   TTree * fTree;
   
+
   // histos that go in the output file
+  TH1D* fMySingleHist;
+  //   TH1D* fPreEventHist;
+  
   std::vector<TH1D*> fMyHists;
   //   std::vector<TH1D> fTimeHists;
   

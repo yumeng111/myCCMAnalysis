@@ -52,19 +52,20 @@ MODULE_DECL(CCMTemplateAna);
 // global var used in code applied for every entry in the input file go here
 
 //_______________________________________________________________________________________
+// *********************************
+// CAUTION CAUTION CAUTION CAUTION
+// vars in the constructor & destructor must be in the SAME ORDER as in the header file!
+// *********************************
 CCMTemplateAna::CCMTemplateAna(const char* version) 
   : CCMModule("CCMTemplateAna"),
     fEvents(nullptr),
     fRawData(nullptr),
     fPulses(nullptr),
     fOutFileName(""),
-    fTreeName("tree"),
     fTriggerType("BEAM"),
     fNumTriggers(0),
+
     
-    fOutfile(nullptr),
-    fTree(nullptr),
-      
     // module-specific vars in .xml file
     fMyDouble(0.4),
     //   fThreshold(0.4),
@@ -72,8 +73,16 @@ CCMTemplateAna::CCMTemplateAna(const char* version)
     //   fTriggerType("BEAM"),
     fMyBool(false),
     //   fPulseTimeCut(false)
+    fMyLowValue(0.1),
+    fMyHighValue(0.9),
+    fTreeName("tree"),
 
+    
+    // output file & tree
+    fOutfile(nullptr),
+    fTree(nullptr),
 
+    
     // module-specific vars for output ntuple tree
     fmyOutDouble(0)
     // fEnergy(0)
@@ -92,13 +101,9 @@ CCMTemplateAna::CCMTemplateAna(const CCMTemplateAna& clufdr)
     fRawData(clufdr.fRawData),
     fPulses(clufdr.fPulses),
     fOutFileName(clufdr.fOutFileName),
-    fTreeFileName(clufdr.fTreeName),
     fTriggerType(clufdr.fTriggerType),
     fNumTriggers(clufdr.fNumTriggers),
-  
-    fOutfile(clufdr.fOutfile),
-    fTree(clufdr.fTree),
-  
+
 
     // module-specific vars in .xml file
     fMyDouble(clufdr.fMyDouble),
@@ -107,13 +112,16 @@ CCMTemplateAna::CCMTemplateAna(const CCMTemplateAna& clufdr)
     //   fTriggerType(clufdr.fTriggerType),
     fMyBool(clufdr.fMyBool),
     //   fPulseTimeCut(clufdr.fPulseTimeCut),
+    fMyLowValue(clufdr.fMyLowValue),
+    fMyHighValue(clufdr.fMyHighValue),
+    fTreeName(clufdr.fTreeName),
 
+    
+    // output file & tree
+    fOutfile(clufdr.fOutfile),
+    fTree(clufdr.fTree),
+  
 
-    // vector
-    fMyVector(clufdr.fMyVector),
-    //   fPulsesTime(clufdr.fPulsesTime),
-
- 
     // module-specific vars for output ntuple tree
     fmyOutDouble(clufdr.fmyOutDouble)
     // fEnergy(clufdr.fEnergy)
@@ -298,24 +306,15 @@ void CCMTemplateAna::DefineVectorsAndHistos()
   //   fPulsesTime.resize(Utility::fgkNumBins,0.f);
 
 
-  // TYLER: NEED HELP DOING THIS, DON'T UNDERSTAND AT ALL WHAT IS GOING ON HERE
-  // ALSO HAVE NO EXAMPLE FOR A SINGLE HISTO VS ONE FOR EACH PMT
-  // WANT TO INITIALIZE HISTOS IN THIS FUNCTION, NOT IN PROCESSTRIGGER
-  // (I don't even understand how this is posisble to do in ProcessTrigger - that's
-  // what SumWaveform is doing but doesn't that mean it's initializing these histos
-  // for every trigger processed, so the output will only be histos w/info from the
-  // last trigger processed in the job?)
-  if (fMyHists.empty()) {
-    for (size_t i=0; i < fRawData->GetNumBoards(); ++i) {
-      for (size_t j=0; j < fRawData->GetNumChannels(); ++j) {
-	int key = PMTInfoMap::CreateKey(i,j);
-	fMyHists.emplace_back(std::make_shared<TH1D>(Form("myHist_%d",key),
-						     Form("Channel %d;Time #mus;Count",key),8000,-9.92,6.08));
-	//   fTimeHists.emplace_back(std::make_shared<TH1D>(Form("timeHist_%d",key),
-	//       Form("Channel %d;Time #mus;Count",key),8000,-9.92,6.08));
-      }
-    }
-  } // end if fMyHists.empty()
+  fMySingleHist = new TH1D("MySingleHist",";Energy (PE);Count",8000, -9.92, 6.08);
+  //   fPreEventHist = new TH1D("PreEventHist",";Energy (PE);Count",energyBins.size()-1,&energyBins.front());
+
+  
+  for (int i=0; i < 3; ++i) {
+    fMyHists.push_back(new TH1D(Form("MyHists%d",i),";Time (#mus);Count", 8000, -9.92, 6.08));
+    //   fTimeHist.push_back(new TH1D(Form("TimeHist%d",i),";Time (#mus);Count",8000,-9.92,6.08));
+  }
+
 
 } // DefineVectorsAndHistos
 
