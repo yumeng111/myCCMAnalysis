@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
   
-  <Modules type="Reco"> CCMTemplateAna </Modules>
+  <Modules type="Reco"> CCMSingletTriplet </Modules>
   <ModuleVersion> default </ModuleVersion>
   
   <!-- KEEP THESE IN ALL .XML PARAMETER FILES -->  
@@ -42,7 +42,7 @@
   
   
   <!-- HERE YOU PUT ALL OF YOUR INPUT PARAMETERS -->  
-  <Config name="CCMTemplateAna" version="default">
+  <Config name="CCMSingletTriplet" version="default">
     
     <Param name="TriggerType"><string>BEAM</string>
     Only look at triggers with name passed.
