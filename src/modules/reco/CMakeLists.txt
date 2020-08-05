@@ -3,6 +3,7 @@ set(RECO_HEADERS
   CCMApplyPreCuts.h
   CCMNa22Cuts.h
   CCMBuildAccumWaveform.h
+  CCMSingletTriplet.h
   )
 
 
@@ -21,6 +22,7 @@ set(RECO_SRCS
   CCMApplyPreCuts.cxx
   CCMNa22Cuts.cxx
   CCMBuildAccumWaveform.cxx
+  CCMSingletTriplet.cxx
   )
 
 set(RECO_LINKDEF LinkDef.h)

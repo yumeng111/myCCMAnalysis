@@ -6,4 +6,5 @@
 #pragma link C++ class CCMApplyPreCuts-!;
 #pragma link C++ class CCMNa22Cuts-!;
 #pragma link C++ class CCMBuildAccumWaveform-!;
+#pragma link C++ class CCMSingletTriplet-!;
 #endif /* __CINT__ */
