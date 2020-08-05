@@ -2,7 +2,7 @@
 <TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
   
   <Modules type="Reco"> CCMTemplateAna </Modules>
-
+  <ModuleVersion> default </ModuleVersion>
   
   <!-- KEEP THESE IN ALL .XML PARAMETER FILES -->  
   <Config name="ROOTSetup" version="default">
@@ -44,6 +44,16 @@
   <!-- HERE YOU PUT ALL OF YOUR INPUT PARAMETERS -->  
   <Config name="CCMTemplateAna" version="default">
     
+    <Param name="TriggerType"><string>BEAM</string>
+    Only look at triggers with name passed.
+    Options are:
+    - BEAM
+    - STROBE
+    - LED
+    - ALL
+    and any combination of the three, like BEAM STROBE
+    </Param>
+
     <Param name="MyDouble"><double> 0.4 </double>
     Example double input parameter
     </Param>

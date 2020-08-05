@@ -46,6 +46,7 @@ set(CCMAnalysis_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/src/modules/reco
   ${CMAKE_SOURCE_DIR}/src/modules/nearline
   ${CMAKE_SOURCE_DIR}/src/modules/plots
+  ${CMAKE_SOURCE_DIR}/src/modules/templates
   )
 
 #Set the library version
