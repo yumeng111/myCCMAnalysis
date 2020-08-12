@@ -103,8 +103,8 @@ class CCMSingletTriplet : public CCMModule
   // ***************************************************************
   // Define vectors & histograms used & reset them
   // ***************************************************************
-  void DefineVectorsAndHistos();
-  void ResetVectorsAndHistos();
+  void DefineVarsAndHistos();
+  void ResetVarsAndHistos();
   
   
   // ***************************************************************
@@ -172,20 +172,22 @@ class CCMSingletTriplet : public CCMModule
   // ***************************************************************
   TFile * fOutfile;
   TTree * fTree;
-
- // histos that go in the output file
-  TH1D* fMySingleHist;
-  //   TH1D* fPreEventHist;
   
-  std::vector<TH1D*> fMyHists;
-  //   std::vector<TH1D> fTimeHists;
+  // *******************************************************************************
+  // declare vars for ntuple and ntuple here
+  // *******************************************************************************
+  long evt;
+  double singInt;
+  double tripInt;
+  double ratio;
+  double thistime;
+  int singletLowBin;
+  int singletHighBin;
+  int eventEndBin;
+  int tripletLowBin;
+  int tripletHighBin;
+  int notrip;
   
-  
-  // vars that go in the output ntuple tree
-  double fmyOutDouble;
-  // double fEnergy;
-
-
   // *******************************************************************************
   // declare histograms, arrays of histograms
   // these are for debug / low level info purposes
@@ -233,7 +235,6 @@ class CCMSingletTriplet : public CCMModule
   TH1F *h_maxpe;
   TH1F *h_deltatime;
 
-  
   // *******************************************************************************
   // this is for the analysis
   // *******************************************************************************
@@ -241,22 +242,6 @@ class CCMSingletTriplet : public CCMModule
   // event integral for all events passing event selection cuts
   TH1F *h_event_int;
 
-  
-  // *******************************************************************************
-  // declare vars for ntuple and ntuple here
-  // *******************************************************************************
-  long evt;
-  double singInt;
-  double tripInt;
-  double ratio;
-  double thistime;
-  int singletLowBin;
-  int singletHighBin;
-  int eventEndBin;
-  int tripletLowBin;
-  int tripletHighBin;
-  int notrip;
-  
   
   // *******************************************************************************
   // global vars
