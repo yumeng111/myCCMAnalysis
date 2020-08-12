@@ -8,8 +8,8 @@
   <Modules type="Reco"> CCMFindEvents </Modules>
   -->
 
-  <Modules type="Reco"> CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
-  <ModuleVersion> default dynamic dynamic_pulseCut </ModuleVersion>
+  <Modules type="Reco"> CCMFindPulses CCMSumWaveforms CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
+  <ModuleVersion> default default default dynamic dynamic_pulseCut</ModuleVersion>
 
   <Config name="ROOTSetup" version="default">
     <Param name="ReadBranches"><string>rawData pulses</string>
@@ -43,6 +43,30 @@
     </Param>
     <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
       Name of the calibration file to use
+    </Param>
+  </Config>
+
+  <Config name="CCMFindPulses" version="default">
+    <Param name="TriggerType"><string>BEAM</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="TruncateWaveform"><int>1</int>
+      if not 0 only the last boards waveforms will be saved
+    </Param>
+    <Param name="FromRootFile"><int>1</int>
+      if not 0 the input file was a root file otherwise a binary file was inputed
+    </Param>
+    <Param name="ResetPulses"><int>0</int>
+      if not 0 the pulses object will be cleared (default) otherwise the pulses found will be added to the same object
+    </Param>
+    <Param name="WriteDBEntry"><int>0</int>
+      if not 0 an entry to will be written to the database
     </Param>
   </Config>
 
@@ -113,6 +137,10 @@
       Number of bins for the required length of the event only needed if 
       EventFinderID == CCMFixedLengthEvent
     </Param>
+  </Config>
+
+  <Config name="CCMSumWaveforms" version="default">
+    no parameters needed at this time
   </Config>
 
 

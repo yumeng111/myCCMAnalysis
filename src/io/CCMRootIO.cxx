@@ -65,7 +65,6 @@ CCMRootIO::~CCMRootIO()
   Close();
 
   if (fInFile) {
-    fInFile->Close();
     fInFile = nullptr;
   }
   if(fOwnHandle && fEventHandle) {
@@ -88,7 +87,7 @@ void CCMRootIO::SetInFileName(const char* infile)
 void CCMRootIO::SetInFileList(std::vector<std::string> infileList)
 {
   fInFileList = infileList;
-  if (fFileIndex<0 && fInFileList.size()>0) {
+  if (fFileIndex<0 && !fInFileList.empty()) {
     fFileIndex = 0;
   }
 
@@ -99,37 +98,8 @@ int CCMRootIO::AddFile(const char* file_regexp, bool hasWildcards)
 {
   int nfiles = 0;
   if (hasWildcards) {
-    // Cheap way to get list of files matching the expression (assumes
-    // some flavor of unix
-    char tmp_name[128] = {"/tmp/IOMOD.XXXXXX"};
-    mkstemp(tmp_name);
-    std::string cmd;
-    cmd  = "(ls ";
-    cmd += file_regexp;
-    cmd += " > ";
-    cmd += tmp_name;
-    cmd += ") >& /dev/null";
-    system(cmd.c_str());
-
-    // Open the temp file and get the list of files which matched
-    static const int s = 256;
-    char             buff[s];
-    FILE*            fp     = fopen(tmp_name,"r");
-    std::string      file;
-    while ( fgets(buff,s-1,fp) != NULL ) {
-      int len = strlen(buff);
-      while (buff[len]==' ' || buff[len]=='\n' || buff[len]=='\0') --len;
-      buff[len+1]='\0';
-      file = buff;
-      fInFileList.push_back(file);
-      ++nfiles;
-    }
-    fclose(fp);
-
-    // Remove the temporary file
-    unlink(tmp_name);
-  }
-  else {
+    fInFileList = Utility::GetListOfFiles(file_regexp);
+  } else {
     fInFileList.push_back(std::string(file_regexp));
     ++nfiles;
   }
@@ -322,7 +292,6 @@ int CCMRootIO::SetupInputFile()
 
   if(fInFile) {
     fInFile->Flush();
-    fInFile->Close();
     fInFile = nullptr;
     fReadOK = false;
   }
@@ -362,7 +331,7 @@ void CCMRootIO::SetupOutputFile()
   }
   
 
-  fOutFile = std::make_shared<TFile>(fOutFileName.c_str(),"RECREATE","CCM ROOT Event File",1);
+  fOutFile = std::make_shared<TFile>(fOutFileName.c_str(),"RECREATE","CCM ROOT Event File",3);
   fEventHandle->SetupOutputFile(*fOutFile);
 }
 
@@ -435,14 +404,13 @@ void CCMRootIO::Close()
     MsgInfo(MsgLog::Form("Wrote %d event(s) to Event Tree.",fNWrite));
     MsgInfo("Closing File.");
     fEventHandle->Close();
+    fOutFile->Flush();
     fOutFile->Write();
-    fOutFile->Close();
     fOutFile = nullptr;
   }
 
   if (fInFile != nullptr) {
     fInFile->Flush();
-    fInFile->Close();
     fInFile = nullptr;
   }
 }
@@ -452,7 +420,6 @@ void CCMRootIO::Clear()
 {
   if (fInFile != nullptr) {
     fInFile->Flush();
-    fInFile->Close();
     fInFile = nullptr;
   }
 

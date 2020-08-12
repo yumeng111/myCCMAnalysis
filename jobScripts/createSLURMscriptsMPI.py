@@ -96,6 +96,7 @@ if not os.path.exists(xmlScript):
   fin.close()
   fout.close()
 
+run = ""
 
 count = 0
 for rawFile in rawList:
@@ -150,7 +151,39 @@ for rawFile in rawList:
     currentXMLList = []
 
   if len(slurmScripts) == options.max_jobs:
+    currentXMLList = []
     break
+
+if len(currentXMLList) != 0:
+    slurmScript = outputDir+"/scripts/"+"findEvents_slurm_"+run+".script"
+    appScript = outputDir+"/scripts/"+"findEvents_mpiapp_"+run
+    slurmScripts.append(slurmScript)
+
+    if not os.path.exists(slurmScript) or options.rewrite:
+
+      if options.log_file == logFileLoc:
+        options.log_file = options.output_loc+"/log"
+
+      print("Create and Write SLURM script file")
+      fin = open(options.default_slurm,"rt")
+      fout = open(slurmScript,"wt")
+      for line in fin:
+        copyLine = line
+        copyLine = copyLine.replace('SOURCEFILE',options.source_file)
+        copyLine = copyLine.replace('JOBNAME',jobName)
+        copyLine = copyLine.replace('LOGFILELOCATION',options.log_file)
+        copyLine = copyLine.replace('MPIAPP',appScript)
+        fout.write(copyLine)
+      fin.close()
+      fout.close()
+
+      print("Create and Write MPI APP File")
+      fout = open(appScript,"wt")
+      for line in currentXMLList:
+        fout.write("--map-by node -n 1 "+line+"\n")
+      fout.close()
+
+    currentXMLList = []
 
 
 out = subprocess.run(["squeue","-l", "-u", options.user], stdout=PIPE, universal_newlines=True)

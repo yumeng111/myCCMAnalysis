@@ -17,7 +17,7 @@
 ##############################################################
 #
 ###                            Queue to submit to  <<<<<<<<<< queue and cluster name must be adapted to your system
-#SBATCH --time=0:10:00   # walltime
+#SBATCH --time=0:30:00   # walltime
 
 
 #########       #SBATCH --array=1-50
@@ -25,8 +25,8 @@
 #########       #SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
 #########       #SBATCH --ntasks-per-node=1   # number of tasks per node
 #SBATCH --job-name=JOBNAME   # job name
-#SBATCH --output=LOGFILELOCATION/out_JOBNAME_%j   # output file name
-#SBATCH --error=LOGFILELOCATION/error_JOBNAME_%j   # job name
+#SBATCH --output=LOGFILELOCATION/out_JOBNAME   # output file name
+#SBATCH --error=LOGFILELOCATION/error_JOBNAME   # job name
 ####SBATCH --qos=interactive   # qos name
 #
 
@@ -51,7 +51,7 @@ echo
 echo ---------------------- Job Output ----------------------------
 echo
 
-source /home/rtthorn/.bash_profile
+source /users/rtthorn/.bash_profile
 module load openmpi
 mpirun --app MPIAPP
 

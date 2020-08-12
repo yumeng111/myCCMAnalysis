@@ -101,8 +101,13 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
     localCopy = *fRawData;
   }
 
+  if (!localCopy.GetNumBoards()) {
+    MsgWarning("Number of boards is equal to 0, moving on");
+    return kCCMFailure;
+  }
+
   if (!localCopy.IsTriggerPresent(fTriggerType)) {
-    return kCCMDoNotWrite;
+    return kCCMFailure;
   }
 
   // fTriggerTime stores the time each board saw the trigger that is saved in channel 15
@@ -256,13 +261,17 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
         fRawData->SetWaveform(channel,&samples.front());
       }
 
+      if (kNEffDigitizers == kNDigitizers && !fResetPulses && board != kNDigitizers-1) {
+        continue;
+      }
+
       // Check to see if the board/channel combo is turned off in the
       // data analysis.
       // If so, skip the channel.
-      if (!PMTInfoMap::IsActive(key)) {
+      if (PMTInfoMap::IsActive(key)) {
         // Get the #PMTInformation for the current board,channel
         auto pmtInfo = PMTInfoMap::GetPMTInfo(key);
-        // If not pmtInfo exists check to see of the 1in PMT time offset needs to be applied
+        // If pmtInfo exists check to see of the 1in PMT time offset needs to be applied
         if (pmtInfo != nullptr) {
           // Check to see if the current pmt is a 1 in pmt.
           // If so, set pmtOffset to 21.0 becuse the 1 in pmts
@@ -295,12 +304,12 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
   } // end for board
 
   // Get the number of pulses found over all PMTs and print some diagnostic information
-  size_t numPulses = fPulses->GetNumPulses();
-  for (size_t pulse = 0; pulse < numPulses; ++pulse) {
-    if (fPulses->GetPulseTime(pulse) < 0) {
-      MsgInfo(MsgLog::Form("event %d pulse %zu time %g",fNEventsTotal,pulse,fPulses->GetPulseTime(pulse)));
-    }
-  }
+  //size_t numPulses = fPulses->GetNumPulses();
+  //for (size_t pulse = 0; pulse < numPulses; ++pulse) {
+  //  if (fPulses->GetPulseTime(pulse) < 0) {
+  //    MsgInfo(MsgLog::Form("event %d pulse %zu time %g",fNEventsTotal,pulse,fPulses->GetPulseTime(pulse)));
+  //  }
+  //}
 
   // Reset the \p fTriggerTime
   fTriggerTime.assign(kNDigitizers,9e9);

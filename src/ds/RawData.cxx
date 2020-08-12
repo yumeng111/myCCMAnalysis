@@ -195,6 +195,8 @@ bool RawData::IsTriggerPresent(std::string triggerName)
 {
   int boardOffset = GetBoard10ChannelOffset();
 
+  MsgDebug(2,MsgLog::Form("Board Offset = %d",boardOffset));
+
   int firstSampleStrobe = 0;
   int firstSampleBeam = 0;
   int firstSampleLED = 0;
@@ -231,14 +233,16 @@ float RawData::GetEarliestOffset()
 }
 
 /*!**********************************************
- * \fn bool RawData::GetBCMTime()
+ * \fn int RawData::GetBCMTime(double * integral, double * length)
  * \brief Return the sample number to the beam current monitor turn on
+ * \param[out] integral The integral of the BCM signal
+ * \param[out] length The length of the BCM signal
  * \return The sample number to the beam current monitor turn on
  *
  * Uses the derivative of the waveform to find the turn on.
  * Function dependent of the Pulses class
  ***********************************************/
-int RawData::GetBCMTime()
+int RawData::GetBCMTime(double * integral, double * length)
 {
   int boardOffset = GetBoard10ChannelOffset();
 
@@ -252,6 +256,12 @@ int RawData::GetBCMTime()
     auto time = pulsesBeam->GetPulseTime(pulse);
     if (beamTime == GetNumSamples()+1) {
       beamTime = time;
+      if (integral) {
+        *integral = pulsesBeam->GetPulseIntegral(pulse);
+      }
+      if (length) {
+        *length = pulsesBeam->GetPulseLength(pulse);
+      }
       break;
     }
   }
@@ -273,8 +283,12 @@ int RawData::GetBCMTime()
 int RawData::GetBoard10ChannelOffset()
 {
   int boardOffset = 0;
-  if (GetNumWaveforms() != GetNumChannels()) {
-    boardOffset = (GetNumBoards()-1)*GetNumChannels();
+  if (GetNumBoards() == 0) {
+    MsgWarning("Something went wrong in that the number of boards = 0");
+  } else {
+    if (GetNumWaveforms() != GetNumChannels()) {
+      boardOffset = (GetNumBoards()-1)*GetNumChannels();
+    }
   }
 
   return boardOffset;

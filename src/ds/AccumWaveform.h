@@ -63,6 +63,19 @@ class AccumWaveform : public TObject
     /// \brief Get the time offset of the BCM signal
     int GetBeamOffset() { return fBeamTime; }
 
+    /// \brief Sets the integral of the BCM signal (0 if not BEAM trigger)
+    void SetBeamIntegral(float integral) { fBeamIntegral = integral; }
+    
+    /// \brief Get the integral of the BCM signal
+    float GetBeamIntegral() { return fBeamIntegral; }
+
+    /// \brief Sets the length of the BCM signal (0 if not BEAM trigger)
+    void SetBeamLength(float length) { fBeamLength = length; }
+    
+    /// \brief Get the length of the BCM signal
+    float GetBeamLength() { return fBeamLength; }
+
+
     
     /// \return #fEventNumber
     unsigned int GetEventNumber() { return fEventNumber; }
@@ -87,12 +100,10 @@ class AccumWaveform : public TObject
     void CopyVec(typename std::vector<T> & outVec, size_t start, size_t end, 
         CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
 
-    template <class T>
-      void Max(size_t & loc, T & value, size_t start, size_t end, 
-          CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
-    template <class T>
-      void Min(size_t & loc, T & value, size_t start, size_t end, 
-          CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
+    void Max(size_t & loc, float & value, size_t start, size_t end, 
+        CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
+    void Min(size_t & loc, float & value, size_t start, size_t end, 
+        CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
 
     AccumWaveform & operator=(const AccumWaveform & rhs);
 
@@ -111,6 +122,8 @@ class AccumWaveform : public TObject
     unsigned int fComputerNSIntoSec;
 
     int fBeamTime;
+    float fBeamIntegral;
+    float fBeamLength;
 
     /// The trigger time of the trigger
     float fTriggerTime;
@@ -130,33 +143,9 @@ class AccumWaveform : public TObject
     std::map<CCMAccumWaveformMethod_t,std::vector<std::array<float,Utility::fgkNumBins>>> fPMTWaveform;
     std::map<CCMAccumWaveformMethod_t,std::vector<std::array<float,Utility::fgkNumBins>>> fPMTWaveformCount;
 
-  ClassDef(AccumWaveform,1)
+  ClassDef(AccumWaveform,2)
 
 };
-
-//-------------------------------------------------------------------------------------------------
-template<class T>
-void AccumWaveform::Max(size_t & loc, T & value, size_t start, size_t end, 
-    CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID)
-{
-  auto waveform = Get(method,waveformType,pmtID);
-  auto it = std::max_element(waveform->begin()+start, waveform->begin()+end);
-  loc = std::distance(waveform->begin(),it);
-  value = *it;
-  return;
-}
-
-//-------------------------------------------------------------------------------------------------
-template<class T>
-void AccumWaveform::Min(size_t & loc, T & value, size_t start, size_t end,
-    CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID)
-{
-  auto waveform = Get(method,waveformType,pmtID);
-  auto it = std::min_element(waveform->begin()+start, waveform->begin()+end);
-  loc = std::distance(waveform->begin(),it);
-  value = *it;
-  return;
-}
 
 //-------------------------------------------------------------------------------------------------
 template<class T>

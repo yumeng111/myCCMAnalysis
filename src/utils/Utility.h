@@ -166,6 +166,8 @@ namespace Utility
 
   extern double ShiftTime(int start, int beamTime);
 
+  extern std::vector<std::string> GetListOfFiles(const char * file_regexp);
+
 };
 
 /*!**********************************************

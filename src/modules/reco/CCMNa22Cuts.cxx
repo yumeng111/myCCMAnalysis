@@ -235,8 +235,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     fZ = simplifiedEvent.GetZPosition();
 
     if (fWaveformMaxCut) {
-      auto maxLoc = WaveformMaxPosition(simplifiedEvent);
-      if (static_cast<double>(maxLoc)*Utility::fgkBinWidth > promptLength) {
+      if (simplifiedEvent.GetMaxAccumWaveformTime() > promptLength) {
         if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
           locationsToRemove.emplace_back(e);
         }
@@ -664,12 +663,14 @@ void CCMNa22Cuts::RecalculatePosition(const SimplifiedEvent & simplifiedEvent,
  * \param[in] simplifiedEvent The #SimplifiedEvent to recalculate the position for
  * \return The position of when the waveform is the largest
  ***********************************************/
+/*
 int CCMNa22Cuts::WaveformMaxPosition(const SimplifiedEvent & simplifiedEvent)
 {
   auto waveform = simplifiedEvent.GetWaveformInt();
   auto max_iter = std::max_element(waveform.begin(),waveform.end());
   return std::distance(waveform.begin(),max_iter);
 }
+*/
 
 /*
    std::vector<std::shared_ptr<TF1>> weightFunction;

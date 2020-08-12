@@ -25,6 +25,8 @@ AccumWaveform::AccumWaveform() : TObject()
   fComputerSecIntoEpoch = 0;
   fComputerNSIntoSec = 0;
   fBeamTime = 0;
+  fBeamIntegral= 0;
+  fBeamLength= 0;
 
   Reset();
 }
@@ -119,6 +121,8 @@ AccumWaveform & AccumWaveform::operator=(const AccumWaveform & rhs)
   this->fComputerSecIntoEpoch= rhs.fComputerSecIntoEpoch;
   this->fComputerNSIntoSec= rhs.fComputerNSIntoSec;
   this->fBeamTime= rhs.fBeamTime;
+  this->fBeamIntegral= rhs.fBeamIntegral;
+  this->fBeamLength= rhs.fBeamLength;
   this->fTriggerTime = rhs.fTriggerTime;
   this->fPulsesTime = rhs.fPulsesTime;
   this->fIntegralTime = rhs.fIntegralTime;
@@ -262,11 +266,36 @@ int AccumWaveform::FindFirstNoneEmptyBin(size_t start, size_t end,
 //-------------------------------------------------------------------------------------------------
 void AccumWaveform::DumpInfo()
 {
-  MsgInfo(MsgLog::Form("Beam Time %d",fBeamTime));
+  MsgInfo(MsgLog::Form("Beam Time %d Integral %.2f Length %.2f",fBeamTime,fBeamIntegral,fBeamLength));
   for (auto & p : fIntegralTime) {
     MsgInfo(MsgLog::Form("method %s integralTime integral %f",
           Utility::ConvertCCMAccumWaveformMethodToString(p.first).c_str(),
           std::accumulate(p.second.begin(),p.second.end(),0.f)));
   }
+}
+
+//-------------------------------------------------------------------------------------------------
+void AccumWaveform::Max(size_t & loc, float & value, size_t start, size_t end, 
+    CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID)
+{
+  auto waveform = Get(method,waveformType,pmtID);
+  if (start >= waveform->size() || end >= waveform->size()) {
+    MsgFatal(MsgLog::Form("Start (%zu) or end (%zu) is out of range (%zu)",start,end,waveform->size()));
+  }
+  auto it = std::max_element(waveform->begin()+start, waveform->begin()+end);
+  loc = std::distance(waveform->begin(),it);
+  value = *it;
+  return;
+}
+
+//-------------------------------------------------------------------------------------------------
+void AccumWaveform::Min(size_t & loc, float & value, size_t start, size_t end,
+    CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID)
+{
+  auto waveform = Get(method,waveformType,pmtID);
+  auto it = std::min_element(waveform->begin()+start, waveform->begin()+end);
+  loc = std::distance(waveform->begin(),it);
+  value = *it;
+  return;
 }
 

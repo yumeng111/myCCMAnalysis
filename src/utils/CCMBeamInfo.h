@@ -32,7 +32,7 @@ class CCMBeamInfo
 
     static std::time_t ConvertStringToTime(std::string time, std::string format = "%d-%b-%Y %X", bool print = false);
     static std::time_t ConvertToTime(int year, int mon, int day, int hour, int min, int sec, bool print = false);
-    static std::time_t ConvertTimeSineEPOCHtoTime(unsigned long int time);
+    static std::time_t ConvertTimeSinceEPOCHtoTime(unsigned long int time);
 
     static void Reset();
     static int Next();

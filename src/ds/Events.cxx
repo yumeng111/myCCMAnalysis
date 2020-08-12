@@ -62,6 +62,9 @@ Events::~Events()
 void Events::Reset()
 {
   fTriggerTime = 0.0;
+  fBeamTime= 0.0;
+  fBeamIntegral= 0.0;
+  fBeamLength= 0.0;
   ClearEvents();
 }
 
@@ -95,6 +98,9 @@ Events & Events::operator=(const Events & rhs)
   this->fComputerNSIntoSec= rhs.fComputerNSIntoSec;
   this->fNumEvents = rhs.fNumEvents;
   this->fTriggerTime = rhs.fTriggerTime;
+  this->fBeamTime = rhs.fBeamTime;
+  this->fBeamIntegral = rhs.fBeamIntegral;
+  this->fBeamLength = rhs.fBeamLength;
   this->fEvents = rhs.fEvents;
   this->fCurrEvent = rhs.fCurrEvent;
   return *this;

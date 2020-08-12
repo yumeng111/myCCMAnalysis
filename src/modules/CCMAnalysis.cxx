@@ -8,6 +8,7 @@
 #include "TH1.h"
 #include "TApplication.h"
 
+#include "Utility.h"
 #include "MsgLog.h"
 #include "CCMTaskManager.h"
 
@@ -80,6 +81,7 @@ int main (int argc, char** argv)
   // that are created
   TH1::AddDirectory(0);
 
+  bool removeFirstSubRun = false;
   std::string cfgfile;
   std::string outputLogFile = "";
   std::vector<std::string> outfileList;
@@ -94,6 +96,7 @@ int main (int argc, char** argv)
   static const int kRawInputOpt = 'r';
   static const int kRawIndirectOpt = 'R';
   static const int kIndirectOpt = 'I';
+  static const int kRemoveFirstSubRun = 's';
   static const int kOutputOpt   = 'o';
   static const int kRawOutputOpt = 'b';
   static const int kOutputLogOpt  = 'l';
@@ -106,6 +109,7 @@ int main (int argc, char** argv)
     {"indirect",     required_argument, 0, kIndirectOpt},
     {"rawinput",     required_argument, 0, kRawInputOpt},
     {"rawindirect",  required_argument, 0, kRawIndirectOpt},
+    {"removefirstsubrun", no_argument,  0, kRemoveFirstSubRun},
     {"output",       required_argument, 0, kOutputOpt},
     {"rawoutput",    required_argument, 0, kRawOutputOpt},
     {"logout",       required_argument, 0, kOutputLogOpt},
@@ -118,14 +122,14 @@ int main (int argc, char** argv)
   while (1) {
     int c;
     int optindx = 0;
-    c = getopt_long(argc, argv, "c:i:o:l:I:d:n:r:R:b:h", long_options, &optindx);
+    c = getopt_long(argc, argv, "c:i:o:l:I:d:n:r:R:b:sh", long_options, &optindx);
 
     if (c==-1) break;
     std::string fname;
     switch (c) {
       case kConfigOpt:    cfgfile           = std::string(optarg);            break;
       case kInputOpt:     fname             = std::string(optarg); 
-                          infileList.push_back(fname);                        break;
+                          infileList = Utility::GetListOfFiles(optarg);       break;
       case kRawInputOpt:  fname             = std::string(optarg); 
                           rawInfileList.push_back(fname);                     break;
       case kIndirectOpt:  IndirectFileList(optarg,infileList);                break;
@@ -137,6 +141,7 @@ int main (int argc, char** argv)
       case kOutputLogOpt: outputLogFile     = std::string(optarg);            break;
       case kDebugOpt:     debug             = std::atoi(optarg);              break;
       case kNevtOpt:      nevents           = std::atoi(optarg);              break;
+      case kRemoveFirstSubRun: removeFirstSubRun = true;                      break;
       case kHelpOpt:      Usage(); exit(0);                                   break;
       default:
                           MsgError(MsgLog::Form("Unknown option %d %s",optind,argv[optind]));
@@ -152,6 +157,19 @@ int main (int argc, char** argv)
     MsgError("Problem reading input parameters or no input file supplied");
     Usage();
     return -1;
+  }
+
+  if (removeFirstSubRun) {
+    MsgInfo("Going to remove the first subrun");
+    auto it = infileList.begin();
+    while ((it = std::find_if(infileList.begin(),infileList.end(),
+            [](const std::string& s) { return s.find("000000") != std::string::npos;})) != infileList.end()) {
+      infileList.erase(it);
+    }
+
+    if (infileList.empty() && rawInfileList.empty()) {
+      MsgFatal("No more input files after removing those that match the 0th sub run");
+    }
   }
 
   MsgLog::SetGlobalDebugLevel(debug);

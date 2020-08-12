@@ -37,7 +37,7 @@ void CCMBeamInfo::LoadTable(std::string fileName)
 
 
   std::ifstream infile(fileName.c_str());
-  MsgInfo(MsgLog::Form("Status of infile = %d",infile.good()));
+  MsgDebug(2,MsgLog::Form("Status of infile = %d",infile.good()));
   getline(infile,tempString);
   getline(infile,tempString);
   getline(infile,tempString);
@@ -52,7 +52,7 @@ void CCMBeamInfo::LoadTable(std::string fileName)
     time_t time = ConvertStringToTime(day);
     fgCurrentInfo.emplace(time,current);
     if (first || second) {
-      MsgInfo(MsgLog::Form("Input: %s, %zu,\n sec %d min %d hour %d mday %d mon %d year %d isdst %d",
+      MsgDebug(1,MsgLog::Form("Input: %s, %zu,\n sec %d min %d hour %d mday %d mon %d year %d isdst %d",
             day.c_str(),time,
             fgLocalTM.tm_sec,
             fgLocalTM.tm_min,
@@ -83,7 +83,7 @@ void CCMBeamInfo::LoadTable(std::string fileName)
 double CCMBeamInfo::GetCurrent(std::string time, std::string format)
 {
   std::time_t localTime = ConvertStringToTime(time,format,true);
-  MsgInfo(MsgLog::Form("Input: %s, %zu,\n sec %d min %d hour %d mday %d mon %d year %d isdst %d",
+  MsgDebug(2,MsgLog::Form("Input: %s, %zu,\n sec %d min %d hour %d mday %d mon %d year %d isdst %d",
         time.c_str(),localTime,
         fgLocalTM.tm_sec,
         fgLocalTM.tm_min,
@@ -103,7 +103,7 @@ double CCMBeamInfo::GetCurrent(std::string time, std::string format)
  **************************************************************************************************/
 double CCMBeamInfo::GetCurrent(std::time_t time)
 {
-  MsgInfo(MsgLog::Form("Looking for time %zu",time));
+  MsgDebug(2,MsgLog::Form("Looking for time %zu",time));
   auto iter = fgCurrentInfo.find(time);
   if (iter == fgCurrentInfo.end()) {
     return -1;
@@ -174,7 +174,7 @@ std::time_t CCMBeamInfo::ConvertStringToTime(std::string time, std::string forma
 std::time_t CCMBeamInfo::ConvertToTime(int year, int mon, int day, int hour, int min, int sec, bool print)
 {
   if (print) {
-    MsgInfo(MsgLog::Form("previous %02d-%02d-%04d %02d:%02d:%02d",
+    MsgDebug(2,MsgLog::Form("previous %02d-%02d-%04d %02d:%02d:%02d",
           fgLocalTM.tm_mday,fgLocalTM.tm_mon,fgLocalTM.tm_year,fgLocalTM.tm_hour,fgLocalTM.tm_min,fgLocalTM.tm_sec));
   }
 
@@ -187,8 +187,8 @@ std::time_t CCMBeamInfo::ConvertToTime(int year, int mon, int day, int hour, int
   fgLocalTM.tm_isdst = -1;
 
   if (print) {
-    MsgInfo(MsgLog::Form("%02d-%02d-%04d %02d:%02d:%02d",day,mon,year,hour,min,sec));
-    MsgInfo(MsgLog::Form("%02d-%02d-%04d %02d:%02d:%02d",
+    MsgDebug(2,MsgLog::Form("%02d-%02d-%04d %02d:%02d:%02d",day,mon,year,hour,min,sec));
+    MsgDebug(2,MsgLog::Form("%02d-%02d-%04d %02d:%02d:%02d",
           fgLocalTM.tm_mday,fgLocalTM.tm_mon,fgLocalTM.tm_year,fgLocalTM.tm_hour,fgLocalTM.tm_min,fgLocalTM.tm_sec));
   }
 
@@ -196,12 +196,12 @@ std::time_t CCMBeamInfo::ConvertToTime(int year, int mon, int day, int hour, int
 }
 
 /*!************************************************************************************************
- * \fn std::time_t CCMBeamInfo::ConvertTimeSineEPOCHtoTime(unsigned long int time)
+ * \fn std::time_t CCMBeamInfo::ConvertTimeSinceEPOCHtoTime(unsigned long int time)
  * \brief Converts the number of seconds since EPOCH to time_t object
  * \param[in] time The number of seconds since EPOCH
  * \return The time as a time_t object.
  **************************************************************************************************/
-std::time_t CCMBeamInfo::ConvertTimeSineEPOCHtoTime(unsigned long int time)
+std::time_t CCMBeamInfo::ConvertTimeSinceEPOCHtoTime(unsigned long int time)
 {
   return static_cast<std::time_t>(time);
 }
@@ -249,7 +249,7 @@ int CCMBeamInfo::Previous()
 
 /*!************************************************************************************************
  * \fn void CCMBeamInfo::Find(std::string time, std::string format)
- * \brief Move the iterator to the position right before the time pased (see #CCMBeamInfo::GetCurrent)
+ * \brief Move the iterator to the position right before the time passed (see #CCMBeamInfo::GetCurrent)
  * \param[in] time The time to searh for
  * \param[in] format The format the time is in
  **************************************************************************************************/
@@ -260,7 +260,7 @@ void CCMBeamInfo::Find(std::string time, std::string format)
 
 /*!************************************************************************************************
  * \fn void CCMBeamInfo::Find(std::time_t time)
- * \brief Move the iterator to the position right before the time pased (see #CCMBeamInfo::GetCurrent)
+ * \brief Move the iterator to the position right before the time passed (see #CCMBeamInfo::GetCurrent)
  * \param[in] time The time to searh for
  **************************************************************************************************/
 void CCMBeamInfo::Find(std::time_t time)

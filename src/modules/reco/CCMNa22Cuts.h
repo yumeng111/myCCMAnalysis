@@ -87,7 +87,7 @@ class CCMNa22Cuts : public CCMModule
     void SetupOutFile();
     void RecalculatePosition(const SimplifiedEvent & simplifiedEvent, 
         const double fitLength, double & x, double & y, double & z);
-    int WaveformMaxPosition(const SimplifiedEvent & simplifiedEvent);
+    //int WaveformMaxPosition(const SimplifiedEvent & simplifiedEvent);
 
   private:
 

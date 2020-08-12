@@ -36,6 +36,8 @@ SimplifiedEvent::SimplifiedEvent(const SimplifiedEvent & rhs) : TObject(rhs)
   fVetoRightStartTime      = rhs.fVetoRightStartTime;
   fVetoLeftStartTime       = rhs.fVetoLeftStartTime;
   fVetoFrontStartTime      = rhs.fVetoFrontStartTime;
+  fMaxWaveformTime         = rhs.fMaxWaveformTime;
+  fMaxWaveformValue        = rhs.fMaxWaveformValue;
   fHitXPosition            = rhs.fHitXPosition;
   fHitYPosition            = rhs.fHitYPosition;
   fHitZPosition            = rhs.fHitZPosition;
@@ -83,16 +85,19 @@ void SimplifiedEvent::Reset()
 
   // Time variables
   // If the variable is -1 then the corresponding multiplicity count should be equal to 0
-  fStartTime               = -1;
-  fLength                  = -1;
-  fCoatedStartTime         = -1;
-  fUncoatedStartTime       = -1;
-  fVetoBottomStartTime     = -1;
-  fVetoTopStartTime        = -1;
-  fVetoBackStartTime       = -1;
-  fVetoRightStartTime      = -1;
-  fVetoLeftStartTime       = -1;
-  fVetoFrontStartTime      = -1;
+  fStartTime               = -1.f;
+  fLength                  = -1.f;
+  fCoatedStartTime         = -1.f;
+  fUncoatedStartTime       = -1.f;
+  fVetoBottomStartTime     = -1.f;
+  fVetoTopStartTime        = -1.f;
+  fVetoBackStartTime       = -1.f;
+  fVetoRightStartTime      = -1.f;
+  fVetoLeftStartTime       = -1.f;
+  fVetoFrontStartTime      = -1.f;
+
+  fMaxWaveformTime         = -1.f;
+  fMaxWaveformValue        = 0.f;
 
   // Integral variables
   // The integral is calculated for the event only if the PMT was above threshold
@@ -160,7 +165,7 @@ float SimplifiedEvent::GetNumVetoSide(bool prompt)
 }
 
 //-------------------------------------------------------------------------------------------------
-double SimplifiedEvent::GetStartTimeTank() 
+float SimplifiedEvent::GetStartTimeTank() 
 {
   if (fCoatedStartTime == -1) {
     return fUncoatedStartTime;
@@ -174,7 +179,7 @@ double SimplifiedEvent::GetStartTimeTank()
 }
 
 //-------------------------------------------------------------------------------------------------
-double SimplifiedEvent::GetStartTimeVeto() 
+float SimplifiedEvent::GetStartTimeVeto() 
 {
   bool bottom = fNVetoBottom[0] || fNVetoBottom[1];
   bool top    = fNVetoTop[0] || fNVetoTop[1];
@@ -187,7 +192,7 @@ double SimplifiedEvent::GetStartTimeVeto()
     return -1;
   }
 
-  double startTime = 0;
+  float startTime = 0;
 
   if (bottom) {
     startTime = std::min(startTime,fVetoBottomStartTime);

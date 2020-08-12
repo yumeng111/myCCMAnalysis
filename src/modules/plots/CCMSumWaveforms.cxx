@@ -19,6 +19,7 @@
 #include "SinglePulse.h"
 #include "MsgLog.h"
 #include "PMTInfoMap.h"
+#include "PMTInformation.h"
 
 #include <iostream>
 #include <cmath>
@@ -26,6 +27,7 @@
 #include <fstream>
 #include <limits>
 #include <memory>
+#include <iterator>
 
 #include "TFile.h"
 #include "TH1D.h"
@@ -73,15 +75,60 @@ CCMSumWaveforms::~CCMSumWaveforms()
 CCMResult_t CCMSumWaveforms::ProcessTrigger()
 {
   if (fTimeHists.empty()) {
-    for (size_t i=0; i < fRawData->GetNumBoards(); ++i) {
-      for (size_t j=0; j < fRawData->GetNumChannels(); ++j) {
-        int key = PMTInfoMap::CreateKey(i,j);
-        fTimeHists.emplace_back(std::make_shared<TH1D>(Form("timeHist_%d",key),
-              Form("Channel %d;Time #mus;Count",key),8000,-9.92,6.08));
-        fTimeHistsInt.emplace_back(std::make_shared<TH1D>(Form("timeHistInt_%d",key),
-              Form("Channel %d;Time #mus;Integral",key),8000,-9.92,6.08));
-      }
-    }
+    fTimeHists.emplace_back(std::make_shared<TH1D>("timeHist_CCM",
+          "CCM;Time (ns);Count",Utility::fgkNumBins,Utility::fgkWindowStartTime,Utility::fgkWindowEndTime));
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_CCM")));
+    fTimeHistsInt.back()->SetTitle("CCM");
+    fTimeHistsInt.back()->SetYTitle("Integral");
+
+    fTimeHists.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHist_CCMVeto")));
+    fTimeHists.back()->SetTitle("CCMVeto");
+    fTimeHists.back()->SetYTitle("Count");
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_CCMVeto")));
+    fTimeHistsInt.back()->SetTitle("CCMVeto");
+    fTimeHistsInt.back()->SetYTitle("Integral");
+
+    fTimeHists.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHist_EJ3015A")));
+    fTimeHists.back()->SetTitle("EJ3015A");
+    fTimeHists.back()->SetYTitle("Count");
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_EJ3015A")));
+    fTimeHistsInt.back()->SetTitle("EJ3015A");
+    fTimeHistsInt.back()->SetYTitle("Integral");
+
+    fTimeHists.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHist_EJ301B")));
+    fTimeHists.back()->SetTitle("EJ301B");
+    fTimeHists.back()->SetYTitle("Count");
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_EJ301B")));
+    fTimeHistsInt.back()->SetTitle("EJ301B");
+    fTimeHistsInt.back()->SetYTitle("Integral");
+
+    fTimeHists.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHist_EJ3015C_FP3")));
+    fTimeHists.back()->SetTitle("EJ3015C_FP3");
+    fTimeHists.back()->SetYTitle("Count");
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_EJ3015C_FP3")));
+    fTimeHistsInt.back()->SetTitle("EJ3015C_FP3");
+    fTimeHistsInt.back()->SetYTitle("Integral");
+
+    fTimeHists.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHist_EJ3015B")));
+    fTimeHists.back()->SetTitle("EJ3015B");
+    fTimeHists.back()->SetYTitle("Count");
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_EJ3015B")));
+    fTimeHistsInt.back()->SetTitle("EJ3015B");
+
+    fTimeHists.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHist_EJ301A")));
+    fTimeHists.back()->SetTitle("EJ301A");
+    fTimeHists.back()->SetYTitle("Count");
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_EJ301A")));
+    fTimeHistsInt.back()->SetTitle("EJ301A");
+    fTimeHistsInt.back()->SetYTitle("Integral");
+    fTimeHistsInt.back()->SetYTitle("Integral");
+
+    fTimeHists.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHist_EJ3015D")));
+    fTimeHists.back()->SetTitle("EJ3015D");
+    fTimeHists.back()->SetYTitle("Count");
+    fTimeHistsInt.emplace_back(dynamic_cast<TH1D*>(fTimeHists.back()->Clone("timeHistInt_EJ3015D")));
+    fTimeHistsInt.back()->SetTitle("EJ3015D");
+    fTimeHistsInt.back()->SetYTitle("Integral");
   } // end if fTimeHists.empty()
 
   auto beamTime = fRawData->GetBCMTime();
@@ -90,22 +137,84 @@ CCMResult_t CCMSumWaveforms::ProcessTrigger()
   int pulseTime = 0;
   float pulseTimeF = 0.f;
   float pulseIntegral = 0.f;
+  float pe = 0;
+  float threshold = 5;
 
   const size_t kNumPulses = fPulses->GetNumPulses();
   for (size_t pulse = 0; pulse < kNumPulses; ++pulse) {
     key = fPulses->GetKey(pulse);
+    if (!PMTInfoMap::IsActive(key) && key < 169) {
+      continue;
+    }
 
     auto singlePulse = fPulses->GetSinglePulse(pulse);
+    pulseTime = singlePulse->GetTime();
+    if (pulseTime > 7960) {
+      continue;
+    }
+
     if (singlePulse->GetLength()*2.0 < 20) {
       continue;
     }
 
-    pulseTime = singlePulse->GetTime() - beamTime;
-    pulseTimeF = static_cast<double>(pulseTime)*2e-3;
-    pulseIntegral = singlePulse->GetIntegral();
+    bool isVeto = false;
+    if (key < 160) {
+      auto pmtInfo = PMTInfoMap::GetPMTInfo(key);
+      if (!pmtInfo) {
+        continue;
+      }
 
-    fTimeHists.at(key)->Fill(pulseTimeF+1e-4);
-    fTimeHistsInt.at(key)->Fill(pulseTimeF+1e-4,pulseIntegral);
+      isVeto = pmtInfo->IsVeto();
+
+      pulseTimeF = Utility::ShiftTime(pulseTime,beamTime);
+      if (isVeto) {
+        threshold = 5.0;
+        pe = 1.0;
+      } else {
+        pe = pmtInfo->GetADCToPE();
+        if (pe < 0) {
+          continue;
+        }
+        threshold = pmtInfo->GetADCThreshold();
+      }
+
+    } else {
+      pulseTime = pulseTime - beamTime;
+      pulseTimeF = static_cast<double>(pulseTime)*Utility::fgkBinWidth;
+      threshold = 5;
+      pe = 1.0;
+    }
+
+    pulseIntegral = singlePulse->GetIntegral();
+    if (pulseIntegral < threshold) {
+      continue;
+    }
+
+    pulseIntegral /= pe;
+
+    auto it = fTimeHists.begin();
+    auto itInt = fTimeHistsInt.begin();
+
+    if (isVeto) {
+      std::advance(it,1);
+      std::advance(itInt,1);
+    } else if (key >= 169 && key <= 174) {
+      std::advance(it,key-167);
+      std::advance(itInt,key-167);
+    } else if (key > 160) {
+      continue;
+    }
+
+    //int bin = (-Utility::fgkWindowStartTime+pulseTimeF)/Utility::fgkBinWidth+1;
+
+    //MsgInfo(MsgLog::Form("pulseTimeF %.0f bin %d FindBin %d",pulseTimeF,bin,(*it)->FindBin(pulseTimeF+1e-4)));
+
+    //if (bin > Utility::fgkNumBins) {
+    //  bin = Utility::fgkNumBins+1;
+    //}
+
+    (*it)->Fill(pulseTimeF+1e-4);
+    (*itInt)->Fill(pulseTimeF+1e-4,pulseIntegral);
   }
   
   return kCCMSuccess;

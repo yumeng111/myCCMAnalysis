@@ -62,18 +62,18 @@ class SimplifiedEvent : public TObject
     void SetEventFinderMethod  ( CCMEventFinderID_t value  ) { fEventFinderMethod = static_cast<int>(value); }
     void SetAccumWaveformMethod  ( CCMAccumWaveformMethod_t value  ) { fAccumWaveformMethod = static_cast<int>(value); }
     void SetThreshold          ( float value  ) { fThreshold = value; }
-    void SetLargestPMTFraction ( double value ) { fLargestPMTFraction = value; }
+    void SetLargestPMTFraction ( float value ) { fLargestPMTFraction = value; }
 
-    void SetStartTime               (double value) { fStartTime = value; }
-    void SetLength                  (double value) { fLength = value; }
-    void SetStartTimeCoated         (double value) { fCoatedStartTime = value; }
-    void SetStartTimeUncoated       (double value) { fUncoatedStartTime = value; }
-    void SetStartTimeVetoBottom     (double value) { fVetoBottomStartTime = value; }
-    void SetStartTimeVetoTop        (double value) { fVetoTopStartTime = value; }
-    void SetStartTimeVetoBack       (double value) { fVetoBackStartTime = value; }
-    void SetStartTimeVetoRight      (double value) { fVetoRightStartTime = value; }
-    void SetStartTimeVetoLeft       (double value) { fVetoLeftStartTime = value; }
-    void SetStartTimeVetoFront      (double value) { fVetoFrontStartTime = value; }
+    void SetStartTime               (float value) { fStartTime = value; }
+    void SetLength                  (float value) { fLength = value; }
+    void SetStartTimeCoated         (float value) { fCoatedStartTime = value; }
+    void SetStartTimeUncoated       (float value) { fUncoatedStartTime = value; }
+    void SetStartTimeVetoBottom     (float value) { fVetoBottomStartTime = value; }
+    void SetStartTimeVetoTop        (float value) { fVetoTopStartTime = value; }
+    void SetStartTimeVetoBack       (float value) { fVetoBackStartTime = value; }
+    void SetStartTimeVetoRight      (float value) { fVetoRightStartTime = value; }
+    void SetStartTimeVetoLeft       (float value) { fVetoLeftStartTime = value; }
+    void SetStartTimeVetoFront      (float value) { fVetoFrontStartTime = value; }
 
     // Integral variables
     void SetIntegralCoated         (float value, bool prompt = true) { fCoatedInt[prompt] = value; }
@@ -133,23 +133,23 @@ class SimplifiedEvent : public TObject
     CCMAccumWaveformMethod_t GetAccumWaveformMethod  () { return static_cast<CCMAccumWaveformMethod_t>(fAccumWaveformMethod); }
 
     float GetThreshold           ( ) { return fThreshold; }
-    double GetLargestPMTFraction ( ) { return fLargestPMTFraction; }
+    float GetLargestPMTFraction ( ) { return fLargestPMTFraction; }
 
 
     // Time variables
-    double GetStartTime               () const { return fStartTime; }
-    double GetStartTime               () { return fStartTime; }
-    double GetLength                  () { return fLength; }
-    double GetStartTimeCoated         () { return fCoatedStartTime; }
-    double GetStartTimeUncoated       () { return fUncoatedStartTime; }
-    double GetStartTimeVetoBottom     () { return fVetoBottomStartTime; }
-    double GetStartTimeVetoTop        () { return fVetoTopStartTime; }
-    double GetStartTimeVetoBack       () { return fVetoBackStartTime; }
-    double GetStartTimeVetoRight      () { return fVetoRightStartTime; }
-    double GetStartTimeVetoLeft       () { return fVetoLeftStartTime; }
-    double GetStartTimeVetoFront      () { return fVetoFrontStartTime; }
-    double GetStartTimeTank();
-    double GetStartTimeVeto();
+    float GetStartTime               () const { return fStartTime; }
+    float GetStartTime               () { return fStartTime; }
+    float GetLength                  () { return fLength; }
+    float GetStartTimeCoated         () { return fCoatedStartTime; }
+    float GetStartTimeUncoated       () { return fUncoatedStartTime; }
+    float GetStartTimeVetoBottom     () { return fVetoBottomStartTime; }
+    float GetStartTimeVetoTop        () { return fVetoTopStartTime; }
+    float GetStartTimeVetoBack       () { return fVetoBackStartTime; }
+    float GetStartTimeVetoRight      () { return fVetoRightStartTime; }
+    float GetStartTimeVetoLeft       () { return fVetoLeftStartTime; }
+    float GetStartTimeVetoFront      () { return fVetoFrontStartTime; }
+    float GetStartTimeTank();
+    float GetStartTimeVeto();
 
     // Integral variables
     float GetIntegralCoated         (bool prompt = true) { return fCoatedInt[prompt]; }
@@ -173,31 +173,39 @@ class SimplifiedEvent : public TObject
     float    GetNumVeto(bool prompt = true);
     float    GetNumVetoSide(bool prompt = true);
 
-    void  SetPMTHits (int value, std::vector<float> & vec) { fPMTHits = value; fPMTHitsVec = vec; }
-    void  AddPMTHits (int value = 1, float percent = 0) { fPMTHits += value; fPMTHitsVec.push_back(percent); }
+    void  SetPMTHits (std::vector<std::pair<int,float>> & vec) { fPMTHits = vec.size(); fPMTHitsVec = vec; }
+    void  AddPMTHits (std::pair<int,float> amount) { ++fPMTHits; fPMTHitsVec.push_back(amount); }
     int   GetPMTHits () { return fPMTHits; }
-    const std::vector<float> & GetPMTHitsVec () { return fPMTHitsVec; }
+    const std::vector<std::pair<int,float>> & GetPMTHitsVec () { return fPMTHitsVec; }
+
+    float GetMaxAccumWaveformTime() { return fMaxWaveformTime; }
+    float GetMaxAccumWaveformValue() { return fMaxWaveformValue; }
+    void SetMaxAccumWaveformTime(float time) { fMaxWaveformTime = time; }
+    void SetMaxAccumWaveformValue(float value) { fMaxWaveformValue = value; }
 
   protected:
     int fEventFinderMethod;        ///< the event finder method converted from #CCMEventFinderID_t
     int fAccumWaveformMethod;        ///< the method used to build the accumulated waveform #CCMAccumWaveformMethod_t
     float fThreshold;                    ///< threshold used for finding the event
     int fPMTHits;                    ///< true if there is another triggerable event
-    std::vector<float> fPMTHitsVec; ///< time of all the other events
-    double fLargestPMTFraction;          ///< fraction of PMT with the most charge
+    std::vector<std::pair<int,float>> fPMTHitsVec; ///< amount of charge in each PMT for the prompt region
+    float fLargestPMTFraction;          ///< fraction of PMT with the most charge
 
 
     // Time variables
-    double fStartTime;               ///< time of event in mus
-    double fLength;                  ///< length of event
-    double fCoatedStartTime;         ///< time of first coated tank event
-    double fUncoatedStartTime;       ///< time of first uncoated event
-    double fVetoBottomStartTime;     ///< time of first veto on the bottom
-    double fVetoTopStartTime;        ///< time of first veto on the top
-    double fVetoBackStartTime;       ///< time of first veto on the back
-    double fVetoRightStartTime;      ///< time of first veto on the right
-    double fVetoLeftStartTime;       ///< time of first veto on the left
-    double fVetoFrontStartTime;      ///< time of first veto on the front
+    float fStartTime;               ///< time of event in mus
+    float fLength;                  ///< length of event
+    float fCoatedStartTime;         ///< time of first coated tank event
+    float fUncoatedStartTime;       ///< time of first uncoated event
+    float fVetoBottomStartTime;     ///< time of first veto on the bottom
+    float fVetoTopStartTime;        ///< time of first veto on the top
+    float fVetoBackStartTime;       ///< time of first veto on the back
+    float fVetoRightStartTime;      ///< time of first veto on the right
+    float fVetoLeftStartTime;       ///< time of first veto on the left
+    float fVetoFrontStartTime;      ///< time of first veto on the front
+
+    float fMaxWaveformTime;         ///< time of where the accumulated waveform is at its maximum
+    float fMaxWaveformValue;        ///< value corresponding to when the accumulated waveform is at its maximum
 
     // Integral variables
     // The integral is calculated for the event only if the PMT was above threshold
@@ -222,7 +230,7 @@ class SimplifiedEvent : public TObject
     /// Vector of the single pulses that made up the event
     std::vector<float> fAccWaveformCount; //
     std::vector<float> fAccWaveformInt; //
-    std::map<int,std::pair<std::vector<float>,std::vector<int>>> fPMTWaveform; //
+    std::map<int,std::pair<std::vector<float>,std::vector<int>>> fPMTWaveform; //!
     mutable std::map<int,std::pair<std::vector<float>,std::vector<int>>>::const_iterator fPMTWaveformItr; //! do not save to file
 
   ClassDef(SimplifiedEvent,11)  //SimplifiedEvent class

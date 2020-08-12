@@ -7,7 +7,7 @@
   Base class for SciBath modules
 
 
-  Adapter: R. T. Thornton (IU)
+  Adapter: R. T. Thornton (LANL)
   Date: 14-May-2013
 
 -------------------------------------------------------*/

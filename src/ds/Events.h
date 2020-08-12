@@ -63,6 +63,28 @@ class Events : public TObject
     
     /// \return #fComputerNSIntoSec
     unsigned int GetComputerNSIntoSec() { return fComputerNSIntoSec; }
+    
+    /// \brief Sets the time of the BCM signal (0 if not BEAM trigger)
+    void SetBeamTime(int time) { fBeamTime= time; }
+    /// \brief Sets the integral of the BCM signal (0 if not BEAM trigger)
+    void SetBeamIntegral(float integral) { fBeamIntegral = integral; }
+    /// \brief Sets the length of the BCM signal (0 if not BEAM trigger)
+    void SetBeamLength(float length) { fBeamLength = length; }
+    
+    /// \brief Get the time of the BCM signal
+    int GetBeamTime() { return fBeamTime; }
+    /// \brief Get the time of the BCM signal
+    int GetBeamTime() const { return fBeamTime; }
+
+    /// \brief Get the integral of the BCM signal
+    float GetBeamIntegral() { return fBeamIntegral; }
+    /// \brief Get the integral of the BCM signal
+    float GetBeamIntegral() const { return fBeamIntegral; }
+
+    /// \brief Get the length of the BCM signal
+    float GetBeamLength() { return fBeamLength; }
+    /// \brief Get the length of the BCM signal
+    float GetBeamLength() const { return fBeamLength; }
 
     size_t GetNumEvents() { return fNumEvents; }
     float GetTriggerTime() { return fTriggerTime; }
@@ -108,6 +130,13 @@ class Events : public TObject
     /// The trigger time of the trigger
     float fTriggerTime;
 
+    /// The BCM time in the trigger
+    int fBeamTime;
+    /// The BCM integral in the trigger
+    float fBeamIntegral;
+    /// The BCM length in the trigger
+    float fBeamLength;
+
     /// The vector of events found
     std::vector<SimplifiedEvent> fEvents;
 
@@ -116,7 +145,7 @@ class Events : public TObject
 
 
 
-  ClassDef(Events,1)
+  ClassDef(Events,2)
 
 };
 

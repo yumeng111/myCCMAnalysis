@@ -534,6 +534,38 @@ Pulses & Pulses::operator=(const Pulses & rhs)
 }
 
 /*!**********************************************
+ * \fn void Pulses::Copy(const Pulses & rhs, int startBoard, int endBoard, int startChannel, int endChannel) 
+ * \brief Set the current #Pulses object to the one passed, but only copy a range of the board and channels
+ * \param[in] rhs The object to copy
+ * \param[in] startBoard The board to start copying
+ * \param[in] endBoard The board to end copying
+ * \param[in] startChannel The channel to start copying
+ * \param[in] endChannel The endChannel to start copying
+ ***********************************************/
+void Pulses::Copy(const Pulses & rhs, int startBoard, int endBoard, int startChannel, int endChannel) 
+{
+  this->fBoard = rhs.fBoard;
+  this->fChannel = rhs.fChannel;
+  this->fEventNumber = rhs.fEventNumber;
+  this->fComputerSecIntoEpoch= rhs.fComputerSecIntoEpoch;
+  this->fComputerNSIntoSec= rhs.fComputerNSIntoSec;
+  this->fNumPulses = rhs.fNumPulses;
+  this->fTriggerTime = rhs.fTriggerTime;
+  this->fCurrPulse = rhs.fCurrPulse;
+
+  int board = 0;
+  int channel = 0;
+  for (auto & pulse : rhs.fPulses) {
+    int key = pulse.GetKey();
+    PMTInfoMap::DecodeKey(key,board,channel);
+    if (board < startBoard || board > endBoard || channel < startChannel || channel > endChannel) {
+      continue;
+    }
+    fPulses.push_back(pulse);
+  }
+}
+
+/*!**********************************************
  * \fn void Pulses::RemovePulsesByThreshold()
  * \brief Loop through the pulses vector and remove pulses below threshold
  * 

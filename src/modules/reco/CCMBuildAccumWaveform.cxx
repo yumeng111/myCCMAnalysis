@@ -99,8 +99,10 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
   // If fTriggerType == beam
   // Find when the BCM triggered in the DAQ window 
   fBeamTime = Utility::fgkNumBins+1;
+  double beamIntegral = 0;
+  double beamLength = 0;
   if (fTriggerType.find("BEAM") != std::string::npos) {
-    fBeamTime = fRawData->GetBCMTime();
+    fBeamTime = fRawData->GetBCMTime(&beamIntegral,&beamLength);
     if (fBeamTime == Utility::fgkNumBins+1) {
       MsgWarning(MsgLog::Form("Event %d No BCM trigger found skipping trigger",fRawData->GetEventNumber()));
       return kCCMFailure;
@@ -110,6 +112,8 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
   }
 
   fAccumWaveform->SetBeamOffset(fBeamTime);
+  fAccumWaveform->SetBeamIntegral(beamIntegral);
+  fAccumWaveform->SetBeamLength(beamLength*Utility::fgkBinWidth);
 
   // count trigger
   ++fNumTriggers;

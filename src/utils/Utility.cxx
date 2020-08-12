@@ -7,6 +7,9 @@
 #include "Utility.h"
 #include "MsgLog.h"
 
+#include <cstdlib>
+#include <cstdio>
+
 /*!**********************************************
  * \fn void Utility::ParseStringForRunNumber(std::string name, int & run int & subrun)
  * \brief Parses the passed string to get the run and subrun numbers
@@ -165,3 +168,43 @@ double Utility::ShiftTime(int time, int beamOffset)
   return shiftTime;
 }
 
+
+/*!**********************************************
+ *  \brief Gets the list of files
+ *  \param[in] file_regexp The command to pass to ls, can contain wild cards
+ *  \return A vector containg all the files that match file_regexp
+ ***********************************************/
+std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
+{
+  // Cheap way to get list of files matching the expression (assumes
+  // some flavor of unix
+  char tmp_name[128] = {"/tmp/IOMOD.XXXXXX"};
+  mkstemp(tmp_name);
+  std::string cmd;
+  cmd  = "(ls ";
+  cmd += file_regexp;
+  cmd += " > ";
+  cmd += tmp_name;
+  cmd += ") >& /dev/null";
+  system(cmd.c_str());
+
+  std::vector<std::string> localVec;
+  // Open the temp file and get the list of files which matched
+  static const int s = 256;
+  char             buff[s];
+  FILE*            fp     = fopen(tmp_name,"r");
+  std::string      file;
+  while ( fgets(buff,s-1,fp) != NULL ) {
+    int len = strlen(buff);
+    while (buff[len]==' ' || buff[len]=='\n' || buff[len]=='\0') --len;
+    buff[len+1]='\0';
+    file = buff;
+    localVec.emplace_back(file);
+  }
+  fclose(fp);
+
+  // Remove the temporary file
+  std::remove(tmp_name);
+
+  return localVec;
+}

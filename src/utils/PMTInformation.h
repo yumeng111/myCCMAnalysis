@@ -15,9 +15,6 @@
 /*!**********************************************
  * \class PMTInformation
  * \brief The class that contains all the information for a specific PMT
- *
- * Some of the functions (like ADCtoPE) are not being used anywhere
- * but are left in for potential use
  ***********************************************/
 class PMTInformation : public TObject
 {

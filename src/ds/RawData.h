@@ -75,7 +75,7 @@ class RawData : public TObject
     float GetEarliestOffset();
     int FindFirstNIMSample(int channelNumber);
     bool IsTriggerPresent(std::string triggerName);
-    int GetBCMTime();
+    int GetBCMTime(double * integral = 0, double * length = 0);
     int GetBoard10ChannelOffset();
 
     RawData & operator=(const RawData & rhs);
