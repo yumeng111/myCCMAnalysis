@@ -91,6 +91,8 @@ CCMTemplateAna::CCMTemplateAna(const char* version)
   //Default constructor
   this->SetCfgVersion(version);
 
+  DefineVectorsAndHistos();
+
 }
 
 
@@ -279,19 +281,21 @@ CCMResult_t CCMTemplateAna::EndOfJob()
 {
   // print out any global counters
   MsgInfo(MsgLog::Form("Num Triggers %ld passed trigger type cut",fNumTriggers));
-  
-  
+
   // write out the ntuple & histograms to output file
   fOutfile = gROOT->GetFile(fOutFileName.c_str());
   if (fOutfile != nullptr) {
     fOutfile->cd();
     fTree->Write();
 
+    // for arrays of histograms
     for (auto & hist : fMyHists) {
       //   for (auto & hist : fTimeHists) {
         hist->Write();
     } // hists
 
+    fMySingleHist -> Write();
+    
   } // outfile
     
   return kCCMSuccess;

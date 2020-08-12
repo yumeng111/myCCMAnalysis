@@ -96,7 +96,12 @@ class CCMTemplateAna : public CCMModule
   
  private:
   // private methods
+
+  // ***************************************************************
+  // !!!! VITAL !!!! for making sure histos/ntuple written to file
+  // ***************************************************************
   void SetupOutFile();
+  
   
   // ***************************************************************
   // Define vectors & histograms used & reset them
