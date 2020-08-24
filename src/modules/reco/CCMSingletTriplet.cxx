@@ -120,14 +120,13 @@ CCMSingletTriplet::CCMSingletTriplet(const char* version)
 
     
     // module-specific vars in .xml file
-    fMyDouble(0.4),
-    //   fThreshold(0.4),
-    fMyString("MYSTRING"),
-    //   fTriggerType("BEAM"),
-    fMyBool(false),
-    //   fPulseTimeCut(false)
-    fMyLowValue(0.1),
-    fMyHighValue(0.9),
+    fSingletMinPE(5.0),
+    fSingletTimeWidth(90.0),
+    fTripletMinPE(5.0),
+    fTripletTimeWidth(4000.0),
+    fSaveDebugPlots(0),
+    fPrintDebugStatements(0),
+    
     fTreeName("tree"),
 
     
@@ -169,14 +168,13 @@ CCMSingletTriplet::CCMSingletTriplet(const CCMSingletTriplet& clufdr)
 
 
     // module-specific vars in .xml file
-    fMyDouble(clufdr.fMyDouble),
-    //   fThreshold(clufdr.fThreshold),
-    fMyString(clufdr.fMyString),
-    //   fTriggerType(clufdr.fTriggerType),
-    fMyBool(clufdr.fMyBool),
-    //   fPulseTimeCut(clufdr.fPulseTimeCut),
-    fMyLowValue(clufdr.fMyLowValue),
-    fMyHighValue(clufdr.fMyHighValue),
+    fSingletMinPE(clufdr.fSingletMinPE),
+    fSingletTimeWidth(clufdr.fSingletTimeWidth),
+    fTripletMinPE(clufdr.fTripletMinPE),
+    fTripletTimeWidth(clufdr.fTripletTimeWidth),
+    fSaveDebugPlots(clufdr.fSaveDebugPlots),
+    fPrintDebugStatements(clufdr.fPrintDebugStatements),
+    
     fTreeName(clufdr.fTreeName),
 
     
@@ -215,50 +213,26 @@ void CCMSingletTriplet::Configure(const CCMConfig& c )
 {
   // Initialize any parameters here by reading them from the CCMConfig object.
   MsgInfo("Inside Coonfiguration file");
-
+  
   c("TriggerType").Get(fTriggerType);
-
-
-  c("MyDouble").Get(fMyDouble);
-  //   c("Threshold").Get(fThreshold);
-  c("MyString").Get(fMyString);
-  //   c("TriggerType").Get(fTriggerType);
-  c("MyBool").Get(fMyBool);
-  //   c("PulseTimeCut").Get(fPulseTimeCut);
-
-
-  if (fMyBool) {
-    c("MyLowValue").Get(fMyLowValue);
-    c("MyHighValue").Get(fMyHighValue);
-    
-    fMyLowValue = std::max(fMyLowValue,Utility::fgkWindowStartTime);
-    fMyHighValue = std::min(fMyHighValue,Utility::fgkWindowEndTime);
-    
-    //   c("PulseTimeLowValue").Get(fPulseTimeLowValue);
-    //   c("PulseTimeHighValue").Get(fPulseTimeHighValue);
-
-    //   fPulseTimeLowValue = std::max(fPulseTimeLowValue,Utility::fgkWindowStartTime);
-    //   fPulseTimeHighValue = std::min(fPulseTimeHighValue,Utility::fgkWindowEndTime);
-
-  }
-
+  
+  c("SingletMinPE").Get(fSingletMinPE);
+  c("SingletTimeWidth").Get(fSingletTimeWidth);
+  c("TripletMinPE").Get(fTripletMinPE);
+  c("TripletTimeWidth").Get(fTripletTimeWidth);
+  c("SaveDebugPlots").Get(fSaveDebugPlots);
+  c("PrintDebugStatements").Get(fPrintDebugStatements);
+  
   
   MsgInfo("Input parameter values");
   MsgInfo(MsgLog::Form("-TriggerType: %s",fTriggerType.c_str()));
 
-  MsgInfo(MsgLog::Form("-MyDouble: %f",fMyDouble));
-  //   MsgInfo(MsgLog::Form("-Threshold: %f",fThreshold));
-  MsgInfo(MsgLog::Form("-MyString: %s",fMyString.c_str()));
-  //   MsgInfo(MsgLog::Form("-TriggerType: %s",fTriggerType.c_str()));
-  MsgInfo(MsgLog::Form("-MyBool: %d",fMyBool));
-  //   MsgInfo(MsgLog::Form("-PulseTimeCut: %d",fPulseTimeCut));
-
-
-  MsgInfo(MsgLog::Form("-MyLowValue: %f",fMyLowValue));
-  //   MsgInfo(MsgLog::Form("-PulseTimeLowValue: %f",fPulseTimeLowValue));
-  MsgInfo(MsgLog::Form("-MyHighValue: %f",fMyHighValue));
-  //   MsgInfo(MsgLog::Form("-PulseTimeHighValue: %f",fPulseTimeHighValue));
-
+  MsgInfo(MsgLog::Form("-SingletMinPE: %f",fSingletMinPE));
+  MsgInfo(MsgLog::Form("-SingletTimeWidth: %f",fSingletTimeWidth));
+  MsgInfo(MsgLog::Form("-TripletMinPE: %f",fTripletMinPE));
+  MsgInfo(MsgLog::Form("-TripletTimeWidth: %f",fTripletTimeWidth));
+  MsgInfo(MsgLog::Form("-SaveDebugPlots: %f", fSaveDebugPlots));
+  MsgInfo(MsgLog::Form("-PrintDebugStatements: %f", fPrintDebugStatements));
   
   // did you do the initialization?
   fIsInit = true;
@@ -276,6 +250,9 @@ CCMResult_t CCMSingletTriplet::ProcessTrigger()
   fOutfile = gROOT->GetFile(fOutFileName.c_str());
   
 
+  // MsgInfo(MsgLog::Form("file entry: ??, beam trigger? %d, led trigger? %d, strobe trigger? %d", fRawData->IsTriggerPresent("BEAM"), fRawData->IsTriggerPresent("LED"), fRawData->IsTriggerPresent("STROBE") ));
+
+  
   // Check which trigger occured in DAQ window
   // make sure it is the one we want based on input .xml file
   // should have already been done in FindEvent; kept in as a cross-check
@@ -361,14 +338,12 @@ CCMResult_t CCMSingletTriplet::EndOfJob()
 {
   // print out any global counters
   MsgInfo(MsgLog::Form("Num Triggers %ld passed trigger type cut",fNumTriggers));
-
-
   MsgInfo(" ");
   MsgInfo(MsgLog::Form("### Total Strobe events found in file: %ld", foundStrobe ));
 
   myavg = this_ratio / num_ratios;
   
-  MsgInfo(MsgLog::Form(" S/T Avg Ratio for this set of files = %f, (ratio, num ratios) = %ld, %ld", myavg, this_ratio, num_ratios ));
+  MsgInfo(MsgLog::Form(" S/T Avg Ratio for this set of files = %f, (ratio, num ratios) = %f, %f", myavg, this_ratio, num_ratios ));
 
   MsgInfo(MsgLog::Form("---------------------------------------"));
   // MsgInfo(MsgLog::Form("Total Events:        %ld", nEntries ));
@@ -385,6 +360,43 @@ CCMResult_t CCMSingletTriplet::EndOfJob()
   MsgInfo(MsgLog::Form("Max Bin in Prompt:   %ld", foundMaxBin ));
   MsgInfo(MsgLog::Form("Valid Triplet Range: %ld", foundTripletRange ));
     
+
+  // pretty up the histograms
+  PrettyHist(h_pulseSample, "Sample Number", "Occupancy/Sample", 1);
+  
+  PrettyHist(h_pmtID_all, "PMT ID", "Occupancy per PMT", 1);
+  PrettyHist(h_pmtIDvsTime_all, "Time of Pulse (ns) (100 ns bins, raw time)", "PMT ID", 0); // 2D histo 
+  
+  PrettyHist(h_pmtID_exist, "PMT ID", "Occupancy per PMT", 1);
+  PrettyHist(h_existPMTLoc, "Disc. Board", "Channel",  0); // 2D histo
+  PrettyHist(h_HVexistPMTLoc, "HV Board", "Channel",  0); // 2D histo
+  
+  PrettyHist(h_pmtID_veto, "PMT ID", "Occupancy per PMT", 1);
+  PrettyHist(h_vetoPMTLoc, "Disc. Board", "Channel", 0); // 2D histo
+  PrettyHist(h_HVvetoPMTLoc, "HV Board", "Channel", 0); // 2D histo
+  
+  PrettyHist(h_pmtID, "PMT ID", "Occupancy per PMT", 1);
+  PrettyHist(h_pmtIDvsTime, "Time of Pulse (ns) (100 ns bins, raw time)", "PMT ID", 0); // 2D histo 
+  PrettyHist(h_PMTLoc, "Disc. Board", "Channel", 0); // 2D histo
+  PrettyHist(h_HVPMTLoc, "HV Board", "Channel", 0); // 2D histo
+  
+  for (int i=0; i < 160; i++) {
+    PrettyHist(h_PMTintegral[i], "Integral (p.e.)", "Occupancy per 100 p.e.", 1);
+    PrettyHist(h_PMTfiredTime[i], "Time (ns) (raw)", "Pulses per 1000 ns", 1);
+  }
+  
+  PrettyHist(h_hasnstimePulse, "Time of Pulse (ns) (raw, 2 ns windows)", "Number of Pulses", 1); 
+  PrettyHist(h_hasDAQnstimePulse, "Time of Pulse (ns) (DAQ, 2 ns windows)", "Number of Pulses", 1); 
+  
+  PrettyHist(h_singletpe, "p.e. of singlet", "Number of events", 1);
+  PrettyHist(h_tripletpe, "p.e. of triplet", "Number of events", 1);
+  
+  PrettyHist(h_totalInt, "Total Event Pulse Integral (p.e.)", "Occupancy per 1000 p.e.", 1); 
+  PrettyHist(h_pmtsWithPulse, "Number PMTs per Event with Pulses", "Number of Events", 1); 
+  
+  PrettyHist(h_maxpe, "Max p.e. when peak not in Prompt", "Number of Events", 1);
+  PrettyHist(h_deltatime, "Delta Time (ns) max peak - singlet (start/end)", "Number of Events", 1);
+
   
   // write out the ntuple & histograms to output file
   fOutfile = gROOT->GetFile(fOutFileName.c_str());
@@ -392,64 +404,70 @@ CCMResult_t CCMSingletTriplet::EndOfJob()
     fOutfile->cd();
     fTree -> Write();
 
+
+    // print histograms to pdf file
     // ########### ONLY IF DEBUG FLAG SET DO THESE ##################
     
-    // *******************************************************************************
-    // print all histograms to pdf file
-    // *******************************************************************************
-
     // #### DEBUG FLAG 1
-    // make these plots before I any quality cuts at all on pulses, check if info is present
-    h_pmtID_all -> Write();
-    h_pmtIDvsTime_all -> Write();
+    if (fSaveDebugPlots == 1) {
+      // make these plots before I any quality cuts at all on pulses, check if info is present
+      h_pmtID_all -> Write();
+      h_pmtIDvsTime_all -> Write();
+      
+      // after check if info is present for pmt
+      h_pmtID_exist -> Write();
+      h_existPMTLoc -> Write();
+      h_HVexistPMTLoc -> Write();
+      
+      // plot for veto PMTs; I skip those pulses
+      h_pmtID_veto -> Write();
+      h_vetoPMTLoc -> Write();
+      h_HVvetoPMTLoc -> Write();
+      
+      // after all event selection, still in pulse loop
+      h_pmtID -> Write();
+      h_pmtIDvsTime -> Write();
+      h_PMTLoc -> Write();
+      h_HVPMTLoc -> Write();
+      
+      // per-PMT plots for pulses passing selection cuts
+      for (auto & hist : h_PMTintegral) hist->Write();
+      for (auto & hist : h_PMTfiredTime) hist->Write();
+      
+      // for pulses passing event selection cuts
+      h_hasnstimePulse -> Write();
+      h_hasDAQnstimePulse -> Write();
+      
+      // total event plots
+      h_totalInt -> Write();
+      h_pmtsWithPulse -> Write();
+    }// debug flag set to 1
     
-    // after check if info is present for pmt
-    h_pmtID_exist -> Write();
-    h_existPMTLoc -> Write();
-    h_HVexistPMTLoc -> Write();
-    
-    // plot for veto PMTs; I skip those pulses
-    h_pmtID_veto -> Write();
-    h_vetoPMTLoc -> Write();
-    h_HVvetoPMTLoc -> Write();
-    
-    // after all event selection, still in pulse loop
-    h_pmtID -> Write();
-    h_pmtIDvsTime -> Write();
-    h_PMTLoc -> Write();
-    h_HVPMTLoc -> Write();
-    
-    // per-PMT plots for pulses passing selection cuts
-    for (auto & hist : h_PMTintegral) hist->Write();
-    for (auto & hist : h_PMTfiredTime) hist->Write();
-    
-    // for pulses passing event selection cuts
-    h_hasnstimePulse -> Write();
-    h_hasDAQnstimePulse -> Write();
-   
-    // total event plots
-    h_totalInt -> Write();
-    h_pmtsWithPulse -> Write();
-
-    
+      
     // #### DEBUG FLAG 2
-    // plot pulse time b/c getting lots > 8000 samples, not sure what this means
-    // see comment by R. T. Thornton explaining these, 6/23/20
-    h_pulseSample -> Write();
+    if (fSaveDebugPlots == 2) {
+      // plot pulse time b/c getting lots > 8000 samples, not sure what this means
+      // see comment by R. T. Thornton explaining these, 6/23/20
+      h_pulseSample -> Write();
+    } // debug flag set to 2
 
+    
+    // #### DEBUG FLAG 3
+    if (fSaveDebugPlots == 3) {
+      // plot of singlet and triplet candidate integrals
+      // use for threshold setting information
+      h_singletpe -> Write();
+      h_tripletpe -> Write();
+    }// debug flag set to 3
+    
     
     // #### DEBUG FLAG 4
-    // plot of singlet and triplet candidate integrals
-    // use for threshold setting information
-    h_singletpe -> Write();
-    h_tripletpe -> Write();
-
+    if (fSaveDebugPlots == 4) {
+      // plot of max pe peak relative to prompt singlet
+      h_maxpe -> Write();
+      h_deltatime -> Write();
+    } // debug flag set to 4
     
-    // #### DEBUG FLAG 5
-    // plot of max pe peak relative to prompt singlet
-    h_maxpe -> Write();
-    h_deltatime -> Write();
-
     
   } // outfile
     
@@ -461,10 +479,6 @@ CCMResult_t CCMSingletTriplet::EndOfJob()
 //_______________________________________________________________________________________
 void CCMSingletTriplet::DefineVarsAndHistos()
 {
-  fMyVector.resize(Utility::fgkNumBins,0.f);
-  //   fPulsesTime.resize(Utility::fgkNumBins,0.f);
-
-
   // *******************************************************************************
   // declare histograms, arrays of histograms
   // these are for debug / low level info purposes
@@ -528,16 +542,40 @@ void CCMSingletTriplet::DefineVarsAndHistos()
 //_______________________________________________________________________________________
 void CCMSingletTriplet::ResetVarsAndHistos()
 {
-  auto itMyVectorBegin = fMyVector.begin();
-  //   auto itPulsesTimeBegin = fPulsesTime.begin();
-  auto itMyVectorEnd = fMyVector.end();
-  //   auto itPulsesTimeEnd = fPulsesTime.end();
-  
-  std::fill(itMyVectorBegin,itMyVectorEnd,0);
-  //   std::fill(itPulsesTimeBegin,itPulsesTimeEnd,0);
 
   
 } // ResetVarsAndHistos
+
+
+//_______________________________________________________________________________________
+void CCMSingletTriplet::PrettyHist(TH1 *hist, const char *myX, const char *myY, int statFlag)
+{
+
+  // should print or not print stat box
+  if (statFlag == 0) hist -> SetStats(false);
+  else if (statFlag == 1) hist -> SetStats(true);
+  
+  // hist -> SetTitle("");
+  hist -> SetMarkerSize(5);
+  
+  hist -> GetXaxis() -> SetTitleColor(1);
+  hist -> GetXaxis() -> SetTitleSize(0.035);
+  hist -> GetXaxis() -> SetTitleOffset(1.0);
+  hist -> GetXaxis() -> SetLabelSize(0.025);
+  hist -> GetXaxis() -> CenterTitle();
+  hist -> GetXaxis() -> SetTitle(myX);
+  
+  hist -> GetYaxis() -> SetTitleColor(1);
+  hist -> GetYaxis() -> SetTitleSize(0.035);
+  hist -> GetYaxis() -> SetTitleOffset(1.0);
+  hist -> GetYaxis() -> SetLabelSize(0.025);
+  hist -> GetYaxis() -> CenterTitle();
+  hist -> GetYaxis() -> SetTitle(myY);
+  
+  hist -> SetLineStyle(0);
+  hist -> SetLineWidth(1);
+  
+} // PrettyHist
 
 
 //_______________________________________________________________________________________
@@ -612,7 +650,7 @@ void CCMSingletTriplet::SingletTriplet()
     // -------------------------------------------------------
     // Required: make sure the PMT is to be used for the analysis
     if (!PMTInfoMap::IsActive(key)) {
-      // if (debugFlag) std::cout << "*** ERROR: PMT IS NOT IN DB, event: " << evt << " key: " << key << " pulse: " << loc << std::endl;
+      if (fPrintDebugStatements) MsgInfo(MsgLog::Form("*** INFO: PMT IS NOT ACTIVE, event: ??  key: %ld  pulse: %ld", key, loc));
       continue;
     }
 
@@ -626,7 +664,7 @@ void CCMSingletTriplet::SingletTriplet()
     // Required: make sure the PMT info is present
     pmtInfo = PMTInfoMap::GetPMTInfo(key);
     if (!pmtInfo) {
-      // std::cout << "*** ERROR: PMT INFO NOT PRESENT" << std::endl;
+      MsgError("*** ERROR: PMT INFO NOT PRESENT");
       continue;
     }
 
@@ -687,7 +725,7 @@ void CCMSingletTriplet::SingletTriplet()
     myTime = (time * ( (16 * pow(10,3)) / 8000));
     
     if (myTime == -999 || myTime < 0 || myTime > (16 * pow(10,3))) {
-      // if (debugFlag) std::cout << "*** ERROR: BAD NS TIME: " << myTime << std::endl;
+      MsgError(MsgLog::Form("*** ERROR: BAD NS TIME: %lf", myTime));
       continue;
     }
     
@@ -720,7 +758,7 @@ void CCMSingletTriplet::SingletTriplet()
     // -------------------------------------------------------
     pulseIntegral = fPulses->GetPulseIntegral(loc);
     if (pulseIntegral < 0 || std::isnan(pulseIntegral) || std::isinf(pulseIntegral)) {
-      // std::cout << "*** ERROR: BAD PULSE INTEGRAL: " << pulseIntegral << std::endl;
+      MsgError(MsgLog::Form("*** ERROR: BAD PULSE INTEGRAL: %lf", pulseIntegral));
       continue;
     }
     
@@ -738,7 +776,7 @@ void CCMSingletTriplet::SingletTriplet()
     // -------------------------------------------------------
     threshold = pmtInfo -> GetADCThreshold();
     if (pulseIntegral < threshold) {
-      // if (debugFlag) std::cout << "*** ERROR: PULSE BELOW ADC THRESHOLD " << threshold << '\t' << pulseIntegral << std::endl;
+      if (fPrintDebugStatements) MsgInfo(MsgLog::Form("*** INFO: PULSE BELOW ADC THRESHOLD threshold: %lf  pulse integral: %lf", threshold, pulseIntegral));
       continue;
     }
     
@@ -746,7 +784,7 @@ void CCMSingletTriplet::SingletTriplet()
     
     if (pe <= 0) {
       // this happens a lot.  why??  values are -7.07503, no variation
-      // if (debugFlag) std::cout << "*** ERROR: BAD PE " << pe << std::endl;
+      MsgError(MsgLog::Form("*** ERROR: BAD PE pe: %lf", pe));
       continue;
     }
     
@@ -792,7 +830,7 @@ void CCMSingletTriplet::SingletTriplet()
     thisbin = h_hasDAQnstimePulse -> FindBin(myTime);
     
     if (thisbin == -999 || myTime < -9920 || myTime > 6080) {
-      //std::cout << "**** WARNING BAD SHIFTED DAQ NS TIME: " << myTime << " , bin " << thisbin << std::endl;
+      MsgWarning(MsgLog::Form("**** WARNING BAD SHIFTED DAQ NS TIME: %lf  bin: %ld", myTime, thisbin));
     }
     
     h_hasDAQnstimePulse -> AddBinContent(thisbin, 1); 
@@ -846,26 +884,15 @@ void CCMSingletTriplet::SingletTriplet()
   // IGNORE UNDERFLOW BIN
   // *******************************************************************************
 
-  /*
-  // check to see if there is a cut on which pulses to include (fMyBool, from xml file)
-  // if so, apply cut based on values in .xml file
-  time = fPulses->GetPulseTime(loc);
-  
-  if (fMyBool) {
-  if (time < fMyLowValue || time > fMyHighValue) continue;
-  } // end if bool cut
-  */
-    
-  
   // -------------------------------------------------------
   // ********** SINGLET **********
-  // look for singlet start: first bin with pe >= 5, valid time range
+  // look for singlet start: first bin with pe >= 5 (default), valid time range
   // FYI cosmics are HUGE, >20 pe or more
   // -------------------------------------------------------
   int foundStart = -1;
   
   for (int i = 1; i <= h_event_int -> GetNbinsX(); i++) {
-    if (h_event_int -> GetBinContent(i) >= 5) {
+    if (h_event_int -> GetBinContent(i) >= fSingletMinPE) {
       foundStart = i;
       // if (debugFlag) std::cout << "EVENT: " << evt << " found singlet start bin " << foundStart << std::endl;
     }
@@ -888,14 +915,11 @@ void CCMSingletTriplet::SingletTriplet()
   // ------------------------------------------------------------
   int starttime =  (h_event_int -> GetBinLowEdge(foundStart)) + 1; // DAQ time in ns, +1 to put it in middle of bin b/c 2 ns wide bins
   
-  int singletwidth = 0.09 * pow(10, 3); // need to convert mu sec into ns, start t = 0 at time of first pe bin and go up 0.09 mu sec (90 ns!) 
-  int triprange = (4.0 * pow(10, 3)); // need to convert mu sec into ns, start t = 0 at end of singlet peak window and go up 4000 ns 
-  
   singletLowBin = h_event_int -> FindBin(starttime);
-  singletHighBin = h_event_int -> FindBin(starttime + singletwidth);
+  singletHighBin = h_event_int -> FindBin(starttime + fSingletTimeWidth);
   
-  eventEndBin = h_event_int -> FindBin(starttime + singletwidth+ triprange);
-  
+  eventEndBin = h_event_int -> FindBin(starttime + fSingletTimeWidth+ fTripletTimeWidth);
+
   
   // ------------------------------------------------------------
   // get max of EVENT = not the same as max of the histo (aka entire DAQ range)!
@@ -906,41 +930,29 @@ void CCMSingletTriplet::SingletTriplet()
   maxbin = h_event_int -> GetMaximumBin();
   h_event_int -> GetXaxis() -> UnZoom();
   
-  /*
+  
   // ------------------------------------------------------------
   // **** DEBUG ****
   // print out singlet info before check the bin ranges
   // (counter foundStrobe set to 1 first time we find one, thus need to - 1 to get first histo in array)
   // ------------------------------------------------------------
-  if (debugFlag) {
+  if (fPrintDebugStatements) {
     
-    std::cout << "DEBUG: event " << evt << " number of strobe event = " << foundStrobe - 1
-	      << " singlet start bin = " << foundStart << " pe value = " << h_event_int -> GetBinContent(foundStart)
-	      << " bin low edge (DAQ time, ns) = " << h_event_int -> GetBinLowEdge(foundStart) 
-	      << " bin up edge (DAQ time, ns) = " << h_event_int -> GetBinLowEdge(foundStart+1)
-	      << " evt max pe bin = " << maxbin << " pe value = " << h_event_int -> GetBinContent(maxbin)
-	      << std::endl;
+    MsgInfo(MsgLog::Form("DEBUG: event ??? number of strobe event = %ld, singlet start bin = %ld, pe value = %lf, bin low edge (DAQ time, ns) = %lf, bin up edge (DAQ time, ns) = %lf, evt max pe bin = %ld, pe value = %lf", foundStrobe - 1, foundStart, h_event_int -> GetBinContent(foundStart), h_event_int -> GetBinLowEdge(foundStart), h_event_int -> GetBinLowEdge(foundStart+1), maxbin, h_event_int -> GetBinContent(maxbin)));
     
     // low edge bin of singlet = bin containing the low edge of the first pe above threshold
-    // high bin edge of singlet = bin containing the high edge of the first pe above threshold + singletwidth
-    std::cout << "DEBUG: singlet start time (DAQ, ns) = " << starttime << " lowest bin of singlet = " << singletLowBin
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletLowBin) << " to " 
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletLowBin + 1) << std::endl;
-    std::cout << "   upper bin of singlet = " << singletHighBin 
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletHighBin) << " to " 
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletHighBin + 1) << std::endl;
+    // high bin edge of singlet = bin containing the high edge of the first pe above threshold + fSingletTimeWidth
+    
+    MsgInfo(MsgLog::Form("DEBUG: singlet start time (DAQ, ns) = %lf, lowest bin of singlet = %ld, DAQ time (ns) = %lf to DAQ time (ns) = %lf, upper bin of singlet =%ld, DAQ time (ns) = %lf to DAQ time (ns) = %lf", starttime, singletLowBin, h_event_int -> GetBinLowEdge(singletLowBin), h_event_int -> GetBinLowEdge(singletLowBin + 1), singletHighBin, h_event_int -> GetBinLowEdge(singletHighBin), h_event_int -> GetBinLowEdge(singletHighBin + 1)));
     
   } // debugFlag for singlet
-  */
+  
     
   // ------------------------------------------------------------
   // check bin ranges are acceptable
   // ------------------------------------------------------------
   if ( (h_event_int -> GetBinLowEdge(singletLowBin) < -9920) || (h_event_int -> GetBinLowEdge(singletHighBin + 1) > 6080) ) {
-    // if (debugFlag)
-    //std::cout << "*** ERROR: bin range for singlet peak outside of DAQ window, Event: " << evt << " Strobe Event: " << foundStrobe - 1
-    //		<< " Lower Bin Value = " << h_event_int -> GetBinLowEdge(singletLowBin)
-    //		<< " Upper Bin Value = " << h_event_int -> GetBinLowEdge(singletHighBin + 1) << std::endl;
+    MsgError(MsgLog::Form("*** ERROR: bin range for singlet peak outside of DAQ window, Event: ??, Strobe Event: %ld, Lower Bin Value = %lf, Upper Bin Value = %lf", foundStrobe - 1, h_event_int -> GetBinLowEdge(singletLowBin), h_event_int -> GetBinLowEdge(singletHighBin + 1)));
     return;
   }
   
@@ -951,13 +963,13 @@ void CCMSingletTriplet::SingletTriplet()
   // check the max bin lies in the singlet (prompt) region
   // ------------------------------------------------------------
   if (maxbin < singletLowBin || maxbin > singletHighBin) {
-    //if (debugFlag) std::cout << "*** ERROR: maxbin is outside of the prompt region, Event: " << evt
-    //			     << " Strobe Event: " << foundStrobe - 1 << std::endl;
+    MsgError(MsgLog::Form("*** ERROR: maxbin is outside of the prompt region, Event: ??, Strobe Event: %ld", foundStrobe - 1));
+    
     // if events fail plot the max pe value
     h_maxpe -> Fill(h_event_int -> GetBinContent(maxbin));
     // also plot the delta time between maxbin and singlet start/end 
     if (maxbin < singletLowBin)  h_deltatime -> Fill(h_event_int -> GetBinLowEdge(maxbin) - starttime);
-    if (maxbin > singletHighBin) h_deltatime -> Fill(h_event_int -> GetBinLowEdge(maxbin) - (starttime + singletwidth));					      
+    if (maxbin > singletHighBin) h_deltatime -> Fill(h_event_int -> GetBinLowEdge(maxbin) - (starttime + fSingletTimeWidth));					      
     return;
   }
     
@@ -978,40 +990,32 @@ void CCMSingletTriplet::SingletTriplet()
   
   tripletLowBin = singletHighBin + 1; // start right after singlet ends
   
-  int tripfullrange = starttime + singletwidth + triprange; // (singlet start time + singlet range = end bin of singlet) + triplet range
+  int tripfullrange = starttime + fSingletTimeWidth + fTripletTimeWidth; // (singlet start time + singlet range = end bin of singlet) + triplet range
+    
   tripletHighBin = h_event_int -> FindBin(tripfullrange);
   
   
   if (h_event_int -> FindBin(tripfullrange) > 8099) {
     // 8100  bins in this histo, 0 = underflow, 8101 = overflow
-    // std::cout << "**** WARNING: upper bin of triplet integral outside reasonable bounds, only integrating to 6080 ns DAQ time.  Event "
-    //		<< evt << " Strobe Event: " << foundStrobe - 1 << std::endl;
+    MsgWarning(MsgLog::Form("**** WARNING: upper bin of triplet integral outside reasonable bounds, only integrating to 6080 ns DAQ time.  Event ???, Strobe Event: %ld", foundStrobe - 1));
     tripletHighBin = 8100;
   }
   
-  /*
+  
   // ------------------------------------------------------------
   // **** DEBUG ****
   // print out our triplet info before we check the bin ranges
   // ------------------------------------------------------------
-  if (debugFlag) {
-    std::cout << "DEBUG: lowest bin of triplet = " << tripletLowBin 
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(tripletLowBin)  << " to " 
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(tripletLowBin + 1)  << std::endl;
-    std::cout << "   upper bin of triplet = " << tripletHighBin 
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(tripletHighBin)  << " to " 
-	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(tripletHighBin + 1)  << std::endl;
+  if (fPrintDebugStatements) {
+    MsgInfo(MsgLog::Form("DEBUG: lowest bin of triplet = %ld, DAQ time (ns) = %lf to DAQ time (ns) = %lf, upper bin of triplet = %ld, DAQ time (ns) = %lf to  DAQ time (ns) = %lf", tripletLowBin,  h_event_int -> GetBinLowEdge(tripletLowBin), h_event_int -> GetBinLowEdge(tripletLowBin + 1), tripletHighBin, h_event_int -> GetBinLowEdge(tripletHighBin), h_event_int -> GetBinLowEdge(tripletHighBin + 1)));
   }
-  */
+  
   
   // ------------------------------------------------------------
   // check bin ranges are acceptable
   // ------------------------------------------------------------
   if ( (h_event_int -> GetBinLowEdge(tripletLowBin) < -9920) || (h_event_int -> GetBinLowEdge(tripletHighBin + 1) > 6080) ) {
-    //if (debugFlag)
-    //std::cout << "*** ERROR: bin range for triplet peak outside of DAQ window, Event: " << evt << " Event: " << foundStrobe - 1 
-    //		<< " Lower Bin Value = " << h_event_int -> GetBinLowEdge(tripletLowBin)
-    //		<< " Upper Bin Value = " << h_event_int -> GetBinLowEdge(tripletHighBin + 1) << std::endl;
+    MsgError(MsgLog::Form("*** ERROR: bin range for triplet peak outside of DAQ window, Event: ??, Event: %ld, Lower Bin Value = %lf, Upper Bin Value = %lf", foundStrobe - 1, h_event_int -> GetBinLowEdge(tripletLowBin), h_event_int -> GetBinLowEdge(tripletHighBin + 1)));
     return;
   }
   
@@ -1026,16 +1030,15 @@ void CCMSingletTriplet::SingletTriplet()
   notrip = 0;
   tripInt = h_event_int -> Integral(tripletLowBin, tripletHighBin);
   
-  // if (debugFlag) std::cout << "Singlet Integral: " << singInt << " Triplet Integral: " << tripInt << std::endl;
+  if (fPrintDebugStatements) MsgInfo(MsgLog::Form("Singlet Integral: %lf, Triplet Integral: %lf", singInt, tripInt));
+  
   h_singletpe -> Fill(singInt);
   h_tripletpe -> Fill(tripInt);
   
-  double tripThreshold = 5; // because why not, if singlet has min of 5 p.e.
   
-  if (tripInt < tripThreshold) {
+  if (tripInt < fTripletMinPE) {
     notrip = 1;
-    // std::cout << "*** ERROR: TRIPLET NOT ABOVE THRESHOLD, Event: "
-    //		<< evt << " Strobe Event: " << foundStrobe - 1 << std::endl;
+    MsgError(MsgLog::Form("*** ERROR: TRIPLET NOT ABOVE THRESHOLD, Event: ?? Strobe Event: %ld", foundStrobe - 1));
   }
 
         
@@ -1045,8 +1048,8 @@ void CCMSingletTriplet::SingletTriplet()
   if (tripInt > 0) ratio = singInt / tripInt;
   else ratio = 0;
   
-  // if (debugFlag && ratio > 1) std::cout << " ----------------------- WTF ratio greater than 1!  Event: " << evt << " Ratio: " << ratio << std::endl;
-
+  if (fPrintDebugStatements && ratio > 1)  MsgInfo(MsgLog::Form(" ----------------------- WTF ratio greater than 1!  Event: ?? Ratio: %lf", ratio));
+  
   
   // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   // write out events of interest to ntuple
@@ -1074,32 +1077,7 @@ void CCMSingletTriplet::SingletTriplet()
   this_ratio += ratio;
   num_ratios += 1;
   
-  
 
-  // get var from event we want to write out to ntuple
-  // fmyOutDouble = simplifiedEvent.GetIntegralTank(true);
-  // fEnergy = simplifiedEvent.GetIntegralTank(true);
-  
-  
-  // auto itMyVectorBegin = fMyVector.begin();
-  // auto itPulsesTimeBegin = fPulsesTime.begin();
-  
-  // fPulsesTime.at(bin) += hitFraction;
-  
-  
-  
-  // *************************************************************
-  // Examples of how to use the output logging function
-  // Look at MsgLog: print frequency/situation depends on numbers (1, 2, 3, etc) 
-  // *************************************************************
-  if (MsgLog::GetGlobalLogLevel()) {
-    MsgDebug(2,MsgLog::Form("Print one number %d and a second %d",fMyLowValue, fMyHighValue));
-  }
-  
-  if (MsgLog::GetGlobalLogLevel()) {
-    MsgDebug(1,"Veto prompt integral");
-  }
-  
   
 } // SingletTriplet
 

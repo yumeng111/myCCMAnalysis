@@ -9,6 +9,7 @@
 #include <algorithm>
 
 class TFile;
+class TH1;
 class TH1D;
 class TH1F;
 class TH2F;
@@ -64,7 +65,6 @@ class CCMSingletTriplet : public CCMModule
   void ConnectRawData(std::shared_ptr<RawData> rawData)  { fRawData = rawData; }
   void ConnectPulses(std::shared_ptr<Pulses> pulses) {fPulses = pulses; }
   void ConnectOutFileName(std::string name) { fOutFileName = name; SetupOutFile();}
-  
   // should have already run FindEvent module to get specific events/triggers
   // you need for your analysis, however you may need to check the trigger
   // type, etc.
@@ -76,23 +76,12 @@ class CCMSingletTriplet : public CCMModule
   // ex: use double to set threshold, string to set trigger type, bool to
   //     set a flag to do/not do parts of code
   // ***************************************************************
-  void SetMyDouble(double myDouble) { fMyDouble = myDouble; }
-  //    void SetThreshold(double threshold) { fThreshold = threshold; }
+  void SetSingletMinPE(double singletMinPE) {fSingletMinPE = singletMinPE; }
+  void SetSingletTimeWidth(double singletTimeWidth) {fSingletTimeWidth = singletTimeWidth; }
   
-  void SetMyString(std::string myString) { fMyString = myString; }
-  //    void SetTriggerType(std::string triggerType) { fTriggerType = triggerType; }
-  
-  void SetMyBool(bool myBool) { fMyBool = myBool; }
-  //    void SetPulseTimeCut(bool flag) { fPulseTimeCut = flag; }
-  
-  
-  // parameters that are set if your Bool is true
-  void SetMyLowValue(double myValue) { fMyLowValue = myValue; }
-  //    void SetPulseTimeLowValue(double value) { fPulseTimeLowValue = value; }
-  
-  void SetMyHighValue(double myValue) { fMyHighValue = myValue; }
-  //    void SetPulseTimeHighValue(double value) { fPulseTimeHighValue = value; }
-  
+  void SetTripletMinPE(double tripletMinPE) {fTripletMinPE = tripletMinPE; }
+  void SetTripletTimeWidth(double tripletTimeWidth) {fTripletTimeWidth = tripletTimeWidth; }
+
   
   void SetTreeName(std::string treeName) { fTreeName = treeName; }
   
@@ -101,10 +90,11 @@ class CCMSingletTriplet : public CCMModule
   void SetupOutFile();
   
   // ***************************************************************
-  // Define vectors & histograms used & reset them
+  // Define vectors & histograms used & reset them & prettify them
   // ***************************************************************
   void DefineVarsAndHistos();
   void ResetVarsAndHistos();
+  void PrettyHist(TH1 *hist, const char *myX, const char *myY, int statFlag);
   
   
   // ***************************************************************
@@ -138,40 +128,25 @@ class CCMSingletTriplet : public CCMModule
   // ***************************************************************  
   // Module-specific vars based on your input parameters in .xml
   // ***************************************************************
-  double fMyDouble;
-  //  double fThreshold;
-  
-  std::string fMyString;
-  //  std::string fTriggerType;
-  
-  // vars used to apply or not apply analysis cuts
-  int fMyBool;
-  //  int fPulseTimeCut;
-  
-  
-  // vars that are set/used if fMyBool == TRUE
-  double fMyLowValue;
-  //  double fPulseTimeLowValue;
-  double fMyHighValue;
-  //  double fPulseTimeHighValue;
-  
+  double fSingletMinPE;
+  double fSingletTimeWidth;
+
+  double fTripletMinPE;
+  double fTripletTimeWidth;
+
+  int fSaveDebugPlots;
+  int fPrintDebugStatements;
   
   // var needed to put tree in the output file
   std::string fTreeName;
-  
-  
-  // ***************************************************************
-  // Example vector for body of code (eg SingletTriplet function)
-  // ***************************************************************
-  std::vector<float> fMyVector;
-  //   std::vector<float> fPulsesTime;
-  
+ 
   
   // ***************************************************************
   // Output file & histos written to file
   // ***************************************************************
   TFile * fOutfile;
   TTree * fTree;
+
   
   // *******************************************************************************
   // declare vars for ntuple and ntuple here
@@ -187,6 +162,7 @@ class CCMSingletTriplet : public CCMModule
   int tripletLowBin;
   int tripletHighBin;
   int notrip;
+
   
   // *******************************************************************************
   // declare histograms, arrays of histograms
@@ -235,6 +211,7 @@ class CCMSingletTriplet : public CCMModule
   TH1F *h_maxpe;
   TH1F *h_deltatime;
 
+  
   // *******************************************************************************
   // this is for the analysis
   // *******************************************************************************

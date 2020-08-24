@@ -44,7 +44,7 @@
   <!-- HERE YOU PUT ALL OF YOUR INPUT PARAMETERS -->  
   <Config name="CCMSingletTriplet" version="default">
     
-    <Param name="TriggerType"><string>BEAM</string>
+    <Param name="TriggerType"><string>STROBE</string>
     Only look at triggers with name passed.
     Options are:
     - BEAM
@@ -54,26 +54,33 @@
     and any combination of the three, like BEAM STROBE
     </Param>
 
-    <Param name="MyDouble"><double> 0.4 </double>
-    Example double input parameter
+    <Param name="SingletMinPE"><double> 5.0 </double>
+    Min p.e. for finding singlet peak
     </Param>
     
-    <Param name="MyString"><string>BEAM</string>
-    Example string input parameter
+    <Param name="SingletTimeWidth"><double> 90.0 </double>
+    Time-window to integrate the singlet peak                    
     </Param>
     
-    <Param name="MyBool"><int>0</int>
-    Bool flag to do a cut or not do a cut
+    <Param name="TripletMinPE"><double> 5.0 </double> 
+    Min p.e. for triplet peak    </Param>
+    
+    <Param name="TripletTimeWidth"><double> 4000.0 </double> 
+    Time-window to integrate the triplet peak               
     </Param>
+    
+    <Param name="SaveDebugPlots"><int> 0 </int>                             
+    Print out debug plots to output .root file
+    Debug == 1: pre-quality cut plots
+    Debug == 2: pulse time
+    Debug == 3: singlet and triplet candidate integrals
+    Debug == 4: plot of max pe peak relative to prompt singlet
+    </Param>
+    
 
-    
-    <Param name="MyLowValue"><double>9920</double>
-    Parameter needed if a bool do cut is true
-    </Param>
-    <Param name="MyHighValue"><double>6080</double>
-    Parameter needed if a bool do cut is true
-    </Param>
-    
+   <Param name="PrintDebugStatements"><int> 1 </int>                              
+   Print out debug statements, only for this module
+   </Param>
 
     <!-- DON'T NEED OUTPUT FILE NAME HERE; GET OUTPUT FILE
 	 NAME FROM COMMAND LINE WHEN LAUNCH JOB -->
