@@ -8,6 +8,12 @@
  * !!!! VIP !!!!
  * Users must also edit the CMakeLists.txt and LinkDef.h files
  * in the module subdir where your module resides (eg reco)
+ *
+ *
+ * TO DO: AUGUST 25, 2020
+ * 1. change my xml parameter for debug statements to use real CCM code msg service things (see email from Tyler)
+ * 2. why am I only looking for 1 s/t in a trigger window?  there could be more!  change to look for all
+ *
  ***********************************************/
 // include your .h file here
 #include "CCMSingletTriplet.h"
@@ -650,7 +656,7 @@ void CCMSingletTriplet::SingletTriplet()
     // -------------------------------------------------------
     // Required: make sure the PMT is to be used for the analysis
     if (!PMTInfoMap::IsActive(key)) {
-      if (fPrintDebugStatements) MsgInfo(MsgLog::Form("*** INFO: PMT IS NOT ACTIVE, event: ??  key: %ld  pulse: %ld", key, loc));
+      if (fPrintDebugStatements == 2) MsgInfo(MsgLog::Form("*** INFO: PMT IS NOT ACTIVE, event: ??  key: %ld  pulse: %ld", key, loc));
       continue;
     }
 
@@ -776,7 +782,7 @@ void CCMSingletTriplet::SingletTriplet()
     // -------------------------------------------------------
     threshold = pmtInfo -> GetADCThreshold();
     if (pulseIntegral < threshold) {
-      if (fPrintDebugStatements) MsgInfo(MsgLog::Form("*** INFO: PULSE BELOW ADC THRESHOLD threshold: %lf  pulse integral: %lf", threshold, pulseIntegral));
+      if (fPrintDebugStatements == 2) MsgInfo(MsgLog::Form("*** INFO: PULSE BELOW ADC THRESHOLD threshold: %lf  pulse integral: %lf", threshold, pulseIntegral));
       continue;
     }
     
@@ -920,7 +926,7 @@ void CCMSingletTriplet::SingletTriplet()
   
   eventEndBin = h_event_int -> FindBin(starttime + fSingletTimeWidth+ fTripletTimeWidth);
 
-  
+
   // ------------------------------------------------------------
   // get max of EVENT = not the same as max of the histo (aka entire DAQ range)!
   // ------------------------------------------------------------
@@ -938,13 +944,23 @@ void CCMSingletTriplet::SingletTriplet()
   // ------------------------------------------------------------
   if (fPrintDebugStatements) {
     
-    MsgInfo(MsgLog::Form("DEBUG: event ??? number of strobe event = %ld, singlet start bin = %ld, pe value = %lf, bin low edge (DAQ time, ns) = %lf, bin up edge (DAQ time, ns) = %lf, evt max pe bin = %ld, pe value = %lf", foundStrobe - 1, foundStart, h_event_int -> GetBinContent(foundStart), h_event_int -> GetBinLowEdge(foundStart), h_event_int -> GetBinLowEdge(foundStart+1), maxbin, h_event_int -> GetBinContent(maxbin)));
+    MsgInfo(MsgLog::Form("DEBUG: event ??? number of strobe event = %d, singlet start bin = %d, pe value = %f, bin low edge (DAQ time, ns) = %f, bin up edge (DAQ time, ns) = %f, evt max pe bin = %d, pe value = %f", foundStrobe - 1, foundStart, h_event_int -> GetBinContent(foundStart), h_event_int -> GetBinLowEdge(foundStart), h_event_int -> GetBinLowEdge(foundStart+1), maxbin, h_event_int -> GetBinContent(maxbin)));
     
     // low edge bin of singlet = bin containing the low edge of the first pe above threshold
     // high bin edge of singlet = bin containing the high edge of the first pe above threshold + fSingletTimeWidth
-    
-    MsgInfo(MsgLog::Form("DEBUG: singlet start time (DAQ, ns) = %lf, lowest bin of singlet = %ld, DAQ time (ns) = %lf to DAQ time (ns) = %lf, upper bin of singlet =%ld, DAQ time (ns) = %lf to DAQ time (ns) = %lf", starttime, singletLowBin, h_event_int -> GetBinLowEdge(singletLowBin), h_event_int -> GetBinLowEdge(singletLowBin + 1), singletHighBin, h_event_int -> GetBinLowEdge(singletHighBin), h_event_int -> GetBinLowEdge(singletHighBin + 1)));
-    
+    /*
+      // b/c msg services formatting was f-ing things up, this is a cross-check I've got printing done right
+    std::cout << "DEBUG: singlet start time (DAQ, ns) = " << starttime << " lowest bin of singlet = " << singletLowBin
+	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletLowBin) << " to " 
+	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletLowBin + 1) << std::endl;
+    std::cout << "   upper bin of singlet = " << singletHighBin 
+	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletHighBin) << " to " 
+	      << " DAQ time (ns) = " << h_event_int -> GetBinLowEdge(singletHighBin + 1) << std::endl;
+    */
+
+    MsgInfo(MsgLog::Form("DEBUG: singlet start time (DAQ, ns) = %d, lowest bin of singlet = %i, DAQ time (ns) = %f to DAQ time (ns) = %f", starttime, singletLowBin, h_event_int -> GetBinLowEdge(singletLowBin), h_event_int -> GetBinLowEdge(singletLowBin + 1)));
+    MsgInfo(MsgLog::Form("DEBUG: singlet .... upper bin of singlet =%i, DAQ time (ns) = %f to DAQ time (ns) = %f", singletHighBin, h_event_int -> GetBinLowEdge(singletHighBin), h_event_int -> GetBinLowEdge(singletHighBin + 1)));
+
   } // debugFlag for singlet
   
     
@@ -952,7 +968,7 @@ void CCMSingletTriplet::SingletTriplet()
   // check bin ranges are acceptable
   // ------------------------------------------------------------
   if ( (h_event_int -> GetBinLowEdge(singletLowBin) < -9920) || (h_event_int -> GetBinLowEdge(singletHighBin + 1) > 6080) ) {
-    MsgError(MsgLog::Form("*** ERROR: bin range for singlet peak outside of DAQ window, Event: ??, Strobe Event: %ld, Lower Bin Value = %lf, Upper Bin Value = %lf", foundStrobe - 1, h_event_int -> GetBinLowEdge(singletLowBin), h_event_int -> GetBinLowEdge(singletHighBin + 1)));
+    MsgError(MsgLog::Form("*** ERROR: bin range for singlet peak outside of DAQ window (-9920 to 6080), Event: ??, Strobe Event: %ld, Lower Bin Value = %f, Upper Bin Value = %f", foundStrobe - 1, h_event_int -> GetBinLowEdge(singletLowBin), h_event_int -> GetBinLowEdge(singletHighBin + 1)));
     return;
   }
   
@@ -963,7 +979,7 @@ void CCMSingletTriplet::SingletTriplet()
   // check the max bin lies in the singlet (prompt) region
   // ------------------------------------------------------------
   if (maxbin < singletLowBin || maxbin > singletHighBin) {
-    MsgError(MsgLog::Form("*** ERROR: maxbin is outside of the prompt region, Event: ??, Strobe Event: %ld", foundStrobe - 1));
+    if (fPrintDebugStatements) MsgWarning(MsgLog::Form("*** WARNING: maxbin is outside of the prompt region, Event: ??, Strobe Event: %d, maxbin: %d, singlet range: %d to %d", foundStrobe - 1, maxbin, singletLowBin, singletHighBin));
     
     // if events fail plot the max pe value
     h_maxpe -> Fill(h_event_int -> GetBinContent(maxbin));
@@ -997,7 +1013,7 @@ void CCMSingletTriplet::SingletTriplet()
   
   if (h_event_int -> FindBin(tripfullrange) > 8099) {
     // 8100  bins in this histo, 0 = underflow, 8101 = overflow
-    MsgWarning(MsgLog::Form("**** WARNING: upper bin of triplet integral outside reasonable bounds, only integrating to 6080 ns DAQ time.  Event ???, Strobe Event: %ld", foundStrobe - 1));
+    MsgWarning(MsgLog::Form("**** WARNING: upper bin of triplet integral outside reasonable bounds, only integrating to 6080 ns DAQ time.  Event ???, Strobe Event: %d", foundStrobe - 1));
     tripletHighBin = 8100;
   }
   
@@ -1007,7 +1023,7 @@ void CCMSingletTriplet::SingletTriplet()
   // print out our triplet info before we check the bin ranges
   // ------------------------------------------------------------
   if (fPrintDebugStatements) {
-    MsgInfo(MsgLog::Form("DEBUG: lowest bin of triplet = %ld, DAQ time (ns) = %lf to DAQ time (ns) = %lf, upper bin of triplet = %ld, DAQ time (ns) = %lf to  DAQ time (ns) = %lf", tripletLowBin,  h_event_int -> GetBinLowEdge(tripletLowBin), h_event_int -> GetBinLowEdge(tripletLowBin + 1), tripletHighBin, h_event_int -> GetBinLowEdge(tripletHighBin), h_event_int -> GetBinLowEdge(tripletHighBin + 1)));
+    MsgInfo(MsgLog::Form("DEBUG: lowest bin of triplet = %d, DAQ time (ns) = %f to DAQ time (ns) = %f, upper bin of triplet = %d, DAQ time (ns) = %f to  DAQ time (ns) = %f", tripletLowBin,  h_event_int -> GetBinLowEdge(tripletLowBin), h_event_int -> GetBinLowEdge(tripletLowBin + 1), tripletHighBin, h_event_int -> GetBinLowEdge(tripletHighBin), h_event_int -> GetBinLowEdge(tripletHighBin + 1)));
   }
   
   
@@ -1015,7 +1031,7 @@ void CCMSingletTriplet::SingletTriplet()
   // check bin ranges are acceptable
   // ------------------------------------------------------------
   if ( (h_event_int -> GetBinLowEdge(tripletLowBin) < -9920) || (h_event_int -> GetBinLowEdge(tripletHighBin + 1) > 6080) ) {
-    MsgError(MsgLog::Form("*** ERROR: bin range for triplet peak outside of DAQ window, Event: ??, Event: %ld, Lower Bin Value = %lf, Upper Bin Value = %lf", foundStrobe - 1, h_event_int -> GetBinLowEdge(tripletLowBin), h_event_int -> GetBinLowEdge(tripletHighBin + 1)));
+    MsgError(MsgLog::Form("*** ERROR: bin range for triplet peak outside of DAQ window, Event: ??, Event: %d, Lower Bin Value = %f, Upper Bin Value = %f", foundStrobe - 1, h_event_int -> GetBinLowEdge(tripletLowBin), h_event_int -> GetBinLowEdge(tripletHighBin + 1)));
     return;
   }
   
@@ -1030,7 +1046,7 @@ void CCMSingletTriplet::SingletTriplet()
   notrip = 0;
   tripInt = h_event_int -> Integral(tripletLowBin, tripletHighBin);
   
-  if (fPrintDebugStatements) MsgInfo(MsgLog::Form("Singlet Integral: %lf, Triplet Integral: %lf", singInt, tripInt));
+  if (fPrintDebugStatements) MsgInfo(MsgLog::Form("Singlet Integral: %f, Triplet Integral: %f", singInt, tripInt));
   
   h_singletpe -> Fill(singInt);
   h_tripletpe -> Fill(tripInt);
@@ -1038,7 +1054,7 @@ void CCMSingletTriplet::SingletTriplet()
   
   if (tripInt < fTripletMinPE) {
     notrip = 1;
-    MsgError(MsgLog::Form("*** ERROR: TRIPLET NOT ABOVE THRESHOLD, Event: ?? Strobe Event: %ld", foundStrobe - 1));
+    MsgError(MsgLog::Form("*** ERROR: TRIPLET NOT ABOVE THRESHOLD, Event: ?? Strobe Event: %d", foundStrobe - 1));
   }
 
         
@@ -1048,7 +1064,7 @@ void CCMSingletTriplet::SingletTriplet()
   if (tripInt > 0) ratio = singInt / tripInt;
   else ratio = 0;
   
-  if (fPrintDebugStatements && ratio > 1)  MsgInfo(MsgLog::Form(" ----------------------- WTF ratio greater than 1!  Event: ?? Ratio: %lf", ratio));
+  if (fPrintDebugStatements && ratio > 1)  MsgInfo(MsgLog::Form(" ----------------------- WTF ratio greater than 1!  Event: ?? Ratio: %f", ratio));
   
   
   // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

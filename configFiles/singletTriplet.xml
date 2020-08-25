@@ -78,7 +78,7 @@
     </Param>
     
 
-   <Param name="PrintDebugStatements"><int> 1 </int>                              
+   <Param name="PrintDebugStatements"><int> 0 </int>                              
    Print out debug statements, only for this module
    </Param>
 
