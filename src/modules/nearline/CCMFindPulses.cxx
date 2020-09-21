@@ -96,6 +96,10 @@ CCMFindPulses::~CCMFindPulses()
 CCMResult_t CCMFindPulses::ProcessTrigger()
 {
 
+  if (MsgLog::GetGlobalDebugLevel() >= 1) {
+    MsgDebug(1,"Starting FindPulses for Trigger");
+  }
+
   RawData localCopy(*fReadData);
   if (fFromRootFile) {
     localCopy = *fRawData;

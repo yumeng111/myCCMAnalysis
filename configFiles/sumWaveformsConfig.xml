@@ -44,7 +44,37 @@
   </Config>
 
   <Config name="CCMSumWaveforms" version="default">
-    no parameters needed at this time
+    <Param name="TriggerType"><string>BEAM</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="ApplyFP3Offset"><int>0</int>
+      If true apply the time offset between FP3 and CCM
+    </Param>
+    <Param name="DoBCMCut"><int>1</int>
+      Flag to reject events based off the BCM cut
+    </Param>
+    <Param name="BCMTimeLowCut"><double>-377.39</double>
+      Low cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMTimeHighCut"><double>-314.15</double>
+      High cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthLowCut"><double>505.5</double>
+      Low cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthHighCut"><double>646.5</double>
+      High cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
   </Config>
 
 

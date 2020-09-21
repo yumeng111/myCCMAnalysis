@@ -50,6 +50,7 @@ class CCMNa22Cuts : public CCMModule
     void ConnectEvents(std::shared_ptr<Events> evt) { fEvents = evt; }
     void ConnectOutFileName(std::string name) { fOutFileName = name; SetupOutFile(); }
 
+    void SetDoBCMCut(bool flag) {fDoBCMCut = flag;}
     void SetDoVetoCut(bool flag) {fDoVetoCut = flag;}
     void SetDoPositionCut(bool flag) {fDoPositionCut = flag;}
     void SetDoEnergyCut(bool flag) {fDoEnergyCut = flag;}
@@ -60,6 +61,12 @@ class CCMNa22Cuts : public CCMModule
     void SetReverseVetoCut(bool flag) {fReverseVeto = flag;}
     void SetDoWaveformMaxCut(bool flag) {fWaveformMaxCut = flag;}
 
+    void SetBCMTimeLowCut( double value) { fBCMTimeLowCut = value; }
+    void SetBCMTimeHighCut( double value) { fBCMTimeHighCut = value; }
+    void SetBCMLengthLowCut( double value) { fBCMLengthLowCut = value; }
+    void SetBCMLengthHighCut( double value) { fBCMLengthHighCut = value; }
+    void SetBCMIntegralLowCut( double value) { fBCMIntegralLowCut = value; }
+    void SetBCMIntegralHighCut( double value) { fBCMIntegralHighCut = value; }
     void SetNumVetoCut(int value) {fNumVetoCut = value;}
     void SetPrevCutTime(double value) {fPrevCutTime = value;}
     void SetZCutValueLow(double value) {fZCutValueLow = value;}
@@ -80,6 +87,17 @@ class CCMNa22Cuts : public CCMModule
     void SetTreeName(std::string treeName) { fTreeName = treeName; }
     void SetRemoveOtherEventsFlag(bool flag) { fRemoveOtherEvents = flag;}
     void SetRemovePrimaryEventsFlag(bool flag) { fRemovePrimaryEvents = flag;}
+
+    bool PassedVetoCut(int vetoTotal);
+    bool PassedPositionCut(double x, double y, double z);
+    bool PassedEnergyCut(double energy);
+    bool PassedPrevCut(const double kStartTime, const long kStartingIndex);
+    bool PassedLengthCut(double length);
+    bool PassedTimeCut(double time);
+    bool PassedNicenessCut(double energy, int hits, double largestFrac);
+    bool PassedWaveformMaxCut(double length, double maxWFTime);
+    bool PassedNumHitsCut(double hits);
+    bool PassedBCMCut(double bcmTime, double bcmLength, double bcmIntegral);
 
   private:
 
@@ -103,6 +121,7 @@ class CCMNa22Cuts : public CCMModule
 
     int fRemovePrimaryEvents;
     int fRemoveOtherEvents;
+    int fDoBCMCut;
     int fDoVetoCut;
     int fDoPositionCut;
     int fDoEnergyCut;
@@ -122,8 +141,15 @@ class CCMNa22Cuts : public CCMModule
     bool fPassedNicenessCut;
     bool fPassedWaveformMaxCut;
     bool fPassedNumHitsCut;
+    bool fPassedBCMCut;
 
     int fNumVetoCut;
+    double fBCMTimeLowCut;
+    double fBCMTimeHighCut;
+    double fBCMLengthLowCut;
+    double fBCMLengthHighCut;
+    double fBCMIntegralLowCut;
+    double fBCMIntegralHighCut;
     double fRadiusCutValueLow;
     double fRadiusCutValueHigh;
     double fZCutValueLow;
@@ -164,6 +190,9 @@ class CCMNa22Cuts : public CCMModule
     double fZ;
     double fLargestPMTFraction;
     unsigned int fEpochSec;
+    double fBCMTime;
+    double fBCMLength;
+    double fBCMIntegral;
 };
 
 #endif // CCMNa22Cuts_h

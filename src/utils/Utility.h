@@ -149,7 +149,8 @@ namespace Utility
   template<class T>
    T & Add(T & left, const T & right);
 
-  extern void ParseStringForRunNumber(std::string name, int & run, int & subrun);
+  extern void ParseStringForRunNumber(std::string name, int & run, int & subrun, 
+      int * day = 0, int * month = 0, int * time = 0);
 
   template<typename T>
    int FindFirstNoneEmptyBin(typename std::vector<T>::iterator begin, 
@@ -164,7 +165,7 @@ namespace Utility
   extern std::string ConvertCCMAccumWaveformMethodToString(CCMAccumWaveformMethod_t accumWaveform);
   extern CCMAccumWaveformMethod_t ConvertStringToCCMAccumWaveformMethod(std::string name);
 
-  extern double ShiftTime(int start, int beamTime);
+  extern double ShiftTime(int start, int beamTime, bool applyFP3Offset = true);
 
   extern std::vector<std::string> GetListOfFiles(const char * file_regexp);
 

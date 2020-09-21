@@ -11,9 +11,6 @@
   <Modules type="Reco"> CCMNearlineDiag </Modules>
 
   <Config name="CCMNearlineDiag" version="default">
-    <Param name="InFileName"><string> fileListForLED.txt </string>
-      Name of the file that contains the list of files to loop over
-    </Param>
     <Param name="WriteDBEntry"><int> 0 </int>
       A flag, if non-zero, will try to add the file information to the database
     </Param>

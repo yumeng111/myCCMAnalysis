@@ -40,9 +40,9 @@ void PMTInfoMap::DefaultFillPMTMap()
 
   std::ifstream infile;
 
-  std::string env = std::getenv("CCMINSTALL");
-  std::string eightInchFile = env + "/mappings/mapping_master_8inch.csv";
-  std::string oneInchFile = env + "/mappings/mapping_master_1inch.csv";
+  std::string env = std::getenv("CCMPROJECT");
+  std::string eightInchFile = env + "/calibrationFiles/2019/mapping_master_8inch.csv";
+  std::string oneInchFile = env + "/calibrationFiles/2019/mapping_master_1inch.csv";
 
   MsgInfo(MsgLog::Form("Loading 8in map from %s",eightInchFile.c_str()));
   infile.open(eightInchFile.c_str());
@@ -481,8 +481,8 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
   }
 
   if (fileName == "default" || fileName == "") {
-    std::string env = std::getenv("CCMINSTALL");
-    fileName = env + "/mappings/hv_off_2019.csv";
+    std::string env = std::getenv("CCMPROJECT");
+    fileName = env + "/calibrationFiles/2019/hv_off_2019.csv";
   }
 
   MsgInfo(MsgLog::Form("hvOffList %s",fileName.c_str()));
@@ -530,6 +530,11 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
 
   if (fileName == "") {
     MsgFatal("No file name passed. Exiting");
+  }
+
+  if (fileName == "default" || fileName == "") {
+    fileName = std::getenv("CCMPROJECT");
+    fileName += "/calibrationFiles/2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root";
   }
 
   MsgInfo(MsgLog::Form("Loading file from %s",fileName.c_str()));

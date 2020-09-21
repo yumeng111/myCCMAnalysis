@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <Modules type="Reco"> CCMProcessingPlots </Modules>
+  <ModuleVersion> default </ModuleVersion>
+
+  <Config name="ROOTSetup" version="default">
+    <Param name="ReadBranches"><string>events</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+    <Param name="SaveBranches"><string>none</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+  </Config>
+
+  <Config name="PMTMapSetup" version="default">
+    <Param name="MappingFile"><string>default</string>
+      The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
+      Must be the first param in this config
+    </Param>
+    <Param name="HVOffFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/hv_off_2019.csv</string>
+      List of the HV channels that are off.
+    </Param>
+    <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
+      Name of the calibration file to use
+    </Param>
+  </Config>
+
+  <Config name="CCMProcessingPlots" version="default">
+    <Param name="BeamInfoFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/190801_00.SRCM000D01</string>
+      The location of the beam info table
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
+
+

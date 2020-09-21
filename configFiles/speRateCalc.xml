@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+  <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <Modules type="Reco"> CCMFindEvents </Modules>
+  -->
+
+  <Modules type="Reco"> CCMRateCalc </Modules>
+  <ModuleVersion> default </ModuleVersion>
+
+  <Config name="ROOTSetup" version="default">
+    <Param name="ReadBranches"><string>rawData pulses</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - accumWaveform
+      - all
+      - none
+    </Param>
+    <Param name="SaveBranches"><string>none</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - accumWaveform
+      - all
+      - none
+    </Param>
+  </Config>
+
+  <Config name="PMTMapSetup" version="default">
+    <Param name="MappingFile"><string>default</string>
+      The PMT mapping file to read in. If default is passed the files in $CCMPROJECT/calibrationFiles/2019/mapping_master* will be used
+      Must be the first param in this config
+    </Param>
+    <Param name="HVOffFile"><string>default</string>
+      List of the HV channels that are off.
+      default is $CCMPROJECT/calibrationFiles/2019/hv_off_2019.csv
+    </Param>
+    <Param name="CalibrationFile"><string>default</string>
+      Name of the calibration file to use
+      default is $CCMPROJECT/calibrationFiles/2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root
+    </Param>
+  </Config>
+
+  <Config name="CCMRateCalc" version="default">
+    <Param name="WriteDBEntry"><int> 0 </int>
+      A flag, if non-zero, will try to add the file information to the database
+    </Param>
+    <Param name="DBHost"><string> mysql://neutrondaq.lanl.gov/ccmdb </string>
+      The name of the host the database sits on
+    </Param>
+    <Param name="DBUser"><string> ccmdaq </string>
+      The name of the user that will write the entry
+    </Param>
+    <Param name="DBPwd"><string> </string>
+      The password for the user (ask someone to get the password)
+    </Param>
+    <Param name="TriggerType"><string> LED </string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+      and any combination of the three, like BEAM STROBE
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
+
+
+

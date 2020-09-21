@@ -79,6 +79,10 @@ CCMBuildAccumWaveform::~CCMBuildAccumWaveform()
 //_______________________________________________________________________________________
 CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
 {
+  if (MsgLog::GetGlobalDebugLevel() >= 1) {
+    MsgDebug(1,"Starting BuildAccumWaveform for Trigger");
+  }
+
   // create new Events object. This will delete
   // if a previous object was created
   for (auto & method : fBuildMethods) {
@@ -135,6 +139,18 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
   int middle = 0;
   std::string name = "";
 
+  const bool kBuildTriangle = 
+    std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformTriangleID) != fBuildMethods.end();
+
+  const bool kBuildTrianglePulseCut = 
+    std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformTrianglePulseCutID) != fBuildMethods.end();
+
+  const bool kBuildStart = 
+    std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformStartID) != fBuildMethods.end();
+
+  const bool kBuildStartPulseCut = 
+    std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformStartPulseCutID) != fBuildMethods.end();
+
   // loop through the pulses
   const size_t kNumPulses = fPulses->GetNumPulses();
   for (size_t loc = 0; loc < kNumPulses; ++loc) {
@@ -175,13 +191,13 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
     threshold = pmtInfo->GetADCThreshold();
     pe = pmtInfo->GetADCToPE();
 
+    time = std::max(std::min(time,static_cast<double>(Utility::fgkNumBins-1)),0.0);
+
     // if the PMT was a veto pmt see if the integral is above 10
     // keep track the number of times that pmt fired in the DAQ window
     if (pmtInfo->IsVeto()) {
       name = pmtInfo->GetLocName();
       if (pulseIntegral > 5) {
-        firstBin = std::max(time,0.0);
-
         CCMAccWaveform_t waveform = kCCMVetoTotalTimeID;
 
         // veto top tubes
@@ -222,11 +238,11 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
             continue;
           }
 
-          fAccumWaveform->FillIndex(firstBin,1.0,methodID,kCCMPMTWaveformCountID,key);
-          fAccumWaveform->FillIndex(firstBin,1.0,methodID,kCCMPMTWaveformID,key);
+          fAccumWaveform->FillIndex(static_cast<int>(time),1.0,methodID,kCCMPMTWaveformCountID,key);
+          fAccumWaveform->FillIndex(static_cast<int>(time),1.0,methodID,kCCMPMTWaveformID,key);
 
-          fAccumWaveform->FillIndex(firstBin,1.0,methodID,waveform);
-          fAccumWaveform->FillIndex(firstBin,1.0,methodID,kCCMVetoTotalTimeID);
+          fAccumWaveform->FillIndex(static_cast<int>(time),1.0,methodID,waveform);
+          fAccumWaveform->FillIndex(static_cast<int>(time),1.0,methodID,kCCMVetoTotalTimeID);
         }
       } // end if pulseIntegral is greater than 5
 
@@ -256,15 +272,14 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
     // the start representation
     // of the pulse
     /////////////////////////////////////////////
-    if (std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformStartID) != fBuildMethods.end()) {
+    if (kBuildStart) {
       fAccumWaveform->FillIndex(static_cast<int>(time),1,kCCMAccumWaveformStartID,kCCMPMTWaveformCountID,key);
       fAccumWaveform->FillIndex(static_cast<int>(time),pulseIntegral,kCCMAccumWaveformStartID,kCCMPMTWaveformID,key);
       fAccumWaveform->FillIndex(static_cast<int>(time),1.0,kCCMAccumWaveformStartID,kCCMPulsesTimeID);
       fAccumWaveform->FillIndex(static_cast<int>(time),pulseIntegral,kCCMAccumWaveformStartID,kCCMIntegralTimeID);
     }
 
-    if (passPulseTimeCut && 
-        std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformStartPulseCutID) != fBuildMethods.end()) {
+    if (passPulseTimeCut && kBuildStartPulseCut) {
       fAccumWaveform->FillIndex(static_cast<int>(time),1,kCCMAccumWaveformStartPulseCutID,kCCMPMTWaveformCountID,key);
       fAccumWaveform->FillIndex(static_cast<int>(time),pulseIntegral,kCCMAccumWaveformStartPulseCutID,kCCMPMTWaveformID,key);
 
@@ -277,7 +292,7 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
     // the triangle representation
     // of the pulse
     /////////////////////////////////////////////
-    firstBin = std::max(time,0.0);
+    firstBin = time;
     lastBin  = std::min(time+length,static_cast<double>(Utility::fgkNumBins));
     middle = (lastBin + firstBin)/2.0;
 
@@ -286,11 +301,10 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
     // as a triangle where the area of the triangle is
     // equal to to the pulseIntegral
 
-    if (std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformTriangleID) != fBuildMethods.end()) {
+    if (kBuildTriangle) {
       fAccumWaveform->FillIndex(firstBin,1,kCCMAccumWaveformTriangleID,kCCMPMTWaveformCountID,key);
     }
-    if (passPulseTimeCut && 
-        std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformTrianglePulseCutID) != fBuildMethods.end()) {
+    if (passPulseTimeCut && kBuildTrianglePulseCut) {
       fAccumWaveform->FillIndex(firstBin,1,kCCMAccumWaveformTrianglePulseCutID,kCCMPMTWaveformCountID,key);
     }
 
@@ -310,14 +324,13 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
         hitFraction = 2.0/(lastBin-firstBin);
       }
 
-      if (std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformTriangleID) != fBuildMethods.end()) {
+      if (kBuildTriangle) {
         fAccumWaveform->FillIndex(bin,integral,kCCMAccumWaveformTriangleID,kCCMPMTWaveformID,key);
         fAccumWaveform->FillIndex(bin,hitFraction,kCCMAccumWaveformTriangleID,kCCMPulsesTimeID);
         fAccumWaveform->FillIndex(bin,integral,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
       }
 
-      if (passPulseTimeCut &&
-          std::find(fBuildMethods.begin(),fBuildMethods.end(),kCCMAccumWaveformTrianglePulseCutID) != fBuildMethods.end()) {
+      if (passPulseTimeCut && kBuildTrianglePulseCut) {
         fAccumWaveform->FillIndex(bin,integral,kCCMAccumWaveformTrianglePulseCutID,kCCMPMTWaveformID,key);
         fAccumWaveform->FillIndex(bin,hitFraction,kCCMAccumWaveformTrianglePulseCutID,kCCMPulsesTimeID);
         fAccumWaveform->FillIndex(bin,integral,kCCMAccumWaveformTrianglePulseCutID,kCCMIntegralTimeID);

@@ -7,6 +7,8 @@
 #include <map>
 #include <ctime>
 
+#include "THnSparse.h"
+
 class TFile;
 class TH1D;
 class TTree;
@@ -88,9 +90,7 @@ class CCMProcessingPlots : public CCMModule
     std::shared_ptr<TH1D> fCCMEventsTimeHist;
     std::shared_ptr<TH1D> fCCMEventsTimeIntHist;
 
-    std::shared_ptr<TH1D> fBCMTimeHist;
-    std::shared_ptr<TH1D> fBCMIntegralHist;
-    std::shared_ptr<TH1D> fBCMWidthHist;
+    std::shared_ptr<THnSparseF> fBCM3DHist;
 
     std::shared_ptr<TH1D> fPromptTopVeto;
     std::shared_ptr<TH1D> fPromptBottomVeto;
@@ -108,6 +108,7 @@ class CCMProcessingPlots : public CCMModule
     // input from other time frames
     unsigned int fCurrentTime;
     double fSumBCMIntegralTime;
+    double fSumBCMTimeTime;
     double fSumBCMWidthTime;
     double fSumPromptTopVetoTime;
     double fSumPromptBottomVetoTime;

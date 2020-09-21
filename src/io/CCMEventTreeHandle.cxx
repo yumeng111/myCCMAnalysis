@@ -136,7 +136,8 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
   }
   if(fEventsTree == nullptr) {
     fInputFile->ls();
-    MsgFatal(MsgLog::Form("Failed to find %s or %s in file %s",gsRawData,gsEvents,fInputFile->GetName()));
+    MsgError(MsgLog::Form("Failed to find %s or %s in file %s",gsRawData,gsEvents,fInputFile->GetName()));
+    return 0;
   }
 
   if (MsgLog::GetGlobalDebugLevel() >= 2) {
@@ -233,7 +234,8 @@ int CCMEventTreeHandle::SetupOutputFile(TFile & f)
 
   fOutEventTree = new TTree(gsEvents, gsEvents);
   if(fOutEventTree == nullptr) {
-    MsgFatal("Problem setting up output tree!");
+    MsgError("Problem setting up output tree!");
+    return 0;
   }
 
   int sLvl = fgkSplitLevel;

@@ -11,11 +11,14 @@
 #include <cstdio>
 
 /*!**********************************************
- * \fn void Utility::ParseStringForRunNumber(std::string name, int & run int & subrun)
+ * \fn void Utility::ParseStringForRunNumber(std::string name, int & run int & subrun, int * month, int * day, int * time)
  * \brief Parses the passed string to get the run and subrun numbers
  * \param[in] name The string to parse
  * \param[out] run The output run number
  * \param[out] subrun The output subrun number
+ * \param[out] month The output month
+ * \param[out] day The output day
+ * \param[out] time The output time
  *
  * Assumes the format of the name is the same as to which was used
  * during the 2019 run cycle, which was
@@ -25,7 +28,7 @@
  * and DATE was in the format of %m-%d-%H%M. This function
  * currently does nothing with the DATE
  ***********************************************/
-void Utility::ParseStringForRunNumber(std::string name, int & run, int & subrun)
+void Utility::ParseStringForRunNumber(std::string name, int & run, int & subrun, int * month, int * day, int * time)
 {
   MsgDebug(2,MsgLog::Form("Input string: %s",name.c_str()));
   // find where "run" occurs in the string
@@ -41,16 +44,51 @@ void Utility::ParseStringForRunNumber(std::string name, int & run, int & subrun)
   // get the run number and the subrun number in string format
   std::string runNumber = "";
   std::string subRunNumber = "";
-  runNumber.assign(name,locOfRun+3+7,6);
-  subRunNumber.assign(name,locOfRun+3+7+6+1,6);
+  std::string dayS = "";
+  std::string monthS= "";
+  std::string timeS= "";
+  size_t startLocation = locOfRun+3+7;
+  runNumber.assign(name,startLocation,6);
+  startLocation += 7;
+  subRunNumber.assign(name,startLocation,6);
+  startLocation += 7;
+  monthS.assign(name,startLocation,2);
+  startLocation += 3;
+  dayS.assign(name,startLocation,2);
+  startLocation += 3;
+  timeS.assign(name,startLocation,4);
 
-  MsgDebug(2,MsgLog::Form("String form runNumber = %s, subRunNumber = %s",runNumber.c_str(),subRunNumber.c_str()));
+  if (MsgLog::GetGlobalDebugLevel() >= 2) {
+    MsgDebug(2,MsgLog::Form("String form runNumber = %s, subRunNumber = %s month = %s day = %s time = %s",
+          runNumber.c_str(),subRunNumber.c_str(),monthS.c_str(),dayS.c_str(),timeS.c_str()));
+  }
 
   // convert the strings to int
   run = std::stoi(runNumber);
   subrun = std::stoi(subRunNumber);
 
-  MsgDebug(2,MsgLog::Form("Integer form runNumber %d subRunNumber = %d",run,subrun));
+  if (MsgLog::GetGlobalDebugLevel() >= 3) {
+    MsgDebug(3,MsgLog::Form("Integer form runNumber %d subRunNumber = %d",run,subrun));
+  }
+
+  if (day) {
+    *day = std::stoi(dayS);
+    if (MsgLog::GetGlobalDebugLevel() >= 3) {
+      MsgDebug(3,MsgLog::Form("Integer form day = %d",*day));
+    }
+  }
+  if (month) {
+    *month = std::stoi(monthS);
+    if (MsgLog::GetGlobalDebugLevel() >= 3) {
+      MsgDebug(3,MsgLog::Form("Integer form month = %d",*month));
+    }
+  }
+  if (time) {
+    *time = std::stoi(timeS);
+    if (MsgLog::GetGlobalDebugLevel() >= 3) {
+      MsgDebug(3,MsgLog::Form("Integer form time = %d",*time));
+    }
+  }
 
   return;
 }
@@ -142,6 +180,7 @@ CCMAccumWaveformMethod_t Utility::ConvertStringToCCMAccumWaveformMethod(std::str
  *  \brief Shift the time of the event based on the BCM and FP3 time offsets
  *  \param[in] start The start bin of the pulse
  *  \param[in] beamOffset The time in the DAQ window the BCM was observed
+ *  \param[in] applyFP3Offset If true apply the FP3Offset correction (default: true)
  *  \return The time of the event in ns (input is bin count) 
  *
  *  Shift the time of the pulse to account for the jitter of the BCM. #Utility::fgkFP3Offset 
@@ -151,12 +190,16 @@ CCMAccumWaveformMethod_t Utility::ConvertStringToCCMAccumWaveformMethod(std::str
  *  If beamTime == 0 then the trigger was STROBE or LED so shift the time of the event 
  *  based on the DAQ window true start time (#Utility::fgkWindowStartTime)
  ***********************************************/
-double Utility::ShiftTime(int time, int beamOffset)
+double Utility::ShiftTime(int time, int beamOffset, bool applyFP3Offset)
 {
   // shift the time of the pulse to account for the jitter of the BCM
   // the shift by Utility::fgkFP3Offset is to account for the time difference
   // between the PMTs in CCM and the EJ301 detector in FP3
-  double shiftTime = static_cast<double>(time - beamOffset + fgkFP3Offset)*fgkBinWidth;
+  int temp = time - beamOffset;
+  if (applyFP3Offset) {
+    temp += fgkFP3Offset;
+  }
+  double shiftTime = static_cast<double>(temp)*fgkBinWidth;
 
   // if fBeamTime == 0 then the trigger was STROBE or LED
   // so shift the time of the event based on the DAQ window

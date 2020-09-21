@@ -76,6 +76,10 @@ CCMFindEvents::~CCMFindEvents()
 //_______________________________________________________________________________________
 CCMResult_t CCMFindEvents::ProcessTrigger()
 {
+  if (MsgLog::GetGlobalDebugLevel() >= 1) {
+    MsgDebug(1,"Starting FindEvents for Trigger");
+  }
+
   // create new Events object. This will delete
   // if a previous object was created
   if (fResetEvents) {
@@ -109,8 +113,8 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
       continue;
     }
 
-    if (MsgLog::GetGlobalLogLevel() >= 2) {
-      MsgDebug(2,MsgLog::Form("Above threshold %zu",timeBin));
+    if (MsgLog::GetGlobalLogLevel() >= 3) {
+      MsgDebug(3,MsgLog::Form("Above threshold %zu",timeBin));
     }
 
     startBin = timeBin;
@@ -122,8 +126,8 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
     if (startBin >= static_cast<int>(Utility::fgkNumBins)) {
       MsgFatal(MsgLog::Form("Start Bin is greater than or equal to total number of bins: event %ld bin %zu startBin %d",
             fEvents->GetEventNumber(),timeBin,startBin));
-    } else if (MsgLog::GetGlobalLogLevel() >= 2) {
-        MsgDebug(2,MsgLog::Form("event %ld bin %zu start bin = %d",fEvents->GetEventNumber(),timeBin,startBin));
+    } else if (MsgLog::GetGlobalLogLevel() >= 3) {
+        MsgDebug(3,MsgLog::Form("event %ld bin %zu start bin = %d",fEvents->GetEventNumber(),timeBin,startBin));
     }
 
     // find end of event: defined as 10 consecutive empty bins
@@ -144,14 +148,14 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
 
     if (endBin >= static_cast<int>(Utility::fgkNumBins)) {
       MsgFatal(MsgLog::Form("event %ld bin %zu endBin %d",fEvents->GetEventNumber(),timeBin,endBin));
-    } else if (MsgLog::GetGlobalLogLevel() >= 2) {
-      MsgDebug(2,MsgLog::Form("event %ld bin %zu start bin = %d and end bin = %d",fEvents->GetEventNumber(),timeBin,startBin,endBin));
+    } else if (MsgLog::GetGlobalLogLevel() >= 3) {
+      MsgDebug(3,MsgLog::Form("event %ld bin %zu start bin = %d and end bin = %d",fEvents->GetEventNumber(),timeBin,startBin,endBin));
     }
 
     if (endBin <= startBin) {
       MsgFatal(MsgLog::Form("event %ld bin %zu startBin %d endBin %d",fEvents->GetEventNumber(),timeBin,startBin,endBin));
-    } else if (MsgLog::GetGlobalLogLevel() >= 2) {
-      MsgDebug(2,MsgLog::Form("event %ld bin %zu start bin = %d and end bin = %d",fEvents->GetEventNumber(),timeBin,startBin,endBin));
+    } else if (MsgLog::GetGlobalLogLevel() >= 3) {
+      MsgDebug(3,MsgLog::Form("event %ld bin %zu start bin = %d and end bin = %d",fEvents->GetEventNumber(),timeBin,startBin,endBin));
     }
 
     // now that we have the start and end of the event grab
@@ -218,8 +222,8 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
       break;
     } // end if integralTime->at(bin2+1) < ...
   } // end for size_t bin2 = startBin
-  if (MsgLog::GetGlobalLogLevel() >= 2) {
-    MsgDebug(2,MsgLog::Form("event %ld Peak Location = %d",fEvents->GetEventNumber(),peakLoc));
+  if (MsgLog::GetGlobalLogLevel() >= 4) {
+    MsgDebug(4,MsgLog::Form("event %ld Peak Location = %d",fEvents->GetEventNumber(),peakLoc));
   }
 
   // recalculte the start time based on the rise slope of the event
@@ -234,30 +238,30 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
   float c1 = 0;
 
   for (int bin2 = startBin; bin2 < (peakLoc+startBin)/2; ++bin2) {
-    if (MsgLog::GetGlobalLogLevel() >= 4) {
-      MsgDebug(4,MsgLog::Form("event %ld Peak location loop bin %d",fEvents->GetEventNumber(),bin2));
+    if (MsgLog::GetGlobalLogLevel() >= 6) {
+      MsgDebug(6,MsgLog::Form("event %ld Peak location loop bin %d",fEvents->GetEventNumber(),bin2));
     }
     xPoints.push_back(bin2);
     yPoints.push_back(fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID));
   }
   Utility::LinearUnweightedLS(xPoints.size(),&xPoints.front(),&yPoints.front(),c0,c1);
-  if (MsgLog::GetGlobalLogLevel() >= 4) {
-    MsgDebug(4,"Did LinearUnweightedLS");
+  if (MsgLog::GetGlobalLogLevel() >= 6) {
+    MsgDebug(6,"Did LinearUnweightedLS");
   }
 
   // find the first non-empty start bin
   // important for calculating position
   // and integrals
-  if (MsgLog::GetGlobalLogLevel() >= 2) {
-    MsgDebug(2,MsgLog::Form("Event %ld Fit results: -c0 = %.3f c1 = %.3f start = %d",fEvents->GetEventNumber(),-c0,c1,static_cast<int>(-c0/c1)));
+  if (MsgLog::GetGlobalLogLevel() >= 4) {
+    MsgDebug(4,MsgLog::Form("Event %ld Fit results: -c0 = %.3f c1 = %.3f start = %d",fEvents->GetEventNumber(),-c0,c1,static_cast<int>(-c0/c1)));
   }
   if (-c0/c1 > 0 && -c0/c1 < startBin) {
     startBin = static_cast<int>(-c0/c1);
     while (fAccumWaveform->GetIndex(startBin,fAccumWaveformMethodID,kCCMIntegralTimeID) == 0) {
       ++startBin;
     }
-    if (MsgLog::GetGlobalLogLevel() >= 4) {
-      MsgDebug(4,MsgLog::Form("Final startBin = %d",startBin));
+    if (MsgLog::GetGlobalLogLevel() >= 6) {
+      MsgDebug(6,MsgLog::Form("Final startBin = %d",startBin));
     }
   }
 
@@ -342,8 +346,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   end90nsBin = std::min(startBin+numBins90ns,Utility::fgkNumBins-1);;
   endTotalBin = std::min(endBin,Utility::fgkNumBins-1);
 
-  if (MsgLog::GetGlobalLogLevel() >= 2) {
-    MsgDebug(2,MsgLog::Form("end90nsBin = %d endTotalBin = %d",end90nsBin,endTotalBin));
+  if (MsgLog::GetGlobalLogLevel() >= 4) {
+    MsgDebug(4,MsgLog::Form("end90nsBin = %d endTotalBin = %d",end90nsBin,endTotalBin));
   }
 
 
@@ -354,8 +358,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   maxVetoPromptStart = 0;
   maxVetoPromptEnd = 0;
   vetoIntLength = std::min(numBins90ns,endBin-start);
-  if (MsgLog::GetGlobalLogLevel() >= 2) {
-    MsgDebug(2,MsgLog::Form("Length of veto integral = %d",vetoIntLength));
+  if (MsgLog::GetGlobalLogLevel() >= 4) {
+    MsgDebug(4,MsgLog::Form("Length of veto integral = %d",vetoIntLength));
   }
   for (vetoBin = start; vetoBin+vetoIntLength <= endBin; ++vetoBin) {
     current = fAccumWaveform->Integrate(vetoBin,vetoBin+vetoIntLength,fAccumWaveformMethodID,kCCMVetoTotalTimeID);
@@ -374,8 +378,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
     }
   }
 
-  if (MsgLog::GetGlobalLogLevel() >= 1) {
-    MsgDebug(1,MsgLog::Form("maxVetoStart %d maxVetoEnd %d",maxVetoStart,maxVetoEnd));
+  if (MsgLog::GetGlobalLogLevel() >= 3) {
+    MsgDebug(3,MsgLog::Form("maxVetoStart %d maxVetoEnd %d",maxVetoStart,maxVetoEnd));
   }
   vetoActivityTop = fAccumWaveform->Integrate(maxVetoStart,maxVetoEnd,fAccumWaveformMethodID,kCCMVetoTopTimeID);
   vetoActivityCRight = fAccumWaveform->Integrate(maxVetoStart,maxVetoEnd,fAccumWaveformMethodID,kCCMVetoCRightTimeID);
@@ -384,8 +388,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   vetoActivityCBack = fAccumWaveform->Integrate(maxVetoStart,maxVetoEnd,fAccumWaveformMethodID,kCCMVetoCBackTimeID);
   vetoActivityBottom = fAccumWaveform->Integrate(maxVetoStart,maxVetoEnd,fAccumWaveformMethodID,kCCMVetoBottomTimeID);
 
-  if (MsgLog::GetGlobalLogLevel() >= 1) {
-    MsgDebug(1,"Veto prompt integral");
+  if (MsgLog::GetGlobalLogLevel() >= 3) {
+    MsgDebug(3,"Veto prompt integral");
   }
 
   vetoActivityPromptTop = fAccumWaveform->Integrate(maxVetoPromptStart,maxVetoPromptEnd,fAccumWaveformMethodID,
@@ -401,8 +405,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   vetoActivityPromptBottom = fAccumWaveform->Integrate(maxVetoPromptStart,maxVetoPromptEnd,fAccumWaveformMethodID,
       kCCMVetoBottomTimeID);
 
-  if (MsgLog::GetGlobalLogLevel() >= 1) {
-    MsgDebug(1,"Get first none empty bin for the veto tubes");
+  if (MsgLog::GetGlobalLogLevel() >= 3) {
+    MsgDebug(3,"Get first none empty bin for the veto tubes");
   }
   vetoTimeTop = fAccumWaveform->FindFirstNoneEmptyBin(start,endBin,fAccumWaveformMethodID,kCCMVetoTopTimeID);
   vetoTimeCRight =  fAccumWaveform->FindFirstNoneEmptyBin(start,endBin,fAccumWaveformMethodID,kCCMVetoCRightTimeID);
@@ -430,8 +434,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   if (vetoTimeBottom >= 0) {
     vetoTimeBottom = Utility::ShiftTime(vetoTimeBottom,fAccumWaveform->GetBeamOffset());
   }
-  if (MsgLog::GetGlobalLogLevel() >= 2) {
-    MsgDebug(2,"Got first none empty bin for the veto tubes");
+  if (MsgLog::GetGlobalLogLevel() >= 4) {
+    MsgDebug(4,"Got first none empty bin for the veto tubes");
   }
 
   //MsgInfo(MsgLog::Form("Max Veto Location(Prompt) %d(%d) Amount(Prompt) %d(%d)",
@@ -456,8 +460,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   largestPMTFraction = 0.0;
   numPMTs = 0;
 
-  if (MsgLog::GetGlobalLogLevel() >= 3) {
-    MsgDebug(3,"Loop over pmts");
+  if (MsgLog::GetGlobalLogLevel() >= 6) {
+    MsgDebug(6,"Loop over pmts");
   }
   for (pmt=0; pmt < Utility::fgkNumPMTs; ++pmt) {
     pmtInfo = PMTInfoMap::GetPMTInfo(pmt);
@@ -469,8 +473,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
     }
 
     // find integral for the entire event window
-    if (MsgLog::GetGlobalLogLevel() >= 4) {
-      MsgDebug(4,Form("PMT %d total",pmt));
+    if (MsgLog::GetGlobalLogLevel() >= 7) {
+      MsgDebug(7,Form("PMT %d total",pmt));
     }
     total = fAccumWaveform->Integrate(startBin,endTotalBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
     //time = Utility::FindFirstNoneEmptyBin<float>(itPMTWaveformBegin,itPMTWaveformBegin+startBin,itPMTWaveformBegin+endTotalBin);
@@ -481,8 +485,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
     }
 
     // find integral for the first 90 ns
-    if (MsgLog::GetGlobalLogLevel() >= 4) {
-      MsgDebug(4,Form("PMT %d first 90ns",pmt));
+    if (MsgLog::GetGlobalLogLevel() >= 7) {
+      MsgDebug(7,Form("PMT %d first 90ns",pmt));
     }
     prompt90= fAccumWaveform->Integrate(startBin,end90nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
 
@@ -523,8 +527,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   timeUncoated = Utility::ShiftTime(timeUncoated,fAccumWaveform->GetBeamOffset());
   timeCoated = Utility::ShiftTime(timeCoated,fAccumWaveform->GetBeamOffset());
 
-  if (MsgLog::GetGlobalLogLevel() >= 2) {
-    MsgDebug(2,"Set events parameters");
+  if (MsgLog::GetGlobalLogLevel() >= 4) {
+    MsgDebug(4,"Set events parameters");
   }
 
   // keep track which methods were used to find the event since it all gets put into one big vector
@@ -579,13 +583,13 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
 
   event->SetPMTHits(percentOfPMT);
 
-  if (MsgLog::GetGlobalLogLevel() >= 2) {
-    MsgDebug(2,"Add Event");
+  if (MsgLog::GetGlobalLogLevel() >= 4) {
+    MsgDebug(4,"Add Event");
   }
   fEvents->AddSimplifiedEvent(SimplifiedEvent(*event));
 
-  if (MsgLog::GetGlobalLogLevel()>= 2) {
-    MsgDebug(2,"Reset");
+  if (MsgLog::GetGlobalLogLevel()>= 4) {
+    MsgDebug(4,"Reset");
   }
   event->Reset();
 
@@ -603,8 +607,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   //              std::pow(1.0/(static_cast<float>(percentOfPMT.size())-1.0)*sigmaPercent,3.0/2.0);
   //sigmaPercent = std::sqrt(1.0/(static_cast<float>(percentOfPMT.size())-1.0)*sigmaPercent);
 
-  if (MsgLog::GetGlobalLogLevel() >= 4) {
-    MsgDebug(4,"End of SaveEvent");
+  if (MsgLog::GetGlobalLogLevel() >= 3) {
+    MsgDebug(3,"End of SaveEvent");
   }
 }
 

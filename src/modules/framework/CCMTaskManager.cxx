@@ -222,7 +222,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
   CCMResult_t status = kCCMSuccess;
 
   MsgInfo(MsgLog::Form("FileListSize %zu",fileList.size()));
-  int32_t count = 1;
+  int32_t count = 0;
   int digit = 1;
   int exp = 0;
   int run = 0;
@@ -247,8 +247,8 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
       }
 
       int mod = digit*std::pow(10,exp);
-      if (count%mod == 0) {
-        MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count,Utility::tstamp(),
+      if ((count+1)%mod == 0) {
+        MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count+1,Utility::tstamp(),
               fRootIO->GetTriggerNumber(), fRootIO->CurrentFileName()));
         ++digit;
         if (digit == 10) {

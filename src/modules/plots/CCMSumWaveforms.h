@@ -67,6 +67,17 @@ class CCMSumWaveforms : public CCMModule
 
     // variables for the output tree
     TFile * fOutfile;
+    std::string fTriggerType;
+    int fDoBCMCut;
+    int fApplyFP3Offset;
+    double fBCMTimeLowCut;
+    double fBCMTimeHighCut;
+    double fBCMLengthLowCut;
+    double fBCMLengthHighCut;
+    double fBCMIntegralLowCut;
+    double fBCMIntegralHighCut;
+
+    std::vector<std::shared_ptr<TH1D>> fTimeHistsHit;
     std::vector<std::shared_ptr<TH1D>> fTimeHists;
     std::vector<std::shared_ptr<TH1D>> fTimeHistsInt;
 };

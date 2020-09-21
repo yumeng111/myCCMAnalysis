@@ -105,7 +105,7 @@ CCMResult_t CCMRateCalc::ProcessTrigger()
 
   // keep track of the number of triggers/events are looked at
   // for rate calculation
-  if (fPulses->GetTriggerTime()*2e-3 - 9.92 > -0.5) {
+  if (Utility::ShiftTime(fPulses->GetTriggerTime(),0,false)> -500) {
     ++fTotalTriggers;
 
     AddPulses();
@@ -130,6 +130,13 @@ void CCMRateCalc::Configure(const CCMConfig& c )
   std::locale loc;
   for (auto & c : fTriggerType) {
     std::toupper(c,loc);
+  }
+
+  c("WriteDBEntry").Get(fWriteDBEntry);
+  if (fWriteDBEntry) {
+    c("DBHost").Get(fDBHost);
+    c("DBUser").Get(fDBUser);
+    c("DBPwd").Get(fDBPwd);
   }
 
   fIsInit = true;
@@ -189,7 +196,7 @@ void CCMRateCalc::AddPulses()
         continue;
       } 
 
-      if (time*2e-3 - 9.92 <= -1) {
+      if (Utility::ShiftTime(time,0,false) <= -1000) {
         ++fSPECount[key];
         if (pmtInfo->IsUncoated()){
           fPMTType[key]=2;
@@ -211,26 +218,18 @@ void CCMRateCalc::AddEvents(bool shiftTime)
   for (size_t e = 0; e < kNumEvents; ++e) {
     auto simplifiedEvent = fEvents->GetSimplifiedEvent(e);
 
-    double st = simplifiedEvent.GetStartTime();// - 9.92;
-    double length = simplifiedEvent.GetLength();
+    double st = simplifiedEvent.GetStartTime();
 
-    double promptLength = 0.090;
-    bool longerThanPrompt = length > promptLength;
-
-    double energy = simplifiedEvent.GetIntegralTank(longerThanPrompt);// - randomRate*promptLength;
-    double hits = simplifiedEvent.GetNumCoated(longerThanPrompt);
-
-    if (shiftTime) {
-      st -= 9.92;
-    }
+    double energy = simplifiedEvent.GetIntegralTank(true);
+    double hits = simplifiedEvent.GetNumCoated(true);
 
     if (hits < 3) {
       continue;
     }
 
-    if (st < -1) {
+    if (st < -1000) {
       ++fPreBeamTriggers;
-    } else if (st > -0.35) {
+    } else if (st > -350) {
       fInBeamIntegral += energy;
     }
   }
@@ -264,6 +263,9 @@ CCMResult_t CCMRateCalc::EndOfJob()
       continue;
     }
 
+    // R. T. Thornton - 9/21/2020
+    // the following works since 8.92 is in us and 1000 is converting it to 
+    // whichever Hz order it is suppose to be in
     speRate = fSPECount[pmtc]/(8.92*static_cast<double>(fTotalTriggers))*1000.0;
     spesPerType[fPMTType[pmtc]-1] += speRate;
 

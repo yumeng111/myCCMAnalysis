@@ -195,7 +195,9 @@ bool RawData::IsTriggerPresent(std::string triggerName)
 {
   int boardOffset = GetBoard10ChannelOffset();
 
-  MsgDebug(2,MsgLog::Form("Board Offset = %d",boardOffset));
+  if (MsgLog::GetGlobalDebugLevel() >= 5) {
+    MsgDebug(5,MsgLog::Form("Board Offset = %d",boardOffset));
+  }
 
   int firstSampleStrobe = 0;
   int firstSampleBeam = 0;
@@ -214,7 +216,9 @@ bool RawData::IsTriggerPresent(std::string triggerName)
   } 
 
   if (firstSampleStrobe == 0 && firstSampleBeam == 0 && firstSampleLED == 0) {
-    MsgDebug(1,MsgLog::Form("Trigger name is %s and could not be foud. Skipping Event", triggerName.c_str()));
+    if (MsgLog::GetGlobalDebugLevel() >= 1) {
+      MsgDebug(1,MsgLog::Form("Trigger name is %s and could not be foud. Skipping Event", triggerName.c_str()));
+    }
     return false;
   }
 

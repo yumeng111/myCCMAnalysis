@@ -175,7 +175,7 @@ void NearlineSPEDiag::MakeChainFillPulses(const std::vector<std::string> & fileL
       continue;
     }// end if nbytes
 
-    if (pulses->GetTriggerTime()*2e-3 - 9.92 <= -0.5) {
+    if (Utility::ShiftTime(pulses->GetTriggerTime(),0,false) <= -500) {
       ++totalSkipped;
       continue;
     }
@@ -187,7 +187,7 @@ void NearlineSPEDiag::MakeChainFillPulses(const std::vector<std::string> & fileL
       //if (!pmtInfo) {
       //  continue;
       //}
-      float startTime = pulses->GetPulseTime(pulse)*2e-3 - 9.92;
+      float startTime = Utility::ShiftTime(pulses->GetPulseTime(pulse),0,false);
       float length = pulses->GetPulseLength(pulse);
       if (length*2.0 < 20) {
         continue;
@@ -238,7 +238,7 @@ void NearlineSPEDiag::FillPulses(const Pulses & pulses, double windowStart, doub
 
   size_t numPulses = pulses.GetNumPulses();
   for (size_t pulse = 0; pulse < numPulses; ++pulse) {
-    float startTime = pulses.GetPulseTime(pulse)*2e-3 - 9.92;
+    float startTime = Utility::ShiftTime(pulses.GetPulseTime(pulse),0,false);
     float length = pulses.GetPulseLength(pulse);
     if (length*2.0 < 20) {
       continue;
@@ -364,7 +364,7 @@ void NearlineSPEDiag::CalculateRates()
     // Calculate background subtracted distribution
     std::shared_ptr<TH1D> peHist = fCal.at(i)->GetPEHistPtr();
     std::shared_ptr<TH1D> peHistBefore = fCalBefore.at(i)->GetPEHistPtr();
-    peHistBefore->Scale(std::fabs(fWindowStart - fWindowEnd)/std::fabs(-9.92 - fWindowStart));
+    peHistBefore->Scale(std::fabs(fWindowStart - fWindowEnd)/std::fabs(Utility::fgkWindowStartTime - fWindowStart));
     peHist->Add(peHistBefore.get(),-1.0);
 
 
