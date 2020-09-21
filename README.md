@@ -45,8 +45,15 @@ export CCMPROCESSED=$LUSTRETMP/processedFiles
 
 # need the following to compile the code
 module load cmake/3.14.0
-
 ```
+
+If you are running on the LANL HPC and you want to use the default mappings and calibration files then you should also add
+```bash
+export CCMPROJECT=/usr/projects/w20_ccm_lanl
+```
+to your $HOME/.bash_profile or $HOME/.bashrc file otherwise you will not be able to use the default options when speficifing
+the location of the mappings, and calibration files.
+
 Put the following lines in your ~/.rootlogon.C
 ```c++
 {
