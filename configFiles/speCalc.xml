@@ -56,7 +56,7 @@
        - LED
       and any combination of the three, like BEAM STROBE
     </Param>
-    <Param name="CalibrationFile"><string> root_out_2019ledData_run179_legFix_integral_all_round4_.root </string>
+    <Param name="CalibrationFile"><string>root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
       Name of the calibration file to use
     </Param>
     <Param name="RedoLEDCalib"><int> 0 </int>
