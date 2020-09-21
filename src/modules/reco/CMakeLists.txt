@@ -4,7 +4,6 @@ set(RECO_HEADERS
   CCMNa22Cuts.h
   CCMBuildAccumWaveform.h
   CCMSingletTriplet.h
-  CCMFindMichel.h
   )
 
 
@@ -24,7 +23,6 @@ set(RECO_SRCS
   CCMNa22Cuts.cxx
   CCMBuildAccumWaveform.cxx
   CCMSingletTriplet.cxx
-  CCMFindMichel.cxx
   )
 
 set(RECO_LINKDEF LinkDef.h)
