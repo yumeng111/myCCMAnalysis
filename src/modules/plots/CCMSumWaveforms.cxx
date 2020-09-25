@@ -176,7 +176,7 @@ CCMResult_t CCMSumWaveforms::ProcessTrigger()
   double beamLength = 0;
   auto beamTime = fRawData->GetBCMTime(&beamIntegral,&beamLength);
 
-  if (RawData->IsTriggerPresent("BEAM")) {
+  if (fRawData->IsTriggerPresent("BEAM")) {
     if (fDoBCMCut) {
       double beamTimeShifted = Utility::ShiftTime(beamTime,0,false);
       beamLength *= Utility::fgkBinWidth;
