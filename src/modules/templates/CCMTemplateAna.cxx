@@ -435,11 +435,11 @@ void CCMTemplateAna::TemplateAna()
       // Examples of how to use the output logging function
       // Look at MsgLog: print frequency/situation depends on numbers (1, 2, 3, etc) 
       // *************************************************************
-    if (MsgLog::GetGlobalLogLevel()) {
+    if (MsgLog::GetGlobalDebugLevel()) {
       MsgDebug(2,MsgLog::Form("Print one number %d and a second %d",fMyLowValue, fMyHighValue));
     }
     
-    if (MsgLog::GetGlobalLogLevel()) {
+    if (MsgLog::GetGlobalDebugLevel()) {
       MsgDebug(1,"Veto prompt integral");
     }
 

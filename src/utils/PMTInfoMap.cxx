@@ -8,7 +8,6 @@
 #include "PMTInformation.h"
 #include "MsgLog.h"
 #include "CSVrow.h"
-#include "MsgLog.h"
 
 #include "TFile.h"
 #include "TTree.h"
@@ -78,7 +77,7 @@ void PMTInfoMap::FillPMTMap(TTree * tree)
     tree->GetEntry(entry);
     int key = CreateKey(pmtInfo->GetBoard(),pmtInfo->GetBoardChan());
     if (fgPMTInfo.find(key) == fgPMTInfo.end()) {
-      if (MsgLog::GetGlobalLogLevel() >= 1) {
+      if (MsgLog::GetGlobalDebugLevel() >= 1) {
         MsgDebug(1,MsgLog::Form("Added key %3d board %2d chan %2d col %3d row %3d coated %1d name %s",
               key,pmtInfo->GetBoard(),pmtInfo->GetBoardChan(),pmtInfo->GetColumn(),pmtInfo->GetRow(),
               pmtInfo->IsUncoated(),pmtInfo->GetLocName().c_str()));
@@ -269,7 +268,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
       itMap->second->SetADCToPEDer(adcToPEDer);
       itMap->second->SetADCThreshold(adcThreshold);
       itMap->second->CreateNames();
-      if (MsgLog::GetGlobalLogLevel() >= 1) {
+      if (MsgLog::GetGlobalDebugLevel() >= 1) {
         MsgDebug(1,MsgLog::Form("Added key %3d hvBoard %2d hvChan %2d board %2d chan %2d col %3d row %3d coated %1d name %s",
               key,hvBoard,hvChannel,adcBoardOrder,adcCH,col,row,coating,itMap->second->GetLocName().c_str()));
       }
@@ -499,7 +498,7 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
     ss >> board >> chan;
     int key = ConvertHVBoardChanToKey(board,chan);
 
-    if (MsgLog::GetGlobalLogLevel() >= 1) {
+    if (MsgLog::GetGlobalDebugLevel() >= 1) {
       MsgDebug(1,MsgLog::Form("To Remove HV board %d HV channel %d key %d",board,chan,key));
     }
 
@@ -573,7 +572,7 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
       itMap->second->SetADCThreshold(*speThreshold);
     }
 
-    if (MsgLog::GetGlobalLogLevel() >= 1) {
+    if (MsgLog::GetGlobalDebugLevel() >= 1) {
       MsgDebug(1,MsgLog::Form("PMT %d SPE %.2f Threshold %.2f",*pmtID,itMap->second->GetADCToPE(),itMap->second->GetADCThreshold()));
     }
     
