@@ -176,17 +176,19 @@ CCMResult_t CCMSumWaveforms::ProcessTrigger()
   double beamLength = 0;
   auto beamTime = fRawData->GetBCMTime(&beamIntegral,&beamLength);
 
-  double beamTimeShifted = Utility::ShiftTime(beamTime,0,false);
-  beamLength *= Utility::fgkBinWidth;
+  if (TriggerType.find("BEAM") != std::string::npos) {
+    if (fDoBCMCut) {
+      double beamTimeShifted = Utility::ShiftTime(beamTime,0,false);
+      beamLength *= Utility::fgkBinWidth;
 
-  if (fDoBCMCut) {
-    //if (beamTimeShifted < -345.77-10.54*3.0 || beamTimeShifted > -345.77+10.54*3.0 ||
-    //    beamLength < 576.0-23.5*3.0 || beamLength > 576.0+23.5*3.0 ||
-    //    beamIntegral < 17811.4 || beamIntegral > 30978.4)
-  if (beamTimeShifted < fBCMTimeLowCut || beamTimeShifted > fBCMTimeHighCut ||
-      beamLength < fBCMLengthLowCut || beamLength > fBCMLengthHighCut ||
-      beamIntegral < fBCMIntegralLowCut || beamIntegral > fBCMIntegralHighCut) {
-      return kCCMSuccess;
+      //if (beamTimeShifted < -345.77-10.54*3.0 || beamTimeShifted > -345.77+10.54*3.0 ||
+      //    beamLength < 576.0-23.5*3.0 || beamLength > 576.0+23.5*3.0 ||
+      //    beamIntegral < 17811.4 || beamIntegral > 30978.4)
+      if (beamTimeShifted < fBCMTimeLowCut || beamTimeShifted > fBCMTimeHighCut ||
+          beamLength < fBCMLengthLowCut || beamLength > fBCMLengthHighCut ||
+          beamIntegral < fBCMIntegralLowCut || beamIntegral > fBCMIntegralHighCut) {
+        return kCCMSuccess;
+      }
     }
   } else {
     beamTime = 0;
