@@ -188,6 +188,8 @@ CCMResult_t CCMSumWaveforms::ProcessTrigger()
       beamIntegral < fBCMIntegralLowCut || beamIntegral > fBCMIntegralHighCut) {
       return kCCMSuccess;
     }
+  } else {
+    beamTime = 0;
   }
 
   int key = 0;
