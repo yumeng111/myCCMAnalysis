@@ -22,11 +22,11 @@ if it finishes successfully then run
 `make`
 
 # Output and running with ROOT
-Add the following lines to your ~/.bash_profile, ~/.bashrc (if you are running tcsh then syntax needs to change and you put the code into ~/.tcshrc). Also you must compile for gcc version 4.8.5 when running on LANL HPC computers, thanks to the version used when compiling ROOT.
+Add the following lines to your ~/.bash_profile, ~/.bashrc (if you are running tcsh then syntax needs to change and you put the code into ~/.tcshrc). 
 
 ```bash
 #must have the XERCES environmental variables when running on LANL HPC Computers
-export XERCESINSTALL=$PROJECT/Software/xerces-c-3.2.2_install
+export XERCESINSTALL=$CCMPROJECT/Software/xerces-c-3.2.2_install
 export XERCESINCLUDE=$XERCESINSTALL/include
 export XERCESLIB=$XERCESINSTALL/lib
 
@@ -89,7 +89,7 @@ The class PMTMapInfo handles a map of PMTInformation. PMTInformation is a class 
 about a given PMT that you would want in your analysis.
 The process files create a branch in the tree with the PMTInformation that was used to generate the file.
 You can use the tree to fill the PMT map with `PMTMapInfo::FillPMTMap(TTree * tree)`, or you can use
-`PMTMapInfo::DefaultFillPMTMap()` that will use the mappings/mapping_master*.csv files in your $CCMINSTALL directory
+`PMTMapInfo::DefaultFillPMTMap()` that will use the maps located in $CCMPROJECT/calibrationFiles/2019/
 to populate the map. You can always pass your own .csv file with `PMTMapInfo::FillPMTMap(std::istream& infile)`
 as long as it has the same format as the default .csv files.
 
@@ -101,8 +101,11 @@ as long as it has the same format as the default .csv files.
   - CCMFindPulses(convert binary to ROOT files and creates pulses)
   - CCMSPECalc (calculate SPE calibrations)
   - CCMSRateCalc (calculate SPE rates)
+  - CCMBuildAccum (builds the accumulated waveforms from the pulses)
   - CCMFindEvents (find events and information about them)
   - CCMNa22Cuts (apply cuts on the events that were found)
+  - CCMSumWaveform (creates histograms of various waveforms for plotting purposes, include EJ301 data)
+  - CCMProcessingPlots (copies the output of CCMSumWaveform and creates a version based on the Events that was found, also makes plots based on the BCM information that is stored)
 - <b>If you want to develope your own module or suggest changes to an existing, please let me know.</b>
 
 # Analysis Directory
