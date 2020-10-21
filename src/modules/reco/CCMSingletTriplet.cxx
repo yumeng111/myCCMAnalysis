@@ -275,12 +275,13 @@ CCMResult_t CCMSingletTriplet::ProcessTrigger()
   // so that ProcessEvent isn't one huge unweildy function
   SingletTriplet();
 
- 
+  /*
   // at the end of every event fill the ntuple
   if (fOutfile != nullptr) {
     fOutfile->cd();
     fTree->Fill();
   }
+  */
 
   return kCCMSuccess;
 
@@ -996,7 +997,8 @@ void CCMSingletTriplet::SingletTriplet()
   // get integral for singlet
   // ------------------------------------------------------------
   singInt = h_event_int -> Integral(singletLowBin, singletHighBin);
-  
+
+
   
   // -------------------------------------------------------
   // ********** TRIPLET **********
@@ -1082,17 +1084,24 @@ void CCMSingletTriplet::SingletTriplet()
   thistime = fRawData->GetGPSSecIntoDay(); // this gets sec
   
   h_event_int -> Write();
-  
+
   
   // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   // do an average ratio for all s/t events in input files
   // skip events with no apparent triplet
   // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  if (notrip) return;
+  if (!notrip) {
+    this_ratio += ratio;
+    num_ratios += 1;
+  }
+
   
-  this_ratio += ratio;
-  num_ratios += 1;
-  
+  // for every event passing all cuts fill the ntuple
+  if (fOutfile != nullptr) {
+    fOutfile->cd();
+    fTree->Fill();
+  }
+
 
   
 } // SingletTriplet
