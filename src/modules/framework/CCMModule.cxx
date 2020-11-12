@@ -101,6 +101,13 @@ void CCMModule::ConnectAccumWaveform(std::shared_ptr<AccumWaveform> /* evt */)
 }
 
 //------------------------------------------------------
+void CCMModule::ConnectMCTruth(std::shared_ptr<MCTruth> /* evt */)
+{
+  //Connect the event to be processed
+
+}
+
+//------------------------------------------------------
 void CCMModule::ConnectEvents(std::shared_ptr<Events> /* evt */)
 {
   //Connect the event to be processed

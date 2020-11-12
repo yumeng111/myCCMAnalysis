@@ -16,6 +16,7 @@
 #include "CCMEventTreeHandle.h"
 #include "RawData.h"
 #include "Pulses.h"
+#include "MCTruth.h"
 #include "SimplifiedEvent.h"
 #include "Events.h"
 #include "AccumWaveform.h"
@@ -44,7 +45,8 @@ CCMEventTreeHandle::CCMEventTreeHandle()
   fRawData(new RawData()),
   fPulses(new Pulses()),
   fEvents(new Events()),
-  fAccumWaveform(new AccumWaveform())
+  fAccumWaveform(new AccumWaveform()),
+	fMCTruth(new MCTruth())
 {
   //constructor
   for (int i = 0; i < kNEventBranch; i++) {
@@ -195,6 +197,16 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
     fBranch[kAccumWaveformID] = nullptr;
   }
 
+  if (std::find(fReadBranches.begin(),fReadBranches.end(),"mcTruth") != fReadBranches.end() || 
+      std::find(fReadBranches.begin(),fReadBranches.end(),"all") != fReadBranches.end()) {
+    branch = fBranch[kMCTruthID] = fEventsTree->GetBranch("mcTruth");
+    if(branch != 0) {
+      fBranch[kMCTruthID]->SetAddress(&fMCTruth);
+    }
+  } else {
+    fBranch[kMCTruthID] = nullptr;
+  }
+
   if (MsgLog::GetGlobalDebugLevel() >= 2) {
     MsgDebug(2,"Printing Branches");
     for (const auto & branch : fBranch) {
@@ -253,6 +265,13 @@ int CCMEventTreeHandle::SetupOutputFile(TFile & f)
       fAccumWaveform = new AccumWaveform();
     }
     fOutEventTree->Branch("accumWaveform", &fAccumWaveform, 320000, sLvl);
+  }
+  if (std::find(fSaveBranches.begin(),fSaveBranches.end(),"mcTruth") != fSaveBranches.end() ||
+      std::find(fSaveBranches.begin(),fSaveBranches.end(),"all") != fSaveBranches.end()) {
+    if (fMCTruth == nullptr) {
+      fMCTruth = new MCTruth();
+    }
+    fOutEventTree->Branch("mcTruth", &fMCTruth, 320000, sLvl);
   }
   if (std::find(fSaveBranches.begin(),fSaveBranches.end(),"rawData") != fSaveBranches.end() ||
       std::find(fSaveBranches.begin(),fSaveBranches.end(),"all") != fSaveBranches.end()) {
@@ -392,6 +411,13 @@ AccumWaveform& CCMEventTreeHandle::CurrentAccumWaveform()
 }
 
 //_____________________________________________________________
+MCTruth& CCMEventTreeHandle::CurrentMCTruth()
+{
+  this->Load(kMCTruthID);
+  return *fMCTruth;
+}
+
+//_____________________________________________________________
 Events& CCMEventTreeHandle::CurrentEvents()
 {
   this->Load(kEventsID);
@@ -420,6 +446,16 @@ void CCMEventTreeHandle::SetCurrentAccumWaveform(const AccumWaveform& accumWavef
     return;
   }
   fAccumWaveform->operator=(accumWaveform);
+}
+
+//_____________________________________________________________
+void CCMEventTreeHandle::SetCurrentMCTruth(const MCTruth& mcTruth)
+{
+  if (fMCTruth == nullptr) {
+    fMCTruth = new MCTruth(mcTruth);
+    return;
+  }
+  fMCTruth->operator=(mcTruth);
 }
 
 //_____________________________________________________________

@@ -107,18 +107,28 @@ class CCMProcessingPlots : public CCMModule
     // these maps are saved in the fOutfile for plotting time plots with
     // input from other time frames
     unsigned int fCurrentTime;
-    double fSumBCMIntegralTime;
-    double fSumBCMTimeTime;
-    double fSumBCMWidthTime;
-    double fSumPromptTopVetoTime;
-    double fSumPromptBottomVetoTime;
-    double fSumPromptCLeftVetoTime;
-    double fSumPromptCRightVetoTime;
-    double fSumPromptCFrontVetoTime;
-    double fSumPromptCBackVetoTime;
-    double fSumPromptTotalVetoTime;
-
     double fNumberOfTriggersInSum;
+    std::vector<double> fBCMIntegralTime;
+    std::vector<double> fBCMTimeTime;
+    std::vector<double> fBCMWidthTime;
+    std::vector<double> fPromptTopVetoTime;
+    std::vector<double> fPromptBottomVetoTime;
+    std::vector<double> fPromptCLeftVetoTime;
+    std::vector<double> fPromptCRightVetoTime;
+    std::vector<double> fPromptCFrontVetoTime;
+    std::vector<double> fPromptCBackVetoTime;
+    std::vector<double> fPromptTotalVetoTime;
+    //double fSumBCMIntegralTime;
+    //double fSumBCMTimeTime;
+    //double fSumBCMWidthTime;
+    //double fSumPromptTopVetoTime;
+    //double fSumPromptBottomVetoTime;
+    //double fSumPromptCLeftVetoTime;
+    //double fSumPromptCRightVetoTime;
+    //double fSumPromptCFrontVetoTime;
+    //double fSumPromptCBackVetoTime;
+    //double fSumPromptTotalVetoTime;
+
 
 };
 

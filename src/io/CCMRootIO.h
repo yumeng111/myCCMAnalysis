@@ -22,6 +22,7 @@ class RawData;
 class Events;
 class AccumWaveform;
 class Pulses;
+class MCTruth;
 
 /*!
  * \class CCMRootIO
@@ -164,11 +165,13 @@ class CCMRootIO
     Events& GetEvents();
     RawData& GetRawData();
     Pulses& GetPulses();
+    MCTruth& GetMCTruth();
 
     void SetAccumWaveform(const AccumWaveform & accumWaveform);
     void SetEvents(const Events & event);
     void SetRawData(const RawData & rawData);
     void SetPulses(const Pulses & pulses);
+    void SetMCTruth(const MCTruth & mcTruth);
 
     void Dump();
 

@@ -41,7 +41,7 @@ enum HistInfo_t
 };
 
 typedef enum {
-  kRawDataID = 0, kPulsesID = 1, kEventsID = 2, kAccumWaveformID = 3, kNEventBranch = 4
+  kRawDataID = 0, kPulsesID = 1, kEventsID = 2, kAccumWaveformID = 3, kMCTruthID = 4, kNEventBranch = 5
 } CCMEventBranchID_t;
 
 /*!**********************************************

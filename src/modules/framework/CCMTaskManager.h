@@ -32,6 +32,7 @@
 #include "MsgLog.h"
 
 #include "AccumWaveform.h"
+#include "MCTruth.h"
 #include "Events.h"
 #include "RawData.h"
 #include "Pulses.h"
@@ -87,6 +88,7 @@ private:
   std::shared_ptr<CCMRawIO> fRawIO; // CCMRawIO is a single instance class
 
   std::shared_ptr<AccumWaveform>  fAccumWaveform;
+  std::shared_ptr<MCTruth>  fMCTruth;
   std::shared_ptr<Events>  fEvents;
   std::shared_ptr<RawData>  fBinaryRawData;
   std::shared_ptr<RawData>  fRawData;

@@ -45,13 +45,22 @@ CCMProcessingPlots::CCMProcessingPlots(const char* version)
     fCCMEventsTimeHist(nullptr), fCCMEventsTimeIntHist(nullptr), fBCM3DHist(nullptr),
     fPromptTopVeto(nullptr), fPromptBottomVeto(nullptr), fPromptCFrontVeto(nullptr),
     fPromptCBackVeto(nullptr), fPromptCLeftVeto(nullptr), fPromptCRightVeto(nullptr), fPromptTotalVeto(nullptr),
-    fPrevCurrentInfo(), fNextCurrentInfo(), fSumBCMIntegralTime(0.0), fSumBCMTimeTime(0.0), 
-    fSumBCMWidthTime(0.0), fSumPromptTopVetoTime(0.0), fSumPromptBottomVetoTime(0.0), 
-    fSumPromptCLeftVetoTime(0.0), fSumPromptCRightVetoTime(0.0), fSumPromptCFrontVetoTime(0.0),
-    fSumPromptCBackVetoTime(0.0), fSumPromptTotalVetoTime(0.0), fNumberOfTriggersInSum(0.0)
+    fPrevCurrentInfo(), fNextCurrentInfo(), fNumberOfTriggersInSum(0.0)
 {
   //Default constructor
   this->SetCfgVersion(version);
+
+  fBCMIntegralTime.clear();
+  fBCMTimeTime.clear();
+  fBCMWidthTime.clear();
+
+  fPromptTopVetoTime.clear();
+  fPromptBottomVetoTime.clear();
+  fPromptCLeftVetoTime.clear();
+  fPromptCRightVetoTime.clear();
+  fPromptCFrontVetoTime.clear();
+  fPromptCBackVetoTime.clear();
+  fPromptTotalVetoTime.clear();
 }
 
 //_______________________________________________________________________________________
@@ -68,12 +77,12 @@ CCMProcessingPlots::CCMProcessingPlots(const CCMProcessingPlots& clufdr)
   fPromptCBackVeto(clufdr.fPromptCBackVeto), fPromptCLeftVeto(clufdr.fPromptCLeftVeto),
   fPromptCRightVeto(clufdr.fPromptCRightVeto), fPromptTotalVeto(clufdr.fPromptTotalVeto),
   fPrevCurrentInfo(clufdr.fPrevCurrentInfo), fNextCurrentInfo(clufdr.fNextCurrentInfo),
-  fSumBCMIntegralTime(clufdr.fSumBCMIntegralTime), fSumBCMTimeTime(clufdr.fSumBCMTimeTime),
-  fSumBCMWidthTime(clufdr.fSumBCMWidthTime), fSumPromptTopVetoTime(clufdr.fSumPromptTopVetoTime),
-  fSumPromptBottomVetoTime(clufdr.fSumPromptBottomVetoTime), fSumPromptCLeftVetoTime(clufdr.fSumPromptCLeftVetoTime),
-  fSumPromptCRightVetoTime(clufdr.fSumPromptCRightVetoTime), fSumPromptCFrontVetoTime(clufdr.fSumPromptCFrontVetoTime), 
-  fSumPromptCBackVetoTime(clufdr.fSumPromptCBackVetoTime), fSumPromptTotalVetoTime(clufdr.fSumPromptTotalVetoTime),
-  fNumberOfTriggersInSum(clufdr.fNumberOfTriggersInSum)
+  fNumberOfTriggersInSum(clufdr.fNumberOfTriggersInSum),
+  fBCMIntegralTime(clufdr.fBCMIntegralTime), fBCMTimeTime(clufdr.fBCMTimeTime),
+  fBCMWidthTime(clufdr.fBCMWidthTime), fPromptTopVetoTime(clufdr.fPromptTopVetoTime),
+  fPromptBottomVetoTime(clufdr.fPromptBottomVetoTime), fPromptCLeftVetoTime(clufdr.fPromptCLeftVetoTime),
+  fPromptCRightVetoTime(clufdr.fPromptCRightVetoTime), fPromptCFrontVetoTime(clufdr.fPromptCFrontVetoTime), 
+  fPromptCBackVetoTime(clufdr.fPromptCBackVetoTime), fPromptTotalVetoTime(clufdr.fPromptTotalVetoTime)
 {
   // copy constructor
 }
@@ -96,7 +105,7 @@ CCMResult_t CCMProcessingPlots::ProcessTrigger()
   auto wallTimeC = CCMBeamInfo::ConvertTimeSinceEPOCHtoTime(wallTime);
 
   if (wallTimeC > fNextCurrentInfo.first) {
-    if (fSumBCMIntegralTime && fNumberOfTriggersInSum >= 1.0) {
+    if (fNumberOfTriggersInSum >= 1.0) {
       fOutfile->cd();
       fTree->Fill();
     }
@@ -107,23 +116,23 @@ CCMResult_t CCMProcessingPlots::ProcessTrigger()
     fNextCurrentInfo = CCMBeamInfo::GetBeamInfo();
 
     fCurrentTime = static_cast<unsigned int>(fNextCurrentInfo.first);
-    fSumBCMIntegralTime = 0.0;
-    fSumBCMTimeTime = 0.0;
-    fSumBCMWidthTime = 0.0;
-    fSumPromptTopVetoTime = 0.0;
-    fSumPromptBottomVetoTime = 0.0;
-    fSumPromptCLeftVetoTime = 0.0;
-    fSumPromptCRightVetoTime = 0.0;
-    fSumPromptCFrontVetoTime = 0.0;
-    fSumPromptCBackVetoTime = 0.0;
-    fSumPromptTopVetoTime = 0.0;
+    fBCMIntegralTime.clear();
+    fBCMTimeTime.clear();
+    fBCMWidthTime.clear();
+    fPromptTopVetoTime.clear();
+    fPromptBottomVetoTime.clear();
+    fPromptCLeftVetoTime.clear();
+    fPromptCRightVetoTime.clear();
+    fPromptCFrontVetoTime.clear();
+    fPromptCBackVetoTime.clear();
+    fPromptTopVetoTime.clear();
     fNumberOfTriggersInSum = 0.0;
 
   } // end if in new time region
 
-  fSumBCMIntegralTime += beamIntegral;
-  fSumBCMWidthTime += beamLength;
-  fSumBCMTimeTime += beamTime;
+  fBCMIntegralTime.emplace_back(beamIntegral);
+  fBCMWidthTime.emplace_back(beamLength);
+  fBCMTimeTime.emplace_back(beamTime);
 
   ++fNumberOfTriggersInSum;
 
@@ -163,13 +172,13 @@ CCMResult_t CCMProcessingPlots::ProcessTrigger()
     fPromptCBackVeto->Fill(backVeto);
     fPromptTotalVeto->Fill(totalVeto);
 
-    fSumPromptTopVetoTime +=    topVeto;
-    fSumPromptBottomVetoTime += bottomVeto;
-    fSumPromptCLeftVetoTime +=  leftVeto;
-    fSumPromptCRightVetoTime += rightVeto;
-    fSumPromptCFrontVetoTime += frontVeto;
-    fSumPromptCBackVetoTime +=  backVeto;
-    fSumPromptTotalVetoTime +=  totalVeto;
+    fPromptTopVetoTime.emplace_back(topVeto);
+    fPromptBottomVetoTime.emplace_back(bottomVeto);
+    fPromptCLeftVetoTime.emplace_back(leftVeto);
+    fPromptCRightVetoTime.emplace_back(rightVeto);
+    fPromptCFrontVetoTime.emplace_back(frontVeto);
+    fPromptCBackVetoTime.emplace_back(backVeto);
+    fPromptTotalVetoTime.emplace_back(totalVeto);
 
 
     //auto wfInt = simplifiedEvent.GetWaveformInt();
@@ -222,16 +231,16 @@ void CCMProcessingPlots::SetupOutFile()
     fTree = new TTree("timeVariables","timeVariables");
     fTree->Branch("time",&fCurrentTime);
     fTree->Branch("numTriggers",&fNumberOfTriggersInSum);
-    fTree->Branch("bcmTime",&fSumBCMTimeTime);
-    fTree->Branch("bcmLength",&fSumBCMWidthTime);
-    fTree->Branch("bcmIntegral",&fSumBCMIntegralTime);
-    fTree->Branch("vetoTop",&fSumPromptTopVetoTime);
-    fTree->Branch("vetoBottom",&fSumPromptBottomVetoTime);
-    fTree->Branch("vetoFront",&fSumPromptCFrontVetoTime);
-    fTree->Branch("vetoBack",&fSumPromptCBackVetoTime);
-    fTree->Branch("vetoLeft",&fSumPromptCLeftVetoTime);
-    fTree->Branch("vetoRight",&fSumPromptCRightVetoTime);
-    fTree->Branch("vetoTotal",&fSumPromptTotalVetoTime);
+    fTree->Branch("bcmTime",&fBCMTimeTime);
+    fTree->Branch("bcmLength",&fBCMWidthTime);
+    fTree->Branch("bcmIntegral",&fBCMIntegralTime);
+    fTree->Branch("vetoTop",&fPromptTopVetoTime);
+    fTree->Branch("vetoBottom",&fPromptBottomVetoTime);
+    fTree->Branch("vetoFront",&fPromptCFrontVetoTime);
+    fTree->Branch("vetoBack",&fPromptCBackVetoTime);
+    fTree->Branch("vetoLeft",&fPromptCLeftVetoTime);
+    fTree->Branch("vetoRight",&fPromptCRightVetoTime);
+    fTree->Branch("vetoTotal",&fPromptTotalVetoTime);
   }
 }
 
@@ -346,6 +355,7 @@ CCMResult_t CCMProcessingPlots::EndOfJob()
     if (fTree) {
       fTree->Fill();
       fTree->Write();
+      MsgInfo(MsgLog::Form("Number of Trigger times = %ld",fTree->GetEntries()));
     }
 
     if (fCCMPulsesTimeHist) {

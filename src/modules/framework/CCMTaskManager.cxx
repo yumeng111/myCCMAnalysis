@@ -27,6 +27,7 @@ CCMTaskManager::CCMTaskManager()
   fRawIO = CCMRawIO::GetInstance();
   
   fAccumWaveform = std::make_shared<AccumWaveform>();
+  fMCTruth = std::make_shared<MCTruth>();
   fEvents = std::make_shared<Events>();
   fPulses = std::make_shared<Pulses>();
   fRawData = std::make_shared<RawData>();
@@ -46,6 +47,7 @@ CCMTaskManager::CCMTaskManager(const CCMTaskManager& task)
   fRawIO = CCMRawIO::GetInstance();
   
   fAccumWaveform = std::make_shared<AccumWaveform>();
+  fMCTruth = std::make_shared<MCTruth>();
   fEvents = std::make_shared<Events>();
   fPulses = std::make_shared<Pulses>();
   fRawData = std::make_shared<RawData>();
@@ -92,7 +94,8 @@ CCMTaskManager::CCMTaskManager(std::string configfile,
   // the default constructor values, but it makes
   // it easier so that there are no condition statements
   // in the ConnectDataToModules() function
-  fAccumWaveform = std::make_shared<AccumWaveform>(fRootIO->GetAccumWaveform());
+  fAccumWaveform = std::make_shared<AccumWaveform>();
+  fMCTruth = std::make_shared<MCTruth>();
   fEvents = std::make_shared<Events>(fRootIO->GetEvents());
   fPulses = std::make_shared<Pulses>(fRootIO->GetPulses());
   fRawData = std::make_shared<RawData>(fRootIO->GetRawData());
@@ -191,6 +194,7 @@ CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::stri
       if (status != kCCMFailure && status != kCCMDoNotWrite) {
         if (outRoot) {
           fRootIO->SetAccumWaveform(*fAccumWaveform);
+          fRootIO->SetMCTruth(*fMCTruth);
           fRootIO->SetEvents(*fEvents);
           fRootIO->SetRawData(*fRawData);
           fRootIO->SetPulses(*fPulses);
@@ -258,6 +262,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
       } // end count module
 
       fAccumWaveform->operator=(fRootIO->GetAccumWaveform());
+      fMCTruth->operator=(fRootIO->GetMCTruth());
       fEvents->operator=(fRootIO->GetEvents());
       fRawData->operator=(fRootIO->GetRawData());
       fPulses->operator=(fRootIO->GetPulses());
@@ -269,6 +274,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
       if (status != kCCMFailure && status != kCCMDoNotWrite) {
         if (outRoot) {
           fRootIO->SetAccumWaveform(*fAccumWaveform);
+          fRootIO->SetMCTruth(*fMCTruth);
           fRootIO->SetEvents(*fEvents);
           fRootIO->SetRawData(*fRawData);
           fRootIO->SetPulses(*fPulses);
@@ -341,6 +347,7 @@ void CCMTaskManager::ConnectDataToModules()
   for (auto & module : fModuleList) {
     module->ConnectBinaryRawData(fBinaryRawData);
     module->ConnectAccumWaveform(fAccumWaveform);
+    module->ConnectMCTruth(fMCTruth);
     module->ConnectEvents(fEvents);
     module->ConnectRawData(fRawData);
     module->ConnectPulses(fPulses);

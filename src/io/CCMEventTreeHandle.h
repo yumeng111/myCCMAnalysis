@@ -27,6 +27,7 @@ class TTree;
 class TBranch;
 class RawData;
 class Pulses;
+class MCTruth;
 class Events;
 class AccumWaveform;
 
@@ -54,11 +55,13 @@ class CCMEventTreeHandle
     void SetCurrentEvents(const Events& event);
     void SetCurrentRawData(const RawData& rawData);
     void SetCurrentPulses(const Pulses& pulses);
+    void SetCurrentMCTruth(const MCTruth& mcTruth);
     void SetCurrentAccumWaveform(const AccumWaveform& waveform);
 
     Events& CurrentEvents();
     RawData& CurrentRawData();
     Pulses& CurrentPulses();
+    MCTruth& CurrentMCTruth();
     AccumWaveform& CurrentAccumWaveform();
 
     uint32_t NumOfEntries() const { return fNumOfEntries; }
@@ -101,6 +104,7 @@ class CCMEventTreeHandle
     Pulses * fPulses;
     Events * fEvents;
     AccumWaveform * fAccumWaveform;
+    MCTruth * fMCTruth;
 
     std::vector<std::string> fReadBranches;
     std::vector<std::string> fSaveBranches;

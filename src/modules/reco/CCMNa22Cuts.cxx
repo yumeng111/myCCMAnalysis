@@ -32,6 +32,7 @@
 #include "TTree.h"
 #include "TH1D.h"
 #include "TH2D.h"
+#include "TProfile.h"
 #include "TF1.h"
 #include "TVector3.h"
 
@@ -51,16 +52,20 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
   fBCMLengthLowCut(0), fBCMLengthHighCut(Utility::fgkNumBins*Utility::fgkBinWidth),
   fBCMIntegralLowCut(0), fBCMIntegralHighCut(std::numeric_limits<double>::max()),
   fRadiusCutValueLow(0), fRadiusCutValueHigh(0.95), fZCutValueLow(-0.4), fZCutValueHigh(0.4),
-  fEnergyCutValueLow(0), fEnergyCutValueHigh(std::numeric_limits<double>::max()), fPrevCutTime(1600),
-  fLengthCutValueLow(-std::numeric_limits<double>::max()), fLengthCutValueHigh(std::numeric_limits<double>::max()),
-  fTimeCutValueLow(-7000), fTimeCutValueHigh(4000), fNicenessCutValueLow(0), fNicenessCutValueHigh(2.5),
-  fOutfile(nullptr), fTree(nullptr), fEnergy(0), fLength(0), fHits(0), fNumPMTs(0), fTime(0), fVetoTop(0),
-  fVetoBottom(0), fVetoCLeft(0), fVetoCRight(0), fVetoCFront(0), fVetoCBack(0), fVetoPromptTop(0),
-  fVetoPromptBottom(0), fVetoPromptCLeft(0), fVetoPromptCRight(0), fVetoPromptCFront(0), fVetoPromptCBack(0),
-  fWeight(0), fX(0), fY(0), fZ(0), fLargestPMTFraction(0), fEpochSec(0), fBCMTime(0), fBCMLength(0), fBCMIntegral(0)
+  fEnergyCutValueLow(0), fEnergyCutValueHigh(std::numeric_limits<double>::max()), fPrevCutTime(1600), fPrevCutHoldOff(90.0),
+  fPrevCutEnergyFrac(0), fLengthCutValueLow(-std::numeric_limits<double>::max()), 
+  fLengthCutValueHigh(std::numeric_limits<double>::max()), fTimeCutValueLow(-7000), fTimeCutValueHigh(4000), 
+  fNicenessCutValueLow(0), fNicenessCutValueHigh(2.5), fOutfile(nullptr), fTree(nullptr), fEnergy(0), fLength(0), 
+  fHits(0), fNumPMTs(0), fTime(0), fVetoTop(0), fVetoBottom(0), fVetoCLeft(0), fVetoCRight(0), fVetoCFront(0), 
+  fVetoCBack(0), fVetoPromptTop(0), fVetoPromptBottom(0), fVetoPromptCLeft(0), fVetoPromptCRight(0), 
+  fVetoPromptCFront(0), fVetoPromptCBack(0), fWeight(0), fX(0), fY(0), fZ(0), fLargestPMTFraction(0), 
+  fEpochSec(0), fEpochNSSec(0), fBCMTime(0), fBCMLength(0), fBCMIntegral(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
+
+  fEnergyLengthFile = nullptr;
+  fEnergyLengthProf = nullptr;
 }
 
 //_______________________________________________________________________________________
@@ -85,6 +90,7 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
   fRadiusCutValueHigh(clufdr.fRadiusCutValueHigh), fZCutValueLow(clufdr.fZCutValueLow),
   fZCutValueHigh(clufdr.fZCutValueHigh), fEnergyCutValueLow(clufdr.fEnergyCutValueLow),
   fEnergyCutValueHigh(clufdr.fEnergyCutValueHigh), fPrevCutTime(clufdr.fPrevCutTime),
+  fPrevCutHoldOff(clufdr.fPrevCutHoldOff), fPrevCutEnergyFrac(clufdr.fPrevCutEnergyFrac),
   fLengthCutValueLow(clufdr.fLengthCutValueLow), fLengthCutValueHigh(clufdr.fLengthCutValueHigh),
   fTimeCutValueLow(clufdr.fTimeCutValueLow), fTimeCutValueHigh(clufdr.fTimeCutValueHigh),
   fNicenessCutValueLow(clufdr.fNicenessCutValueLow), fNicenessCutValueHigh(clufdr.fNicenessCutValueHigh),
@@ -95,7 +101,7 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
   fVetoPromptBottom(clufdr.fVetoPromptBottom), fVetoPromptCLeft(clufdr.fVetoPromptCLeft),
   fVetoPromptCRight(clufdr.fVetoPromptCRight), fVetoPromptCFront(clufdr.fVetoPromptCFront),
   fVetoPromptCBack(clufdr.fVetoPromptCBack), fWeight(clufdr.fWeight), fX(clufdr.fX), fY(clufdr.fY),
-  fZ(clufdr.fZ), fLargestPMTFraction(clufdr.fLargestPMTFraction), fEpochSec(clufdr.fEpochSec),
+  fZ(clufdr.fZ), fLargestPMTFraction(clufdr.fLargestPMTFraction), fEpochSec(clufdr.fEpochSec), fEpochNSSec(clufdr.fEpochNSSec),
   fBCMTime(clufdr.fBCMTime), fBCMLength(clufdr.fBCMLength), fBCMIntegral(clufdr.fBCMIntegral)
 {
   // copy constructor
@@ -117,6 +123,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
   const size_t kNumEvents = fEvents->GetNumEvents();
   fEpochSec = fEvents->GetComputerSecIntoEpoch();
+  fEpochNSSec = fEvents->GetComputerNSIntoSec();
 
   fBCMTime = fEvents->GetBeamTime()*Utility::fgkBinWidth + Utility::fgkWindowStartTime;
   fBCMLength = fEvents->GetBeamLength();
@@ -250,7 +257,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
 
     if (fDoPrevCut) {
-      fPassedPrevCut = PassedPrevCut(fTime,e);
+      fPassedPrevCut = PassedPrevCut(fTime,e,fEnergy);
       if (fPassedPrevCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
         locationsToRemove.emplace_back(e);
@@ -337,7 +344,10 @@ void CCMNa22Cuts::Configure(const CCMConfig& c )
   MsgInfo(MsgLog::Form("\t-Apply Prev Cut %s",fDoPrevCut? "true" : "false"));
   if (fDoPrevCut) {
     c("PrevCutTime").Get(fPrevCutTime);
-    MsgInfo(MsgLog::Form("\t\t-Prev Cut Time %g",fPrevCutTime));
+    c("PrevCutHoldOff").Get(fPrevCutHoldOff);
+    //c("PrevCutEnergyFrac").Get(fPrevCutEnergyFrac);
+    MsgInfo(MsgLog::Form("\t\t-Prev Cut Time %g Required Energy Fraction %g Hold off (ns) %g",
+          fPrevCutTime,fPrevCutEnergyFrac,fPrevCutHoldOff));
   }
 
   c("WaveformMaxCut").Get(fWaveformMaxCut);
@@ -425,9 +435,23 @@ void CCMNa22Cuts::SetupOutFile()
   fZ = 0;
   fLargestPMTFraction = 0;
   fEpochSec = 0;
+  fEpochNSSec = 0;
   fBCMTime = 0;
   fBCMLength = 0;
   fBCMIntegral = 0;
+  fMaxPrevEnergy1600 = 0;
+  fMaxPrevEnergy3200 = 0;
+  fMaxPrevEnergy4800 = 0;
+  fMaxPrevEnergy = 0;
+  fMaxPrevEnergyTime1600 = 0;
+  fMaxPrevEnergyTime3200 = 0;
+  fMaxPrevEnergyTime4800 = 0;
+  fMaxPrevEnergyTime = 0;
+  fMaxPrevEnergyLength1600 = 0;
+  fMaxPrevEnergyLength3200 = 0;
+  fMaxPrevEnergyLength4800 = 0;
+  fMaxPrevEnergyLength = 0;
+
   fPassedVetoCut = false;
   fPassedPositionCut = false;
   fPassedEnergyCut = false;
@@ -448,6 +472,7 @@ void CCMNa22Cuts::SetupOutFile()
     fOutfile->cd();
     fTree = new TTree(fTreeName.c_str(),fTreeName.c_str());
     fTree->Branch("epochSec",&fEpochSec);
+    fTree->Branch("epochNS",&fEpochNSSec);
     fTree->Branch("bcmTime",&fBCMTime);
     fTree->Branch("bcmLength",&fBCMLength);
     fTree->Branch("bcmIntegral",&fBCMIntegral);
@@ -473,6 +498,19 @@ void CCMNa22Cuts::SetupOutFile()
     fTree->Branch("y",&fY);
     fTree->Branch("z",&fZ);
     fTree->Branch("largestPMTFraction",&fLargestPMTFraction);
+    fTree->Branch("maxPrevEnergy1600",&fMaxPrevEnergy1600);
+    fTree->Branch("maxPrevEnergy3200",&fMaxPrevEnergy3200);
+    fTree->Branch("maxPrevEnergy4800",&fMaxPrevEnergy4800);
+    fTree->Branch("maxPrevEnergy",&fMaxPrevEnergy);
+    fTree->Branch("maxPrevEnergyTime1600",&fMaxPrevEnergyTime1600);
+    fTree->Branch("maxPrevEnergyTime3200",&fMaxPrevEnergyTime3200);
+    fTree->Branch("maxPrevEnergyTime4800",&fMaxPrevEnergyTime4800);
+    fTree->Branch("maxPrevEnergyTime",&fMaxPrevEnergyTime);
+    fTree->Branch("maxPrevEnergyLength1600",&fMaxPrevEnergyLength1600);
+    fTree->Branch("maxPrevEnergyLength3200",&fMaxPrevEnergyLength3200);
+    fTree->Branch("maxPrevEnergyLength4800",&fMaxPrevEnergyLength4800);
+    fTree->Branch("maxPrevEnergyLength",&fMaxPrevEnergyLength);
+
     fTree->Branch("passedVetoCut",&fPassedVetoCut);
     fTree->Branch("passedPositionCut",&fPassedPositionCut);
     fTree->Branch("passedEnergyCut",&fPassedEnergyCut);
@@ -605,8 +643,27 @@ bool CCMNa22Cuts::PassedEnergyCut(double energy)
 
 /*!**********************************************
  ***********************************************/
-bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingIndex)
+bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingIndex, const double kEnergy)
 {
+  if (fEnergyLengthFile == nullptr) {
+    fEnergyLengthFile = TFile::Open("$CCMPROJECT/calibrationFiles/2019/energyLength.root","READ");
+    fEnergyLengthFile->GetObject("EnergyMaxLengthHist_NumHits_0_pfx",fEnergyLengthProf);
+  }
+  std::vector<float> currentWF;
+  //std::vector<float> totalWF;
+  bool passed = true;
+  fMaxPrevEnergy1600 = 0;
+  fMaxPrevEnergy3200 = 0;
+  fMaxPrevEnergy4800 = 0;
+  fMaxPrevEnergy = 0;
+  fMaxPrevEnergyTime1600 = 0;
+  fMaxPrevEnergyTime3200 = 0;
+  fMaxPrevEnergyTime4800 = 0;
+  fMaxPrevEnergyTime = 0;
+  fMaxPrevEnergyLength1600 = 0;
+  fMaxPrevEnergyLength3200 = 0;
+  fMaxPrevEnergyLength4800 = 0;
+  fMaxPrevEnergyLength = 0;
   for (long e2 = kStartingIndex-1; e2 >= 0; --e2) {
     auto simplifiedEvent2 = fEvents->GetSimplifiedEvent(e2);
 
@@ -617,6 +674,23 @@ bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingInd
 
     double promptHits2 = simplifiedEvent2.GetNumCoated(true);
     double st2 = simplifiedEvent2.GetStartTime();
+    double length = simplifiedEvent2.GetLength();
+
+    //currentWF = simplifiedEvent2.GetWaveformInt();
+
+    //if (toatlWF.size() == 0) {
+    //  std::assign(currentWF.begin(),currentWF.end());
+    //} else {
+    //  double numZeros = std::fabs(kStartTime - st2+length);
+    //  if (numZeros > 0) {
+    //    totalWF.insert(totalWF.begin(),numZeros,0.0);
+    //  }
+    //  totalWF.insert(totalWF.begin(),currentWF.begin(),currentWF.end());
+    //}
+
+    //if (e2 == kStartingIndex) {
+    //  continue;
+    //}
 
     if (promptHits2 < 3) {
       //continue;
@@ -631,14 +705,93 @@ bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingInd
 
     double stDiff = std::fabs(st2 - kStartTime);
 
+    double energy2 = simplifiedEvent2.GetIntegralTank(true);
+
+    if (stDiff < 4800) {
+      if (fMaxPrevEnergy4800 < energy2) {
+        fMaxPrevEnergy4800 = energy2;
+        fMaxPrevEnergyTime4800 = st2;
+        fMaxPrevEnergyLength4800 = length;
+      }
+      if (stDiff < 3200) {
+        if (fMaxPrevEnergy3200 < energy2) {
+          fMaxPrevEnergy3200 = energy2;
+          fMaxPrevEnergyTime3200 = st2;
+          fMaxPrevEnergyLength3200 = length;
+        }
+        if (stDiff < 1600) {
+          if (fMaxPrevEnergy1600 < energy2) {
+            fMaxPrevEnergy1600 = energy2;
+            fMaxPrevEnergyTime1600 = st2;
+            fMaxPrevEnergyLength1600 = length;
+          }
+        }
+      }
+    }
+
+    //if (fMaxPrevEnergy < energy2) {
+    //  fMaxPrevEnergy = energy2;
+    //  fMaxPrevEnergyTime = st2;
+    //  fMaxPrevEnergyLength = length;
+    //}
+
+    if (fMaxPrevEnergyLength != 0) {
+      continue;
+    }
+
+    if (energy2 >= kEnergy/2.0) {
+      if (std::fabs(st2+length - kStartTime) <= fPrevCutHoldOff) {
+        fMaxPrevEnergy = energy2;
+        fMaxPrevEnergyTime = st2;
+        fMaxPrevEnergyLength = length;
+        passed = false;
+      } else {
+        int bin2 = fEnergyLengthProf->FindBin(energy2);
+        double content = fEnergyLengthProf->GetBinContent(bin2);
+        double error = fEnergyLengthProf->GetBinError(bin2);
+        if (stDiff < content+error*3.0+fPrevCutHoldOff) {
+          fMaxPrevEnergy = energy2;
+          fMaxPrevEnergyTime = st2;
+          fMaxPrevEnergyLength = length;
+          passed = false;
+        }
+      }
+    } else if (length > 90) {
+      currentWF = simplifiedEvent2.GetWaveformInt();
+      double firstInt = currentWF.front();
+      double newST = st2;
+      size_t loc = 45;
+      for (; loc < currentWF.size(); ++loc) {
+        energy2 -= firstInt;
+        energy2 += currentWF.at(loc);
+        firstInt = currentWF.at(loc-44);
+        newST += Utility::fgkBinWidth;
+        if (energy2 < kEnergy/2.0) {
+          continue;
+        }
+        int bin2 = fEnergyLengthProf->FindBin(energy2);
+        double content = fEnergyLengthProf->GetBinContent(bin2);
+        double error = fEnergyLengthProf->GetBinError(bin2);
+        if (std::fabs(newST-kStartTime) < content+error*3.0+fPrevCutHoldOff) {
+          fMaxPrevEnergy = energy2;
+          fMaxPrevEnergyTime = newST;
+          fMaxPrevEnergyLength = length;
+          passed = false;
+          break;
+        }
+      }
+    }
+
+    continue;
+
     if (stDiff < fPrevCutTime) {
-      return false;
+      passed = false;
     } else {
-      return true;
+      break;
     }
   } // end for e2
 
-  return true;
+  return passed;
 }
 
 /*!**********************************************

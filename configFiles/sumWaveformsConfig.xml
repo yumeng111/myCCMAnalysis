@@ -35,16 +35,16 @@
       The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
       Must be the first param in this config
     </Param>
-    <Param name="HVOffFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/hv_off_2019.csv</string>
+    <Param name="HVOffFile"><string>default</string>
       List of the HV channels that are off.
     </Param>
-    <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
+    <Param name="CalibrationFile"><string>default</string>
       Name of the calibration file to use
     </Param>
   </Config>
 
   <Config name="CCMSumWaveforms" version="default">
-    <Param name="TriggerType"><string>BEAM</string>
+    <Param name="TriggerType"><string>STROBE</string>
       Only look at triggers with name passed.
       Options are:
        - BEAM
@@ -56,7 +56,7 @@
     <Param name="ApplyFP3Offset"><int>0</int>
       If true apply the time offset between FP3 and CCM
     </Param>
-    <Param name="DoBCMCut"><int>1</int>
+    <Param name="DoBCMCut"><int>0</int>
       Flag to reject events based off the BCM cut
     </Param>
     <Param name="BCMTimeLowCut"><double>-377.39</double>
@@ -73,6 +73,14 @@
     </Param>
     <Param name="BCMLengthHighCut"><double>646.5</double>
       High cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralLowCut"><double>17811.4</double>
+      Low cut on the integral the BCM signal in the DAQ in ADC
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralHighCut"><double>30978.4</double>
+      High cut on the integral the BCM signal in the DAQ in ADC
       Only needed if DoBCMCut is true
     </Param>
   </Config>

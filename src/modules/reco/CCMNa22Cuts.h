@@ -6,6 +6,7 @@
 
 class TTree;
 class TFile;
+class TProfile;
 class SimplifiedEvent;
 
 
@@ -69,6 +70,7 @@ class CCMNa22Cuts : public CCMModule
     void SetBCMIntegralHighCut( double value) { fBCMIntegralHighCut = value; }
     void SetNumVetoCut(int value) {fNumVetoCut = value;}
     void SetPrevCutTime(double value) {fPrevCutTime = value;}
+    void SetPrevCutHoldOff(double value) {fPrevCutHoldOff = value;}
     void SetZCutValueLow(double value) {fZCutValueLow = value;}
     void SetZCutValueHigh(double value) {fZCutValueHigh = value;}
     void SetTimeCutValueLow(double value) {fTimeCutValueLow = value;}
@@ -91,7 +93,7 @@ class CCMNa22Cuts : public CCMModule
     bool PassedVetoCut(int vetoTotal);
     bool PassedPositionCut(double x, double y, double z);
     bool PassedEnergyCut(double energy);
-    bool PassedPrevCut(const double kStartTime, const long kStartingIndex);
+    bool PassedPrevCut(const double kStartTime, const long kStartingIndex, const double kEnergy);
     bool PassedLengthCut(double length);
     bool PassedTimeCut(double time);
     bool PassedNicenessCut(double energy, int hits, double largestFrac);
@@ -157,6 +159,8 @@ class CCMNa22Cuts : public CCMModule
     double fEnergyCutValueLow;
     double fEnergyCutValueHigh;
     double fPrevCutTime;
+    double fPrevCutHoldOff;
+    double fPrevCutEnergyFrac;
     double fLengthCutValueLow;
     double fLengthCutValueHigh;
     double fTimeCutValueLow;
@@ -190,9 +194,25 @@ class CCMNa22Cuts : public CCMModule
     double fZ;
     double fLargestPMTFraction;
     unsigned int fEpochSec;
+    unsigned int fEpochNSSec;
     double fBCMTime;
     double fBCMLength;
     double fBCMIntegral;
+    double fMaxPrevEnergy1600;
+    double fMaxPrevEnergy3200;
+    double fMaxPrevEnergy4800;
+    double fMaxPrevEnergy;
+    double fMaxPrevEnergyTime1600;
+    double fMaxPrevEnergyTime3200;
+    double fMaxPrevEnergyTime4800;
+    double fMaxPrevEnergyTime;
+    double fMaxPrevEnergyLength1600;
+    double fMaxPrevEnergyLength3200;
+    double fMaxPrevEnergyLength4800;
+    double fMaxPrevEnergyLength;
+
+    TFile * fEnergyLengthFile;
+    TProfile * fEnergyLengthProf;
 };
 
 #endif // CCMNa22Cuts_h
