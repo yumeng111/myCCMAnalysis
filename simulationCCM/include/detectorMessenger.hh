@@ -16,6 +16,7 @@ class G4UIcmdWithADoubleAndUnit;
 class G4UIcmdWithAnInteger;
 class G4UIcommand;
 class G4UIcmdWithABool;
+class G4UIcmdWithAString;
 
 class detectorMessenger: public G4UImessenger
 {
@@ -33,13 +34,18 @@ class detectorMessenger: public G4UImessenger
     G4UIdirectory*               fVolumesDir;
     G4UIcmdWithADoubleAndUnit*   fPmtRadiusCmd;
     G4UIcmdWithADoubleAndUnit*   fLaserCmd;
+    G4UIcmdWithADoubleAndUnit*   fRodCmd;
     G4UIcommand*                 fDefaultsCmd;
+    G4UIcommand*                 fRandomsCmd;
     G4UIcmdWithABool*            fPMTsCmd;
     G4UIcmdWithABool*            fSodiumCmd;
+    G4UIcmdWithABool*            fAr39Cmd;
+    G4UIcmdWithABool*            fDMCmd;
     G4UIcmdWithABool*            f200Cmd;
-    G4UIcmdWithABool*            fRodCmd;
     G4UIcmdWithABool*            fTPBfoilCmd;
     G4UIcmdWithABool*            fReflectorCmd;
+    G4UIcmdWithAString*          fRootCmd;
+
 };
 
 #endif

@@ -40,22 +40,23 @@ This version is the current best fit for the calibration data I have. It include
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4SubtractionSolid.hh"
+#include <sstream>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 //Constructor
 detectorConstruction::detectorConstruction()
-  : lAr_mt(nullptr), TPBProp(nullptr), TPBsProp(nullptr)
+  : lAr_mt(nullptr), lAr1_mt(nullptr), lAr2_mt(nullptr), TPBProp(nullptr), TPBsProp(nullptr), TPBtProp(nullptr)
 {
   wBox = nullptr;
   wLog = nullptr;
   wPhys = nullptr;
   
   fH = fC = fN = fO = nullptr;
-  lAr = alum = steel = fVacuum = nullptr;
+  alum = steel = fVacuum = nullptr;
   ptfe = fGlass = fAir = tPB = tPBhundred = nullptr;
-  //tPBfoil = nullptr;
-  lAr2 = lAr1 = nullptr;
+  tPBtwo = nullptr;
+  lAr = lAr2 = lAr1 = nullptr;
 
   fCryoVessel = nullptr;
   fLogicCryo = nullptr;
@@ -86,9 +87,11 @@ detectorConstruction::detectorConstruction()
   //A long series of nullptr's to clear all the pointers created in the header file.
 
   SetDefaults();
+  //SetRandoms();
   //Sets a few defaults by calling a method that declears them below.
 
   DefineMaterials();
+
   fDetectorMessenger = new detectorMessenger(this);
   //Calls the methods to define the materials and link the detector messenger to this detector.
 }
@@ -112,15 +115,9 @@ void detectorConstruction::DefineMaterials(){
   fH = new G4Element("H", "H", z=1., a=1.01*g/mole);
   fC = new G4Element("C", "C", z=6., a=12.01*g/mole);
   fN = new G4Element("N", "N", z=7., a= 14.01*g/mole);
-  fO = new G4Element("O"  , "O", z=8., a= 16.00*g/mole);
+  fO = new G4Element("O", "O", z=8., a= 16.00*g/mole);
   
   //G4cout << "Edwardnote: Defined Elements" << G4endl;
-
-  //Define the Materials from liquid Argon to tpb.
-  //Liquid Argon; three types defined for gradients of liquid argon absorption length
-  lAr = new G4Material("lAr",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
-  lAr1 = new G4Material("lAr1",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
-  lAr2 = new G4Material("lAr2",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
 
   //Aluminum: for the frame
   alum = new G4Material("Al",z=13.,a=26.98*g/mole,density=2.7*g/cm3);
@@ -146,26 +143,35 @@ void detectorConstruction::DefineMaterials(){
   tPB = new G4Material("tpb", density= 1.079*g/cm3, 2);
   tPB->AddElement(fC, 28);
   tPB->AddElement(fH, 22);
+  //third kind of TPB 
+  tPBtwo = new G4Material("tpb2", density= 1.079*g/cm3, 2);
+  tPBtwo->AddElement(fC, 28);
+  tPBtwo->AddElement(fH, 22);
   //second kind of TPB for different optical properties.
   tPBhundred = new G4Material("t100", density= 1.079*g/cm3, 2);
   tPBhundred->AddElement(fC, 28);
   tPBhundred->AddElement(fH, 22);
-  
-  //G4cout << "EdwardNote Defined Compounds" << G4endl;
-  //***Material properties tables
-  //these tables define the optical properties of the materials 
-  //defines refractive index, scintillation properties, absorption length with respect to energy.
 
+
+  G4cout << "first definition of lAr below" << G4endl;
+
+  //Define the Materials from liquid Argon to tpb.
+  //Liquid Argon; three types defined for gradients of liquid argon absorption length
+  lAr = new G4Material("lAr",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
+  lAr1 = new G4Material("lAr1",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
+  lAr2 = new G4Material("lAr2",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
+
+  G4cout << "first definition of lAr above" << G4endl;
+
+  
   //Values for liquid Argon (all types)
   G4double lar_Energy_scin[] = { 3.87*eV , 4.51*eV , 4.74*eV , 5.03*eV , 5.36*eV , 5.55*eV , 5.82*eV , 6.06*eV , 6.54*eV , 6.79*eV , 7.03*eV , 7.36*eV , 7.76*eV , 7.98*eV , 8.33*eV , 8.71*eV , 8.96*eV , 9.33*eV , 9.91*eV , 10.31*eV , 10.61*eV , 10.88*eV , 11.27*eV , 11.81*eV , 12.40*eV , 13.05*eV , 13.78*eV , 14.59*eV , 15.50*eV }; //energies for scintillation spectrum
   G4double lar_Energy_rin[]    = { 1.90*eV , 2.934*eV, 3.592*eV, 5.566*eV, 6.694*eV, 7.54*eV, 8.574*eV, 9.044*eV, 9.232*eV, 9.42*eV, 9.514*eV, 9.608*eV,9.702*eV, 9.796*eV, 9.89*eV, 9.984*eV, 10.08*eV, 10.45*eV, 10.74*eV, 10.92*eV  }; //energies for refractive index
   G4double lar_Energy_rs[] = { 2.80*eV , 3.0*eV , 3.5*eV , 4.0*eV , 5.0*eV , 6.0*eV , 7.0*eV , 8.0*eV , 8.5*eV , 9.0*eV , 9.2*eV , 9.4*eV , 9.5*eV , 9.6*eV , 9.7*eV , 9.8*eV , 9.9*eV , 10.0*eV , 10.2*eV , 10.4*eV , 10.6*eV , 10.8*eV }; //energies for rayleigh scattering spectrum.
-  G4double lar_Energy_abs[]    = { 1.0*eV , 2.0*eV , 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 8.0*eV, 9.0*eV, 10.0*eV, 11.0*eV }; //Energies for absorption length spectrum
 
   const G4int larscin = sizeof(lar_Energy_scin)/sizeof(G4double);
   const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
   const G4int larrs  =  sizeof(lar_Energy_rs)/sizeof(G4double);
-  const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
   //defines a few integers to make some tests easier.
 
   G4double lar_SCINT[] = { 0.00006, 0.00007, 0.00008, 0.00011, 0.00020, 0.00030, 0.00048, 0.00082, 0.00126, 0.00084, 0.00043, 0.00030, 0.00106, 0.00298, 0.00175, 0.00351, 0.01493, 0.12485, 0.49332, 0.20644, 0.07477, 0.04496, 0.01804, 0.00576, 0.00184, 0.00059, 0.00019, 0.00006, 0.00002 }; //liquid Argon scintillation spectrum. this one is centered at 128 nm (as it should be). 
@@ -176,18 +182,70 @@ void detectorConstruction::DefineMaterials(){
   assert(sizeof(lar_RSL) == sizeof(lar_Energy_rsl));
 
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
-  G4double base = 50.;//Base absorption length, applies to UV light
-  G4double row5 = base*0.25;//absorption length for the bottom (row5), a quarter of that for the rest of the detector
-  G4double cloud = base*0.75;//absorption length for the edges, three quarters of the norm
-  G4double mult = 40.0;//multiplier between base (for UV) and multiplied (for visible).
+  //  clouded =G4RandFlat::shoot(1.0,300.0);
+  G4double base = 37.53;//Base absorption length for UV light
+  G4double uvlas = ultra;//absorptioon length for the 213nm light
+  G4double time5 = fifth/100.;//absorption length for the bottom (row5), a quarter of that for the rest of the detector
+  G4double timec = clouded/100.;//absorption length for the edges, three quarters of the norm
+  G4double row5 = time5*base;
+  G4double cloud = timec*base;
+  G4double uvlasc = timec*uvlas;
+  G4double uvlas5 = time5*uvlas;
+  G4double three5 = time5*threehun;
+  G4double mult = 2800.0;//Absorption length for visible.
 
-  G4double lar_ABSL[]  = { base*mult*cm, base*mult*cm, base*mult*cm, base*mult*cm, base*mult*cm, base*mult*cm, base*mult*cm, base*2*cm, base*cm, base*cm, base*cm };//Absorption lengths for the main part of the detector
-  G4double lar1_ABSL[]  = { cloud*mult*cm, cloud*mult*cm, cloud*mult*cm, cloud*mult*cm, cloud*mult*cm, cloud*mult*cm, cloud*mult*cm, cloud*2*cm, cloud*cm, cloud*cm, cloud*cm };//Absorption lengths near the edges of the upper rows
-  G4double lar2_ABSL[]  = { row5*mult*cm, row5*mult*cm, row5*mult*cm, row5*mult*cm, row5*mult*cm, row5*mult*cm, row5*mult*cm, row5*2*cm, row5*cm, row5*cm, row5*cm };//absoprtion length near the bottom.
+  G4double lar_Energy_abs[47];
+  G4double lar_wlv_abs[47];
+  for (int i=0;i<47;++i){
+    lar_wlv_abs[i] = i*20+80;
+    lar_Energy_abs[i] = (1293.847/(i*20.0+80.0))*eV;
+  }
+  G4double lar_ABSL[47];
+  G4double lar1_ABSL[47];
+  G4double lar2_ABSL[47];
+  for (int i=0;i<6;++i){
+    lar_ABSL[i] = base*cm;
+    lar1_ABSL[i] = cloud*cm;
+    lar2_ABSL[i] = row5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=6;i<11;++i){
+    lar_ABSL[i] = uvlas*cm;
+    lar1_ABSL[i] = uvlasc*cm;
+    lar2_ABSL[i] = uvlas5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=11;i<16;++i){
+    lar_ABSL[i] = threehun*cm;
+    lar1_ABSL[i] = threehun*cm;
+    lar2_ABSL[i] = three5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=16;i<47;++i){
+    lar_ABSL[i] = mult*cm;
+    lar1_ABSL[i] = mult*cm;
+    lar2_ABSL[i] = mult*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
+  //G4double lar_Energy_abs[]    = { 1.0*eV , 2.0*eV , 3.0*eV, 3.54*eV/*350nm*///, 
+  //				   4.13*eV/*300nm*/, 4.96*eV/*250nm*/, 5.70*eV/*213nm*/, 6.5*eV, 
+  //				   8.0*eV, 9.69*eV/*128nm*/, 10.0*eV, 11.0*eV }; //Energies for absorption length spectrum
+  /*const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
+
+  G4double lar_ABSL[]  = { mult*cm, mult*cm, mult*cm, threehun*cm, 
+			   threehun*cm, threehun*cm, uvlas*cm, uvlas*cm, 
+			   base*cm, base*cm, base*cm, base*cm };//Absorption lengths for the main part of the detector
+  G4double lar1_ABSL[]  = { mult*cm, mult*cm, mult*cm, threehun*cm, 
+			    threehun*cm, threehun*cm, uvlasc*cm, uvlasc*cm, 
+			    cloud*cm, cloud*cm, cloud*cm, cloud*cm };//Absorption lengths near the edges of the upper rows
+  G4double lar2_ABSL[]  = { mult*cm, mult*cm, mult*cm, three5*cm, 
+			    three5*cm, three5*cm, uvlas5*cm, uvlas5*cm, 
+			    row5*cm, row5*cm, row5*cm, row5*cm };//absoprtion length near the bottom.*/
 
   //stored lAr absorption lengths for ideal (first) and some contamination (second).
   //G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm };
-  //G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 200.*cm, 100.*cm, 100.*cm, 100.*cm };
+  //G4double lar_ABSL[]  = { 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 2000.*cm, 200.*cm, 100.*cm, 100.*cm, 100.*cm };*/
   assert(sizeof(lar_ABSL) == sizeof(lar_Energy_abs));
 
   //Takes the defined values above and uses them to define a materials properties table.
@@ -208,7 +266,7 @@ void detectorConstruction::DefineMaterials(){
   lAr->SetMaterialPropertiesTable(lAr_mt);
 
   //Defines the MPT for the second type of liquid Argon. (only the absorption lenght is different). This kind is used for the clouded edges
-  G4MaterialPropertiesTable *lAr1_mt = new G4MaterialPropertiesTable();
+  lAr1_mt = new G4MaterialPropertiesTable();
   lAr1_mt->AddProperty("FASTCOMPONENT", lar_Energy_scin, lar_SCINT, larscin);
   lAr1_mt->AddProperty("SLOWCOMPONENT", lar_Energy_scin, lar_SCINT, larscin);
   lAr1_mt->AddProperty("RINDEX",        lar_Energy_rin,  lar_RIND,  larrin);
@@ -223,7 +281,7 @@ void detectorConstruction::DefineMaterials(){
   lAr1->SetMaterialPropertiesTable(lAr1_mt);
 
   //Defines the MPT for the third type of liquid Argon. (only the absorption lenght is different). This kind is for the very cloudy bottom.
-  G4MaterialPropertiesTable *lAr2_mt = new G4MaterialPropertiesTable();
+  lAr2_mt = new G4MaterialPropertiesTable();
   lAr2_mt->AddProperty("FASTCOMPONENT", lar_Energy_scin, lar_SCINT, larscin);
   lAr2_mt->AddProperty("SLOWCOMPONENT", lar_Energy_scin, lar_SCINT, larscin);
   lAr2_mt->AddProperty("RINDEX",        lar_Energy_rin,  lar_RIND,  larrin);
@@ -242,6 +300,12 @@ void detectorConstruction::DefineMaterials(){
   lAr1->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
   lAr2->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
  
+  G4cout << "second definition of lAr above" << G4endl;//*/
+
+  //G4cout << "EdwardNote Defined Compounds" << G4endl;
+  //***Material properties tables
+  //these tables define the optical properties of the materials 
+  //defines refractive index, scintillation properties, absorption length with respect to energy.
   //Definition of MPT for Glass
   G4double glass_Energy[] = { 7.0*eV, 7.07*eV, 7.14*eV };
   G4int glassnum = sizeof(glass_Energy) / sizeof(G4double);
@@ -298,37 +362,30 @@ void detectorConstruction::DefineMaterials(){
     { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/, 
       2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
       2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
-      3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  4.953*eV/*(250nm)*/, 5.474*eV/*(227nm)*/,
-      6.262*eV/*(198nm)*/,  7.000*eV/*(177nm)*/,  8.300*eV/*(149nm)*/,  10.00*eV/*(124nm)*/, 12.60*eV/*(98nm)*/  };
+      3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
+      6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
   //energy spectrum for TPB absorption and WLS absorption spectra.                                                                                 
   //The following several dozen lines describe the WLS and normal absorption lengths for TPB over the above spectrum. It is generally divided into 2 sections: three lines for visible light (between 1800 and 340 nm; includes IR and low UV) that is not Wavelength shifted, and 2 lines for ultraviolet light which is (between 330 and 90 nm). There are a number of alternate verions of TPB which have been used over the course of the simulation; for convenience a selection have been left in to provide an example of how to alter the TPB properties.
 
+  G4double aBsoRp = 0.20;//tpbEff;
+  G4double wlAbf21 = -0.002/(std::log((1-aBsoRp)));
+  G4double wlAbf24 = -0.002/(std::log((1-(.222*aBsoRp/0.2))));
+  G4double wlAbf19 = -0.002/(std::log((1-(.156*aBsoRp/0.2))));
+  G4double wlAbf15 = -0.002/(std::log((1-(.114*aBsoRp/0.2))));
+  G4double wlAbf12 = -0.002/(std::log((1-(.191*aBsoRp/0.2))));
+  G4double wlAbf11 = -0.002/(std::log((1-(.311*aBsoRp/0.2))));
+  //G4double wlAbf09 = -0.002/(std::log((1-.403*aBsoRp/0.2)));//*/
+  
   //This version contained comments with all tpb efficiencies tested so far. Current best fit has reduced efficiency on the foil and high efficiency on the tpb, with the conversion happening through the full thickness of the TPB. Those values are thus uncommented.
   G4double TPBWLSAbsorption[nTPBEntries] = //Efficiencies made through this and the WLSabsorption below. Pairs of lines should be used together
    {
       0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
       1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
       10000.000*m, 10000.000*m, 10000.000*m, 10000.000*m, 100000.0*m,
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.05850*nm, //for 5% tpb Efficiency 
-      //0.05850*nm, 0.05850*nm, 0.05850*nm, 0.05850*nm, 0.05850*nm      
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.02100*nm, //for 10% tpb Efficiency 
-      //0.02100*nm, 0.02100*nm, 0.02100*nm, 0.02100*nm, 0.02100*nm      
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00717*nm, //for 20% tpb Efficiency 
-      //0.00717*nm, 0.00717*nm, 0.00717*nm, 0.00717*nm, 0.00717*nm      
-      //0.00000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00338*nm, //for 30% tpb Efficiency
-      //0.00338*nm, 0.00338*nm, 0.00338*nm, 0.00338*nm, 0.00338*nm    
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.0005575*nm, //for 60% tpb Efficiency
-      //0.0005575*nm, 0.0005575*nm, 0.0005575*nm, 0.0005575*nm, 0.0005575*nm
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00100*nm, //for 90 or 100% WLS efficiency
-      //0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 825.000*nm, //for 90% wls efficiency over the full tpbfoil or coat thickness
-      //825.000*nm, 825.000*nm, 825.000*nm, 825.000*nm, 825.000*nm
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00166*mm, //for 70% tpb Efficiency over whole tpb thickness
-      //0.00166*mm, 0.00166*mm, 0.00166*mm, 0.00166*mm, 0.00166*mm
-      100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00289*mm, //for 50% tpb Efficiency over whole tpb thickness
-      0.00289*mm, 0.00289*mm, 0.00289*mm, 0.00289*mm, 0.00289*mm
-      //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00561*mm, //for 30% tpb Efficiency over whole tpb thickness
-      //0.00561*mm, 0.00561*mm, 0.00561*mm, 0.00561*mm, 0.00561*mm
+      100000.0*m, 100000.0*m, 100000.0*m, wlAbf24*mm, wlAbf21*mm, 
+      wlAbf19*mm, wlAbf15*mm, wlAbf12*mm, wlAbf11*mm, wlAbf11*mm, 
+      //100000.0*m, 100000.0*m, 100000.0*m, wlAbf21*mm, wlAbf21*mm, 
+      //wlAbf21*mm, wlAbf21*mm, wlAbf21*mm, wlAbf21*mm, wlAbf21*mm, 
     };
   
   G4double TPBAbsorption[nTPBEntries] = //Used for efficiency and absorption through the full coat.
@@ -360,27 +417,24 @@ void detectorConstruction::DefineMaterials(){
        //0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm
     };//*/
   
+  //G4double wlsAb100 = -0.0005577/(std::log(0.40));//-0.002/(std::log(0.03726));
+  //G4double wlsAb098 = -0.0005577/(std::log(0.033));
+  G4double wlsAb110 = -0.0005577/(std::log(0.067));
+  G4double wlsAb128 = -0.0005577/(std::log(0.2));
+  G4double wlsAb190 = -0.0005577/(std::log(0.533));
+  G4double wlsAb213 = -0.0005577/(std::log(0.4));
+  G4double wlsAb240 = -0.0005577/(std::log(0.367));
+  //Numbers from Gehman V M,  arXiv:1104.3259v2 Flouresence Efficiency of TPB films. Adjusted for Eff=.96274 at 213nm for full thickness of pmt coating while maintaining proportionality.*/
+
   //For PMTs, with higher efficiency that the foil TPB defined above.
   G4double TPBWLSAbsorption100[nTPBEntries] = 
     {    0.10000*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
 	 1000.00*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
-	 10000.0*m, 10000.0*m, 10000.0*m, 10000.0*m, 100000.0*m,
-	 //10000.0*m, 10000.0*m, 10000.0*m, 10000.0*m, 0.00100*nm, //for 100% WLS efficiency
-	 //0.0010*nm, 0.0010*nm, 0.0010*nm, 0.0010*nm, 0.00100*nm
-	 //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.02100*nm, //for 10% tpb Efficiency 
-	 //0.02100*nm, 0.02100*nm, 0.02100*nm, 0.02100*nm, 0.02100*nm      
-	 //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00717*nm, //for 20% tpb Efficiency 
-	 //0.00717*nm, 0.00717*nm, 0.00717*nm, 0.00717*nm, 0.00717*nm      
-	 //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00338*nm, //for 30% tpb Efficiency 
-	 //0.00338*nm, 0.00338*nm, 0.00338*nm, 0.00338*nm, 0.00338*nm    
-	 //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.01167*nm, //for 15% tpb Efficiency 
-	 //0.01167*nm, 0.01167*nm, 0.01167*nm, 0.01167*nm, 0.01167*nm    
-	 100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 825.000*nm, //for 90% wls efficiency through the full tpbcoat
-	 825.000*nm, 825.000*nm, 825.000*nm, 825.000*nm, 825.000*nm
-	 //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00166*mm, //for 70% tpb Efficiency over the whole tpb coat thickness
-	 //0.00166*mm, 0.00166*mm, 0.00166*mm, 0.00166*mm, 0.00166*mm
-	 //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00289*mm, //for 50% tpb Efficiency over whole tpb coat
-	 //0.00289*mm, 0.00289*mm, 0.00289*mm, 0.00289*mm, 0.00289*mm
+	 10000.0*m, 10000.0*m, 10000.0*m, 10000.0*m, 100000.0*m, 
+	 100000.0*m, 100000.0*m, 100000.0*m, wlsAb240*mm, wlsAb213*mm, //variable tpb over wavelength
+	 wlsAb190*mm, wlsAb213*mm, wlsAb128*mm, wlsAb110*mm, wlsAb110*mm
+	 //100000.0*m, 100000.0*m, 100000.0*m, wlsAb100*mm, wlsAb100*mm, //for constant Eff
+	 //wlsAb100*mm, wlsAb100*mm, wlsAb100*mm, wlsAb100*mm, wlsAb100*mm
     };
   
   G4double TPBAbsorption100[nTPBEntries] = 
@@ -402,6 +456,18 @@ void detectorConstruction::DefineMaterials(){
        //0.02100*nm, 0.02100*nm, 0.02100*nm, 0.02100*nm, 0.02100*nm      
        //100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 0.00100*nm, //these two lines for 10 or 50% tpb Efficiency
        //0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm, 0.00100*nm
+    };//*/
+    
+  G4double absltwo = -0.00211/(std::log(0.95));
+  G4double abslttw = absltwo*1.4;
+  G4double abslttt = absltwo*1.55;
+    
+  G4double TPBAbsorptionTwo[nTPBEntries] = 
+    {  0.02000*mm, absltwo*mm, absltwo*mm, absltwo*mm, absltwo*mm,// 90% transmission
+       abslttw*mm, abslttw*mm, abslttw*mm, abslttw*mm, abslttw*mm,
+       abslttt*mm, abslttt*mm, abslttt*mm, 10.0000*mm, 100000.0*m,//*/
+       100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m,
+       100000.0*m, 100.0000*m, 100.0000*m, 100.0000*m, 100.0000*m
     };//*/
     
   //Emission spectrum for TPB; basically probabilities of photon being reemitted in the various energy bins.
@@ -438,7 +504,6 @@ void detectorConstruction::DefineMaterials(){
   TPBProp->AddConstProperty("WLSTIMECONSTANT", 0.01*ns);
   //TPBProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
   //allows geant to produce multiple photons per incoming, with the mean number being 1.2. if off WLSabsorbed to emitted is 1:1
-
   tPB->SetMaterialPropertiesTable(TPBProp);
   
   //MPT for second kind of TPB, this version for PMTs.
@@ -449,6 +514,15 @@ void detectorConstruction::DefineMaterials(){
   TPBsProp->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, nTPBEntries);
   TPBsProp->AddConstProperty("WLSTIMECONSTANT", 0.01*ns);
   tPBhundred->SetMaterialPropertiesTable(TPBsProp);//*/
+
+  //MPT for third kind of TPB for modification of R3 and R4
+  TPBtProp = new G4MaterialPropertiesTable();
+  TPBtProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
+  TPBtProp->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorptionTwo, nTPBEntries);
+  TPBtProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption100, nTPBEntries);
+  TPBtProp->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, nTPBEntries);
+  TPBtProp->AddConstProperty("WLSTIMECONSTANT", 0.01*ns);
+  tPBtwo->SetMaterialPropertiesTable(TPBtProp);//*/
 
   //Defines properties of the ptfe reflectors.
   const G4int nTefEntries = 25;
@@ -482,6 +556,7 @@ void detectorConstruction::DefineMaterials(){
 //Construct method called in main code to actual build the detector using the materials defined above. 
 //Also contains the if-else statements that build parts of the detector that are not always on.
 G4VPhysicalVolume* detectorConstruction::Construct(){
+  
 
   //Create a box 10x10x10 meters in which to place the detector. In theory is much larger than it needs to be.
   G4double expHall_x = 5*m;
@@ -562,9 +637,12 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     //Defines the thickness and placement of the TPB foils (slightly thicker on the bottom than the top). Can change the overall thickness without altering the ratios by just adjusting the first number, basethick
     const G4double basethick = 0.0002*cm;
-    G4double thick = basethick/2.;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
-    G4double deep = thick*3/2;//Defines the depth; used for making the bottom thicker
-    G4double place = thick/2;//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
+    G4double divider = 2.0;
+    G4double thick = basethick/divider;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
+
+    G4double topth = 100.0;
+    G4double deep = thick*2+thick/topth;//Defines the depth; used for making the bottom thicker
+    G4double place = (thick-thick/(topth*2.0));//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
 
     //G4cout << "EdwardNote Defined Up to foils" << G4endl;
     
@@ -630,7 +708,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr1,"Fiducial4");//*/
 
     //The bottom layer is different from the prior (best fit so far). It has much cloudier lAR and a much larger contaminated ring.
-    fFiducialAr5 = new G4Tubs("Fiducial5", 35*cm, 96*cm, 15.0*cm, 0*deg, 360*deg);
+    fFiducialAr5 = new G4Tubs("Fiducial5", r5radius*cm, 96*cm, 15.0*cm, 0*deg, 360*deg);
     fLogicFiduc5 = new G4LogicalVolume(fFiducialAr5,lAr2,"Fiducial5");
 
     //G4cout << "EdwardNote Defined TPB OS table" << G4endl;
@@ -687,11 +765,13 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       refl2foilOS->SetFinish(ground);
       refl2foilOS->SetSigmaAlpha(0.01);
       
+      G4double vs2rf = vsRf;
+
       G4MaterialPropertiesTable *refl2foilMPT = new G4MaterialPropertiesTable();
       G4double refl2foilOSReflect[nAcTefEntries] =
-	{0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 
-	 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 
-	 0.50, 0.50, 0.50, 0.50, uvRf, uvRf, uvRf, 
+	{vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, 
+	 vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, 
+	 vs2rf, vs2rf, vs2rf, vs2rf, uvRf, uvRf, uvRf, 
 	 uvRf, uvRf, uvRf, uvRf};
       refl2foilMPT->AddProperty("REFLECTIVITY", reflfoilOSEnergy, refl2foilOSReflect, nAcTefEntries);
       refl2foilMPT->AddProperty("EFFICIENCY", reflfoilOSEnergy, reflfoilOSEff, nAcTefEntries);
@@ -722,6 +802,22 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 							0,
 							true);//*/
 	
+	//foil extension lower down to reduce TPB thickness down the sides
+	G4double sidethick = 16.0;
+	G4double sidedown = 10.0;
+	G4double sideplace = (68.0-sidedown)*cm;
+	G4double inrad = 96.0*cm+thick/sidethick;
+	G4Tubs* ffoilDown = new G4Tubs("ptfedown", inrad, (96.0*cm+thick), sidedown*cm, 0*deg, 360*deg);
+	G4LogicalVolume* fLogicDown = new G4LogicalVolume(ffoilDown,ptfe,"ptfedown");
+	G4VPhysicalVolume* fPhysDown = new G4PVPlacement(0,
+							 G4ThreeVector(0,0,sideplace),
+							 fLogicDown,
+							 "ptfedown",
+							 fLogicTPB,
+							 false,
+							 0,
+							 true);
+
 	lArFiducial = new G4PVPlacement(0,
 					G4ThreeVector(0*cm, 0*cm, -0.0000*cm),
 					fLogicFiduc,
@@ -733,7 +829,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
 	//lAr to tpb optical surfaces, for both top/bottom and side layers
 	new G4LogicalBorderSurface("refl", fPhysTPB, fPhysfoil, reflfoilOS);
-	new G4LogicalBorderSurface("refl2", fPhysTPBb, fPhysfoil, reflfoilOS);
+	new G4LogicalBorderSurface("refldown", fPhysTPB, fPhysDown, reflfoilOS);
+	new G4LogicalBorderSurface("refl2", fPhysTPBb, fPhysfoil, refl2foilOS);
 
 	new G4LogicalBorderSurface("TPB", lArFiducial, fPhysTPB, TPBfoilOS);
 	new G4LogicalBorderSurface("TPB2", fPhysTPB, lArFiducial, TPBfoilOS);
@@ -789,14 +886,14 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 					   true);//*/
 	  
 	  //Adds a small cone on the bottom near the center. makes the simulation better fit data and matches the LED in reality.
-	  G4double bconewidth = 6*cm;
-	  G4double bconeheight = bconewidth*0.5;
+	  G4double bconewidth = conewide*cm;
+	  G4double bconeheight = bconewidth*conehigh;
 	  G4double bconeplace = bconeheight-68*cm;
 	  
 	  G4Cons* foilbcone = new G4Cons("ptfebcone", 0*cm, bconewidth, 0*cm, 0*cm, bconeheight, 0*deg, 360*deg);
 	  G4LogicalVolume* fFoilBcone = new G4LogicalVolume(foilbcone, ptfe, "ptfebcone");
 	  
-	  G4Cons* tpbbcone = new G4Cons("tpbbcone", 0*cm, (bconewidth+0.0003*cm), 0*cm, 0*cm, (bconeheight+0.0003*cm), 0*deg, 360*deg);
+	  G4Cons* tpbbcone = new G4Cons("tpbbcone", 0*cm, (bconewidth+thick*2.), 0*cm, 0*cm, (bconeheight+thick*2.), 0*deg, 360*deg);
 	  G4LogicalVolume* fTPBBcone = new G4LogicalVolume(tpbbcone, tPB, "tpbbcone");
 	  G4VPhysicalVolume* tpbBconePhys = new G4PVPlacement(0,
 							      G4ThreeVector(0*cm, 0*cm, bconeplace),
@@ -810,7 +907,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	  G4VPhysicalVolume* foilBconePhys = new G4PVPlacement(0,
 							       G4ThreeVector(0*cm, 0*cm, -0.00015*cm),
 							       fFoilBcone,
-							       "tpbbcone",
+							       "ptfebcone",
 							       fTPBBcone,
 							       false,
 							       0,
@@ -867,12 +964,16 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     //places the calibration rod (with extension) if its turned on.
     if (fRodin) {
       //G4cout << "Edwardnote Placing rod"  << G4endl;
+      G4double mainplace = 75*cm+rodHeight;
+      G4double knutplace = 32*cm+rodHeight;
+      G4double extendplace = 15*cm+rodHeight;
 
       //main rod
-      G4Tubs* sourcerod = new G4Tubs("sourcerod", 0*cm, 3*cm, 45*cm, 0*deg, 360*deg);
+      G4Tubs* sourcerod = new G4Tubs("sourcerod", 0*cm, 2.5*cm, 45*cm, 0*deg, 360*deg);
       G4LogicalVolume* fLogicRod = new G4LogicalVolume(sourcerod, steel, "sourcerod");
       new G4PVPlacement(0,
-			G4ThreeVector(0*cm, 0*cm, 75*cm),
+			G4ThreeVector(0*cm, 0*cm, mainplace),//z=75*cm for extension,45 without
+			//G4ThreeVector(0*cm, 0*cm, 90*cm),//for upper position 18" above middle
 			fLogicRod,
 			"sourcerod",
 			fLogicFiduc,
@@ -881,7 +982,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 			true);
       
       //lAr inside the rod (it's hollow).
-      G4Tubs* hollowrod = new G4Tubs("hollowrod", 0*cm, 2*cm, 45*cm, 0*deg, 360*deg);
+      G4Tubs* hollowrod = new G4Tubs("hollowrod", 0*cm, 2.*cm, 44*cm, 0*deg, 360*deg);
       G4LogicalVolume* fHoleRod = new G4LogicalVolume(hollowrod, lAr, "hollowrod");
       new G4PVPlacement(0,
 			G4ThreeVector(0*cm, 0*cm, 0*cm),
@@ -893,10 +994,11 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 			true);
 
       //endcap (that very large knut)
-      G4Tubs* sourcecap = new G4Tubs("sourcecap", 3*cm, 4*cm, 2*cm, 0*deg, 360*deg);
+      G4Tubs* sourcecap = new G4Tubs("sourcecap", 2.5*cm, 3*cm, 2*cm, 0*deg, 360*deg);
       G4LogicalVolume* fLogicCap = new G4LogicalVolume(sourcecap, steel, "sourcecap");
       new G4PVPlacement(0,
-			G4ThreeVector(0*cm, 0*cm, 32*cm),
+			G4ThreeVector(0*cm, 0*cm, knutplace),//z=32*cm for extension, 2 without
+			//G4ThreeVector(0*cm, 0*cm, 47*cm),//for upper position
 			fLogicCap,
 			"sourcecap",
 			fLogicFiduc,
@@ -908,7 +1010,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       G4Tubs* sourceextend = new G4Tubs("sourceextend", 0*cm, 0.5*cm, 15*cm, 0*deg, 360*deg);
       G4LogicalVolume* fLogicExtend = new G4LogicalVolume(sourceextend, steel, "sourceextend");
       new G4PVPlacement(0,
-			G4ThreeVector(0*cm, 0*cm, 15*cm),
+			G4ThreeVector(0*cm, 0*cm, extendplace),
 			fLogicExtend,
 			"sourceextend",
 			fLogicFiduc,
@@ -917,7 +1019,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 			true);
       
       //extension is also hollow, or at least approximated as such.
-      G4Tubs* hollowextend = new G4Tubs("hollowextend", 0*cm, 0.25*cm, 14.9*cm, 0*deg, 360*deg);
+      G4Tubs* hollowextend = new G4Tubs("hollowextend", 0*cm, 0.25*cm, 14.8*cm, 0*deg, 360*deg);
       G4LogicalVolume* fHoleExtend = new G4LogicalVolume(hollowextend, lAr, "hollowextend");
       new G4PVPlacement(0,
 			G4ThreeVector(0*cm, 0*cm, 0.2*cm),
@@ -926,7 +1028,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 			fLogicExtend,
 			false,
 			0,
-			true);
+			true);//*/
       //G4cout << "Edwardnote Placed rod"  << G4endl;
 
     } else if (fLaser) {
@@ -940,7 +1042,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       G4Cons* foilcone = new G4Cons("ptfecone", 1.8*cm, 1.81*cm, 1.8*cm, 15.2*cm, coneheight, 0*deg, 360*deg);
       G4LogicalVolume* fFoilCone = new G4LogicalVolume(foilcone, ptfe, "ptfecone");
 
-      G4Cons* tpbcone = new G4Cons("tpbcone", 1.8*cm, 1.8102*cm, 1.8*cm, 15.2002*cm, (coneheight+0.0001*cm), 0*deg, 360*deg);
+      G4Cons* tpbcone = new G4Cons("tpbcone", 1.8*cm, (1.810*cm+(thick/topth)), 1.8*cm, (15.200*cm+(thick/topth)), (coneheight+(thick/topth/2.)), 0*deg, 360*deg);
       G4LogicalVolume* fTPBCone = new G4LogicalVolume(tpbcone, tPB, "tpbcone");
 
       //place the cones of foil (ptfe) and tpb into the appropriate fiducial volume
@@ -1295,6 +1397,22 @@ void detectorConstruction::placePMT(G4String name,
   //set the outer radii of the glass and the thickness of the TPB.
   G4double radout = 10.2*cm;
   G4double tpbout = 0.00009*cm;//In the best fit, the TPB on the PMTs is slightly thinner than normal. Normal: 0.00019*cm.
+
+  G4double TPBdivide = 1.0;
+  tpbout = tpbout/TPBdivide;
+  G4double r5mult = PMTx/2.0;
+  G4double r5out = tpbout*r5mult;
+  
+  G4double r2mult = 1.625;//tpbEff;
+  G4double r2out = tpbout*r2mult;
+  
+  if (pmt_z < -40) {
+    tpbout = r5out;
+  }
+  if ((pmt_z > 20) && (pmt_z < 40)) {
+    tpbout = r2out;
+  }
+  
 
   //define the initial angle so the pmt is facing inwards according to the position
   init_angle = (std::atan(pmt_y/pmt_x)*180/CLHEP::pi)+90;
@@ -1700,10 +1818,147 @@ void detectorConstruction::SetDefaults() {
   mainVolOn = true;
   fRodin = false;
   cylinderOn = false;
-  fLaser=true;
+  fLaser=false;
   fSodium=false;
+  fAr39=false;
+  darkMatter=false;
   fLayers=true;
   ccm200 = false;
+  conewide = 2.7919;
+  conehigh = 0.48577;//G4RandFlat::shoot(0.2,1.0);
+  ultra = 58.687;
+  threehun = 1215.93;//look at this for lower values for laser later.
+  PMTx = 7.510;
+  fifth = 18.303;//G4RandFlat::shoot(10.0,40.0);//
+  tpbEff = 0.96274;//G4RandFlat::shoot(0.1,0.6);//0.96274;
+  r5radius = 56.276;
+  clouded=100.0;
+  randomized = false;
+  variableString = "Random: All Mean Values";
+  rootfile = "defaultfile.root";
+}
+
+void detectorConstruction::SetRandoms() {
+  /*conewide = G4RandGauss::shoot(6.0,4.0);
+  while (conewide < 0.1 || conewide > 20.0) {
+    conewide = G4RandGauss::shoot(6.0,4.0);
+  }
+  conehigh = G4RandGauss::shoot(0.9,0.4);
+  while (conehigh < 0.1 || conehigh > 2.0) {
+    conehigh = G4RandGauss::shoot(0.9,0.4);
+  }
+  ultra = G4RandGauss::shoot(80.0,25.0);
+  while (ultra < 10.0 || ultra > 200.0) {
+    ultra = G4RandGauss::shoot(80.0,25.0);
+  }
+  threehun = G4RandGauss::shoot(1200.0,200.0);
+  while (threehun < 100.0 || threehun > 2000.0) {
+    threehun = G4RandGauss::shoot(1200.0,200.0);
+  }
+  PMTx = G4RandGauss::shoot(5.0,3.0);
+  while (PMTx < 1.0 || PMTx > 15.0) {
+    PMTx = G4RandGauss::shoot(5.0,3.0);
+    }
+  fifth = G4RandGauss::shoot(20.0,8.0);
+  while (fifth < 1.0 || fifth > 80.0) {
+    fifth = G4RandGauss::shoot(20.0,8.0);
+  }
+  r5radius = G4RandGauss::shoot(40.0,20.0);
+  while (r5radius < 5.0 || r5radius > 85.0) {
+    r5radius = G4RandGauss::shoot(40.0,20.0);
+  }
+  tpbEff = G4RandGauss::shoot(.90,.05);
+  while (tpbEff < 0.80 || tpbEff > .99999) {
+    tpbEff = G4RandGauss::shoot(0.90,0.05);
+  }
+  clouded = G4RandGauss::shoot(75.,25.);
+  while (clouded < 5.0 || clouded > 150.0) {
+    clouded = G4RandGauss::shoot(75.,25.);
+    }//*/
+  /*conewide = G4RandFlat::shoot(1.0,10.0);
+  ultra = G4RandFlat::shoot(10.0,200.0);
+  PMTx = G4RandFlat::shoot(1.0,12.0);
+  fifth = G4RandFlat::shoot(1.0,80.0);
+  r5radius = G4RandFlat::shoot(5.0,85.0);*/
+  tpbEff = 0.96274;//G4RandFlat::shoot(0.1,0.6);//0.96274;
+  threehun = 1215.93;//look at this for lower values for laser later.
+  conehigh = 0.48577;//G4RandFlat::shoot(0.2,1.0);
+  fifth = 18.303;//G4RandFlat::shoot(10.0,40.0);//
+  conewide = 2.7919;
+  //ultra = G4RandFlat::shoot(10.0,200.0);
+  ultra = 58.687;
+  PMTx = 7.510;
+  r5radius = 56.276;
+  //tpbEff = G4RandFlat::shoot(1.0,3.0);//fixed for transparency test at 0.96274;
+  clouded=100.0;
+
+
+  //the following section defines the absorption lengths for the various kinds of liquid Argon.
+  //  clouded =G4RandFlat::shoot(1.0,300.0);
+  G4double base = 1000.0;//37.53;//G4RandFlat::shoot(100.0,2000.0);//200.0;//Base absorption length for UV light
+  G4double uvlas = 1000.0;//ultra;//absorptioon length for the 213nm light
+  G4double time5 = 1.0;//fifth/100.;//absorption length for the bottom (row5), a quarter of that for the rest of the detector
+  G4double timec = clouded/100.;//absorption length for the edges, three quarters of the norm
+  G4double row5 = time5*base;
+  G4double cloud = timec*base;
+  G4double uvlasc = timec*uvlas;
+  G4double uvlas5 = time5*uvlas;
+  G4double three5 = time5*threehun;
+  G4double mult = 2800.0;//Absorption length for visible.
+
+  G4double lar_Energy_abs[47];
+  G4double lar_wlv_abs[47];
+  for (int i=0;i<47;++i){
+    lar_wlv_abs[i] = i*20+80;
+    lar_Energy_abs[i] = (1293.847/(i*20.0+80.0))*eV;
+  }
+  G4double lar_ABSL[47];
+  G4double lar1_ABSL[47];
+  G4double lar2_ABSL[47];
+  for (int i=0;i<6;++i){
+    lar_ABSL[i] = base*cm;
+    lar1_ABSL[i] = cloud*cm;
+    lar2_ABSL[i] = row5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=6;i<11;++i){
+    lar_ABSL[i] = uvlas*cm;
+    lar1_ABSL[i] = uvlasc*cm;
+    lar2_ABSL[i] = uvlas5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=11;i<16;++i){
+    lar_ABSL[i] = threehun*cm;
+    lar1_ABSL[i] = threehun*cm;
+    lar2_ABSL[i] = three5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=16;i<47;++i){
+    lar_ABSL[i] = mult*cm;
+    lar1_ABSL[i] = mult*cm;
+    lar2_ABSL[i] = mult*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
+  assert(sizeof(lar_ABSL) == sizeof(lar_Energy_abs));
+
+  //Takes the defined values above and uses them to define a materials properties table.
+  lAr_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar_ABSL,  larabs);
+  lAr1_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar1_ABSL,  larabs);
+  lAr2_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar2_ABSL,  larabs);
+  G4cout << "second definition of lAr above" << G4endl;
+  //*/
+
+
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+
+  std::ostringstream oss;
+  oss /*<< "Randoms: cone" << conewide << "high" << conehigh << "ultra" << ultra << "threehun" << threehun << "pmtx" << PMTx << "fifth" << fifth << "rad" << r5radius << "tpb" << tpbEff << "cloud" << clouded << "base"*/ << "Randoms: VUVabsorb" << base;  
+
+  randomized = true;
+  
+  variableString = oss.str();
+  G4cout << variableString << G4endl;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......                                          
@@ -1728,7 +1983,36 @@ void detectorConstruction::SetPMTsOn(G4bool b) {
 //turn Sodium on or off.
 void detectorConstruction::SetSodiumOn(G4bool b) {
   fSodium=b;
-  G4RunManager::GetRunManager()->ReinitializeGeometry();
+  G4cout << "Set Sodium to " << fSodium << G4endl;
+  //G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+//turn Sodium on or off.
+void detectorConstruction::SetAr39(G4bool b) {
+  fAr39=b;
+  G4cout << "Set Ar39 to " << fAr39 << G4endl;
+  //G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+//sets the dark matter and changes the scintillation to nuclear recoil or electronic
+void detectorConstruction::SetDarkMatter(G4bool b) {
+  darkMatter=b;
+  if (b) {
+      G4double scint_yeild=1.0/(19.5*eV)/4.0; //scintillation yeild: quartered for nuclear recoil
+      lAr_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+      lAr_mt->AddConstProperty("YIELDRATIO",0.70);//seventy percent in singlet for nuclear recoil
+      lAr1_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+      lAr1_mt->AddConstProperty("YIELDRATIO",0.70);//seventy percent in singlet for nuclear recoil
+      lAr2_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+      lAr2_mt->AddConstProperty("YIELDRATIO",0.70);//seventy percent in singlet for nuclear recoil
+  } else {
+    G4double scint_yeild=1.0/(19.5*eV); //scintillation yeild: normal for ee
+    lAr_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+    lAr_mt->AddConstProperty("YIELDRATIO",0.25);//twentyfive percent in singlet for ee
+    lAr1_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+    lAr1_mt->AddConstProperty("YIELDRATIO",0.25);//twentyfive percent in singlet for ee
+    lAr2_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+    lAr2_mt->AddConstProperty("YIELDRATIO",0.25);//twentyfive percent in singlet for ee
+  }
+  G4cout << "Setting Dark Matter to " << darkMatter << G4endl;  
 }
 //sets ccm200 on or off. off defaults to ccm120
 void detectorConstruction::SetCCM200(G4bool b) {
@@ -1736,8 +2020,9 @@ void detectorConstruction::SetCCM200(G4bool b) {
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 //turns on the calibration rod. Also turns the laser rod off, helpfully.
-void detectorConstruction::SetRodin(G4bool b) {
-  fRodin=b;
+void detectorConstruction::SetRodin(G4double rod) {
+  fRodin=true;
+  rodHeight=rod;
   fLaser=false;
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
@@ -1750,4 +2035,9 @@ void detectorConstruction::SetTPBfoilOn(G4bool b) {
 void detectorConstruction::SetReflectorOn(G4bool b) {
   fReflectorOn=b;
   G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+
+//method to set the rootfilename
+void detectorConstruction::SetRootFile (G4String b) {
+  rootfile = b;
 }

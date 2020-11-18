@@ -28,8 +28,26 @@ public:
   const G4ParticleGun* GetParticleGun() const {return fParticleGun; }
   //defines a method to access the fParticleGun variable from any part of the code is the primary generator is included.
 
+  G4double GetXpos() const { return xpos; }
+  G4double GetYpos() const { return ypos; }
+  G4double GetZpos() const { return zpos; }
+  G4double GetXmom() const { return momx; }
+  G4double GetYmom() const { return momy; }
+  G4double GetZmom() const { return momz; }
+  G4double GetPartEneg() const { return partEneg; }
+  G4String GetPartName() const { return nameString; }
+
 private:
   G4ParticleGun* fParticleGun;
+
+  G4double xpos;
+  G4double ypos;
+  G4double zpos;
+  G4double momx;
+  G4double momy;
+  G4double momz;
+  G4double partEneg;
+  G4String nameString;
 };
 
 #endif

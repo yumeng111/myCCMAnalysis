@@ -28,6 +28,13 @@ runAction::~runAction()
 void runAction::BeginOfRunAction(const G4Run*)
 {
   //G4cout << "maincodenote: starting runAction" << G4endl;
+  const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
+  //detectorConstruction* detector = new detectorConstruction;
+
+  if (detector->IsRandom()) {
+    G4String randoms = detector->GetRandoms();
+    G4cout << randoms << G4endl;
+  }//*/
 
   //Do not save the random seeds for every event.
   G4RunManager::GetRunManager()->SetRandomNumberStore(false);

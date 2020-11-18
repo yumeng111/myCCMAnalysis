@@ -36,6 +36,9 @@ steppingAction::~steppingAction()
 //Note: as the stepping action is called for every step, it is advisible to put simple escapes as early as possible to reduce run time.
 void steppingAction::UserSteppingAction(const G4Step* step)
 {
+  G4String particlen = step->GetTrack()->GetParticleDefinition()->GetParticleName();
+  //  G4cout << "got particle type " << particlen << G4endl;
+
   //debugging output lines
   //  G4cout << "volumes defined"<< G4endl;
   //G4cout << "maincodenote: start stepping Action" << G4endl;
@@ -73,9 +76,6 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 
   //Get the process and particle name.
   G4String process  = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
-  G4String particlen = step->GetTrack()->GetParticleDefinition()->GetParticleName();
-  //G4cout << "got particle type " << particlen << G4endl;
-
   //define variables for particle momentum, position, pmt position, energy desposited, kinetic energy, and more.
   G4double px = 0;
   G4double py = 0;
@@ -112,7 +112,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 
   //If the particle is a optical photon, and has just transferred from the reflector foil on the top or bottom,
   //alter the direction to induce a slight randomness due to the unsmoothness of the foils there.
-  if (particlen == "opticalphoton" && volname=="TPBfoilb" && volpname == "ptfefoil") {
+  if ( (particlen == "opticalphoton" && volname=="TPBfoilb" && volpname == "ptfefoil") || (particlen == "opticalphoton" && volname=="tpbbcone" && volpname == "ptfebcone") ) {
     mom = step->GetPostStepPoint()->GetMomentumDirection();
     px = mom.x();
     py = mom.y();
@@ -122,9 +122,11 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     //creates three random variables, two angles and a test.
     //the gaussian angles are for a slight rotation biased towards maintaing the same direction, 
     //the flats commented after them for complete randomness
+    G4double randwide = 1.0;
+    G4double thmax = randwide/2.0;
     G4double randtest = G4RandFlat::shoot(0.1,1.1);
-    G4double phi = G4RandGauss::shoot(0,1.5);//G4RandFlat::shoot(-.002,6.28);//
-    G4double theta = G4RandGauss::shoot(0,.75);//G4RandFlat::shoot(.01,1.57);//
+    G4double phi = G4RandGauss::shoot(0,randwide);//G4RandFlat::shoot(-.002,6.28);//
+    G4double theta = G4RandGauss::shoot(0,thmax);//G4RandFlat::shoot(.01,1.57);//
     
     //Use the two angles to calculate a new outgoing angle based on a rotation from the original
     G4double c1 = cos(phi);
@@ -172,6 +174,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     G4int col = 0;
     G4int row = 0;
     G4int row2 = 0;
+    G4bool coated = false;
     if (testn == "PMT") {
       std::istringstream iss (volname.substr(volname.find('C')+1,volname.find('R')));
       iss >> col; 
@@ -181,6 +184,9 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 	std::istringstream isr2 (volname.substr(volname.find('R')+2,volname.find('R')+3));
 	isr2 >> row2;
       }	
+      if (volname.find('coat') != string::npos) {
+	coated = true;
+      }
     } else if (testnp == "PMT") {
       std::istringstream iss (volpname.substr(volpname.find('C')+1,volpname.find('R')));
       iss >> col; 
@@ -190,6 +196,9 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 	std::istringstream isr2 (volname.substr(volname.find('R')+2,volname.find('R')+3));
 	isr2 >> row2;
       }	
+      if (volname.find('coat') != string::npos) {
+	coated = true;
+      }
     }
 
     //Get the location of the PMT based on row and column. 
@@ -204,6 +213,9 @@ void steppingAction::UserSteppingAction(const G4Step* step)
       pmtz = -68.0;
       if (row == 6) {
 	pmtz = 68.0;
+	row = 60+row2;
+      }else {
+	row = 10+row2;
       }
       if (row2 == 4) {
 	angle = (col-1)*2*CLHEP::pi/20;
@@ -255,6 +267,8 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     step->GetTrack()->SetTrackStatus(fStopAndKill);
   
     //abbreviated output with only the relevant information (pmt, photon energy, time, and angle)
+    fEventAction->AddHit(row,col,coated,kinEn/eV,time/ns,dot);
+    //mctruth->AddHitInformation(row,col,coated,kinEn/eV,time/ns,dot);
     G4cout << volname << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
     return;
   }

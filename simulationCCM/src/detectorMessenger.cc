@@ -16,6 +16,7 @@ Be careful trying to make a detector that can be completely controlled from the 
 #include "G4UIdirectory.hh"
 #include "G4UIcmdWithABool.hh"
 #include "G4UIcmdWithADouble.hh"
+#include "G4UIcmdWithAString.hh"
 #include "G4Scintillation.hh"
 
 #include "G4RunManager.hh"
@@ -58,13 +59,25 @@ detectorMessenger::detectorMessenger(detectorConstruction* detector)
   fSodiumCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fSodiumCmd->SetToBeBroadcasted(false);
 
+  fAr39Cmd = new G4UIcmdWithABool("/ccm/detector/ar39",this);
+  fAr39Cmd->SetGuidance("Enable/Disable the Ar39 Source.");
+  fAr39Cmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fAr39Cmd->SetToBeBroadcasted(false);
+
+  fDMCmd = new G4UIcmdWithABool("/ccm/detector/darkmatter",this);
+  fDMCmd->SetGuidance("Enable/Disable the DM Source.");
+  fDMCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fDMCmd->SetToBeBroadcasted(false);
+
   f200Cmd = new G4UIcmdWithABool("/ccm/detector/set200",this);
   f200Cmd->SetGuidance("Enable/Disable the 200 pmt detector.");
   f200Cmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   f200Cmd->SetToBeBroadcasted(false);
 
-  fRodCmd = new G4UIcmdWithABool("/ccm/detector/setrod",this);
-  fRodCmd->SetGuidance("Enable/Disable the Calibration Rod.");
+  fRodCmd = new G4UIcmdWithADoubleAndUnit("/ccm/detector/setrod",this);
+  fRodCmd->SetGuidance("Enable/Disable the Calibration Rod, and set it's height.");
+  fRodCmd->SetParameterName("height",false);
+  fRodCmd->SetDefaultUnit("cm");
   fRodCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fRodCmd->SetToBeBroadcasted(false);
 
@@ -82,6 +95,18 @@ detectorMessenger::detectorMessenger(detectorConstruction* detector)
   fDefaultsCmd->SetGuidance("Set all detector geometry values to defaults.");
   fDefaultsCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fDefaultsCmd->SetToBeBroadcasted(false);
+
+  fRandomsCmd = new G4UIcommand("/ccm/detector/randoms",this);
+  fRandomsCmd->SetGuidance("Set all detector geometry values to randoms.");
+  fRandomsCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fRandomsCmd->SetToBeBroadcasted(false);
+
+  fRootCmd = new G4UIcmdWithAString( "/ccm/detector/root", this );
+  fRootCmd->SetGuidance( "File name for the ROOT output" );
+  fRootCmd->SetGuidance( " Include '.root' " );
+  fRootCmd->SetParameterName( "outFileName", false );
+  fRootCmd->SetDefaultValue( "output.root" );
+  fRootCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -92,12 +117,16 @@ detectorMessenger::~detectorMessenger()
   delete fPmtRadiusCmd;
   delete fLaserCmd;
   delete fDefaultsCmd;
+  delete fRandomsCmd;
   delete fPMTsCmd;
   delete fSodiumCmd;
+  delete fAr39Cmd;
+  delete fDMCmd;
   delete fRodCmd;
   delete f200Cmd;
   delete fTPBfoilCmd;
   delete fReflectorCmd;
+  delete fRootCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -117,11 +146,17 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   else if (command == fSodiumCmd){
     fdetector->SetSodiumOn(fSodiumCmd->GetNewBoolValue(newValue));
   }
+  else if (command == fAr39Cmd){
+    fdetector->SetAr39(fAr39Cmd->GetNewBoolValue(newValue));
+  }
+  else if (command == fDMCmd){
+    fdetector->SetDarkMatter(fDMCmd->GetNewBoolValue(newValue));
+  }
   else if (command == f200Cmd){
     fdetector->SetCCM200(f200Cmd->GetNewBoolValue(newValue));
   }
   else if (command == fRodCmd){
-    fdetector->SetRodin(fRodCmd->GetNewBoolValue(newValue));
+    fdetector->SetRodin(fRodCmd->GetNewDoubleValue(newValue));
   }
   else if (command == fTPBfoilCmd){
     fdetector->SetTPBfoilOn(fTPBfoilCmd->GetNewBoolValue(newValue));
@@ -129,9 +164,16 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   else if (command == fReflectorCmd){
     fdetector->SetReflectorOn(fReflectorCmd->GetNewBoolValue(newValue));
   }
+  else if (command == fRootCmd){
+    G4String filename = newValue;
+    fdetector->SetRootFile(filename);
+  }
   else if (command == fDefaultsCmd){
     fdetector->SetDefaults();
 
     G4RunManager::GetRunManager()->ReinitializeGeometry();
+  }
+  else if (command == fRandomsCmd){
+    fdetector->SetRandoms();
   }
 }
