@@ -19,6 +19,7 @@ Current active functions:
 #include "G4UnitsTable.hh"
 #include "G4SystemOfUnits.hh"
 #include <sstream>
+#include <string>
 
 //Constructor
 steppingAction::steppingAction(eventAction* eventaction)
@@ -184,7 +185,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 	std::istringstream isr2 (volname.substr(volname.find('R')+2,volname.find('R')+3));
 	isr2 >> row2;
       }	
-      if (volname.find('coat') != string::npos) {
+      if (volname.find("coat") != std::string::npos) {
 	coated = true;
       }
     } else if (testnp == "PMT") {
@@ -196,7 +197,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 	std::istringstream isr2 (volname.substr(volname.find('R')+2,volname.find('R')+3));
 	isr2 >> row2;
       }	
-      if (volname.find('coat') != string::npos) {
+      if (volname.find("coat") != std::string::npos) {
 	coated = true;
       }
     }

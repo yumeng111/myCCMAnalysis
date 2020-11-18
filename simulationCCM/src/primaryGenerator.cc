@@ -256,7 +256,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
   //if Sodium, overwrite any input from the macro file and create the 1.2 MeV gamma at the position (0,0,0).
   if (Sodium) {
     nameString = "Sodium";
-    partEneg=1200
+    partEneg=1200;
     fParticleGun->SetParticleEnergy(partEneg*keV);
     xpos = 0*cm;
     ypos = 0*cm;

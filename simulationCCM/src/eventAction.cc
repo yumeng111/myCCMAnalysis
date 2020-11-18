@@ -9,7 +9,7 @@ Currently it does nothing, as most outputs are handled through the detector and 
 #include "primaryGenerator.hh"
 #include "detectorConstruction.hh"
 
-#include "MCTruth.h"
+//#include "MCTruth.h"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
@@ -17,31 +17,31 @@ Currently it does nothing, as most outputs are handled through the detector and 
 
 //Constructor
 eventAction::eventAction(runAction* runaction)
-  : G4UserEventAction(), fRunAction(runaction), 
-    mctruth(new MCTruth()), rootIO(new CCMRootIO())
+  : G4UserEventAction(), fRunAction(runaction) 
+    //mctruth(new MCTruth()), rootIO(new CCMRootIO())
 
 {}
 
 //Deconstructor
 eventAction::~eventAction()
 {
-  rootIO->Close();
+  //  rootIO->Close();
 
   // clear data
-  delete mctruth;
-  delete rootIO;
+  //delete mctruth;
+  //delete rootIO;
 }
 
 //Within this function define things to be done at the start of an event (example: the debugging line currently commented out).
 //The code currently does not access the detector or the primary generator, so information produced there is not accessible.
 void eventAction::BeginOfEventAction(const G4Event*)
 {
-  mctruth->reset();
+  //mctruth->reset();
   //G4cout << "maincodenote: starting eventAction" << G4endl;
 }
 
 //Same as BeginOfEventAction, but for end of event.
-void eventAction::EndOfEventAction(const G4Event*)
+void eventAction::EndOfEventAction(const G4Event* event)
 {
   const G4int eventID = event->GetEventID();
 
@@ -63,7 +63,7 @@ void eventAction::EndOfEventAction(const G4Event*)
   const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
   G4String filename = detector->GetRootFile();
 
-  mctruth->SetParticlePosition(xpos,ypos,zpos);
+  /*  mctruth->SetParticlePosition(xpos,ypos,zpos);
   mctruth->SetParticleMomentum(momx,momy,momz);
   mctruth->SetParticleID(eventID);
   mctruth->SetTotalEnergyDeposited(partEneg);
@@ -77,12 +77,12 @@ void eventAction::EndOfEventAction(const G4Event*)
 
   rootIO->Close();
   //G4cout << "maincodenote: ending eventAction" << G4endl;
-  //G4cout << "Event Ended" << G4endl;
+  //G4cout << "Event Ended" << G4endl;*/
 }
 
 
 void eventAction::AddHit( G4int row, G4int col, G4bool coat, G4double eneg, G4double time, G4double angle)
 {
-  //G4cout << row << '\t' << col << '\t' << coat << '\t' << eneg << '\t' << time << '\t' << angle << G4endl;
-  mctruth->AddHitInformation(row,col,coat,eneg,time,angle);
+  G4cout << row << '\t' << col << '\t' << coat << '\t' << eneg << '\t' << time << '\t' << angle << G4endl;
+  //mctruth->AddHitInformation(row,col,coat,eneg,time,angle);
 }

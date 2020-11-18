@@ -10,14 +10,14 @@ Does not contain any actions.
 #include "G4UserEventAction.hh"
 #include "globals.hh"
 
-#include "CCMRootIO.h"
+/*#include "CCMRootIO.h"
 
 class TObjArray;
 class TFile;
 class TTree;
 class TBranch;
 
-class MCTruth;
+class MCTruth;*/
 
 class runAction;
 
@@ -37,8 +37,8 @@ public:
 private:
   runAction* fRunAction;
 
-  MCTruth    * mctruth;
-  CCMRootIO  * fRootIO;
+  //  MCTruth    * mctruth;
+  //CCMRootIO  * fRootIO;
 
 };
 
