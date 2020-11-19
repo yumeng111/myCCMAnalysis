@@ -18,12 +18,30 @@ else()
 endif()
 
 #----------------------------------------------------------------------------
+# R. T. Thornton Added these
+#
+find_package(ROOT REQUIRED COMPONENTS MathCore RIO Hist Tree Net)
+include(${ROOT_USE_FILE})
+include_directories(${ROOT_INCLUDE_DIR})
+set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES})
+set(CCMAnalysis_INCLUDE_DIRS
+  $ENV{CCMINSTALLBuild}/src/utils
+  $ENV{CCMINSTALLBuild}/src/ds
+  $ENV{CCMINSTALLBuild}/src/io
+  $ENV{CCMINSTALLBuild}/include
+  )
+
+
+#----------------------------------------------------------------------------
 # Setup Geant4 include directories and compile definitions
 # Setup include directory for this project
 #
 include(${Geant4_USE_FILE})
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIR} ${CCMAnalysis_INCLUDE_DIRS})
 
+set(LINK_DIRECTORIES /usr/lib64/ ${ROOT_LIBRARY_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+
+link_directories(${LINK_DIRECTORIES})
 
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
@@ -35,8 +53,9 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #----------------------------------------------------------------------------
 # Add the executable, and link it to the Geant4 libraries
 #
+set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES}")
 add_executable(simulationCCM fullsim_CCM.cc ${sources} ${headers})
-target_link_libraries(simulationCCM ${Geant4_LIBRARIES})
+target_link_libraries(simulationCCM ${Geant4_LIBRARIES} CCMIO CCMDS CCMUtils)
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
