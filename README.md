@@ -10,7 +10,7 @@ This code is designed to be compilable on a linux or mac
 
 To compile:
 create a build directory where the source code resides
-go into build and run
+go into build and create an include directory and then while inside the build directory run
 
 
 `cmake ../`
@@ -19,7 +19,7 @@ or
 
 if it finishes successfully then run
 
-`make`
+`make install`
 
 # Output and running with ROOT
 Add the following lines to your ~/.bash_profile, ~/.bashrc (if you are running tcsh then syntax needs to change and you put the code into ~/.tcshrc). 
