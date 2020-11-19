@@ -1,0 +1,41 @@
+# make sure laser in primary generator is set to true; make sure cylinder in detector construction is set to false in defaults.
+#
+#
+# macro file for Simulation of the calib for both wavelengths and three positions. 
+#
+#initialize kernal
+/run/initialize
+#
+/tracking/verbose 0
+#
+# set the random generator seeds to either recreate an earlier run 
+# (use the same seeds) or create a different one (use different ones)
+#
+/ccm/detector/tpbfoil true
+/ccm/detector/reflector true
+/ccm/detector/darkmatter true
+#/ccm/detector/setrod 0 cm
+#
+/control/alias Rand1 3069693
+/control/alias Rand2 2189038
+/control/alias Rand3 {Rand2}
+#
+#
+#
+/control/alias step 1
+#
+#
+#
+#
+/random/setSeeds {Rand1} {Rand2}
+#
+#
+#
+#
+/ccm/detector/root hundredDMevents{step}.root
+#/control/cout/setCoutFile tenkDarkMattereventsSimulation{step}.txt
+/run/beamOn 100
+#
+#
+#
+#

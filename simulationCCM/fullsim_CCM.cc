@@ -25,6 +25,7 @@ Otherwise this is just a container code that calls the more specific headers and
 #include "G4OpticalPhysics.hh"
 #include "G4EmStandardPhysics_option4.hh"
 
+#include "TROOT.h"
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
 
@@ -34,6 +35,8 @@ Otherwise this is just a container code that calls the more specific headers and
 //main method called when running the simulation.
 int main(int argc, char** argv)
 {
+  ROOT::EnableThreadSafety();
+
   //initialization of the user interface
   G4UIExecutive* ui = 0;
   if ( argc == 1 ) {

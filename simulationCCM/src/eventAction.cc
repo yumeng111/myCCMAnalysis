@@ -14,18 +14,24 @@ Currently it does nothing, as most outputs are handled through the detector and 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
 #include "G4EventManager.hh"
+#include <sstream>
 
 //Constructor
 eventAction::eventAction(runAction* runaction)
   : G4UserEventAction(), fRunAction(runaction),
-    mctruth(new MCTruth())
-{}
+    mctruth(new MCTruth()), rootIO(CCMRootIO::GetInstance())
+{
+  rootSet = false;
+}
 
 //Deconstructor
 eventAction::~eventAction()
 {
-  // clear data
+  G4cout << "running deconstructor" << G4endl;
+
+// clear data
   delete mctruth;
+  rootIO->Close();
 }
 
 //Within this function define things to be done at the start of an event (example: the debugging line currently commented out).
@@ -35,14 +41,25 @@ void eventAction::BeginOfEventAction(const G4Event* event)
   const G4int eventID = event->GetEventID();
 
   mctruth->Reset(eventID);
-  //G4cout << "maincodenote: starting eventAction" << G4endl;
+  G4cout << "maincodenote: starting eventAction" << G4endl;
+
+  if (!rootSet){
+    const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
+    G4String filename = detector->GetRootFile();
+    std::ostringstream oss;
+    oss << filename << "thread" << eventID << ".root";
+    filename = oss.str();
+    
+    rootIO->SetParameter("SaveBranches","mcTruth");
+    rootIO->SetOutFileName(filename);
+    rootIO->SetupOutputFile();
+    rootSet = true;
+  }
 }
 
 //Same as BeginOfEventAction, but for end of event.
 void eventAction::EndOfEventAction(const G4Event* event)
 {
-  auto rootIO = CCMRootIO::GetInstance();
-
   const G4int eventID = event->GetEventID();
 
   //pull the initial conditions from the primary Generator for usage in ROOT output.
@@ -60,23 +77,15 @@ void eventAction::EndOfEventAction(const G4Event* event)
   //test output string for matching to primary generator notes
   G4cout << "EventActionInitializationString:\t" << xpos << '\t' << ypos << '\t' << zpos << '\t' << momx << '\t' << momy << '\t' << momz << '\t' << partEneg << '\t' << partName << '\t' << G4endl;
   
-  const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
-  G4String filename = detector->GetRootFile();
-
   mctruth->SetParticlePosition(xpos,ypos,zpos);
   mctruth->SetParticleMomentum(momx,momy,momz);
   mctruth->SetParticleID(eventID);
   mctruth->SetTotalEnergyDeposited(partEneg);
 
-  rootIO->SetParameter("SaveBranches","mctruth");
-  rootIO->SetOutFileName(filename);
-  rootIO->SetupOutputFile();
-  
   rootIO->SetMCTruth(*mctruth);
   rootIO->WriteTrigger();
 
-  rootIO->Close();
-  //G4cout << "maincodenote: ending eventAction" << G4endl;
+  G4cout << "maincodenote: ending eventAction" << G4endl;
   //G4cout << "Event Ended" << G4endl;*/
 
   //delete rootIO;
@@ -85,6 +94,6 @@ void eventAction::EndOfEventAction(const G4Event* event)
 
 void eventAction::AddHit( G4int row, G4int col, G4bool coat, G4double eneg, G4double time, G4double angle)
 {
-  G4cout << row << '\t' << col << '\t' << coat << '\t' << eneg << '\t' << time << '\t' << angle << G4endl;
+  //G4cout << row << '\t' << col << '\t' << coat << '\t' << eneg << '\t' << time << '\t' << angle << G4endl;
   mctruth->AddHitInformation(row,col,coat,eneg,time,angle);
 }

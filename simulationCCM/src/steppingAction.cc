@@ -107,7 +107,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     kinEnpost = step->GetPostStepPoint()->GetKineticEnergy();
     G4double Endep = kinEnpre-kinEnpost;
 
-    G4cout << particlen << '\t' << Endep/keV << G4endl;
+    //G4cout << particlen << '\t' << Endep/keV << G4endl;
     return;
   }
 
@@ -270,7 +270,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     //abbreviated output with only the relevant information (pmt, photon energy, time, and angle)
     fEventAction->AddHit(row,col,coated,kinEn/eV,time/ns,dot);
     //mctruth->AddHitInformation(row,col,coated,kinEn/eV,time/ns,dot);
-    G4cout << volname << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
+    //G4cout << volname << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
     return;
   }
   //  G4cout << "maincodenote: end stepping Action" << G4endl;

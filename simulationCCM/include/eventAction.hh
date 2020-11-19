@@ -38,7 +38,9 @@ private:
   runAction* fRunAction;
 
   MCTruth    * mctruth;
-  //  CCMRootIO  * rootIO;
+  std::shared_ptr<CCMRootIO> rootIO;
+
+  G4bool rootSet;
 
 };
 
