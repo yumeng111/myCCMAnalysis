@@ -38,7 +38,7 @@ private:
   runAction* fRunAction;
 
   MCTruth    * mctruth;
-  CCMRootIO  * fRootIO;
+  //  CCMRootIO  * rootIO;
 
 };
 

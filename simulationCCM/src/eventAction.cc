@@ -18,31 +18,31 @@ Currently it does nothing, as most outputs are handled through the detector and 
 //Constructor
 eventAction::eventAction(runAction* runaction)
   : G4UserEventAction(), fRunAction(runaction),
-    mctruth(new MCTruth()), rootIO(new CCMRootIO())
-
+    mctruth(new MCTruth())
 {}
 
 //Deconstructor
 eventAction::~eventAction()
 {
-  rootIO->Close();
-
   // clear data
   delete mctruth;
-  delete rootIO;
 }
 
 //Within this function define things to be done at the start of an event (example: the debugging line currently commented out).
 //The code currently does not access the detector or the primary generator, so information produced there is not accessible.
-void eventAction::BeginOfEventAction(const G4Event*)
+void eventAction::BeginOfEventAction(const G4Event* event)
 {
-  mctruth->reset();
+  const G4int eventID = event->GetEventID();
+
+  mctruth->Reset(eventID);
   //G4cout << "maincodenote: starting eventAction" << G4endl;
 }
 
 //Same as BeginOfEventAction, but for end of event.
 void eventAction::EndOfEventAction(const G4Event* event)
 {
+  auto rootIO = CCMRootIO::GetInstance();
+
   const G4int eventID = event->GetEventID();
 
   //pull the initial conditions from the primary Generator for usage in ROOT output.
@@ -72,12 +72,14 @@ void eventAction::EndOfEventAction(const G4Event* event)
   rootIO->SetOutFileName(filename);
   rootIO->SetupOutputFile();
   
-  rootIO->SetMCTruth(mctruth);
-  rootIO->Write();
+  rootIO->SetMCTruth(*mctruth);
+  rootIO->WriteTrigger();
 
   rootIO->Close();
   //G4cout << "maincodenote: ending eventAction" << G4endl;
   //G4cout << "Event Ended" << G4endl;*/
+
+  //delete rootIO;
 }
 
 
