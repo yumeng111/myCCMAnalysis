@@ -39,7 +39,7 @@ set(CCMAnalysis_INCLUDE_DIRS
 include(${Geant4_USE_FILE})
 include_directories(${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIR} ${CCMAnalysis_INCLUDE_DIRS})
 
-set(LINK_DIRECTORIES /usr/lib64/ ${ROOT_LIBRARY_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+set(LINK_DIRECTORIES /usr/lib64/ ${ROOT_LIBRARY_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${CCMAnalysis_INCLUDE_DIRS})
 
 link_directories(${LINK_DIRECTORIES})
 
@@ -55,7 +55,7 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #
 set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES}")
 add_executable(simulationCCM fullsim_CCM.cc ${sources} ${headers})
-target_link_libraries(simulationCCM ${Geant4_LIBRARIES} CCMIO CCMDS CCMUtils)
+target_link_libraries(simulationCCM ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} $ENV{CCMINSTALLBuild}/src/io/libCCMIO.so $ENV{CCMINSTALLBuild}/src/ds/libCCMDS.so)
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
