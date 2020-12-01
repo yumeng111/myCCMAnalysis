@@ -11,6 +11,7 @@
 # This does not actually cause another cmake executable to run. The same process
 # will talk through the project's entire directory structure.
 add_subdirectory(framework)
+add_subdirectory(detsim)
 add_subdirectory(reco)
 add_subdirectory(nearline)
 add_subdirectory(plots)
@@ -27,5 +28,5 @@ link_directories(${LINK_DIRECTORIES})
 set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES} $ENV{XERCESLIB}")
 
 add_executable(CCMAnalysis CCMAnalysis.cxx)
-target_link_libraries(CCMAnalysis ${ROOT_LIBRARIES} CCMUtils CCMDS CCMSPE CCMXML CCMReco CCMIO CCMNearline CCMPlots CCMTemplates)
+target_link_libraries(CCMAnalysis ${ROOT_LIBRARIES} CCMUtils CCMDS CCMSPE CCMXML CCMReco CCMIO CCMNearline CCMPlots CCMTemplates CCMDetSim)
 

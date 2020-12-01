@@ -47,6 +47,9 @@ class PMTInfoMap
 
     static void WritePMTMap(TTree *& tree);
 
+    static size_t GetMaxKey() { return fgMaxKey; }
+    static size_t GetMinKey() { return fgMinKey; }
+
     static std::string TreeName() { return fgkTreeName; }
     static std::string BranchName() { return fgkBranchName; }
 
@@ -62,6 +65,9 @@ class PMTInfoMap
     static const std::string fgkBranchName; ///< Branch name for map
     static std::map<int,PMTInformation*> fgPMTInfo; ///< map to all the individual #PMTInformation
     static std::vector<int> fgHVOffList;
+
+    static size_t fgMaxKey;
+    static size_t fgMinKey;
 
     static bool fgMapLoaded;
     static bool fgBadListLoaded;

@@ -43,6 +43,7 @@ set(CCMAnalysis_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/src/io
   ${CMAKE_SOURCE_DIR}/src/spe
   ${CMAKE_SOURCE_DIR}/src/modules/framework
+  ${CMAKE_SOURCE_DIR}/src/modules/detsim
   ${CMAKE_SOURCE_DIR}/src/modules/reco
   ${CMAKE_SOURCE_DIR}/src/modules/nearline
   ${CMAKE_SOURCE_DIR}/src/modules/plots

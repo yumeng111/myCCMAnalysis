@@ -24,6 +24,9 @@ const std::string PMTInfoMap::fgkBranchName = "pmtInfo"; ///< Branch name for ma
 std::map<int,PMTInformation*> PMTInfoMap::fgPMTInfo; ///< map to all the individual #PMTInformation
 std::vector<int> PMTInfoMap::fgHVOffList;
 
+size_t PMTInfoMap::fgMaxKey = 0;
+size_t PMTInfoMap::fgMinKey = 172;
+
 bool PMTInfoMap::fgMapLoaded = false;
 bool PMTInfoMap::fgBadListLoaded = false;
 
@@ -246,6 +249,9 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
     } // end for index < currRow->size()
     int key = CreateKey(adcBoardOrder,adcCH);
     if (fgPMTInfo.find(key) == fgPMTInfo.end()) {
+      fgMaxKey = std::max(fgMaxKey,static_cast<size_t>(key));
+      fgMinKey = std::min(fgMinKey,static_cast<size_t>(key));
+
       fgPMTInfo.insert(std::make_pair(key,new PMTInformation()));
       std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.find(key);
       if (itMap == fgPMTInfo.end()) {
