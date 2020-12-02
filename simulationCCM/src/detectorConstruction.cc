@@ -1996,7 +1996,8 @@ void detectorConstruction::SetAr39(G4bool b) {
 void detectorConstruction::SetDarkMatter(G4bool b) {
   darkMatter=b;
   if (b) {
-      G4double scint_yeild=1.0/(19.5*eV)/4.0; //scintillation yeild: quartered for nuclear recoil
+      G4double scint_yeild=1.0/(19.5*eV); //scintillation yeild: quartered for nuclear recoil
+      //scintillation yeild: do not change, include in quenching factor portion of analysis.
       lAr_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
       lAr_mt->AddConstProperty("YIELDRATIO",0.70);//seventy percent in singlet for nuclear recoil
       lAr1_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);

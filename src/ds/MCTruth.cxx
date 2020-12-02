@@ -111,6 +111,12 @@ void MCTruth::SetParticlePosition(float x, float y , float z)
 	return;
 }
 
+void MCTruth::SetQuenchingFactor(double qfvalue)
+{
+  fQFValue = qfvalue;
+  return;
+}
+
 /*!**********************************************
  * \fn void MCTruth::AddHitInformation(int row, int col, bool uncoated, float energy, float time, float angle)
  * \brief Adds new hit information to the current vectors
@@ -121,7 +127,7 @@ void MCTruth::SetParticlePosition(float x, float y , float z)
  * \param[in] time The time of the hit in ns
  * \param[in] angle The angle the PMT was hit
  ***********************************************/
-void MCTruth::AddHitInformation(int row, int col, bool uncoated, float energy, float time, float angle)
+void MCTruth::AddHitInformation(int row, int col, bool uncoated, float energy, float time, float angle, bool quench)
 {
 	fHitRow.emplace_back(row);
 	fHitCol.emplace_back(col);
@@ -129,6 +135,8 @@ void MCTruth::AddHitInformation(int row, int col, bool uncoated, float energy, f
 	fHitEnergy.emplace_back(energy);
 	fHitTime.emplace_back(time);
 	fHitAngle.emplace_back(angle);
+	fPassedQF.emplace_back(quench);
+
 	return;
 }
 
@@ -147,12 +155,12 @@ void MCTruth::AddHitInformation(int row, int col, bool uncoated, float energy, f
  * the information will be appended to the vectors and an
  * error message will be printed
  ***********************************************/
-void MCTruth::SetHitInformation(size_t hitIndex, int row, int col, bool uncoated, float energy, float time, float angle)
+void MCTruth::SetHitInformation(size_t hitIndex, int row, int col, bool uncoated, float energy, float time, float angle, bool quench)
 {
 	if (hitIndex >= fHitRow.size()) {
 		MsgError(MsgLog::Form("The index passed %zu is greater than current size %zu. Appending the hit information",
 					hitIndex,fHitRow.size()));
-		AddHitInformation(row,col,uncoated,energy,time,angle);
+		AddHitInformation(row,col,uncoated,energy,time,angle,quench);
 		return;
 	}
 
@@ -162,6 +170,8 @@ void MCTruth::SetHitInformation(size_t hitIndex, int row, int col, bool uncoated
 	fHitEnergy.at(hitIndex) = energy;
 	fHitTime.at(hitIndex) = time;
 	fHitAngle.at(hitIndex) = angle;
+	fPassedQF.at(hitIndex) = quench;
+
 	return;
 }
 

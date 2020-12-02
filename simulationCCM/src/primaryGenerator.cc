@@ -163,7 +163,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
   }
 
   //output at the start of an event.
-  G4cout << "primarygeneratornote: Start Event" << G4endl;
+  //G4cout << "primarygeneratornote: Start Event" << G4endl;
 
   if (Ar39) {
     nameString = "Argon39";
@@ -187,7 +187,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     G4ParticleDefinition* particle = particleTable->FindParticle(particleName="e-");
     fParticleGun->SetParticleDefinition(particle);
     
-    G4cout << "InitialConditions:" << '\t' << xpos  << '\t' << ypos << '\t' << zpos << '\t' << partEneg << G4endl;
+    //G4cout << "InitialConditions:" << '\t' << xpos  << '\t' << ypos << '\t' << zpos << '\t' << partEneg << G4endl;
   }
 
   if (darkMatter) {
@@ -250,7 +250,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     partEneg = G4RandFlat::shoot(energy,energy2);
     fParticleGun->SetParticleEnergy(partEneg*keV);
     
-    G4cout << "InitialConditions:" << '\t' << xpos  << '\t' << ypos << '\t' << zpos << '\t' << partEneg << G4endl;
+    //G4cout << "InitialConditions:" << '\t' << xpos  << '\t' << ypos << '\t' << zpos << '\t' << partEneg << G4endl;
   }
 
   //if Sodium, overwrite any input from the macro file and create the 1.2 MeV gamma at the position (0,0,0).

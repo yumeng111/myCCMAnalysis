@@ -27,7 +27,7 @@ eventAction::eventAction(runAction* runaction)
 //Deconstructor
 eventAction::~eventAction()
 {
-  G4cout << "running deconstructor" << G4endl;
+  //G4cout << "running deconstructor" << G4endl;
 
 // clear data
   delete mctruth;
@@ -41,7 +41,7 @@ void eventAction::BeginOfEventAction(const G4Event* event)
   const G4int eventID = event->GetEventID();
 
   mctruth->Reset(eventID);
-  G4cout << "maincodenote: starting eventAction" << G4endl;
+  //G4cout << "maincodenote: starting eventAction" << G4endl;
 
   if (!rootSet){
     const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
@@ -75,17 +75,18 @@ void eventAction::EndOfEventAction(const G4Event* event)
   G4String partName = generator->GetPartName();
   
   //test output string for matching to primary generator notes
-  G4cout << "EventActionInitializationString:\t" << xpos << '\t' << ypos << '\t' << zpos << '\t' << momx << '\t' << momy << '\t' << momz << '\t' << partEneg << '\t' << partName << '\t' << G4endl;
+  //G4cout << "EventActionInitializationString:\t" << xpos << '\t' << ypos << '\t' << zpos << '\t' << momx << '\t' << momy << '\t' << momz << '\t' << partEneg << '\t' << partName << '\t' << G4endl;
   
   mctruth->SetParticlePosition(xpos,ypos,zpos);
   mctruth->SetParticleMomentum(momx,momy,momz);
   mctruth->SetParticleID(eventID);
   mctruth->SetTotalEnergyDeposited(partEneg);
+  mctruth->SetQuenchingFactor(1.0);
 
   rootIO->SetMCTruth(*mctruth);
   rootIO->WriteTrigger();
 
-  G4cout << "maincodenote: ending eventAction" << G4endl;
+  //G4cout << "maincodenote: ending eventAction" << G4endl;
   //G4cout << "Event Ended" << G4endl;*/
 
   //delete rootIO;
@@ -95,5 +96,5 @@ void eventAction::EndOfEventAction(const G4Event* event)
 void eventAction::AddHit( G4int row, G4int col, G4bool coat, G4double eneg, G4double time, G4double angle)
 {
   //G4cout << row << '\t' << col << '\t' << coat << '\t' << eneg << '\t' << time << '\t' << angle << G4endl;
-  mctruth->AddHitInformation(row,col,coat,eneg,time,angle);
+  mctruth->AddHitInformation(row,col,coat,eneg,time,angle,true);
 }

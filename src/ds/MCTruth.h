@@ -29,8 +29,9 @@ class MCTruth : public TObject
 		void SetTotalEnergyDeposited(float energy) { fEnergyDeposited = energy; }
 		void SetParticleMomentum(float x, float y, float z);
 		void SetParticlePosition(float x, float y, float z);
-		void AddHitInformation(int row, int col, bool uncoated, float energy, float time, float angle);
-		void SetHitInformation(size_t hitIndex, int row, int col, bool uncoated, float energy, float time, float angle);
+		void SetQuenchingFactor(double qfvalue);
+		void AddHitInformation(int row, int col, bool uncoated, float energy, float time, float angle, bool quench);
+		void SetHitInformation(size_t hitIndex, int row, int col, bool uncoated, float energy, float time, float angle, bool quench);
 		void SetNumberHits(size_t hitIndex);
 
 		int GetParticleID() { return fParticleID; }
@@ -41,6 +42,7 @@ class MCTruth : public TObject
 		float GetParticlePositionX() { return fPosX; }
 		float GetParticlePositionY() { return fPosY; }
 		float GetParticlePositionZ() { return fPosZ; }
+		double GetQuenchingFactor() { return fQFValue; }
 		void GetParticleMomentum(float & x, float & y , float & z);
 		void GetParticlePosition(float & x, float & y , float & z);
 
@@ -60,6 +62,7 @@ class MCTruth : public TObject
 		float GetParticlePositionX() const { return fPosX; }
 		float GetParticlePositionY() const { return fPosY; }
 		float GetParticlePositionZ() const { return fPosZ; }
+		double GetQuenchingFactor() const { return fQFValue; }
 		void GetParticleMomentum(float & x, float & y , float & z) const;
 		void GetParticlePosition(float & x, float & y , float & z) const;
 
@@ -105,8 +108,12 @@ class MCTruth : public TObject
 		std::vector<bool> fHitUncoated;
 		/// The angle at which the PMT was hit
 		std::vector<float> fHitAngle;
+		
+		std::vector<bool> fPassedQF;
+		double fQFValue;
 
-  ClassDef(MCTruth,1)
+
+  ClassDef(MCTruth,2)
 };
 
 #endif // MCTruth_h

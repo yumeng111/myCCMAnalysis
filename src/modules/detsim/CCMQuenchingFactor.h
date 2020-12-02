@@ -60,3 +60,4 @@ class CCMQuenchingFactor : public CCMModule
 
 #endif // CCMQuenchingFactor_h
 
+//Process an event, then process a trigger, then assign the QFvalue of the MCTruth according to user input. Have a method to rethrow according to QF. 
