@@ -349,6 +349,120 @@ void Pulses::DerivativeFilter(const u_int16_t input[], int length, float trigger
 }
 
 /*!**********************************************
+ * \fn void Pulses::MCFilter(const std::vector<double> & input, float triggerTime)
+ * \brief Find pulses based on the derivative filter
+ * \param[in] input The waveform for the current PMT
+ * \param[in] triggerTime Offset from t = 0 if the true event time is different from 0
+ *
+ * Find pulses by using the following steps: (to be used until the base is simulated)
+ * - The pulse starts when the waveform goes above 0 and ends when the waveform goes back to 0
+ * - The integral is summing up all the bins between the start and the end
+ *
+ * The pulses are added to the #fPulses vector with the rest of the pulses for the given DAQ window. That is why
+ * it is important to call #SetBoardChannel before calling #MCFilter, otherwise the pulses will be assigned
+ * the wrong PMT.
+ ***********************************************/
+void Pulses::MCFilter(const std::vector<double> & input, float triggerTime)
+{
+  fTriggerTime = triggerTime;
+
+  float time = -1.0;
+  float pulseLength = 0.0;
+  float integral = 0.0;
+  float amplitude = 0.0;
+
+  int key = PMTInfoMap::CreateKey(fBoard,fChannel);
+  fCurrPulse->SetKey(key);
+
+  float maxPos = -2;
+
+  fCurrPulse->Reset();
+  fCurrPulse->SetLength(8000);
+  //fCurrPulse->SetTime(2);
+  fCurrPulse->SetWaveformStart(2);
+  fCurrPulse->SetWaveformEnd(8000-4);
+  fCurrPulse->SetBaseline(0);
+
+  const size_t kLength = input.size();
+  for (size_t loc = 0; loc < kLength; ++loc) {
+    if (input[loc] != 0 && integral == 0) {
+      fCurrPulse->Reset();
+
+      bool first = true;
+      size_t sampleLoc2 = std::max(0,static_cast<int>(loc)-5);
+      for (; sampleLoc2 < loc; ++sampleLoc2) {
+        if (first) {
+          fCurrPulse->SetWaveformStart(sampleLoc2+triggerTime/Utility::fgkBinWidth);
+          first = false;
+        }
+        fCurrPulse->AddSample(input[loc]);
+      }
+
+      amplitude = input[loc];
+      time = loc;
+      pulseLength = 1;
+      maxPos = input[loc]; 
+      integral += input[loc];
+      fCurrPulse->AddSample(input[loc]);
+
+    } else  if (input[loc] != 0 && integral != 0) {
+      amplitude = std::max(static_cast<float>(input[loc]),amplitude);
+      integral += input[loc];
+      ++pulseLength;
+      maxPos = std::max(static_cast<float>(input[loc]),maxPos);
+      fCurrPulse->AddSample(input[loc]);
+    } else  if (input[loc] == 0 && integral != 0) {
+      amplitude = std::max(static_cast<float>(input[loc]),amplitude);
+      integral += input[loc];
+      ++pulseLength;
+      maxPos = std::max(static_cast<float>(input[loc]),maxPos);
+      fCurrPulse->AddSample(input[loc]);
+
+      // save the pulse if 
+      //      the pulse length is at least 5 samples (10 ns)
+      if (pulseLength >= 5) {
+        fCurrPulse->SetTriggerOffset(triggerTime/Utility::fgkBinWidth);
+        fCurrPulse->SetPMTOffset(0);
+        fCurrPulse->SetADCToPE(1.0);
+        fCurrPulse->SetTime(time+triggerTime/Utility::fgkBinWidth);
+        if (time+triggerTime/Utility::fgkBinWidth < 0 || fCurrPulse->GetTime() < 0) {
+          MsgInfo(MsgLog::Form("Checking time of pulse time %g trigTime",time,triggerTime/Utility::fgkBinWidth));
+        }
+        fCurrPulse->SetLength(pulseLength);
+        fCurrPulse->SetMaxDerValue(maxPos);
+        fCurrPulse->SetAmplitude(amplitude);
+        fCurrPulse->SetIntegral(integral);
+        fCurrPulse->SetBaseline(0);
+        for (size_t sampleLoc2 = loc; sampleLoc2 < loc+5 && sampleLoc2 != kLength-4; ++sampleLoc2) {
+          fCurrPulse->AddSample(input[loc]);
+        }
+        if (loc+5 < kLength-4) {
+          fCurrPulse->SetWaveformEnd(loc);
+        } else {
+          fCurrPulse->SetWaveformEnd(kLength);
+        }
+
+        fPulses.push_back(SinglePulse(*fCurrPulse));
+        ++fNumPulses;
+
+        integral = 0.0;
+        amplitude = 0.0;
+        time = 0.0;
+        maxPos = 0.0;
+        pulseLength = 0.0;
+
+      } else {
+        integral = 0.0;
+        amplitude = 0.0;
+        time = 0.0;
+        maxPos = 0.0;
+        pulseLength = 0.0;
+      } // end if integral
+    }
+  }
+}
+
+/*!**********************************************
  * \fn void Pulses::SmoothWaveform(const std::vector<u_int16_t> & input)
  * \brief Smooth the waveform and set results to #fSmoothArray
  * \param[in] input The waveform to smooth
@@ -603,5 +717,31 @@ void Pulses::RemovePulsesByThreshold()
       p.SetIntegral(p.GetIntegral()/calibrationValues[p.GetKey()].first);
       }
       );
+}
+
+/*!**********************************************
+ * \fn void Pulses::ShiftTimeOffset(const double & timeOffset)
+ * \brief Shift the time of all the pulses
+ * \param[in] timeOffset The time offset to apply to all pulses
+ *
+ * Shift the time of all the pulses by timeOffset, since the stored time
+ * in the pulses is currently the starting bin,
+ * timeOffset needs to be in number of bins and will be rounded
+ * down to the closed bin
+ ***********************************************/
+void Pulses::ShiftTimeOffset(const double & timeOffset)
+{
+  double binOffset = 0;
+  if (timeOffset > 0) {
+    binOffset = std::floor(timeOffset);
+  } else {
+    binOffset = std::ceil(timeOffset);
+  }
+
+  for (auto & p : fPulses) {
+    p.SetTime(p.GetTime()+binOffset);
+  }
+
+  return;
 }
 

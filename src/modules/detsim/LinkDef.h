@@ -5,4 +5,5 @@
 #pragma link C++ class CCMPMTResponse-!;
 #pragma link C++ class CCMQuenchingFactor-!;
 #pragma link C++ class CCMStrobeOverlay-!;
+#pragma link C++ class CCMTimeShift-!;
 #endif /* __CINT__ */

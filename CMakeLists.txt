@@ -35,7 +35,7 @@ set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} $ENV{XERCESLIB}/libxerces-c.so)
 
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} $ENV{XERCESINCLUD})
 add_definitions(${ROOT_CXX_FLAGS} -std=c++14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14 -O3")
 
 set(CCMAnalysis_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/src/utils

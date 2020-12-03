@@ -1,6 +1,7 @@
 set(DETSIM_HEADERS 
   CCMPMTResponse.h
   CCMStrobeOverlay.h
+  CCMTimeShift.h
   CCMQuenchingFactor.h
   )
 
@@ -18,6 +19,7 @@ set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES} $ENV{XER
 set(DETSIM_SRCS
   CCMPMTResponse.cxx
   CCMStrobeOverlay.cxx
+  CCMTimeShift.cxx
   CCMQuenchingFactor.cxx
   )
 

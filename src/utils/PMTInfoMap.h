@@ -33,8 +33,11 @@ class PMTInfoMap
     static bool IsActive(int digitizer, int channel);
     static int CreateKey(int digit, int channel);
     static void DecodeKey(int key, int & digit, int & channel);
+    static void DecodeKey(size_t key, size_t & digit, size_t & channel);
     static int ConvertHVBoardChanToKey(const int & box, const int & channel, bool veto = false);
     static void ConvertKeyToHVBoardChan(const int key, int & box, int & channel);
+    static int ConvertRowColToKey(const int & row, const int & col);
+    static void ConvertKeyToRowCol(const int key, int & row, int & col);
 
     static const PMTInformation * GetPMTInfo(size_t key);
     static const PMTInformation * GetPMTInfo(int board, int channel);

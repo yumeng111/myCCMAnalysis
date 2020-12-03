@@ -310,6 +310,20 @@ void PMTInfoMap::DecodeKey(int key, int & digit, int & channel) {
 }
 
 /*!************************************************************************************************
+ * \fn void PMTInfoMap::DecodeKey(size_t key, size_t & digit, size_t & channel)
+ * \brief Static function that decodes the map key
+ * \param[in] key The key value
+ * \param[out] digit Board number
+ * \param[out] channel Channel number
+ **************************************************************************************************/
+void PMTInfoMap::DecodeKey(size_t key, size_t & digit, size_t & channel) {
+  digit = key/16;
+  channel = key%16;
+
+  return;
+}
+
+/*!************************************************************************************************
  * \fn int PMTInfoMap::ConvertHVBoardChanToKey(const int & box, const int & channel, bool veto)
  * \brief Static function that gets the key given HV board and channel numbers
  * \param[in] box HV Board number
@@ -351,6 +365,45 @@ void PMTInfoMap::ConvertKeyToHVBoardChan(const int key, int & box, int & channel
 
   box = itMap->second->GetHVBoard();
   channel = itMap->second->GetHVBoardChan();
+  return;
+}
+
+/*!************************************************************************************************
+ * \fn int PMTInfoMap::ConvertRowColToKey(const int & row, const int & col)
+ * \brief Static function that gets the key given HV board and col numbers
+ * \param[in] row HV Board number
+ * \param[in] col HV Channel number
+ * \return key value
+ **************************************************************************************************/
+int PMTInfoMap::ConvertRowColToKey(const int & row, const int & col)
+{
+  for (const auto & pmtInfo : fgPMTInfo) {
+    if (pmtInfo.second->GetRow() == row && pmtInfo.second->GetColumn() == col) {
+      return CreateKey(pmtInfo.second->GetBoard(),pmtInfo.second->GetBoardChan());
+    }
+  }
+
+  return -1;
+}
+
+/*!************************************************************************************************
+ * \fn void PMTInfoMap::ConvertKeyToRowCol(cosnt int key, int & row, int & col)
+ * \brief Static function that gets the HV board and col numbers given the PMT key
+ * \param[in] key PMT key number
+ * \param[out] row HV Board number
+ * \param[out] col HV Channel number
+ **************************************************************************************************/
+void PMTInfoMap::ConvertKeyToRowCol(const int key, int & row, int & col) 
+{
+  auto itMap = fgPMTInfo.find(key);
+  if (itMap == fgPMTInfo.end()) {
+    row = -1;
+    col = -1;
+    return;
+  }
+
+  row = itMap->second->GetRow();
+  col = itMap->second->GetColumn();
   return;
 }
 
@@ -555,6 +608,7 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
 
   TTreeReader calibrationTree("spe",calibrationFile);
   TTreeReaderValue<float> speValue(calibrationTree,"speValue");
+  TTreeReaderValue<float> fitRMS(calibrationTree,"fitRMS");
   TTreeReaderValue<float> speThreshold(calibrationTree,"endNoiseWallFitRangeStart");
   TTreeReaderValue<int> pmtID(calibrationTree,"pmtID");
   std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.begin();
@@ -567,8 +621,10 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
     // change spe calibration value
     if (*speValue > maxValue) {
       itMap->second->SetADCToPE(maxValue);
+      itMap->second->SetADCToPERMS(0);
     } else {
       itMap->second->SetADCToPE(*speValue);
+      itMap->second->SetADCToPERMS(*fitRMS);
     }
 
     // change threshold value

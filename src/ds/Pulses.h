@@ -12,6 +12,8 @@
 #include <iostream>
 #include <sys/types.h>
 
+#include "PMTInfoMap.h"
+
 #include "SinglePulse.h"
 #include "TObject.h"
 
@@ -73,9 +75,14 @@ class Pulses : public TObject
     /// \param[in] board Digitizer board number
     /// \param[in] channel Channel number on the digitizer board
     void SetBoardChannel(int board, int channel) { fBoard = board; fChannel = channel; }
+    /// \fn void SetKey()
+    /// \brief Set the key for the pmt currently being looked at
+    /// \param[in] key The key value
+    void SetKey(int key) { PMTInfoMap::DecodeKey(key,fBoard,fChannel); }
 
     void DerivativeFilter(const u_int16_t input[], int length, float triggerTime, 
         int points = 5, float threshold = 0, float trigOffset = 0, float pmtOffset = 0, float adcToPE = 1);
+    void MCFilter(const std::vector<double> & input, float triggerTime);
     void SmoothWaveform(const std::vector<u_int16_t> & input);
     void Sort();
 
@@ -134,6 +141,8 @@ class Pulses : public TObject
 
     Pulses & operator=(const Pulses & rhs);
     void Copy(const Pulses & rhs, int startBoard, int endBoard=10, int startChannel=0, int endChannel=15);
+
+    void ShiftTimeOffset(const double & timeOffset);
 
   private:
     static bool SortCondition(const SinglePulse & a, const SinglePulse & b);

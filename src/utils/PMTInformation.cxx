@@ -23,6 +23,7 @@ PMTInformation::PMTInformation()
   fFlangeX = 0.0;
   fFlangeY = 0.0;
   fADCToPE = 0.0;
+  fADCToPERMS = 0.0;
   fADCToPEDer = 0.0;
   fADCThreshold= 0.0;
   fPos = TVector3(0.0,0.0,0.0);
@@ -49,6 +50,7 @@ PMTInformation::PMTInformation(const PMTInformation & rhs)
   fFlangeY = rhs.fFlangeY;
   fPos = rhs.fPos;
   fADCToPE = rhs.fADCToPE;
+  fADCToPERMS = rhs.fADCToPERMS;
   fADCToPEDer = rhs.fADCToPEDer;
   fADCThreshold = rhs.fADCThreshold;
 }
