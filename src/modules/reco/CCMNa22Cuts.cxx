@@ -41,70 +41,218 @@ MODULE_DECL(CCMNa22Cuts);
 
 //_______________________________________________________________________________________
 CCMNa22Cuts::CCMNa22Cuts(const char* version) 
-  : CCMModule("CCMNa22Cuts"), fEvents(nullptr), fEventFinderID(kCCMDynamicLengthEventID),
-  fAccumWaveformMethodID(kCCMAccumWaveformTriangleID), fOutFileName(""), fTreeName("tree"),
-  fRemovePrimaryEvents(true), fRemoveOtherEvents(false), fDoBCMCut(false), fDoVetoCut(false), fDoPositionCut(false),
-  fDoEnergyCut(false), fDoPrevCut(false), fDoLengthCut(false), fDoTimeCut(false), fDoNicenessCut(false),
-  fReverseVeto(false), fWaveformMaxCut(false), fPassedVetoCut(true), fPassedPositionCut(true),
-  fPassedEnergyCut(true), fPassedPrevCut(true), fPassedLengthCut(true), fPassedTimeCut(true),
-  fPassedNicenessCut(true), fPassedWaveformMaxCut(true), fPassedNumHitsCut(true), fPassedBCMCut(false),
-  fNumVetoCut(3), fBCMTimeLowCut(Utility::fgkWindowStartTime), fBCMTimeHighCut(Utility::fgkWindowEndTime),
-  fBCMLengthLowCut(0), fBCMLengthHighCut(Utility::fgkNumBins*Utility::fgkBinWidth),
-  fBCMIntegralLowCut(0), fBCMIntegralHighCut(std::numeric_limits<double>::max()),
-  fRadiusCutValueLow(0), fRadiusCutValueHigh(0.95), fZCutValueLow(-0.4), fZCutValueHigh(0.4),
-  fEnergyCutValueLow(0), fEnergyCutValueHigh(std::numeric_limits<double>::max()), fPrevCutTime(1600), fPrevCutHoldOff(90.0),
-  fPrevCutEnergyFrac(0), fLengthCutValueLow(-std::numeric_limits<double>::max()), 
-  fLengthCutValueHigh(std::numeric_limits<double>::max()), fTimeCutValueLow(-7000), fTimeCutValueHigh(4000), 
-  fNicenessCutValueLow(0), fNicenessCutValueHigh(2.5), fOutfile(nullptr), fTree(nullptr), fEnergy(0), fLength(0), 
-  fHits(0), fNumPMTs(0), fTime(0), fVetoTop(0), fVetoBottom(0), fVetoCLeft(0), fVetoCRight(0), fVetoCFront(0), 
-  fVetoCBack(0), fVetoPromptTop(0), fVetoPromptBottom(0), fVetoPromptCLeft(0), fVetoPromptCRight(0), 
-  fVetoPromptCFront(0), fVetoPromptCBack(0), fWeight(0), fX(0), fY(0), fZ(0), fLargestPMTFraction(0), 
-  fEpochSec(0), fEpochNSSec(0), fBCMTime(0), fBCMLength(0), fBCMIntegral(0)
+  : CCMModule("CCMNa22Cuts")
 {
   //Default constructor
   this->SetCfgVersion(version);
 
   fEnergyLengthFile = nullptr;
   fEnergyLengthProf = nullptr;
+
+  fEvents = nullptr;
+  fEventFinderID = kCCMDynamicLengthEventID;
+
+  fAccumWaveformMethodID = kCCMAccumWaveformTriangleID;
+  fOutFileName = "";
+  fTreeName = "tree";
+
+  fRemovePrimaryEvents = true;
+  fRemoveOtherEvents = false;
+  fDoBCMCut = false;
+  fDoVetoCut = false;
+  fDoPositionCut = false;
+
+  fDoEnergyCut = false;
+  fDoPrevCut = false;
+  fDoLengthCut = false;
+  fDoTimeCut = false;
+  fDoNicenessCut = false;
+  fReverseVeto = false;
+  fWaveformMaxCut = false;
+
+  fPassedVetoCut = true;
+  fPassedPositionCut = true;
+  fPassedEnergyCut = true;
+  fPassedPrevCut = true;
+  fPassedLengthCut = true;
+  fPassedTimeCut = true;
+  fPassedNicenessCut = true;
+  fPassedWaveformMaxCut = true;
+  fPassedNumHitsCut = true;
+  fPassedBCMCut = false;
+
+  fNumFailedVetoCut = 0;
+  fNumFailedPositionCut = 0;
+  fNumFailedEnergyCut = 0;
+  fNumFailedPrevCut = 0;
+  fNumFailedLengthCut = 0;
+  fNumFailedTimeCut = 0;
+  fNumFailedNicenessCut = 0;
+  fNumFailedWaveformMaxCut = 0;
+  fNumFailedNumHitsCut = 0;
+  fNumFailedBCMCut = 0;
+
+  fNumVetoCut = 3;
+  fBCMTimeLowCut = Utility::fgkWindowStartTime;
+  fBCMTimeHighCut = Utility::fgkWindowEndTime;
+
+  fBCMLengthLowCut = 0;
+  fBCMLengthHighCut = Utility::fgkNumBins*Utility::fgkBinWidth;
+
+  fBCMIntegralLowCut = 0;
+  fBCMIntegralHighCut = std::numeric_limits<double>::max();
+
+  fRadiusCutValueLow = 0;
+  fRadiusCutValueHigh = 0.95;
+  fZCutValueLow = -0.4;
+  fZCutValueHigh = 0.4;
+
+  fEnergyCutValueLow = 0;
+  fEnergyCutValueHigh = std::numeric_limits<double>::max();
+  fPrevCutTime = 1600;
+  fPrevCutHoldOff = 90.0;
+
+  fPrevCutEnergyFrac = 0;
+  fLengthCutValueLow = -std::numeric_limits<double>::max();
+
+  fLengthCutValueHigh = std::numeric_limits<double>::max();
+  fTimeCutValueLow = -7000;
+  fTimeCutValueHigh = 4000;
+
+  fNicenessCutValueLow = 0;
+  fNicenessCutValueHigh = 2.5;
+  fOutfile = nullptr;
+  fTree = nullptr;
+  fEnergy = 0;
+  fLength = 0;
+
+  fHits = 0;
+  fNumPMTs = 0;
+  fTime = 0;
+  fVetoTop = 0;
+  fVetoBottom = 0;
+  fVetoCLeft = 0;
+  fVetoCRight = 0;
+  fVetoCFront = 0;
+
+  fVetoCBack = 0;
+  fVetoPromptTop = 0;
+  fVetoPromptBottom = 0;
+  fVetoPromptCLeft = 0;
+  fVetoPromptCRight = 0;
+
+  fVetoPromptCFront = 0;
+  fVetoPromptCBack = 0;
+  fWeight = 0;
+  fX = 0;
+  fY = 0;
+  fZ = 0;
+  fLargestPMTFraction = 0;
+
+  fEpochSec = 0;
+  fEpochNSSec = 0;
+  fBCMTime = 0;
+  fBCMLength = 0;
+  fBCMIntegral = 0;
+  fNumInitEvents = 0;
+  fNumFinalEvents = 0;
 }
 
 //_______________________________________________________________________________________
 CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr) 
-: CCMModule(clufdr), fEvents(clufdr.fEvents), fEventFinderID(clufdr.fEventFinderID),
-  fAccumWaveformMethodID(clufdr.fAccumWaveformMethodID), fOutFileName(clufdr.fOutFileName),
-  fTreeName(clufdr.fTreeName), fRemovePrimaryEvents(clufdr.fRemovePrimaryEvents),
-  fRemoveOtherEvents(clufdr.fRemoveOtherEvents), fDoBCMCut(clufdr.fDoBCMCut), fDoVetoCut(clufdr.fDoVetoCut),
-  fDoPositionCut(clufdr.fDoPositionCut), fDoEnergyCut(clufdr.fDoEnergyCut),
-  fDoPrevCut(clufdr.fDoPrevCut), fDoLengthCut(clufdr.fDoLengthCut),
-  fDoTimeCut(clufdr.fDoTimeCut), fDoNicenessCut(clufdr.fDoNicenessCut),
-  fReverseVeto(clufdr.fReverseVeto), fWaveformMaxCut(clufdr.fWaveformMaxCut),
-  fPassedVetoCut(clufdr.fPassedVetoCut), fPassedPositionCut(clufdr.fPassedPositionCut),
-  fPassedEnergyCut(clufdr.fPassedEnergyCut), fPassedPrevCut(clufdr.fPassedPrevCut),
-  fPassedLengthCut(clufdr.fPassedLengthCut), fPassedTimeCut(clufdr.fPassedTimeCut),
-  fPassedNicenessCut(clufdr.fPassedNicenessCut), fPassedWaveformMaxCut(clufdr.fPassedWaveformMaxCut),
-  fPassedNumHitsCut(clufdr.fPassedNumHitsCut), fPassedBCMCut(clufdr.fPassedBCMCut),
-  fNumVetoCut(clufdr.fNumVetoCut), fBCMTimeLowCut(clufdr.fBCMTimeLowCut),
-  fBCMTimeHighCut(clufdr.fBCMTimeHighCut), fBCMLengthLowCut(clufdr.fBCMLengthLowCut),
-  fBCMLengthHighCut(clufdr.fBCMLengthHighCut), fBCMIntegralLowCut(clufdr.fBCMIntegralLowCut),
-  fBCMIntegralHighCut(clufdr.fBCMIntegralHighCut), fRadiusCutValueLow(clufdr.fRadiusCutValueLow),
-  fRadiusCutValueHigh(clufdr.fRadiusCutValueHigh), fZCutValueLow(clufdr.fZCutValueLow),
-  fZCutValueHigh(clufdr.fZCutValueHigh), fEnergyCutValueLow(clufdr.fEnergyCutValueLow),
-  fEnergyCutValueHigh(clufdr.fEnergyCutValueHigh), fPrevCutTime(clufdr.fPrevCutTime),
-  fPrevCutHoldOff(clufdr.fPrevCutHoldOff), fPrevCutEnergyFrac(clufdr.fPrevCutEnergyFrac),
-  fLengthCutValueLow(clufdr.fLengthCutValueLow), fLengthCutValueHigh(clufdr.fLengthCutValueHigh),
-  fTimeCutValueLow(clufdr.fTimeCutValueLow), fTimeCutValueHigh(clufdr.fTimeCutValueHigh),
-  fNicenessCutValueLow(clufdr.fNicenessCutValueLow), fNicenessCutValueHigh(clufdr.fNicenessCutValueHigh),
-  fOutfile(clufdr.fOutfile), fTree(clufdr.fTree), fEnergy(clufdr.fEnergy), fLength(clufdr.fLength),
-  fHits(clufdr.fHits), fNumPMTs(clufdr.fNumPMTs), fTime(clufdr.fTime), fVetoTop(clufdr.fVetoTop),
-  fVetoBottom(clufdr.fVetoBottom), fVetoCLeft(clufdr.fVetoCLeft), fVetoCRight(clufdr.fVetoCRight),
-  fVetoCFront(clufdr.fVetoCFront), fVetoCBack(clufdr.fVetoCBack), fVetoPromptTop(clufdr.fVetoPromptTop),
-  fVetoPromptBottom(clufdr.fVetoPromptBottom), fVetoPromptCLeft(clufdr.fVetoPromptCLeft),
-  fVetoPromptCRight(clufdr.fVetoPromptCRight), fVetoPromptCFront(clufdr.fVetoPromptCFront),
-  fVetoPromptCBack(clufdr.fVetoPromptCBack), fWeight(clufdr.fWeight), fX(clufdr.fX), fY(clufdr.fY),
-  fZ(clufdr.fZ), fLargestPMTFraction(clufdr.fLargestPMTFraction), fEpochSec(clufdr.fEpochSec), fEpochNSSec(clufdr.fEpochNSSec),
-  fBCMTime(clufdr.fBCMTime), fBCMLength(clufdr.fBCMLength), fBCMIntegral(clufdr.fBCMIntegral)
+  : CCMModule(clufdr)
 {
   // copy constructor
+  fEvents = clufdr.fEvents;
+  fEventFinderID = clufdr.fEventFinderID;
+  fAccumWaveformMethodID = clufdr.fAccumWaveformMethodID;
+  fOutFileName = clufdr.fOutFileName;
+  fTreeName = clufdr.fTreeName;
+  fRemovePrimaryEvents = clufdr.fRemovePrimaryEvents;
+  fRemoveOtherEvents = clufdr.fRemoveOtherEvents;
+  fDoBCMCut = clufdr.fDoBCMCut;
+  fDoVetoCut = clufdr.fDoVetoCut;
+  fDoPositionCut = clufdr.fDoPositionCut;
+  fDoEnergyCut = clufdr.fDoEnergyCut;
+  fDoPrevCut = clufdr.fDoPrevCut;
+  fDoLengthCut = clufdr.fDoLengthCut;
+  fDoTimeCut = clufdr.fDoTimeCut;
+  fDoNicenessCut = clufdr.fDoNicenessCut;
+  fReverseVeto = clufdr.fReverseVeto;
+  fWaveformMaxCut = clufdr.fWaveformMaxCut;
+  fPassedVetoCut = clufdr.fPassedVetoCut;
+  fPassedPositionCut = clufdr.fPassedPositionCut;
+  fPassedEnergyCut = clufdr.fPassedEnergyCut;
+  fPassedPrevCut = clufdr.fPassedPrevCut;
+  fPassedLengthCut = clufdr.fPassedLengthCut;
+  fPassedTimeCut = clufdr.fPassedTimeCut;
+  fPassedNicenessCut = clufdr.fPassedNicenessCut;
+  fPassedWaveformMaxCut = clufdr.fPassedWaveformMaxCut;
+  fPassedNumHitsCut = clufdr.fPassedNumHitsCut;
+  fPassedBCMCut = clufdr.fPassedBCMCut;
+  fNumFailedVetoCut = clufdr.fPassedVetoCut;
+  fNumFailedPositionCut = clufdr.fPassedPositionCut;
+  fNumFailedEnergyCut = clufdr.fPassedEnergyCut;
+  fNumFailedPrevCut = clufdr.fPassedPrevCut;
+  fNumFailedLengthCut = clufdr.fPassedLengthCut;
+  fNumFailedTimeCut = clufdr.fPassedTimeCut;
+  fNumFailedNicenessCut = clufdr.fPassedNicenessCut;
+  fNumFailedWaveformMaxCut = clufdr.fPassedWaveformMaxCut;
+  fNumFailedNumHitsCut = clufdr.fPassedNumHitsCut;
+  fNumFailedBCMCut = clufdr.fPassedBCMCut;
+  fNumVetoCut = clufdr.fNumVetoCut;
+  fBCMTimeLowCut = clufdr.fBCMTimeLowCut;
+  fBCMTimeHighCut = clufdr.fBCMTimeHighCut;
+  fBCMLengthLowCut = clufdr.fBCMLengthLowCut;
+  fBCMLengthHighCut = clufdr.fBCMLengthHighCut;
+  fBCMIntegralLowCut = clufdr.fBCMIntegralLowCut;
+  fBCMIntegralHighCut = clufdr.fBCMIntegralHighCut;
+  fRadiusCutValueLow = clufdr.fRadiusCutValueLow;
+  fRadiusCutValueHigh = clufdr.fRadiusCutValueHigh;
+  fZCutValueLow = clufdr.fZCutValueLow;
+  fZCutValueHigh = clufdr.fZCutValueHigh;
+  fEnergyCutValueLow = clufdr.fEnergyCutValueLow;
+  fEnergyCutValueHigh = clufdr.fEnergyCutValueHigh;
+  fPrevCutTime = clufdr.fPrevCutTime;
+  fPrevCutHoldOff = clufdr.fPrevCutHoldOff;
+  fPrevCutEnergyFrac = clufdr.fPrevCutEnergyFrac;
+  fLengthCutValueLow = clufdr.fLengthCutValueLow;
+  fLengthCutValueHigh = clufdr.fLengthCutValueHigh;
+  fTimeCutValueLow = clufdr.fTimeCutValueLow;
+  fTimeCutValueHigh = clufdr.fTimeCutValueHigh;
+  fNicenessCutValueLow = clufdr.fNicenessCutValueLow;
+  fNicenessCutValueHigh = clufdr.fNicenessCutValueHigh;
+  fOutfile = clufdr.fOutfile;
+  fTree = clufdr.fTree;
+  fEnergy = clufdr.fEnergy;
+  fLength = clufdr.fLength;
+  fHits = clufdr.fHits;
+  fNumPMTs = clufdr.fNumPMTs;
+  fTime = clufdr.fTime;
+  fVetoTop = clufdr.fVetoTop;
+  fVetoBottom = clufdr.fVetoBottom;
+  fVetoCLeft = clufdr.fVetoCLeft;
+  fVetoCRight = clufdr.fVetoCRight;
+  fVetoCFront = clufdr.fVetoCFront;
+  fVetoCBack = clufdr.fVetoCBack;
+  fVetoPromptTop = clufdr.fVetoPromptTop;
+  fVetoPromptBottom = clufdr.fVetoPromptBottom;
+  fVetoPromptCLeft = clufdr.fVetoPromptCLeft;
+  fVetoPromptCRight = clufdr.fVetoPromptCRight;
+  fVetoPromptCFront = clufdr.fVetoPromptCFront;
+  fVetoPromptCBack = clufdr.fVetoPromptCBack;
+  fWeight = clufdr.fWeight;
+  fX = clufdr.fX;
+  fY = clufdr.fY;
+  fZ = clufdr.fZ;
+  fLargestPMTFraction = clufdr.fLargestPMTFraction;
+  fEpochSec = clufdr.fEpochSec;
+  fEpochNSSec = clufdr.fEpochNSSec;
+  fBCMTime = clufdr.fBCMTime;
+  fBCMLength = clufdr.fBCMLength;
+  fBCMIntegral = clufdr.fBCMIntegral;
+  fNumInitEvents = clufdr.fNumInitEvents;
+  fNumFinalEvents = clufdr.fNumFinalEvents;
 }
 
 //_______________________________________________________________________________________
@@ -120,6 +268,8 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
   fOutfile = gROOT->GetFile(fOutFileName.c_str());
 
   std::vector<size_t> locationsToRemove;
+
+  unsigned long int tempCounter = 0;
 
   const size_t kNumEvents = fEvents->GetNumEvents();
   fEpochSec = fEvents->GetComputerSecIntoEpoch();
@@ -154,6 +304,9 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
       }
       continue;
     }
+
+    ++fNumInitEvents;
+    ++tempCounter;
 
     fTime = simplifiedEvent.GetStartTime();
     fLength = simplifiedEvent.GetLength();
@@ -273,6 +426,30 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
       fTree->Fill();
     }
   } // end e
+
+  std::cout << locationsToRemove.size() << std::endl;
+  fNumFinalEvents += tempCounter - locationsToRemove.size();
+  if (!fPassedBCMCut) {
+    ++fNumFailedBCMCut;
+  } else if (!fPassedTimeCut) {
+    ++fNumFailedTimeCut;
+  } else if (!fPassedNumHitsCut) {
+    ++fNumFailedNumHitsCut;
+  } else if (!fPassedPrevCut) {
+    ++fNumFailedPrevCut;
+  } else if (!fPassedVetoCut) {
+    ++fNumFailedVetoCut;
+  } else if (!fPassedPositionCut) {
+    ++fNumFailedPositionCut;
+  } else if (!fPassedNicenessCut) {
+    ++fNumFailedNicenessCut;
+  } else if (!fPassedWaveformMaxCut) {
+    ++fNumFailedWaveformMaxCut;
+  } else if (!fPassedLengthCut) {
+    ++fNumFailedLengthCut;
+  } else if (!fPassedEnergyCut) {
+    ++fNumFailedEnergyCut;
+  }
 
   if (locationsToRemove.empty()) {
     return kCCMSuccess;
@@ -532,6 +709,19 @@ CCMResult_t CCMNa22Cuts::EndOfJob()
     fOutfile->cd();
     fTree->Write();
   }
+
+  MsgInfo(MsgLog::Form("Number of events %ld passed from %ld total (config %s)",fNumFinalEvents,fNumInitEvents,fCfgVersion.c_str()));
+  MsgInfo("Failed Breakdown:");
+  MsgInfo(MsgLog::Form("- Failed BCM %ld",fNumFailedBCMCut));
+  MsgInfo(MsgLog::Form("- Failed Time %ld",fNumFailedTimeCut));
+  MsgInfo(MsgLog::Form("- Failed NumHits %ld",fNumFailedNumHitsCut));
+  MsgInfo(MsgLog::Form("- Failed Prev %ld",fNumFailedPrevCut));
+  MsgInfo(MsgLog::Form("- Failed Veto %ld",fNumFailedVetoCut));
+  MsgInfo(MsgLog::Form("- Failed Position %ld",fNumFailedPositionCut));
+  MsgInfo(MsgLog::Form("- Failed Niceness %ld",fNumFailedNicenessCut));
+  MsgInfo(MsgLog::Form("- Failed WaveformMax %ld",fNumFailedWaveformMaxCut));
+  MsgInfo(MsgLog::Form("- Failed Length %ld",fNumFailedLengthCut));
+  MsgInfo(MsgLog::Form("- Failed Energy %ld",fNumFailedEnergyCut));
 
   return kCCMSuccess;
 }

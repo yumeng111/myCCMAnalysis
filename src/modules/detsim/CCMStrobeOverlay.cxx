@@ -12,6 +12,7 @@
 #include "CCMStrobeOverlay.h"
 #include "CCMModuleTable.h"
 
+#include "CCMRootIO.h"
 #include "PMTInfoMap.h"
 #include "PMTInformation.h"
 #include "AccumWaveform.h"
@@ -35,7 +36,8 @@ MODULE_DECL(CCMStrobeOverlay);
 //_______________________________________________________________________________________
 CCMStrobeOverlay::CCMStrobeOverlay(const char* version) 
   : CCMModule("CCMStrobeOverlay"),
-    fAccumWaveform(nullptr)
+    fAccumWaveform(nullptr),
+    fStrobeData(nullptr)
 {
   //Default constructor
   this->SetCfgVersion(version);
@@ -44,7 +46,8 @@ CCMStrobeOverlay::CCMStrobeOverlay(const char* version)
 //_______________________________________________________________________________________
 CCMStrobeOverlay::CCMStrobeOverlay(const CCMStrobeOverlay& clufdr) 
 : CCMModule(clufdr),
-  fAccumWaveform(clufdr.fAccumWaveform)
+  fAccumWaveform(clufdr.fAccumWaveform),
+  fStrobeData(clufdr.fStrobeData)
 {
   // copy constructor
 }
@@ -62,6 +65,27 @@ CCMResult_t CCMStrobeOverlay::ProcessTrigger()
     MsgDebug(1,"Starting StrobeOverlay for MC \"Event\"");
   }
 
+  if (fStrobeData == nullptr) {
+    return kCCMSuccess;
+  }
+  
+  if (!fStrobeData->ReadOK()) {
+    if (!fStrobeData->AdvanceFile()) {
+      MsgFatal("Did not pass enough strobe events");
+    }
+  }
+
+  double before = fAccumWaveform->Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+
+  auto rhs = fStrobeData->GetAccumWaveform();
+  double strobe = rhs.Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+  fAccumWaveform->operator+=(rhs);
+
+  double after = fAccumWaveform->Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+
+  MsgInfo(MsgLog::Form("Before %.2f After %.2f Strobe %.2f",before,after,strobe));
+
+  fStrobeData->Advance();
 
   return kCCMSuccess;
 }
@@ -72,6 +96,19 @@ void CCMStrobeOverlay::Configure(const CCMConfig& c )
 
   //Initialize any parameters here
   //by reading them from the CCMConfig object.
+
+  std::string tempString = "";
+  c("FileList").Get(tempString);
+
+  if (!tempString.empty()) {
+    std::vector<std::string> fileList;
+    Utility::IndirectFileList(tempString.c_str(),fileList);
+
+    fStrobeData = std::make_shared<CCMRootIO>();
+    fStrobeData->SetParameter("ReadBranches","accumWaveform");
+    fStrobeData->SetInFileList(fileList);
+    fStrobeData->SetupInputFile();
+  }
 
   fIsInit = true;
 }

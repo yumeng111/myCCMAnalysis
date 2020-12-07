@@ -45,6 +45,7 @@ CCMFindEvents::CCMFindEvents(const char* version)
     fEventFinderID(kCCMDynamicLengthEventID),
     fAccumWaveformMethodID(kCCMAccumWaveformTriangleID),
     fNumTriggers(0),
+    fNumEvents(0),
     fResetEvents(false),
     fFixedLength(0)
 {
@@ -61,6 +62,7 @@ CCMFindEvents::CCMFindEvents(const CCMFindEvents& clufdr)
   fEventFinderID(clufdr.fEventFinderID),
   fAccumWaveformMethodID(clufdr.fAccumWaveformMethodID),
   fNumTriggers(clufdr.fNumTriggers),
+  fNumEvents(clufdr.fNumEvents),
   fResetEvents(clufdr.fResetEvents),
   fFixedLength(clufdr.fFixedLength)
 {
@@ -205,7 +207,9 @@ void CCMFindEvents::Configure(const CCMConfig& c )
 //_______________________________________________________________________________________
 CCMResult_t CCMFindEvents::EndOfJob() 
 { 
-  MsgInfo(MsgLog::Form("Num Triggers %ld passed trigger type cut",fNumTriggers));
+  MsgInfo(MsgLog::Form("Num of Events %ld in %ld triggers with EventFinder %s and AccumWFMethod %s",
+        fNumEvents,fNumTriggers, Utility::ConvertCCMEventFinderIDToString(fEventFinderID).c_str(),
+        Utility::ConvertCCMAccumWaveformMethodToString(fAccumWaveformMethodID).c_str()));
 
   return kCCMSuccess;
 }
@@ -587,6 +591,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
     MsgDebug(4,"Add Event");
   }
   fEvents->AddSimplifiedEvent(SimplifiedEvent(*event));
+  ++fNumEvents;
 
   if (MsgLog::GetGlobalDebugLevel()>= 4) {
     MsgDebug(4,"Reset");

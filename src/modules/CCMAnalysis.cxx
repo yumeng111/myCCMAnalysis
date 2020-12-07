@@ -47,27 +47,6 @@ void Usage() {
   return;
 }
 
-//Read a file containing a list of files 
-void IndirectFileList(const char* file, std::vector<std::string>& infileList)
-{
-  // Open the file and pull the file names in
-  std::ifstream infile;
-  infile.open(file);
-  if (!infile) {
-    MsgError(MsgLog::Form("File %s not found.",file));
-    exit(1);
-  }
-
-  std::string fname;
-  std::string line;
-  while (infile >> line) {
-    // from the indirect file
-    fname = line;
-    infileList.push_back(fname);
-  }
-  infile.close();
-}
-
 //main program
 int main (int argc, char** argv) 
 {
@@ -132,8 +111,8 @@ int main (int argc, char** argv)
                           infileList = Utility::GetListOfFiles(optarg);       break;
       case kRawInputOpt:  fname             = std::string(optarg); 
                           rawInfileList.push_back(fname);                     break;
-      case kIndirectOpt:  IndirectFileList(optarg,infileList);                break;
-      case kRawIndirectOpt:  IndirectFileList(optarg,rawInfileList);          break;
+      case kIndirectOpt:  Utility::IndirectFileList(optarg,infileList);                break;
+      case kRawIndirectOpt:  Utility::IndirectFileList(optarg,rawInfileList);          break;
       case kOutputOpt:    fname             = std::string(optarg); 
                           outfileList.push_back(fname);                       break;
       case kRawOutputOpt: fname             = std::string(optarg); 

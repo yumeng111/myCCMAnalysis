@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <chrono>
 #include <vector>
+#include <array>
+#include <map>
 #include <cstring>
 #include <numeric>
 #include <iterator>
@@ -168,6 +170,7 @@ namespace Utility
   extern double ShiftTime(int start, int beamTime, bool applyFP3Offset = true);
 
   extern std::vector<std::string> GetListOfFiles(const char * file_regexp);
+  extern void IndirectFileList(const char* file, std::vector<std::string>& infileList);
 
 };
 
@@ -316,6 +319,9 @@ int Utility::FindFirstNoneEmptyBin(typename std::array<T,Utility::fgkNumBins>::i
   }
   return std::distance(begin,time);
 }
+
+typedef std::map<int,std::vector<std::array<float,Utility::fgkNumBins>>> MapDAQWF2D;
+typedef std::map<int,std::array<float,Utility::fgkNumBins>> MapDAQWF1D;
 
 #endif // #ifndef Utility_h
 

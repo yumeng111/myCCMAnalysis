@@ -12,7 +12,7 @@
   <ModuleVersion> lengthCut waveformCut </ModuleVersion>
 
   <Config name="ROOTSetup" version="default">
-    <Param name="ReadBranches"><string>events</string>
+    <Param name="ReadBranches"><string>events accumWaveform</string>
       The branches to read in options are
       - events
       - rawData
@@ -32,16 +32,14 @@
 
   <Config name="PMTMapSetup" version="default">
     <Param name="MappingFile"><string>default</string>
-      The PMT mapping file to read in. If default is passed the files in $CCMPROJECT/calibrationFiles/2019/mapping_master* will be used
+      The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
       Must be the first param in this config
     </Param>
     <Param name="HVOffFile"><string>default</string>
       List of the HV channels that are off.
-      default is $CCMPROJECT/calibrationFiles/2019/hv_off_2019.csv
     </Param>
-    <Param name="CalibrationFile"><string>default</string>
+    <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
       Name of the calibration file to use
-      default is $CCMPROJECT/calibrationFiles/2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root
     </Param>
   </Config>
 
@@ -72,38 +70,15 @@
       AccumWaveformMethodID/EventFinderID combination that 
       is looked for but do not pass cuts
     </Param>
-    <Param name="DoBCMCut"><int>1</int>
-      Flag to reject events based off the BCM cut
-    </Param>
-    <Param name="BCMTimeLowCut"><double>-377.39</double>
-      Low cut on the time the BCM signal was seen in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMTimeHighCut"><double>-314.15</double>
-      High cut on the time the BCM signal was seen in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMLengthLowCut"><double>505.5</double>
-      Low cut on the length the BCM signal in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMLengthHighCut"><double>646.5</double>
-      High cut on the length the BCM signal in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMIntegralLowCut"><double>17811.4</double>
-      Low cut on the integral the BCM signal in the DAQ in ADC
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMIntegralHighCut"><double>30978.4</double>
-      High cut on the integral the BCM signal in the DAQ in ADC
-      Only needed if DoBCMCut is true
-    </Param>
     <Param name="DoPrevCut"><int>1</int>
       Flag to reject events based off previous activity in the same DAQ window
     </Param>
-    <Param name="PrevCutTime"><double>1600</double>
+    <Param name="PrevCutTime"><double>4800</double>
       The time to reject the event if a previous event falls before by the amount specified.
+      The time should be in nanoseconds 
+    </Param>
+    <Param name="PrevCutHoldOff"><double>630</double>
+      Hold off time (or offset time), the previous event has to end before this time for it to not reject the event
       The time should be in nanoseconds 
     </Param>
     <Param name="DoNicenessCut"><int>1</int>
@@ -174,6 +149,33 @@
     <Param name="LengthCutValueHigh"><double>100</double>
       Highest event length value allowed in nanoseconds (not needed if DoLengthCut = false)
     </Param>
+    <Param name="DoBCMCut"><int>1</int>
+      Flag to reject events based off the BCM cut
+    </Param>
+    <Param name="BCMTimeLowCut"><double>-377.39</double>
+      Low cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMTimeHighCut"><double>-314.15</double>
+      High cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthLowCut"><double>505.5</double>
+      Low cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthHighCut"><double>646.5</double>
+      High cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralLowCut"><double>17811.4</double>
+      Low cut on the integral the BCM signal in the DAQ in ADC
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralHighCut"><double>30978.4</double>
+      High cut on the integral the BCM signal in the DAQ in ADC
+      Only needed if DoBCMCut is true
+    </Param>
   </Config>
 
   <Config name="CCMNa22Cuts" version="waveformCut">
@@ -203,38 +205,15 @@
       AccumWaveformMethodID/EventFinderID combination that 
       is looked for but do not pass cuts
     </Param>
-    <Param name="DoBCMCut"><int>1</int>
-      Flag to reject events based off the BCM cut
-    </Param>
-    <Param name="BCMTimeLowCut"><double>-377.39</double>
-      Low cut on the time the BCM signal was seen in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMTimeHighCut"><double>-314.15</double>
-      High cut on the time the BCM signal was seen in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMLengthLowCut"><double>505.5</double>
-      Low cut on the length the BCM signal in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMLengthHighCut"><double>646.5</double>
-      High cut on the length the BCM signal in the DAQ in ns
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMIntegralLowCut"><double>17811.4</double>
-      Low cut on the integral the BCM signal in the DAQ in ADC
-      Only needed if DoBCMCut is true
-    </Param>
-    <Param name="BCMIntegralHighCut"><double>30978.4</double>
-      High cut on the integral the BCM signal in the DAQ in ADC
-      Only needed if DoBCMCut is true
-    </Param>
     <Param name="DoPrevCut"><int>1</int>
       Flag to reject events based off previous activity in the same DAQ window
     </Param>
-    <Param name="PrevCutTime"><double>1600</double>
+    <Param name="PrevCutTime"><double>4800</double>
       The time to reject the event if a previous event falls before by the amount specified.
+      The time should be in nanoseconds 
+    </Param>
+    <Param name="PrevCutHoldOff"><double>630</double>
+      Hold off time (or offset time), the previous event has to end before this time for it to not reject the event
       The time should be in nanoseconds 
     </Param>
     <Param name="DoNicenessCut"><int>1</int>
@@ -305,7 +284,44 @@
     <Param name="LengthCutValueHigh"><double>100</double>
       Highest event length value allowed in nanoseconds (not needed if DoLengthCut = false)
     </Param>
+    <Param name="DoBCMCut"><int>1</int>
+      Flag to reject events based off the BCM cut
+    </Param>
+    <Param name="BCMTimeLowCut"><double>-377.39</double>
+      Low cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMTimeHighCut"><double>-314.15</double>
+      High cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthLowCut"><double>505.5</double>
+      Low cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthHighCut"><double>646.5</double>
+      High cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralLowCut"><double>17811.4</double>
+      Low cut on the integral the BCM signal in the DAQ in ADC
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralHighCut"><double>30978.4</double>
+      High cut on the integral the BCM signal in the DAQ in ADC
+      Only needed if DoBCMCut is true
+    </Param>
   </Config>
 
+  <Config name="CCMProcessingPlots" version="default">
+    <Param name="BeamInfoFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/190801_00.SRCM000D01</string>
+      The location of the beam info table
+    </Param>
+  </Config>
 
 </TestRecoConfig>
+
+
+
+
+

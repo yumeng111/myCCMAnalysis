@@ -93,13 +93,11 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
   // Check which trigger occured in DAQ window
   // make sure it is strobe
   bool mcEvent = fTriggerType.find("MC") != std::string::npos;
-  if (fTriggerType.find("ALL") == std::string::npos || !mcEvent) {
+  if (!mcEvent) {
     if (!fRawData->IsTriggerPresent(fTriggerType)) {
       return kCCMFailure;
     }
-  }
-  
-  if (!mcEvent) {
+
     fAccumWaveform->SetEventNumber(fRawData->GetEventNumber());
     fAccumWaveform->SetComputerSecIntoEpoch(fRawData->GetGPSSecIntoDay());
     fAccumWaveform->SetComputerNSIntoSec(fRawData->GetGPSNSIntoSec());

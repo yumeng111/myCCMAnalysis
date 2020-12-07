@@ -105,7 +105,7 @@ CCMResult_t CCMPMTResponse::ProcessTrigger()
   // and return as no pulses will be found
   if (kNumHits == 0) {
     fPulses->Reset();
-    return kCCMSuccess;
+    return kCCMFailure;
   }
 
   // if the SPEWeights object has not been filled fill it
@@ -186,6 +186,11 @@ CCMResult_t CCMPMTResponse::ProcessTrigger()
   for (auto & p : fWaveforms) {
     fPulses->SetKey(p.first);
     fPulses->MCFilter(p.second,0.0);
+  }
+
+  if (fPulses->GetNumPulses() == 0) {
+    //MsgWarning("No Pulses Found");
+    return kCCMFailure;
   }
 
   fTotalPulses += fPulses->GetNumPulses();

@@ -142,43 +142,97 @@ AccumWaveform & AccumWaveform::operator=(const AccumWaveform & rhs)
   return *this;
 }
 
+/*!**********************************************
+ * \fn AccumWaveform & AccumWaveform::operator+=(const AccumWaveform & rhs) 
+ * \brief Add the passed #AccumWaveform object to the current one
+ * \param[in] rhs The object to add from
+ ***********************************************/
+AccumWaveform & AccumWaveform::operator+=(const AccumWaveform & rhs) 
+{
+  AddMaps(this->fPulsesTime,rhs.fPulsesTime);
+  AddMaps(this->fIntegralTime,rhs.fIntegralTime);
+  AddMaps(this->fIntegralDer,rhs.fIntegralDer);
+  AddMaps(this->fVetoBottomTime,rhs.fVetoBottomTime);
+  AddMaps(this->fVetoTopTime,rhs.fVetoTopTime);
+  AddMaps(this->fVetoCRightTime,rhs.fVetoCRightTime);
+  AddMaps(this->fVetoCLeftTime,rhs.fVetoCLeftTime);
+  AddMaps(this->fVetoCFrontTime,rhs.fVetoCFrontTime);
+  AddMaps(this->fVetoCBackTime,rhs.fVetoCBackTime);
+  AddMaps(this->fVetoTotalTime,rhs.fVetoTotalTime);
+  AddMaps(this->fPMTWaveform,rhs.fPMTWaveform);
+  AddMaps(this->fPMTWaveformCount,rhs.fPMTWaveformCount);
+
+  return *this;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+void AccumWaveform::AddMaps(MapDAQWF1D & lhs, const MapDAQWF1D & rhs)
+{
+  for (auto & p : lhs) {
+    auto rhsIt = rhs.find(p.first);
+    if (rhsIt == rhs.end()) {
+      continue;
+    }
+    std::transform(p.second.begin(),p.second.end(),
+        rhsIt->second.begin(),p.second.begin(),std::plus<float>());
+  }
+}
+
+//-------------------------------------------------------------------------------------------------
+void AccumWaveform::AddMaps(MapDAQWF2D & lhs, const MapDAQWF2D & rhs)
+{
+  for (auto & p : lhs) {
+    auto rhsIt = rhs.find(p.first);
+    if (rhsIt == rhs.end()) {
+      continue;
+    }
+    const size_t kNumPMTs = p.second.size();
+    for (size_t pmt = 0; pmt < kNumPMTs; ++pmt) {
+      std::transform(p.second.at(pmt).begin(),p.second.at(pmt).end(),
+          rhsIt->second.at(pmt).begin(),p.second.at(pmt).begin(),std::plus<float>());
+    }
+  }
+}
+
 //-------------------------------------------------------------------------------------------------
 void AccumWaveform::AddMethod(CCMAccumWaveformMethod_t method)
 {
-  if (fIntegralTime.find(method) != fIntegralTime.end()) {
+  int methodInt = static_cast<int>(method);
+  if (fIntegralTime.find(methodInt) != fIntegralTime.end()) {
     return;
   }
 
-  fIntegralTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fIntegralDer.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fPulsesTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fVetoBottomTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fVetoTopTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fVetoCLeftTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fVetoCRightTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fVetoCBackTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fVetoCFrontTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fVetoTotalTime.emplace(method,std::array<float,Utility::fgkNumBins>());
-  fPMTWaveform.emplace(method,std::vector<std::array<float,Utility::fgkNumBins>>());
-  fPMTWaveformCount.emplace(method,std::vector<std::array<float,Utility::fgkNumBins>>());
+  fIntegralTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fIntegralDer.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fPulsesTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fVetoBottomTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fVetoTopTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fVetoCLeftTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fVetoCRightTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fVetoCBackTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fVetoCFrontTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fVetoTotalTime.emplace(methodInt,std::array<float,Utility::fgkNumBins>());
+  fPMTWaveform.emplace(methodInt,std::vector<std::array<float,Utility::fgkNumBins>>());
+  fPMTWaveformCount.emplace(methodInt,std::vector<std::array<float,Utility::fgkNumBins>>());
 
-  fIntegralTime[method].fill(0.f);
-  fIntegralDer[method].fill(0.f);
-  fPulsesTime[method].fill(0.f);
-  fVetoBottomTime[method].fill(0.f);
-  fVetoTopTime[method].fill(0.f);
-  fVetoCLeftTime[method].fill(0.f);
-  fVetoCRightTime[method].fill(0.f);
-  fVetoCBackTime[method].fill(0.f);
-  fVetoCFrontTime[method].fill(0.f);
-  fVetoTotalTime[method].fill(0.f);
+  fIntegralTime[methodInt].fill(0.f);
+  fIntegralDer[methodInt].fill(0.f);
+  fPulsesTime[methodInt].fill(0.f);
+  fVetoBottomTime[methodInt].fill(0.f);
+  fVetoTopTime[methodInt].fill(0.f);
+  fVetoCLeftTime[methodInt].fill(0.f);
+  fVetoCRightTime[methodInt].fill(0.f);
+  fVetoCBackTime[methodInt].fill(0.f);
+  fVetoCFrontTime[methodInt].fill(0.f);
+  fVetoTotalTime[methodInt].fill(0.f);
 
   for (size_t pmt = 0; pmt < Utility::fgkNumPMTs; ++pmt) {
-    fPMTWaveform[method].push_back(std::array<float,Utility::fgkNumBins>());
-    fPMTWaveformCount[method].push_back(std::array<float,Utility::fgkNumBins>());
+    fPMTWaveform[methodInt].push_back(std::array<float,Utility::fgkNumBins>());
+    fPMTWaveformCount[methodInt].push_back(std::array<float,Utility::fgkNumBins>());
 
-    fPMTWaveform[method].back().fill(0.f);
-    fPMTWaveformCount[method].back().fill(0.f);
+    fPMTWaveform[methodInt].back().fill(0.f);
+    fPMTWaveformCount[methodInt].back().fill(0.f);
   }
 }
 
@@ -190,25 +244,27 @@ std::array<float,Utility::fgkNumBins> * AccumWaveform::Get(CCMAccumWaveformMetho
     MsgFatal("Cannot get kCCMAccumWaveformTotalID waveform as it does not exists");
   }
 
-  auto it = fPulsesTime.find(method);
+  int methodInt = static_cast<int>(method);
+  auto it = fPulsesTime.find(methodInt);
   if (it == fPulsesTime.end()) {
     AddMethod(method);
   }
 
+
   std::array<float,Utility::fgkNumBins> * tempA = nullptr;
   switch (waveformType) {
-    case kCCMPulsesTimeID:       tempA = &(fPulsesTime.find(method)->second); break;
-    case kCCMIntegralTimeID:     tempA = &(fIntegralTime.find(method)->second); break;
-    case kCCMIntegralDerID:      tempA = &(fIntegralDer.find(method)->second); break;
-    case kCCMVetoBottomTimeID:   tempA = &(fVetoBottomTime.find(method)->second); break;
-    case kCCMVetoTopTimeID:      tempA = &(fVetoTopTime.find(method)->second); break;
-    case kCCMVetoCRightTimeID:   tempA = &(fVetoCRightTime.find(method)->second); break;
-    case kCCMVetoCLeftTimeID:    tempA = &(fVetoCLeftTime.find(method)->second); break;
-    case kCCMVetoCFrontTimeID:   tempA = &(fVetoCFrontTime.find(method)->second); break;
-    case kCCMVetoCBackTimeID:    tempA = &(fVetoCBackTime.find(method)->second); break;
-    case kCCMVetoTotalTimeID:    tempA = &(fVetoTotalTime.find(method)->second); break;
-    case kCCMPMTWaveformID:      tempA = &(fPMTWaveform.find(method)->second.at(pmtID)); break;
-    case kCCMPMTWaveformCountID: tempA = &(fPMTWaveformCount.find(method)->second.at(pmtID)); break;
+    case kCCMPulsesTimeID:       tempA = &(fPulsesTime.find(methodInt)->second); break;
+    case kCCMIntegralTimeID:     tempA = &(fIntegralTime.find(methodInt)->second); break;
+    case kCCMIntegralDerID:      tempA = &(fIntegralDer.find(methodInt)->second); break;
+    case kCCMVetoBottomTimeID:   tempA = &(fVetoBottomTime.find(methodInt)->second); break;
+    case kCCMVetoTopTimeID:      tempA = &(fVetoTopTime.find(methodInt)->second); break;
+    case kCCMVetoCRightTimeID:   tempA = &(fVetoCRightTime.find(methodInt)->second); break;
+    case kCCMVetoCLeftTimeID:    tempA = &(fVetoCLeftTime.find(methodInt)->second); break;
+    case kCCMVetoCFrontTimeID:   tempA = &(fVetoCFrontTime.find(methodInt)->second); break;
+    case kCCMVetoCBackTimeID:    tempA = &(fVetoCBackTime.find(methodInt)->second); break;
+    case kCCMVetoTotalTimeID:    tempA = &(fVetoTotalTime.find(methodInt)->second); break;
+    case kCCMPMTWaveformID:      tempA = &(fPMTWaveform.find(methodInt)->second.at(pmtID)); break;
+    case kCCMPMTWaveformCountID: tempA = &(fPMTWaveformCount.find(methodInt)->second.at(pmtID)); break;
     default: break;
   }
 
@@ -269,7 +325,7 @@ void AccumWaveform::DumpInfo()
   MsgInfo(MsgLog::Form("Beam Time %d Integral %.2f Length %.2f",fBeamTime,fBeamIntegral,fBeamLength));
   for (auto & p : fIntegralTime) {
     MsgInfo(MsgLog::Form("method %s integralTime integral %f",
-          Utility::ConvertCCMAccumWaveformMethodToString(p.first).c_str(),
+          Utility::ConvertCCMAccumWaveformMethodToString(static_cast<CCMAccumWaveformMethod_t>(p.first)).c_str(),
           std::accumulate(p.second.begin(),p.second.end(),0.f)));
   }
 }

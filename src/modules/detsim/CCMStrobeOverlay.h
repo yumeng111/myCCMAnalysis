@@ -8,6 +8,8 @@
 #include <iterator>
 #include <algorithm>
 
+class CCMRootIO;
+
 class CCMStrobeOverlay : public CCMModule
 {
   public:
@@ -56,6 +58,8 @@ class CCMStrobeOverlay : public CCMModule
 
     //private data members
     std::shared_ptr<AccumWaveform> fAccumWaveform;
+
+    std::shared_ptr<CCMRootIO> fStrobeData;
 };
 
 #endif // CCMStrobeOverlay_h

@@ -7,11 +7,7 @@
 #ifndef AccumWaveform_h
 #define AccumWaveform_h
 
-#include <vector>
-#include <map>
 #include <utility>
-#include <iostream>
-#include <algorithm>
 #include <iterator>
 
 #include "Utility.h"
@@ -74,8 +70,6 @@ class AccumWaveform : public TObject
     
     /// \brief Get the length of the BCM signal
     float GetBeamLength() { return fBeamLength; }
-
-
     
     /// \return #fEventNumber
     unsigned int GetEventNumber() { return fEventNumber; }
@@ -107,6 +101,10 @@ class AccumWaveform : public TObject
 
     AccumWaveform & operator=(const AccumWaveform & rhs);
 
+    AccumWaveform & operator+=(const AccumWaveform & rhs);
+    void AddMaps(MapDAQWF1D & lhs, const MapDAQWF1D & rhs);
+    void AddMaps(MapDAQWF2D & lhs, const MapDAQWF2D & rhs);
+
     void DumpInfo();
     void AddMethod(CCMAccumWaveformMethod_t method);
 
@@ -128,22 +126,22 @@ class AccumWaveform : public TObject
     /// The trigger time of the trigger
     float fTriggerTime;
 
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fPulsesTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fIntegralTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fIntegralDer;
+    MapDAQWF1D fPulsesTime;
+    MapDAQWF1D fIntegralTime;
+    MapDAQWF1D fIntegralDer;
 
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fVetoBottomTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fVetoTopTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fVetoCRightTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fVetoCLeftTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fVetoCFrontTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fVetoCBackTime;
-    std::map<CCMAccumWaveformMethod_t,std::array<float,Utility::fgkNumBins>> fVetoTotalTime;
+    MapDAQWF1D fVetoBottomTime;
+    MapDAQWF1D fVetoTopTime;
+    MapDAQWF1D fVetoCRightTime;
+    MapDAQWF1D fVetoCLeftTime;
+    MapDAQWF1D fVetoCFrontTime;
+    MapDAQWF1D fVetoCBackTime;
+    MapDAQWF1D fVetoTotalTime;
 
-    std::map<CCMAccumWaveformMethod_t,std::vector<std::array<float,Utility::fgkNumBins>>> fPMTWaveform;
-    std::map<CCMAccumWaveformMethod_t,std::vector<std::array<float,Utility::fgkNumBins>>> fPMTWaveformCount;
+    MapDAQWF2D fPMTWaveform;
+    MapDAQWF2D fPMTWaveformCount;
 
-  ClassDef(AccumWaveform,2)
+  ClassDef(AccumWaveform,3)
 
 };
 

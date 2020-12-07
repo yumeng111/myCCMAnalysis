@@ -145,6 +145,17 @@ class CCMNa22Cuts : public CCMModule
     bool fPassedNumHitsCut;
     bool fPassedBCMCut;
 
+    unsigned long int fNumFailedVetoCut;
+    unsigned long int fNumFailedPositionCut;
+    unsigned long int fNumFailedEnergyCut;
+    unsigned long int fNumFailedPrevCut;
+    unsigned long int fNumFailedLengthCut;
+    unsigned long int fNumFailedTimeCut;
+    unsigned long int fNumFailedNicenessCut;
+    unsigned long int fNumFailedWaveformMaxCut;
+    unsigned long int fNumFailedNumHitsCut;
+    unsigned long int fNumFailedBCMCut;
+
     int fNumVetoCut;
     double fBCMTimeLowCut;
     double fBCMTimeHighCut;
@@ -213,6 +224,9 @@ class CCMNa22Cuts : public CCMModule
 
     TFile * fEnergyLengthFile;
     TProfile * fEnergyLengthProf;
+
+    unsigned long int fNumInitEvents;
+    unsigned long int fNumFinalEvents;
 };
 
 #endif // CCMNa22Cuts_h

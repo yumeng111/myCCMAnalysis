@@ -75,6 +75,7 @@ class CCMFindEvents : public CCMModule
     CCMAccumWaveformMethod_t fAccumWaveformMethodID;
 
     unsigned long int fNumTriggers;
+    unsigned long int fNumEvents;
 
     int fResetEvents;
     int fFixedLength;

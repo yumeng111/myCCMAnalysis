@@ -89,7 +89,7 @@ CCMResult_t CCMTimeShift::ProcessTrigger()
   }
 
   double newStartTimeBin = (newStartTime - Utility::fgkWindowStartTime) / Utility::fgkBinWidth;
-  MsgInfo(MsgLog::Form("newST = %.2f newSTB = %.2f",newStartTime,newStartTimeBin));
+  //MsgInfo(MsgLog::Form("newST = %.2f newSTB = %.2f",newStartTime,newStartTimeBin));
 
   fPulses->ShiftTimeOffset(newStartTimeBin - currentTimeShift);
 

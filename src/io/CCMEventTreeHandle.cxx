@@ -365,7 +365,7 @@ int CCMEventTreeHandle::Load(int branchID) const
     return 0;
   }
 
-
+  fInputFile->cd();
   //Make sure that this branch exists before actually loading it
   if(fBranch[branchID] != nullptr) {
     fBranch[branchID]->GetEntry(fIndex);

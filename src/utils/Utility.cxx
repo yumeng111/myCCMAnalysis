@@ -9,6 +9,7 @@
 
 #include <cstdlib>
 #include <cstdio>
+#include <fstream>
 
 /*!**********************************************
  * \fn void Utility::ParseStringForRunNumber(std::string name, int & run int & subrun, int * month, int * day, int * time)
@@ -251,3 +252,29 @@ std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
 
   return localVec;
 }
+
+/*!**********************************************
+ *  \brief Reads in a list of files and puts them in a vector of strings
+ *  \param[in] file The file name that contains the list of files
+ *  \param[out] infileList The vector containing the list of files
+ ***********************************************/
+void Utility::IndirectFileList(const char* file, std::vector<std::string>& infileList)
+{
+  // Open the file and pull the file names in
+  std::ifstream infile;
+  infile.open(file);
+  if (!infile) {
+    MsgError(MsgLog::Form("File %s not found.",file));
+    exit(1);
+  }
+
+  std::string fname;
+  std::string line;
+  while (infile >> line) {
+    // from the indirect file
+    fname = line;
+    infileList.push_back(fname);
+  }
+  infile.close();
+}
+
