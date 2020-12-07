@@ -77,6 +77,8 @@ CCMResult_t CCMTimeShift::ProcessTrigger()
     return kCCMSuccess;
   }
 
+  double currentTimeShift = fPulses->GetTriggerTime();
+
   double newStartTime = 0.0;
   switch (fTimeDist) {
     case kCCMUniform: newStartTime = GetTimeFromUniform(fStartNS,fEndNS); break;
@@ -89,7 +91,7 @@ CCMResult_t CCMTimeShift::ProcessTrigger()
   double newStartTimeBin = (newStartTime - Utility::fgkWindowStartTime) / Utility::fgkBinWidth;
   MsgInfo(MsgLog::Form("newST = %.2f newSTB = %.2f",newStartTime,newStartTimeBin));
 
-  fPulses->ShiftTimeOffset(newStartTimeBin);
+  fPulses->ShiftTimeOffset(newStartTimeBin - currentTimeShift);
 
   ++fTotalEvents;
 

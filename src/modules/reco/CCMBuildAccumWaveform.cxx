@@ -92,13 +92,18 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
 
   // Check which trigger occured in DAQ window
   // make sure it is strobe
-  if (!fRawData->IsTriggerPresent(fTriggerType)) {
-    return kCCMFailure;
+  bool mcEvent = fTriggerType.find("MC") != std::string::npos;
+  if (fTriggerType.find("ALL") == std::string::npos || !mcEvent) {
+    if (!fRawData->IsTriggerPresent(fTriggerType)) {
+      return kCCMFailure;
+    }
   }
   
-  fAccumWaveform->SetEventNumber(fRawData->GetEventNumber());
-  fAccumWaveform->SetComputerSecIntoEpoch(fRawData->GetGPSSecIntoDay());
-  fAccumWaveform->SetComputerNSIntoSec(fRawData->GetGPSNSIntoSec());
+  if (!mcEvent) {
+    fAccumWaveform->SetEventNumber(fRawData->GetEventNumber());
+    fAccumWaveform->SetComputerSecIntoEpoch(fRawData->GetGPSSecIntoDay());
+    fAccumWaveform->SetComputerNSIntoSec(fRawData->GetGPSNSIntoSec());
+  }
 
   // If fTriggerType == beam
   // Find when the BCM triggered in the DAQ window 

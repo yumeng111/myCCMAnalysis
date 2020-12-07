@@ -63,12 +63,13 @@ CCMTaskConfig::~CCMTaskConfig()
 //------------------------------------------------------
 CCMTaskConfig::CCMTaskConfig(std::string configfile,
     std::vector<std::string> rootInfileList, std::vector<std::string> rootOutfileList,
-    std::vector<std::string> rawInfileList, std::vector<std::string> rawOutfileList)
+    std::vector<std::string> rawInfileList, std::vector<std::string> rawOutfileList,
+    std::shared_ptr<CCMRootIO> rootIO, std::shared_ptr<CCMRawIO> rawIO)
   : fConfigFile(configfile),fInputFileList(rootInfileList),fOutputFileList(rootOutfileList),
   fRawInputFileList(rawInfileList),fRawOutputFileList(rawOutfileList)
 {
   //constructor
-  int status = ReadConfigFile();
+  int status = ReadConfigFile(rootIO,rawIO);
   if(status == kCCMSuccess) {
     MsgInfo("Configuring with following inputs:");
     Print();
@@ -81,11 +82,12 @@ CCMTaskConfig::CCMTaskConfig(std::string configfile,
 }
 
 //------------------------------------------------------
-CCMTaskConfig::CCMTaskConfig(std::string configfile)
+CCMTaskConfig::CCMTaskConfig(std::string configfile, std::shared_ptr<CCMRootIO> rootIO,
+    std::shared_ptr<CCMRawIO> rawIO)
   : fConfigFile(configfile),fInputFileList(0),fOutputFileList(0)
 {
   //constructor
-  int status = ReadConfigFile();
+  int status = ReadConfigFile(rootIO,rawIO);
   if(status == kCCMSuccess) {
     MsgInfo("Configuring with following inputs:");
     Print();
@@ -98,7 +100,8 @@ CCMTaskConfig::CCMTaskConfig(std::string configfile)
 }
 
 //------------------------------------------------------
-int CCMTaskConfig::ReadConfigFile()
+int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
+    std::shared_ptr<CCMRawIO> rawIO)
 {
 
   try {
@@ -137,10 +140,6 @@ int CCMTaskConfig::ReadConfigFile()
     MsgError(MsgLog::Form("Unexpected Exception during parsing %s\n",fConfigFile.c_str()));
     return kCCMError;
   }
-
-  // Need CCMRootIO/CCMRawIO, because the xml file might contain information about cuts
-  std::shared_ptr<CCMRootIO> rootIO = CCMRootIO::GetInstance();
-  std::shared_ptr<CCMRawIO> rawIO = CCMRawIO::GetInstance();
 
   //We got the parser, now let's get the info out of it
   DOMDocument *doc = parser->getDocument();

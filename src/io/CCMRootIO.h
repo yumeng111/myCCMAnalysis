@@ -34,7 +34,13 @@ class MCTruth;
 class CCMRootIO 
 {
   public:
-    static std::shared_ptr<CCMRootIO> GetInstance();
+    //static std::shared_ptr<CCMRootIO> GetInstance();
+
+    /*!
+     * \fn CCMRootIO
+     * \brief constructor
+     */
+    CCMRootIO();
 
     /*!
      * \fn virtual ~CCMRootIO
@@ -192,12 +198,6 @@ class CCMRootIO
 
 
   protected:
-    /*!
-     * \fn CCMRootIO
-     * \brief constructor
-     */
-    CCMRootIO();
-
     virtual void UpdateTriggerNumbers();
 
 
@@ -221,7 +221,7 @@ class CCMRootIO
     uint32_t    fFlushFreq;                     ///< Flush output every n events
     long long   fOutSizeLimit;                  ///< Output size limit
 
-    static std::shared_ptr<CCMRootIO> fgInstance; ///< static instance for the class
+    //static std::shared_ptr<CCMRootIO> fgInstance; ///< static instance for the class
 };
 
 #endif // CCMROOTIO_H

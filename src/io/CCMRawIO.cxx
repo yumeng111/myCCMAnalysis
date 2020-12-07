@@ -18,18 +18,18 @@
 #include "CCMRawIO.h"
 #include "RawData.h"
 
-std::shared_ptr<CCMRawIO> CCMRawIO::fgInstance = nullptr;
+//std::shared_ptr<CCMRawIO> CCMRawIO::fgInstance = nullptr;
 
 //__________________________________________________
-std::shared_ptr<CCMRawIO> CCMRawIO::GetInstance()
-{
-  if (fgInstance != nullptr) {
-    return fgInstance;
-  }
-
-  fgInstance = std::shared_ptr<CCMRawIO>(new CCMRawIO());
-  return fgInstance;
-}
+//std::shared_ptr<CCMRawIO> CCMRawIO::GetInstance()
+//{
+//  if (fgInstance != nullptr) {
+//    return fgInstance;
+//  }
+//
+//  fgInstance = std::shared_ptr<CCMRawIO>(new CCMRawIO());
+//  return fgInstance;
+//}
 
 //__________________________________________________
 CCMRawIO::CCMRawIO()

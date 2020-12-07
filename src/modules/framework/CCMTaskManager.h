@@ -84,8 +84,8 @@ private:
 
   std::list<std::shared_ptr<CCMModule>> fModuleList; //list of registered modules
 
-  std::shared_ptr<CCMRootIO> fRootIO; // CCMRootIO is a single instance class
-  std::shared_ptr<CCMRawIO> fRawIO; // CCMRawIO is a single instance class
+  std::shared_ptr<CCMRootIO> fRootIO;
+  std::shared_ptr<CCMRawIO> fRawIO;
 
   std::shared_ptr<AccumWaveform>  fAccumWaveform;
   std::shared_ptr<MCTruth>  fMCTruth;

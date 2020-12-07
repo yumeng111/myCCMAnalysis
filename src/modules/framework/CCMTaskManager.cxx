@@ -23,8 +23,8 @@ std::unique_ptr<CCMTaskConfig> CCMTaskManager::fgkTaskConfig = nullptr;  //Stati
 CCMTaskManager::CCMTaskManager()
 {
   //default constructor
-  fRootIO = CCMRootIO::GetInstance();
-  fRawIO = CCMRawIO::GetInstance();
+  fRootIO = std::make_shared<CCMRootIO>();//CCMRootIO::GetInstance();
+  fRawIO = std::make_shared<CCMRawIO>();//CCMRawIO::GetInstance();
   
   fAccumWaveform = std::make_shared<AccumWaveform>();
   fMCTruth = std::make_shared<MCTruth>();
@@ -43,8 +43,8 @@ CCMTaskManager::CCMTaskManager()
 CCMTaskManager::CCMTaskManager(const CCMTaskManager& task)
 {
   //copy constructor
-  fRootIO = CCMRootIO::GetInstance();
-  fRawIO = CCMRawIO::GetInstance();
+  fRootIO = std::make_shared<CCMRootIO>();//CCMRootIO::GetInstance();
+  fRawIO = std::make_shared<CCMRawIO>();//CCMRawIO::GetInstance();
   
   fAccumWaveform = std::make_shared<AccumWaveform>();
   fMCTruth = std::make_shared<MCTruth>();
@@ -73,10 +73,11 @@ CCMTaskManager::CCMTaskManager(std::string configfile,
     std::vector<std::string> rawOutfileList)
 {
 
-  fRootIO = CCMRootIO::GetInstance();
-  fRawIO = CCMRawIO::GetInstance();
+  fRootIO = std::make_shared<CCMRootIO>();//CCMRootIO::GetInstance();
+  fRawIO = std::make_shared<CCMRawIO>();//CCMRootIO::GetInstance();
 
-  SetTaskConfig(new CCMTaskConfig(configfile,rootInfileList,rootOutfileList,rawInfileList,rawOutfileList));
+  SetTaskConfig(new CCMTaskConfig(configfile,rootInfileList,rootOutfileList,
+        rawInfileList,rawOutfileList,fRootIO,fRawIO));
 
   CCMResult_t val = RegisterModules();
   if(val != kCCMSuccess)
@@ -306,7 +307,10 @@ CCMResult_t CCMTaskManager::Terminate()
   CCMResult_t status = FinishTask();
 
   fRootIO->Close();
-  //fRawIO->Close();
+  fRawIO->Close();
+
+  fRootIO.reset();
+  fRawIO.reset();
 
   return status;
 }

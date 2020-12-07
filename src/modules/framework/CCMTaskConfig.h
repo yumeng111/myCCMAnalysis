@@ -14,6 +14,10 @@
 
 #include <vector>
 #include <string>
+#include <memory>
+
+class CCMRootIO;
+class CCMRawIO;
 
 class CCMTaskConfig {
 
@@ -25,10 +29,11 @@ public:
 
   CCMTaskConfig(std::string configfile, 
       std::vector<std::string> rootInfileList, std::vector<std::string> rootOutfileList,
-      std::vector<std::string> rawInfileList, std::vector<std::string> rawOutfileList); //primary constructor
-  CCMTaskConfig(std::string configfile); //primary constructor
+      std::vector<std::string> rawInfileList, std::vector<std::string> rawOutfileList,
+      std::shared_ptr<CCMRootIO> rootIO, std::shared_ptr<CCMRawIO> rawIO);
+  CCMTaskConfig(std::string configfile,std::shared_ptr<CCMRootIO> rootIO, std::shared_ptr<CCMRawIO> rawIO); //primary constructor
 
-  int ReadConfigFile();
+  int ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO, std::shared_ptr<CCMRawIO> rawIO);
   void Print();
   int Split(const char* line, const char* tok, std::vector<std::string>& fields);
 

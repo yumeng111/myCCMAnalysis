@@ -731,16 +731,15 @@ void Pulses::RemovePulsesByThreshold()
  ***********************************************/
 void Pulses::ShiftTimeOffset(const double & timeOffset)
 {
-  double binOffset = 0;
-  if (timeOffset > 0) {
-    binOffset = std::floor(timeOffset);
-  } else {
-    binOffset = std::ceil(timeOffset);
-  }
+  double binOffset = std::floor(timeOffset);
+
+  fTriggerTime += binOffset;
 
   for (auto & p : fPulses) {
     p.SetTime(p.GetTime()+binOffset);
+    p.SetTriggerOffset(fTriggerTime);
   }
+
 
   return;
 }
