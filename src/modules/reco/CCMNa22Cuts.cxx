@@ -272,6 +272,10 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
   unsigned long int tempCounter = 0;
 
   const size_t kNumEvents = fEvents->GetNumEvents();
+  if (kNumEvents == 0) {
+    return kCCMDoNotWrite;
+  }
+
   fEpochSec = fEvents->GetComputerSecIntoEpoch();
   fEpochNSSec = fEvents->GetComputerNSIntoSec();
 
@@ -281,6 +285,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
   fPassedBCMCut = PassedBCMCut(fBCMTime,fBCMLength,fBCMIntegral);
   if (fDoBCMCut && !fPassedBCMCut) {
+    MsgInfo("Remove event because it did not pass BCM cuts");
     return kCCMDoNotWrite;
   }
 
@@ -300,6 +305,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     if (simplifiedEvent.GetEventFinderMethod() != fEventFinderID ||
         simplifiedEvent.GetAccumWaveformMethod() != fAccumWaveformMethodID) {
       if (fRemoveOtherEvents) {
+        MsgInfo("Remove event because it is a different type of eventBuilding");
         locationsToRemove.emplace_back(e);
       }
       continue;
@@ -314,7 +320,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     fEnergy = simplifiedEvent.GetIntegralTank(true);
     fHits = simplifiedEvent.GetNumTank(true);
     fNumPMTs = simplifiedEvent.GetPMTHits();
-    //MsgInfo(MsgLog::Form("e %zu energy %.2f hits %f numPTs %d length %.3f",e,fEnergy,fHits,fNumPMTs,fLength));
+    MsgInfo(MsgLog::Form("e %zu energy %.2f hits %f numPTs %d length %.3f time %.0f",e,fEnergy,fHits,fNumPMTs,fLength,fTime));
 
     fX = simplifiedEvent.GetXPosition();
     fY = simplifiedEvent.GetYPosition();
@@ -339,16 +345,18 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     if (fWaveformMaxCut) {
       fPassedWaveformMaxCut = PassedWaveformMaxCut(fLength,simplifiedEvent.GetMaxAccumWaveformTime());
-      if (fPassedWaveformMaxCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
+      if (!fPassedWaveformMaxCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Waveform Max Cut");
         locationsToRemove.emplace_back(e);
       }
     }
 
     if (fDoTimeCut) {
       fPassedTimeCut = PassedTimeCut(fTime);
-      if (fPassedTimeCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
+      if (!fPassedTimeCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Time Cut");
         locationsToRemove.emplace_back(e);
       }
     } // end fDoTimeCut
@@ -361,49 +369,55 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     if (fDoLengthCut) {
       fPassedLengthCut = PassedLengthCut(fLength);
-      if (fPassedLengthCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
+      if (!fPassedLengthCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Length Cut");
         locationsToRemove.emplace_back(e);
       }
     } // end if fDoLengthCut
 
     if (fDoPositionCut) {
       fPassedPositionCut = PassedPositionCut(fX,fY,fZ);
-      if (fPassedPositionCut && 
+      if (!fPassedPositionCut && 
           std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Position Cut");
         locationsToRemove.emplace_back(e);
       }
     } // end if fDoPositionCut
 
     if (fDoEnergyCut) {
       fPassedEnergyCut = PassedEnergyCut(fEnergy);
-      if (fPassedEnergyCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
+      if (!fPassedEnergyCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Energy Cut");
         locationsToRemove.emplace_back(e);
       }
     }// end if fDoEnergyCut
 
     fPassedNumHitsCut = PassedNumHitsCut(fHits);
-    if (fPassedNumHitsCut) {
+    if (!fPassedNumHitsCut) {
       if (std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Num Hits Cut");
         locationsToRemove.emplace_back(e);
       }
     }
 
     if (fDoNicenessCut) {
       fPassedNicenessCut = PassedNicenessCut(fEnergy,fNumPMTs,fLargestPMTFraction);
-      if (fPassedNicenessCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
+      if (!fPassedNicenessCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Niceness Cut");
         locationsToRemove.emplace_back(e);
       }
     } // end if fDoNicenessCut
 
     if (fDoVetoCut) {
       fPassedVetoCut = PassedVetoCut(simplifiedEvent.GetNumVeto(true));
-      if (fPassedVetoCut && 
+      if (!fPassedVetoCut && 
           std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Num Veto Cut");
         locationsToRemove.emplace_back(e);
       }
     }// end if fDoVetoCut
@@ -411,8 +425,9 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
 
     if (fDoPrevCut) {
       fPassedPrevCut = PassedPrevCut(fTime,e,fEnergy);
-      if (fPassedPrevCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
+      if (!fPassedPrevCut && std::find(locationsToRemove.begin(),locationsToRemove.end(),e) == locationsToRemove.end() && 
           fRemovePrimaryEvents) {
+        MsgInfo("Remove event because it did not pass Prev Event Cut");
         locationsToRemove.emplace_back(e);
       }
     }
@@ -427,7 +442,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     }
   } // end e
 
-  std::cout << locationsToRemove.size() << std::endl;
+  MsgInfo(MsgLog::Form("tempCounter = %ld locationsToRemove %zu",tempCounter,locationsToRemove.size()));
   fNumFinalEvents += tempCounter - locationsToRemove.size();
   if (!fPassedBCMCut) {
     ++fNumFailedBCMCut;

@@ -40,8 +40,8 @@ CCMPMTResponse::CCMPMTResponse(const char* version)
     fUniform(0,1),
     fSPEWeights(),
     fWaveforms(),
-    fWaveformsHist(),
-    fFile(nullptr),
+    //fWaveformsHist(),
+    //fFile(nullptr),
     fHighEnergy(4.0),
     fLowEnergy(2.0),
     fQE(0.2),
@@ -68,8 +68,8 @@ CCMPMTResponse::CCMPMTResponse(const CCMPMTResponse& clufdr)
   fUniform(0,1),
   fSPEWeights(clufdr.fSPEWeights),
   fWaveforms(clufdr.fWaveforms),
-  fWaveformsHist(clufdr.fWaveformsHist),
-  fFile(clufdr.fFile),
+  //fWaveformsHist(clufdr.fWaveformsHist),
+  //fFile(clufdr.fFile),
   fHighEnergy(clufdr.fHighEnergy),
   fLowEnergy(clufdr.fLowEnergy),
   fQE(clufdr.fQE),
@@ -112,16 +112,16 @@ CCMResult_t CCMPMTResponse::ProcessTrigger()
   // if it has been filled, reset the waveforms
   if (fSPEWeights.empty()) {
     FillSPEWeights();
-    fFile = TFile::Open("check_pmtresponse_waveforms.root","RECREATE");
+    //fFile = TFile::Open("check_pmtresponse_waveforms.root","RECREATE");
   } else {
     for (auto & p : fWaveforms) {
       std::fill(p.second.begin(),p.second.end(),0.0);
     }
-    fFile->cd();
-    for (auto & p : fWaveformsHist) {
-      p.second->Write();
-      p.second->Reset("ICESM");
-    }
+    //fFile->cd();
+    //for (auto & p : fWaveformsHist) {
+    //  p.second->Write();
+    //  p.second->Reset("ICESM");
+    //}
   }
 
   // variables used in the for loop
@@ -256,9 +256,9 @@ CCMResult_t CCMPMTResponse::EndOfJob()
   MsgInfo(MsgLog::Form("Avg Pulse Integral %.3f",fAvgPulseIntegral/fTotalPulses));
   MsgInfo(MsgLog::Form("Average Number Pulses Per Active PMT %.3f",fTotalPulses/static_cast<double>(fSPEWeights.size())));
 
-  if (fFile) {
-    delete fFile;
-  }
+  //if (fFile) {
+  //  delete fFile;
+  //}
 
   return kCCMSuccess;
 }
@@ -278,7 +278,6 @@ bool CCMPMTResponse::PMTQE(double energy, double angle)
     angle = 0.0;
   }
 
-  //0.2 is the QE
   double prob = fQE*std::sqrt(angle);
 
   if (testval < prob) {
@@ -313,8 +312,8 @@ void CCMPMTResponse::FillSPEWeights()
 
     fSPEWeights.emplace(key,std::make_pair(adcToPE,error));
     fWaveforms.emplace(key,std::vector<double>(Utility::fgkNumBins,0.0));
-    fWaveformsHist.emplace(key,std::make_shared<TH1D>(Form("hist%zu",key),"",Utility::fgkNumBins,
-          0,Utility::fgkNumBins*Utility::fgkBinWidth));
+    //fWaveformsHist.emplace(key,std::make_shared<TH1D>(Form("hist%zu",key),"",Utility::fgkNumBins,
+    //      0,Utility::fgkNumBins*Utility::fgkBinWidth));
   } // end for size_t key
 
   return;
@@ -347,6 +346,10 @@ void CCMPMTResponse::GetADCValueAndLength(size_t key, double & adc, double & len
   std::normal_distribution<double> gaus(adcToPE,error);
 
   adc = gaus(fMT);
+  length = 20.0;
+
+  return;
+
   length = adc;
 
   std::normal_distribution<double> normal(0,1);
@@ -375,7 +378,7 @@ void CCMPMTResponse::AddToWaveform(int key, double time, double adc, double leng
     return;
   }
 
-  auto itWaveformHist = fWaveformsHist.find(key);
+  //auto itWaveformHist = fWaveformsHist.find(key);
 
   // time and length must be in ns
   double startBin = std::floor(time / Utility::fgkBinWidth);
@@ -403,7 +406,7 @@ void CCMPMTResponse::AddToWaveform(int key, double time, double adc, double leng
         integral = 2.0*adc/numBins;
       }
       itWaveform->second.at(bin) += integral;
-      itWaveformHist->second->AddBinContent(bin+1,integral);
+      //itWaveformHist->second->AddBinContent(bin+1,integral);
     } // end for bin = startBin 
   } // end if which type of waveform
 

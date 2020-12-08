@@ -10,6 +10,7 @@ Does not contain any actions.
 #include "G4UserEventAction.hh"
 #include "globals.hh"
 
+#include <memory>
 #include "CCMRootIO.h"
 
 class TObjArray;

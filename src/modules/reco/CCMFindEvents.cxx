@@ -102,14 +102,24 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
   int bin2 = 0;
   int endBin = 0;
   int startBin = 0;
+  
+  size_t maxLoc = 0;
+  float maxValue = 0.f;
+  fAccumWaveform->Max(maxLoc,maxValue,0,Utility::fgkNumBins-1,fAccumWaveformMethodID,kCCMIntegralTimeID);
+  if (maxValue == 0.f) {
+    return kCCMDoNotWrite;
+  }
+  //MsgInfo(MsgLog::Form("Max in waveform = %.4f at %zu",maxValue,maxLoc));
 
   for (size_t timeBin = 0; timeBin < gkMaxBinLoc && timeBin < Utility::fgkNumBins; ++timeBin) {
     if (MsgLog::GetGlobalDebugLevel() >= 3) {
       MsgDebug(3,MsgLog::Form("Passed DAQ time cut %zu",timeBin));
     }
     //if (MsgLog::GetGlobalDebugLevel() >= 2 && fAccumWaveformMethodID == kCCMAccumWaveformTrianglePulseCutID) {
-    //  MsgDebug(2,MsgLog::Form("timeBin %zu value %g threshold %g",timeBin,
+    //if (fAccumWaveform->GetIndex(timeBin,fAccumWaveformMethodID,kCCMIntegralTimeID) > 0) {
+    //  MsgInfo(MsgLog::Form("timeBin %zu value %g threshold %g",timeBin,
     //        fAccumWaveform->GetIndex(timeBin,fAccumWaveformMethodID,kCCMIntegralTimeID),fThreshold));
+    //}
     //}
     if (fAccumWaveform->GetIndex(timeBin,fAccumWaveformMethodID,kCCMIntegralTimeID) < fThreshold) {
       continue;
@@ -170,6 +180,10 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
     }
     timeBin = endBin;
   } // end for size_t timeBin
+
+  if (fEvents->GetNumEvents() == 0) {
+    return kCCMDoNotWrite;
+  }
 
   return kCCMSuccess;
 }

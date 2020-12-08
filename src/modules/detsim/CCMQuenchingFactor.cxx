@@ -35,7 +35,8 @@ CCMQuenchingFactor::CCMQuenchingFactor(const char* version)
     fMCTruth(nullptr),
     fRD(),
     fMT(),
-    fUniform(0,1)    
+    fUniform(0,1),
+    fQF(0.25)
 {
   //Default constructor
   this->SetCfgVersion(version);
@@ -47,7 +48,8 @@ CCMQuenchingFactor::CCMQuenchingFactor(const CCMQuenchingFactor& clufdr)
   fMCTruth(clufdr.fMCTruth),
   fRD(),
   fMT(),
-  fUniform(0,1)
+  fUniform(0,1),
+  fQF(clufdr.fQF)
 {
   // copy constructor
 }
@@ -73,12 +75,10 @@ CCMResult_t CCMQuenchingFactor::ProcessTrigger()
     return kCCMFailure;
   }
 
-  double quench = fMCTruth->GetQuenchingFactor();
+  fMCTruth->SetQuenchingFactor(fQF);
 
   for (size_t hit = 0; hit < kNumHits; ++hit) {
-    bool quenched = TestQuench(quench);
-    
-    fMCTruth->SetHitQuench(hit, quenched);
+    fMCTruth->SetHitQuench(hit, TestQuench(fQF));
   }
 
   return kCCMSuccess;
@@ -97,6 +97,8 @@ void CCMQuenchingFactor::Configure(const CCMConfig& c )
   } else {
     fMT.seed(seed);
   }
+
+  c("QF").Get(fQF);
 
   fIsInit = true;
 }
@@ -122,9 +124,9 @@ bool CCMQuenchingFactor::TestQuench(double quench)
   return false;
 }
 
-void CCMQuenchingFactor::ResetQuenchingFactor(std::shared_ptr<MCTruth> mcTruth, double quench)
+//_______________________________________________________________________________________
+void CCMQuenchingFactor::ResetQuenchingFactor(double quench)
 {
-  fMCTruth = mcTruth;
   fMCTruth->SetQuenchingFactor(quench);
-  ProcessTrigger();
 }
+

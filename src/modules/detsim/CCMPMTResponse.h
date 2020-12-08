@@ -8,8 +8,8 @@
 #include <map>
 #include <utility>
 
-class TFile;
-class TH1D;
+//class TFile;
+//class TH1D;
 
 class CCMPMTResponse : public CCMModule
 {
@@ -73,9 +73,9 @@ class CCMPMTResponse : public CCMModule
 
     std::map<int,std::pair<double,double>> fSPEWeights;
     std::map<int,std::vector<double>> fWaveforms;
-    std::map<int,std::shared_ptr<TH1D>> fWaveformsHist;
+    //std::map<int,std::shared_ptr<TH1D>> fWaveformsHist;
 
-    TFile * fFile;
+    //TFile * fFile;
 
     double fHighEnergy;// = 4.0;
     double fLowEnergy;// = 2.0;

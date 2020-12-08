@@ -53,7 +53,7 @@ class CCMQuenchingFactor : public CCMModule
 
     bool TestQuench(double quench);
 
-    void ResetQuenchingFactor(std::shared_ptr<MCTruth> mcTruth, double quench);
+    void ResetQuenchingFactor(double quench);
 
   private:
 
@@ -67,6 +67,8 @@ class CCMQuenchingFactor : public CCMModule
     std::random_device fRD;
     std::mt19937_64 fMT;
     std::uniform_real_distribution<double> fUniform;
+
+    double fQF;
 
 };
 

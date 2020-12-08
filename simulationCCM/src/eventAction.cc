@@ -17,7 +17,6 @@ Currently it does nothing, as most outputs are handled through the detector and 
 #include <sstream>
 
 #include <iostream>
-#include <memory>
 
 //Constructor
 eventAction::eventAction(runAction* runaction)
