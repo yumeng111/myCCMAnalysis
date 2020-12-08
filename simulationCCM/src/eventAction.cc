@@ -19,7 +19,7 @@ Currently it does nothing, as most outputs are handled through the detector and 
 //Constructor
 eventAction::eventAction(runAction* runaction)
   : G4UserEventAction(), fRunAction(runaction),
-    mctruth(new MCTruth()), rootIO(CCMRootIO::GetInstance())
+    mctruth(new MCTruth()), rootIO(new CCMRootIO())
 {
   rootSet = false;
 }
