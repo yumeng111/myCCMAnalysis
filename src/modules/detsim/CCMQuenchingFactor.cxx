@@ -127,6 +127,6 @@ bool CCMQuenchingFactor::TestQuench(double quench)
 //_______________________________________________________________________________________
 void CCMQuenchingFactor::ResetQuenchingFactor(double quench)
 {
-  fMCTruth->SetQuenchingFactor(quench);
+  fQF = quench;
 }
 
