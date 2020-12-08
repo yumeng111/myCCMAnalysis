@@ -150,6 +150,7 @@ void MCTruth::AddHitInformation(int row, int col, bool uncoated, float energy, f
  * \param[in] energy The energy of the hit in eV
  * \param[in] time The time of the hit in ns
  * \param[in] angle The angle the PMT was hit
+ * \param[in] quench True if the event is not quenched, false if it is
  *
  * If hitIndex is greater than the current size of the vectors
  * the information will be appended to the vectors and an
@@ -170,6 +171,26 @@ void MCTruth::SetHitInformation(size_t hitIndex, int row, int col, bool uncoated
 	fHitEnergy.at(hitIndex) = energy;
 	fHitTime.at(hitIndex) = time;
 	fHitAngle.at(hitIndex) = angle;
+	fPassedQF.at(hitIndex) = quench;
+
+	return;
+}
+
+
+/*!**********************************************
+ * \fn void MCTruth::SetHitQuench(size_t hitIndex, bool quench)
+ * \brief changes the quenched value for a single hit.
+ * \param[in] hitIndex The index to save the information to
+ * \param[in] quench True if the event is not quenched, false if it is
+ ***********************************************/
+void MCTruth::SetHitQuench(size_t hitIndex, bool quench)
+{
+	if (hitIndex >= fHitRow.size()) {
+		MsgError(MsgLog::Form("The index passed %zu is greater than current size %zu. No hit will be changed.",
+					hitIndex,fHitRow.size()));
+		return;
+	}
+  
 	fPassedQF.at(hitIndex) = quench;
 
 	return;

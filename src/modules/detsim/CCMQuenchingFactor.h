@@ -7,6 +7,9 @@
 #include <vector>
 #include <iterator>
 #include <algorithm>
+#include <random>
+#include <map>
+#include <utility>
 
 class CCMQuenchingFactor : public CCMModule
 {
@@ -48,6 +51,8 @@ class CCMQuenchingFactor : public CCMModule
 
     void ConnectMCTruth(std::shared_ptr<MCTruth> mcTruth) { fMCTruth = mcTruth; }
 
+    bool TestQuench(double quench);
+
   private:
 
     //private methods
@@ -56,6 +61,11 @@ class CCMQuenchingFactor : public CCMModule
 
     //private data members
     std::shared_ptr<MCTruth> fMCTruth;
+
+    std::random_device fRD;
+    std::mt19937_64 fMT;
+    std::uniform_real_distribution<double> fUniform;
+
 };
 
 #endif // CCMQuenchingFactor_h

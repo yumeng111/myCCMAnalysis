@@ -32,6 +32,7 @@ class MCTruth : public TObject
 		void SetQuenchingFactor(double qfvalue);
 		void AddHitInformation(int row, int col, bool uncoated, float energy, float time, float angle, bool quench);
 		void SetHitInformation(size_t hitIndex, int row, int col, bool uncoated, float energy, float time, float angle, bool quench);
+		void SetHitQuench(size_t hitIndex, bool quench);
 		void SetNumberHits(size_t hitIndex);
 
 		int GetParticleID() { return fParticleID; }
