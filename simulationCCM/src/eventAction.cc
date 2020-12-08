@@ -16,10 +16,13 @@ Currently it does nothing, as most outputs are handled through the detector and 
 #include "G4EventManager.hh"
 #include <sstream>
 
+#include <iostream>
+#include <memory>
+
 //Constructor
 eventAction::eventAction(runAction* runaction)
   : G4UserEventAction(), fRunAction(runaction),
-    mctruth(new MCTruth()), rootIO(new CCMRootIO())
+    mctruth(new MCTruth()), rootIO(std::make_shared<CCMRootIO>())
 {
   rootSet = false;
 }
