@@ -121,3 +121,10 @@ bool CCMQuenchingFactor::TestQuench(double quench)
 
   return false;
 }
+
+void CCMQuenchingFactor::ResetQuenchingFactor(std::shared_ptr<MCTruth> mcTruth, double quench)
+{
+  fMCTruth = mcTruth;
+  fMCTruth->SetQuenchingFactor(quench);
+  ProcessTrigger();
+}

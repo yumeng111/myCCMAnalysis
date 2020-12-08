@@ -53,6 +53,8 @@ class CCMQuenchingFactor : public CCMModule
 
     bool TestQuench(double quench);
 
+    void ResetQuenchingFactor(std::shared_ptr<MCTruth> mcTruth, double quench);
+
   private:
 
     //private methods
