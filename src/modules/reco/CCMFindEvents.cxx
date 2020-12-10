@@ -506,7 +506,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
     if (MsgLog::GetGlobalDebugLevel() >= 7) {
       MsgDebug(7,Form("PMT %d first 90ns",pmt));
     }
-    prompt90= fAccumWaveform->Integrate(startBin,end90nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
+    prompt90 = fAccumWaveform->Integrate(startBin,end90nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
 
     fAccumWaveform->CopyVec<int>(count,startBin,endTotalBin,fAccumWaveformMethodID,kCCMPMTWaveformCountID,pmt);
     fAccumWaveform->CopyVec<float>(energy,startBin,endTotalBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);

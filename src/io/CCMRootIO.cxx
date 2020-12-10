@@ -88,7 +88,7 @@ void CCMRootIO::SetInFileName(const char* infile)
 void CCMRootIO::SetInFileList(std::vector<std::string> infileList)
 {
   fInFileList = infileList;
-  if (fFileIndex<0 && !fInFileList.empty()) {
+  if (!fInFileList.empty()) {
     fFileIndex = 0;
   }
 

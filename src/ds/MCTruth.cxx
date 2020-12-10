@@ -54,6 +54,7 @@ void MCTruth::Reset(int particleID)
 	fHitRow.clear();
 	fHitCol.clear();
 	fHitTime.clear();
+  fPassedQF.clear();
 }
 
 /*!**********************************************
@@ -79,6 +80,7 @@ MCTruth::~MCTruth()
 	fHitRow.clear();
 	fHitCol.clear();
 	fHitTime.clear();
+  fPassedQF.clear();
 }
 
 /*!**********************************************
@@ -185,9 +187,13 @@ void MCTruth::SetHitInformation(size_t hitIndex, int row, int col, bool uncoated
  ***********************************************/
 void MCTruth::SetHitQuench(size_t hitIndex, bool quench)
 {
-	if (hitIndex >= fHitRow.size()) {
+  if (fPassedQF.size() != fHitRow.size()) {
+    fPassedQF.resize(fHitRow.size(),true);
+  }
+
+	if (hitIndex >= fPassedQF.size()) {
 		MsgError(MsgLog::Form("The index passed %zu is greater than current size %zu. No hit will be changed.",
-					hitIndex,fHitRow.size()));
+					hitIndex,fPassedQF.size()));
 		return;
 	}
   
@@ -209,6 +215,7 @@ void MCTruth::SetNumberHits(size_t numHits)
 	fHitEnergy.resize(numHits);
 	fHitTime.resize(numHits);
 	fHitAngle.resize(numHits);
+  fPassedQF.resize(numHits,true);
 	return;
 }
 
@@ -295,6 +302,9 @@ MCTruth & MCTruth::operator=(const MCTruth & rhs)
 	this->fHitCol = rhs.fHitCol;
 	this->fHitUncoated = rhs.fHitUncoated;
 	this->fHitAngle = rhs.fHitAngle;
+	this->fPassedQF = rhs.fPassedQF;
+
+  this->fQFValue = rhs.fQFValue;
 
   return *this;
 }
