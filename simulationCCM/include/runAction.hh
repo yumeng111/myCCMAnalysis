@@ -20,6 +20,12 @@ public:
   
   virtual void BeginOfRunAction(const G4Run* run);
   virtual void   EndOfRunAction(const G4Run* run);
+
+  void SetRootSet(G4bool newset) { rootSet = newset; }
+  bool GetRootSet() { return rootSet; }
+
+private:
+  G4bool rootSet;
 };
 
 #endif

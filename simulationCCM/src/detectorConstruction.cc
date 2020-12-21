@@ -166,8 +166,21 @@ void detectorConstruction::DefineMaterials(){
   
   //Values for liquid Argon (all types)
   G4double lar_Energy_scin[] = { 3.87*eV , 4.51*eV , 4.74*eV , 5.03*eV , 5.36*eV , 5.55*eV , 5.82*eV , 6.06*eV , 6.54*eV , 6.79*eV , 7.03*eV , 7.36*eV , 7.76*eV , 7.98*eV , 8.33*eV , 8.71*eV , 8.96*eV , 9.33*eV , 9.91*eV , 10.31*eV , 10.61*eV , 10.88*eV , 11.27*eV , 11.81*eV , 12.40*eV , 13.05*eV , 13.78*eV , 14.59*eV , 15.50*eV }; //energies for scintillation spectrum
+  /* OLD values for refraction and Rayleigh scattering
   G4double lar_Energy_rin[]    = { 1.90*eV , 2.934*eV, 3.592*eV, 5.566*eV, 6.694*eV, 7.54*eV, 8.574*eV, 9.044*eV, 9.232*eV, 9.42*eV, 9.514*eV, 9.608*eV,9.702*eV, 9.796*eV, 9.89*eV, 9.984*eV, 10.08*eV, 10.45*eV, 10.74*eV, 10.92*eV  }; //energies for refractive index
+  G4double lar_RIND[]  = { 1.232,  1.236,  1.240,  1.261,  1.282,  1.306,  1.353,  1.387,  1.404,  1.423,  1.434,  1.446,  1.459,  1.473,  1.488,  1.505,  1.524,  1.569,  1.627,  1.751,  1.879 }; //index of refraction spectrum.
   G4double lar_Energy_rs[] = { 2.80*eV , 3.0*eV , 3.5*eV , 4.0*eV , 5.0*eV , 6.0*eV , 7.0*eV , 8.0*eV , 8.5*eV , 9.0*eV , 9.2*eV , 9.4*eV , 9.5*eV , 9.6*eV , 9.7*eV , 9.8*eV , 9.9*eV , 10.0*eV , 10.2*eV , 10.4*eV , 10.6*eV , 10.8*eV }; //energies for rayleigh scattering spectrum.
+  G4double lar_RSL[]  = { 47923.0*cm, 35981.0*cm, 18825.0*cm, 10653.0*cm, 3972.0*cm, 1681.0*cm, 750.9*cm, 334.7*cm, 216.8*cm, 135.0*cm, 109.7*cm, 88.06*cm, 78.32*cm, 69.34*cm, 61.06*cm, 53.46*cm, 46.50*cm, 40.13*cm, 28.91*cm, 19.81*cm, 12.61*cm, 7.20*cm }; //spectrum of rayleigh scattering lengths. //*/
+
+  G4double lar_Energy_rin[]    = { 1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV ,
+				   4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV , 
+				   8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 
+				   10.33206*eV , 11.27134*eV , 12.39847*eV }; //energies for refractive index and Rayleigh scattering lengths
+
+  G4double lar_Energy_rs[]    = { 1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV ,
+				  4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV , 
+				  8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 
+				  10.33206*eV , 11.27134*eV , 12.39847*eV }; //energies for refractive index and Rayleigh scattering lengths
 
   const G4int larscin = sizeof(lar_Energy_scin)/sizeof(G4double);
   const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
@@ -176,20 +189,22 @@ void detectorConstruction::DefineMaterials(){
 
   G4double lar_SCINT[] = { 0.00006, 0.00007, 0.00008, 0.00011, 0.00020, 0.00030, 0.00048, 0.00082, 0.00126, 0.00084, 0.00043, 0.00030, 0.00106, 0.00298, 0.00175, 0.00351, 0.01493, 0.12485, 0.49332, 0.20644, 0.07477, 0.04496, 0.01804, 0.00576, 0.00184, 0.00059, 0.00019, 0.00006, 0.00002 }; //liquid Argon scintillation spectrum. this one is centered at 128 nm (as it should be). 
   assert(sizeof(lar_SCINT) == sizeof(lar_Energy_scin)); //makes sure the energy and spectrum of the scintillation values are the same size.
-  G4double lar_RIND[]  = { 1.232,  1.236,  1.240,  1.261,  1.282,  1.306,  1.353,  1.387,  1.404,  1.423,  1.434,  1.446,  1.459,  1.473,  1.488,  1.505,  1.524,  1.569,  1.627,  1.751,  1.879 }; //index of refraction spectrum.
+  G4double lar_RIND[]  = { 1.22 , 1.222 , 1.225 , 1.23 ,
+			   1.24 , 1.255 , 1.263 , 1.28 , 
+			   1.315, 1.335 , 1.358 , 1.403, 
+			   1.45 , 1.62  , 1.79 }; //index of refraction spectrum.
   assert(sizeof(lar_RIND) == sizeof(lar_Energy_rin)); 
-  G4double lar_RSL[]  = { 47923.0*cm, 35981.0*cm, 18825.0*cm, 10653.0*cm, 3972.0*cm, 1681.0*cm, 750.9*cm, 334.7*cm, 216.8*cm, 135.0*cm, 109.7*cm, 88.06*cm, 78.32*cm, 69.34*cm, 61.06*cm, 53.46*cm, 46.50*cm, 40.13*cm, 28.91*cm, 19.81*cm, 12.61*cm, 7.20*cm }; //spectrum of rayleigh scattering lengths. 
-  assert(sizeof(lar_RSL) == sizeof(lar_Energy_rsl));
+  G4double lar_RSL[]  = { 327028.6808*cm, 172560.2267*cm, 80456.5339*cm, 31177.44642*cm, 
+			  8854.144327*cm, 1496.876298*cm, 906.5011168*cm, 480.2538294*cm, 
+			  205.3758714*cm, 145.6326111*cm, 100.7813004*cm, 63.2898117*cm, 
+			  40.07450411*cm, 11.43903548*cm, 3.626432195*cm }; //spectrum of rayleigh scattering lengths. 
+  assert(sizeof(lar_RSL) == sizeof(lar_Energy_rs));
 
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
-  //  clouded =G4RandFlat::shoot(1.0,300.0);
-  G4double base = 37.53;//Base absorption length for UV light
+  G4double base = 42.72;//Base absorption length for UV light
   G4double uvlas = ultra;//absorptioon length for the 213nm light
   G4double time5 = fifth/100.;//absorption length for the bottom (row5), a quarter of that for the rest of the detector
-  G4double timec = clouded/100.;//absorption length for the edges, three quarters of the norm
   G4double row5 = time5*base;
-  G4double cloud = timec*base;
-  G4double uvlasc = timec*uvlas;
   G4double uvlas5 = time5*uvlas;
   G4double three5 = time5*threehun;
   G4double mult = 2800.0;//Absorption length for visible.
@@ -205,13 +220,13 @@ void detectorConstruction::DefineMaterials(){
   G4double lar2_ABSL[47];
   for (int i=0;i<6;++i){
     lar_ABSL[i] = base*cm;
-    lar1_ABSL[i] = cloud*cm;
+    lar1_ABSL[i] = base*cm;
     lar2_ABSL[i] = row5*cm;
     G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
   }
   for (int i=6;i<11;++i){
     lar_ABSL[i] = uvlas*cm;
-    lar1_ABSL[i] = uvlasc*cm;
+    lar1_ABSL[i] = uvlas*cm;
     lar2_ABSL[i] = uvlas5*cm;
     G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
   }
@@ -366,7 +381,7 @@ void detectorConstruction::DefineMaterials(){
       6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
   //energy spectrum for TPB absorption and WLS absorption spectra.                                                                                 
   //The following several dozen lines describe the WLS and normal absorption lengths for TPB over the above spectrum. It is generally divided into 2 sections: three lines for visible light (between 1800 and 340 nm; includes IR and low UV) that is not Wavelength shifted, and 2 lines for ultraviolet light which is (between 330 and 90 nm). There are a number of alternate verions of TPB which have been used over the course of the simulation; for convenience a selection have been left in to provide an example of how to alter the TPB properties.
-
+ 
   G4double aBsoRp = 0.20;//tpbEff;
   G4double wlAbf21 = -0.002/(std::log((1-aBsoRp)));
   G4double wlAbf24 = -0.002/(std::log((1-(.222*aBsoRp/0.2))));
@@ -640,9 +655,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     G4double divider = 2.0;
     G4double thick = basethick/divider;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
 
-    G4double topth = 100.0;
-    G4double deep = thick*2+thick/topth;//Defines the depth; used for making the bottom thicker
-    G4double place = (thick-thick/(topth*2.0));//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
+    G4double deep = thick*2+thick/topthick;//Defines the depth; used for making the bottom thicker
+    G4double place = (thick-thick/(topthick*2.0));//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
 
     //G4cout << "EdwardNote Defined Up to foils" << G4endl;
     
@@ -803,7 +817,6 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 							true);//*/
 	
 	//foil extension lower down to reduce TPB thickness down the sides
-	G4double sidethick = 16.0;
 	G4double sidedown = 10.0;
 	G4double sideplace = (68.0-sidedown)*cm;
 	G4double inrad = 96.0*cm+thick/sidethick;
@@ -1042,7 +1055,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       G4Cons* foilcone = new G4Cons("ptfecone", 1.8*cm, 1.81*cm, 1.8*cm, 15.2*cm, coneheight, 0*deg, 360*deg);
       G4LogicalVolume* fFoilCone = new G4LogicalVolume(foilcone, ptfe, "ptfecone");
 
-      G4Cons* tpbcone = new G4Cons("tpbcone", 1.8*cm, (1.810*cm+(thick/topth)), 1.8*cm, (15.200*cm+(thick/topth)), (coneheight+(thick/topth/2.)), 0*deg, 360*deg);
+      G4Cons* tpbcone = new G4Cons("tpbcone", 1.8*cm, (1.810*cm+(thick/topthick)), 1.8*cm, (15.200*cm+(thick/topthick)), (coneheight+(thick/topthick/2.)), 0*deg, 360*deg);
       G4LogicalVolume* fTPBCone = new G4LogicalVolume(tpbcone, tPB, "tpbcone");
 
       //place the cones of foil (ptfe) and tpb into the appropriate fiducial volume
@@ -1396,23 +1409,15 @@ void detectorConstruction::placePMT(G4String name,
 
   //set the outer radii of the glass and the thickness of the TPB.
   G4double radout = 10.2*cm;
-  G4double tpbout = 0.00009*cm;//In the best fit, the TPB on the PMTs is slightly thinner than normal. Normal: 0.00019*cm.
+  G4double tpbout = 0.00019*cm;//In the best fit, the TPB on the PMTs is slightly thinner than normal. Normal: 0.00019*cm.
 
-  G4double TPBdivide = 1.0;
   tpbout = tpbout/TPBdivide;
   G4double r5mult = PMTx/2.0;
   G4double r5out = tpbout*r5mult;
   
-  G4double r2mult = 1.625;//tpbEff;
-  G4double r2out = tpbout*r2mult;
-  
   if (pmt_z < -40) {
     tpbout = r5out;
   }
-  if ((pmt_z > 20) && (pmt_z < 40)) {
-    tpbout = r2out;
-  }
-  
 
   //define the initial angle so the pmt is facing inwards according to the position
   init_angle = (std::atan(pmt_y/pmt_x)*180/CLHEP::pi)+90;
@@ -1832,8 +1837,12 @@ void detectorConstruction::SetDefaults() {
   fifth = 18.303;//G4RandFlat::shoot(10.0,40.0);//
   tpbEff = 0.96274;//G4RandFlat::shoot(0.1,0.6);//0.96274;
   r5radius = 56.276;
-  clouded=100.0;
+  foilEff = .200;
+  topthick = 100.0;
+  sidethick = 16.0;
+  TPBdivide = 2.0;
   randomized = false;
+  rootset = false;
   variableString = "Random: All Mean Values";
   rootfile = "defaultfile.root";
 }
@@ -1842,66 +1851,27 @@ void detectorConstruction::SetRandoms() {
   /*conewide = G4RandGauss::shoot(6.0,4.0);
   while (conewide < 0.1 || conewide > 20.0) {
     conewide = G4RandGauss::shoot(6.0,4.0);
-  }
-  conehigh = G4RandGauss::shoot(0.9,0.4);
-  while (conehigh < 0.1 || conehigh > 2.0) {
-    conehigh = G4RandGauss::shoot(0.9,0.4);
-  }
-  ultra = G4RandGauss::shoot(80.0,25.0);
-  while (ultra < 10.0 || ultra > 200.0) {
-    ultra = G4RandGauss::shoot(80.0,25.0);
-  }
-  threehun = G4RandGauss::shoot(1200.0,200.0);
-  while (threehun < 100.0 || threehun > 2000.0) {
-    threehun = G4RandGauss::shoot(1200.0,200.0);
-  }
-  PMTx = G4RandGauss::shoot(5.0,3.0);
-  while (PMTx < 1.0 || PMTx > 15.0) {
-    PMTx = G4RandGauss::shoot(5.0,3.0);
-    }
-  fifth = G4RandGauss::shoot(20.0,8.0);
-  while (fifth < 1.0 || fifth > 80.0) {
-    fifth = G4RandGauss::shoot(20.0,8.0);
-  }
-  r5radius = G4RandGauss::shoot(40.0,20.0);
-  while (r5radius < 5.0 || r5radius > 85.0) {
-    r5radius = G4RandGauss::shoot(40.0,20.0);
-  }
-  tpbEff = G4RandGauss::shoot(.90,.05);
-  while (tpbEff < 0.80 || tpbEff > .99999) {
-    tpbEff = G4RandGauss::shoot(0.90,0.05);
-  }
-  clouded = G4RandGauss::shoot(75.,25.);
-  while (clouded < 5.0 || clouded > 150.0) {
-    clouded = G4RandGauss::shoot(75.,25.);
     }//*/
-  /*conewide = G4RandFlat::shoot(1.0,10.0);
-  ultra = G4RandFlat::shoot(10.0,200.0);
-  PMTx = G4RandFlat::shoot(1.0,12.0);
-  fifth = G4RandFlat::shoot(1.0,80.0);
-  r5radius = G4RandFlat::shoot(5.0,85.0);*/
-  tpbEff = 0.96274;//G4RandFlat::shoot(0.1,0.6);//0.96274;
-  threehun = 1215.93;//look at this for lower values for laser later.
-  conehigh = 0.48577;//G4RandFlat::shoot(0.2,1.0);
-  fifth = 18.303;//G4RandFlat::shoot(10.0,40.0);//
-  conewide = 2.7919;
-  //ultra = G4RandFlat::shoot(10.0,200.0);
-  ultra = 58.687;
-  PMTx = 7.510;
-  r5radius = 56.276;
-  //tpbEff = G4RandFlat::shoot(1.0,3.0);//fixed for transparency test at 0.96274;
-  clouded=100.0;
+  conewide = G4RandFlat::shoot(2.0,5.0);//3.33;//1.29
+  conehigh = G4RandFlat::shoot(0.10,0.70);//0.48577;//0.016
+  ultra = G4RandFlat::shoot(50.0,120.0);//58.69;//8.91
+  threehun = G4RandFlat::shoot(1000.0,1500.0);//1216;//404
+  PMTx = G4RandFlat::shoot(2.0,10.0);//7.510;//1.13
+  fifth = G4RandFlat::shoot(10.0,50.0);//21.24;//6.47
+  tpbEff = G4RandFlat::shoot(0.80,0.99);//0.96274;//0.019
+  r5radius = G4RandFlat::shoot(20.0,85.0);//56.276;//8.40
+  G4double base = 39.53;//4.57
 
+  foilEff = G4RandFlat::shoot(0.05,0.60);//.200;
+  topthick = G4RandFlat::shoot(1.0,100.0);//100.0;
+  sidethick = G4RandFlat::shoot(1.0,24.0);//16.0; 
+  TPBdivide = G4RandFlat::shoot(0.5,4.0);//2.0;
 
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
-  //  clouded =G4RandFlat::shoot(1.0,300.0);
-  G4double base = 1000.0;//37.53;//G4RandFlat::shoot(100.0,2000.0);//200.0;//Base absorption length for UV light
-  G4double uvlas = 1000.0;//ultra;//absorptioon length for the 213nm light
-  G4double time5 = 1.0;//fifth/100.;//absorption length for the bottom (row5), a quarter of that for the rest of the detector
-  G4double timec = clouded/100.;//absorption length for the edges, three quarters of the norm
+  //base = G4RandFlat::shoot(30.0,50.0);//42.72;//5.09
+  G4double uvlas = ultra;
+  G4double time5 = fifth/100.;
   G4double row5 = time5*base;
-  G4double cloud = timec*base;
-  G4double uvlasc = timec*uvlas;
   G4double uvlas5 = time5*uvlas;
   G4double three5 = time5*threehun;
   G4double mult = 2800.0;//Absorption length for visible.
@@ -1917,13 +1887,13 @@ void detectorConstruction::SetRandoms() {
   G4double lar2_ABSL[47];
   for (int i=0;i<6;++i){
     lar_ABSL[i] = base*cm;
-    lar1_ABSL[i] = cloud*cm;
+    lar1_ABSL[i] = base*cm;
     lar2_ABSL[i] = row5*cm;
     G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
   }
   for (int i=6;i<11;++i){
     lar_ABSL[i] = uvlas*cm;
-    lar1_ABSL[i] = uvlasc*cm;
+    lar1_ABSL[i] = uvlas*cm;
     lar2_ABSL[i] = uvlas5*cm;
     G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
   }
@@ -1949,11 +1919,52 @@ void detectorConstruction::SetRandoms() {
   G4cout << "second definition of lAr above" << G4endl;
   //*/
 
+ 
+  const G4int nTPBEntries = 25;
+  //Redefining TPB efficiency values for both foil and PMTs
+  G4double TPBEnergy[nTPBEntries] =
+    { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/, 
+      2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
+      2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
+      3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
+      6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
+ 
+  G4double wlAbf21 = -0.002/(std::log((1-foilEff)));
+  G4double wlAbf24 = -0.002/(std::log((1-(.222*foilEff/0.2))));
+  G4double wlAbf19 = -0.002/(std::log((1-(.156*foilEff/0.2))));
+  G4double wlAbf15 = -0.002/(std::log((1-(.114*foilEff/0.2))));
+  G4double wlAbf12 = -0.002/(std::log((1-(.191*foilEff/0.2))));
+  G4double wlAbf11 = -0.002/(std::log((1-(.311*foilEff/0.2))));
+  G4double TPBWLSAbsorption[nTPBEntries] =
+    { 0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+      1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+      10000.000*m, 10000.000*m, 10000.000*m, 10000.000*m, 100000.0*m,
+      100000.0*m, 100000.0*m, 100000.0*m, wlAbf24*mm, wlAbf21*mm, 
+      wlAbf19*mm, wlAbf15*mm, wlAbf12*mm, wlAbf11*mm, wlAbf11*mm, };
+    
+  
+  G4double lengthconst = 0.0019/(std::log(1-tpbEff));
+  G4double wlsAb110 = lengthconst/(std::log(0.067));
+  G4double wlsAb128 = lengthconst/(std::log(0.2));
+  G4double wlsAb190 = lengthconst/(std::log(0.533));
+  G4double wlsAb213 = lengthconst/(std::log(0.4));
+  G4double wlsAb240 = lengthconst/(std::log(0.367));
+  G4double TPBWLSAbsorption100[nTPBEntries] = 
+    {    0.10000*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
+	 1000.00*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
+	 10000.0*m, 10000.0*m, 10000.0*m, 10000.0*m, 100000.0*m, 
+	 100000.0*m, 100000.0*m, 100000.0*m, wlsAb240*mm, wlsAb213*mm, 
+	 wlsAb190*mm, wlsAb213*mm, wlsAb128*mm, wlsAb110*mm, wlsAb110*mm
+    };
+
+  TPBProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption, nTPBEntries);
+  TPBsProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption100, nTPBEntries);
 
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
   std::ostringstream oss;
-  oss /*<< "Randoms: cone" << conewide << "high" << conehigh << "ultra" << ultra << "threehun" << threehun << "pmtx" << PMTx << "fifth" << fifth << "rad" << r5radius << "tpb" << tpbEff << "cloud" << clouded << "base"*/ << "Randoms: VUVabsorb" << base;  
+
+  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t pmtx\t" << PMTx << "\t divide\t" << TPBdivide << "\t top\t" << topthick << "\t side\t" << sidethick << "\t tpb\t" << tpbEff << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
 
   randomized = true;
   
@@ -1999,11 +2010,11 @@ void detectorConstruction::SetDarkMatter(G4bool b) {
       G4double scint_yeild=1.0/(19.5*eV); //scintillation yeild: quartered for nuclear recoil
       //scintillation yeild: do not change, include in quenching factor portion of analysis.
       lAr_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
-      lAr_mt->AddConstProperty("YIELDRATIO",0.70);//seventy percent in singlet for nuclear recoil
+      lAr_mt->AddConstProperty("YIELDRATIO",1.0);//seventy percent in singlet for nuclear recoil
       lAr1_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
-      lAr1_mt->AddConstProperty("YIELDRATIO",0.70);//seventy percent in singlet for nuclear recoil
+      lAr1_mt->AddConstProperty("YIELDRATIO",1.0);//seventy percent in singlet for nuclear recoil
       lAr2_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
-      lAr2_mt->AddConstProperty("YIELDRATIO",0.70);//seventy percent in singlet for nuclear recoil
+      lAr2_mt->AddConstProperty("YIELDRATIO",1.0);//seventy percent in singlet for nuclear recoil
   } else {
     G4double scint_yeild=1.0/(19.5*eV); //scintillation yeild: normal for ee
     lAr_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
@@ -2041,4 +2052,195 @@ void detectorConstruction::SetReflectorOn(G4bool b) {
 //method to set the rootfilename
 void detectorConstruction::SetRootFile (G4String b) {
   rootfile = b;
+  rootset = false;
 }
+
+int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
+  G4double variables[] = {3.33, 0.48577, 58.69, 1216.0, 
+			  7.510, 21.24, 0.96274, 56.276, 
+			  35.92};
+  G4double errors[] = {1.29, 0.016, 8.91, 404.0, 
+		       1.13, 6.47, 0.019, 8.40, 
+		       4.75};
+  if (var < 9) {
+    variables[var] = variables[var]+errors[var]*sigma;
+  } else {
+    G4cout << "invalid variable changed!" << G4endl; 
+    return 0;
+  }   
+  conewide = variables[0];
+  conehigh = variables[1];
+  ultra = variables[2];
+  threehun = variables[3];
+  PMTx = variables[4];
+  fifth = variables[5];
+  tpbEff = variables[6];
+  r5radius = variables[7];
+
+  G4double base = variables[8];
+  G4double uvlas = ultra;
+  G4double time5 = fifth/100.;
+  G4double row5 = time5*base;
+  G4double uvlas5 = time5*uvlas;
+  G4double three5 = time5*threehun;
+  G4double mult = 2800.0;//Absorption length for visible.
+
+  G4double lar_Energy_abs[47];
+  G4double lar_wlv_abs[47];
+  for (int i=0;i<47;++i){
+    lar_wlv_abs[i] = i*20+80;
+    lar_Energy_abs[i] = (1293.847/(i*20.0+80.0))*eV;
+  }
+  G4double lar_ABSL[47];
+  G4double lar1_ABSL[47];
+  G4double lar2_ABSL[47];
+  for (int i=0;i<6;++i){
+    lar_ABSL[i] = base*cm;
+    lar1_ABSL[i] = base*cm;
+    lar2_ABSL[i] = row5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=6;i<11;++i){
+    lar_ABSL[i] = uvlas*cm;
+    lar1_ABSL[i] = uvlas*cm;
+    lar2_ABSL[i] = uvlas5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=11;i<16;++i){
+    lar_ABSL[i] = threehun*cm;
+    lar1_ABSL[i] = threehun*cm;
+    lar2_ABSL[i] = three5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=16;i<47;++i){
+    lar_ABSL[i] = mult*cm;
+    lar1_ABSL[i] = mult*cm;
+    lar2_ABSL[i] = mult*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
+  assert(sizeof(lar_ABSL) == sizeof(lar_Energy_abs));
+
+  //Takes the defined values above and uses them to define a materials properties table.
+  lAr_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar_ABSL,  larabs);
+  lAr1_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar1_ABSL,  larabs);
+  lAr2_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar2_ABSL,  larabs);
+  G4cout << "second definition of lAr above" << G4endl;
+  //*/
+
+
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+
+  std::ostringstream oss;
+  oss /*<< "Randoms: cone" << conewide << "high" << conehigh << "ultra" << ultra << "threehun" << threehun << "pmtx" << PMTx << "fifth" << fifth << "rad" << r5radius << "tpb" << tpbEff << "cloud" << clouded << "base"*/ << "Randoms: VUVabsorb" << base;  
+
+  randomized = true;
+  
+  variableString = oss.str();
+  G4cout << variableString << G4endl;
+  
+  return 1;
+}
+
+
+
+void detectorConstruction::CorrelateRandom() {
+  G4double variables[] = {3.33, 0.48577, 58.69, 1216.0, 
+			  7.510, 21.24, 0.96274, 56.276, 
+			  42.72};
+  
+  G4double errors[9];
+  G4double throws[9];
+
+  for (int i = 0; i < 9; ++i){
+    throws[i] = G4RandGauss::shoot(0.0,1.0);
+  }
+  
+  errors[0] = throws[0]*1.287736538;
+  errors[1] = throws[0]*0.005884924+throws[1]*0.156314134;
+  errors[2] = throws[2]*8.914889355;
+  errors[3] = throws[2]*-78.69067927+throws[3]*385.3581053;
+  errors[4] = throws[0]*0.033208986+throws[1]*-0.03673532+throws[2]*0.075568978+throws[3]*-0.115013862+throws[4]*0.710856912;
+  errors[5] = throws[0]*-0.36699+throws[1]*-0.174294514+throws[2]*0.464933511+throws[3]*0.094940092+throws[4]*-0.758809988+throws[5]*4.04913603;
+  errors[6] = throws[1]*-1.395167143+throws[2]*-0.127407008+throws[3]*0.631566028+throws[4]*-0.180605426+throws[5]*1.225331051+throws[6]*8.16909379;
+  errors[7] = throws[0]*-0.002229804+throws[1]*0.004012321+throws[2]*0.000859217+throws[3]*0.003647538+throws[4]*-0.003247525+throws[5]*0.000913947+throws[6]*0.000207766+throws[7]*0.017749286;
+  errors[8] = throws[3]*-0.767186655+throws[4]*0.00298251+throws[5]*0.018547149+throws[6]*0.056596399+throws[7]*-2.928712151+throws[8]*4.259646667;
+
+  for (int i = 0; i < 9; ++i){
+    variables[i] = variables[i] + errors[i];
+  }
+  conewide = variables[0];
+  conehigh = variables[1];
+  ultra = variables[2];
+  threehun = variables[3];
+  PMTx = variables[4];
+  fifth = variables[5];
+  tpbEff = variables[6];
+  r5radius = variables[7];
+
+  G4double base = variables[8];
+  G4double uvlas = ultra;
+  G4double time5 = fifth/100.;
+  G4double row5 = time5*base;
+  G4double uvlas5 = time5*uvlas;
+  G4double three5 = time5*threehun;
+  G4double mult = 2800.0;//Absorption length for visible.
+
+  G4double lar_Energy_abs[47];
+  G4double lar_wlv_abs[47];
+  for (int i=0;i<47;++i){
+    lar_wlv_abs[i] = i*20+80;
+    lar_Energy_abs[i] = (1293.847/(i*20.0+80.0))*eV;
+  }
+  G4double lar_ABSL[47];
+  G4double lar1_ABSL[47];
+  G4double lar2_ABSL[47];
+  for (int i=0;i<6;++i){
+    lar_ABSL[i] = base*cm;
+    lar1_ABSL[i] = base*cm;
+    lar2_ABSL[i] = row5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=6;i<11;++i){
+    lar_ABSL[i] = uvlas*cm;
+    lar1_ABSL[i] = uvlas*cm;
+    lar2_ABSL[i] = uvlas5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=11;i<16;++i){
+    lar_ABSL[i] = threehun*cm;
+    lar1_ABSL[i] = threehun*cm;
+    lar2_ABSL[i] = three5*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  for (int i=16;i<47;++i){
+    lar_ABSL[i] = mult*cm;
+    lar1_ABSL[i] = mult*cm;
+    lar2_ABSL[i] = mult*cm;
+    G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar1_ABSL[i] << G4endl; 
+  }
+  const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
+  assert(sizeof(lar_ABSL) == sizeof(lar_Energy_abs));
+
+  //Takes the defined values above and uses them to define a materials properties table.
+  lAr_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar_ABSL,  larabs);
+  lAr1_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar1_ABSL,  larabs);
+  lAr2_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar2_ABSL,  larabs);
+  G4cout << "second definition of lAr above" << G4endl;
+  //*/
+
+
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+
+  std::ostringstream oss;
+  oss << "Randoms: cone" << conewide << "high" << conehigh << "ultra" << ultra << "threehun" << threehun << "pmtx" << PMTx << "fifth" << fifth << "rad" << r5radius << "tpb" << tpbEff << "VUVabsorb" << base << '\n' << "RandomTab:" << '\t' << conewide << '\t' << conehigh << '\t' << ultra << '\t' << threehun << '\t' << PMTx << '\t' << fifth << '\t' << r5radius << '\t' << tpbEff << '\t' << base;  
+;  
+
+  randomized = true;
+  
+  variableString = oss.str();
+  G4cout << variableString << G4endl;
+  
+  //  return 1;
+}
+

@@ -176,10 +176,12 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
       }
     }
     
-    radi = G4RandFlat::shoot(0.001,75.0)*cm;
+    
+    G4double radi2 = G4RandFlat::shoot(0.001,12735.1225);
+    radi = sqrt(radi2)*cm;
     ypos = radi*sin(phi);
     xpos = radi*cos(phi);
-    zpos = G4RandFlat::shoot(-50.0, 50.0)*cm;
+    zpos = G4RandFlat::shoot(-70.79, 70.79)*cm;
     partEneg = G4RandFlat::shoot(energy,(energy+20.0));
     fParticleGun->SetParticleEnergy(partEneg*keV);
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
@@ -243,10 +245,11 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     fParticleGun->SetParticleDefinition(ion);
     fParticleGun->SetParticleCharge(ionCharge);
  
-    radi = G4RandFlat::shoot(0.001,80.0)*cm;
+    G4double radi2 = G4RandFlat::shoot(0.001,12735.1225);
+    radi = sqrt(radi2)*cm;
     ypos = radi*sin(phi);
     xpos = radi*cos(phi);
-    zpos = G4RandFlat::shoot(-65.0, 65.0)*cm;
+    zpos = G4RandFlat::shoot(-70.79, 70.79)*cm;
     partEneg = G4RandFlat::shoot(energy,energy2);
     fParticleGun->SetParticleEnergy(partEneg*keV);
     
