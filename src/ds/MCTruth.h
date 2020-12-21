@@ -54,6 +54,7 @@ class MCTruth : public TObject
 		float GetHitEnergy(size_t index) { return fHitEnergy.at(index); }
 		float GetHitAngle(size_t index) { return fHitAngle.at(index); }
 		float GetHitTime(size_t index) { return fHitTime.at(index); }
+    bool GetPassedQF(size_t index) { return fPassedQF.at(index); }
 
 		int GetParticleID() const { return fParticleID; }
 		float GetTotalEnergyDeposited() const { return fEnergyDeposited; }
@@ -74,6 +75,7 @@ class MCTruth : public TObject
 		float GetHitEnergy(size_t index) const { return fHitEnergy.at(index); }
 		float GetHitAngle(size_t index) const { return fHitAngle.at(index); }
 		float GetHitTime(size_t index) const { return fHitTime.at(index); }
+    bool GetPassedQF(size_t index) const { return fPassedQF.at(index); }
 
     MCTruth & operator=(const MCTruth & rhs);
 

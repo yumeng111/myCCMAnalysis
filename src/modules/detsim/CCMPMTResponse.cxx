@@ -133,12 +133,15 @@ CCMResult_t CCMPMTResponse::ProcessTrigger()
   double angle = 0.0;
   double adc = 0.0;
   double length = 0.0;
-  bool passedQF = true;
 
   fTotalHits += kNumHits;
 
   // loop over the hits and build the waveform
   for (size_t hit = 0; hit < kNumHits; ++hit) {
+    if (!fMCTruth->GetPassedQF(hit)) {
+      continue;
+    }
+
     row = fMCTruth->GetHitRow(hit);
     col = fMCTruth->GetHitCol(hit);
 
@@ -148,12 +151,6 @@ CCMResult_t CCMPMTResponse::ProcessTrigger()
     // that is being simulated
     key = PMTInfoMap::ConvertRowColToKey(row,col);
     if (!PMTInfoMap::IsActive(key) || key < 0) {
-      continue;
-    }
-
-    // NOTE: will be added in a later version
-    //passedQF = fMCTruth->GetPassedQF(hit);
-    if (!passedQF) {
       continue;
     }
 
@@ -346,10 +343,6 @@ void CCMPMTResponse::GetADCValueAndLength(size_t key, double & adc, double & len
   std::normal_distribution<double> gaus(adcToPE,error);
 
   adc = gaus(fMT);
-  length = 20.0;
-
-  return;
-
   length = adc;
 
   std::normal_distribution<double> normal(0,1);
