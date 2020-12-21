@@ -1,0 +1,35 @@
+# macro file for running Sodium and Cobalt simulations.
+#
+#initialize kernal
+/run/initialize
+#
+/tracking/verbose 0
+#
+#
+/ccm/detector/tpbfoil true
+/ccm/detector/reflector true
+/ccm/detector/setrod 0 cm
+#
+/control/alias Rand1 3069693
+/control/alias Rand2 2189038
+/control/alias Rand3 {Rand2}
+#
+#
+/control/alias step 1
+#
+#
+/random/setSeeds {Rand1} {Rand2}
+#
+#
+#
+# Turn the Sodium source off and run a Cobalt source
+/ccm/detector/sodium false
+/ccm/detector/root tenkCobaltSource{step}
+#/control/cout/setCoutFile tenkCobaltSimulation_idealDetector.txt
+/gun/particle gamma
+/gun/energy 120 keV
+/run/beamOn 10000
+#
+#
+#
+#

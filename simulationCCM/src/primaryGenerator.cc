@@ -128,11 +128,11 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     fParticleGun->SetParticleDefinition(particle);
     
     //get the particle energy entered either through the above lines or from a macro.
-    //then set the number of photons to be generated to 1000 for 532 and 10000 for 213
+    //then set the number of photons to be generated to 2000 for 532 and 10000 for 213
     //note: more needed for 213 due to non-ideal detector killing most of them.
-    G4int totalops = 1000;
+    G4int totalops = 2000;
     if (partEneg*keV > 5*eV) {
-      totalops = 4000;
+      totalops = 10000;
     }
 
     //run through the photons, generating them one at a time.

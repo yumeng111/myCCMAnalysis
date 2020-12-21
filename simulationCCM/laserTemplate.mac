@@ -1,0 +1,112 @@
+#initialize kernal
+/run/initialize
+#
+/tracking/verbose 0
+#
+# set the random generator seeds to either recreate an earlier run
+# (use the same seeds) or create a different one (use different ones)
+#
+/ccm/detector/tpbfoil true
+/ccm/detector/reflector true
+#
+/control/alias Rand1 3069693
+/control/alias Rand2 2189038
+#
+#
+/control/alias step 0
+#
+#
+#Randomize the multisim Variables
+/random/setSeeds {Rand1} {Rand2}
+
+#
+#
+/ccm/detector/randoms
+#
+#
+#
+# Energy setting for the 213 nm wavelength.
+/gun/energy 5.82 eV
+#
+# Height for the middle position. Also turns the laser on.
+/ccm/detector/rodHeight 0 cm
+/ccm/detector/root tenkLaserRun{step}_213-Middle
+/control/cout/setCoutFile tenkLaserRun{step}_CoutFile.txt
+/run/beamOn 5000
+#
+/ccm/detector/rodHeight 48.3 cm
+/ccm/detector/root tenkLaserRun{step}_213-Top
+#/control/cout/setCoutFile tenkLaserRun10x_Top-213-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+/ccm/detector/rodHeight -38.1 cm
+/ccm/detector/root tenkLaserRun{step}_213-Bottom
+#/control/cout/setCoutFile tenkLaserRun10x_Bottom-213-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+/ccm/detector/rodHeight -12.7 cm
+/ccm/detector/root tenkLaserRun{step}_213-BottomMiddle
+#/control/cout/setCoutFile tenkLaserRun10x_BottomMiddle-213-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+/ccm/detector/rodHeight 22.8 cm
+/ccm/detector/root tenkLaserRun{step}_213-MiddleTop
+#/control/cout/setCoutFile tenkLaserRun10x_MiddleTop-213-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+#
+#
+/ccm/detector/rodHeight 0 cm
+#
+# Energy setting for the 532 nm wavelength.
+/gun/energy 2.33 eV
+/ccm/detector/root tenkLaserRun{step}_532-Middle
+#/control/cout/setCoutFile tenkLaserRun10x_Middle-532-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+/ccm/detector/rodHeight 48.3 cm
+/ccm/detector/root tenkLaserRun{step}_532-Top
+#/control/cout/setCoutFile tenkLaserRun10x_Top-532-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+/ccm/detector/rodHeight -38.1 cm
+/ccm/detector/root tenkLaserRun{step}_532-Bottom
+#/control/cout/setCoutFile tenkLaserRun10x_Bottom-532-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+/ccm/detector/rodHeight -12.7 cm
+/ccm/detector/root tenkLaserRun{step}_532-BottomMiddle
+#/control/cout/setCoutFile tenkLaserRun10x_BottomMiddle-532-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
+#
+/ccm/detector/rodHeight 22.8 cm
+/ccm/detector/root tenkLaserRun{step}_532-MiddleTop
+#/control/cout/setCoutFile tenkLaserRun10x_MiddleTop-532-{multisim}.txt
+#
+#
+/run/beamOn 5000
+#
