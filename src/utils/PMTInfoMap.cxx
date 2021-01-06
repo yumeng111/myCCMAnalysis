@@ -430,7 +430,7 @@ bool PMTInfoMap::IsActive(int key)
   }
 
   if (std::find(fgHVOffList.begin(),fgHVOffList.end(),key) != fgHVOffList.end()) {
-    return true;
+    return false;
   }
 
   return true;
@@ -580,10 +580,6 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
 void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, double threshValue, double maxValue)
 {
   //TFile * calibrationFileTop = TFile::Open("root_out_2019ledData_run179_legFix_integral_all_round4_.root","READ");
-
-  if (fileName == "") {
-    MsgFatal("No file name passed. Exiting");
-  }
 
   if (fileName == "default" || fileName == "") {
     fileName = std::getenv("CCMPROJECT");
