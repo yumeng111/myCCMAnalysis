@@ -101,6 +101,11 @@ detectorMessenger::detectorMessenger(detectorConstruction* detector)
   fRandomsCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fRandomsCmd->SetToBeBroadcasted(false);
 
+  fCorrelateCmd = new G4UIcommand("/ccm/detector/correlate",this);
+  fCorrelateCmd->SetGuidance("Set all detector geometry values to correlated randoms.");
+  fCorrelateCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fCorrelateCmd->SetToBeBroadcasted(false);
+
   fRootCmd = new G4UIcmdWithAString( "/ccm/detector/root", this );
   fRootCmd->SetGuidance( "File name for the ROOT output" );
   fRootCmd->SetGuidance( " Include '.root' " );
@@ -118,6 +123,7 @@ detectorMessenger::~detectorMessenger()
   delete fLaserCmd;
   delete fDefaultsCmd;
   delete fRandomsCmd;
+  delete fCorrelateCmd;
   delete fPMTsCmd;
   delete fSodiumCmd;
   delete fAr39Cmd;
@@ -175,5 +181,8 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   }
   else if (command == fRandomsCmd){
     fdetector->SetRandoms();
+  }
+  else if (command == fCorrelateCmd){
+    fdetector->CorrelateRandom();
   }
 }

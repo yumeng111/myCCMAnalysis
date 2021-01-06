@@ -45,6 +45,8 @@ void eventAction::BeginOfEventAction(const G4Event* event)
   mctruth->Reset(eventID);
   //G4cout << "maincodenote: starting eventAction" << G4endl;
 
+  rootSet = fRunAction->GetRootSet();
+
   if (!rootSet){
     const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
     G4String filename = detector->GetRootFile();
@@ -55,7 +57,8 @@ void eventAction::BeginOfEventAction(const G4Event* event)
     rootIO->SetParameter("SaveBranches","mcTruth");
     rootIO->SetOutFileName(filename);
     rootIO->SetupOutputFile();
-    rootSet = true;
+    fRunAction->SetRootSet(true);
+    //    rootSet = true;
   }
 }
 

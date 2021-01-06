@@ -32,9 +32,9 @@
 #
 #
 #
-/ccm/detector/root hundredDMevents{step}
+/ccm/detector/root hundredkDMevents{step}
 #/control/cout/setCoutFile tenkDarkMattereventsSimulation{step}.txt
-/run/beamOn 100
+/run/beamOn 100000
 #
 #
 #

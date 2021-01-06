@@ -51,6 +51,8 @@ class detectorConstruction : public G4VUserDetectorConstruction
     void SetAr39( G4bool ); //turns the Ar39 flag on
     void SetDarkMatter( G4bool ); //turns the DarkMatter flag on
     void SetRootFile ( G4String ); //sets the ROOT output filename
+    int ModulateRandom( G4int var, G4double sigma ); //modulate the OM random values
+    void CorrelateRandom();//Method for setting MultiSim Variables according to covariance matrix
 
     //Get values
     G4double GetPMTRadius() const {return fOuterRadius_pmt;}//method to obtain the PMT radiu entered in the previous method (or the default, if unchanged)
@@ -60,6 +62,7 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4bool GetfAr39() const {return fAr39;};//method to obtain fAr39
     G4bool GetDarkMatter() const {return darkMatter;};//method to obtain fAr39
     G4String GetRootFile () const { return rootfile;};  
+    G4bool GetRootSet() const { return rootset; };
 
   private:
 
@@ -160,10 +163,14 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4double fifth;
     G4double r5radius;
     G4double tpbEff;
-    G4double clouded;
+    G4double foilEff;
+    G4double topthick;
+    G4double sidethick;
+    G4double TPBdivide;
     G4bool randomized;
     G4String variableString;
     G4String rootfile;
+    G4bool rootset;
 
 };
 

@@ -31,6 +31,8 @@ void runAction::BeginOfRunAction(const G4Run*)
   const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
   //detectorConstruction* detector = new detectorConstruction;
 
+  rootSet = detector->GetRootSet();
+
   if (detector->IsRandom()) {
     G4String randoms = detector->GetRandoms();
     G4cout << randoms << G4endl;

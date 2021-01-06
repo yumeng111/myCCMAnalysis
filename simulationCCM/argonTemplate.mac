@@ -23,7 +23,7 @@
 #
 #
 #
-/control/alias step 1
+/control/alias step 0
 #
 #
 #
@@ -33,7 +33,8 @@
 #
 #
 #
-/control/cout/setCoutFile tenkArgon39eventsSimulation{step}.txt
+/ccm/detector/root tenkArgon39Events{step}
+#/control/cout/setCoutFile tenkArgon39eventsSimulation{step}.txt
 /run/beamOn 10000
 #
 #
