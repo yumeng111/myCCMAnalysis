@@ -80,6 +80,7 @@ class AccumWaveform : public TObject
     /// \return #fComputerNSIntoSec
     unsigned int GetComputerNSIntoSec() { return fComputerNSIntoSec; }
 
+    void SetTriggerTime(float time) { fTriggerTime = time; }
     float GetTriggerTime() { return fTriggerTime; }
 
     float GetTriggerTime() const { return fTriggerTime; }

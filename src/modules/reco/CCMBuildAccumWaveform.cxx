@@ -121,6 +121,7 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
   fAccumWaveform->SetBeamOffset(fBeamTime);
   fAccumWaveform->SetBeamIntegral(beamIntegral);
   fAccumWaveform->SetBeamLength(beamLength*Utility::fgkBinWidth);
+  fAccumWaveform->SetTriggerTime(fPulses->GetTriggerTime());
 
   // count trigger
   ++fNumTriggers;

@@ -22,7 +22,9 @@
 
 #include "TROOT.h"
 #include "TFile.h"
-#include "TH1D.h"
+#include "TH2D.h"
+
+#include "TRandom3.h"
 
 #include <array>
 #include <cctype>
@@ -38,10 +40,12 @@ CCMPMTResponse::CCMPMTResponse(const char* version)
     fRD(),
     fMT(),
     fUniform(0,1),
+    fTRandom(std::make_shared<TRandom3>(0)),
     fSPEWeights(),
+    fSPEHists(),
     fWaveforms(),
     //fWaveformsHist(),
-    //fFile(nullptr),
+    fPMTSPEFile(nullptr),
     fHighEnergy(4.0),
     fLowEnergy(2.0),
     fQE(0.2),
@@ -66,10 +70,12 @@ CCMPMTResponse::CCMPMTResponse(const CCMPMTResponse& clufdr)
   fRD(),
   fMT(),
   fUniform(0,1),
+  fTRandom(clufdr.fTRandom),
   fSPEWeights(clufdr.fSPEWeights),
+  fSPEHists(clufdr.fSPEHists),
   fWaveforms(clufdr.fWaveforms),
   //fWaveformsHist(clufdr.fWaveformsHist),
-  //fFile(clufdr.fFile),
+  fPMTSPEFile(clufdr.fPMTSPEFile),
   fHighEnergy(clufdr.fHighEnergy),
   fLowEnergy(clufdr.fLowEnergy),
   fQE(clufdr.fQE),
@@ -110,18 +116,12 @@ CCMResult_t CCMPMTResponse::ProcessTrigger()
 
   // if the SPEWeights object has not been filled fill it
   // if it has been filled, reset the waveforms
-  if (fSPEWeights.empty()) {
+  if (fSPEWeights.empty() && fSPEHists.empty()) {
     FillSPEWeights();
-    //fFile = TFile::Open("check_pmtresponse_waveforms.root","RECREATE");
   } else {
     for (auto & p : fWaveforms) {
       std::fill(p.second.begin(),p.second.end(),0.0);
     }
-    //fFile->cd();
-    //for (auto & p : fWaveformsHist) {
-    //  p.second->Write();
-    //  p.second->Reset("ICESM");
-    //}
   }
 
   // variables used in the for loop
@@ -209,9 +209,12 @@ void CCMPMTResponse::Configure(const CCMConfig& c )
   c("RANSEED").Get(seed);
   if (seed == 0) {
     fMT.seed(fRD());
+    fTRandom->SetSeed(0);
   } else {
     fMT.seed(seed);
+    fTRandom->SetSeed(seed);
   }
+  gRandom = fTRandom.get();
 
   c("QE").Get(fQE);
   c("HighEnergy").Get(fHighEnergy);
@@ -230,6 +233,11 @@ void CCMPMTResponse::Configure(const CCMConfig& c )
   } else if (tempString.find("SQUARE") != std::string::npos) {
     fSquareWF = true;
     fTriangleWF = false;
+  }
+
+  c("PMTSPEFile").Get(tempString);
+  if (!tempString.empty()) {
+    fPMTSPEFile = TFile::Open(tempString.c_str(),"READ");
   }
 
   MsgInfo(MsgLog::Form("\t-Seed values %d fMT output %u",seed,fMT()));
@@ -251,7 +259,8 @@ CCMResult_t CCMPMTResponse::EndOfJob()
   MsgInfo(MsgLog::Form("Total Pulses %.0f",fTotalPulses));
   MsgInfo(MsgLog::Form("Avg Pulse Length %.3f",fAvgPulseLength*Utility::fgkBinWidth/fTotalPulses));
   MsgInfo(MsgLog::Form("Avg Pulse Integral %.3f",fAvgPulseIntegral/fTotalPulses));
-  MsgInfo(MsgLog::Form("Average Number Pulses Per Active PMT %.3f",fTotalPulses/static_cast<double>(fSPEWeights.size())));
+  MsgInfo(MsgLog::Form("Average Number Pulses Per Active PMT %.3f",
+        fTotalPulses/static_cast<double>(std::max(fSPEWeights.size(),fSPEHists.size()))));
 
   //if (fFile) {
   //  delete fFile;
@@ -304,14 +313,27 @@ void CCMPMTResponse::FillSPEWeights()
       continue;
     }
 
-    double adcToPE = pmt->GetADCToPE();
-    double error = pmt->GetADCToPERMS();
+    if (!fPMTSPEFile) {
+      double adcToPE = pmt->GetADCToPE();
+      double error = pmt->GetADCToPERMS();
 
-    fSPEWeights.emplace(key,std::make_pair(adcToPE,error));
-    fWaveforms.emplace(key,std::vector<double>(Utility::fgkNumBins,0.0));
-    //fWaveformsHist.emplace(key,std::make_shared<TH1D>(Form("hist%zu",key),"",Utility::fgkNumBins,
-    //      0,Utility::fgkNumBins*Utility::fgkBinWidth));
+      fSPEWeights.emplace(key,std::make_pair(adcToPE,error));
+      fWaveforms.emplace(key,std::vector<double>(Utility::fgkNumBins,0.0));
+    } else {
+      TH2D * tempHist = nullptr;
+      fPMTSPEFile->GetObject(Form("subtract%zu",key),tempHist);
+      if (!tempHist) {
+        continue;
+      }
+      fSPEHists.emplace(key,std::make_shared<TH2D>(*tempHist));
+      fWaveforms.emplace(key,std::vector<double>(Utility::fgkNumBins,0.0));
+      delete tempHist;
+    }
   } // end for size_t key
+
+  if (fPMTSPEFile) {
+    delete fPMTSPEFile;
+  }
 
   return;
 }
@@ -319,48 +341,59 @@ void CCMPMTResponse::FillSPEWeights()
 //_______________________________________________________________________________________
 void CCMPMTResponse::GetADCValueAndLength(size_t key, double & adc, double & length)
 {
-  auto itSPEWeight = fSPEWeights.find(key);
-  if (itSPEWeight == fSPEWeights.end()) {
+  if (fSPEHists.empty()) {
+    auto itSPEWeight = fSPEWeights.find(key);
+    if (itSPEWeight == fSPEWeights.end()) {
+      adc = 0.0;
+      length = 0.0;
+      return;
+    }
+
+    std::array<double,3> energyLengthPars = {1.5609,5.77514,0.0997306};
+    std::array<std::array<double,3>,3> cholDecomp;
+    cholDecomp[0][0] = 0.03092;
+    cholDecomp[0][1] = 0.02219;
+    cholDecomp[0][2] = 0.002114;
+    cholDecomp[1][0] = 0;
+    cholDecomp[1][1] = 0.04763;
+    cholDecomp[1][2] = 0.0007355;
+    cholDecomp[2][0] = 0;
+    cholDecomp[2][1] = 0;
+    cholDecomp[2][2] = 0.000387;
+
+    double adcToPE = itSPEWeight->second.first;
+    double error = itSPEWeight->second.second;
+    std::normal_distribution<double> gaus(adcToPE,error);
+
+    adc = gaus(fMT);
+    length = adc;
+
+    std::normal_distribution<double> normal(0,1);
+    std::array<double,3> random;
+    for (int r = 0; r < 3; ++r) {
+      random[r] = normal(fMT);
+    }
+    for (int col=0; col < 3; ++col) {
+      double value = 0;
+      for (int row=0; row < 3; ++row) {
+        value += cholDecomp[row][col]*random[row];
+      }
+      energyLengthPars[col] += value;
+    }
+
+    length *= energyLengthPars[0] +
+      energyLengthPars[1]*std::exp(-energyLengthPars[2]*adc);
+
+    return;
+  }
+
+  auto itSPEHist = fSPEHists.find(key);
+  if (itSPEHist == fSPEHists.end()) {
     adc = 0.0;
     length = 0.0;
     return;
   }
-
-  std::array<double,3> energyLengthPars = {1.5609,5.77514,0.0997306};
-  std::array<std::array<double,3>,3> cholDecomp;
-  cholDecomp[0][0] = 0.03092;
-  cholDecomp[0][1] = 0.02219;
-  cholDecomp[0][2] = 0.002114;
-  cholDecomp[1][0] = 0;
-  cholDecomp[1][1] = 0.04763;
-  cholDecomp[1][2] = 0.0007355;
-  cholDecomp[2][0] = 0;
-  cholDecomp[2][1] = 0;
-  cholDecomp[2][2] = 0.000387;
-
-  double adcToPE = itSPEWeight->second.first;
-  double error = itSPEWeight->second.second;
-  std::normal_distribution<double> gaus(adcToPE,error);
-
-  adc = gaus(fMT);
-  length = adc;
-
-  std::normal_distribution<double> normal(0,1);
-  std::array<double,3> random;
-  for (int r = 0; r < 3; ++r) {
-    random[r] = normal(fMT);
-  }
-  for (int col=0; col < 3; ++col) {
-    double value = 0;
-    for (int row=0; row < 3; ++row) {
-      value += cholDecomp[row][col]*random[row];
-    }
-    energyLengthPars[col] += value;
-  }
-
-  length *= energyLengthPars[0] +
-    energyLengthPars[1]*std::exp(-energyLengthPars[2]*adc);
-
+  itSPEHist->second->GetRandom2(adc,length);
 }
 
 //_______________________________________________________________________________________

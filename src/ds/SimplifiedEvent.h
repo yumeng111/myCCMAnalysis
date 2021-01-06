@@ -174,9 +174,28 @@ class SimplifiedEvent : public TObject
     float    GetNumVetoSide(bool prompt = true);
 
     void  SetPMTHits (std::vector<std::pair<int,float>> & vec) { fPMTHits = vec.size(); fPMTHitsVec = vec; }
-    void  AddPMTHits (std::pair<int,float> amount) { ++fPMTHits; fPMTHitsVec.push_back(amount); }
+    void  AddPMTHits (std::pair<int,float> amount) { ++fPMTHits; fPMTHitsVec.emplace_back(amount); }
     int   GetPMTHits () { return fPMTHits; }
     const std::vector<std::pair<int,float>> & GetPMTHitsVec () { return fPMTHitsVec; }
+
+    void  SetPMTHits20 (std::vector<std::pair<int,float>> & vec) { fPMTHits20 = vec.size(); fPMTHits20Vec = vec; }
+    void  AddPMTHits20 (std::pair<int,float> amount) { ++fPMTHits20; fPMTHits20Vec.emplace_back(amount); }
+    int   GetPMTHits20 () { return fPMTHits20; }
+    const std::vector<std::pair<int,float>> & GetPMTHits20Vec () { return fPMTHits20Vec; }
+
+    void  SetPMTHits40 (std::vector<std::pair<int,float>> & vec) { fPMTHits40 = vec.size(); fPMTHits40Vec = vec; }
+    void  AddPMTHits40 (std::pair<int,float> amount) { ++fPMTHits40; fPMTHits40Vec.emplace_back(amount); }
+    int   GetPMTHits40 () { return fPMTHits40; }
+    const std::vector<std::pair<int,float>> & GetPMTHits40Vec () { return fPMTHits40Vec; }
+
+    void  SetPMTHits60 (std::vector<std::pair<int,float>> & vec) { fPMTHits60 = vec.size(); fPMTHits60Vec = vec; }
+    void  AddPMTHits60 (std::pair<int,float> amount) { ++fPMTHits60; fPMTHits60Vec.emplace_back(amount); }
+    int   GetPMTHits60 () { return fPMTHits60; }
+    const std::vector<std::pair<int,float>> & GetPMTHits60Vec () { return fPMTHits60Vec; }
+
+    void  SetPMTHitsStart (std::vector<std::pair<int,float>> & vec) { fPMTHitsStartVec = vec; }
+    void  AddPMTHitsStart (std::pair<int,float> amount) { fPMTHitsStartVec.emplace_back(amount); }
+    const std::vector<std::pair<int,float>> & GetPMTHitsStartVec () { return fPMTHitsStartVec; }
 
     float GetMaxAccumWaveformTime() { return fMaxWaveformTime; }
     float GetMaxAccumWaveformValue() { return fMaxWaveformValue; }
@@ -187,8 +206,15 @@ class SimplifiedEvent : public TObject
     int fEventFinderMethod;        ///< the event finder method converted from #CCMEventFinderID_t
     int fAccumWaveformMethod;        ///< the method used to build the accumulated waveform #CCMAccumWaveformMethod_t
     float fThreshold;                    ///< threshold used for finding the event
-    int fPMTHits;                    ///< true if there is another triggerable event
+    int fPMTHits;                    ///< number of PMTs with charge in the prompt region
+    int fPMTHits20;                    ///< number of PMTs with charge in the first 20ns
+    int fPMTHits40;                    ///< number of PMTs with charge in the first 40ns
+    int fPMTHits60;                    ///< number of PMTs with charge in the first 60ns
     std::vector<std::pair<int,float>> fPMTHitsVec; ///< amount of charge in each PMT for the prompt region
+    std::vector<std::pair<int,float>> fPMTHits20Vec; ///< amount of charge in each PMT for the first 20 ns
+    std::vector<std::pair<int,float>> fPMTHits40Vec; ///< amount of charge in each PMT for the first 40 ns
+    std::vector<std::pair<int,float>> fPMTHits60Vec; ///< amount of charge in each PMT for the first 60 ns
+    std::vector<std::pair<int,float>> fPMTHitsStartVec; ///< time when first light was seen by each PMT
     float fLargestPMTFraction;          ///< fraction of PMT with the most charge
 
 
@@ -233,7 +259,7 @@ class SimplifiedEvent : public TObject
     std::map<int,std::pair<std::vector<float>,std::vector<int>>> fPMTWaveform; //!
     mutable std::map<int,std::pair<std::vector<float>,std::vector<int>>>::const_iterator fPMTWaveformItr; //! do not save to file
 
-  ClassDef(SimplifiedEvent,11)  //SimplifiedEvent class
+  ClassDef(SimplifiedEvent,12)  //SimplifiedEvent class
 };
 
 #endif

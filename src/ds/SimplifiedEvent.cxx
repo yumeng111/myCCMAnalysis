@@ -57,6 +57,13 @@ SimplifiedEvent::SimplifiedEvent(const SimplifiedEvent & rhs) : TObject(rhs)
 
   fPMTHits             = rhs.fPMTHits;
   fPMTHitsVec         = rhs.fPMTHitsVec;
+  fPMTHits20             = rhs.fPMTHits20;
+  fPMTHits20Vec         = rhs.fPMTHits20Vec;
+  fPMTHits40             = rhs.fPMTHits40;
+  fPMTHits40Vec         = rhs.fPMTHits40Vec;
+  fPMTHits60             = rhs.fPMTHits60;
+  fPMTHits60Vec         = rhs.fPMTHits60Vec;
+  fPMTHitsStartVec         = rhs.fPMTHitsStartVec;
 
   fAccWaveformCount    = rhs.fAccWaveformCount;
   fAccWaveformInt      = rhs.fAccWaveformInt;
@@ -133,6 +140,13 @@ void SimplifiedEvent::Reset()
 
   fPMTHits = 0;
   fPMTHitsVec.clear();
+  fPMTHits20 = 0;
+  fPMTHits20Vec.clear();
+  fPMTHits40 = 0;
+  fPMTHits40Vec.clear();
+  fPMTHits60 = 0;
+  fPMTHits60Vec.clear();
+  fPMTHitsStartVec.clear();
 
   if (!fAccWaveformCount.empty()) {
     fAccWaveformCount.clear();

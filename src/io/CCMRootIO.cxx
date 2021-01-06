@@ -16,6 +16,10 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <numeric>
+#include <algorithm>
+#include <iterator>
+#include <fstream>
 
 #include "MsgLog.h"
 #include "CCMRootIO.h"
@@ -58,6 +62,8 @@ CCMRootIO::CCMRootIO()
     fTriggerNumber = 0;
     fReadOK = false;
     fNWrite = 0;
+
+    fMT.seed(fRD());
 }
 
 //__________________________________________________
@@ -540,5 +546,96 @@ void CCMRootIO::SetParameter(std::string name, std::string value)
     }
     fEventHandle->SetSaveBranches(branches);
   }
+}
+
+//--------------------------------------------------------------------
+uint32_t CCMRootIO::GetNumOfEvents(std::string fromFile)
+{
+  fInFileEntries.assign(fInFileList.size(),0);
+  fInFileEntriesCDF.assign(fInFileList.size(),0.0);
+
+  if (!fromFile.empty()) {
+    std::map<std::string,uint32_t> fileEntries;
+    std::string tempString = "";
+    uint32_t entries = 0;
+    std::ifstream infile(fromFile.c_str());
+    while (infile >> tempString >> entries) {
+      fileEntries.emplace(tempString,entries);
+    }
+    size_t numFiles = NumInputFiles();
+    for (size_t file = 0; file < numFiles; ++file) {
+      auto it = fileEntries.find(fInFileList[file]);
+      if (it == fileEntries.end()) {
+        MsgWarning(MsgLog::Form("Could not find file %s already listed setting to 0",fInFileList[file].c_str()));
+        fInFileEntries[file] = 0;
+        continue;
+      }
+      fInFileEntries[file] = it->second;
+    }
+  } else {
+    std::string currentFileName = CurrentFileName();
+    auto currentEvent = GetTriggerNumber();
+
+    MsgInfo(MsgLog::Form("CurrentFileName %s currentEvent %zu",currentFileName.c_str(),currentEvent));
+
+    GoToFile(FileName(0));
+
+    size_t fileNum = 0;
+    while (fReadOK) {
+      fInFileEntries[fileNum] = fEventHandle->NumOfEntries();
+      MsgInfo(MsgLog::Form("File %s numEntries %zu",CurrentFileName(),fInFileEntries[fileNum]));
+      AdvanceFile();
+      ++fileNum;
+      while (!fReadOK && fileNum < NumInputFiles()) {
+        fInFileEntries[fileNum] = 0;
+        MsgInfo(MsgLog::Form("File %s numEntries 0",CurrentFileName()));
+        AdvanceFile();
+        ++fileNum;
+      }
+    }
+
+    GoToFile(currentFileName.c_str());
+    GoTo(currentEvent);
+  }
+
+  uint32_t count = std::accumulate(fInFileEntries.begin(),fInFileEntries.end(),0);
+  std::partial_sum(fInFileEntries.begin(),fInFileEntries.end(),fInFileEntriesCDF.begin());
+
+  MsgInfo(MsgLog::Form("Number of Events: %zu",count));
+
+  return count;
+}
+
+//--------------------------------------------------------------------
+uint32_t CCMRootIO::GoToRandom()
+{
+  std::uniform_int_distribution<> uniform(0,fInFileEntriesCDF.back());
+
+  uint32_t ranVal = uniform(fMT);
+  //MsgInfo(MsgLog::Form("Random Number = %zu (front is at %zu)",ranVal,fInFileEntriesCDF.front()));
+  if (ranVal < fInFileEntriesCDF.front()) {
+    //MsgInfo(MsgLog::Form("Going to first file at entry %zu out of %zu",ranVal,fInFileEntriesCDF.front()));
+    GoToFile(FileName(0));
+    return GoTo(ranVal);
+  }
+
+  auto itFile = std::lower_bound(fInFileEntriesCDF.begin(),fInFileEntriesCDF.end(),ranVal);
+  if (itFile == fInFileEntriesCDF.end()) {
+    //MsgInfo(MsgLog::Form("Going to last file at entry %zu",fInFileEntries.back()-1));
+    GoToFile(FileName(fInFileEntriesCDF.size()-1));
+    return GoTo(fInFileEntries.back()-1);
+  }
+
+  size_t fileNum = std::distance(fInFileEntriesCDF.begin(),itFile);
+  while((*itFile > ranVal || fInFileEntries.at(fileNum) == 0) && itFile != fInFileEntriesCDF.begin()) {
+    std::advance(itFile,-1);
+    fileNum = std::distance(fInFileEntriesCDF.begin(),itFile);
+  }
+
+  uint32_t entry = ranVal - *itFile;
+  //MsgInfo(MsgLog::Form("Going to file %zu at entry %zu out of %zu",fileNum,entry,fInFileEntries.at(fileNum)));
+
+  GoToFile(FileName(fileNum));
+  return GoTo(entry);
 }
 

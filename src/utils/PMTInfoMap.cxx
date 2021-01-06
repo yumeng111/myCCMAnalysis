@@ -336,7 +336,8 @@ int PMTInfoMap::ConvertHVBoardChanToKey(const int & box, const int & channel, bo
   for (const auto & pmtInfo : fgPMTInfo) {
     if (veto && !pmtInfo.second->Is1in()) {
       continue;
-    } else if (!veto && pmtInfo.second->Is1in()) {
+    } 
+    if (!veto && pmtInfo.second->Is1in()) {
       continue;
     }
     if (pmtInfo.second->GetHVBoard() == box && pmtInfo.second->GetHVBoardChan() == channel) {
@@ -420,23 +421,19 @@ bool PMTInfoMap::IsActive(int key)
     return false;
   }
 
-  if (std::find(fgHVOffList.begin(),fgHVOffList.end(),key) == fgHVOffList.end()) {
+  if (itMap->second->GetLocName().find("EJ") != std::string::npos) {
+    return false;
+  }
+
+  if (itMap->second->GetColumn() < 0) {
+    return false;
+  }
+
+  if (std::find(fgHVOffList.begin(),fgHVOffList.end(),key) != fgHVOffList.end()) {
     return true;
   }
 
-  return false;
-
-  //if (itMap->second->GetADCToPEDer() <= 0) {
-  //  return false;
-  //}
-
-  //if (itMap->second->GetBoard() != 9) {
-  //  return false;
-  //}
-
-  //return itMap->second->GetColumn() >= 0;
-  //return ((itMap->second->GetRow() >= 1) && (itMap->second->GetRow() <= 5)) || (itMap->second->GetRow() == 7);
-  //return true;
+  return true;
 }
 
 /*!************************************************************************************************
@@ -538,6 +535,10 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
     return;
   }
 
+  if (!fgHVOffList.empty()) {
+    fgHVOffList.clear();
+  }
+
   if (fileName == "default" || fileName == "") {
     std::string env = std::getenv("CCMPROJECT");
     fileName = env + "/calibrationFiles/2019/hv_off_2019.csv";
@@ -548,13 +549,7 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
   int board = 0;
   int chan = 0;
   std::string line;
-  while (hvOffList.good()) {
-    getline(hvOffList,line);
-    if (hvOffList.eof()) {
-      break;
-    }
-    std::stringstream ss(line);
-    ss >> board >> chan;
+  while (hvOffList >> board >> chan) {
     int key = ConvertHVBoardChanToKey(board,chan);
 
     if (MsgLog::GetGlobalDebugLevel() >= 1) {
@@ -566,7 +561,7 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
     }
 
     if (std::find(fgHVOffList.begin(),fgHVOffList.end(),key) == fgHVOffList.end()) {
-      fgHVOffList.push_back(key);
+      fgHVOffList.emplace_back(key);
     }
   }
   hvOffList.close();

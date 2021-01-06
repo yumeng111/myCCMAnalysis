@@ -8,8 +8,10 @@
 #include <map>
 #include <utility>
 
-//class TFile;
+class TFile;
 //class TH1D;
+class TH2D;
+class TRandom3;
 
 class CCMPMTResponse : public CCMModule
 {
@@ -70,12 +72,14 @@ class CCMPMTResponse : public CCMModule
     std::random_device fRD;
     std::mt19937_64 fMT;
     std::uniform_real_distribution<double> fUniform;
+    std::shared_ptr<TRandom3> fTRandom;
 
     std::map<int,std::pair<double,double>> fSPEWeights;
+    std::map<int,std::shared_ptr<TH2D>> fSPEHists;
     std::map<int,std::vector<double>> fWaveforms;
     //std::map<int,std::shared_ptr<TH1D>> fWaveformsHist;
 
-    //TFile * fFile;
+    TFile * fPMTSPEFile;
 
     double fHighEnergy;// = 4.0;
     double fLowEnergy;// = 2.0;

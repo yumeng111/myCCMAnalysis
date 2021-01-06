@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <vector>
 #include <memory>
+#include <random>
 
 #include "Utility.h"
 #include "CCMEventTreeHandle.h"
@@ -189,6 +190,8 @@ class CCMRootIO
     int WriteTrigger();
 
     uint32_t NumInputFiles() { return fInFileList.size(); }
+    uint32_t GetNumOfEvents(std::string fileName = "");
+    uint32_t GoToRandom();
 
     uint32_t GetTriggerNumber() { return fTriggerNumber; }
 
@@ -213,6 +216,8 @@ class CCMRootIO
     std::shared_ptr<TFile> fInFile;                 ///< Input file pointer
     bool fOwnHandle;
     std::vector<std::string> fInFileList;       ///< List of files attached
+    std::vector<uint32_t> fInFileEntries;
+    std::vector<uint32_t> fInFileEntriesCDF;
 
     //Output stream data
     std::string fOutFileName;                   ///< Name of the output file
@@ -220,6 +225,9 @@ class CCMRootIO
     uint32_t    fNWrite;                ///< Number of events written
     uint32_t    fFlushFreq;                     ///< Flush output every n events
     long long   fOutSizeLimit;                  ///< Output size limit
+
+    std::random_device fRD;
+    std::mt19937_64 fMT;
 
     //static std::shared_ptr<CCMRootIO> fgInstance; ///< static instance for the class
 };

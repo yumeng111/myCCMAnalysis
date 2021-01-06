@@ -47,7 +47,10 @@ CCMFindEvents::CCMFindEvents(const char* version)
     fNumTriggers(0),
     fNumEvents(0),
     fResetEvents(false),
-    fFixedLength(0)
+    fFixedLength(0),
+    fAvgFarBack(0),
+    fAvgFarBack2(0),
+    fAvgFarBackCount(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
@@ -64,7 +67,10 @@ CCMFindEvents::CCMFindEvents(const CCMFindEvents& clufdr)
   fNumTriggers(clufdr.fNumTriggers),
   fNumEvents(clufdr.fNumEvents),
   fResetEvents(clufdr.fResetEvents),
-  fFixedLength(clufdr.fFixedLength)
+  fFixedLength(clufdr.fFixedLength),
+  fAvgFarBack(clufdr.fAvgFarBack),
+  fAvgFarBack2(clufdr.fAvgFarBack2),
+  fAvgFarBackCount(clufdr.fAvgFarBackCount)
 {
   // copy constructor
 }
@@ -95,6 +101,8 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
   fEvents->SetBeamTime(fAccumWaveform->GetBeamOffset());
   fEvents->SetBeamIntegral(fAccumWaveform->GetBeamIntegral());
   fEvents->SetBeamLength(fAccumWaveform->GetBeamLength());
+
+  fEvents->SetTriggerTime(fAccumWaveform->GetTriggerTime());
 
   // count trigger
   ++fNumTriggers;
@@ -233,9 +241,9 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
 {
   // find where the first peak is in the event
   int peakLoc = startBin;
-  for (int bin2 = startBin; bin2 < Utility::fgkNumBins-1; ++bin2) {
-    if (fAccumWaveform->GetIndex(bin2+1,fAccumWaveformMethodID,kCCMIntegralTimeID) < 
-        fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID)) {
+  for (int bin2 = std::max(startBin,0); bin2 < Utility::fgkNumBins-1; ++bin2) {
+    if (bin2 >= startBin && (fAccumWaveform->GetIndex(bin2+1,fAccumWaveformMethodID,kCCMIntegralTimeID) < 
+        fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID))) {
       peakLoc = bin2;
       break;
     } // end if integralTime->at(bin2+1) < ...
@@ -244,10 +252,11 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
     MsgDebug(4,MsgLog::Form("event %ld Peak Location = %d",fEvents->GetEventNumber(),peakLoc));
   }
 
+
   // recalculte the start time based on the rise slope of the event
-  if ((peakLoc+startBin)/2-startBin <= 3) {
-    return startBin;
-  }
+  //if ((peakLoc+startBin)/2-startBin <= 3) {
+  //  return startBin;
+  //}
 
   std::vector<float> xPoints;
   std::vector<float> yPoints;
@@ -255,13 +264,24 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
   float c0 = 0;
   float c1 = 0;
 
-  for (int bin2 = startBin; bin2 < (peakLoc+startBin)/2; ++bin2) {
+  //int oldStartBin = startBin;
+
+  for (int bin2 = std::max(startBin-6,0); bin2 < peakLoc; ++bin2) {
     if (MsgLog::GetGlobalDebugLevel() >= 6) {
       MsgDebug(6,MsgLog::Form("event %ld Peak location loop bin %d",fEvents->GetEventNumber(),bin2));
     }
-    xPoints.push_back(bin2);
-    yPoints.push_back(fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID));
+    auto value = fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID);
+    if (value != 0) {
+      xPoints.emplace_back(bin2);
+      yPoints.emplace_back(value);
+    }
   }
+  if (xPoints.size() <= 3) {
+    xPoints.clear();
+    yPoints.clear();
+    return startBin;
+  }
+
   Utility::LinearUnweightedLS(xPoints.size(),&xPoints.front(),&yPoints.front(),c0,c1);
   if (MsgLog::GetGlobalDebugLevel() >= 6) {
     MsgDebug(6,"Did LinearUnweightedLS");
@@ -287,6 +307,7 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
   yPoints.clear();
 
   return startBin;
+
 } // end int CCMFindEvents::ExtrapolateStartTime
 
 //-------------------------------------------------------------------------------------------------
@@ -299,7 +320,11 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   auto pmtInfo = PMTInfoMap::GetPMTInfo(0);
 
   float largestPMTFraction = 0.0;
+  float promptTime = 0;
   float prompt90 = 0;
+  float prompt60 = 0;
+  float prompt40 = 0;
+  float prompt20 = 0;
   float promptCoated = 0.0;
   float promptFit = 0;
   float promptUncoated = 0.0;
@@ -318,6 +343,9 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
 
   int current = 0;
   int end90nsBin = 0;
+  int end60nsBin = 0;
+  int end40nsBin = 0;
+  int end20nsBin = 0;
   int endTotalBin = 0;
   int maxVeto = 0;
   int maxVetoEnd = 0;
@@ -325,7 +353,6 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   int maxVetoPromptEnd = 0;
   int maxVetoPromptStart = 0;
   int maxVetoStart = 0;
-  int numPMTs = 0;
   int pmt = 0;
   int start = 0;
   int vetoActivityBottom = 0;
@@ -348,20 +375,30 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
 
   std::vector<float> energy;
   std::vector<float> hits;
-  std::vector<std::pair<int,float>> percentOfPMT;
+
+  std::vector<std::pair<int,float>> pmtTimeVec;
+  std::vector<std::pair<int,float>> pmt90Vec;
+  std::vector<std::pair<int,float>> pmt60Vec;
+  std::vector<std::pair<int,float>> pmt40Vec;
+  std::vector<std::pair<int,float>> pmt20Vec;
+
   std::vector<int> count;
-  //int numBins20ns = 20.0/Utility::fgkBinWidth;
-  int numBins90ns = 90.0/Utility::fgkBinWidth;
-  //int numBins30ns = 30.0/Utility::fgkBinWidth;
-  //int numBins1p6us = 1.6e3/Utility::fgkBinWidth;
-  //int prevStart = -1000;
+  const int kNumBins20ns = 20.0/Utility::fgkBinWidth;
+  const int kNumBins40ns = 40.0/Utility::fgkBinWidth;
+  const int kNumBins60ns = 60.0/Utility::fgkBinWidth;
+  const int kNumBins90ns = 90.0/Utility::fgkBinWidth;
+  //const int kNumBins30ns = 30.0/Utility::fgkBinWidth;
+  //const int kNumBins1p6us = 1.6e3/Utility::fgkBinWidth;
 
   // calculate start and end time of event
   float startTime = Utility::ShiftTime(startBin,fAccumWaveform->GetBeamOffset());
   float endTime = Utility::ShiftTime(endBin,fAccumWaveform->GetBeamOffset());
 
-  start = std::max(startBin - numBins90ns,0);
-  end90nsBin = std::min(startBin+numBins90ns,Utility::fgkNumBins-1);;
+  start = std::max(startBin - kNumBins90ns,0);
+  end90nsBin = std::min(startBin+kNumBins90ns,Utility::fgkNumBins-1);
+  end60nsBin = std::min(startBin+kNumBins60ns,Utility::fgkNumBins-1);
+  end40nsBin = std::min(startBin+kNumBins40ns,Utility::fgkNumBins-1);
+  end20nsBin = std::min(startBin+kNumBins20ns,Utility::fgkNumBins-1);
   endTotalBin = std::min(endBin,Utility::fgkNumBins-1);
 
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
@@ -375,7 +412,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   maxVetoPrompt = 0;
   maxVetoPromptStart = 0;
   maxVetoPromptEnd = 0;
-  vetoIntLength = std::min(numBins90ns,endBin-start);
+  vetoIntLength = std::min(kNumBins90ns,endBin-start);
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
     MsgDebug(4,MsgLog::Form("Length of veto integral = %d",vetoIntLength));
   }
@@ -472,11 +509,22 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   totalCoated = 0.0;
   totalUncoated = 0.0;
   promptFit = 0;
-  if (!percentOfPMT.empty()) {
-    percentOfPMT.clear();
+  if (!pmt90Vec.empty()) {
+    pmt90Vec.clear();
+  }
+  if (!pmtTimeVec.empty()) {
+    pmtTimeVec.clear();
+  }
+  if (!pmt60Vec.empty()) {
+    pmt60Vec.clear();
+  }
+  if (!pmt40Vec.empty()) {
+    pmt40Vec.clear();
+  }
+  if (!pmt20Vec.empty()) {
+    pmt20Vec.clear();
   }
   largestPMTFraction = 0.0;
-  numPMTs = 0;
 
   if (MsgLog::GetGlobalDebugLevel() >= 6) {
     MsgDebug(6,"Loop over pmts");
@@ -507,14 +555,32 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
       MsgDebug(7,Form("PMT %d first 90ns",pmt));
     }
     prompt90 = fAccumWaveform->Integrate(startBin,end90nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
+    prompt60 = fAccumWaveform->Integrate(startBin,end60nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
+    prompt40 = fAccumWaveform->Integrate(startBin,end40nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
+    prompt20 = fAccumWaveform->Integrate(startBin,end20nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
+
+    promptTime = fAccumWaveform->FindFirstNoneEmptyBin(startBin,end90nsBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
+
+    if (prompt90 < 0) {
+      MsgWarning(MsgLog::Form("For PMT %d the prompt light is negative (%g)",pmt,prompt90));
+    }
 
     fAccumWaveform->CopyVec<int>(count,startBin,endTotalBin,fAccumWaveformMethodID,kCCMPMTWaveformCountID,pmt);
     fAccumWaveform->CopyVec<float>(energy,startBin,endTotalBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
     event->AddPMTWaveforms(pmt,count,energy);
 
     if (prompt90 != 0) {
-      ++numPMTs;
-      percentOfPMT.push_back(std::make_pair(pmt,prompt90));
+      pmt90Vec.emplace_back(pmt,prompt90);
+      pmtTimeVec.emplace_back(pmt,promptTime);
+    }
+    if (prompt60 != 0) {
+      pmt60Vec.emplace_back(pmt,prompt60);
+    }
+    if (prompt40 != 0) {
+      pmt40Vec.emplace_back(pmt,prompt40);
+    }
+    if (prompt20 != 0) {
+      pmt20Vec.emplace_back(pmt,prompt20);
     }
     if (prompt90 > largestPMTFraction) {
       largestPMTFraction = prompt90;
@@ -536,8 +602,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
       }
     }
     if (prompt90) {
-      pos += *(pmtInfo->GetPosition())*prompt90*prompt90;
-      promptFit += prompt90*prompt90;
+      pos += *(pmtInfo->GetPosition())*prompt20*prompt20;
+      promptFit += prompt20*prompt20;
     }
   } // end for over all digitizer channels
   pos *= 1.0/promptFit;
@@ -599,7 +665,11 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   event->SetNumVetoFront(vetoActivityPromptCFront,true);
   event->SetNumVetoBack(vetoActivityPromptCBack,true);
 
-  event->SetPMTHits(percentOfPMT);
+  event->SetPMTHits(pmt90Vec);
+  event->SetPMTHits60(pmt60Vec);
+  event->SetPMTHits40(pmt40Vec);
+  event->SetPMTHits20(pmt20Vec);
+  event->SetPMTHitsStart(pmtTimeVec);
 
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
     MsgDebug(4,"Add Event");
@@ -613,18 +683,18 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   event->Reset();
 
   // currently not using the commented out code
-  //float avgPercent = std::accumulate(percentOfPMT.begin(),percentOfPMT.end(),0.0);
-  //avgPercent /= static_cast<float>(percentOfPMT.size());
+  //float avgPercent = std::accumulate(pmt90Vec.begin(),pmt90Vec.end(),0.0);
+  //avgPercent /= static_cast<float>(pmt90Vec.size());
   //float sigmaPercent = 0.0;
   //float skewPercent = 0.0;
-  //for (const auto & pmt : percentOfPMT) {
+  //for (const auto & pmt : pmt90Vec) {
   //  sigmaPercent += std::pow(pmt-avgPercent,2.0);
   //  skewPercent += std::pow(pmt-avgPercent,3.0);
   //}
   //skewPercent = skewPercent /
-  //              static_cast<float>(percentOfPMT.size()) /
-  //              std::pow(1.0/(static_cast<float>(percentOfPMT.size())-1.0)*sigmaPercent,3.0/2.0);
-  //sigmaPercent = std::sqrt(1.0/(static_cast<float>(percentOfPMT.size())-1.0)*sigmaPercent);
+  //              static_cast<float>(pmt90Vec.size()) /
+  //              std::pow(1.0/(static_cast<float>(pmt90Vec.size())-1.0)*sigmaPercent,3.0/2.0);
+  //sigmaPercent = std::sqrt(1.0/(static_cast<float>(pmt90Vec.size())-1.0)*sigmaPercent);
 
   if (MsgLog::GetGlobalDebugLevel() >= 3) {
     MsgDebug(3,"End of SaveEvent");

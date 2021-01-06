@@ -88,6 +88,7 @@ class Events : public TObject
 
     size_t GetNumEvents() { return fNumEvents; }
     float GetTriggerTime() { return fTriggerTime; }
+    void SetTriggerTime(float time) { fTriggerTime = time; }
 
     size_t GetNumEvents() const { return fNumEvents; }
     float GetTriggerTime() const { return fTriggerTime; }

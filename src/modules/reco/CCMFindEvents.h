@@ -79,6 +79,9 @@ class CCMFindEvents : public CCMModule
 
     int fResetEvents;
     int fFixedLength;
+    double fAvgFarBack;
+    double fAvgFarBack2;
+    double fAvgFarBackCount;
 };
 
 #endif // CCMFindEvents_h
