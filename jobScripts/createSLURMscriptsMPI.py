@@ -11,8 +11,8 @@ import argparse
 import sys
 
 # -------- default settings ------------------------
-inputDir      = os.getenv("CCMRAW")+"/"
-outputDir     = os.getenv("CCMPROCESSED")+"/na22_20191221/"
+inputDir      = os.getenv("CCMINSTALL")+"/"
+outputDir     = os.getenv("CCMINSTALL")+"/"
 defaultSLURM  = "findEvents_slurm.script"
 defaultXML    = "findEventsConfig.xml"
 hvOffList     = os.getenv("CCMINSTALL")+"/mappings/hv_off_2019.csv"
@@ -98,18 +98,24 @@ if not os.path.exists(xmlScript):
 
 run = ""
 
+scriptNum = 0
+
 count = 0
 for rawFile in rawList:
   baseName = os.path.basename(rawFile.replace(".root", "_%s.root"%(options.run_type)))
   outName = outputDir+"/"+baseName
 
-  if os.path.exists(outName) and not options.rewrite:
-    continue
+  #if os.path.exists(outName) and not options.rewrite:
+  #  continue
 
   start = baseName.find("run")
   end = baseName.find(inputEndString)
   run = baseName[start:end]
   jobName = options.job_name_prefix+run
+
+  if run == "":
+    run = rawFile.replace(".root","")
+    run = run.replace(inputDir+"/","")
 
   print("run ",run, " out ",outName)
 
@@ -119,7 +125,8 @@ for rawFile in rawList:
 
   print("len(currentXMLList) ",len(currentXMLList))
 
-  if len(currentXMLList) == 12:
+  if len(currentXMLList) == 34:
+    scriptNum = scriptNum + 1
     slurmScript = outputDir+"/scripts/"+"findEvents_slurm_"+run+".script"
     appScript = outputDir+"/scripts/"+"findEvents_mpiapp_"+run
     slurmScripts.append(slurmScript)
