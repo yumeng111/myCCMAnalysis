@@ -141,7 +141,7 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
 
     // extrapolate the start time of the event with a linear
     // fit to the rising slope of the accumulated pulse
-    startBin = ExtrapolateStartTime(startBin);
+    //startBin = ExtrapolateStartTime(startBin);
 
     if (startBin >= static_cast<int>(Utility::fgkNumBins)) {
       MsgFatal(MsgLog::Form("Start Bin is greater than or equal to total number of bins: event %ld bin %zu startBin %d",

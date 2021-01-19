@@ -29,6 +29,7 @@
 #include <array>
 #include <cctype>
 
+
 //See CCMModuleTable for info
 MODULE_DECL(CCMPMTResponse);
 
@@ -44,6 +45,7 @@ CCMPMTResponse::CCMPMTResponse(const char* version)
     fSPEWeights(),
     fSPEHists(),
     fWaveforms(),
+    fPMTRelEff(),
     //fWaveformsHist(),
     fPMTSPEFile(nullptr),
     fHighEnergy(4.0),
@@ -74,6 +76,7 @@ CCMPMTResponse::CCMPMTResponse(const CCMPMTResponse& clufdr)
   fSPEWeights(clufdr.fSPEWeights),
   fSPEHists(clufdr.fSPEHists),
   fWaveforms(clufdr.fWaveforms),
+  fPMTRelEff(clufdr.fPMTRelEff),
   //fWaveformsHist(clufdr.fWaveformsHist),
   fPMTSPEFile(clufdr.fPMTSPEFile),
   fHighEnergy(clufdr.fHighEnergy),
@@ -158,7 +161,7 @@ CCMResult_t CCMPMTResponse::ProcessTrigger()
     energy = fMCTruth->GetHitEnergy(hit);
     angle = fMCTruth->GetHitAngle(hit);
 
-    if (!PMTQE(energy,angle)) {
+    if (!PMTQE(key,energy,angle)) {
       continue;
     }
 
@@ -240,6 +243,17 @@ void CCMPMTResponse::Configure(const CCMConfig& c )
     fPMTSPEFile = TFile::Open(tempString.c_str(),"READ");
   }
 
+  c("PMTRelEff").Get(tempString);
+  if (!tempString.empty()) {
+    MsgInfo(MsgLog::Form("\t-Getting PMTRelEff from %s",tempString.c_str()));
+    std::ifstream file(tempString.c_str());
+    std::copy(std::istream_iterator<std::pair<int,double>>(file),
+              std::istream_iterator<std::pair<int,double>>(),
+              std::insert_iterator<std::map<int,double>>(fPMTRelEff,fPMTRelEff.begin()));
+    file.close();
+    MsgInfo(MsgLog::Form("\t\t-fPMTRelEff size = %zu",fPMTRelEff.size()));
+  }
+
   MsgInfo(MsgLog::Form("\t-Seed values %d fMT output %u",seed,fMT()));
   MsgInfo(MsgLog::Form("\t-QE: %0.2f",fQE));
   MsgInfo(MsgLog::Form("\t-HighEnergy: %0.2f",fHighEnergy));
@@ -270,7 +284,7 @@ CCMResult_t CCMPMTResponse::EndOfJob()
 }
 
 //_______________________________________________________________________________________
-bool CCMPMTResponse::PMTQE(double energy, double angle)
+bool CCMPMTResponse::PMTQE(size_t key, double energy, double angle)
 {
   if (energy > fHighEnergy || energy < fLowEnergy) {
     return false;
@@ -278,8 +292,26 @@ bool CCMPMTResponse::PMTQE(double energy, double angle)
 
   //the following will sample [0,1)
   //if you want [0,1] please let me know
-  double testval = fUniform(fMT); 
 
+  if (!fPMTRelEff.empty()) {
+    auto relEff = fPMTRelEff.find(key);
+    if (relEff == fPMTRelEff.end()) {
+      return false;
+    }
+
+    // since the maximum relEff is equal to 1
+    // we want to throw away PE if a random number
+    // is greater than the relEff. So the PMT
+    // that is seen to have the maximum gain
+    // will have no hits thrown away since it
+    // has a relEff of 1
+    double testval = fUniform(fMT); 
+    if (testval > relEff->second) {
+      return false;
+    }
+  }
+
+  double testval = fUniform(fMT);
   if (angle < 0) {
     angle = 0.0;
   }

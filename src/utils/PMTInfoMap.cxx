@@ -85,7 +85,7 @@ void PMTInfoMap::FillPMTMap(TTree * tree)
               key,pmtInfo->GetBoard(),pmtInfo->GetBoardChan(),pmtInfo->GetColumn(),pmtInfo->GetRow(),
               pmtInfo->IsUncoated(),pmtInfo->GetLocName().c_str()));
       }
-      fgPMTInfo.insert(std::make_pair(key,new PMTInformation(*pmtInfo)));
+      fgPMTInfo.emplace(key,new PMTInformation(*pmtInfo));
     }
   }
 
@@ -252,7 +252,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
       fgMaxKey = std::max(fgMaxKey,static_cast<size_t>(key));
       fgMinKey = std::min(fgMinKey,static_cast<size_t>(key));
 
-      fgPMTInfo.insert(std::make_pair(key,new PMTInformation()));
+      fgPMTInfo.emplace(key,new PMTInformation());
       std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.find(key);
       if (itMap == fgPMTInfo.end()) {
         MsgFatal(MsgLog::Form("pmt key %d was not added tothe map",key));

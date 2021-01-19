@@ -278,3 +278,11 @@ void Utility::IndirectFileList(const char* file, std::vector<std::string>& infil
   infile.close();
 }
 
+std::istream& std::operator >> (std::istream& is, std::pair<int, double>& ps)
+{
+  return is >> ps.first >> ps.second;
+}
+std::ostream& std::operator << (std::ostream& os, const std::pair<const int, double>& ps)
+{
+  return os << ps.first << "==>>" << ps.second;
+}

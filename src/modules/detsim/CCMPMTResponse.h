@@ -54,7 +54,7 @@ class CCMPMTResponse : public CCMModule
     void ConnectMCTruth(std::shared_ptr<MCTruth> mcTruth) { fMCTruth = mcTruth; }
     void ConnectPulses(std::shared_ptr<Pulses> pulses) { fPulses = pulses; }
 
-   bool PMTQE(double energy, double angle); 
+   bool PMTQE(size_t key, double energy, double angle); 
    void FillSPEWeights();
    void GetADCValueAndLength(size_t key, double & adc, double & length);
    void AddToWaveform(int key, double time, double adc, double length);
@@ -77,6 +77,7 @@ class CCMPMTResponse : public CCMModule
     std::map<int,std::pair<double,double>> fSPEWeights;
     std::map<int,std::shared_ptr<TH2D>> fSPEHists;
     std::map<int,std::vector<double>> fWaveforms;
+    std::map<int,double> fPMTRelEff;
     //std::map<int,std::shared_ptr<TH1D>> fWaveformsHist;
 
     TFile * fPMTSPEFile;

@@ -37,7 +37,9 @@ MODULE_DECL(CCMStrobeOverlay);
 CCMStrobeOverlay::CCMStrobeOverlay(const char* version) 
   : CCMModule("CCMStrobeOverlay"),
     fAccumWaveform(nullptr),
-    fStrobeData(nullptr)
+    fStrobeData(nullptr),
+    fTotalTriggers(0),
+    fNumOverLap(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
@@ -47,7 +49,9 @@ CCMStrobeOverlay::CCMStrobeOverlay(const char* version)
 CCMStrobeOverlay::CCMStrobeOverlay(const CCMStrobeOverlay& clufdr) 
 : CCMModule(clufdr),
   fAccumWaveform(clufdr.fAccumWaveform),
-  fStrobeData(clufdr.fStrobeData)
+  fStrobeData(clufdr.fStrobeData),
+  fTotalTriggers(clufdr.fTotalTriggers),
+  fNumOverLap(clufdr.fNumOverLap)
 {
   // copy constructor
 }
@@ -65,27 +69,43 @@ CCMResult_t CCMStrobeOverlay::ProcessTrigger()
     MsgDebug(1,"Starting StrobeOverlay for MC \"Event\"");
   }
 
+  double before = fAccumWaveform->Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+  if (before == 0) {
+    return kCCMFailure;
+  }
+
   if (fStrobeData == nullptr) {
     return kCCMSuccess;
   }
-  
-  if (!fStrobeData->ReadOK()) {
-    if (!fStrobeData->AdvanceFile()) {
-      MsgFatal("Did not pass enough strobe events");
+  fStrobeData->GoToRandom();
+  auto rhs = fStrobeData->GetAccumWaveform();
+  double strobe = rhs.Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+  if (strobe == 0) {
+    return kCCMSuccess;
+  }
+
+  bool overLap = false;
+  int triggerTime = std::max(0,static_cast<int>(fAccumWaveform->GetTriggerTime()));
+  for (size_t bin = triggerTime; bin < Utility::fgkNumBins; ++bin) {
+    auto simContent = fAccumWaveform->GetIndex(bin,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+    if (simContent == 0) {
+      continue;
+    }
+
+    auto strobeContent = rhs.GetIndex(bin,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+    if (strobeContent != 0) {
+      overLap = true;
+      break;
     }
   }
 
-  double before = fAccumWaveform->Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+  ++fTotalTriggers;
+  if (overLap) {
+    ++fNumOverLap;
+    return kCCMFailure;
+  }
 
-  auto rhs = fStrobeData->GetAccumWaveform();
-  double strobe = rhs.Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
   fAccumWaveform->operator+=(rhs);
-
-  double after = fAccumWaveform->Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
-
-  MsgInfo(MsgLog::Form("Before %.2f After %.2f Strobe %.2f",before,after,strobe));
-
-  fStrobeData->Advance();
 
   return kCCMSuccess;
 }
@@ -108,6 +128,9 @@ void CCMStrobeOverlay::Configure(const CCMConfig& c )
     fStrobeData->SetParameter("ReadBranches","accumWaveform");
     fStrobeData->SetInFileList(fileList);
     fStrobeData->SetupInputFile();
+    std::string env = std::getenv("CCMINSTALL");
+    std::string fileName = env + "/build/txtFiles/strobeEventNumbers.txt"; 
+    fStrobeData->GetNumOfEvents(fileName);
   }
 
   fIsInit = true;
@@ -116,6 +139,7 @@ void CCMStrobeOverlay::Configure(const CCMConfig& c )
 //_______________________________________________________________________________________
 CCMResult_t CCMStrobeOverlay::EndOfJob() 
 { 
+  MsgInfo(MsgLog::Form("Total Trigger %ld Num Over Lap %ld",fTotalTriggers,fNumOverLap));
   return kCCMSuccess;
 }
 

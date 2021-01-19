@@ -105,8 +105,8 @@ for rawFile in rawList:
   baseName = os.path.basename(rawFile.replace(".root", "_%s.root"%(options.run_type)))
   outName = outputDir+"/"+baseName
 
-  #if os.path.exists(outName) and not options.rewrite:
-  #  continue
+  if os.path.exists(outName) and not options.rewrite:
+    continue
 
   start = baseName.find("run")
   end = baseName.find(inputEndString)

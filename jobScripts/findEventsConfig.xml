@@ -8,7 +8,8 @@
   <Modules type="Reco"> CCMFindEvents </Modules>
   -->
 
-  <Modules type="Reco"> CCMFindEvents </Modules>
+  <Modules type="Reco"> CCMFindPulses CCMSumWaveforms CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
+  <ModuleVersion> default default default dynamic dynamic_pulseCut</ModuleVersion>
 
   <Config name="ROOTSetup" version="default">
     <Param name="ReadBranches"><string>rawData pulses</string>
@@ -16,6 +17,7 @@
       - events
       - rawData
       - pulses
+      - accumWaveform
       - all
       - none
     </Param>
@@ -24,6 +26,7 @@
       - events
       - rawData
       - pulses
+      - accumWaveform
       - all
       - none
     </Param>
@@ -34,16 +37,17 @@
       The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
       Must be the first param in this config
     </Param>
-    <Param name="HVOffFile"><string>HVOFFLIST</string>
+    <Param name="HVOffFile"><string>default</string>
       List of the HV channels that are off.
+      default is $CCMINSTALL/mappings/hv_off_2019.csv
     </Param>
-    <Param name="CalibrationFile"><string>CALIBRATIONFILE</string>
+    <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
       Name of the calibration file to use
     </Param>
   </Config>
 
-  <Config name="CCMFindEvents" version="default">
-    <Param name="TriggerType"><string>TRIGGER</string>
+  <Config name="CCMFindPulses" version="default">
+    <Param name="TriggerType"><string>STROBE</string>
       Only look at triggers with name passed.
       Options are:
        - BEAM
@@ -52,26 +56,91 @@
        - ALL
       and any combination of the three, like BEAM STROBE
     </Param>
-    <Param name="Threshold"><double>THRESHOLD</double>
-      The PE threshold for a 2ns bin to trigger event building
+    <Param name="TruncateWaveform"><int>1</int>
+      if not 0 only the last boards waveforms will be saved
     </Param>
-    <Param name="BuildEventFlag"><int>1</int>
-      Flag to build the events and not just create the accumulated waveform
+    <Param name="FromRootFile"><int>1</int>
+      if not 0 the input file was a root file otherwise a binary file was inputed
     </Param>
-    <Param name="PulseRep"><int>0</int>
-      How to represent the pulses
-      0 = triangular
-      1 = all in start of pulse
+    <Param name="ResetPulses"><int>0</int>
+      if not 0 the pulses object will be cleared (default) otherwise the pulses found will be added to the same object
     </Param>
-    <Param name="PulseTimeCut"><int>1</int>
-      If true put a time cut on the pulse start time
+    <Param name="WriteDBEntry"><int>0</int>
+      if not 0 an entry to will be written to the database
+    </Param>
+  </Config>
+
+  <Config name="CCMBuildAccumWaveform" version="default">
+    <Param name="TriggerType"><string>BEAM</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="BuildMethods"><string>CCMAccumWaveformTriangle CCMAccumWaveformTrianglePulseCut</string>
+      The build methods to use. Options are:
+      CCMAccumWaveformTriangle
+      CCMAccumWaveformTrianglePulseCut
+      CCMAccumWaveformStart
+      CCMAccumWaveformStartPulseCut
     </Param>
     <Param name="PulseTimeLowValue"><double>-9920</double>
       The earliest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
     </Param>
-    <Param name="PulseTimeHighValue"><double>-250</double>
+    <Param name="PulseTimeHighValue"><double>-200</double>
       The latest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
     </Param>
+  </Config>
+
+  <Config name="CCMFindEvents" version="dynamic">
+    <Param name="Threshold"><double> 0.4 </double>
+      The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="ResetEvents"><int>1</int>
+      Flag to reset the Events class. Should only be used in the first instance of CCMFindEvents
+    </Param>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTriangle</string>
+      Which CCMAccumWaveformMethod to use in finding the events
+    </Param>
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+      CCMDynamicLengthEvent
+      CCMFixedLengthEvent
+    </Param>
+    <Param name="FixedLength"><int>0</int>
+      Number of bins for the required length of the event only needed if 
+      EventFinderID == CCMFixedLengthEvent
+    </Param>
+  </Config>
+
+  <Config name="CCMFindEvents" version="dynamic_pulseCut">
+    <Param name="Threshold"><double> 0.4 </double>
+      The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="ResetEvents"><int>0</int>
+      Flag to reset the Events class. Should only be used in the first instance of CCMFindEvents
+    </Param>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTrianglePulseCut</string>
+      Which CCMAccumWaveformMethod to use in finding the events
+    </Param>
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+      CCMDynamicLengthEvent
+      CCMFixedLengthEvent
+    </Param>
+    <Param name="FixedLength"><int>0</int>
+      Number of bins for the required length of the event only needed if 
+      EventFinderID == CCMFixedLengthEvent
+    </Param>
+  </Config>
+
+  <Config name="CCMSumWaveforms" version="default">
+    no parameters needed at this time
   </Config>
 
 

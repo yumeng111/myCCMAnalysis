@@ -18,6 +18,7 @@
 #include <cstring>
 #include <numeric>
 #include <iterator>
+#include <utility>
 
 /*!**********************************************
  * \enum HistInfo_t
@@ -96,6 +97,16 @@ typedef enum {
   kCCMAccumWaveformStartPulseCutID = 3,
   kCCMAccumWaveformTotalID = 4
 } CCMAccumWaveformMethod_t;
+
+namespace std {
+  // I am not happy that I had to put these stream operators in std namespace.
+  // I had to because otherwise std iterators cannot find them 
+  // - you know this annoying C++ lookup rules...
+  // I know one solution is to create new type inter-operable with this pair...
+  // Just to lazy to do this - anyone knows workaround?
+  extern istream& operator >> (istream& is, pair<int, double>& ps);
+  extern ostream& operator << (ostream& os, const pair<const int, double>& ps);
+}
 
 /*!**********************************************
  * \namespace Utility

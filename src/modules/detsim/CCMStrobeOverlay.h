@@ -60,6 +60,9 @@ class CCMStrobeOverlay : public CCMModule
     std::shared_ptr<AccumWaveform> fAccumWaveform;
 
     std::shared_ptr<CCMRootIO> fStrobeData;
+
+    long int fTotalTriggers;
+    long int fNumOverLap;
 };
 
 #endif // CCMStrobeOverlay_h
