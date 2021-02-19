@@ -163,6 +163,8 @@ int RawData::FindFirstNIMSample(int channelNumber)
 {
   int firstSample = 0;
   auto samples = GetSamples(channelNumber);
+  //size_t lengthOfVector = samples.size();
+  //MsgInfo(MsgLog::Form("Length of vector = %zu",lengthOfVector));
   double avgChannelNoise = std::accumulate(samples.begin(),samples.begin()+500,0);
   avgChannelNoise /= 500.0;
   int sample = 0;
@@ -194,6 +196,9 @@ int RawData::FindFirstNIMSample(int channelNumber)
 bool RawData::IsTriggerPresent(std::string triggerName)
 {
   int boardOffset = GetBoard10ChannelOffset();
+  if (boardOffset < 0) {
+    return false;
+  }
 
   if (MsgLog::GetGlobalDebugLevel() >= 5) {
     MsgDebug(5,MsgLog::Form("Board Offset = %d",boardOffset));
@@ -288,8 +293,10 @@ int RawData::GetBoard10ChannelOffset()
 {
   int boardOffset = 0;
   if (GetNumBoards() == 0) {
-    MsgWarning("Something went wrong in that the number of boards = 0");
+    MsgWarning(MsgLog::Form("Something went wrong in that the number of boards = 0, waveform size %zu", GetNumWaveforms()));
+    return -1;
   } else {
+    //MsgInfo(MsgLog::Form("NumWaveforms %zu NumChannels %zu",GetNumWaveforms(),GetNumChannels()));
     if (GetNumWaveforms() != GetNumChannels()) {
       boardOffset = (GetNumBoards()-1)*GetNumChannels();
     }

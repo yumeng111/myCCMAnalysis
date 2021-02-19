@@ -2,17 +2,34 @@
 <TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
 
   <!--
-  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
-  <Modules type="Reco"> CCMNearlineDiag </Modules>
-  <Modules type="Reco"> CCMApplyPreCuts </Modules>
-  <Modules type="Reco"> CCMFindEvents </Modules>
-  -->
-
   <Modules type="Reco"> CCMPMTResponse CCMTimeShift CCMBuildAccumWaveform CCMFindEvents CCMFindEvents CCMNa22Cuts CCMNa22Cuts </Modules>
   <ModuleVersion> default default default dynamic dynamic_pulseCut lengthCut waveformCut </ModuleVersion>
 
+  <Modules type="Reco"> CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
+  <ModuleVersion> default dynamic dynamic_pulseCut </ModuleVersion>
+
+  <Modules type="Reco"> CCMNa22Cuts CCMNa22Cuts </Modules>
+  <ModuleVersion> lengthCut waveformCut </ModuleVersion>
+
+  <Modules type="Reco"> CCMQuenchingFactor CCMPMTResponse CCMTimeShift </Modules>
+  <ModuleVersion> default default default </ModuleVersion>
+
+  <Modules type="Reco"> CCMNa22Cuts </Modules>
+  <ModuleVersion> lengthCut </ModuleVersion>
+
+  <Modules type="Reco"> CCMBuildAccumWaveform CCMFindEvents </Modules>
+  <ModuleVersion> default dynamic </ModuleVersion>
+
+  <Modules type="Reco"> CCMNa22Cuts </Modules>
+  <ModuleVersion> lengthCut </ModuleVersion>
+
+  -->
+
+  <Modules type="Reco"> CCMQuenchingFactor CCMPMTResponse CCMTimeShift CCMBuildAccumWaveform CCMFindEvents </Modules>
+  <ModuleVersion> nucleon default default default dynamic </ModuleVersion>
+
   <Config name="ROOTSetup" version="default">
-    <Param name="ReadBranches"><string>mcTruth pulses</string>
+    <Param name="ReadBranches"><string>mcTruth pulses events</string>
       The branches to read in options are
       - events
       - rawData
@@ -47,6 +64,30 @@
     </Param>
   </Config>
 
+  <Config name = "CCMQuenchingFactor" version = "nucleon">
+    <Param name="RANSEED"><int>123456789</int>
+      The random seed to use for the random number generator
+      If 0, a random seed will be used
+    </Param>
+    <Param name="QF"><double>0.25</double>
+      Quenching factor to apply, should be between 0 and 1
+      About 0.25 for NR
+      Set to 1 for ER
+    </Param>
+  </Config>
+
+  <Config name = "CCMQuenchingFactor" version = "electron">
+    <Param name="RANSEED"><int>123456789</int>
+      The random seed to use for the random number generator
+      If 0, a random seed will be used
+    </Param>
+    <Param name="QF"><double>1</double>
+      Quenching factor to apply, should be between 0 and 1
+      About 0.25 for NR
+      Set to 1 for ER
+    </Param>
+  </Config>
+
   <Config name="CCMPMTResponse" version="default">
     <Param name="RANSEED"><int>123456789</int>
       The random seed to use for the random number generator
@@ -66,6 +107,10 @@
       - default: default is currently set to the triangle options
       - triangle
       - square
+    </Param>
+    <Param name="PMTSPEFile"><string>/lustre/scratch3/turquoise/rtthorn/from_mayank/pulse_length_vs_pulse_integral_run182_rename.root</string>
+      The file name to grab 2D integral vs length distributions
+      if empty, it is assume a relationship is the same for all PMTs
     </Param>
   </Config>
 
@@ -125,7 +170,7 @@
   </Config>
 
   <Config name="CCMStrobeOverlay" version="default">
-    <Param name="FileList"><string>build/txtFiles/strobeAccumWFFiles.txt</string>
+    <Param name="FileList"><string>build/txtFiles/strobeAccumWFFiles_limit.txt</string>
       Name of file that has a list of strobe data to overlay ontop
       of the MC
     </Param>
@@ -309,7 +354,7 @@
   </Config>
 
   <Config name="CCMNa22Cuts" version="waveformCut">
-    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTrianglePulseCut</string>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTriangleCut</string>
       Which CCMAccumWaveformMethod to use in finding the events. 
       Options are:
        - CCMAccumWaveformTriangle

@@ -403,14 +403,19 @@ int CCMRawIO::WriteTrigger()
 void CCMRawIO::Close()
 {
 
-  if(fOutFile.is_open()) {
-    MsgInfo(MsgLog::Form("Wrote %d event(s) to Raw File.",fNWrite));
-    MsgInfo("Closing File.");
-    fOutFile.close();
+  if (fOutFileName != "") {
+    if(fOutFile.is_open()) {
+      MsgInfo(MsgLog::Form("Wrote %d event(s) to Raw File.",fNWrite));
+      MsgInfo("Closing OutFile.");
+      fOutFile.close();
+    }
   }
 
-  if (fInFile.is_open()) {
-    fInFile.close();
+  if (!fInFileList.empty()) {
+    if (fInFile.is_open()) {
+      MsgInfo("Closing InFile.");
+      fInFile.close();
+    }
   }
 
 }

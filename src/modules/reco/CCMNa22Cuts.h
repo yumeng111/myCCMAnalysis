@@ -107,6 +107,8 @@ class CCMNa22Cuts : public CCMModule
     void SetupOutFile();
     void RecalculatePosition(const SimplifiedEvent & simplifiedEvent, 
         const double fitLength, double & x, double & y, double & z);
+    void RecalculateStartTime(const SimplifiedEvent & events, 
+        double & st, double & charge, double & hits, double & length);
     //int WaveformMaxPosition(const SimplifiedEvent & simplifiedEvent);
 
   private:
@@ -134,16 +136,16 @@ class CCMNa22Cuts : public CCMModule
     int fReverseVeto;
     int fWaveformMaxCut;
 
-    bool fPassedVetoCut;
-    bool fPassedPositionCut;
-    bool fPassedEnergyCut;
-    bool fPassedPrevCut;
-    bool fPassedLengthCut;
-    bool fPassedTimeCut;
-    bool fPassedNicenessCut;
-    bool fPassedWaveformMaxCut;
-    bool fPassedNumHitsCut;
-    bool fPassedBCMCut;
+    int fPassedVetoCut;
+    int fPassedPositionCut;
+    int fPassedEnergyCut;
+    int fPassedPrevCut;
+    int fPassedLengthCut;
+    int fPassedTimeCut;
+    int fPassedNicenessCut;
+    int fPassedWaveformMaxCut;
+    int fPassedNumHitsCut;
+    int fPassedBCMCut;
 
     unsigned long int fNumFailedVetoCut;
     unsigned long int fNumFailedPositionCut;
@@ -222,8 +224,8 @@ class CCMNa22Cuts : public CCMModule
     double fMaxPrevEnergyLength4800;
     double fMaxPrevEnergyLength;
 
-    TFile * fEnergyLengthFile;
-    TProfile * fEnergyLengthProf;
+    std::shared_ptr<TFile> fEnergyLengthFile;
+    TProfile* fEnergyLengthProf;
 
     unsigned long int fNumInitEvents;
     unsigned long int fNumFinalEvents;

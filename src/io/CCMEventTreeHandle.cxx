@@ -118,6 +118,16 @@ bool CCMEventTreeHandle::IsLoaded(CCMEventBranchID_t id) const
 }
 
 //_____________________________________________________________
+bool CCMEventTreeHandle::ReadTree()
+{
+  if (std::find(fReadBranches.begin(),fReadBranches.end(),"none") != fReadBranches.end()) {
+    return false;
+  }
+
+  return true;
+}
+
+//_____________________________________________________________
 int CCMEventTreeHandle::SetupInputFile(TFile & f)
 {
   // set up an event file to read events
@@ -127,6 +137,24 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
     MsgDebug(2,"Printing Input File");
     fInputFile->Print();
   }
+
+  /*
+  if (!ReadTree()) {
+    for ( auto & branch : fBranch) {
+      branch = nullptr;
+    }
+
+    fNumOfEntries = 0;
+
+    //Reset to the start of the file
+    fIndex = 0;
+
+    //Flag all branches as unloaded
+    this->ClearLoadFlags();
+
+    return 1;
+  }
+  */
 
   //In with the new...
   fInputFile->GetObject(gsRawData,fEventsTree);
@@ -379,6 +407,10 @@ int CCMEventTreeHandle::Load(int branchID) const
 //_____________________________________________________________
 int CCMEventTreeHandle::Write()
 {
+  if (std::find(fSaveBranches.begin(),fSaveBranches.end(),"none") != fSaveBranches.end()) {
+    return 1;
+  }
+
   if (fOutputFile != nullptr && fOutEventTree != nullptr) {
     //Make sure we load any branches which haven't been loaded yet so
     //they get written

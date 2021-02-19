@@ -164,7 +164,7 @@ CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::stri
     if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
       fCurrentRunNum = run;
       fCurrentSubRunNum = subRun;
-      NewRun();
+      NewRun(run,subRun);
     }
 
     for(; // no initiation
@@ -240,7 +240,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
     if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
       fCurrentRunNum = run;
       fCurrentSubRunNum = subRun;
-      NewRun();
+      NewRun(run,subRun);
     }
 
     for(; // no initiation
@@ -289,7 +289,7 @@ CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::str
 
       // Don't think I need to do these
       //ClearDataVectors();
-    }
+    } // end for loop over events
 
     if(count == nevt && nevt != -1) {
       break;
@@ -362,13 +362,13 @@ void CCMTaskManager::ConnectDataToModules()
 }
 
 //------------------------------------------------------
-void CCMTaskManager::NewRun()
+void CCMTaskManager::NewRun(int run, int subrun)
 {
   //Call the NewRun function for the modules as some of them
   //do special things at the start/end of each run/subrun
   //combination
   for (auto & module : fModuleList) {
-    module->NewRun(fCurrentRunNum,fCurrentSubRunNum);
+    module->NewRun(run,subrun);
   }
 
 }

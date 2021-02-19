@@ -214,8 +214,25 @@ void CCMPMTResponse::Configure(const CCMConfig& c )
     fMT.seed(fRD());
     fTRandom->SetSeed(0);
   } else {
-    fMT.seed(seed);
-    fTRandom->SetSeed(seed);
+    if (seed > 0) {
+      fMT.seed(seed);
+      fTRandom->SetSeed(seed);
+    } else {
+      seed = std::abs(seed);
+      std::string env = std::getenv("CCMPROJECT");
+      std::string fileName = env + "/calibrationFiles/2019/listOfRandomSeeds.txt";
+      std::ifstream infile(fileName.c_str());
+      std::vector<unsigned int> seeds((std::istream_iterator<unsigned int>(infile)),
+                                       std::istream_iterator<unsigned int>());
+      infile.close();
+      if (static_cast<unsigned int>(seed) < seeds.size()) {
+        fMT.seed(seeds.at(seed));
+        fTRandom->SetSeed(seeds.at(seed));
+        seed = seeds.at(seed);
+      } else {
+        MsgFatal(MsgLog::Form("Size of seeds list %zu and requested seed is %d",seeds.size(),seed));
+      }
+    }
   }
   gRandom = fTRandom.get();
 

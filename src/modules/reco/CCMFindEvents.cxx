@@ -119,6 +119,8 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
   }
   //MsgInfo(MsgLog::Form("Max in waveform = %.4f at %zu",maxValue,maxLoc));
 
+  int prevEnd = 0;
+
   for (size_t timeBin = 0; timeBin < gkMaxBinLoc && timeBin < Utility::fgkNumBins; ++timeBin) {
     if (MsgLog::GetGlobalDebugLevel() >= 3) {
       MsgDebug(3,MsgLog::Form("Passed DAQ time cut %zu",timeBin));
@@ -141,7 +143,13 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
 
     // extrapolate the start time of the event with a linear
     // fit to the rising slope of the accumulated pulse
-    startBin = ExtrapolateStartTime(startBin);
+    //startBin = ExtrapolateStartTime(startBin);
+    while (startBin < prevEnd) {
+      ++startBin;
+      if (fAccumWaveform->GetIndex(startBin,fAccumWaveformMethodID,kCCMIntegralTimeID) > 0) {
+        break;
+      }
+    }
 
     if (startBin >= static_cast<int>(Utility::fgkNumBins)) {
       MsgFatal(MsgLog::Form("Start Bin is greater than or equal to total number of bins: event %ld bin %zu startBin %d",
@@ -186,6 +194,7 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
     if (MsgLog::GetGlobalDebugLevel()) {
       MsgDebug(4,Form("End of bin loop, bin = %zu endBin = %d",timeBin,endBin));
     }
+    prevEnd = endBin;
     timeBin = endBin;
   } // end for size_t timeBin
 
@@ -266,7 +275,7 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
 
   //int oldStartBin = startBin;
 
-  for (int bin2 = std::max(startBin-6,0); bin2 < peakLoc; ++bin2) {
+  for (int bin2 = std::max(startBin-6,0); bin2 < (peakLoc+startBin)/2.0; ++bin2) {
     if (MsgLog::GetGlobalDebugLevel() >= 6) {
       MsgDebug(6,MsgLog::Form("event %ld Peak location loop bin %d",fEvents->GetEventNumber(),bin2));
     }
@@ -305,6 +314,16 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
 
   xPoints.clear();
   yPoints.clear();
+
+  //int newStart = startBin;
+  //for (int bin2 = startBin; bin2 >= 0; --bin2) {
+  //  if (fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID) < fThreshold/10.0) {
+  //    newStart = bin2;
+  //    break;
+  //  }
+  //}
+  //MsgInfo(MsgLog::Form("Diff start and newStart = %d (%.0f)",startBin-newStart,
+  //      Utility::ShiftTime(startBin,fAccumWaveform->GetBeamOffset())));
 
   return startBin;
 
