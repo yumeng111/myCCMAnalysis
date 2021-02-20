@@ -140,7 +140,7 @@ class Pulses : public TObject
     const SinglePulse * FindPreviousPulse(unsigned int key);
 
     Pulses & operator=(const Pulses & rhs);
-    void Copy(const Pulses & rhs, int startBoard, int endBoard=10, int startChannel=0, int endChannel=15);
+    void CopyPulses(const Pulses & rhs, int startBoard, int endBoard=10, int startChannel=0, int endChannel=15);
 
     void ShiftTimeOffset(const double & timeOffset);
 

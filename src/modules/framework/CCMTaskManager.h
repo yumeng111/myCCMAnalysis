@@ -64,7 +64,7 @@ protected:
 private:
 
   void ConnectDataToModules();
-  void NewRun();
+  void NewRun(int run, int subrun);
 
   static void SetTaskConfig(CCMTaskConfig* tskCfg) { fgkTaskConfig = std::unique_ptr<CCMTaskConfig>(tskCfg);}
 

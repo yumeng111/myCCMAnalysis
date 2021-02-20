@@ -648,7 +648,7 @@ Pulses & Pulses::operator=(const Pulses & rhs)
 }
 
 /*!**********************************************
- * \fn void Pulses::Copy(const Pulses & rhs, int startBoard, int endBoard, int startChannel, int endChannel) 
+ * \fn void Pulses::CopyPulses(const Pulses & rhs, int startBoard, int endBoard, int startChannel, int endChannel) 
  * \brief Set the current #Pulses object to the one passed, but only copy a range of the board and channels
  * \param[in] rhs The object to copy
  * \param[in] startBoard The board to start copying
@@ -656,7 +656,7 @@ Pulses & Pulses::operator=(const Pulses & rhs)
  * \param[in] startChannel The channel to start copying
  * \param[in] endChannel The endChannel to start copying
  ***********************************************/
-void Pulses::Copy(const Pulses & rhs, int startBoard, int endBoard, int startChannel, int endChannel) 
+void Pulses::CopyPulses(const Pulses & rhs, int startBoard, int endBoard, int startChannel, int endChannel) 
 {
   this->fBoard = rhs.fBoard;
   this->fChannel = rhs.fChannel;

@@ -42,6 +42,8 @@ class CCMEventTreeHandle
     int  ClearLoadFlags();
     void SetLoaded(int branchId) const;
 
+    bool ReadTree();
+
     uint32_t Index() { return fIndex; }
 
     int SetupInputFile(TFile & f);

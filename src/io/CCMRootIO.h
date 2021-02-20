@@ -168,6 +168,8 @@ class CCMRootIO
      */
     CCMEventTreeHandle& GetEventTree();
 
+    bool ReadTree() { return fEventHandle->ReadTree(); }
+
     AccumWaveform& GetAccumWaveform();
     Events& GetEvents();
     RawData& GetRawData();

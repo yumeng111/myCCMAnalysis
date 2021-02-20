@@ -259,6 +259,9 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
 CCMNa22Cuts::~CCMNa22Cuts()
 { 
   // destructor
+  if (fEnergyLengthProf) {
+    delete fEnergyLengthProf;
+  }
 }
 
 //_______________________________________________________________________________________
@@ -838,8 +841,8 @@ bool CCMNa22Cuts::PassedEnergyCut(double energy)
 bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingIndex, const double kEnergy)
 {
   if (fEnergyLengthFile == nullptr) {
-    fEnergyLengthFile = TFile::Open("$CCMPROJECT/calibrationFiles/2019/energyLength.root","READ");
-    fEnergyLengthFile->GetObject("EnergyMaxLengthHist_NumHits_0_pfx",fEnergyLengthProf);
+    fEnergyLengthFile = std::make_shared<TFile>("$CCMPROJECT/calibrationFiles/2019/energyLength_0p2Thresh.root","READ");
+    fEnergyLengthFile->GetObject("eneLength_pfx",fEnergyLengthProf);
   }
   std::vector<float> currentWF;
   //std::vector<float> totalWF;
@@ -926,6 +929,8 @@ bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingInd
     //  fMaxPrevEnergyTime = st2;
     //  fMaxPrevEnergyLength = length;
     //}
+
+    //continue;
 
     if (fMaxPrevEnergyLength != 0) {
       continue;
@@ -1053,6 +1058,46 @@ bool CCMNa22Cuts::PassedBCMCut(double bcmTime, double bcmLength, double bcmInteg
   }
 
   return true;
+}
+
+/*!**********************************************
+ * \fn void CCMNa22Cuts::RecalculateStartTime(const SimplifiedEvent & events, double & st, double & charge, double & hits, double & length) 
+ * \brief Recalcualte the start time of an event given a different method
+ * \param[in] events The event to look at
+ * \param[out] st The new start time
+ * \param[out] charge The new integral of the event
+ * \param[out] hits The new number of hits in the event
+ * \param[out] length The new length of the event
+ ***********************************************/
+void CCMNa22Cuts::RecalculateStartTime(const SimplifiedEvent & events, double & st, double & charge, double & hits, double & length) 
+{
+  const std::vector<float> & waveform = events.GetWaveformInt();
+  const std::vector<float> & waveformCount = events.GetWaveformCount();
+  bool crossed = false;
+  size_t stCount = 0;
+  charge = 0;
+  hits = 0;
+  for (size_t count = 0; count < waveform.size(); ++count) {
+    if (!crossed && waveform[count] >= 0.1) {
+      crossed = true;
+      st = events.GetStartTime()+static_cast<double>(count)*Utility::fgkBinWidth;
+      stCount = count;
+      charge = 0;
+      hits = 0;
+      length = (waveform.size() - count)*Utility::fgkBinWidth;
+    }
+
+    if (crossed && count < stCount+45) {
+      charge += waveform[count];
+      hits += waveformCount[count];
+    } else if (crossed && count >= stCount+45) {
+      break;
+    }
+    ++count;
+  }
+
+  return;
+
 }
 
 /*!**********************************************

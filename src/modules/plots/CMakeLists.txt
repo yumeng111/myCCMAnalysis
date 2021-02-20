@@ -1,6 +1,7 @@
 set(PLOTS_HEADERS 
   CCMSumWaveforms.h
   CCMProcessingPlots.h
+  CCMNuDMPlots.h
   )
 
 
@@ -17,6 +18,7 @@ set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES} $ENV{XER
 set(PLOTS_SRCS
   CCMSumWaveforms.cxx
   CCMProcessingPlots.cxx
+  CCMNuDMPlots.cxx
   )
 
 set(PLOTS_LINKDEF LinkDef.h)

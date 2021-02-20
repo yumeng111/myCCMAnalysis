@@ -224,12 +224,19 @@ std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
   // some flavor of unix
   char tmp_name[128] = {"/tmp/IOMOD.XXXXXX"};
   mkstemp(tmp_name);
+  std::string temp_file_regexp(file_regexp);
+  bool inLustre = temp_file_regexp.find("lustre") != std::string::npos;
   std::string cmd;
-  cmd  = "(ls ";
+  if (!inLustre) {
+    cmd  = "(ls ";
+  } else {
+    cmd = "(lfs find ";
+  }
   cmd += file_regexp;
   cmd += " > ";
   cmd += tmp_name;
   cmd += ") >& /dev/null";
+  MsgInfo(MsgLog::Form("Command Used %s",cmd.c_str()));
   system(cmd.c_str());
 
   std::vector<std::string> localVec;
