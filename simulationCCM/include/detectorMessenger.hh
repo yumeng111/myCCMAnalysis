@@ -38,6 +38,7 @@ class detectorMessenger: public G4UImessenger
     G4UIcommand*                 fDefaultsCmd;
     G4UIcommand*                 fRandomsCmd;
     G4UIcommand*                 fCorrelateCmd;
+    G4UIcommand*                 fCleanCmd;
     G4UIcmdWithABool*            fPMTsCmd;
     G4UIcmdWithABool*            fSodiumCmd;
     G4UIcmdWithABool*            fAr39Cmd;
@@ -46,6 +47,7 @@ class detectorMessenger: public G4UImessenger
     G4UIcmdWithABool*            fTPBfoilCmd;
     G4UIcmdWithABool*            fReflectorCmd;
     G4UIcmdWithAString*          fRootCmd;
+    G4UIcmdWithAnInteger*        fOrCmd;
 
 };
 

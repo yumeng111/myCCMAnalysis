@@ -106,12 +106,23 @@ detectorMessenger::detectorMessenger(detectorConstruction* detector)
   fCorrelateCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fCorrelateCmd->SetToBeBroadcasted(false);
 
+  fCleanCmd = new G4UIcommand("/ccm/detector/clean",this);
+  fCleanCmd->SetGuidance("Set all detector geometry values to correlated randoms.");
+  fCleanCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fCleanCmd->SetToBeBroadcasted(false);
+
   fRootCmd = new G4UIcmdWithAString( "/ccm/detector/root", this );
   fRootCmd->SetGuidance( "File name for the ROOT output" );
   fRootCmd->SetGuidance( " Include '.root' " );
   fRootCmd->SetParameterName( "outFileName", false );
   fRootCmd->SetDefaultValue( "output.root" );
   fRootCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+
+  fOrCmd = new G4UIcmdWithAnInteger("/ccm/detector/onerand",this);
+  fOrCmd->SetGuidance("Set the one OM parameter to be randomized.");
+  fOrCmd->SetParameterName("om",false);
+  fOrCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fOrCmd->SetToBeBroadcasted(false);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -124,6 +135,7 @@ detectorMessenger::~detectorMessenger()
   delete fDefaultsCmd;
   delete fRandomsCmd;
   delete fCorrelateCmd;
+  delete fCleanCmd;
   delete fPMTsCmd;
   delete fSodiumCmd;
   delete fAr39Cmd;
@@ -133,6 +145,7 @@ detectorMessenger::~detectorMessenger()
   delete fTPBfoilCmd;
   delete fReflectorCmd;
   delete fRootCmd;
+  delete fOrCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -184,5 +197,11 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   }
   else if (command == fCorrelateCmd){
     fdetector->CorrelateRandom();
+  }
+  else if (command == fCleanCmd){
+    fdetector->CleanArgon();
+  }
+  else if (command == fOrCmd){
+    fdetector->OneRandom(fOrCmd->GetNewIntValue(newValue));
   }
 }

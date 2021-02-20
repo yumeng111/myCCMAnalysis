@@ -114,6 +114,8 @@ void steppingAction::UserSteppingAction(const G4Step* step)
   //If the particle is a optical photon, and has just transferred from the reflector foil on the top or bottom,
   //alter the direction to induce a slight randomness due to the unsmoothness of the foils there.
   if ( (particlen == "opticalphoton" && volname=="TPBfoilb" && volpname == "ptfefoil") || (particlen == "opticalphoton" && volname=="tpbbcone" && volpname == "ptfebcone") ) {
+    const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
+
     mom = step->GetPostStepPoint()->GetMomentumDirection();
     px = mom.x();
     py = mom.y();
@@ -123,7 +125,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     //creates three random variables, two angles and a test.
     //the gaussian angles are for a slight rotation biased towards maintaing the same direction, 
     //the flats commented after them for complete randomness
-    G4double randwide = 1.0;
+    G4double randwide = detector->GetUnsmooth();
     G4double thmax = randwide/2.0;
     G4double randtest = G4RandFlat::shoot(0.1,1.1);
     G4double phi = G4RandGauss::shoot(0,randwide);//G4RandFlat::shoot(-.002,6.28);//
