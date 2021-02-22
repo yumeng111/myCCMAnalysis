@@ -109,8 +109,8 @@ CCMResult_t CCMStrobeOverlay::ProcessTrigger()
   */
 
   fAccumWaveform->operator+=(rhs);
-  double after = fAccumWaveform->Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
-  MsgInfo(MsgLog::Form("before %.2f strobe %.2f after %.2f",before,strobe,after));
+  //double after = fAccumWaveform->Integrate(0,Utility::fgkNumBins,kCCMAccumWaveformTriangleID,kCCMIntegralTimeID);
+  //MsgInfo(MsgLog::Form("before %.2f strobe %.2f after %.2f",before,strobe,after));
 
   return kCCMSuccess;
 }
