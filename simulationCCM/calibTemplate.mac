@@ -23,7 +23,8 @@
 #
 #
 #Turn the Sodium source on and run it
-/ccm/detector/randoms
+#/ccm/detector/randoms
+/ccm/detector/onerand 13
 /ccm/detector/sodium true
 /ccm/detector/root tenkSodiumScan{step}
 /control/cout/setCoutFile tenkSodiumScan{step}.txt

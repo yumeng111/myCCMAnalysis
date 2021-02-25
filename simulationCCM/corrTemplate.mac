@@ -32,8 +32,10 @@
 #
 #
 #
-/ccm/detector/root /lustre/scratch3/turquoise/edunton/simulationOutputs/root/dmcorr/millionDMeventsCentral{step}
-#/control/cout/setCoutFile tenkDarkMattereventsSimulation{step}.txt
+/ccm/detector/correlate
+#
+/ccm/detector/root millionDMeventsCorrelated{step}
+/control/cout/setCoutFile millionDMeventsCorrelated{step}.txt
 /run/beamOn 1000000
 #
 #

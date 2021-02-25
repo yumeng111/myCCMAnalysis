@@ -5,6 +5,7 @@ this code creates the commands that can be used to modify the detector from macr
 it should be noted that the more complicated these commands are made, the higher the chance of memory leaks.
 Be careful trying to make a detector that can be completely controlled from the ui.
 
+See the detector Construction methods for explanations of what each command does.
 */
 #include "detectorMessenger.hh"
 #include "detectorConstruction.hh"
@@ -63,6 +64,11 @@ detectorMessenger::detectorMessenger(detectorConstruction* detector)
   fAr39Cmd->SetGuidance("Enable/Disable the Ar39 Source.");
   fAr39Cmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fAr39Cmd->SetToBeBroadcasted(false);
+
+  fCosmicCmd = new G4UIcmdWithABool("/ccm/detector/cosmic",this);
+  fCosmicCmd->SetGuidance("Enable/Disable the cosmic muon Source.");
+  fCosmicCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fCosmicCmd->SetToBeBroadcasted(false);
 
   fDMCmd = new G4UIcmdWithABool("/ccm/detector/darkmatter",this);
   fDMCmd->SetGuidance("Enable/Disable the DM Source.");
@@ -139,6 +145,7 @@ detectorMessenger::~detectorMessenger()
   delete fPMTsCmd;
   delete fSodiumCmd;
   delete fAr39Cmd;
+  delete fCosmicCmd;
   delete fDMCmd;
   delete fRodCmd;
   delete f200Cmd;
@@ -157,7 +164,7 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     fdetector->SetPMTRadius(fPmtRadiusCmd->GetNewDoubleValue(newValue));
   }
   else if (command == fLaserCmd){
-    fdetector->SetRodHeight(fLaserCmd->GetNewDoubleValue(newValue));
+    fdetector->SetLaserRod(fLaserCmd->GetNewDoubleValue(newValue));
   }
   else if (command == fPMTsCmd){
     fdetector->SetPMTsOn(fPMTsCmd->GetNewBoolValue(newValue));
@@ -167,6 +174,9 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   }
   else if (command == fAr39Cmd){
     fdetector->SetAr39(fAr39Cmd->GetNewBoolValue(newValue));
+  }
+  else if (command == fCosmicCmd){
+    fdetector->SetCosmic(fCosmicCmd->GetNewBoolValue(newValue));
   }
   else if (command == fDMCmd){
     fdetector->SetDarkMatter(fDMCmd->GetNewBoolValue(newValue));

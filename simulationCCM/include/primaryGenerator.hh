@@ -25,6 +25,11 @@ public:
   virtual void GeneratePrimaries(G4Event*);
   //method for actually generating primary particles
 
+  void shootArgon(G4Event*);
+  void shootDarkMatter(G4Event*);
+  void shootSodium(G4Event*);
+  void shootCosmic(G4Event*);
+
   const G4ParticleGun* GetParticleGun() const {return fParticleGun; }
   //defines a method to access the fParticleGun variable from any part of the code is the primary generator is included.
 

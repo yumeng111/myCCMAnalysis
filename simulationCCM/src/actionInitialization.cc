@@ -12,7 +12,6 @@ rather than a code which does anything itself.
 #include "runAction.hh"
 #include "eventAction.hh"
 #include "steppingAction.hh"
-//#include "stackingAction.hh"
 #include "detectorConstruction.hh"
 
 //Constructor
@@ -36,6 +35,7 @@ void actionInitialization::Build() const
 {
   //G4cout << "maincodenote: starting actionInitialization" << G4endl;
 
+  //define the variable subfunctions needed for operating the code
   SetUserAction(new primaryGenerator);
 
   runAction* runact = new runAction;

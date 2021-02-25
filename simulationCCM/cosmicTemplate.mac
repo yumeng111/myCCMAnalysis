@@ -13,7 +13,8 @@
 #
 /ccm/detector/tpbfoil true
 /ccm/detector/reflector true
-/ccm/detector/darkmatter true
+/ccm/detector/cosmic true
+#/ccm/detector/set200 true
 #/ccm/detector/setrod 0 cm
 #
 /control/alias Rand1 3069693
@@ -32,9 +33,9 @@
 #
 #
 #
-/ccm/detector/root /lustre/scratch3/turquoise/edunton/simulationOutputs/root/dmcorr/millionDMeventsCentral{step}
-#/control/cout/setCoutFile tenkDarkMattereventsSimulation{step}.txt
-/run/beamOn 1000000
+/ccm/detector/root /lustre/scratch3/turquoise/edunton/simulationOutputs/root/cosmics/fiftyCosmicEvents{step}
+#/control/cout/setCoutFile fiftyCosmiceventsSimulation{step}.txt
+/run/beamOn 50
 #
 #
 #
