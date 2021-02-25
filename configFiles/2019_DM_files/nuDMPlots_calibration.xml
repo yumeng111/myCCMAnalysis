@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+  <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <Modules type="Reco"> CCMFindEvents </Modules>
+  -->
+
+  <Modules type="Reco"> CCMNuDMPlots </Modules>
+  <ModuleVersion> default </ModuleVersion>
+
+  <Config name="ROOTSetup" version="default">
+    <Param name="ReadBranches"><string>none</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+    <Param name="SaveBranches"><string>none</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - all
+      - none
+    </Param>
+  </Config>
+
+  <Config name="PMTMapSetup" version="default">
+    <Param name="MappingFile"><string>default</string>
+      The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
+      Must be the first param in this config
+    </Param>
+    <Param name="HVOffFile"><string>default</string>
+      List of the HV channels that are off.
+    </Param>
+    <Param name="CalibrationFile"><string>default</string>
+      Name of the calibration file to use
+    </Param>
+  </Config>
+
+  <Config name="CCMNuDMPlots" version="default">
+    <Param name="TreeName"><string>tree_lengthCut</string>
+      The name of the tree to grab from the input file
+    </Param>
+    <Param name="CutNames"><string>None Time NumHits Prev Veto Position Niceness</string>
+      The names of the various cuts to apply to the data.
+      If cut is listed more than once and the code is setup to apply different cuts then differrent cuts
+      will be make.
+      Possible order for beam trigger
+        None BCM Time NumHits Prev Veto Position Niceness Length Length Length Length Length Length Length Length
+      Possible order for source data
+        None Time NumHits Prev Veto Niceness
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
+
+

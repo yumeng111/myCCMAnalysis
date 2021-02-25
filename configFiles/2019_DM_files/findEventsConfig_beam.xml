@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+  <Modules type="Reco"> CCMConvertBinary2ROOT </Modules>
+  <Modules type="Reco"> CCMNearlineDiag </Modules>
+  <Modules type="Reco"> CCMApplyPreCuts </Modules>
+  <Modules type="Reco"> CCMFindEvents </Modules>
+  -->
+
+  <Modules type="Reco"> CCMFindPulses CCMSumWaveforms CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
+  <ModuleVersion> default default default dynamic dynamic_pulseCut</ModuleVersion>
+
+  <Config name="ROOTSetup" version="default">
+    <Param name="ReadBranches"><string>rawData pulses</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - accumWaveform
+      - all
+      - none
+    </Param>
+    <Param name="SaveBranches"><string>events</string>
+      The branches to read in options are
+      - events
+      - rawData
+      - pulses
+      - accumWaveform
+      - all
+      - none
+    </Param>
+  </Config>
+
+  <Config name="PMTMapSetup" version="default">
+    <Param name="MappingFile"><string>default</string>
+      The PMT mapping file to read in. If default is passed the files in $CCMINSTALL/mappings/mapping_master* will be used
+      Must be the first param in this config
+    </Param>
+    <Param name="HVOffFile"><string>default</string>
+      List of the HV channels that are off.
+      default is $CCMINSTALL/mappings/hv_off_2019.csv
+    </Param>
+    <Param name="CalibrationFile"><string>default</string>
+      Name of the calibration file to use
+    </Param>
+  </Config>
+
+  <Config name="CCMFindPulses" version="default">
+    <Param name="TriggerType"><string>BEAM</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="TruncateWaveform"><int>1</int>
+      if not 0 only the last boards waveforms will be saved
+    </Param>
+    <Param name="FromRootFile"><int>1</int>
+      if not 0 the input file was a root file otherwise a binary file was inputed
+    </Param>
+    <Param name="ResetPulses"><int>0</int>
+      if not 0 the pulses object will be cleared (default) otherwise the pulses found will be added to the same object
+    </Param>
+    <Param name="WriteDBEntry"><int>0</int>
+      if not 0 an entry to will be written to the database
+    </Param>
+  </Config>
+
+  <Config name="CCMBuildAccumWaveform" version="default">
+    <Param name="TriggerType"><string>BEAM</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="BuildMethods"><string>CCMAccumWaveformTriangle CCMAccumWaveformTrianglePulseCut</string>
+      The build methods to use. Options are:
+      CCMAccumWaveformTriangle
+      CCMAccumWaveformTrianglePulseCut
+      CCMAccumWaveformStart
+      CCMAccumWaveformStartPulseCut
+    </Param>
+    <Param name="PulseTimeLowValue"><double>-9920</double>
+      The earliest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
+    </Param>
+    <Param name="PulseTimeHighValue"><double>-250</double>
+      The latest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
+    </Param>
+  </Config>
+
+  <Config name="CCMFindEvents" version="dynamic">
+    <Param name="Threshold"><double> 0.2 </double>
+      The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="ResetEvents"><int>1</int>
+      Flag to reset the Events class. Should only be used in the first instance of CCMFindEvents
+    </Param>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTriangle</string>
+      Which CCMAccumWaveformMethod to use in finding the events
+    </Param>
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+      CCMDynamicLengthEvent
+      CCMFixedLengthEvent
+    </Param>
+    <Param name="FixedLength"><int>0</int>
+      Number of bins for the required length of the event only needed if 
+      EventFinderID == CCMFixedLengthEvent
+    </Param>
+  </Config>
+
+  <Config name="CCMFindEvents" version="dynamic_pulseCut">
+    <Param name="Threshold"><double> 0.2 </double>
+      The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="ResetEvents"><int>0</int>
+      Flag to reset the Events class. Should only be used in the first instance of CCMFindEvents
+    </Param>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTrianglePulseCut</string>
+      Which CCMAccumWaveformMethod to use in finding the events
+    </Param>
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+      CCMDynamicLengthEvent
+      CCMFixedLengthEvent
+    </Param>
+    <Param name="FixedLength"><int>0</int>
+      Number of bins for the required length of the event only needed if 
+      EventFinderID == CCMFixedLengthEvent
+    </Param>
+  </Config>
+
+  <Config name="CCMSumWaveforms" version="default">
+    <Param name="TriggerType"><string>BEAM</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="ApplyFP3Offset"><int>1</int>
+      If true apply the time offset between FP3 and CCM
+    </Param>
+    <Param name="DoBCMCut"><int>1</int>
+      Flag to reject events based off the BCM cut
+    </Param>
+    <Param name="BCMTimeLowCut"><double>-377.39</double>
+      Low cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMTimeHighCut"><double>-314.15</double>
+      High cut on the time the BCM signal was seen in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthLowCut"><double>505.5</double>
+      Low cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMLengthHighCut"><double>646.5</double>
+      High cut on the length the BCM signal in the DAQ in ns
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralLowCut"><double>17811.4</double>
+      Low cut on the integral the BCM signal in the DAQ in ADC
+      Only needed if DoBCMCut is true
+    </Param>
+    <Param name="BCMIntegralHighCut"><double>30978.4</double>
+      High cut on the integral the BCM signal in the DAQ in ADC
+      Only needed if DoBCMCut is true
+    </Param>
+  </Config>
+
+
+</TestRecoConfig>
+
+

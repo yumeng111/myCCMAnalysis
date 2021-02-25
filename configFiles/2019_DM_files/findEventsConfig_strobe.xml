@@ -8,8 +8,8 @@
   <Modules type="Reco"> CCMFindEvents </Modules>
   -->
 
-  <Modules type="Reco"> CCMFindPulses CCMSumWaveforms CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
-  <ModuleVersion> default default default dynamic dynamic_pulseCut</ModuleVersion>
+  <Modules type="Reco"> CCMSumWaveforms CCMBuildAccumWaveform CCMFindEvents CCMFindEvents </Modules>
+  <ModuleVersion> default default dynamic dynamic_pulseCut</ModuleVersion>
 
   <Config name="ROOTSetup" version="default">
     <Param name="ReadBranches"><string>rawData pulses</string>
@@ -21,7 +21,7 @@
       - all
       - none
     </Param>
-    <Param name="SaveBranches"><string>events</string>
+    <Param name="SaveBranches"><string>pulses accumWaveform events</string>
       The branches to read in options are
       - events
       - rawData
@@ -41,37 +41,13 @@
       List of the HV channels that are off.
       default is $CCMINSTALL/mappings/hv_off_2019.csv
     </Param>
-    <Param name="CalibrationFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root</string>
+    <Param name="CalibrationFile"><string>default</string>
       Name of the calibration file to use
     </Param>
   </Config>
 
-  <Config name="CCMFindPulses" version="default">
-    <Param name="TriggerType"><string>STROBE</string>
-      Only look at triggers with name passed.
-      Options are:
-       - BEAM
-       - STROBE
-       - LED
-       - ALL
-      and any combination of the three, like BEAM STROBE
-    </Param>
-    <Param name="TruncateWaveform"><int>1</int>
-      if not 0 only the last boards waveforms will be saved
-    </Param>
-    <Param name="FromRootFile"><int>1</int>
-      if not 0 the input file was a root file otherwise a binary file was inputed
-    </Param>
-    <Param name="ResetPulses"><int>0</int>
-      if not 0 the pulses object will be cleared (default) otherwise the pulses found will be added to the same object
-    </Param>
-    <Param name="WriteDBEntry"><int>0</int>
-      if not 0 an entry to will be written to the database
-    </Param>
-  </Config>
-
   <Config name="CCMBuildAccumWaveform" version="default">
-    <Param name="TriggerType"><string>BEAM</string>
+    <Param name="TriggerType"><string>STROBE</string>
       Only look at triggers with name passed.
       Options are:
        - BEAM
@@ -91,14 +67,14 @@
       The earliest in the DAQ window to allow the pulse to start in ns
       Only needed if BuildMethod contains at least one PulseCut
     </Param>
-    <Param name="PulseTimeHighValue"><double>-200</double>
+    <Param name="PulseTimeHighValue"><double>-250</double>
       The latest in the DAQ window to allow the pulse to start in ns
       Only needed if BuildMethod contains at least one PulseCut
     </Param>
   </Config>
 
   <Config name="CCMFindEvents" version="dynamic">
-    <Param name="Threshold"><double> 0.4 </double>
+    <Param name="Threshold"><double> 0.2 </double>
       The PE threshold for a 2ns bin to trigger event building
     </Param>
     <Param name="ResetEvents"><int>1</int>
@@ -119,7 +95,7 @@
   </Config>
 
   <Config name="CCMFindEvents" version="dynamic_pulseCut">
-    <Param name="Threshold"><double> 0.4 </double>
+    <Param name="Threshold"><double> 0.2 </double>
       The PE threshold for a 2ns bin to trigger event building
     </Param>
     <Param name="ResetEvents"><int>0</int>
@@ -140,7 +116,21 @@
   </Config>
 
   <Config name="CCMSumWaveforms" version="default">
-    no parameters needed at this time
+    <Param name="TriggerType"><string>STROBE</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="ApplyFP3Offset"><int>1</int>
+      If true apply the time offset between FP3 and CCM
+    </Param>
+    <Param name="DoBCMCut"><int>0</int>
+      Flag to reject events based off the BCM cut
+    </Param>
   </Config>
 
 

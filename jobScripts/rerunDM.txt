@@ -1,0 +1,16 @@
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp100.0_dm37.6.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp10.0_dm0.8.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp1.0_dm0.5.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp120.0_dm21.1.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp130.0_dm61.9.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp134.0_dm44.2.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp136.0_dm44.5.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp20.0_dm7.6.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp3.0_dm1.1.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp40.0_dm7.1.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp50.0_dm23.9.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp5.0_dm1.0.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp6.0_dm2.9.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp70.0_dm19.3.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp8.0_dm2.3.script
+/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/v1_ISABEL_Dresner/script/darkMatter_slurm_dp90.0_dm6.9.script
