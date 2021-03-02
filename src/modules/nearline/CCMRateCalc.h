@@ -63,21 +63,21 @@ class CCMRateCalc : public CCMModule
     std::shared_ptr<Events> fEvents;
 
     std::string fTriggerType;
-    bool fWriteDBEntry;
+    int fWriteDBEntry;
     std::string fDBHost;
     std::string fDBUser;
     std::string fDBPwd;
 
     ///spe count for each of the 160 pmts in the first 10 boards. use as fSPECount[key] in the pulse loop.       
-    std::array<int,160> fSPECount;
+    std::vector<double> fSPECount;
     /// pmt type (0=1inveto,1=uncoated,2=coated) for the 160 pmts. use as fPMTType[key] in pulse loop.              
-    std::array<int,160> fPMTType;
+    std::vector<double> fPMTType;
 
     std::time_t fFirstTriggerTime;
     std::time_t fLastTriggerTime;
 
     size_t fTotalTriggers;
-    size_t fPreBeamTriggers;
+    float fPreBeamTriggers;
     float fInBeamIntegral;
     
 };

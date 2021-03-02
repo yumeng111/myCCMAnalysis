@@ -32,7 +32,6 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include <array>
 #include <map>
 #include <locale>
 
@@ -101,6 +100,11 @@ CCMResult_t CCMRateCalc::ProcessTrigger()
   bool shiftTime = true;
   if (fRawData->IsTriggerPresent("BEAM")) {
     shiftTime = false;
+  }
+
+  if (fSPECount.empty()) {
+    fSPECount.assign(fRawData->GetNumBoards()*fRawData->GetNumChannels(),0.0);
+    fPMTType.assign(fRawData->GetNumBoards()*fRawData->GetNumChannels(),0.0);
   }
 
   // keep track of the number of triggers/events are looked at
@@ -249,79 +253,89 @@ CCMResult_t CCMRateCalc::EndOfJob()
   int channel = 0;
   double speRate = 0.0;
 
-  std::array<int,3> pmtsOfType;
-  std::array<int,3> spesPerType;
-  std::array<std::string,3> pmtsTypeN;
+  std::vector<int> pmtsOfType(4,0);
+  std::vector<int> spesPerType(4,0);
+  std::vector<std::string> pmtsTypeN(4,"");
+  std::vector<float> speRates(4,0);
 
-  for (int pmtc = 0; pmtc<160; ++pmtc) {
+  const size_t kNumChannels = fSPECount.size();
+  MsgInfo(MsgLog::Form("Size of fSPECount %zu",kNumChannels));
+  for (size_t pmtc = 0; pmtc<kNumChannels; ++pmtc) {
+    // only look at channels that correspond to veto, or tank PMTs
+    auto pmtInfo = PMTInfoMap::GetPMTInfo(pmtc);
+    if (!pmtInfo) {
+      continue;
+    }
+
+    if (fSPECount.at(pmtc) == 0) {
+      continue;
+    }
+
     PMTInfoMap::DecodeKey(pmtc,digit,channel);
-
-    if (channel == 15){
-      continue;
-    }
-    if (fSPECount[pmtc] == 0) {
-      continue;
-    }
 
     // R. T. Thornton - 9/21/2020
     // the following works since 8.92 is in us and 1000 is converting it to 
     // whichever Hz order it is suppose to be in
-    speRate = fSPECount[pmtc]/(8.92*static_cast<double>(fTotalTriggers))*1000.0;
-    spesPerType[fPMTType[pmtc]-1] += speRate;
+    speRate = fSPECount.at(pmtc)/(8.92*static_cast<double>(fTotalTriggers))*1000.0;
+    spesPerType.at(fPMTType.at(pmtc)) += speRate;
 
-    //MsgInfo(MsgLog::Form("Board %d Channel %d SPE count %d SPE rate %g",digit,channel,fSPECount[pmtc],speRate));                           
-    speCountOutput = speCountOutput+Form("%d\t%d\t%d\t%g\t%d\n",digit,channel,fSPECount[pmtc],speRate,fPMTType[pmtc]);
+    //MsgInfo(MsgLog::Form("Board %d Channel %d SPE count %d SPE rate %g",digit,channel,(int)fSPECount.at(pmtc),speRate));                           
+    speCountOutput = speCountOutput+Form("%d\t%d\t%d\t%g\t%d\n",digit,channel,(int)fSPECount.at(pmtc),speRate,(int)fPMTType.at(pmtc));
 
-    if (fPMTType[pmtc]==1){
-      ++pmtsOfType[0];
-      pmtsTypeN[0] = "Veto";
-    } else if (fPMTType[pmtc]==2) {
-      ++pmtsOfType[1];
-      pmtsTypeN[1] = "Uncoated";
-    } else if (fPMTType[pmtc]==3) {
-      ++pmtsOfType[2];
-      pmtsTypeN[2] = "Coated";
+    if (fPMTType.at(pmtc)==0){
+      ++pmtsOfType.at(0);
+      pmtsTypeN.at(0) = "Veto 8in";
+    }else if (fPMTType.at(pmtc)==1){
+      ++pmtsOfType.at(1);
+      pmtsTypeN.at(1) = "Veto 1in";
+    } else if (fPMTType.at(pmtc)==2) {
+      ++pmtsOfType.at(2);
+      pmtsTypeN.at(2) = "Uncoated";
+    } else if (fPMTType.at(pmtc)==3) {
+      ++pmtsOfType.at(3);
+      pmtsTypeN.at(3) = "Coated";
     }
   }
 
-  std::array<float,3> speRates;
-
-  for (int type=0;type<3;++type){
-    speRates[type] = spesPerType[type]/pmtsOfType[type];
-    speCountOutput = speCountOutput+pmtsTypeN[type]+Form("\t%d\t%g\t%d\n",spesPerType[type],speRates[type],pmtsOfType[type]);
-    MsgInfo(MsgLog::Form("%s\t%d\t%g kHz\n",pmtsTypeN[type].c_str(),pmtsOfType[type],speRates[type]));
+  for (size_t type=0;type<speRates.size();++type){
+    speRates.at(type) = spesPerType.at(type)/pmtsOfType.at(type);
+    speCountOutput = speCountOutput+pmtsTypeN.at(type)+Form("\t%d\t%g\t%d\n",spesPerType.at(type),speRates.at(type),pmtsOfType.at(type));
+    //MsgInfo(MsgLog::Form("%s\t%d\t%g kHz\n",pmtsTypeN.at(type).c_str(),pmtsOfType.at(type),speRates.at(type)));
   }
 
   MsgInfo(MsgLog::Form("Number of pre beam events %g fInBeamIntegral %g total triggers = %zu overlap triggers = %zu",
-        fPreBeamTriggers,fInBeamIntegral,fTotalTriggers));
+        fPreBeamTriggers,fInBeamIntegral,fTotalTriggers,fTotalTriggers));
 
-    //  return EXIT_SUCCESS;
+  MsgInfo(MsgLog::Form("\n%s",speCountOutput.c_str()));
 
-    struct tm * timeInfo = localtime(&fFirstTriggerTime);
-    char bufferFirstTriggerTime[80];
-    strftime(bufferFirstTriggerTime,80,"%F %T",timeInfo);
-    timeInfo = localtime(&fLastTriggerTime);
-    char bufferLastTriggerTime[80];
-    strftime(bufferLastTriggerTime,80,"%F %T",timeInfo);
+  //  return EXIT_SUCCESS;
 
-    MsgInfo(MsgLog::Form("First Time %s Last Time %s",bufferFirstTriggerTime,bufferLastTriggerTime));
+  struct tm * timeInfo = localtime(&fFirstTriggerTime);
+  char bufferFirstTriggerTime[80];
+  strftime(bufferFirstTriggerTime,80,"%F %T",timeInfo);
+  timeInfo = localtime(&fLastTriggerTime);
+  char bufferLastTriggerTime[80];
+  strftime(bufferLastTriggerTime,80,"%F %T",timeInfo);
 
-    float preBeamRate = fPreBeamTriggers/static_cast<double>(fTotalTriggers)/8.92*1000.;
+  MsgInfo(MsgLog::Form("First Time %s Last Time %s",bufferFirstTriggerTime,bufferLastTriggerTime));
 
-    if (fWriteDBEntry) {
-      std::string insertCommand = "insert into ccmdb.nearline_diag (start_time, end_time, prebeam_event_rate, spe_rate_1in, spe_rate_uncoated, spe_rate_coated) value (";
-      insertCommand = Form("%s'%s','%s','%f','%f','%f','%f');",
-          insertCommand.c_str(),
-          bufferFirstTriggerTime,bufferLastTriggerTime,
-          preBeamRate,speRates[0],speRates[1],speRates[2]);
+  float preBeamRate = fPreBeamTriggers/static_cast<double>(fTotalTriggers)/8.92*1000.;
 
-      TSQLServer *db = TSQLServer::Connect(fDBHost.c_str(),fDBUser.c_str(),fDBPwd.c_str());
-      MsgInfo(MsgLog::Form("Insert Command = %s",insertCommand.c_str()));
-      TSQLResult *res = db->Query(insertCommand.c_str());
-      delete res;
-      delete db;
-    } // end fWriteDBEntry
+  if (fWriteDBEntry) {
+    MsgWarning("Going to write to data base");
+    std::string insertCommand = "insert into ccmdb.nearline_diag (start_time, end_time, prebeam_event_rate, spe_rate_1in, spe_rate_uncoated, spe_rate_coated) value (";
+    insertCommand = Form("%s'%s','%s','%f','%f','%f','%f');",
+        insertCommand.c_str(),
+        bufferFirstTriggerTime,bufferLastTriggerTime,
+        preBeamRate,speRates.at(0),speRates.at(1),speRates.at(2));
 
-    return kCCMSuccess;
+    TSQLServer *db = TSQLServer::Connect(fDBHost.c_str(),fDBUser.c_str(),fDBPwd.c_str());
+    MsgInfo(MsgLog::Form("Insert Command = %s",insertCommand.c_str()));
+    TSQLResult *res = db->Query(insertCommand.c_str());
+    delete res;
+    delete db;
+  } // end fWriteDBEntry
+
+  return kCCMSuccess;
 }
 

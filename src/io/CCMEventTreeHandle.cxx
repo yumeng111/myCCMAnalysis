@@ -259,19 +259,20 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
 //_____________________________________________________________
 int CCMEventTreeHandle::SetupOutputFile(TFile & f)
 {
-  //Set up an output file for writing events
-  fOutputFile = &f;
-  
   //Out with the old
   if (fOutEventTree != nullptr) {
     fOutEventTree = nullptr;
   }
 
-  fOutputFile->cd();
   if (std::find(fSaveBranches.begin(),fSaveBranches.end(),"none") != fSaveBranches.end()) {
+    fOutputFile = nullptr;
     return 1;
   }
 
+  //Set up an output file for writing events
+  fOutputFile = &f;
+  
+  fOutputFile->cd();
   fOutEventTree = new TTree(gsEvents, gsEvents);
   if(fOutEventTree == nullptr) {
     MsgError("Problem setting up output tree!");
@@ -427,7 +428,7 @@ void CCMEventTreeHandle::Close()
 {
   //MsgDebug(3,"Calling Close method");
 
-  if (fOutputFile == nullptr && fOutEventTree == nullptr) {
+  if (fOutputFile != nullptr && fOutEventTree != nullptr) {
     fOutputFile->cd();
     fOutEventTree->Write();
     fOutEventTree = nullptr;
