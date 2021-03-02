@@ -347,9 +347,10 @@ void detectorConstruction::DefineMaterials(){
 void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double five, G4double three, G4double mult) {
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
   G4double time5 = five/100.;
-  G4double row5 = time5*base;
-  G4double uvlas5 = time5*uvlas;
+  G4double row5 = time5*base/time5;
+  G4double uvlas5 = time5*uvlas/time5;
   G4double three5 = time5*three;
+  G4double mult5 = time5*mult;
 
   G4double lar_Energy_abs[47];
   G4double lar_wlv_abs[47];
@@ -376,7 +377,7 @@ void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double fiv
   }
   for (int i=16;i<47;++i){
     lar_ABSL[i] = mult*cm;
-    lar2_ABSL[i] = mult*cm;
+    lar2_ABSL[i] = mult5*cm;
     //G4cout << lar_wlv_abs[i] << '\t' << lar_ABSL[i] << '\t' << lar2_ABSL[i] << G4endl; 
   }
   const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
@@ -594,20 +595,21 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     //defines layers for the lAr volumes, rather than having constant properties across all depths. 
     //These layers can be made as solid cylinders (0*cm to 96*cm) or as shells to modify the properties only near the outer edges (current: 70 to 96*cm)
     //each layer can have a different type of lAr (currently only three are available, but more can be added). 
-    fFiducialAr1 = new G4Tubs("Fiducial1", 70*cm, 96*cm, 16.0*cm, 0*deg, 360*deg);
-    fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr,"Fiducial1");
+    G4double innerradius = 96*cm-r5radius*cm;
+    fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, 16.0*cm, 0*deg, 360*deg);
+    fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
 
-    fFiducialAr2 = new G4Tubs("Fiducial2", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
-    fLogicFiduc2 = new G4LogicalVolume(fFiducialAr2,lAr,"Fiducial2");
+    fFiducialAr2 = new G4Tubs("Fiducial2", innerradius, 96*cm, 12.0*cm, 0*deg, 360*deg);
+    fLogicFiduc2 = new G4LogicalVolume(fFiducialAr2,lAr2,"Fiducial2");
 
-    fFiducialAr3 = new G4Tubs("Fiducial3", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
-    fLogicFiduc3 = new G4LogicalVolume(fFiducialAr3,lAr,"Fiducial3");
+    fFiducialAr3 = new G4Tubs("Fiducial3", innerradius, 96*cm, 12.0*cm, 0*deg, 360*deg);
+    fLogicFiduc3 = new G4LogicalVolume(fFiducialAr3,lAr2,"Fiducial3");
 
-    fFiducialAr4 = new G4Tubs("Fiducial4", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
-    fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr,"Fiducial4");//*/
+    fFiducialAr4 = new G4Tubs("Fiducial4", innerradius, 96*cm, 12.0*cm, 0*deg, 360*deg);
+    fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr2,"Fiducial4");//*/
 
     //The bottom layer is different from the prior (best fit so far). It has much cloudier lAR and a much larger contaminated ring.
-    fFiducialAr5 = new G4Tubs("Fiducial5", r5radius*cm, 96*cm, 15.0*cm, 0*deg, 360*deg);
+    fFiducialAr5 = new G4Tubs("Fiducial5", innerradius, 96*cm, 15.0*cm, 0*deg, 360*deg);
     fLogicFiduc5 = new G4LogicalVolume(fFiducialAr5,lAr2,"Fiducial5");
 
     //G4cout << "EdwardNote Defined TPB OS table" << G4endl;
@@ -700,23 +702,22 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 							false,
 							0,
 							true);//*/
-	
-	//foil extension lower down to reduce TPB thickness down the sides
-	//sidethick = 16.0;
-	G4double sidedown = 10.0;
-	G4double sideplace = (68.0-sidedown)*cm;
-	G4double inrad = 96.0*cm+thick/sidethick;
-	G4Tubs* ffoilDown = new G4Tubs("ptfedown", inrad, (96.0*cm+thick), sidedown*cm, 0*deg, 360*deg);
-	G4LogicalVolume* fLogicDown = new G4LogicalVolume(ffoilDown,ptfe,"ptfedown");
-	G4VPhysicalVolume* fPhysDown = new G4PVPlacement(0,
-							 G4ThreeVector(0,0,sideplace),
-							 fLogicDown,
-							 "ptfedown",
-							 fLogicTPB,
-							 false,
-							 0,
-							 true);
 
+	G4double sidedown = 10.0;
+        G4double sideplace = (68.0-sidedown)*cm;
+        G4double inrad = 96.0*cm+thick/sidethick;
+        G4Tubs* ffoilDown = new G4Tubs("ptfedown", inrad, (96.0*cm+thick), sidedown*cm, 0*deg, 360*deg);
+        G4LogicalVolume* fLogicDown = new G4LogicalVolume(ffoilDown,ptfe,"ptfedown");
+        G4VPhysicalVolume* fPhysDown = new G4PVPlacement(0,
+                                                         G4ThreeVector(0,0,sideplace),
+                                                         fLogicDown,
+                                                         "ptfedown",
+                                                         fLogicTPB,
+                                                         false,
+                                                         0,
+                                                         true);
+
+	
 	lArFiducial = new G4PVPlacement(0,
 					G4ThreeVector(0*cm, 0*cm, -0.0000*cm),
 					fLogicFiduc,
@@ -728,7 +729,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
 	//lAr to tpb optical surfaces, for both top/bottom and side layers
 	new G4LogicalBorderSurface("refl", fPhysTPB, fPhysfoil, reflfoilOS);
-	new G4LogicalBorderSurface("refldown", fPhysTPB, fPhysDown, reflfoilOS);
+        new G4LogicalBorderSurface("refldown", fPhysTPB, fPhysDown, reflfoilOS);
 	new G4LogicalBorderSurface("refl2", fPhysTPBb, fPhysfoil, refl2foilOS);
 
 	new G4LogicalBorderSurface("TPB", lArFiducial, fPhysTPB, TPBfoilOS);
@@ -1125,7 +1126,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
       for (G4int n=0; n<npmts; ++n) {
 	if (n%2 == 0) {
-	  zs = 0;
+	  zs = 1;
 	  pmtzz = -68.0;
 	} else { 
 	  zs = 6;
@@ -1153,7 +1154,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
       for (G4int n=0; n<npmts; ++n) {
 	pmtnam = "C"+std::to_string(n+1)+"R63";
-	pmtnam1 = "C"+std::to_string(n+1)+"R03";
+	pmtnam1 = "C"+std::to_string(n+1)+"R13";
 	//G4cout << pmtnam << pmtnam1;
 	
 	angle = n*itang;
@@ -1177,7 +1178,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
       for (G4int n=0; n<npmts; ++n) {
 	pmtnam = "C"+std::to_string(n+1)+"R62";
-	pmtnam1 = "C"+std::to_string(n+1)+"R02";
+	pmtnam1 = "C"+std::to_string(n+1)+"R12";
 	//G4cout << pmtnam << pmtnam1;
 	
 	angle = n*itang;
@@ -1201,7 +1202,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
       for (G4int n=0; n<npmts; ++n) {
 	pmtnam = "C"+std::to_string(n+1)+"R61";
-	pmtnam1 = "C"+std::to_string(n+1)+"R01";
+	pmtnam1 = "C"+std::to_string(n+1)+"R11";
 	//G4cout << pmtnam << pmtnam1;
 	
 	angle = n*itang;
@@ -1746,25 +1747,27 @@ void detectorConstruction::SetDefaults() {
 }
 
 void detectorConstruction::SetRandoms() {
-  conewide = G4RandFlat::shoot(2.5,4.0);//3.33;//1.29
-  conehigh = G4RandFlat::shoot(0.45,0.65);//0.48577;//0.016
-  ultra = G4RandFlat::shoot(30.0,120.0);//1000.;//58.69;//8.91
+  //conewide = G4RandFlat::shoot(2.5,4.0);//3.33;//1.29
+  //conehigh = G4RandFlat::shoot(0.45,0.65);//0.48577;//0.016
+  //ultra = G4RandFlat::shoot(30.0,120.0);//1000.;//58.69;//8.91
   //  threehun = 1216;//404
-  PMTx = G4RandFlat::shoot(6.5,9.5);//7.510;//1.13
-  r4mult = G4RandFlat::shoot(2.0,6.0);
-  fifth = G4RandFlat::shoot(10.0,30.0);//21.24;//6.47
-  r5radius = G4RandFlat::shoot(20.0,60.0);//56.276;//8.40
-  tpbEff = 0.96274;//0.019
+  PMTx = 2.0;//G4RandFlat::shoot(1.0,4.0);//7.510;//1.13
+  r4mult = 1.0;//G4RandFlat::shoot(0.5,2.0);
+  fifth = 100.0;//G4RandFlat::shoot(50.0,150.0);//21.24;//6.47
+  //r5radius = G4RandFlat::shoot(12.0,40.0);//56.276;//8.40
+  //tpbEff = 0.96274;//0.019
+  //TPBdivide = G4RandFlat::shoot(0.3,3.0);//2.0;
+  foilEff = G4RandFlat::shoot(0.01,0.50);//.200;
   
   
-  foilEff = G4RandFlat::shoot(0.01,0.10);//.200;
-  topthick = G4RandFlat::shoot(5.0,50.0);//100.0;
-  TPBdivide = G4RandFlat::shoot(0.3,1.5);//2.0;
-  divider = G4RandFlat::shoot(1.0,3.0);//2.0;
-  tpbAbs = G4RandFlat::shoot(.825,.925);//.875
+  topthick = G4RandFlat::shoot(1.0,50.0);//100.0;
+  sidethick = G4RandFlat::shoot(1.00001,20.0);
+  divider = G4RandFlat::shoot(0.01,10.0);//2.0;
+  tpbAbs = G4RandFlat::shoot(.825,.975);//.875
 
-  G4double base = 42.8255;//4.57
+  G4double base = G4RandFlat::shoot(15.0,100.0);//42.8255;//4.57
   G4double mult = 2800.0;
+  //fifth = G4RandFlat::shoot(20.0,150.0);
  
   DefineLAr(base,ultra,fifth,threehun,mult);
   DefineTpb(foilEff, tpbEff, tpbAbs);
@@ -1773,7 +1776,7 @@ void detectorConstruction::SetRandoms() {
 
   std::ostringstream oss;
 
-  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t r5mult\t" << PMTx << "\t r4mult\t" << r4mult << "\t PMTdiv\t" << TPBdivide << "\t top\t" << topthick << "\t foildiv\t" << divider << "\t tpbabs\t" << tpbAbs << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
+  oss << "Randoms: top\t" << topthick << "\t side\t" << sidethick << "\t ultra\t" << ultra << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t r5mult\t" << PMTx/2.0 << "\t r4mult\t" << r4mult << "\t PMTdiv\t" << TPBdivide << "\t tpbEff\t" << tpbEff << "\t foildiv\t" << divider << "\t foil\t" << foilEff << "\t tpbtrans\t" << tpbAbs << "\t VUVabsorb\t" << base;  
 
   randomized = true;
   
@@ -1911,7 +1914,7 @@ void detectorConstruction::CorrelateRandom() {
   G4double throws[13];
 
   for (int i = 0; i < 13; ++i){
-    throws[i] = G4RandGauss::shoot(-1.0,1.0);
+    throws[i] = G4RandGauss::shoot(0.0,1.0);
   }
   
   errors[0] = throws[0]*0.406081999;

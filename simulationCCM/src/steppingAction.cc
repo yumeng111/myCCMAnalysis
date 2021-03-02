@@ -108,6 +108,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
   if (testn == "PMT" || testnp == "PMT") {
     //skip any photons above 5 eV (wavelength < 250 nm) as the PMTs can't detect them.
     if (kinEn >= 5*eV) {
+      step->GetTrack()->SetTrackStatus(fStopAndKill);
       return;
     }
 
