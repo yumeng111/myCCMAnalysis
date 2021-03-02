@@ -1088,10 +1088,10 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       //determine if the pmt is to be coated or uncoated. Rows 1,3,and 5 are coated
       if (zs == -2 || zs == 2 || zs == 0) {
 	pmtcoat = true;
-      } else if ((i%24)%2 != 0 && zs == 1) {
+      } else if ((i%24)%2 != 0 && zs == -1) {
 	//as are the evens on row 4 (remember that the iterator goes from 0 to 23, while the names go from 1 to 24).
 	pmtcoat = true;
-      } else if ((i%24)%2 == 0 && zs == -1) {
+      } else if ((i%24)%2 == 0 && zs == 1) {
 	//and the odds on row 2
 	pmtcoat = true;
       } else {
