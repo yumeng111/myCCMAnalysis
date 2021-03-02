@@ -8,8 +8,8 @@
   <Modules type="Reco"> CCMFindEvents </Modules>
   -->
 
-  <Modules type="Reco"> CCMRateCalc </Modules>
-  <ModuleVersion> default </ModuleVersion>
+  <Modules type="Reco"> CCMBuildAccumWaveform CCMFindEvents CCMRateCalc </Modules>
+  <ModuleVersion> default dynamic default </ModuleVersion>
 
   <Config name="ROOTSetup" version="default">
     <Param name="ReadBranches"><string>rawData pulses</string>
@@ -47,6 +47,54 @@
     </Param>
   </Config>
 
+  <Config name="CCMBuildAccumWaveform" version="default">
+    <Param name="TriggerType"><string>BEAM</string>
+      Only look at triggers with name passed.
+      Options are:
+       - BEAM
+       - STROBE
+       - LED
+       - ALL
+      and any combination of the three, like BEAM STROBE
+    </Param>
+    <Param name="BuildMethods"><string>CCMAccumWaveformTriangle</string>
+      The build methods to use. Options are:
+      CCMAccumWaveformTriangle
+      CCMAccumWaveformTrianglePulseCut
+      CCMAccumWaveformStart
+      CCMAccumWaveformStartPulseCut
+    </Param>
+    <Param name="PulseTimeLowValue"><double>-9920</double>
+      The earliest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
+    </Param>
+    <Param name="PulseTimeHighValue"><double>-250</double>
+      The latest in the DAQ window to allow the pulse to start in ns
+      Only needed if BuildMethod contains at least one PulseCut
+    </Param>
+  </Config>
+
+  <Config name="CCMFindEvents" version="dynamic">
+    <Param name="Threshold"><double> 0.2 </double>
+      The PE threshold for a 2ns bin to trigger event building
+    </Param>
+    <Param name="ResetEvents"><int>1</int>
+      Flag to reset the Events class. Should only be used in the first instance of CCMFindEvents
+    </Param>
+    <Param name="AccumWaveformMethodID"><string>CCMAccumWaveformTriangle</string>
+      Which CCMAccumWaveformMethod to use in finding the events
+    </Param>
+    <Param name="EventFinderID"><string>CCMDynamicLengthEvent</string>
+      Which CCMEvnetFinderID to use in finding the events options:
+      CCMDynamicLengthEvent
+      CCMFixedLengthEvent
+    </Param>
+    <Param name="FixedLength"><int>0</int>
+      Number of bins for the required length of the event only needed if 
+      EventFinderID == CCMFixedLengthEvent
+    </Param>
+  </Config>
+
   <Config name="CCMRateCalc" version="default">
     <Param name="WriteDBEntry"><int> 0 </int>
       A flag, if non-zero, will try to add the file information to the database
@@ -60,7 +108,7 @@
     <Param name="DBPwd"><string> </string>
       The password for the user (ask someone to get the password)
     </Param>
-    <Param name="TriggerType"><string> LED </string>
+    <Param name="TriggerType"><string>BEAM</string>
       Only look at triggers with name passed.
       Options are:
        - BEAM
