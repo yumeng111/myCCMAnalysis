@@ -431,30 +431,31 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
       fOutfile->cd();
       fTree->Fill();
     }
+
+    if (!fPassedBCMCut) {
+      ++fNumFailedBCMCut;
+    } else if (!fPassedTimeCut) {
+      ++fNumFailedTimeCut;
+    } else if (!fPassedNumHitsCut) {
+      ++fNumFailedNumHitsCut;
+    } else if (!fPassedPrevCut) {
+      ++fNumFailedPrevCut;
+    } else if (!fPassedVetoCut) {
+      ++fNumFailedVetoCut;
+    } else if (!fPassedPositionCut) {
+      ++fNumFailedPositionCut;
+    } else if (!fPassedNicenessCut) {
+      ++fNumFailedNicenessCut;
+    } else if (!fPassedWaveformMaxCut) {
+      ++fNumFailedWaveformMaxCut;
+    } else if (!fPassedLengthCut) {
+      ++fNumFailedLengthCut;
+    } else if (!fPassedEnergyCut) {
+      ++fNumFailedEnergyCut;
+    }
   } // end e
 
   fNumFinalEvents += tempCounter - locationsToRemove.size();
-  if (!fPassedBCMCut) {
-    ++fNumFailedBCMCut;
-  } else if (!fPassedTimeCut) {
-    ++fNumFailedTimeCut;
-  } else if (!fPassedNumHitsCut) {
-    ++fNumFailedNumHitsCut;
-  } else if (!fPassedPrevCut) {
-    ++fNumFailedPrevCut;
-  } else if (!fPassedVetoCut) {
-    ++fNumFailedVetoCut;
-  } else if (!fPassedPositionCut) {
-    ++fNumFailedPositionCut;
-  } else if (!fPassedNicenessCut) {
-    ++fNumFailedNicenessCut;
-  } else if (!fPassedWaveformMaxCut) {
-    ++fNumFailedWaveformMaxCut;
-  } else if (!fPassedLengthCut) {
-    ++fNumFailedLengthCut;
-  } else if (!fPassedEnergyCut) {
-    ++fNumFailedEnergyCut;
-  }
 
   if (locationsToRemove.empty()) {
     return kCCMSuccess;
