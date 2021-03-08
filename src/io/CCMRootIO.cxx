@@ -408,7 +408,7 @@ void CCMRootIO::Close()
 {
 
   if(fOutFile != nullptr) {
-    MsgInfo(MsgLog::Form("Wrote %d event(s) to Event Tree.",fNWrite));
+    MsgInfo(MsgLog::Form("Wrote %d trigger(s) to Event Tree.",fNWrite));
     MsgInfo("Closing File.");
     fEventHandle->Close();
     fOutFile->Flush();
