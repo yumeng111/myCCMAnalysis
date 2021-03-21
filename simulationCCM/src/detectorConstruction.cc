@@ -211,7 +211,7 @@ void detectorConstruction::DefineMaterials(){
   lAr2->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
  
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
-  G4double base = 42.8255;//42.72;//Base absorption length for UV light
+  G4double base = 55.9506;//42.72;//Base absorption length for UV light
   G4double mult = 2800.0;//Absorption length for visible.
   DefineLAr(base,ultra,fifth,threehun,mult);
 
@@ -347,10 +347,10 @@ void detectorConstruction::DefineMaterials(){
 void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double five, G4double three, G4double mult) {
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
   G4double time5 = five/100.;
-  G4double row5 = time5*base/time5;
-  G4double uvlas5 = time5*uvlas/time5;
-  G4double three5 = time5*three;
-  G4double mult5 = time5*mult;
+  G4double row5 = time5*base;
+  G4double uvlas5 = time5*uvlas;
+  G4double three5 = three;
+  G4double mult5 = mult;
 
   G4double lar_Energy_abs[47];
   G4double lar_wlv_abs[47];
@@ -405,7 +405,7 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs) 
   G4double wlAbf19 = -0.002/(std::log((1-(.156*foil/0.2))));
   G4double wlAbf15 = -0.002/(std::log((1-(.114*foil/0.2))));
   G4double wlAbf12 = -0.002/(std::log((1-(.191*foil/0.2))));
-  G4double wlAbf11 = -0.002/(std::log((1-(.311*foil/0.2))));
+  G4double wlAbf11 = wlAbf21/(std::log(5.797944));
   G4double TPBWLSAbsorption[nTPBEntries] =
     { 0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
       1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
@@ -539,10 +539,10 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     //Defines the thickness and placement of the TPB foils (slightly thicker on the bottom than the top). Can change the overall thickness without altering the ratios by just adjusting the first number, basethick
     const G4double basethick = 0.0002*cm;
-    G4double thick = basethick/divider;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
+    G4double thick = basethick/1.9848;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
 
-    G4double deep = thick*bdepth+thick/topthick;//Defines the depth; used for making the bottom thicker
-    G4double place = (thick*bdepth/2.0-thick/(topthick*2.0));//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
+    G4double deep = thick*2.0+thick/topthick;//Defines the depth; used for making the bottom thicker
+    G4double place = (thick-thick/(topthick*2.0));//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
 
     //G4cout << "EdwardNote Defined Up to foils" << G4endl;
     
@@ -595,22 +595,22 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     //defines layers for the lAr volumes, rather than having constant properties across all depths. 
     //These layers can be made as solid cylinders (0*cm to 96*cm) or as shells to modify the properties only near the outer edges (current: 70 to 96*cm)
     //each layer can have a different type of lAr (currently only three are available, but more can be added). 
-    G4double innerradius = 96*cm-r5radius*cm;
+    G4double innerradius = 96*cm - r5radius*cm;
     fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, 16.0*cm, 0*deg, 360*deg);
     fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
 
-    fFiducialAr2 = new G4Tubs("Fiducial2", innerradius, 96*cm, 12.0*cm, 0*deg, 360*deg);
-    fLogicFiduc2 = new G4LogicalVolume(fFiducialAr2,lAr2,"Fiducial2");
+    fFiducialAr2 = new G4Tubs("Fiducial2", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
+    fLogicFiduc2 = new G4LogicalVolume(fFiducialAr2,lAr,"Fiducial2");
 
-    fFiducialAr3 = new G4Tubs("Fiducial3", innerradius, 96*cm, 12.0*cm, 0*deg, 360*deg);
-    fLogicFiduc3 = new G4LogicalVolume(fFiducialAr3,lAr2,"Fiducial3");
+    fFiducialAr3 = new G4Tubs("Fiducial3", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
+    fLogicFiduc3 = new G4LogicalVolume(fFiducialAr3,lAr,"Fiducial3");
 
-    fFiducialAr4 = new G4Tubs("Fiducial4", innerradius, 96*cm, 12.0*cm, 0*deg, 360*deg);
-    fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr2,"Fiducial4");//*/
+    fFiducialAr4 = new G4Tubs("Fiducial4", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
+    fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr,"Fiducial4");//*/
 
     //The bottom layer is different from the prior (best fit so far). It has much cloudier lAR and a much larger contaminated ring.
-    fFiducialAr5 = new G4Tubs("Fiducial5", innerradius, 96*cm, 15.0*cm, 0*deg, 360*deg);
-    fLogicFiduc5 = new G4LogicalVolume(fFiducialAr5,lAr2,"Fiducial5");
+    fFiducialAr5 = new G4Tubs("Fiducial5", 70*cm, 96*cm, 15.0*cm, 0*deg, 360*deg);
+    fLogicFiduc5 = new G4LogicalVolume(fFiducialAr5,lAr,"Fiducial5");
 
     //G4cout << "EdwardNote Defined TPB OS table" << G4endl;
 
@@ -705,7 +705,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
 	G4double sidedown = 10.0;
         G4double sideplace = (68.0-sidedown)*cm;
-        G4double inrad = 96.0*cm+thick/sidethick;
+        G4double inrad = 96.0*cm+thick/4.0;
         G4Tubs* ffoilDown = new G4Tubs("ptfedown", inrad, (96.0*cm+thick), sidedown*cm, 0*deg, 360*deg);
         G4LogicalVolume* fLogicDown = new G4LogicalVolume(ffoilDown,ptfe,"ptfedown");
         G4VPhysicalVolume* fPhysDown = new G4PVPlacement(0,
@@ -938,7 +938,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	coneheight = 3.87*cm;
       }
       G4double coneplace = 68*cm-coneheight;
-      G4double topwide = topconewide*cm;
+      G4double topwide = 15.2*cm;
       
       G4Cons* foilcone = new G4Cons("ptfecone", 1.8*cm, 1.81*cm, 1.8*cm, topwide, coneheight, 0*deg, 360*deg);
       G4LogicalVolume* fFoilCone = new G4LogicalVolume(foilcone, ptfe, "ptfecone");
@@ -1298,17 +1298,7 @@ void detectorConstruction::placePMT(G4String name,
   //set the outer radii of the glass and the thickness of the TPB.
   G4double radout = 10.2*cm;
   G4double tpbout = 0.00009*cm;//In the best fit, the TPB on the PMTs is slightly thinner than normal. Normal: 0.00019*cm.
-
-  //  TPBdivide = 1.0; 
-  tpbout = tpbout/TPBdivide;
-  G4double r5mult = PMTx/2.0;
-  G4double r5out = tpbout*r5mult;
-  
-  if (pmt_z < -40) {
-    tpbout = r5out;
-  } else if (pmt_z < -10) {
-    tpbout = tpbout*r4mult;
-  }
+  tpbout = tpbout/0.9114;
 
   //define the initial angle so the pmt is facing inwards according to the position
   init_angle = (std::atan(pmt_y/pmt_x)*180/CLHEP::pi)+90;
@@ -1721,24 +1711,17 @@ void detectorConstruction::SetDefaults() {
   darkMatter=false;
   fLayers=true;
   ccm200 = false;
-  conewide = 3.4236;
-  conehigh = 0.55138;//G4RandFlat::shoot(0.2,1.0);
-  ultra = 87.2284;
-  threehun = 1215.93;//look at this for lower values for laser later.
-  PMTx = 8.0895;
-  fifth = 20.1814;//G4RandFlat::shoot(10.0,40.0);//
-  tpbEff = 0.96274;//G4RandFlat::shoot(0.1,0.6);//0.96274;
-  r5radius = 40.9707;
-  foilEff = .0444;
-  topthick = 26.512;
-  sidethick = 10.0;
-  TPBdivide = 0.9114;
-  divider = 1.9848;//
-  bdepth = 2.0;//
-  topconewide = 15.2;//
-  r4mult = 3.6195;//
-  randwide = 1.0;//
-  tpbAbs = 0.8735;//
+  conewide = 7.555;
+  conehigh = 0.590;
+  ultra = 37.55;
+  threehun = 1310.0;
+  fifth = 12.2318;
+  tpbEff = 0.96274;
+  r5radius = 31.948;
+  foilEff = .45548;
+  topthick = 26.12;
+  randwide = 2.922;
+  tpbAbs = 0.8735;
   randomized = false;
   rootset = false;
   variableString = "Random: All Mean Values";
@@ -1746,28 +1729,20 @@ void detectorConstruction::SetDefaults() {
 
 }
 
+//method to randomize all variables without correlations
 void detectorConstruction::SetRandoms() {
-  //conewide = G4RandFlat::shoot(2.5,4.0);//3.33;//1.29
-  //conehigh = G4RandFlat::shoot(0.45,0.65);//0.48577;//0.016
-  //ultra = G4RandFlat::shoot(30.0,120.0);//1000.;//58.69;//8.91
-  //  threehun = 1216;//404
-  PMTx = 2.0;//G4RandFlat::shoot(1.0,4.0);//7.510;//1.13
-  r4mult = 1.0;//G4RandFlat::shoot(0.5,2.0);
-  fifth = 100.0;//G4RandFlat::shoot(50.0,150.0);//21.24;//6.47
-  //r5radius = G4RandFlat::shoot(12.0,40.0);//56.276;//8.40
-  //tpbEff = 0.96274;//0.019
-  //TPBdivide = G4RandFlat::shoot(0.3,3.0);//2.0;
-  foilEff = G4RandFlat::shoot(0.01,0.50);//.200;
+  conewide = G4RandFlat::shoot(3.5,9.0);
+  conehigh = G4RandFlat::shoot(0.45,0.65);
+  ultra = G4RandFlat::shoot(20.0,80.0);
+  threehun = G4RandFlat::shoot(1000.0,1600.);
+  randwide = G4RandFlat::shoot(0.5,2.5);
+  topthick = G4RandFlat::shoot(1.0,50.0);
+  fifth = G4RandFlat::shoot(10.0,50.0);
+  r5radius = G4RandFlat::shoot(20.0,60.0);
+  foilEff = G4RandFlat::shoot(0.30,0.60);
+  G4double base = G4RandFlat::shoot(20.0,70.0);
   
-  
-  topthick = G4RandFlat::shoot(1.0,50.0);//100.0;
-  sidethick = G4RandFlat::shoot(1.00001,20.0);
-  divider = G4RandFlat::shoot(0.01,10.0);//2.0;
-  tpbAbs = G4RandFlat::shoot(.825,.975);//.875
-
-  G4double base = G4RandFlat::shoot(15.0,100.0);//42.8255;//4.57
   G4double mult = 2800.0;
-  //fifth = G4RandFlat::shoot(20.0,150.0);
  
   DefineLAr(base,ultra,fifth,threehun,mult);
   DefineTpb(foilEff, tpbEff, tpbAbs);
@@ -1776,7 +1751,7 @@ void detectorConstruction::SetRandoms() {
 
   std::ostringstream oss;
 
-  oss << "Randoms: top\t" << topthick << "\t side\t" << sidethick << "\t ultra\t" << ultra << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t r5mult\t" << PMTx/2.0 << "\t r4mult\t" << r4mult << "\t PMTdiv\t" << TPBdivide << "\t tpbEff\t" << tpbEff << "\t foildiv\t" << divider << "\t foil\t" << foilEff << "\t tpbtrans\t" << tpbAbs << "\t VUVabsorb\t" << base;  
+  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
 
   randomized = true;
   
@@ -1861,15 +1836,13 @@ void detectorConstruction::SetRootFile (G4String b) {
 }
 
 //method to modulate a single random variable a defined sigma away from mean
-//incomplete - currently needs to be updated with the latest set of parameters
 int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
-  G4double variables[] = {3.33, 0.48577, 58.69, 1216.0, 
-			  7.510, 21.24, 0.96274, 56.276, 
-			  35.92};
-  G4double errors[] = {1.29, 0.016, 8.91, 404.0, 
-		       1.13, 6.47, 0.019, 8.40, 
-		       4.75};
-  if (var < 9) {
+  G4double variables[] = {7.555, 0.590, 37.55, 1310.0, 2.922, 26.12, 
+			  12.2318, 31.948, .45548, 55.9506};
+  G4double errors[] = {1.488, 0.075, 18.17, 172.0, 14.17, 0.480,
+		       5.92, 11.08, .0797, 6.923};
+  
+  if (var < 10) {
     variables[var] = variables[var]+errors[var]*sigma;
   } else {
     G4cout << "invalid variable changed!" << G4endl; 
@@ -1879,12 +1852,14 @@ int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
   conehigh = variables[1];
   ultra = variables[2];
   threehun = variables[3];
-  PMTx = variables[4];
-  fifth = variables[5];
-  tpbEff = variables[6];
+  randwide = variables[4];
+  topthick = variables[5];
+  
+  fifth = variables[6];
   r5radius = variables[7];
+  foilEff = variables[8];
+  G4double base = variables[9];
 
-  G4double base = variables[8];
   G4double mult = 2800.0;
 
   DefineLAr(base,ultra,fifth,threehun,mult);
@@ -1893,7 +1868,7 @@ int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
   std::ostringstream oss;
-  oss /*<< "Randoms: cone" << conewide << "high" << conehigh << "ultra" << ultra << "threehun" << threehun << "pmtx" << PMTx << "fifth" << fifth << "rad" << r5radius << "tpb" << tpbEff << "cloud" << clouded << "base"*/ << "Randoms: VUVabsorb" << base;  
+  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
 
   randomized = true;
   
@@ -1905,34 +1880,37 @@ int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
 
 //throws a set of randomized correlated OM parameters
 void detectorConstruction::CorrelateRandom() {
-  G4double variables[] = {3.42357343177, 0.551375907163, 87.2284062594, 20.181368066, 
-			  40.9707185449, 8.08949909505, 3.61948371466, 0.911408671734, 
-			  26.511881761, 1.98476763646, 0.873514686704, 0.0443913655346, 
-			  42.8255};
+  G4double variables[] = {7.555, 0.590, 37.55, 1310.0, 2.922, 26.12, 
+			  12.2318, 31.948, .45548, 55.9506};
   
-  G4double errors[13];
-  G4double throws[13];
+  G4double errors[10];
+  G4double throws[10];
 
-  for (int i = 0; i < 13; ++i){
+  for (int i = 0; i < 10; ++i){
     throws[i] = G4RandGauss::shoot(0.0,1.0);
   }
   
-  errors[0] = throws[0]*0.406081999;
-  errors[1] = throws[0]*-0.002489633+throws[1]*0.056321712;
-  errors[2] = throws[0]*-3.879622947+throws[1]*1.67174872+throws[2]*21.60525527;
-  errors[3] = throws[0]*-0.474752075+throws[1]*-0.244229915+throws[2]*-0.680881388+throws[3]*5.649606122;
-  errors[4] = throws[0]*0.62124883+throws[1]*-0.121187448+throws[2]*0.383012017+throws[3]*-1.122258618+throws[4]*11.18242706;
-  errors[5] = throws[0]*-0.087808959+throws[1]*-0.17759724+throws[2]*-0.101912315+throws[3]*0.092946053+throws[4]*0.123662774+throws[5]*0.788532381;
-  errors[6] = throws[0]*0.065524998+throws[1]*0.106488221+throws[2]*0.054342634+throws[3]*-0.033917551+throws[4]*0.023915182+throws[5]*0.203767612+throws[6]*0.770559785;
-  errors[7] = throws[0]*0+throws[1]*0.041120423+throws[2]*-0.003181773+throws[3]*0.004010173+throws[4]*-0.024044068+throws[5]*0.029048136+throws[6]*0.127972355+throws[7]*0.237310932;
-  errors[8] = throws[0]*-2.166339121+throws[1]*0.123767771+throws[2]*-1.08751618+throws[3]*-0.013586349+throws[4]*1.783732123+throws[5]*-0.253461314+throws[6]*0.992613062+throws[7]*2.955121873+throws[8]*12.71099726;
-  errors[9] = throws[0]*-0.115775435+throws[1]*-0.072250436+throws[2]*-0.006870659+throws[3]*0.078441803+throws[4]*0.018424278+throws[5]*0.079850907+throws[6]*-0.025032209+throws[7]*0.03183669+throws[8]*0.053854832+throws[9]*0.514021482;
-  errors[10] = throws[0]*0.001696081+throws[1]*7.49732E-05+throws[2]*0.002112744+throws[3]*-0.004122121+throws[4]*0.000393831+throws[5]*0.001108981+throws[6]*0.00134051+throws[7]*-0.014270727+throws[8]*-0.000704703+throws[9]*-0.003312518+throws[10]*0.020810476;
-  errors[11] = throws[0]*0.005183056+throws[1]*0.000229111+throws[2]*-0.00062476+throws[3]*-0.000679385+throws[4]*-0.002405874+throws[5]*0.000144518+throws[6]*-0.001026222+throws[7]*0.000395504+throws[8]*0.001043463+throws[9]*0.004041392+throws[10]*-0.005568249+throws[11]*0.024342018;
-  errors[12] = throws[0]*0+throws[2]*-0.210717026+throws[3]*0.120814605+throws[4]*2.65461116+throws[5]*0.688103505+throws[6]*0.342135847+throws[7]*-0.004632508+throws[8]*-0.402340045+throws[9]*-0.1641951+throws[10]*-0.106558457+throws[11]*0.290881697+throws[12]*3.538061696;
+  //3-18 laser best fit
+  errors[0] = throws[0]*1.435616295;
+  errors[1] = throws[0]*-0.002265963+throws[1]*0.07467269;
+  errors[2] = throws[0]*6.351105428+throws[1]*-4.33286749+throws[2]*15.73753036;
+  errors[3] = throws[0]*18.56168772+throws[1]*3.123084468+throws[2]*-8.391898059+throws[3]*169.9346988;
+  errors[4] = throws[0]*0.126009605+throws[1]*-0.017048481+throws[2]*0.086180583+throws[3]*-0.050823025+throws[4]*0.428396012;
+  errors[5] = throws[0]*-1.737026377+throws[1]*-3.235993852+throws[2]*2.61676093+throws[3]*0.712776544+throws[4]*0.88608069+throws[5]*13.13058164;
+  /*3-14 sodium best fit, replaced with 3-21
+  errors[6] = throws[6]*7.002392289;
+  errors[7] = throws[6]*10.8252071+throws[7]*6.300770135;
+  errors[8] = throws[6]*-0.019606209+throws[7]*0.024887974+throws[8]*0.025921294;
+  errors[9] = throws[6]*0.290075114+throws[7]*0.41847509+throws[8]*-0.784878399+throws[9]*2.110057621;//*/
+  //3-21 sodium best fit
+  errors[6] = throws[6]*6.568616069;
+  errors[7] = throws[6]*8.262090646+throws[7]*7.799671268;
+  errors[8] = throws[6]*-0.035238137+throws[7]*0.034674956+throws[8]*0.051884376;
+  errors[9] = throws[6]*-0.645903006+throws[7]*0.551776675+throws[8]*-1.960392196+throws[9]*6.116201031;
 
 
-  for (int i = 0; i < 13; ++i){
+
+  for (int i = 0; i < 10; ++i){
     variables[i] = variables[i] + errors[i];
     if (variables[i] < 0) {
       variables[i] = -1*variables[i];
@@ -1941,17 +1919,15 @@ void detectorConstruction::CorrelateRandom() {
   conewide = variables[0];
   conehigh = variables[1];
   ultra = variables[2];
-  fifth = variables[3];
-  r5radius = variables[4];
-  PMTx = variables[5];
-  r4mult = variables[6];
-  TPBdivide = variables[7];
-  topthick = variables[8];
-  divider = variables[9];
-  tpbAbs = variables[10];
-  foilEff = variables[11];
+  threehun = variables[3];
+  randwide = variables[4];
+  topthick = variables[5];
+  
+  fifth = variables[6];
+  r5radius = variables[7];
+  foilEff = variables[8];
+  G4double base = variables[9];
 
-  G4double base = variables[12];
   G4double mult = 2800.0;
 
   DefineLAr(base,ultra,fifth,threehun,mult);
@@ -1960,7 +1936,7 @@ void detectorConstruction::CorrelateRandom() {
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
   std::ostringstream oss;
-  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t r5mult\t" << PMTx << "\t r4mult\t" << r4mult << "\t PMTdiv\t" << TPBdivide << "\t top\t" << topthick << "\t foildiv\t" << divider << "\t tpbabs\t" << tpbAbs << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
+  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
 
   randomized = true;
   
@@ -1972,54 +1948,35 @@ void detectorConstruction::CorrelateRandom() {
 
 //method for randomizing one parameter at a time
 void detectorConstruction::OneRandom(G4int var) {
-  conewide = 3.42357343177;
-  conehigh = 0.551375907163;
-  ultra = 87.2284062594;
-  fifth = 20.181368066;
-  r5radius = 40.9707185449;
-  PMTx = 8.08949909505;
-  r4mult = 3.61948371466;
-  TPBdivide = 0.911408671734;
-  topthick = 26.511881761;
-  divider = 1.98476763646;
-  tpbAbs = 0.873514686704;
-  foilEff = 0.0443913655346;
+  G4double base = 55.9506;
 
-  G4double base = 42.8255;
-
-  if (var > 13) {
+  if (var > 11) {
     return;
   } else if (var == 0) {
-    ultra = G4RandFlat::shoot(70.0,120.0);
+    base = 55.9506;
   } else if (var == 1) {
-    fifth = G4RandFlat::shoot(10.0,30.0);
+    conewide = G4RandFlat::shoot(3.5,9.0);
   } else if (var == 2) {
-    r5radius = G4RandFlat::shoot(20.0,70.0);
+    conehigh = G4RandFlat::shoot(0.45,0.65);
   } else if (var == 3) {
-    conewide = G4RandFlat::shoot(3.0,4.5);
+    ultra = G4RandFlat::shoot(20.0,80.0);
   } else if (var == 4) {
-    foilEff = G4RandFlat::shoot(0.01,0.10);
+    threehun = G4RandFlat::shoot(1000.0,1600.);
   } else if (var == 5) {
-    divider = G4RandFlat::shoot(1.0,3.0);
+    randwide = G4RandFlat::shoot(0.5,2.5);
   } else if (var == 6) {
-    conehigh = G4RandFlat::shoot(0.4,0.7);
+    topthick = G4RandFlat::shoot(1.0,50.0);
   } else if (var == 7) {
-    topthick = G4RandFlat::shoot(10.0,50.0);
+    fifth = G4RandFlat::shoot(10.0,50.0);
   } else if (var == 8) {
-    TPBdivide = G4RandFlat::shoot(0.5,2.0);
+    r5radius = G4RandFlat::shoot(20.0,60.0);
   } else if (var == 9) {
-    PMTx = G4RandFlat::shoot(6.0,9.0);
+    foilEff = G4RandFlat::shoot(0.30,0.60);
   } else if (var == 10) {
-    r4mult = G4RandFlat::shoot(3.0,5.0);
-  } else if (var == 11) {
-    tpbAbs = G4RandFlat::shoot(0.80,0.99);
-  } else if (var == 12) {
-    foilEff = G4RandFlat::shoot(0.10,0.50);
-  } else if (var == 13) {
     base = G4RandFlat::shoot(20.0,70.0);
   }
   
-  G4double mult = 2800.0;//Absorption length for visible.
+  G4double mult = 2800.0;
 
   DefineLAr(base,ultra,fifth,threehun,mult);
   DefineTpb(foilEff, tpbEff, tpbAbs);
@@ -2028,14 +1985,15 @@ void detectorConstruction::OneRandom(G4int var) {
 
   std::ostringstream oss;
 
-  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t r5mult\t" << PMTx << "\t r4mult\t" << r4mult << "\t PMTdiv\t" << TPBdivide << "\t top\t" << topthick << "\t foildiv\t" << divider << "\t tpbabs\t" << tpbAbs << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
-
+  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
+  
   randomized = true;
   
   variableString = oss.str();
   G4cout << variableString << G4endl;
 }
 
+//method for reverting to 'clean' argon (low contamination levels).
 void detectorConstruction::CleanArgon() {
   ultra = 1000.;
   fifth = 100.0;
@@ -2044,8 +2002,8 @@ void detectorConstruction::CleanArgon() {
 
   std::ostringstream oss;
 
-  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t r5mult\t" << PMTx << "\t r4mult\t" << r4mult << "\t PMTdiv\t" << TPBdivide << "\t top\t" << topthick << "\t foildiv\t" << divider << "\t tpbabs\t" << tpbAbs << "\t foil\t" << foilEff << "\t VUVabsorb\t" << ultra;  
-
+    oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << ultra;  
+  
   randomized = true;
   
   variableString = oss.str();

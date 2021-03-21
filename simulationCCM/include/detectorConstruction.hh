@@ -162,24 +162,18 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4double conehigh;
     G4double ultra;
     G4double threehun;
-    G4double PMTx;
+    G4double randwide;
+    G4double topthick;
     G4double fifth;
     G4double r5radius;
-    G4double tpbEff;
     G4double foilEff;
-    G4double topthick;
-    G4double sidethick;
-    G4double TPBdivide;
+    G4double tpbEff;
+    G4double tpbAbs;
+
     G4bool randomized;
     G4String variableString;
-    G4String rootfile;
     G4bool rootset;
-    G4double divider;
-    G4double bdepth;
-    G4double topconewide;
-    G4double r4mult;
-    G4double randwide;
-    G4double tpbAbs;
+    G4String rootfile;
   
 };
 
