@@ -594,7 +594,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     //defines layers for the lAr volumes, rather than having constant properties across all depths. 
     //These layers can be made as solid cylinders (0*cm to 96*cm) or as shells to modify the properties only near the outer edges (current: 70 to 96*cm)
-    //each layer can have a different type of lAr (currently only three are available, but more can be added). 
+    //each layer can have a different type of lAr (currently only two are available, but more can be added). 
     G4double innerradius = 96*cm - r5radius*cm;
     fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, 16.0*cm, 0*deg, 360*deg);
     fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
@@ -609,7 +609,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr,"Fiducial4");//*/
 
     //The bottom layer is different from the prior (best fit so far). It has much cloudier lAR and a much larger contaminated ring.
-    fFiducialAr5 = new G4Tubs("Fiducial5", 70*cm, 96*cm, 15.0*cm, 0*deg, 360*deg);
+    fFiducialAr5 = new G4Tubs("Fiducial5", 75*cm, 96*cm, 15.0*cm, 0*deg, 360*deg);
     fLogicFiduc5 = new G4LogicalVolume(fFiducialAr5,lAr,"Fiducial5");
 
     //G4cout << "EdwardNote Defined TPB OS table" << G4endl;
@@ -1126,14 +1126,19 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
       for (G4int n=0; n<npmts; ++n) {
 	if (n%2 == 0) {
-	  zs = 1;
+	  zs = 0;
 	  pmtzz = -68.0;
 	} else { 
 	  zs = 6;
 	  pmtzz = +68.0;
 	}//let 6 be bottom and 0 be top, alternating around the circle in every other position from the design of CCM220
+	
+	//Uncoated on cross1, ring 4: 7, 17, 4, 14
+	if (n==6 || n==16 || n==3 || n==13) { 
+	  pmtcoat = false;
+	} else { pmtcoat = true; }
 
-	pmtnam = "C"+std::to_string(n+1)+"R"+std::to_string(zs)+"4";
+	pmtnam = "C"+std::to_string(400+n+1)+"R"+std::to_string(zs);
 	//define a new set of names, with the rows being R0x for the top (0 to indicate top, x for the circle there) and simuilarly R6x for the bottom.
 	
 	//define the position and coating and place the PMTs
@@ -1153,8 +1158,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       angle = 0;
 
       for (G4int n=0; n<npmts; ++n) {
-	pmtnam = "C"+std::to_string(n+1)+"R63";
-	pmtnam1 = "C"+std::to_string(n+1)+"R13";
+	pmtnam = "C"+std::to_string(300+n+1)+"R6";
+	pmtnam1 = "C"+std::to_string(300+n+1)+"R0";
 	//G4cout << pmtnam << pmtnam1;
 	
 	angle = n*itang;
@@ -1162,11 +1167,17 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtxx = radius*std::cos(phi);
 	pmtyy = radius*std::sin(phi);
 	pmtcoat = true;
-	if (n%3 == 0) { pmtcoat = false; }//every third pmt in the second row is uncoated. 10 total
+	
+	//if (n%3 == 0) { pmtcoat = false; }//every third pmt in the second row is uncoated. 10 total
 	if (cylinderOn) { pmtcoat=false; }
+
 	pmtzz = -68.0;
+	if (n==6 || n==13) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = 68.0;
+	if (n==0 || n==8) { 
+	  pmtcoat=false;
+	} else { pmtcoat=true; }
 	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
       }
 
@@ -1177,8 +1188,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       angle = 0;
 
       for (G4int n=0; n<npmts; ++n) {
-	pmtnam = "C"+std::to_string(n+1)+"R62";
-	pmtnam1 = "C"+std::to_string(n+1)+"R12";
+	pmtnam = "C"+std::to_string(200+n+1)+"R6";
+	pmtnam1 = "C"+std::to_string(200+n+1)+"R0";
 	//G4cout << pmtnam << pmtnam1;
 	
 	angle = n*itang;
@@ -1186,11 +1197,16 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtxx = radius*std::cos(phi);
 	pmtyy = radius*std::sin(phi);
 	pmtcoat = true;
-	if (n%3 == 2) { pmtcoat = false; }//every second pmt in the third row is uncoated, for another 10 total and thus all 20 uncoated on the top and bottom accounted for
+	//if (n%3 == 2) { pmtcoat = false; }//every second pmt in the third row is uncoated, for another 10 total and thus all 20 uncoated on the top and bottom accounted for
 	if (cylinderOn) { pmtcoat=false; }
+	
 	pmtzz = -68.0;
+	if (n==1 || n==6) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = 68.0;
+	if (n==3 || n==8) { 
+	  pmtcoat=false;
+	} else { pmtcoat=true; }
 	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
       }
 
@@ -1201,8 +1217,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       angle = 0;
 
       for (G4int n=0; n<npmts; ++n) {
-	pmtnam = "C"+std::to_string(n+1)+"R61";
-	pmtnam1 = "C"+std::to_string(n+1)+"R11";
+	pmtnam = "C"+std::to_string(100+n+1)+"R6";
+	pmtnam1 = "C"+std::to_string(100+n+1)+"R0";
 	//G4cout << pmtnam << pmtnam1;
 	
 	angle = n*itang;
@@ -1211,9 +1227,14 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtyy = radius*std::sin(phi);
 	pmtcoat = true;
 	if (cylinderOn) { pmtcoat=false; }
+
 	pmtzz = -68.0;
+	if (n==2 || n==4) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = 68.0;
+	if (n==0 || n==3) { 
+	  pmtcoat=false;
+	} else { pmtcoat=true; }
 	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
       }
     }//*/
@@ -1596,11 +1617,14 @@ void detectorConstruction::placeTopBot(G4String name,
     vert_angle = 0*deg;
   }
 
+  G4double radius = pmt_x*pmt_x+pmt_y*pmt_y;
+
   fin_angle = 360*deg;//all top/bottom pmts should be full circles in the horizontal.
 
   //set the radii of the glass and the tpb thickness
   G4double radout = 10.2*cm;
-  G4double tpbout = 0.00019*cm;
+  G4double tpbout = 0.00009*cm;
+  tpbout = tpbout/0.9114;
 
   //add PMT to the name
   G4String namePMT = "PMT_"+name;
@@ -1668,15 +1692,33 @@ void detectorConstruction::placeTopBot(G4String name,
 		      0,
 		      true);
     
-    new G4LogicalBorderSurface("TPB Coat", 
-			       lArFiducial,
-			       tpbCoating,
-			       tpbCoat);
-    new G4LogicalBorderSurface("TPB2 Coat", 
-			       tpbCoating,
-			       lArFiducial,
-			       tpbCoat);
-	
+    new G4LogicalBorderSurface("TPB Coat", lArFiducial, tpbCoating, tpbCoat);
+    new G4LogicalBorderSurface("TPB2 Coat", tpbCoating, lArFiducial,tpbCoat);
+    
+    if (fLayers) {
+      if (pmt_z < -51.0 && radius > 5625.0) {
+	new G4LogicalBorderSurface("TPB Coat", 
+				   lArFiducial5,
+				   tpbCoating,
+				   tpbCoat);
+	new G4LogicalBorderSurface("TPB2 Coat", 
+				   tpbCoating,
+				   lArFiducial5,
+				   tpbCoat);
+      }      
+      
+      if (pmt_z > 51.0 && radius > 4160.0) {
+	new G4LogicalBorderSurface("TPB Coat", 
+				   lArFiducial1,
+				   tpbCoating,
+				   tpbCoat);
+	new G4LogicalBorderSurface("TPB2 Coat", 
+				   tpbCoating,
+				   lArFiducial1,
+				   tpbCoat);
+      }      
+    }
+    
   } else {
     new G4PVPlacement(0,
 		      trans,
