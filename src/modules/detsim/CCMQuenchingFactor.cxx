@@ -36,7 +36,9 @@ CCMQuenchingFactor::CCMQuenchingFactor(const char* version)
     fRD(),
     fMT(),
     fUniform(0,1),
-    fQF(0.25)
+    fQF(0.25),
+    fTotalHits(0),
+    fAfterHits(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
@@ -49,7 +51,9 @@ CCMQuenchingFactor::CCMQuenchingFactor(const CCMQuenchingFactor& clufdr)
   fRD(),
   fMT(),
   fUniform(0,1),
-  fQF(clufdr.fQF)
+  fQF(clufdr.fQF),
+  fTotalHits(clufdr.fTotalHits),
+  fAfterHits(clufdr.fAfterHits)
 {
   // copy constructor
 }
@@ -77,6 +81,7 @@ CCMResult_t CCMQuenchingFactor::ProcessTrigger()
 
   fMCTruth->SetQuenchingFactor(fQF);
 
+  fTotalHits += kNumHits;
   for (size_t hit = 0; hit < kNumHits; ++hit) {
     fMCTruth->SetHitQuench(hit, TestQuench(fQF));
   }
@@ -106,6 +111,7 @@ void CCMQuenchingFactor::Configure(const CCMConfig& c )
 //_______________________________________________________________________________________
 CCMResult_t CCMQuenchingFactor::EndOfJob() 
 { 
+  MsgInfo(MsgLog::Form("Total Hits %ld After QF %ld",fTotalHits,fAfterHits));
   return kCCMSuccess;
 }
 
@@ -118,6 +124,7 @@ bool CCMQuenchingFactor::TestQuench(double quench)
   double testval = fUniform(fMT);
 
   if (testval < quench) {
+    ++fAfterHits;
     return true;
   }
 

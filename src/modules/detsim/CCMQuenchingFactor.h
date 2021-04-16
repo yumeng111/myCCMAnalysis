@@ -69,6 +69,8 @@ class CCMQuenchingFactor : public CCMModule
     std::uniform_real_distribution<double> fUniform;
 
     double fQF;
+    long fTotalHits;
+    long fAfterHits;
 
 };
 

@@ -521,8 +521,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   energy.resize(endTotalBin-startBin);
   count.resize(endTotalBin-startBin);
 
-  timeCoated = 0.0;
-  timeUncoated = 0.0;
+  timeCoated = Utility::fgkNumBins;
+  timeUncoated = Utility::fgkNumBins;
   promptCoated = 0.0;
   promptUncoated = 0.0;
   totalCoated = 0.0;
