@@ -48,7 +48,6 @@ class detectorConstruction : public G4VUserDetectorConstruction
     void SetTPBfoilOn(G4bool );//Turns the TPB coating on the foils on or off. Also turns on the triple cylinder for the LBOC template.
     void SetReflectorOn(G4bool );//Turns the ptfe foil reflector on or off
     void SetLaserRod( G4double );//Sets the height of the Laser calibration rod. also turns the laser to true
-    void SetAr39( G4bool ); //turns the Ar39 flag on
     void SetCosmic( G4bool ); //turns the Cosmic flag on
     void SetDarkMatter( G4bool ); //turns the DarkMatter flag on
     void SetRootFile ( G4String ); //sets the ROOT output filename
@@ -62,14 +61,21 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4double GetRodHeight() const {return rodHeight;};//method to obtain the rodHeight defined in the previous method
     G4bool GetfLaser() const { return fLaser;};//method to obtain fLaser
     G4bool GetfSodium() const {return fSodium;};//method to obtain fSodium
-    G4bool GetfAr39() const {return fAr39;};//method to obtain fAr39
     G4bool GetfCosmic() const {return fCosmic;};//method to obtain fCosmic
     G4bool GetDarkMatter() const {return darkMatter;};//method to obtain fAr39
     G4String GetRootFile () const { return rootfile;};  
     G4bool GetRootSet() const { return rootset; };
     G4double GetUnsmooth() const { return randwide; };
 
+
+    void SetAr39( G4bool ); //turns the Ar39 flag on
+    G4bool GetfAr39() const {return fAr39;};//method to obtain fAr39
+
   private:
+
+    G4bool fAr39;
+
+
 
     void DefineMaterials();
     void placePMT( G4String , G4double , G4double , G4double , G4bool );
@@ -145,7 +151,6 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4bool fPMTsOn;
     G4bool fRodin;
     G4bool fSodium;
-    G4bool fAr39;
     G4bool fCosmic;
     G4bool darkMatter;
     G4bool fTPBfoilOn;

@@ -118,10 +118,6 @@ void steppingAction::UserSteppingAction(const G4Step* step)
       iss >> col; 
       std::istringstream isr (volname.substr(volname.find('R')+1,volname.find('R')+2));
       isr >> row;
-      if (row == 0 || row == 6) {
-	std::istringstream isr2 (volname.substr(volname.find('R')+2,volname.find('R')+3));
-	isr2 >> row2;
-      }	
       if (volname.find("coat") != std::string::npos) {
 	coated = true;
       }
@@ -130,15 +126,12 @@ void steppingAction::UserSteppingAction(const G4Step* step)
       iss >> col; 
       std::istringstream isr (volpname.substr(volpname.find('R')+1,volpname.find('R')+2));
       isr >> row;
-      if (row == 0 || row == 6) {
-	std::istringstream isr2 (volname.substr(volname.find('R')+2,volname.find('R')+3));
-	isr2 >> row2;
-      }	
       if (volname.find("coat") != std::string::npos) {
 	coated = true;
       }
     }
 
+    //G4cout << row << '\t' << col << G4endl;
     //Get the location of the PMT based on row and column. 
     //Caution: the simulation has row numbering backwards from the mapping, with row 1 on bottom and row 5 on top.
     angle = (2*CLHEP::pi/24)*(col-1);
@@ -151,24 +144,24 @@ void steppingAction::UserSteppingAction(const G4Step* step)
       pmtz = -68.0;
       if (row == 6) {
 	pmtz = 68.0;
-	row = 60+row2;
-      }else {
-	row = 10+row2;
       }
+      int col2 = col%100;
+      row2 = col/100;
+      //G4cout << col << '\t' << col2 << '\t' << row  << '\t' << row2 << G4endl;
       if (row2 == 4) {
-	angle = (col-1)*2*CLHEP::pi/20;
+	angle = (col2-1)*2*CLHEP::pi/20;
 	pmtx = 85.5*std::cos(angle);
 	pmty = 85.5*std::sin(angle);
       } else if (row2 == 3) {
-	angle = (col-1)*2*CLHEP::pi/15;
+	angle = (col2-1)*2*CLHEP::pi/15;
 	pmtx = 64.2*std::cos(angle);
 	pmty = 64.2*std::sin(angle);
       } else if (row2 == 2) {
-	angle = (col-1)*2*CLHEP::pi/10;
+	angle = (col2-1)*2*CLHEP::pi/10;
 	pmtx = 42.0*std::cos(angle);
 	pmty = 42.0*std::sin(angle);
       } else if (row2 == 1) {
-	angle = (col-1)*2*CLHEP::pi/5;
+	angle = (col2-1)*2*CLHEP::pi/5;
 	pmtx = 20.0*std::cos(angle);
 	pmty = 20.0*std::sin(angle);
       }
@@ -200,6 +193,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
   
     //abbreviated output with only the relevant information (pmt, photon energy, time, and angle)
     fEventAction->AddHit(row,col,coated,kinEn/eV,time/ns,dot);
+    //G4cout << row << '\t' << col << '\t' << coated << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
     //G4cout << volname << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
     return;
   }

@@ -17,12 +17,12 @@ Next, create a build directory. I typically make mine in the simulation director
 
 From there you need to run an extensive cmake command, pointed at the simulationCCM directory. Mine would be:
 
-`cmake -DGeant4_DIR=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/lib64/Geant4-10.6.0 -DXercesC_LIBRARY=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/lib/libxerces-c-3.2.so /usr/projects/w20_ccm_lanl/Software/geant4.10.06/ -DXercesC_INCLUDE_DIR=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/include DCMAKE_PREFIX_PATH=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/ ../`
+`cmake -DGeant4_DIR=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/lib64/Geant4-10.6.0 -DXercesC_LIBRARY=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/lib/libxerces-c-3.2.so /usr/projects/w20_ccm_lanl/Software/geant4.10.06/ -DXercesC_INCLUDE_DIR=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/include -DCMAKE_PREFIX_PATH=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/ ../`
 
 For convenience I added the following to my .bashrc:
 
 ```bash
-alias g4cmake="cmake -DGeant4_DIR=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/lib64/Geant4-10.6.0 -DXercesC_LIBRARY=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/lib/libxerces-c-3.2.so /usr/projects/w20_ccm_lanl/Software/geant4.10.06/ -DXercesC_INCLUDE_DIR=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/include DCMAKE_PREFIX_PATH=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/"
+alias g4cmake="cmake -DGeant4_DIR=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/lib64/Geant4-10.6.0 -DXercesC_LIBRARY=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/lib/libxerces-c-3.2.so /usr/projects/w20_ccm_lanl/Software/geant4.10.06/ -DXercesC_INCLUDE_DIR=/usr/projects/w20_ccm_lanl/Software/xerces-c-3.2.2_install/include -DCMAKE_PREFIX_PATH=/usr/projects/w20_ccm_lanl/Software/geant4.10.06_install/"
 ```
 
 So my new cmake command is just:
