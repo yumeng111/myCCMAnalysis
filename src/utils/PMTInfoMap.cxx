@@ -8,6 +8,7 @@
 #include "PMTInformation.h"
 #include "MsgLog.h"
 #include "CSVrow.h"
+#include "Utility.h"
 
 #include "TFile.h"
 #include "TTree.h"
@@ -25,7 +26,7 @@ std::map<int,PMTInformation*> PMTInfoMap::fgPMTInfo; ///< map to all the individ
 std::vector<int> PMTInfoMap::fgHVOffList;
 
 size_t PMTInfoMap::fgMaxKey = 0;
-size_t PMTInfoMap::fgMinKey = 172;
+size_t PMTInfoMap::fgMinKey = Utility::fgkNumPMTs;
 
 bool PMTInfoMap::fgMapLoaded = false;
 bool PMTInfoMap::fgBadListLoaded = false;
@@ -193,21 +194,21 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
           } else if (tempChar == 'V') { /// PMT is a veto PMT
             tempChar = currentString.front();
             if (tempChar == 'B') { /// veto PMT on the bottom
-              row = 7;
+              row = 8;
               currentString.erase(currentString.begin());
             } else if (tempChar == 'C') { /// veto PMT on the side
               currentString.erase(currentString.begin());
               tempChar = currentString.front();
               if (tempChar == 'B') { /// veto PMT is looking up
-                row = 6;
+                row = 7;
               } else if (tempChar == 'T') { /// veto PMT is looking down
-                row = 0;
+                row = -1;
               } else {
                 row = -22;
               }
               currentString.erase(currentString.begin());
             } else if (tempChar == 'T') { /// veto PMT on the top
-              row = -1;
+              row = -2;
               currentString.erase(currentString.begin());
             } else {
               row = -21;
@@ -631,6 +632,10 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
     
   }
   delete calibrationFile;
+
+  if (MsgLog::GetGlobalDebugLevel() >= 1) {
+    MsgDebug(1,"Finished Loading Calibration File");
+  }
 }
 
 //__________________________________________________

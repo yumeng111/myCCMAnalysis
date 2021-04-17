@@ -40,8 +40,8 @@ Pulses::Pulses(int board, int channel) : TObject()
 
   fCurrPulse = new SinglePulse();
 
-  for (int i=0; i < 160; ++i) {
-    for (int j=0; j < 8000; ++j) {
+  for (int i=0; i < Utility::fgkNumPMTs; ++i) {
+    for (int j=0; j < Utility::fgkNumBins; ++j) {
       //fOrigArray[i][j] = 0;
       fRawArray[i][j] = 0.f;
       fSmoothArray[i][j] = 0.f;
@@ -101,8 +101,8 @@ void Pulses::ClearPulses()
     fCurrPulse->Reset();
   }
 
-  for (int i=0; i < 160; ++i) {
-    for (int j=0; j < 8000; ++j) {
+  for (int i=0; i < Utility::fgkNumPMTs; ++i) {
+    for (int j=0; j < Utility::fgkNumBins; ++j) {
       //fOrigArray[i][j] = 0;
       fRawArray[i][j] = 0.f;
       fSmoothArray[i][j] = 0.f;
@@ -182,10 +182,10 @@ void Pulses::DerivativeFilter(const u_int16_t input[], int length, float trigger
   float currAmplitude = 0.0;
 
   fCurrPulse->Reset();
-  fCurrPulse->SetLength(8000);
+  fCurrPulse->SetLength(Utility::fgkNumBins);
   //fCurrPulse->SetTime(2);
   fCurrPulse->SetWaveformStart(2);
-  fCurrPulse->SetWaveformEnd(8000-4);
+  fCurrPulse->SetWaveformEnd(Utility::fgkNumBins-4);
   fCurrPulse->SetBaseline(0);
 
   int timeOffset = 2;
@@ -377,10 +377,10 @@ void Pulses::MCFilter(const std::vector<double> & input, float triggerTime)
   float maxPos = -2;
 
   fCurrPulse->Reset();
-  fCurrPulse->SetLength(8000);
+  fCurrPulse->SetLength(Utility::fgkNumBins);
   //fCurrPulse->SetTime(2);
   fCurrPulse->SetWaveformStart(2);
-  fCurrPulse->SetWaveformEnd(8000-4);
+  fCurrPulse->SetWaveformEnd(Utility::fgkNumBins-4);
   fCurrPulse->SetBaseline(0);
 
   const size_t kLength = input.size();

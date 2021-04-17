@@ -179,6 +179,7 @@ namespace Utility
   extern CCMAccumWaveformMethod_t ConvertStringToCCMAccumWaveformMethod(std::string name);
 
   extern double ShiftTime(int start, int beamTime, bool applyFP3Offset = true);
+  extern double UndoShiftTime(double start, int beamTime, bool applyFP3Offset = true);
 
   extern std::vector<std::string> GetListOfFiles(const char * file_regexp);
   extern void IndirectFileList(const char* file, std::vector<std::string>& infileList);
@@ -331,6 +332,8 @@ int Utility::FindFirstNoneEmptyBin(typename std::array<T,Utility::fgkNumBins>::i
   return std::distance(begin,time);
 }
 
+typedef std::array<std::array<int,Utility::fgkNumBins>,static_cast<int>(Utility::fgkNumPMTs)> DAQWF2DArrayI;
+typedef std::array<std::array<float,Utility::fgkNumBins>,static_cast<int>(Utility::fgkNumPMTs)> DAQWF2DArrayF;
 typedef std::map<int,std::vector<std::array<float,Utility::fgkNumBins>>> MapDAQWF2D;
 typedef std::map<int,std::array<float,Utility::fgkNumBins>> MapDAQWF1D;
 

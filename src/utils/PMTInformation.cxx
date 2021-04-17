@@ -61,7 +61,7 @@ PMTInformation::~PMTInformation()
 }
 
 bool PMTInformation::IsVeto() { 
-  if (fRow < 1 || fRow > 5) {
+  if ((fRow < 0 || fRow > 6) && fCol > 0) {
     return true;
   }
 
@@ -69,7 +69,7 @@ bool PMTInformation::IsVeto() {
 }
 
 bool PMTInformation::Is1in() { 
-  if ((fRow >= 1 && fRow <= 5) || fRow == 7) {
+  if (IsVeto() && fRow != 8) {
     return false;
   }
 
@@ -77,7 +77,7 @@ bool PMTInformation::Is1in() {
 }
 
 bool PMTInformation::IsVeto() const { 
-  if (fRow < 1 || fRow > 5) {
+  if ((fRow < 0 || fRow > 6) && fCol > 0) {
     return true;
   }
 
@@ -85,7 +85,7 @@ bool PMTInformation::IsVeto() const {
 }
 
 bool PMTInformation::Is1in() const { 
-  if ((fRow >= 1 && fRow <= 5) || fRow == 7) {
+  if (IsVeto() && fRow != 8) {
     return false;
   }
 
@@ -102,10 +102,10 @@ void PMTInformation::CreateNames() {
     }
   } else {
     switch (fRow) {
-      case -1: fLocName = Form("VT%d",fCol); break;
-      case 0: fLocName = Form("VCT%d",fCol); break;
-      case 6: fLocName = Form("VCB%d",fCol); break;
-      case 7: fLocName = Form("VB%d",fCol); break;
+      case -2: fLocName = Form("VT%d",fCol); break;
+      case -1: fLocName = Form("VCT%d",fCol); break;
+      case 7: fLocName = Form("VCB%d",fCol); break;
+      case 8: fLocName = Form("VB%d",fCol); break;
       default: fLocName = "Not Found"; break;
     }
   }

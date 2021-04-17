@@ -212,6 +212,40 @@ double Utility::ShiftTime(int time, int beamOffset, bool applyFP3Offset)
   return shiftTime;
 }
 
+/*!**********************************************
+ *  \brief Undo the shift time that was applied to calculate the start tiem of the event
+ *  \param[in] start The start bin of the pulse
+ *  \param[in] beamOffset The time in the DAQ window the BCM was observed
+ *  \param[in] applyFP3Offset If true apply the FP3Offset correction (default: true)
+ *  \return The time of the event in ns (input is bin count) 
+ *
+ *  Shift the time of the pulse to account for the jitter of the BCM. #Utility::fgkFP3Offset 
+ *  is used to account for the time difference between the PMTs in CCM and the 
+ *  EJ301 detector in FP3 
+ *
+ *  If beamTime == 0 then the trigger was STROBE or LED so shift the time of the event 
+ *  based on the DAQ window true start time (#Utility::fgkWindowStartTime)
+ ***********************************************/
+double Utility::UndoShiftTime(double time, int beamOffset, bool applyFP3Offset)
+{
+  // shift the time of the pulse to account for the jitter of the BCM
+  // the shift by Utility::fgkFP3Offset is to account for the time difference
+  // between the PMTs in CCM and the EJ301 detector in FP3
+  double temp = time;
+  if (beamOffset == 0) {
+    temp -= fgkWindowStartTime;
+  }
+  temp /= fgkBinWidth;
+
+  if (applyFP3Offset) {
+    temp -= fgkFP3Offset;
+  }
+
+  temp -= beamOffset;
+
+  return temp;
+}
+
 
 /*!**********************************************
  *  \brief Gets the list of files

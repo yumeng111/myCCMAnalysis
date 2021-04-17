@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sys/types.h>
 
+#include "Utility.h"
 #include "PMTInfoMap.h"
 
 #include "SinglePulse.h"
@@ -123,17 +124,17 @@ class Pulses : public TObject
     const SinglePulse * GetSinglePulse(size_t pos) { return &fPulses[pos]; }
     const SinglePulse * GetSinglePulse(size_t pos) const { return &fPulses[pos]; }
 
-    float LongestPulse(float time = 8000) const;
-    float LargestPulse(float time = 8000) const;
+    float LongestPulse(float time = Utility::fgkNumBins) const;
+    float LargestPulse(float time = Utility::fgkNumBins) const;
 
-    std::array<int,8000> GetOrigWaveformAt(int i) { return fOrigArray.at(i); }
-    std::array<float,8000> GetRawWaveformAt(int i) { return fRawArray.at(i); }
-    std::array<float,8000> GetWaveformAt(int i) { return fSmoothArray.at(i); }
-    std::array<float,8000> GetWaveformDerAt(int i) { return fSmoothArrayDer.at(i); }
-    const std::array<std::array<int,8000>,160> & GetOrigWaveform() { return fOrigArray; }
-    const std::array<std::array<float,8000>,160> & GetRawWaveform() { return fRawArray; }
-    const std::array<std::array<float,8000>,160> & GetWaveform() { return fSmoothArray; }
-    const std::array<std::array<float,8000>,160> & GetWaveformDer() { return fSmoothArrayDer; }
+    std::array<int,Utility::fgkNumBins> GetOrigWaveformAt(int i) { return fOrigArray.at(i); }
+    std::array<float,Utility::fgkNumBins> GetRawWaveformAt(int i) { return fRawArray.at(i); }
+    std::array<float,Utility::fgkNumBins> GetWaveformAt(int i) { return fSmoothArray.at(i); }
+    std::array<float,Utility::fgkNumBins> GetWaveformDerAt(int i) { return fSmoothArrayDer.at(i); }
+    const DAQWF2DArrayI & GetOrigWaveform() { return fOrigArray; }
+    const DAQWF2DArrayF & GetRawWaveform() { return fRawArray; }
+    const DAQWF2DArrayF & GetWaveform() { return fSmoothArray; }
+    const DAQWF2DArrayF & GetWaveformDer() { return fSmoothArrayDer; }
 
     size_t FindFirstAfter(float time, int startLoc = 0) const;
     const SinglePulse * FindPreviousPulse(int board, int channel);
@@ -177,13 +178,13 @@ class Pulses : public TObject
     std::vector<SinglePulse> fPulses;
 
     /// Array of the waveform (not saved)
-    std::array<std::array<int,8000>,160> fOrigArray; //!
+    DAQWF2DArrayI fOrigArray; //!
     /// Array of the waveform after exponential moving average (not saved)
-    std::array<std::array<float,8000>,160> fRawArray; //!
+    DAQWF2DArrayF fRawArray; //!
     /// Array of the waveform after 3 point average (not saved)
-    std::array<std::array<float,8000>,160> fSmoothArray; //!
+    DAQWF2DArrayF fSmoothArray; //!
     /// Array of the derivative of the waveform after 3 point aveage (not saved)
-    std::array<std::array<float,8000>,160> fSmoothArrayDer; //!
+    DAQWF2DArrayF fSmoothArrayDer; //!
 
     /// Pointer to the current #SinglePulse (not saved)
     SinglePulse * fCurrPulse; //!
