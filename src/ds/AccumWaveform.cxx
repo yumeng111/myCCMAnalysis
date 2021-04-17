@@ -328,6 +328,11 @@ void AccumWaveform::DumpInfo()
           Utility::ConvertCCMAccumWaveformMethodToString(static_cast<CCMAccumWaveformMethod_t>(p.first)).c_str(),
           std::accumulate(p.second.begin(),p.second.end(),0.f)));
   }
+  for (auto & p : fPMTWaveform) {
+    MsgInfo(MsgLog::Form("method %s PMTWaveform size %zu",
+          Utility::ConvertCCMAccumWaveformMethodToString(static_cast<CCMAccumWaveformMethod_t>(p.first)).c_str(),
+          p.second.size()));
+  }
 }
 
 //-------------------------------------------------------------------------------------------------
