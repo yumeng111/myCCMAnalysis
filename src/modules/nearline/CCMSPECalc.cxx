@@ -47,7 +47,7 @@ CCMSPECalc::CCMSPECalc(const char* version)
   this->SetCfgVersion(version);
 
   fSPEFinder = std::make_unique<NearlineSPEDiag>();
-  fSPEFinder->SetClassVec(176);
+  fSPEFinder->SetClassVec(Utility::fgkNumPMTs+16);
   fSPEFinder->CreatePEHists();
 }
 
