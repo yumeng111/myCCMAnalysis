@@ -14,6 +14,8 @@ class SPECalibrationVariables;
 
 #include <vector>
 #include <memory>
+#include <map>
+#include <random>
 
 /*!**********************************************
  * \class NearlineSPEDiag
@@ -41,8 +43,8 @@ class NearlineSPEDiag{
 
 	public: 
     /// \fn NearlineSPEDiag()
-    /// \brief Default constructor (does nothing)
-		NearlineSPEDiag() {};
+    /// \brief Default constructor
+		NearlineSPEDiag();
     /// \fn ~NearlineSPEDiag()
     /// \brief Deconstructor (does nothing)
 		~NearlineSPEDiag() {};
@@ -50,6 +52,8 @@ class NearlineSPEDiag{
 		void CreatePEHists();
     void SetClassVec(int value);
     void FillPulses(const Pulses & pulses, double windowStart = -9, double windowEnd = -1);
+    void FillPulsesFake(double mean, double sigma, int maxKey);
+    void FillPulsesFake(const std::map<int,std::pair<double,double>> & meanSigma);
     void MakeChainFillPulses(const std::vector<std::string> & fileList, bool ledRunFlag, double windowStart = -9, double windowEnd = -1, int numLEDTriggers = -1);
     void GetHistsToAdjust(std::string fileToAdjust, bool ledRunFlag, double windowStart = -9, double windowEnd = -1);
     void CalculateRates();
@@ -59,6 +63,8 @@ class NearlineSPEDiag{
     double GetThreshold(int pmt);
     double GetSPE(int pmt);
     double GetRate(int pmt);
+
+    std::mt19937_64 fMT;
 
 };
 #endif

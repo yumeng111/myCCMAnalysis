@@ -24,6 +24,12 @@
 #include <iostream>
 #include <cstring>
 
+NearlineSPEDiag::NearlineSPEDiag()
+{
+  std::random_device rd;
+  fMT.seed(rd());
+}
+
 /*!**********************************************
  * \fn double SPEFitFunction(double * x, double * par)
  * \brief A fit function to determine the SPE calibration
@@ -259,6 +265,31 @@ void NearlineSPEDiag::FillPulses(const Pulses & pulses, double windowStart, doub
   }//end for pulse   
 }//end FillPulses Function
 
+void NearlineSPEDiag::FillPulsesFake(double mean, double sigma, int maxKey)
+{
+  fWindowStart = Utility::fgkWindowStartTime;
+  fWindowEnd = Utility::fgkWindowEndTime;
+  fWindow = std::fabs(fWindowStart-fWindowEnd);   
+  std::normal_distribution<double> normal(mean,sigma);
+  for (int key = 0; key < maxKey; ++key) {
+    auto value = normal(fMT);
+    fCal.at(key)->GetPEHistPtr()->Fill(value);
+  }
+}//end FillPulsesFake Function
+
+void NearlineSPEDiag::FillPulsesFake(const std::map<int,std::pair<double,double>> & meanSigma)
+{
+  fWindowStart = Utility::fgkWindowStartTime;
+  fWindowEnd = Utility::fgkWindowEndTime;
+  fWindow = std::fabs(fWindowStart-fWindowEnd);   
+  for (const auto & p : meanSigma) {
+    std::normal_distribution<double> normal(p.second.first,p.second.second);
+    auto value = normal(fMT);
+    fCal.at(p.first)->GetPEHistPtr()->Fill(value);
+  }
+
+}//end FillPulsesFake Function
+
 /*!**********************************************
  * \fn void NearlineSPEDiag::GetHistsToAdjust(std::string fileToAdjust, bool ledRunFlag)
  * \brief Read in a previous calibration file and read in the histograms to determine the SPE calibration
@@ -364,9 +395,10 @@ void NearlineSPEDiag::CalculateRates()
     // Calculate background subtracted distribution
     std::shared_ptr<TH1D> peHist = fCal.at(i)->GetPEHistPtr();
     std::shared_ptr<TH1D> peHistBefore = fCalBefore.at(i)->GetPEHistPtr();
-    peHistBefore->Scale(std::fabs(fWindowStart - fWindowEnd)/std::fabs(Utility::fgkWindowStartTime - fWindowStart));
-    peHist->Add(peHistBefore.get(),-1.0);
-
+    if (fWindowStart != Utility::fgkWindowStartTime) {
+      peHistBefore->Scale(std::fabs(fWindowStart - fWindowEnd)/std::fabs(Utility::fgkWindowStartTime - fWindowStart));
+      peHist->Add(peHistBefore.get(),-1.0);
+    }
 
     // Calculate the first and second derivative with a 9 point derivative method
     std::shared_ptr<TH1D> derPEHist = std::shared_ptr<TH1D>(dynamic_cast<TH1D*>(peHist->Clone("derPEHist")));
