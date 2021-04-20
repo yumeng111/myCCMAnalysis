@@ -1,4 +1,37 @@
 #! /usr/bin/python3
+# To run you must pass it a configuration file in the .ini format
+# An example of the configuration file is shown in $CCMINSTALL/jobScripts/*.ini
+# 
+# The following is a copy of one of those files (exampleCreateSLURMConfig.ini) for completeness sake
+#
+# ; I defined the following enviromental variabels in my .bash_profile to the lines do not have to be so long below
+# ; $CCMPROCESSED = /lustre/scratch3/turquoise/rtthorn/processedFiles
+# ; $CCMRAW = /lustre/scratch3/turquoise/rtthorn/rawFiles
+# ; $CCMINSTALL = /users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig
+#
+# ; These are the defults. You only need to include them below if you want to change them
+# [DEFAULT]
+# Rewrite = false
+# Submit = false
+# MaxNumJobs = 300
+# MultiFileRegex = 
+# JobNamePrefix = findEvents
+# InputEndString = _physics
+# NewFilePostfix = events
+# SourceFile = $HOME/.bash_profile
+# InputDataRegex = *.root
+#
+# ; Have to include: InputDir, OutputDir, LogDir, ScriptDir, SLURMScript, XMLScript
+# ; Can include any of the ones that are listed under DEFAULT to change them from their
+# ; default values
+# [Params]
+# InputDir = $CCMRAW
+# OutputDir = $CCMPROCESSED/beam/test
+# LogDir = $CCMPROCESSED/beam/test/log
+# ScriptDir = $CCMPROCESSED/beam/test/scripts
+# SLURMScript = $CCMINSTALL/jobScripts/findEvents_slrum.script
+# XMLScript = $CCMINSTALL/configFiles/findEventsConfig.xml
+# InputDataRegex = *run000188-*.root
 
 import sys, os
 import subprocess
@@ -9,88 +42,82 @@ import glob
 import datetime
 import argparse
 import sys
+import codecs
+import configparser
+
+def unescaped_str(arg_str):
+    return codecs.decode(str(arg_str), 'unicode_escape')
+
+#Creates slurm and xml config file for the find events module. Submits the slurm script if submit = true.
+config = configparser.ConfigParser()
+config.read(sys.argv[1])
+options = config['Params']
 
 # -------- default settings ------------------------
-inputDir      = os.getenv("CCMINSTALL")+"/"
-outputDir     = os.getenv("CCMINSTALL")+"/"
-defaultSLURM  = "findEvents_slurm.script"
-defaultXML    = "findEventsConfig.xml"
-hvOffList     = os.getenv("CCMINSTALL")+"/mappings/hv_off_2019.csv"
-calibrationFile = os.getenv("CCMINSTALL")+"/mappings/root_out_2019ledData_run179_legFix_integral_all_round4_.root"
-sourceFile     = os.getenv("HOME")+"/.bash_profile"
-logFileLoc     = outputDir+"/log"
-jobNamePrefix  = "findEvents_"
-runType        = "events"
-rewrite        = False
-submit         = False
-currentUser    = os.getenv("USER")
-maxNumJobs     = 1000 # this is a hardcoded limit from LANL HPC
-inputDataRegex = "*run000193*.root"
-inputEndString = "_physics"
+#Directory location of the input files
+input_loc      = os.path.expandvars(options['InputDir'])
+#Directory location of the output files
+output_loc     = os.path.expandvars(options['OutputDir'])
+#Path to the directory to save the log file. Default is a directory called log in the directory where the output files are saved
+log_loc     = os.path.expandvars(options['LogDir'])
+#Path to the directory to save the script files. Default is a directory called log in the directory where the output files are saved
+script_loc     = os.path.expandvars(options['ScriptDir'])
+#Name of the default slurm script file
+default_slurm  = os.path.expandvars(options['SLURMScript'])
+#Name of the default xml script file
+default_xml    = os.path.expandvars(options['XMLScript'])
+#Path to the source file to source in slurm script 
+source_file     = os.path.expandvars(options['SourceFile'])
+#The prefix for the slurm job name
+job_name_prefix  = options['JobNamePrefix']
+#The postfix string to add to the output file
+run_type        = options['NewFilePostfix']
+#Rewrite all files. Default is false.
+rewrite        = options.getboolean('Rewrite')
+#Submit the scripts to the queue. Default is false.
+submit         = options.getboolean('Submit')
+#If string is non empty, it is passed to re.sub to change the format of filenames to allow more than one file per call of CCMAnalysis
+multi_file_regex = options['MultiFileRegex']
+#The maximum number of jobs that can be submitted. Default is 1000 (HPC max)
+max_num_jobs     = options['MaxNumJobs']
+#The parameters to pass to ls to select the input files.
+input_data_regex = options['InputDataRegex']
+#The string that ends the input files (before the .root), used to get a unique name.
+input_end_string = options['InputEndString']
 
-def getOptions(args=sys.argv[1:]):
-  parser = argparse.ArgumentParser(description="Creates slurm and xml config file for the find events module. Submits the slurm script if --submit option is given.")
-  parser.add_argument("--input-loc", default=inputDir,
-      help="Directory location of the input files")
-  parser.add_argument("--output-loc", default=outputDir,
-      help="Directory location of the output files")
-  parser.add_argument("--default-slurm", default=defaultSLURM,
-      help="Name of the default slurm script file")
-  parser.add_argument("--default-xml", default=defaultXML,
-      help="Name of the default xml script file")
-  parser.add_argument("--hv-off-list", default=hvOffList,
-      help="Path to the HV off csv file to use") 
-  parser.add_argument("--calibration-file", default=calibrationFile,
-      help="Path to the calibration ROOT file to use") 
-  parser.add_argument("--source-file", default=sourceFile,
-      help="Path to the source file to source in slurm script") 
-  parser.add_argument("--log-file", default=logFileLoc,
-      help="Path to the directory to save the log file. Default is a directory called log in the directory where the output files are saved")
-  parser.add_argument("--job-name-prefix", default=jobNamePrefix,
-      help="The prefix for the slurm job name")
-  parser.add_argument("--run-type", default=runType,
-      help="The postfix string to add to the output file")
-  parser.add_argument("--rewrite", default=rewrite, dest='rewrite', action='store_true',
-      help="Rewrite all files. Default is false.")
-  parser.add_argument("--submit", default=submit, dest='submit', action='store_true',
-      help="Submit the scripts to the queue. Default is false.")
-  parser.add_argument("--user", default=currentUser,
-      help="Name of user submitting the jobs")
-  parser.add_argument("--max-jobs", default=maxNumJobs, type=int,
-      help="The maximum number of jobs that can be submitted. Default is 1000 (HPC max)")
-  parser.add_argument("--input-data-regex", default=inputDataRegex,
-      help="The parameters to pass to ls to select the input files.")
-  parser.add_argument("--input-end", default=inputEndString,
-      help="The string that ends the input files (before the .root), used to get a unique name.")
-  parser.add_argument("--trigger-type", default="BEAM",
-      help="Which triggers to look at. See xml configuration file for possible options. Default = BEAM")
-  options = parser.parse_args(args)
-  return options
+user    = os.getenv("USER")
 
 # -------- main code ------------------------
-options = getOptions(sys.argv[1:])
-print(options)
+#for key in options:
+#  print(key)
+print({section: dict(config[section]) for section in config.sections()})
 
-inputDir   = os.path.abspath(options.input_loc)
-outputDir  = os.path.abspath(options.output_loc)
+input_loc   = os.path.abspath(input_loc)
+output_loc  = os.path.abspath(output_loc)
+log_loc  = os.path.abspath(log_loc)
+script_loc  = os.path.abspath(script_loc)
+default_slurm  = os.path.abspath(default_slurm)
+default_xml  = os.path.abspath(default_xml)
 
 #  will need to change conditions on what to look for
-rawList  = glob.glob(os.path.join(inputDir, options.input_data_regex))
+raw_list  = glob.glob(os.path.join(input_loc, input_data_regex))
 
-slurmScripts = []
-currentXMLList = []
+#if user supplied a multi_file_regex string use it in re.sub to replace the filenames in raw_list and return a list of unique results
+if multi_file_regex != "":
+  pattern = re.compile(r"(?P<path>^.*)(?P<start>PDSout)_(?P<runNum>run\d+)-(?P<subRunNum>\d+)_(?P<date>[\d-]{5})-(?P<hour>\d{2})(?P<tenMin>\d)(?P<min>\d)(?P<run_type>" + input_end_string +r")(?P<end>.root)")
+  replaced_filenames = [pattern.sub(multi_file_regex,file) for file in raw_list]             
+  raw_list = list(set(replaced_filenames))
 
-xmlScript = outputDir+"/scripts/"+"findEventsConfig.xml"
+slurm_scripts = []
+current_xml_list = []
 
-if not os.path.exists(xmlScript):
-  fin = open(options.default_xml,"rt")
-  fout = open(xmlScript,"wt")
+xml_script = script_loc+"/"+os.path.basename(default_xml)
+
+if not os.path.exists(xml_script):
+  fin = open(default_xml,"rt")
+  fout = open(xml_script,"wt")
   for line in fin:
     copyLine = line
-    copyLine = copyLine.replace('HVOFFLIST',options.hv_off_list)
-    copyLine = copyLine.replace('CALIBRATIONFILE',options.calibration_file)
-    copyLine = copyLine.replace('TRIGGER',options.trigger_type)
-    copyLine = copyLine.replace('THRESHOLD',"0.4")
     fout.write(copyLine)
 
   fin.close()
@@ -98,110 +125,109 @@ if not os.path.exists(xmlScript):
 
 run = ""
 
-scriptNum = 0
+script_num = 0
 
 count = 0
-for rawFile in rawList:
-  baseName = os.path.basename(rawFile.replace(".root", "_%s.root"%(options.run_type)))
-  outName = outputDir+"/"+baseName
 
-  if os.path.exists(outName) and not options.rewrite:
+for raw_file in raw_list:
+  baseName = os.path.basename(raw_file.replace(".root", "_%s.root"%(run_type)))
+  if multi_file_regex:
+    #remove regex characters from filenames
+    baseName = re.sub('[\?\*]','x',baseName)
+
+  out_name = output_loc+"/"+baseName
+
+  if os.path.exists(out_name) and not rewrite:
     continue
 
   start = baseName.find("run")
-  end = baseName.find(inputEndString)
+  end = baseName.find(input_end_string)
   run = baseName[start:end]
-  jobName = options.job_name_prefix+run
+  job_name = job_name_prefix+'_'+run
 
   if run == "":
-    run = rawFile.replace(".root","")
-    run = run.replace(inputDir+"/","")
+    run = raw_file.replace(".root","")
+    run = run.replace(input_loc+"/","")
 
-  print("run ",run, " out ",outName)
+  print("run ",run, " out ",out_name)
 
-  logScript = outputDir+"/log/"+"findEvents_"+run+".log"
+  log_script = log_loc+"/"+job_name+".log"
 
-  currentXMLList.append("CCMAnalysis -i "+rawFile+" -o "+outName+" -c "+xmlScript+" -l "+logScript)
+  current_xml_list.append("CCMAnalysis -i "+raw_file+" -o "+out_name+" -c "+xml_script+" -l "+log_script)
 
-  print("len(currentXMLList) ",len(currentXMLList))
+  print("len(current_xml_list) ",len(current_xml_list))
 
-  if len(currentXMLList) == 34:
-    scriptNum = scriptNum + 1
-    slurmScript = outputDir+"/scripts/"+"findEvents_slurm_"+run+".script"
-    appScript = outputDir+"/scripts/"+"findEvents_mpiapp_"+run
-    slurmScripts.append(slurmScript)
+  if len(current_xml_list) == 34:
+    script_num = script_num + 1
+    slurm_script = script_loc+"/"+run_type+"_slurm_"+run+".script"
+    app_script = script_loc+"/"+run_type+"_mpiapp_"+run
+    slurm_scripts.append(slurm_script)
 
-    if not os.path.exists(slurmScript) or options.rewrite:
-
-      if options.log_file == logFileLoc:
-        options.log_file = options.output_loc+"/log"
+    if not os.path.exists(slurm_script) or rewrite:
 
       print("Create and Write SLURM script file")
-      fin = open(options.default_slurm,"rt")
-      fout = open(slurmScript,"wt")
+      fin = open(default_slurm,"rt")
+      fout = open(slurm_script,"wt")
       for line in fin:
         copyLine = line
-        copyLine = copyLine.replace('SOURCEFILE',options.source_file)
-        copyLine = copyLine.replace('JOBNAME',jobName)
-        copyLine = copyLine.replace('LOGFILELOCATION',options.log_file)
-        copyLine = copyLine.replace('MPIAPP',appScript)
+        copyLine = copyLine.replace('SOURCEFILE',source_file)
+        copyLine = copyLine.replace('JOBNAME',job_name)
+        copyLine = copyLine.replace('LOGFILELOCATION',log_loc)
+        copyLine = copyLine.replace('MPIAPP',app_script)
         fout.write(copyLine)
       fin.close()
       fout.close()
 
       print("Create and Write MPI APP File")
-      fout = open(appScript,"wt")
-      for line in currentXMLList:
+      fout = open(app_script,"wt")
+      for line in current_xml_list:
         fout.write("--map-by node -n 1 "+line+"\n")
       fout.close()
 
-    currentXMLList = []
+    current_xml_list = []
 
-  if len(slurmScripts) == options.max_jobs:
-    currentXMLList = []
+  if len(slurm_scripts) == max_num_jobs:
+    current_xml_list = []
     break
 
-if len(currentXMLList) != 0:
-    slurmScript = outputDir+"/scripts/"+"findEvents_slurm_"+run+".script"
-    appScript = outputDir+"/scripts/"+"findEvents_mpiapp_"+run
-    slurmScripts.append(slurmScript)
+if len(current_xml_list) != 0:
+    slurm_script = script_loc+"/"+run_type+"_slurm_"+run+".script"
+    app_script = script_loc+"/"+run_type+"_mpiapp_"+run
+    slurm_scripts.append(slurm_script)
 
-    if not os.path.exists(slurmScript) or options.rewrite:
-
-      if options.log_file == logFileLoc:
-        options.log_file = options.output_loc+"/log"
+    if not os.path.exists(slurm_script) or rewrite:
 
       print("Create and Write SLURM script file")
-      fin = open(options.default_slurm,"rt")
-      fout = open(slurmScript,"wt")
+      fin = open(default_slurm,"rt")
+      fout = open(slurm_script,"wt")
       for line in fin:
         copyLine = line
-        copyLine = copyLine.replace('SOURCEFILE',options.source_file)
-        copyLine = copyLine.replace('JOBNAME',jobName)
-        copyLine = copyLine.replace('LOGFILELOCATION',options.log_file)
-        copyLine = copyLine.replace('MPIAPP',appScript)
+        copyLine = copyLine.replace('SOURCEFILE',source_file)
+        copyLine = copyLine.replace('JOBNAME',job_name)
+        copyLine = copyLine.replace('LOGFILELOCATION',log_loc)
+        copyLine = copyLine.replace('MPIAPP',app_script)
         fout.write(copyLine)
       fin.close()
       fout.close()
 
       print("Create and Write MPI APP File")
-      fout = open(appScript,"wt")
-      for line in currentXMLList:
+      fout = open(app_script,"wt")
+      for line in current_xml_list:
         fout.write("--map-by node -n 1 "+line+"\n")
       fout.close()
 
-    currentXMLList = []
+    current_xml_list = []
 
 
-out = subprocess.run(["squeue","-l", "-u", options.user], stdout=PIPE, universal_newlines=True)
-numLines = len(re.findall("\w*"+options.user+"\w*",out.stdout))
+out = subprocess.run(["squeue","-l", "-u", user], stdout=PIPE, universal_newlines=True)
+num_lines = len(re.findall("\w*"+user+"\w*",out.stdout))
 
-if options.submit:
-  n = min(options.max_jobs,len(slurmScripts))
-  if n+numLines > maxNumJobs:
-    n = maxNumJobs-numLines
-  for slurm in slurmScripts[:n]:
+if submit:
+  n = min(max_num_jobs,len(slurm_scripts))
+  if n+num_lines > max_num_jobs:
+    n = max_num_jobs-num_lines
+  for slurm in slurm_scripts[:n]:
     subprocess.call(["sbatch",slurm])
 
-print("MaxNumJobs ",options.max_jobs," numLines ",numLines," numScripts ",len(slurmScripts))
+print("MaxNumJobs ",max_num_jobs," num_lines ",num_lines," numScripts ",len(slurm_scripts))
 
