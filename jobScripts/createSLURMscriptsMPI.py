@@ -78,12 +78,16 @@ rewrite        = options.getboolean('Rewrite')
 submit         = options.getboolean('Submit')
 #If string is non empty, it is passed to re.sub to change the format of filenames to allow more than one file per call of CCMAnalysis
 multi_file_regex = options['MultiFileRegex']
+#Default file format in regular expression format
+default_file_regex = options['DefaultFileRegex']
 #The maximum number of jobs that can be submitted. Default is 1000 (HPC max)
 max_num_jobs     = options['MaxNumJobs']
 #The parameters to pass to ls to select the input files.
 input_data_regex = options['InputDataRegex']
 #The string that ends the input files (before the .root), used to get a unique name.
 input_end_string = options['InputEndString']
+#Flag to say if the files are from the MC or not
+is_mc = options.getboolean("IsMC")
 
 user    = os.getenv("USER")
 
@@ -104,7 +108,7 @@ raw_list  = glob.glob(os.path.join(input_loc, input_data_regex))
 
 #if user supplied a multi_file_regex string use it in re.sub to replace the filenames in raw_list and return a list of unique results
 if multi_file_regex != "":
-  pattern = re.compile(r"(?P<path>^.*)(?P<start>PDSout)_(?P<runNum>run\d+)-(?P<subRunNum>\d+)_(?P<date>[\d-]{5})-(?P<hour>\d{2})(?P<tenMin>\d)(?P<min>\d)(?P<run_type>" + input_end_string +r")(?P<end>.root)")
+  pattern = re.compile(default_file_regex)
   replaced_filenames = [pattern.sub(multi_file_regex,file) for file in raw_list]             
   raw_list = list(set(replaced_filenames))
 
@@ -140,10 +144,12 @@ for raw_file in raw_list:
   if os.path.exists(out_name) and not rewrite:
     continue
 
-  start = baseName.find("run")
-  end = baseName.find(input_end_string)
-  run = baseName[start:end]
-  job_name = job_name_prefix+'_'+run
+  run = ""
+  if not is_mc:
+    start = baseName.find("run")
+    end = baseName.find(input_end_string)
+    run = baseName[start:end]
+    job_name = job_name_prefix+'_'+run
 
   if run == "":
     run = raw_file.replace(".root","")

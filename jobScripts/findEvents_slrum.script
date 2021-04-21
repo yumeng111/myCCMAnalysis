@@ -51,7 +51,7 @@ echo
 echo ---------------------- Job Output ----------------------------
 echo
 
-source /users/rtthorn/.bash_profile
+source SOURCEFILE
 module load openmpi
 mpirun --app MPIAPP
 
