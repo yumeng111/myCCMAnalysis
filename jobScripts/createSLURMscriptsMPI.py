@@ -107,8 +107,8 @@ default_xml  = os.path.abspath(default_xml)
 raw_list  = glob.glob(os.path.join(input_loc, input_data_regex))
 
 #if user supplied a multi_file_regex string use it in re.sub to replace the filenames in raw_list and return a list of unique results
-if multi_file_regex != "":
-  pattern = re.compile(default_file_regex)
+if multi_file_regex:
+  pattern = re.compile(r""+default_file_regex,re.VERBOSE)
   replaced_filenames = [pattern.sub(multi_file_regex,file) for file in raw_list]             
   raw_list = list(set(replaced_filenames))
 
