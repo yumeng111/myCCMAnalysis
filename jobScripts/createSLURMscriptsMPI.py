@@ -81,7 +81,7 @@ multi_file_regex = options['MultiFileRegex']
 #Default file format in regular expression format
 default_file_regex = options['DefaultFileRegex']
 #The maximum number of jobs that can be submitted. Default is 1000 (HPC max)
-max_num_jobs     = options['MaxNumJobs']
+max_num_jobs     = options.getint('MaxNumJobs')
 #The parameters to pass to ls to select the input files.
 input_data_regex = options['InputDataRegex']
 #The string that ends the input files (before the .root), used to get a unique name.
