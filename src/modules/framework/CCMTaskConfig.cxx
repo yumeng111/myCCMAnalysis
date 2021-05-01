@@ -166,7 +166,7 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
       fProcessType = StrX(modEle->getAttribute(type)).localForm();
       XMLString::release(&type);
       if(!(fProcessType == "DetSim" || fProcessType == "EventDisplay" || fProcessType == "Reco" ||
-            fProcessType == "Calibration"))
+            fProcessType == "Calibration" || fProcessType == "Fit"))
         MsgFatal(MsgLog::Form("Unrecognized process type %s.  Check your XML config file.",fProcessType.c_str()));
     }
 
@@ -215,6 +215,14 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
         DOMElement* cutEle = (DOMElement*)(parEle->getChildNodes()->item(0));
         std::string cuttype = StrX(cutEle->getTagName()).localForm();
         std::string cutval = StrX(cutEle->getChildNodes()->item(0)->getNodeValue()).localForm();
+        auto start = cutval.find_first_not_of(' ');
+        auto end = cutval.find_last_not_of(' ');
+        auto range = end - start + 1;
+        if (range > 1) {
+          cutval= cutval.substr(start,range);
+        } else if (range == 1 && cutval == " ") {
+          cutval.clear();
+        }
         std::string comment = "empty";
         if(parEle->getChildNodes()->getLength() > 1) {
           comment = StrX(parEle->getChildNodes()->item(1)->getNodeValue()).localForm();
@@ -228,18 +236,18 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
 
           if(cuttype == "int") {
             cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stoi(cutval),comment.c_str()));	
-            if(cfgname.find("ROOTSetup") != std::string::npos) {
+            if(cfgname.find("ROOTSetup") != std::string::npos && rootIO != nullptr) {
               rootIO->SetParameter(parname,std::stoi(cutval));
-            } else if(cfgname.find("RawSetup") != std::string::npos) {
+            } else if(cfgname.find("RawSetup") != std::string::npos && rawIO != nullptr) {
               rawIO->SetParameter(parname,std::stoi(cutval));
             } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
               PMTInfoMap::SetParameter(parname,std::stoi(cutval));
             }
           } else if(cuttype == "double" || cuttype == "float") {
             cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stod(cutval),comment.c_str()));	
-            if(cfgname.find("ROOTSetup") != std::string::npos) {
+            if(cfgname.find("ROOTSetup") != std::string::npos && rootIO != nullptr) {
               rootIO->SetParameter(parname,std::stod(cutval));
-            } else if(cfgname.find("RawSetup") != std::string::npos) {
+            } else if(cfgname.find("RawSetup") != std::string::npos && rawIO != nullptr) {
               rawIO->SetParameter(parname,std::stod(cutval));
             } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
               PMTInfoMap::SetParameter(parname,std::stod(cutval));
@@ -251,9 +259,9 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
 
             cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),cutval,comment.c_str()));
 
-            if(cfgname.find("ROOTSetup") != std::string::npos) {
+            if(cfgname.find("ROOTSetup") != std::string::npos && rootIO != nullptr) {
               rootIO->SetParameter(parname,cutval);
-            } else if(cfgname.find("RawSetup") != std::string::npos) {
+            } else if(cfgname.find("RawSetup") != std::string::npos && rawIO != nullptr) {
               rawIO->SetParameter(parname,cutval);
             } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
               PMTInfoMap::SetParameter(parname,cutval);
@@ -278,20 +286,20 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
   XMLPlatformUtils::Terminate();
   
   //Load the input file
-  if (!fInputFileList.empty()) {
+  if (!fInputFileList.empty() && rootIO != nullptr) {
     rootIO->SetInFileList(fInputFileList);
     rootIO->SetupInputFile();
   }
-  if (!fOutputFileList.empty()) {
+  if (!fOutputFileList.empty() && rootIO != nullptr) {
     rootIO->SetOutFileName(fOutputFileList.front());
     rootIO->SetupOutputFile();
   }
 
-  if (!fRawInputFileList.empty()) {
+  if (!fRawInputFileList.empty() && rawIO != nullptr) {
     rawIO->SetInFileList(fRawInputFileList);
     rawIO->SetupInputFile();
   }
-  if (!fRawOutputFileList.empty()) {
+  if (!fRawOutputFileList.empty() && rawIO != nullptr) {
     rawIO->SetOutFileName(fRawOutputFileList.front());
     rawIO->SetupOutputFile();
   }

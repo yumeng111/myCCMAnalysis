@@ -126,7 +126,7 @@ namespace Utility
   constexpr const double fgkBinWidth = 2.0;
 
   /// The number of digitizer channels that contains all the PMTs
-  constexpr const double fgkNumPMTs = 160;
+  constexpr const double fgkNumPMTs = 272;
 
   /// The time in ns corresponding to the start of the DAQ window
   constexpr const double fgkWindowStartTime = -9920;

@@ -30,3 +30,5 @@ set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES} $ENV{XER
 add_executable(CCMAnalysis CCMAnalysis.cxx)
 target_link_libraries(CCMAnalysis ${ROOT_LIBRARIES} CCMUtils CCMDS CCMSPE CCMXML CCMReco CCMIO CCMNearline CCMPlots CCMTemplates CCMDetSim)
 
+add_executable(CCMFitDM CCMFitDM.cxx)
+target_link_libraries(CCMFitDM ${ROOT_LIBRARIES} CCMUtils CCMIO CCMXML)

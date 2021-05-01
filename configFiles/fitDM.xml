@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestRecoConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reco/CCMRecoConfig.xsd">
+
+  <!--
+       Note from R. T. Thornton
+       I have put values that I used to run the CCMFitDM.
+       I also use absolute paths so I can run the executable anywhere
+       and not run into any issues. If you know where you are running
+       the executable from you can use relative paths
+       to make the paths much shorter
+   -->
+  
+  <Modules type="Fit"> DMTrueHists InputFiles POTAndScaling FitParams OutputFiles Systematics</Modules>
+  <ModuleVersion> default default default default default default</ModuleVersion>
+  
+  <Config name="DMTrueHists" version="default">
+    <Param name="MasterDir"><string>/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/</string>
+      The directory that contains all the directories for the cv and systematic BdNMC output
+    </Param>
+    <Param name="Directory"><string>lowerThreshold</string>
+      The directory that contains the CV histograms.
+      These histograms lives in Directory/Histograms by assumption.
+    </Param>
+    <Param name="HistName"><string>En</string>
+      Do not change this unless you know the 
+      histogram name is not En
+    </Param>
+    <Param name="HistAxis"><int>1</int>
+      Do not change this unless you know the 
+      energy distribution you want to grab
+      is not axis numbe 1
+    </Param>
+    <Param name="DefaultEpsilon"><double>0.001</double>
+      The value of epsilon (kinetic mixing between the dark sector
+      and the standard model) that was used when running BdNMC
+    </Param>
+    <Param name="DefaultAlphaD"><double>0.5</double>
+      The value of alphaD (gauge coupling between the dark photon 
+      and the dark matter) that was used when running BdNMC
+    </Param>
+    <Param name="SysDirs"><string> </string>
+      List the directories to use as systematic error
+      on the true dark matter distribution coming
+      from BdNMC, empty string meas no systematic
+      is included. If there is multiple directories,
+      list each directory seperated by a comma and no
+      space, the space will be treated as part of the
+      path
+    </Param>
+  </Config>
+
+  <Config name="InputFiles" version="default">
+    <Param name="MassComboFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/mv_mchi.txt</string>
+      The file that contains the various dark matter mass parameters to get from the DMTrueHists
+      it is assumed the values are in GeV/c^2
+    </Param>
+    <Param name="ResultsFromFile"><int>1</int>
+      If greater than 0, no fit will be done
+      only results from a previous run will be used
+    </Param>
+    <Param name="PreviousResults"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/dm_true_reco_dists_v3_newCV_newOM.root,/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/dm_true_reco_dists_v3_CCM200Evaporated_10000.root,/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/dm_true_reco_dists_lowerThreshold_CCM200Evaporated_10000.root</string>
+      Where the ROOT files are for the previous results. Have no spaces, files are seperated by a ,.
+      Do not need this if ResultsFromFile is false (or less than or equal to 0)
+    </Param>
+    <Param name="PreviousResultsNames"><string>CCM120,CCM200,CCM200 Low Thresh.</string>
+      The names to give each of the previous results. The list is seperated bhy , so only
+      put a space in if it is part of the name
+      Do not need this if ResultsFromFile is false (or less than or equal to 0)
+    </Param>
+    <Param name="DMEfficiencySmear"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/nucleon_eff_response_0p2Thresh.root</string>
+      File that contains the dark matter efficiency and 
+      smear matrix based off CCM simulations
+      R. T. Thornton generated this file using
+      $CCMINSTALL/analysis/rtthorn/simulationStudes/plotTruthVariables.C
+      Make sure that the smearing matrix is normalized in such as way as to have
+      each column have its integral equal to 1.
+    </Param>
+    <Param name="DMEfficiencyPlotName"><string>efficiencyTrueEnergy</string>
+      The name of the plot to grab from the file listed in DMEfficiencySmear
+      to represent as the efficiency plot
+    </Param>
+    <Param name="DMSmearPlotName"><string>energyTrueVsReco</string>
+      The name of the plot to grab from the file listed in DMEfficiencySmear
+      to represent the smearing plot
+    </Param>
+    <Param name="DataFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/cut_region_efficiency_longerPrevCut_0p2Thresh.root</string>
+      The file that contains the data and background distributions.
+      R. T. Thornton generated these histograms by running 
+      $CCMINSTALL/analysis/rtthorn/2019_final_scripts/comparePlots_processed.C
+      That root macro uses the output of running processed files through the modules CCMNa22Cuts and CCMNuDMPlots
+    </Param>
+    <Param name="DataHistName"><string>_energyOnly1_7</string>
+      The name of the histogram that represents the data from DataFile
+    </Param>
+    <Param name="ExcessHistName"><string>_energyOnly1_7_Ratio1</string>
+      The name of the histogram that represents the excess from DataFile
+      Currently this gets reset because it assumes there is no systematic
+      on the background
+    </Param>
+    <Param name="BackgroundHistName"><string>newPred_7</string>
+      The name of the histogram that represents the background from DataFile
+      Currently this gets reset because it assumes there is no systematic
+      on the background
+    </Param>
+  </Config>
+
+  <Config name="POTAndScaling" version="default">
+    <Param name="DefaultPOT"><double>17.8938</double>
+      The POT that was calculated for the data that was used to
+      generage that histograms that are being pulled from
+      InputFiles::DataFile
+    </Param>
+    <Param name="POTScale"><double>1</double>
+      How much to scale the POT by. This is useful
+      for generating predicted distributions
+    </Param>
+    <Param name="BkgScale"><double>1</double>
+      How much to scale the background and data by, assuming
+      better cuts are applied. Does not change the shape 
+      of the background
+      e.g.: Reduction of 3.5 for shielding and a factor of 10 for PID would give a value of 0.2857
+    </Param>
+    <Param name="NormalizeBkg"><double>-1</double>
+      After applying all scalings, normalize the background and data
+      such that the background has a integral to the number passed.
+      If the number is less than 0 no normalization is preformed
+    </Param>
+  </Config>
+
+  <Config name="FitParams" version="default">
+    <Param name="StartEnergy"><double>3</double>
+      The minimum energy to use in the fit process
+    </Param>
+    <Param name="EndEnergy"><double>15.5</double>
+      The maximum energy to use in the fit process
+    </Param>
+    <Param name="NumberNullThrows"><int>50000</int>
+      Number of fake data to throw for the null data set
+    </Param>
+    <Param name="NumberSigThrows"><int>10000</int>
+      Number of fake data to throw for the signal data set
+    </Param>
+  </Config>
+
+  <Config name="OutputFiles" version="default">
+    <Param name="Directory"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/</string>
+      The directory to save all the files to
+    </Param>
+    <Param name="PostFix"><string> </string>
+      The postfix string to give all files
+    </Param>
+    <Param name="OtherLimitsDir"><string>/lustre/scratch3/turquoise/rtthorn/darkMatterGenerator/otherLimits/</string>
+      The location of other limits to include on the CL plot
+      These limits are generally generated by Hidden_Sector_Limits
+      It is assumed the plots were generated with mv = 3mchi and
+      alpha_D = 0.5. If not modify the code dirctly
+    </Param>
+    <Param name="MedPartMassRatio"><double>3</double>
+      The mass ratio between the mediator and the particle for plotting
+      the other limits is assuemd to start with y?_alphaD where ? is the ratio
+      of mediator to mass
+    </Param>
+    <Param name="OutputAlphaD"><double>0.5</double>
+      When plotting the CL 2 variables must be chosen
+      currently the code is setup to have those variabels
+      be MedPartMassRatio and alpha_D (can be the same as the 
+      DMTrueHists::DefaultAlphaD).
+      The other limits file names is assumed to start with yMedPartMassRatio_?
+      where ? is the output alphaD value
+    </Param>
+  </Config>
+
+  <Config name="Systematics" version="default">
+    <Param name="SysFilePOT"><string> </string>
+      The file to get the fractional covariance matrix
+    </Param>
+    <Param name="SysHistPOT"><string> </string>
+      The histogram name in the file to get the fractional covariance matrix
+    </Param>
+    <Param name="SysNumberPOT"><double>0.007</double>
+      The flat fractional covariance number to use (only if SysFile is empty)
+    </Param>
+    <Param name="SysFileQF"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/qf_frac_error.root</string>
+      The file to get the fractional covariance matrix
+    </Param>
+    <Param name="SysHistQF"><string>frac</string>
+      The histogram name in the file to get the fractional covariance matrix
+    </Param>
+    <Param name="SysNumberQF"><double>0</double>
+      The flat fractional covariance number to use (only if SysFile is empty)
+    </Param>
+    <Param name="SysFileOM"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/om_frac_error.root</string>
+      The file to get the fractional covariance matrix
+    </Param>
+    <Param name="SysHistOM"><string>fracOM</string>
+      The histogram name in the file to get the fractional covariance matrix
+    </Param>
+    <Param name="SysNumberOM"><double>0</double>
+      The flat fractional covariance number to use (only if SysFile is empty)
+    </Param>
+  </Config>
+</TestRecoConfig>
