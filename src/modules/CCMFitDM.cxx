@@ -40,6 +40,7 @@
 #include <iterator>
 #include <chrono>
 #include <cstring>
+#include <mutex>
 
 extern "C" {
 #include <unistd.h>
@@ -57,6 +58,8 @@ static size_t gNumNullFakeData = 5000;
 static size_t gNumSigFakeData = 1000;
 static double gDefaultAlphaD = 0.5;
 static double gDefaultEpsilon = 1e-3;
+static std::vector<std::tuple<double,double,double,double>> gResults;
+static std::mutex gMTX;
 
 static const int gkLightGray = TColor::GetColor(220.f/255.f,220.f/255.f,220.f/255.f);
 static const int gkBlack     = TColor::GetColor(0.f,0.f,0.f);
@@ -82,15 +85,14 @@ void FindBest(std::ifstream & infile, TH1D *  best);
 
 void AddOld(std::ifstream & infile, std::vector<TGraphAsymmErrors*> & grOld);
 
-void ScaleDMSys(const TMatrixD & cv, const std::vector<TMatrixD> & fracError, TMatrixD & sysError) ;
+void ScaleDMSys(const TMatrixD & cv, const std::vector<TMatrixD> & fracError, TMatrixD & sysError, bool print = false);
 
 double CalculateChi2(const TMatrixD & data, const TMatrixD & pred, const TMatrixD & sys);
 
 void GetToyMC(std::vector<TMatrixD> & fakeDataVec, const TMatrixD & cv, const TMatrixD & sys, std::mt19937 & mt);
 
 void CalculateSensCL(const TMatrixD dm, const TMatrixD & data, const TMatrixD & bkg, 
-    const std::vector<TMatrixD> & sysFracError, const TMatrixD & bkgError,
-    std::tuple<double,double,double,double> & result);
+    const std::vector<TMatrixD> & sysFracError, const TMatrixD & bkgError, const int & index);
 
 struct tokens: std::ctype<char> 
 {
@@ -202,6 +204,8 @@ int main(int argc, char ** argv)
   std::vector<std::string> dmSysDirs;
   std::string massComboFileName = "";
   int resultsFromFile = false;
+  int applyEfficiency = true;
+  int doFit = true;
   std::vector<std::string> previousResults;
   std::vector<std::string> previousResultsNames;
   std::string dmEffSmearFile = "";
@@ -265,7 +269,6 @@ int main(int argc, char ** argv)
       }
     } else if (name == "InputFiles") {
       c("MassComboFile").Get(massComboFileName);
-      c("ResultsFromFile").Get(resultsFromFile);
       c("DMEfficiencySmear").Get(dmEffSmearFile);
       c("DMEfficiencyPlotName").Get(dmEffHistName);
       c("DMSmearPlotName").Get(dmSmearHistName);
@@ -273,6 +276,8 @@ int main(int argc, char ** argv)
       c("DataHistName").Get(dataHistName);
       c("ExcessHistName").Get(excessHistName);
       c("BackgroundHistName").Get(bkgHistName);
+      c("ApplyDetEff").Get(applyEfficiency);
+      c("ResultsFromFile").Get(resultsFromFile);
       if (resultsFromFile > 0) {
         c("PreviousResults").Get(tempString);
         std::stringstream ss (tempString);
@@ -294,6 +299,7 @@ int main(int argc, char ** argv)
       c("BkgScale").Get(scaleDataAndBkg);
       c("NormalizeBkg").Get(normalizeBkgValue);
     } else if (name == "FitParams") {
+      c("DoFit").Get(doFit);
       c("StartEnergy").Get(startEnergy);
       c("EndEnergy").Get(endEnergy);
       int temp = 0;
@@ -353,10 +359,11 @@ int main(int argc, char ** argv)
     MsgInfo(MsgLog::Form("DMTrueHists: Adding Sys Dir = %s",dir.c_str()));
   }
   MsgInfo(MsgLog::Form("InputFiles: Mass Combo File %s",massComboFileName.c_str()));
-  MsgInfo(MsgLog::Form("InputFiles: Take results from previous files %s", (resultsFromFile) ? "true" : "false"));
+  MsgInfo(MsgLog::Form("InputFiles: Take results from previous files %s", (resultsFromFile > 0) ? "true" : "false"));
   for (size_t i = 0; i < previousResults.size(); ++i) {
     MsgInfo(MsgLog::Form("InputFiles: Prev Result %s located %s",previousResultsNames.at(i).c_str(),previousResults.at(i).c_str()));
   }
+  MsgInfo(MsgLog::Form("InputFiles: Apply Detector Efficiency %s (smearing will always be applied)", (applyEfficiency > 0) ? "true" : "false"));
   MsgInfo(MsgLog::Form("InputFiles: Dark Matter Efficiency and Smear Hist File %s",dmEffSmearFile.c_str()));
   MsgInfo(MsgLog::Form("InputFiles: Dark Matter Efficiency Hist Name %s",dmEffHistName.c_str()));
   MsgInfo(MsgLog::Form("InputFiles: Dark Matter Smear Hist Name %s",dmSmearHistName.c_str()));
@@ -368,6 +375,7 @@ int main(int argc, char ** argv)
   MsgInfo(MsgLog::Form("POTAndScaling: POT Scale %g",potScaling));
   MsgInfo(MsgLog::Form("POTAndScaling: Background Scale %g",scaleDataAndBkg));
   MsgInfo(MsgLog::Form("POTAndScaling: Normalize Background Value %g",normalizeBkgValue));
+  MsgInfo(MsgLog::Form("FitParams: Do Fit %s",(doFit > 0) ? "true" : "false"));
   MsgInfo(MsgLog::Form("FitParams: Start Energy %g",startEnergy));
   MsgInfo(MsgLog::Form("FitParams: End Energy %g",endEnergy));
   MsgInfo(MsgLog::Form("FitParams: Number Null Fake Data Throws %zu",gNumNullFakeData));
@@ -402,7 +410,6 @@ int main(int argc, char ** argv)
   rootFile->GetObject(dmEffHistName.c_str(),efficiencyTrueEnergy);
   if (!efficiencyTrueEnergy) {
     MsgFatal(MsgLog::Form("Could not get efficiency hist %s from %s",dmEffHistName.c_str(),dmEffSmearFile.c_str()));
-    return EXIT_FAILURE;
   }
 
   std::map<double,std::shared_ptr<TH1D>> mapBkgPlusSig;
@@ -470,14 +477,23 @@ int main(int argc, char ** argv)
   TH2D * pot_frac_error = nullptr;
   if (!std::get<0>(inputQFSysInfo).empty()) {
     rootFile = std::make_shared<TFile>(std::get<0>(inputQFSysInfo).c_str(),"READ");
+    if (!rootFile) {
+      MsgFatal("QF fractional error file given but could not open");
+    }
     rootFile->GetObject(std::get<1>(inputQFSysInfo).c_str(),qf_frac_error);
   }
   if (!std::get<0>(inputOMSysInfo).empty()) {
     rootFile = std::make_shared<TFile>(std::get<0>(inputOMSysInfo).c_str(),"READ");
+    if (!rootFile) {
+      MsgFatal("OM fractional error file given but could not open");
+    }
     rootFile->GetObject(std::get<1>(inputOMSysInfo).c_str(),om_frac_error);
   }
   if (!std::get<0>(inputPOTSysInfo).empty()) {
     rootFile = std::make_shared<TFile>(std::get<0>(inputPOTSysInfo).c_str(),"READ");
+    if (!rootFile) {
+      MsgFatal("POT fractional error file given but could not open");
+    }
     rootFile->GetObject(std::get<1>(inputPOTSysInfo).c_str(),pot_frac_error);
   }
 
@@ -569,7 +585,7 @@ int main(int argc, char ** argv)
 
   double scaling = 0;
   std::vector<std::pair<double,double>> mVmChiVec;
-  std::ifstream infile("miniboone_full_nucleon_timing_vector_portal_cl_epsilon4alphaD.txt");
+  std::ifstream infile(Form("%sminiboone_full_nucleon_timing_vector_portal_cl_epsilon4alphaD.txt",otherLimitsDir.c_str()));
   while (infile >> mv >> mchi >> scaling) {
     //if (mv <= mvValues.back() && mchi < mchiValues.back()) {
       mVmChiVec.emplace_back(std::make_pair(mv,mchi));
@@ -615,7 +631,6 @@ int main(int argc, char ** argv)
   std::vector<double> totalMaxBin;
 
   int count = 0;
-  std::vector<std::tuple<double,double,double,double>> results;
   std::vector<double> mchiValues;
   std::vector<double> mvValues;
 
@@ -653,11 +668,11 @@ int main(int argc, char ** argv)
   while (infile >> mv >> mchi) {
     //mv *= 1e3;
     //mchi *= 1e3;
-    if (mv >= 140) {
+    if (mv > 136) {
       continue;
     }
 
-    results.emplace_back(mv,mchi,0,0);
+    gResults.emplace_back(mv,mchi,0,0);
     if (std::find(mchiValues.begin(),mchiValues.end(),mchi/1e3) == mchiValues.end()) {
       mchiValues.emplace_back(mchi/1e3);
     }
@@ -672,13 +687,16 @@ int main(int argc, char ** argv)
   MsgInfo(MsgLog::Form("mchiValues: front %f back %f",mchiValues.front(),mchiValues.back()))
   MsgInfo(MsgLog::Form("mvValues: front %f back %f",mvValues.front(),mvValues.back()))
 
-  if (!resultsFromFile) {
+  if (resultsFromFile <= 0) {
     const auto kMaxNumberThreads = std::thread::hardware_concurrency();
     MsgInfo(MsgLog::Form("Maximum Number of threads = %zu",kMaxNumberThreads));
-    std::vector<std::future<void>> futureVector;
-    for (auto & result : results) {
-      mv = std::get<0>(result);
-      mchi = std::get<1>(result);
+    std::vector<std::pair<size_t,std::future<void>>> futureVector;
+    const size_t kNumMassCombos = gResults.size();
+    for (size_t result = 0; result < kNumMassCombos; ++result) {
+      gMTX.lock();
+      mv = std::get<0>(gResults.at(result));
+      mchi = std::get<1>(gResults.at(result));
+      gMTX.unlock();
       MsgInfo(MsgLog::Form("Looking for mv %.1f mchi %.1f",mv,mchi));
       std::shared_ptr<TH1D> total = GetTotalHist(mv,mchi,dmHistAxis,dmHistName,dmMasterDir,dmDir,dmSysDirs,&sysHistVec);
       if (total == nullptr) {
@@ -730,9 +748,11 @@ int main(int argc, char ** argv)
         hist->Scale(defaultPOT*potScaling);
       }
       trueNumEvents2D->SetPoint(trueNumEvents2D->GetN(),mv/1e3,mchi/1e3,keep.back()->Integral());
-      keep.back()->Multiply(efficiencyTrueEnergy);
-      for (auto & hist : sysRebinHist) {
-        hist->Multiply(efficiencyTrueEnergy);
+      if (applyEfficiency > 0) {
+        keep.back()->Multiply(efficiencyTrueEnergy);
+        for (auto & hist : sysRebinHist) {
+          hist->Multiply(efficiencyTrueEnergy);
+        }
       }
       trueMeanEnergy2D->SetPoint(trueMeanEnergy2D->GetN(),mv/1e3,mchi/1e3,keep.back()->GetMean());
       keepReco.emplace_back(dynamic_cast<TH1D*>(rebinHistReco->Clone(Form("%s_keepReco_%.1f_%.1f",total->GetName(),mv,mchi))));
@@ -798,34 +818,44 @@ int main(int argc, char ** argv)
         }
       }
 
-      //////////////////////
-      //continue;
-      //////////////////////
+      if (doFit <= 0) {
+        continue;
+      }
 
       for (int bin = gStartBin; bin < gEndBin; ++bin) {
         dmMatrix(bin-gStartBin,0) = keepReco.back()->GetBinContent(bin);
       }
 
       if (futureVector.size() < kMaxNumberThreads-2) {
-        futureVector.emplace_back(std::async(CalculateSensCL,dmMatrix,std::ref(dataMatrix),std::ref(bkgMatrix),
-              std::ref(sysFracErrorMatrix), std::ref(bkgErrorMatrix),std::ref(result)));
+        futureVector.emplace_back(std::make_pair(result,std::async(CalculateSensCL,dmMatrix,std::ref(dataMatrix),std::ref(bkgMatrix),
+              std::ref(sysFracErrorMatrix), std::ref(bkgErrorMatrix),std::ref(result))));
       } else {
         while (futureVector.size() == kMaxNumberThreads-2) {
           std::this_thread::sleep_for(std::chrono::seconds(10));
           int finished = 0;
           for (auto it = futureVector.begin(); it != futureVector.end();) {
-            bool status = (*it).wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+            bool status = it->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
             if (status) {
+              gMTX.lock();
+              MsgInfo(MsgLog::Form("Finished and Saved mv %.1f mchi %.1f sens %g cl %g",
+                    std::get<0>(gResults.at(it->first)), std::get<1>(gResults.at(it->first)),
+                    std::get<2>(gResults.at(it->first)), std::get<3>(gResults.at(it->first))));
+              gMTX.unlock();
               it = futureVector.erase(it);
               ++finished;
             } else {
+              gMTX.lock();
+              MsgInfo(MsgLog::Form("mV %.1f and mChi %.1f still running sens %g cl %g",
+                    std::get<0>(gResults.at(it->first)), std::get<1>(gResults.at(it->first)),
+                    std::get<2>(gResults.at(it->first)), std::get<3>(gResults.at(it->first))));
+              gMTX.unlock();
               std::advance(it,1);
             }
           }
           MsgInfo(MsgLog::Form("%d finished since last check",finished));
         }
       }
-    } // end for result
+    } // end for gResults
 
     //now we wait for all the futures to finish
     //once everyone is finished then we can plot the results
@@ -833,11 +863,21 @@ int main(int argc, char ** argv)
       std::this_thread::sleep_for(std::chrono::seconds(10));
       int finished = 0;
       for (auto it = futureVector.begin(); it != futureVector.end();) {
-        bool status = (*it).wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+        bool status = it->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
         if (status) {
+          gMTX.lock();
+          MsgInfo(MsgLog::Form("Finished and Saved mv %.1f mchi %.1f sens %g cl %g",
+                std::get<0>(gResults.at(it->first)), std::get<1>(gResults.at(it->first)),
+                std::get<2>(gResults.at(it->first)), std::get<3>(gResults.at(it->first))));
+          gMTX.unlock();
           it = futureVector.erase(it);
           ++finished;
         } else {
+          gMTX.lock();
+          MsgInfo(MsgLog::Form("mV %.1f and mChi %.1f still running sens %g cl %g",
+                std::get<0>(gResults.at(it->first)), std::get<1>(gResults.at(it->first)),
+                std::get<2>(gResults.at(it->first)), std::get<3>(gResults.at(it->first))));
+          gMTX.unlock();
           std::advance(it,1);
         }
       }
@@ -861,17 +901,13 @@ int main(int argc, char ** argv)
     double minCL2D = 9e9;
     double maxSens2D = 0;
     double maxCL2D = 0;
-    for (auto & result : results) {
+    for (auto & result : gResults) {
       mv = std::get<0>(result);
       mchi = std::get<1>(result);
-      //std::cout << mv/1e3 << '\t' << mchi/1e3 << '\t' 
-      //  << std::get<2>(result) << '\t'
-      //  << std::get<3>(result) << std::endl;
+      MsgInfo(MsgLog::Form("mv %.1f mchi %.1f sens %g cl %g",mv,mchi,std::get<2>(result),std::get<3>(result)));
       if (std::get<2>(result) > 0 && std::get<3>(result) > 0) {
-        ySens2DGr1->SetPoint(ySens2DGr1->GetN(),mv/1e3+1e-5,mchi/1e3+1e-5,std::get<2>(result));
-        yCL2DGr1->SetPoint(yCL2DGr1->GetN(),mv/1e3+1e-5,mchi/1e3+1e-5,std::get<3>(result));
-        //ySens2D->Fill(mv/1e3+1e-5,mchi/1e3+1e-5,std::get<2>(result));
-        //yCL2D->Fill(mv/1e3+1e-5,mchi/1e3+1e-5,std::get<3>(result));
+        ySens2DGr1->SetPoint(ySens2DGr1->GetN(),mv/1e3,mchi/1e3,std::get<2>(result));
+        yCL2DGr1->SetPoint(yCL2DGr1->GetN(),mv/1e3,mchi/1e3,std::get<3>(result));
         if (std::get<2>(result) != 0) {
           minSens2D = std::min(std::get<2>(result),minSens2D);
           maxSens2D = std::max(std::get<2>(result),maxSens2D);
@@ -883,6 +919,7 @@ int main(int argc, char ** argv)
       }
     }
 
+    ySens2D->Print();
     ySens2D->Smooth();
     yCL2D->Smooth();
 
@@ -1025,9 +1062,6 @@ int main(int argc, char ** argv)
     canvas->Update();
     canvas->Print(Form("%sdm_energy_true_dist_mv_3mchi_ccm%s.pdf",outputDir.c_str(),postFix.c_str()),"pdf");
 
-    //return EXIT_SUCCESS;
-
-
     canvas->Clear();
     gPad->SetMargin(0.12,0.18,0.1,0.05);
     gPad->SetLogz(true);
@@ -1115,7 +1149,7 @@ int main(int argc, char ** argv)
     keepReco.resize(2);
     keep.resize(2);
     rootFile = std::make_shared<TFile>(previousResults.front().c_str(),"READ");
-    for (auto & result : results) {
+    for (auto & result : gResults) {
       mv = std::get<0>(result);
       mchi = std::get<1>(result);
       rootFile->GetObject(Form("%s_proj_1_keepReco_%.1f_%.1f",dmHistName.c_str(),mv,mchi),hist);
@@ -1695,7 +1729,7 @@ int main(int argc, char ** argv)
   latex.SetTextColor(gkVermilion);
   latex.DrawLatex(1.8,6e-11,"CCM200 50keV Sens.");
   latex.SetTextColor(gkRedPurple);
-  latex.DrawLatex(2,1e-11,"CCM200 10keV Sens.");
+  latex.DrawLatex(2,9e-12,"CCM200 10keV Sens.");
   //latex.SetTextColor(gkBlack);
   //latex.DrawLatex(1.5,7e-11,"#splitline{CCM200}{> 1000 Events}");
   //latex.SetTextColor(gkBlack);
@@ -1864,7 +1898,7 @@ void AddOld(std::ifstream & infile, std::vector<TGraphAsymmErrors*> & grOld)
 }
 
 //-------------------------------------------------------------------------------------------------
-void ScaleDMSys(const TMatrixD & cv, const std::vector<TMatrixD> & fracError, TMatrixD & sysError) 
+void ScaleDMSys(const TMatrixD & cv, const std::vector<TMatrixD> & fracError, TMatrixD & sysError, bool print) 
 {
   const int kNRows = fracError.front().GetNrows();
   for (int x = 0; x < kNRows; ++x) {
@@ -1874,6 +1908,10 @@ void ScaleDMSys(const TMatrixD & cv, const std::vector<TMatrixD> & fracError, TM
         sysError(x,y) += matrix(x,y)*cv(x,0)*cv(y,0);
       }
     }
+  }
+  if (print) {
+    double cvTotal = cv.Sum();
+    MsgInfo(MsgLog::Form("sysSum %f, frac %f",std::sqrt(sysError.Sum()),std::sqrt(sysError.Sum())/cvTotal));
   }
 }
 
@@ -1923,8 +1961,7 @@ void GetToyMC(std::vector<TMatrixD> & fakeDataVec, const TMatrixD & cv, const TM
 
 //-------------------------------------------------------------------------------------------------
 void CalculateSensCL(const TMatrixD dm, const TMatrixD & data, const TMatrixD & bkg, 
-    const std::vector<TMatrixD> & sysFracError, const TMatrixD & bkgError,
-    std::tuple<double,double,double,double> & result)
+    const std::vector<TMatrixD> & sysFracError, const TMatrixD & bkgError, const int & index)
 {
 
   std::vector<double> nullThrows;
@@ -1945,6 +1982,9 @@ void CalculateSensCL(const TMatrixD dm, const TMatrixD & data, const TMatrixD & 
   std::shared_ptr<TMatrixD> sysError = std::make_shared<TMatrixD>(sysFracError.front().GetNrows(),sysFracError.front().GetNcols());
   std::shared_ptr<TMatrixD> sysError2 = std::make_shared<TMatrixD>(sysFracError.front().GetNrows(),sysFracError.front().GetNcols());
   //std::shared_ptr<MatrixD> zeroHist(dm.GetNrows(),dm.GetNcols());
+
+  //throwHist->operator=(dm);
+  //ScaleDMSys(*throwHist,sysFracError,*sysError,true);
 
   const double ep4aD = std::pow(gDefaultEpsilon,4.0)*gDefaultAlphaD;
   std::map<double,double> dataDeltaChi2;
@@ -2013,8 +2053,7 @@ void CalculateSensCL(const TMatrixD dm, const TMatrixD & data, const TMatrixD & 
   std::sort(nullThrows.begin(),nullThrows.end());
   size_t nullIndex90 = nullThrows.size()*0.90;
   double null90Chi2 = nullThrows.at(nullIndex90);
-  MsgInfo(MsgLog::Form("mV %f mChi %f null90Chi2 %f",std::get<0>(result),std::get<1>(result),null90Chi2));
-
+  
   std::shared_ptr<TGraph> sigNullGraph = std::make_shared<TGraph>();
   std::map<double,std::vector<double>> sigNullThrows;
   std::map<double,std::vector<double>> sigSigThrows;
@@ -2118,9 +2157,13 @@ void CalculateSensCL(const TMatrixD dm, const TMatrixD & data, const TMatrixD & 
     }
   } // end for testScale
 
-  MsgInfo(MsgLog::Form("mV %f mChi %f Sens %g CL %g",std::get<0>(result),std::get<1>(result),sens,cl));
-  std::get<2>(result) = sens;
-  std::get<3>(result) = cl;
+  gMTX.lock();
+  MsgInfo(MsgLog::Form("mV %.1f mChi %.1f null90Chi2 %f",std::get<0>(gResults.at(index)),std::get<1>(gResults.at(index)),null90Chi2));
+  std::get<2>(gResults.at(index)) = sens;
+  std::get<3>(gResults.at(index)) = cl;
+  MsgInfo(MsgLog::Form("mV %.1f mChi %.1f Sens %g CL %g",
+        std::get<0>(gResults.at(index)),std::get<1>(gResults.at(index)),std::get<2>(gResults.at(index)),std::get<3>(gResults.at(index))));
+  gMTX.unlock();
 
   return;
 }

@@ -50,7 +50,7 @@
   </Config>
 
   <Config name="InputFiles" version="default">
-    <Param name="MassComboFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/mv_mchi.txt</string>
+    <Param name="MassComboFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/mv_mchi_points.dat</string>
       The file that contains the various dark matter mass parameters to get from the DMTrueHists
       it is assumed the values are in GeV/c^2
     </Param>
@@ -58,7 +58,7 @@
       If greater than 0, no fit will be done
       only results from a previous run will be used
     </Param>
-    <Param name="PreviousResults"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/dm_true_reco_dists_v3_newCV_newOM.root,/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/dm_true_reco_dists_v3_CCM200Evaporated_10000.root,/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/dm_true_reco_dists_lowerThreshold_CCM200Evaporated_10000.root</string>
+    <Param name="PreviousResults"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/rootFiles/dm_true_reco_dists_v3_newCV_newOM.root,/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/rootFiles/dm_true_reco_dists_v3_CCM200Evaporated_10000.root,/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/dm_true_reco_dists.root</string>
       Where the ROOT files are for the previous results. Have no spaces, files are seperated by a ,.
       Do not need this if ResultsFromFile is false (or less than or equal to 0)
     </Param>
@@ -67,7 +67,11 @@
       put a space in if it is part of the name
       Do not need this if ResultsFromFile is false (or less than or equal to 0)
     </Param>
-    <Param name="DMEfficiencySmear"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/nucleon_eff_response_0p2Thresh.root</string>
+    <Param name="ApplyDetEff"><int>1</int>
+      Flag for applying the detector efficiency to the true DM recoil distribution
+      The smearing will always be done
+    </Param>
+    <Param name="DMEfficiencySmear"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/rootFiles/nucleonTo10_eff_response_0p2Thresh_CCM200Evaporated.root</string>
       File that contains the dark matter efficiency and 
       smear matrix based off CCM simulations
       R. T. Thornton generated this file using
@@ -83,21 +87,21 @@
       The name of the plot to grab from the file listed in DMEfficiencySmear
       to represent the smearing plot
     </Param>
-    <Param name="DataFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/cut_region_efficiency_longerPrevCut_0p2Thresh.root</string>
+    <Param name="DataFile"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/rootFiles/cut_region_efficiency_longerPrevCut_0p2Thresh.root</string>
       The file that contains the data and background distributions.
       R. T. Thornton generated these histograms by running 
       $CCMINSTALL/analysis/rtthorn/2019_final_scripts/comparePlots_processed.C
       That root macro uses the output of running processed files through the modules CCMNa22Cuts and CCMNuDMPlots
     </Param>
-    <Param name="DataHistName"><string>_energyOnly1_7</string>
+    <Param name="DataHistName"><string>_energyOnly1_6</string>
       The name of the histogram that represents the data from DataFile
     </Param>
-    <Param name="ExcessHistName"><string>_energyOnly1_7_Ratio1</string>
+    <Param name="ExcessHistName"><string>_energyOnly1_6_Ratio1</string>
       The name of the histogram that represents the excess from DataFile
       Currently this gets reset because it assumes there is no systematic
       on the background
     </Param>
-    <Param name="BackgroundHistName"><string>newPred_7</string>
+    <Param name="BackgroundHistName"><string>newPred_6</string>
       The name of the histogram that represents the background from DataFile
       Currently this gets reset because it assumes there is no systematic
       on the background
@@ -110,17 +114,17 @@
       generage that histograms that are being pulled from
       InputFiles::DataFile
     </Param>
-    <Param name="POTScale"><double>1</double>
+    <Param name="POTScale"><double>20</double>
       How much to scale the POT by. This is useful
       for generating predicted distributions
     </Param>
-    <Param name="BkgScale"><double>1</double>
+    <Param name="BkgScale"><double>0.2857</double>
       How much to scale the background and data by, assuming
       better cuts are applied. Does not change the shape 
       of the background
       e.g.: Reduction of 3.5 for shielding and a factor of 10 for PID would give a value of 0.2857
     </Param>
-    <Param name="NormalizeBkg"><double>-1</double>
+    <Param name="NormalizeBkg"><double>1000</double>
       After applying all scalings, normalize the background and data
       such that the background has a integral to the number passed.
       If the number is less than 0 no normalization is preformed
@@ -128,16 +132,23 @@
   </Config>
 
   <Config name="FitParams" version="default">
+    <Param name="DoFit"><int>1</int>
+      No fit will be done if InputFiles::ResultsFromFile > 0
+      If InputFiles::ResultsFromFile == 0 and DoFit == 0
+      then the true DM distributions will have efficiencies
+      (if InputFiles::ApplyDetEff is > 0) applied and will be
+      smeared from true to reco space, but no fit will be preformed
+    </Param>
     <Param name="StartEnergy"><double>3</double>
       The minimum energy to use in the fit process
     </Param>
-    <Param name="EndEnergy"><double>15.5</double>
+    <Param name="EndEnergy"><double>30.0</double>
       The maximum energy to use in the fit process
     </Param>
-    <Param name="NumberNullThrows"><int>50000</int>
+    <Param name="NumberNullThrows"><int>5000</int>
       Number of fake data to throw for the null data set
     </Param>
-    <Param name="NumberSigThrows"><int>10000</int>
+    <Param name="NumberSigThrows"><int>1000</int>
       Number of fake data to throw for the signal data set
     </Param>
   </Config>
@@ -177,10 +188,10 @@
     <Param name="SysHistPOT"><string> </string>
       The histogram name in the file to get the fractional covariance matrix
     </Param>
-    <Param name="SysNumberPOT"><double>0.007</double>
+    <Param name="SysNumberPOT"><double>0.000049</double>
       The flat fractional covariance number to use (only if SysFile is empty)
     </Param>
-    <Param name="SysFileQF"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/qf_frac_error.root</string>
+    <Param name="SysFileQF"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/rootFiles/qf_frac_error.root</string>
       The file to get the fractional covariance matrix
     </Param>
     <Param name="SysHistQF"><string>frac</string>
@@ -189,11 +200,13 @@
     <Param name="SysNumberQF"><double>0</double>
       The flat fractional covariance number to use (only if SysFile is empty)
     </Param>
-    <Param name="SysFileOM"><string>/users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/om_frac_error.root</string>
+    <Param name="SysFileOM"><string> </string>
       The file to get the fractional covariance matrix
+      /users/rtthorn/CCMCode/CCM_analysis_sw_dev_xmlConfig/analysis/rtthorn/darkMatterCode/rootFiles/om_frac_error.root
     </Param>
     <Param name="SysHistOM"><string>fracOM</string>
       The histogram name in the file to get the fractional covariance matrix
+      fracOM
     </Param>
     <Param name="SysNumberOM"><double>0</double>
       The flat fractional covariance number to use (only if SysFile is empty)
