@@ -188,7 +188,16 @@ void AccumWaveform::AddMaps(MapDAQWF2D & lhs, const MapDAQWF2D & rhs)
       continue;
     }
     const size_t kNumPMTs = p.second.size();
-    for (size_t pmt = 0; pmt < kNumPMTs; ++pmt) {
+    const size_t kNumRhs = rhsIt->second.size();
+    
+    size_t limit = kNumPMTs;
+    
+    if (kNumPMTs > kNumRhs) {
+      limit = kNumRhs;
+    }
+    
+    //std::cout << kNumPMTs << '\t' << rhsIt->second.size() << std::endl;
+    for (size_t pmt = 0; pmt < limit; ++pmt) {
       std::transform(p.second.at(pmt).begin(),p.second.at(pmt).end(),
           rhsIt->second.at(pmt).begin(),p.second.at(pmt).begin(),std::plus<float>());
     }
