@@ -207,6 +207,12 @@ bool RawData::IsTriggerPresent(std::string triggerName)
   int firstSampleStrobe = 0;
   int firstSampleBeam = 0;
   int firstSampleLED = 0;
+  
+  #WT - WORKAROUND TO ALLOW MODULES TO WORK W/OUT TRIGGERS ON LAST BOARD
+   if ( triggerName.find("ALL",0) != std::string::npos){
+        return true;
+      }
+   
   if (triggerName.find("STROBE") != std::string::npos ||
       triggerName.find("ALL") != std::string::npos) {
     firstSampleStrobe = FindFirstNIMSample(boardOffset+1);
@@ -222,7 +228,7 @@ bool RawData::IsTriggerPresent(std::string triggerName)
 
   if (firstSampleStrobe == 0 && firstSampleBeam == 0 && firstSampleLED == 0) {
     if (MsgLog::GetGlobalDebugLevel() >= 1) {
-      MsgDebug(1,MsgLog::Form("Trigger name is %s and could not be foud. Skipping Event", triggerName.c_str()));
+      MsgDebug(1,MsgLog::Form("Trigger name is %s and could not be found. Skipping Event", triggerName.c_str()));
     }
     return false;
   }
