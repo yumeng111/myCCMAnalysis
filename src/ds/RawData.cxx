@@ -208,7 +208,7 @@ bool RawData::IsTriggerPresent(std::string triggerName)
   int firstSampleBeam = 0;
   int firstSampleLED = 0;
   
-  #WT - WORKAROUND TO ALLOW MODULES TO WORK W/OUT TRIGGERS ON LAST BOARD
+  //WT - WORKAROUND TO ALLOW MODULES TO WORK W/OUT TRIGGERS ON LAST BOARD
    if ( triggerName.find("ALL",0) != std::string::npos){
         return true;
       }
