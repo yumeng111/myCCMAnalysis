@@ -23,7 +23,6 @@ PMTInformation::PMTInformation()
   fFlangeX = 0.0;
   fFlangeY = 0.0;
   fADCToPE = 0.0;
-  fADCToPERMS = 0.0;
   fADCToPEDer = 0.0;
   fADCThreshold= 0.0;
   fPos = TVector3(0.0,0.0,0.0);
@@ -50,7 +49,6 @@ PMTInformation::PMTInformation(const PMTInformation & rhs)
   fFlangeY = rhs.fFlangeY;
   fPos = rhs.fPos;
   fADCToPE = rhs.fADCToPE;
-  fADCToPERMS = rhs.fADCToPERMS;
   fADCToPEDer = rhs.fADCToPEDer;
   fADCThreshold = rhs.fADCThreshold;
 }
@@ -61,7 +59,7 @@ PMTInformation::~PMTInformation()
 }
 
 bool PMTInformation::IsVeto() { 
-  if ((fRow < 0 || fRow > 6) && fCol > 0) {
+  if (fRow < 0 || fRow > 6) {
     return true;
   }
 
@@ -69,7 +67,8 @@ bool PMTInformation::IsVeto() {
 }
 
 bool PMTInformation::Is1in() { 
-  if (IsVeto() && fRow != 8) {
+  //for CCM120, no longer used
+  if ((fRow >= 0 && fRow <= 5) || fRow == 7) {
     return false;
   }
 
@@ -77,7 +76,7 @@ bool PMTInformation::Is1in() {
 }
 
 bool PMTInformation::IsVeto() const { 
-  if ((fRow < 0 || fRow > 6) && fCol > 0) {
+  if (fRow < 0 || fRow > 6) {
     return true;
   }
 
@@ -85,7 +84,8 @@ bool PMTInformation::IsVeto() const {
 }
 
 bool PMTInformation::Is1in() const { 
-  if (IsVeto() && fRow != 8) {
+  //for CCM120, no longer used
+  if ((fRow >= 1 && fRow <= 5) || fRow == 7) {
     return false;
   }
 
@@ -95,9 +95,9 @@ bool PMTInformation::Is1in() const {
 void PMTInformation::CreateNames() {
   if (!IsVeto()) {
     switch (fCol) {
-      case -1: fLocName = "EJ301B"; break;
-      case -2: fLocName = "EJ301A"; break;
-      case -3: fLocName = "EJ301D"; break;
+      case -3: fLocName = "EJ301B"; break;
+      case -4: fLocName = "EJ301A"; break;
+      case -5: fLocName = "EJ301D"; break;
       default: fLocName = Form("C%dR%d",fCol,fRow); break;
     }
   } else {
@@ -115,6 +115,7 @@ void PMTInformation::CreateNames() {
     case 2: fFlangeName = Form("Y%d",fRingLoc); break;
     case 3: fFlangeName = Form("B%d",fRingLoc); break;
     case 4: fFlangeName = Form("G%d",fRingLoc); break;
+    case 5: fFlangeName = Form("I%d",fRingLoc); break;
     default: fFlangeName = "Not Found"; break;
   }
 

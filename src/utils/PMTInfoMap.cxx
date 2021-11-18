@@ -8,7 +8,6 @@
 #include "PMTInformation.h"
 #include "MsgLog.h"
 #include "CSVrow.h"
-#include "Utility.h"
 
 #include "TFile.h"
 #include "TTree.h"
@@ -25,9 +24,6 @@ const std::string PMTInfoMap::fgkBranchName = "pmtInfo"; ///< Branch name for ma
 std::map<int,PMTInformation*> PMTInfoMap::fgPMTInfo; ///< map to all the individual #PMTInformation
 std::vector<int> PMTInfoMap::fgHVOffList;
 
-size_t PMTInfoMap::fgMaxKey = 0;
-size_t PMTInfoMap::fgMinKey = Utility::fgkNumPMTs;
-
 bool PMTInfoMap::fgMapLoaded = false;
 bool PMTInfoMap::fgBadListLoaded = false;
 
@@ -43,9 +39,16 @@ void PMTInfoMap::DefaultFillPMTMap()
 
   std::ifstream infile;
 
-  std::string env = std::getenv("CCMPROJECT");
-  std::string eightInchFile = env + "/calibrationFiles/2019/mapping_master_8inch.csv";
-  std::string oneInchFile = env + "/calibrationFiles/2019/mapping_master_1inch.csv";
+  
+  
+  std::string env = std::getenv("CCMINSTALL");
+  
+  
+  std::string eightInchFile = env + "/mappings/2021/mapping_master_8inch.csv";
+  std::string oneInchFile = env + "/mappings/2021/mapping_master_1inch.csv";
+  
+  std::cout << "eightInchFile: " << eightInchFile << "\n";
+
 
   MsgInfo(MsgLog::Form("Loading 8in map from %s",eightInchFile.c_str()));
   infile.open(eightInchFile.c_str());
@@ -69,7 +72,9 @@ void PMTInfoMap::DefaultFillPMTMap()
  **************************************************************************************************/
 void PMTInfoMap::FillPMTMap(TTree * tree)
 {
+  //std::cout << "PMT INFO MAP" << "\n"; 
   if (fgMapLoaded) {
+    //std::cout << "Map Already Loaded" << "\n"; 
     return;
   }
 
@@ -86,7 +91,7 @@ void PMTInfoMap::FillPMTMap(TTree * tree)
               key,pmtInfo->GetBoard(),pmtInfo->GetBoardChan(),pmtInfo->GetColumn(),pmtInfo->GetRow(),
               pmtInfo->IsUncoated(),pmtInfo->GetLocName().c_str()));
       }
-      fgPMTInfo.emplace(key,new PMTInformation(*pmtInfo));
+      fgPMTInfo.insert(std::make_pair(key,new PMTInformation(*pmtInfo)));
     }
   }
 
@@ -102,6 +107,7 @@ void PMTInfoMap::FillPMTMap(TTree * tree)
  **************************************************************************************************/
 void PMTInfoMap::FillPMTMap(std::istream& file)
 {
+  //std::cout << "FILL  MY PMT MAP" << std::endl;  
   if (fgMapLoaded) {
     return;
   }
@@ -129,6 +135,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
     if (counter == 0) {
       continue;
     }
+    std::cout << "Counter: " << counter << "\n"; 
 
     std::string currentString = "";
     std::string tempString = "";
@@ -139,7 +146,13 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
     const CSVRow * currRow  = &(*iter);
     std::size_t currRowSize = currRow->size();
     for (size_t index = 0; index < currRowSize; ++index) {
+        
       currentString = currRow->operator[](index);
+      
+      //std::cout << "Index: " << index << "\n";
+      //std::cout << "STRING: " << std::stoi(currentString) << "\n";
+      std::cout << "Index: " << index << " String: " << currentString << "\n";
+     
       switch(index) {
         case 0: ///Decopler Box 
           break; /// do not use this information for this peace of code
@@ -160,6 +173,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
             case 'Y': ring = 2; break;
             case 'B': ring = 3; break;
             case 'G': ring = 4; break;
+            case 'I': ring = 5; break;
             default: ring = -1; break;
           }
           currentString.erase(currentString.begin());
@@ -230,10 +244,10 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
         case 13: /// x position
           x = std::stod(currentString);
           break;
-        case 14: /// x position
+        case 14: /// y position
           y = std::stod(currentString);
           break;
-        case 15: /// x position
+        case 15: /// z position
           z = std::stod(currentString);
           break;
         case 16: /// adcToPE Value
@@ -249,11 +263,9 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
       } // end switch(index)
     } // end for index < currRow->size()
     int key = CreateKey(adcBoardOrder,adcCH);
+    std::cout << "key: " << key << "\n";
     if (fgPMTInfo.find(key) == fgPMTInfo.end()) {
-      fgMaxKey = std::max(fgMaxKey,static_cast<size_t>(key));
-      fgMinKey = std::min(fgMinKey,static_cast<size_t>(key));
-
-      fgPMTInfo.emplace(key,new PMTInformation());
+      fgPMTInfo.insert(std::make_pair(key,new PMTInformation()));
       std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.find(key);
       if (itMap == fgPMTInfo.end()) {
         MsgFatal(MsgLog::Form("pmt key %d was not added tothe map",key));
@@ -279,7 +291,13 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
         MsgDebug(1,MsgLog::Form("Added key %3d hvBoard %2d hvChan %2d board %2d chan %2d col %3d row %3d coated %1d name %s",
               key,hvBoard,hvChannel,adcBoardOrder,adcCH,col,row,coating,itMap->second->GetLocName().c_str()));
       }
+      if (MsgLog::GetGlobalDebugLevel() >= 2) {
+        MsgDebug(1,MsgLog::Form("Added flange  %3d ring  %2d, ring loc, %2d,flange name %s  position(x,y,z) x: %f, y: %f z:  %f, adctoPE %f adcToPEder %f threshold %f",
+             flange,ring,ringLoc,itMap->second->GetFlangeName().c_str(),x,y,z,adcToPE,adcToPEDer,adcThreshold));
+        //std::cout << "IsVeto" << itMap->second->IsVeto() << "\n";
+      }
     } // end if fgPMTInfo.find(key) == fgPMTInfo.end()
+
   } // end for CSVIterator
 
   fgMapLoaded = true;
@@ -311,20 +329,6 @@ void PMTInfoMap::DecodeKey(int key, int & digit, int & channel) {
 }
 
 /*!************************************************************************************************
- * \fn void PMTInfoMap::DecodeKey(size_t key, size_t & digit, size_t & channel)
- * \brief Static function that decodes the map key
- * \param[in] key The key value
- * \param[out] digit Board number
- * \param[out] channel Channel number
- **************************************************************************************************/
-void PMTInfoMap::DecodeKey(size_t key, size_t & digit, size_t & channel) {
-  digit = key/16;
-  channel = key%16;
-
-  return;
-}
-
-/*!************************************************************************************************
  * \fn int PMTInfoMap::ConvertHVBoardChanToKey(const int & box, const int & channel, bool veto)
  * \brief Static function that gets the key given HV board and channel numbers
  * \param[in] box HV Board number
@@ -337,8 +341,7 @@ int PMTInfoMap::ConvertHVBoardChanToKey(const int & box, const int & channel, bo
   for (const auto & pmtInfo : fgPMTInfo) {
     if (veto && !pmtInfo.second->Is1in()) {
       continue;
-    } 
-    if (!veto && pmtInfo.second->Is1in()) {
+    } else if (!veto && pmtInfo.second->Is1in()) {
       continue;
     }
     if (pmtInfo.second->GetHVBoard() == box && pmtInfo.second->GetHVBoardChan() == channel) {
@@ -371,45 +374,6 @@ void PMTInfoMap::ConvertKeyToHVBoardChan(const int key, int & box, int & channel
 }
 
 /*!************************************************************************************************
- * \fn int PMTInfoMap::ConvertRowColToKey(const int & row, const int & col)
- * \brief Static function that gets the key given HV board and col numbers
- * \param[in] row HV Board number
- * \param[in] col HV Channel number
- * \return key value
- **************************************************************************************************/
-int PMTInfoMap::ConvertRowColToKey(const int & row, const int & col)
-{
-  for (const auto & pmtInfo : fgPMTInfo) {
-    if (pmtInfo.second->GetRow() == row && pmtInfo.second->GetColumn() == col) {
-      return CreateKey(pmtInfo.second->GetBoard(),pmtInfo.second->GetBoardChan());
-    }
-  }
-
-  return -1;
-}
-
-/*!************************************************************************************************
- * \fn void PMTInfoMap::ConvertKeyToRowCol(cosnt int key, int & row, int & col)
- * \brief Static function that gets the HV board and col numbers given the PMT key
- * \param[in] key PMT key number
- * \param[out] row HV Board number
- * \param[out] col HV Channel number
- **************************************************************************************************/
-void PMTInfoMap::ConvertKeyToRowCol(const int key, int & row, int & col) 
-{
-  auto itMap = fgPMTInfo.find(key);
-  if (itMap == fgPMTInfo.end()) {
-    row = -1;
-    col = -1;
-    return;
-  }
-
-  row = itMap->second->GetRow();
-  col = itMap->second->GetColumn();
-  return;
-}
-
-/*!************************************************************************************************
  * \fn bool PMTInfoMap::IsActive(int key)
  * \brief returns true if the key is active
  * \param[in] key Key value
@@ -422,19 +386,23 @@ bool PMTInfoMap::IsActive(int key)
     return false;
   }
 
-  if (itMap->second->GetLocName().find("EJ") != std::string::npos) {
-    return false;
+  if (std::find(fgHVOffList.begin(),fgHVOffList.end(),key) == fgHVOffList.end()) {
+    return true;
   }
 
-  if (itMap->second->GetColumn() < 0) {
-    return false;
-  }
+  return false;
 
-  if (std::find(fgHVOffList.begin(),fgHVOffList.end(),key) != fgHVOffList.end()) {
-    return false;
-  }
+  //if (itMap->second->GetADCToPEDer() <= 0) {
+  //  return false;
+  //}
 
-  return true;
+  //if (itMap->second->GetBoard() != 9) {
+  //  return false;
+  //}
+
+  //return itMap->second->GetColumn() >= 0;
+  //return ((itMap->second->GetRow() >= 1) && (itMap->second->GetRow() <= 5)) || (itMap->second->GetRow() == 7);
+  //return true;
 }
 
 /*!************************************************************************************************
@@ -459,7 +427,9 @@ bool PMTInfoMap::IsActive(int digitizer, int channel)
  * Returns the result of calling #GetPMTInfo(size_t key)
  **************************************************************************************************/
 const PMTInformation * PMTInfoMap::GetPMTInfo(int board, int channel)
+
 {
+
   return GetPMTInfo(CreateKey(board,channel));
 }
 
@@ -471,10 +441,19 @@ const PMTInformation * PMTInfoMap::GetPMTInfo(int board, int channel)
  **************************************************************************************************/
 const PMTInformation * PMTInfoMap::GetPMTInfo(size_t key)
 {
+
+//std::cout << "function 2" << "\n";
+ // std::cout << "key : " << key << "\n";
+
   std::map<int,PMTInformation*>::const_iterator itMap = fgPMTInfo.find(key);
+  
+// std::cout << "itmap : " << itMap->first <<" " << itMap->second <<"\n";
+  
   if (itMap == fgPMTInfo.end()) {
     return nullptr;
   }
+
+  
 
   return itMap->second;
 }
@@ -536,10 +515,6 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
     return;
   }
 
-  if (!fgHVOffList.empty()) {
-    fgHVOffList.clear();
-  }
-
   if (fileName == "default" || fileName == "") {
     std::string env = std::getenv("CCMPROJECT");
     fileName = env + "/calibrationFiles/2019/hv_off_2019.csv";
@@ -550,7 +525,13 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
   int board = 0;
   int chan = 0;
   std::string line;
-  while (hvOffList >> board >> chan) {
+  while (hvOffList.good()) {
+    getline(hvOffList,line);
+    if (hvOffList.eof()) {
+      break;
+    }
+    std::stringstream ss(line);
+    ss >> board >> chan;
     int key = ConvertHVBoardChanToKey(board,chan);
 
     if (MsgLog::GetGlobalDebugLevel() >= 1) {
@@ -562,7 +543,7 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
     }
 
     if (std::find(fgHVOffList.begin(),fgHVOffList.end(),key) == fgHVOffList.end()) {
-      fgHVOffList.emplace_back(key);
+      fgHVOffList.push_back(key);
     }
   }
   hvOffList.close();
@@ -582,6 +563,10 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
 {
   //TFile * calibrationFileTop = TFile::Open("root_out_2019ledData_run179_legFix_integral_all_round4_.root","READ");
 
+  if (fileName == "") {
+    MsgFatal("No file name passed. Exiting");
+  }
+
   if (fileName == "default" || fileName == "") {
     fileName = std::getenv("CCMPROJECT");
     fileName += "/calibrationFiles/2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root";
@@ -600,7 +585,6 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
 
   TTreeReader calibrationTree("spe",calibrationFile);
   TTreeReaderValue<float> speValue(calibrationTree,"speValue");
-  TTreeReaderValue<float> fitRMS(calibrationTree,"fitRMS");
   TTreeReaderValue<float> speThreshold(calibrationTree,"endNoiseWallFitRangeStart");
   TTreeReaderValue<int> pmtID(calibrationTree,"pmtID");
   std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.begin();
@@ -613,10 +597,8 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
     // change spe calibration value
     if (*speValue > maxValue) {
       itMap->second->SetADCToPE(maxValue);
-      itMap->second->SetADCToPERMS(0);
     } else {
       itMap->second->SetADCToPE(*speValue);
-      itMap->second->SetADCToPERMS(*fitRMS);
     }
 
     // change threshold value
@@ -632,10 +614,6 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
     
   }
   delete calibrationFile;
-
-  if (MsgLog::GetGlobalDebugLevel() >= 1) {
-    MsgDebug(1,"Finished Loading Calibration File");
-  }
 }
 
 //__________________________________________________
