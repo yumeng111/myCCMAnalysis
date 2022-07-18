@@ -18,7 +18,9 @@
 #include <cstring>
 #include <numeric>
 #include <iterator>
+
 #include <utility>
+#include "data_structures.hh"
 
 /*!**********************************************
  * \enum HistInfo_t
@@ -118,24 +120,30 @@ namespace Utility
   // This is hard coded and should be taken 
   // from either data_structures.hh or a data base
   // since they (in principle) could/will change
+
+  //From data structures.hh for testing
+  constexpr const int fgkNSamples = NSAMPLES;
+  constexpr const int fgkPercentAfter = PERCENTAFTER;
   
   /// The number of bins in the DAQ window
-  constexpr const int    fgkNumBins = 8000;
+  constexpr const int    fgkNumBins = NSAMPLES;  // 8000;
 
   /// The width of each bin in the DAQ window in ns
   constexpr const double fgkBinWidth = 2.0;
 
   /// The number of digitizer channels that contains all the PMTs
-  constexpr const double fgkNumPMTs = 272;
+  /// Assumes there is one auxiliary board as the last board
+  constexpr const double fgkNumPMTs = NCHANNELS*(NDIGITIZERS - 1);  //240 // for 16 boards;
 
   /// The time in ns corresponding to the start of the DAQ window
-  constexpr const double fgkWindowStartTime = -9920;
+  constexpr const double fgkWindowStartTime = -fgkBinWidth*static_cast<double>(NSAMPLES)*
+                                              (1.0 - static_cast<double>(PERCENTAFTER)/100.0); // CCM120 8000 samples  = -9920;
 
   /// The time in ns corresponding to the end of the DAQ window
   constexpr const double fgkWindowEndTime = fgkWindowStartTime + static_cast<double>(fgkNumBins)*fgkBinWidth;
 
   /// The time in bin number corresponding to the offset between CCM and FP3 detector
-  constexpr const double fgkFP3Offset = 15;
+  constexpr const double fgkFP3Offset = 55; // number from CCM120 2019, need to change for CCM120
 
   template<class T>
    void LinearUnweightedLS(size_t nPoints, T * x, T * y, T & par0, T & par1);
