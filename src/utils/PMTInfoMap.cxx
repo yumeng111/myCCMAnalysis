@@ -116,6 +116,9 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
     MsgDebug(1,MsgLog::Form("Filling mapping from file..."));
   }
 
+  fgEJStart = CreateKey(Utility::fgkNumDigitizers-1, 9);
+  fgEJEnd = CreateKey(Utility::fgkNumDigitizers-1, 14);
+
   int hvBoard = 0;
   int hvChannel = 0;
   int flange = 0;

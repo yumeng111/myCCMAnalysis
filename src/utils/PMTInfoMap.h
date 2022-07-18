@@ -62,12 +62,18 @@ class PMTInfoMap
     static void SetParameter(std::string name, const double value);
     static void SetParameter(std::string name, std::string value);
 
+    static int GetEJStart() const {return fgEJStart;};
+    static int GetEJEnd() const {return fgEJEnd;};
+
   private:
 
     static const std::string fgkTreeName; ///< Tree name for map
     static const std::string fgkBranchName; ///< Branch name for map
     static std::map<int,PMTInformation*> fgPMTInfo; ///< map to all the individual #PMTInformation
     static std::vector<int> fgHVOffList;
+
+    static int fgEJStart;
+    static int fgEJEnd;
 
     static size_t fgMaxKey;
     static size_t fgMinKey;

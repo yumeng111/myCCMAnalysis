@@ -201,10 +201,13 @@ CCMResult_t CCMSumWaveforms::ProcessTrigger()
   float pe = 0;
   float threshold = 5;
 
+  int EJStart = PMTInfoMap::GetEJStart();
+  int EJEnd = PMTInfoMap::GetEJEnd();
+
   const size_t kNumPulses = fPulses->GetNumPulses();
   for (size_t pulse = 0; pulse < kNumPulses; ++pulse) {
     key = fPulses->GetKey(pulse);
-    if (!PMTInfoMap::IsActive(key) && key < 169) {
+    if (!PMTInfoMap::IsActive(key) && key < EJStart) {
       continue;
     }
 
@@ -220,7 +223,7 @@ CCMResult_t CCMSumWaveforms::ProcessTrigger()
     }
 
     bool isVeto = false;
-    if (key < 160) {
+    if (key < Utility::fgkNumPMTs) {
       auto pmtInfo = PMTInfoMap::GetPMTInfo(key);
       if (!pmtInfo) {
         continue;
@@ -261,11 +264,11 @@ CCMResult_t CCMSumWaveforms::ProcessTrigger()
       std::advance(it,1);
       std::advance(itInt,1);
       std::advance(itHit,1);
-    } else if (key >= 169 && key <= 174) {
-      std::advance(it,key-167);
-      std::advance(itInt,key-167);
-      std::advance(itHit,key-167);
-    } else if (key > 160) {
+    } else if (key >= EJStart && key <= EJEnd) {
+      std::advance(it,key-EJStart);
+      std::advance(itInt,key-(EJStart-2)); // TODO Verify why this -2 is here
+      std::advance(itHit,key-(EJStart-2));
+    } else if (key > Utility::fgkNumPMTs) {
       continue;
     }
 

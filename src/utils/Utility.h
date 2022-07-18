@@ -135,6 +135,9 @@ namespace Utility
   /// Assumes there is one auxiliary board as the last board
   constexpr const double fgkNumPMTs = NCHANNELS*(NDIGITIZERS - 1);  //240 // for 16 boards;
 
+  /// The number of digitizers
+  constexpr const int fgkNumDigitizers = NDIGITIZERS;
+
   /// The time in ns corresponding to the start of the DAQ window
   constexpr const double fgkWindowStartTime = -fgkBinWidth*static_cast<double>(NSAMPLES)*
                                               (1.0 - static_cast<double>(PERCENTAFTER)/100.0); // CCM120 8000 samples  = -9920;
