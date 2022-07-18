@@ -12,12 +12,18 @@
 #include <stdbool.h>
 #include <vector>
 #include <bitset>
+//#define NEVENTSSHM 1000
+#define NEVENTSSHM 5000
+#define NEVENTSDELAY 50
+#define NDIGITIZERS 17
+//#define NDIGITIZERS 2
+#define NCHANNELS 16
+//#define NSAMPLES 9900
+#define NSAMPLES 6000
+//#define PERCENTAFTER 38 // CCM120 8000 samples
+#define PERCENTAFTER 18 // CCM200 6000 samples
 
-#define NEVENTSSHM 1000 ///< The number of events to save in the circular buffer
-#define NEVENTSDELAY 50 ///< (R.T. Thornton) I do not know what this parameter does
-#define NDIGITIZERS 11 ///< The number of boards to read in
-#define NCHANNELS 16 ///< The number of channels per board
-#define NSAMPLES 8000 ///< The number of channels per board
+/* Note: DAQ running requires 62.5 pll lock or else will crash without exception. */
 
 // seem to require typedef struct { ... } Name_t; style for a struct to be in a struct
 // wonder why it's persnickety for this setup?  
