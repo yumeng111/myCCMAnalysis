@@ -19,6 +19,7 @@
 //#define NDIGITIZERS 2
 #define NCHANNELS 16
 //#define NSAMPLES 9900
+// Remember to update NSAMPLES in src/ds/LinkDef.h
 #define NSAMPLES 6000
 //#define PERCENTAFTER 38 // CCM120 8000 samples
 #define PERCENTAFTER 18 // CCM200 6000 samples
