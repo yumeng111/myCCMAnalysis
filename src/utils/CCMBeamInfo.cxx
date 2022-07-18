@@ -151,8 +151,11 @@ void CCMBeamInfo::PrintTable(std::string options)
  **************************************************************************************************/
 std::time_t CCMBeamInfo::ConvertStringToTime(std::string time, std::string format, bool print)
 {
-  std::stringstream ss(time);
-  ss >> std::get_time(&fgLocalTM,format.c_str());
+  // for C++14
+  // std::stringstream ss(time);
+  // ss >> std::get_time(&fgLocalTM,format.c_str());
+  // for C++11
+  strptime(time.c_str(), format.c_str(), &fgLocalTM);
   fgLocalTM.tm_isdst = -1; // to force mktime to determine if the time of day was during DST
 
   return std::mktime(&fgLocalTM);
