@@ -118,18 +118,6 @@ class CCMProcessingPlots : public CCMModule
     std::vector<double> fPromptCFrontVetoTime;
     std::vector<double> fPromptCBackVetoTime;
     std::vector<double> fPromptTotalVetoTime;
-    //double fSumBCMIntegralTime;
-    //double fSumBCMTimeTime;
-    //double fSumBCMWidthTime;
-    //double fSumPromptTopVetoTime;
-    //double fSumPromptBottomVetoTime;
-    //double fSumPromptCLeftVetoTime;
-    //double fSumPromptCRightVetoTime;
-    //double fSumPromptCFrontVetoTime;
-    //double fSumPromptCBackVetoTime;
-    //double fSumPromptTotalVetoTime;
-
-
 };
 
 #endif // CCMProcessingPlots_h

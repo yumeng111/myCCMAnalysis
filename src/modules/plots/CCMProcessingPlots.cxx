@@ -45,22 +45,12 @@ CCMProcessingPlots::CCMProcessingPlots(const char* version)
     fCCMEventsTimeHist(nullptr), fCCMEventsTimeIntHist(nullptr), fBCM3DHist(nullptr),
     fPromptTopVeto(nullptr), fPromptBottomVeto(nullptr), fPromptCFrontVeto(nullptr),
     fPromptCBackVeto(nullptr), fPromptCLeftVeto(nullptr), fPromptCRightVeto(nullptr), fPromptTotalVeto(nullptr),
-    fPrevCurrentInfo(), fNextCurrentInfo(), fNumberOfTriggersInSum(0.0)
+    fPrevCurrentInfo(), fNextCurrentInfo(), fNumberOfTriggersInSum(0.0),fBCMIntegralTime(),fBCMTimeTime(),
+    fBCMWidthTime(),fPromptTopVetoTime(),fPromptBottomVetoTime(),fPromptCLeftVetoTime(),fPromptCRightVetoTime(),
+    fPromptCFrontVetoTime(),fPromptCBackVetoTime(),fPromptTotalVetoTime()
 {
   //Default constructor
   this->SetCfgVersion(version);
-
-  fBCMIntegralTime.clear();
-  fBCMTimeTime.clear();
-  fBCMWidthTime.clear();
-
-  fPromptTopVetoTime.clear();
-  fPromptBottomVetoTime.clear();
-  fPromptCLeftVetoTime.clear();
-  fPromptCRightVetoTime.clear();
-  fPromptCFrontVetoTime.clear();
-  fPromptCBackVetoTime.clear();
-  fPromptTotalVetoTime.clear();
 }
 
 //_______________________________________________________________________________________
