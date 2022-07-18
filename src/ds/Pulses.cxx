@@ -184,14 +184,17 @@ void Pulses::DerivativeFilter(const u_int16_t input[], int length, float trigger
   fCurrPulse->Reset();
   fCurrPulse->SetLength(Utility::fgkNumBins);
   //fCurrPulse->SetTime(2);
-  fCurrPulse->SetWaveformStart(2);
-  fCurrPulse->SetWaveformEnd(Utility::fgkNumBins-4);
+  constexpr int samples_removed_from_start = 2;
+  constexpr int samples_removed_from_end = 4;
+  fCurrPulse->SetWaveformStart(samples_removed_from_start);
+  fCurrPulse->SetWaveformEnd(Utility::fgkNumBins-samples_removed_from_end);
   fCurrPulse->SetBaseline(0);
 
   int timeOffset = 2;
   float alpha = 2e-9/10e-9;
   float smoothWidth = 0;//alpha*input[0];
-  for (int loc = 0; loc < 4; ++loc) {
+  constexpr samples_to_start_average = 4;
+  for (int loc = 0; loc < samples_to_start_average; ++loc) {
     //fOrigArray[key][loc] = input[loc];
     smoothWidth += alpha*(input[loc] - smoothWidth);
     //fSmoothArray.at(loc) = smoothWidth;
@@ -299,7 +302,10 @@ void Pulses::DerivativeFilter(const u_int16_t input[], int length, float trigger
         fCurrPulse->SetADCToPE(adcToPE);
         fCurrPulse->SetTime(time+trigOffset+pmtOffset);
         if (time+trigOffset+pmtOffset < 0 || fCurrPulse->GetTime() < 0) {
-          MsgInfo(MsgLog::Form("Checking time of pulse time %g trigOffset %g pmtOffset %g",time,trigOffset,pmtOffset));
+          if(MsgLog::GetGlobalDebugLevel() >= 2){
+            MsgInfo(MsgLog::Form("Checking time of pulse time %g trigOffset %g pmtOffset %g",time,trigOffset,pmtOffset));
+          }
+
         }
         fCurrPulse->SetLength(pulseLength);
         fCurrPulse->SetMaxDerValue(maxPos);
@@ -743,4 +749,36 @@ void Pulses::ShiftTimeOffset(const double & timeOffset)
 
   return;
 }
+
+size_t Pulses::GetKey(size_t pos) { return fPulses[pos].GetKey(); }
+
+size_t Pulses::GetNumPulses() { return fNumPulses; }
+float Pulses::GetTriggerTime() { return fTriggerTime; }
+
+float Pulses::GetPulseLength(size_t pos) { return fPulses[pos].GetLength(); }
+float Pulses::GetPulseMaxDerValue(size_t pos) { return fPulses[pos].GetMaxDerValue(); }
+float Pulses::GetPulseTime(size_t pos) { return fPulses[pos].GetTime(); }
+
+float Pulses::GetPulseBaseline(size_t pos) { return fPulses[pos].GetBaseline(); }
+float Pulses::GetPulseAmplitude(size_t pos) { return fPulses[pos].GetAmplitude(); }
+float Pulses::GetPulseIntegral(size_t pos) { return fPulses[pos].GetIntegral(); }
+
+size_t Pulses::GetKey(size_t pos) const { return fPulses[pos].GetKey(); }
+
+size_t Pulses::GetNumPulses() const { return fNumPulses; }
+float Pulses::GetTriggerTime() const { return fTriggerTime; }
+
+float Pulses::GetPulseLength(size_t pos) const { return fPulses[pos].GetLength(); }
+float Pulses::GetPulseMaxDerValue(size_t pos) const { return fPulses[pos].GetMaxDerValue(); }
+float Pulses::GetPulseTime(size_t pos) const { return fPulses[pos].GetTime(); }
+
+float Pulses::GetPulseBaseline(size_t pos) const { return fPulses[pos].GetBaseline(); }
+float Pulses::GetPulseAmplitude(size_t pos) const { return fPulses[pos].GetAmplitude(); }
+float Pulses::GetPulseIntegral(size_t pos) const { return fPulses[pos].GetIntegral(); }
+
+void Pulses::AddSinglePulse(const SinglePulse & pulse) { fPulses.push_back(pulse); ++fNumPulses;}
+void Pulses::RemoveSinglePulse(size_t pos) { fPulses.erase(fPulses.begin()+pos); --fNumPulses;}
+void Pulses::RemoveSinglePulse(std::vector<SinglePulse>::iterator it) { fPulses.erase(it); --fNumPulses;}
+const SinglePulse * Pulses::GetSinglePulse(size_t pos) { return &fPulses[pos]; }
+const SinglePulse * Pulses::GetSinglePulse(size_t pos) const { return &fPulses[pos]; }
 

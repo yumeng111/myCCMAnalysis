@@ -92,37 +92,37 @@ class Pulses : public TObject
     double GetTimeWindowStart() const { return fgkTimeWindowStart; }
     double GetSampleTimeWidth() const { return fgkSampleTimeWidth; }
 
-    size_t GetKey(size_t pos) { return fPulses[pos].GetKey(); }
+    size_t GetKey(size_t pos);
 
-    size_t GetNumPulses() { return fNumPulses; }
-    float GetTriggerTime() { return fTriggerTime; }
+    size_t GetNumPulses();
+    float GetTriggerTime();
 
-    float GetPulseLength(size_t pos) { return fPulses[pos].GetLength(); }
-    float GetPulseMaxDerValue(size_t pos) { return fPulses[pos].GetMaxDerValue(); }
-    float GetPulseTime(size_t pos) { return fPulses[pos].GetTime(); }
+    float GetPulseLength(size_t pos);
+    float GetPulseMaxDerValue(size_t pos);
+    float GetPulseTime(size_t pos);
 
-    float GetPulseBaseline(size_t pos) { return fPulses[pos].GetBaseline(); }
-    float GetPulseAmplitude(size_t pos) { return fPulses[pos].GetAmplitude(); }
-    float GetPulseIntegral(size_t pos) { return fPulses[pos].GetIntegral(); }
+    float GetPulseBaseline(size_t pos);
+    float GetPulseAmplitude(size_t pos);
+    float GetPulseIntegral(size_t pos);
 
-    size_t GetKey(size_t pos) const { return fPulses[pos].GetKey(); }
+    size_t GetKey(size_t pos) const;
 
-    size_t GetNumPulses() const { return fNumPulses; }
-    float GetTriggerTime() const { return fTriggerTime; }
+    size_t GetNumPulses() const;
+    float GetTriggerTime() const;
 
-    float GetPulseLength(size_t pos) const { return fPulses[pos].GetLength(); }
-    float GetPulseMaxDerValue(size_t pos) const { return fPulses[pos].GetMaxDerValue(); }
-    float GetPulseTime(size_t pos) const { return fPulses[pos].GetTime(); }
+    float GetPulseLength(size_t pos) const;
+    float GetPulseMaxDerValue(size_t pos) const;
+    float GetPulseTime(size_t pos) const;
 
-    float GetPulseBaseline(size_t pos) const { return fPulses[pos].GetBaseline(); }
-    float GetPulseAmplitude(size_t pos) const { return fPulses[pos].GetAmplitude(); }
-    float GetPulseIntegral(size_t pos) const { return fPulses[pos].GetIntegral(); }
+    float GetPulseBaseline(size_t pos) const;
+    float GetPulseAmplitude(size_t pos) const;
+    float GetPulseIntegral(size_t pos) const;
 
-    void AddSinglePulse(const SinglePulse & pulse) { fPulses.push_back(pulse); ++fNumPulses;}
-    void RemoveSinglePulse(size_t pos) { fPulses.erase(fPulses.begin()+pos); --fNumPulses;}
-    void RemoveSinglePulse(std::vector<SinglePulse>::iterator it) { fPulses.erase(it); --fNumPulses;}
-    const SinglePulse * GetSinglePulse(size_t pos) { return &fPulses[pos]; }
-    const SinglePulse * GetSinglePulse(size_t pos) const { return &fPulses[pos]; }
+    void AddSinglePulse(const SinglePulse & pulse);
+    void RemoveSinglePulse(size_t pos);
+    void RemoveSinglePulse(std::vector<SinglePulse>::iterator it);
+    const SinglePulse * GetSinglePulse(size_t pos);
+    const SinglePulse * GetSinglePulse(size_t pos) const;
 
     float LongestPulse(float time = Utility::fgkNumBins) const;
     float LargestPulse(float time = Utility::fgkNumBins) const;
