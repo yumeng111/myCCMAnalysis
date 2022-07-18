@@ -997,8 +997,7 @@ void CCMSingletTriplet::SingletTriplet()
   // get integral for singlet
   // ------------------------------------------------------------
   singInt = h_event_int -> Integral(singletLowBin, singletHighBin);
-
-
+  
   
   // -------------------------------------------------------
   // ********** TRIPLET **********
@@ -1096,13 +1095,13 @@ void CCMSingletTriplet::SingletTriplet()
   }
 
   
+  /*
   // for every event passing all cuts fill the ntuple
   if (fOutfile != nullptr) {
     fOutfile->cd();
     fTree->Fill();
   }
-
-
+  */
   
 } // SingletTriplet
 
