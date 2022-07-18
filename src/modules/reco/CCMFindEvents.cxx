@@ -47,10 +47,7 @@ CCMFindEvents::CCMFindEvents(const char* version)
     fNumTriggers(0),
     fNumEvents(0),
     fResetEvents(false),
-    fFixedLength(0),
-    fAvgFarBack(0),
-    fAvgFarBack2(0),
-    fAvgFarBackCount(0)
+    fFixedLength(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
@@ -67,10 +64,7 @@ CCMFindEvents::CCMFindEvents(const CCMFindEvents& clufdr)
   fNumTriggers(clufdr.fNumTriggers),
   fNumEvents(clufdr.fNumEvents),
   fResetEvents(clufdr.fResetEvents),
-  fFixedLength(clufdr.fFixedLength),
-  fAvgFarBack(clufdr.fAvgFarBack),
-  fAvgFarBack2(clufdr.fAvgFarBack2),
-  fAvgFarBackCount(clufdr.fAvgFarBackCount)
+  fFixedLength(clufdr.fFixedLength)
 {
   // copy constructor
 }
@@ -130,7 +124,6 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
     //  MsgInfo(MsgLog::Form("timeBin %zu value %g threshold %g",timeBin,
     //        fAccumWaveform->GetIndex(timeBin,fAccumWaveformMethodID,kCCMIntegralTimeID),fThreshold));
     //}
-    //}
     if (fAccumWaveform->GetIndex(timeBin,fAccumWaveformMethodID,kCCMIntegralTimeID) < fThreshold) {
       continue;
     }
@@ -143,7 +136,6 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
 
     // extrapolate the start time of the event with a linear
     // fit to the rising slope of the accumulated pulse
-    //startBin = ExtrapolateStartTime(startBin);
     while (startBin < prevEnd) {
       ++startBin;
       if (fAccumWaveform->GetIndex(startBin,fAccumWaveformMethodID,kCCMIntegralTimeID) > 0) {
@@ -245,14 +237,15 @@ CCMResult_t CCMFindEvents::EndOfJob()
   return kCCMSuccess;
 }
 
+/*
 //_______________________________________________________________________________________
 int CCMFindEvents::ExtrapolateStartTime(int startBin) 
 {
   // find where the first peak is in the event
   int peakLoc = startBin;
   for (int bin2 = std::max(startBin,0); bin2 < Utility::fgkNumBins-1; ++bin2) {
-    if (bin2 >= startBin && (fAccumWaveform->GetIndex(bin2+1,fAccumWaveformMethodID,kCCMIntegralTimeID) < 
-        fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID))) {
+    if (fAccumWaveform->GetIndex(bin2+1,fAccumWaveformMethodID,kCCMIntegralTimeID) < 
+        fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID)) {
       peakLoc = bin2;
       break;
     } // end if integralTime->at(bin2+1) < ...
@@ -260,7 +253,6 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
     MsgDebug(4,MsgLog::Form("event %ld Peak Location = %d",fEvents->GetEventNumber(),peakLoc));
   }
-
 
   // recalculte the start time based on the rise slope of the event
   //if ((peakLoc+startBin)/2-startBin <= 3) {
@@ -326,8 +318,8 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
   //      Utility::ShiftTime(startBin,fAccumWaveform->GetBeamOffset())));
 
   return startBin;
-
 } // end int CCMFindEvents::ExtrapolateStartTime
+*/
 
 //-------------------------------------------------------------------------------------------------
 void CCMFindEvents::SaveEvent(int startBin, int endBin)
@@ -620,7 +612,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
         timeCoated = std::min(time,timeCoated);
       }
     }
-    if (prompt90) {
+    // TODO Check if prompt20/prompt40/prompt60/prompt90 works better for CCM200
+    if (prompt20) {
       pos += *(pmtInfo->GetPosition())*prompt20*prompt20;
       promptFit += prompt20*prompt20;
     }

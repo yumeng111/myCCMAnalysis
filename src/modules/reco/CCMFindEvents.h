@@ -59,7 +59,8 @@ class CCMFindEvents : public CCMModule
 
     //private methods
 
-    int ExtrapolateStartTime(int startBin);
+    // TODO Try to implement this correctly
+    //int ExtrapolateStartTime(int startBin);
 
     void SaveEvent(int startBin, int endBin);
 
@@ -79,9 +80,6 @@ class CCMFindEvents : public CCMModule
 
     int fResetEvents;
     int fFixedLength;
-    double fAvgFarBack;
-    double fAvgFarBack2;
-    double fAvgFarBackCount;
 };
 
 #endif // CCMFindEvents_h
