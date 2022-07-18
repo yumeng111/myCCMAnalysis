@@ -35,8 +35,6 @@ class MCTruth;
 class CCMRootIO 
 {
   public:
-    //static std::shared_ptr<CCMRootIO> GetInstance();
-
     /*!
      * \fn CCMRootIO
      * \brief constructor
@@ -205,7 +203,6 @@ class CCMRootIO
   protected:
     virtual void UpdateTriggerNumbers();
 
-
     bool fReadOK;         ///< Next read should be OK?
     uint32_t fTriggerNumber;    ///< Trigger number for current event
 
@@ -230,8 +227,6 @@ class CCMRootIO
 
     std::random_device fRD;
     std::mt19937_64 fMT;
-
-    //static std::shared_ptr<CCMRootIO> fgInstance; ///< static instance for the class
 };
 
 #endif // CCMROOTIO_H
