@@ -35,6 +35,7 @@
 #include "TProfile.h"
 #include "TF1.h"
 #include "TVector3.h"
+#include "TROOT.h"
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMNa22Cuts);
@@ -872,22 +873,6 @@ bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingInd
     double st2 = simplifiedEvent2.GetStartTime();
     double length = simplifiedEvent2.GetLength();
 
-    //currentWF = simplifiedEvent2.GetWaveformInt();
-
-    //if (toatlWF.size() == 0) {
-    //  std::assign(currentWF.begin(),currentWF.end());
-    //} else {
-    //  double numZeros = std::fabs(kStartTime - st2+length);
-    //  if (numZeros > 0) {
-    //    totalWF.insert(totalWF.begin(),numZeros,0.0);
-    //  }
-    //  totalWF.insert(totalWF.begin(),currentWF.begin(),currentWF.end());
-    //}
-
-    //if (e2 == kStartingIndex) {
-    //  continue;
-    //}
-
     if (promptHits2 < 3) {
       //continue;
     }
@@ -924,14 +909,6 @@ bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingInd
         }
       }
     }
-
-    //if (fMaxPrevEnergy < energy2) {
-    //  fMaxPrevEnergy = energy2;
-    //  fMaxPrevEnergyTime = st2;
-    //  fMaxPrevEnergyLength = length;
-    //}
-
-    //continue;
 
     if (fMaxPrevEnergyLength != 0) {
       continue;
