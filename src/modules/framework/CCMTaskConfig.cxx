@@ -215,6 +215,8 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
         DOMElement* cutEle = (DOMElement*)(parEle->getChildNodes()->item(0));
         std::string cuttype = StrX(cutEle->getTagName()).localForm();
         std::string cutval = StrX(cutEle->getChildNodes()->item(0)->getNodeValue()).localForm();
+
+        // Skip over spaces
         auto start = cutval.find_first_not_of(' ');
         auto end = cutval.find_last_not_of(' ');
         auto range = end - start + 1;
