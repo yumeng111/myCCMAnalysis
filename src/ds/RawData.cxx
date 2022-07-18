@@ -20,7 +20,7 @@ ClassImp(RawData)
  ***********************************************/
 RawData::RawData() : TObject()
 {
-  fNumBoards = 11; // default settings
+  fNumBoards = 17; // default settings
   fNumChannels = 16; // default settings
   fNumSamples = 8000; // default settings
   fEventNumber = 0;
@@ -163,14 +163,11 @@ int RawData::FindFirstNIMSample(int channelNumber)
 {
   int firstSample = 0;
   auto samples = GetSamples(channelNumber);
-  //size_t lengthOfVector = samples.size();
-  //MsgInfo(MsgLog::Form("Length of vector = %zu",lengthOfVector));
-  double avgChannelNoise = std::accumulate(samples.begin(),samples.begin()+500,0);
-  avgChannelNoise /= 500.0;
+  double avgChannelNoise = std::accumulate(samples.begin(),samples.begin()+1000,0);
+  avgChannelNoise /= 1000.0;
   int sample = 0;
   for (const auto & adc : samples) {
     double adjustedADC = avgChannelNoise- static_cast<double>(adc);
-    //std::cout << "\t\t\t" << channelNumber << '\t' << sample << '\t' << adc << '\t' << adjustedADC << std::endl;
     if (adjustedADC > 400) {
       firstSample = sample;
       break;
@@ -190,6 +187,8 @@ int RawData::FindFirstNIMSample(int channelNumber)
  * The \p triggerName can be any combination of
  * - BEAM
  * - STROBE
+ * - LED TOP
+ * - LED BOTTOM
  * - LED
  * - ALL
  ***********************************************/
@@ -206,25 +205,43 @@ bool RawData::IsTriggerPresent(std::string triggerName)
 
   int firstSampleStrobe = 0;
   int firstSampleBeam = 0;
+  int firstSampleLEDTOP = 0;
+  int firstSampleLEDBOTTOM = 0;
   int firstSampleLED = 0;
   
   //WT - WORKAROUND TO ALLOW MODULES TO WORK W/OUT TRIGGERS ON LAST BOARD
-   if ( triggerName.find("ALL",0) != std::string::npos){
+   if ( triggerName.find("ALL") != std::string::npos){
         return true;
       }
    
-  if (triggerName.find("STROBE") != std::string::npos ||
-      triggerName.find("ALL") != std::string::npos) {
-    firstSampleStrobe = FindFirstNIMSample(boardOffset+1);
-  } 
   if (triggerName.find("BEAM") != std::string::npos ||
       triggerName.find("ALL") != std::string::npos) {
-    firstSampleBeam = FindFirstNIMSample(boardOffset+2);
+    firstSampleBeam = FindFirstNIMSample(boardOffset+1);
   } 
-  if (triggerName.find("LED") != std::string::npos ||
+  if (triggerName.find("STROBE") != std::string::npos ||
       triggerName.find("ALL") != std::string::npos) {
-    firstSampleLED = FindFirstNIMSample(boardOffset+3);
+    firstSampleStrobe = FindFirstNIMSample(boardOffset+2);
   } 
+  if (triggerName.find("LED_TOP") != std::string::npos ||
+      triggerName.find("ALL") != std::string::npos) {
+    firstSampleLEDTOP = FindFirstNIMSample(boardOffset+3);
+  } 
+  
+  if (triggerName.find("LED_BOTTOM") != std::string::npos ||
+      triggerName.find("ALL") != std::string::npos) {
+    firstSampleLEDBOTTOM = FindFirstNIMSample(boardOffset+4);
+  } 
+  
+  if (triggerName.find("ALL") != std::string::npos || 
+      (triggerName.find("LED") != std::string::npos && 
+       triggerName.find("LED_TOP") == std::string::npos &&
+       triggerName.find("LED_BOTTOM") == std::string::npos)) {
+    firstSampleLEDTOP = FindFirstNIMSample(boardOffset+3);
+    firstSampleLEDBOTTOM = FindFirstNIMSample(boardOffset+4);
+    firstSampleLED = std::max(firstSampleLEDTOP,firstSampleLEDBOTTOM);
+  } 
+  
+  //std::cout << "Trigger Checks: " << firstSampleStrobe << '\t' << firstSampleBeam << '\t' << firstSampleLED << '\t' << firstSampleLEDTOP << '\t' << firstSampleLEDBOTTOM << std::endl;
 
   if (firstSampleStrobe == 0 && firstSampleBeam == 0 && firstSampleLED == 0) {
     if (MsgLog::GetGlobalDebugLevel() >= 1) {
@@ -261,7 +278,7 @@ int RawData::GetBCMTime(double * integral, double * length)
 {
   int boardOffset = GetBoard10ChannelOffset();
 
-  double offset = GetOffset(10) - GetEarliestOffset();
+  double offset = GetOffset(fNumBoards-1) - GetEarliestOffset();
   std::shared_ptr<Pulses> pulsesBeam = std::make_shared<Pulses>(0,0);
   pulsesBeam->DerivativeFilter(&fWaveforms.at(boardOffset+0).front(),GetNumSamples(),0,3,2800,offset,1.0);
 
@@ -302,7 +319,6 @@ int RawData::GetBoard10ChannelOffset()
     MsgWarning(MsgLog::Form("Something went wrong in that the number of boards = 0, waveform size %zu", GetNumWaveforms()));
     return -1;
   } else {
-    //MsgInfo(MsgLog::Form("NumWaveforms %zu NumChannels %zu",GetNumWaveforms(),GetNumChannels()));
     if (GetNumWaveforms() != GetNumChannels()) {
       boardOffset = (GetNumBoards()-1)*GetNumChannels();
     }
