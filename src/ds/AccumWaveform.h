@@ -7,6 +7,8 @@
 #ifndef AccumWaveform_h
 #define AccumWaveform_h
 
+#include <vector>
+#include <map>
 #include <utility>
 #include <iterator>
 
