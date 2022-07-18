@@ -112,6 +112,10 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
     return;
   }
 
+  if (MsgLog::GetGlobalDebugLevel() >= 2) {
+    MsgDebug(1,MsgLog::Form("Filling mapping from file..."));
+  }
+
   int hvBoard = 0;
   int hvChannel = 0;
   int flange = 0;
@@ -135,7 +139,8 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
     if (counter == 0) {
       continue;
     }
-    std::cout << "Counter: " << counter << "\n"; 
+    //std::cout << "Counter: " << counter << "\n"; 
+  
 
     std::string currentString = "";
     std::string tempString = "";
@@ -151,7 +156,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
       
       //std::cout << "Index: " << index << "\n";
       //std::cout << "STRING: " << std::stoi(currentString) << "\n";
-      std::cout << "Index: " << index << " String: " << currentString << "\n";
+     // std::cout << "Index: " << index << " String: " << currentString << "\n";
      
       switch(index) {
         case 0: ///Decopler Box 
@@ -228,6 +233,14 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
               row = -21;
             }
             col = std::stoi(currentString);
+          } /*else if (tempChar = 'E') {
+	    row = -3;
+	    findLoc = currentString.find('J');
+	    tempString.assign(currentString.begin(),currentString.begin()+findLoc);
+            tempString.clear();
+            currentString.erase(currentString.begin(),currentString.begin()+findLoc+1);
+            col = std::stoi(currentString);
+	    } */
           } else {
             row = -20; 
             col = -20;
@@ -517,7 +530,7 @@ void PMTInfoMap::LoadHVOffList(std::string fileName)
 
   if (fileName == "default" || fileName == "") {
     std::string env = std::getenv("CCMPROJECT");
-    fileName = env + "/calibrationFiles/2019/hv_off_2019.csv";
+    fileName = env + "/calibrationFiles/2021/hv_off_2021.csv";
   }
 
   MsgInfo(MsgLog::Form("hvOffList %s",fileName.c_str()));
@@ -569,7 +582,8 @@ void PMTInfoMap::LoadCalibrationFile(std::string fileName, bool fixedThreshold, 
 
   if (fileName == "default" || fileName == "") {
     fileName = std::getenv("CCMPROJECT");
-    fileName += "/calibrationFiles/2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root";
+   // fileName += "/calibrationFiles/2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root"
+      fileName += "/calibrationFiles/2021/speCalc_run1529to1542.root";
   }
 
   MsgInfo(MsgLog::Form("Loading file from %s",fileName.c_str()));
