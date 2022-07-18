@@ -42,6 +42,8 @@ CCMConfig* CCMConfigTable::GetConfig(const char* name, const char* version) cons
   }
 
   // Not found
+  MsgError(MsgLog::Form("Module %s.%s not found in configuration table!",
+            name,version));
   return 0;
 }
 
