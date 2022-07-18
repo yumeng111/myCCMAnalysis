@@ -259,7 +259,6 @@ std::array<float,Utility::fgkNumBins> * AccumWaveform::Get(CCMAccumWaveformMetho
     AddMethod(method);
   }
 
-
   std::array<float,Utility::fgkNumBins> * tempA = nullptr;
   switch (waveformType) {
     case kCCMPulsesTimeID:       tempA = &(fPulsesTime.find(methodInt)->second); break;
