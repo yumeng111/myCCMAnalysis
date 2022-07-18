@@ -580,7 +580,6 @@ void NearlineSPEDiag::FitPEHists()
     fCal.at(i)->SetPEHistRMS(histRMS);
     fCal.at(i)->SetPEHistEntries(histEntries);  
 
-
     int meanLoc = 1;
     float fitHeight= f3->GetParameter(meanLoc-1);
     float fit_mean= f3->GetParameter(meanLoc);
