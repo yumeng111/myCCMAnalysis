@@ -46,7 +46,7 @@ CCMEventTreeHandle::CCMEventTreeHandle()
   fPulses(new Pulses()),
   fEvents(new Events()),
   fAccumWaveform(new AccumWaveform()),
-	fMCTruth(new MCTruth())
+  fMCTruth(new MCTruth())
 {
   //constructor
   for (int i = 0; i < kNEventBranch; i++) {
@@ -118,7 +118,7 @@ bool CCMEventTreeHandle::IsLoaded(CCMEventBranchID_t id) const
 }
 
 //_____________________________________________________________
-bool CCMEventTreeHandle::ReadTree()
+bool CCMEventTreeHandle::ReadTree() // Is none not in the config
 {
   if (std::find(fReadBranches.begin(),fReadBranches.end(),"none") != fReadBranches.end()) {
     return false;
@@ -139,7 +139,7 @@ int CCMEventTreeHandle::SetupInputFile(TFile & f)
   }
 
   /*
-  if (!ReadTree()) {
+  if (!ReadTree()) { // If none is in the config
     for ( auto & branch : fBranch) {
       branch = nullptr;
     }
