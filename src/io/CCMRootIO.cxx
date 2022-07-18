@@ -33,19 +33,6 @@
 #include "TFile.h"
 #include "TObjString.h"
 
-//std::shared_ptr<CCMRootIO> CCMRootIO::fgInstance = nullptr;
-
-//__________________________________________________
-//std::shared_ptr<CCMRootIO> CCMRootIO::GetInstance()
-//{
-//  if (fgInstance != nullptr) {
-//    return fgInstance;
-//  }
-//
-//  fgInstance = std::shared_ptr<CCMRootIO>(new CCMRootIO());
-//  return fgInstance;
-//}
-
 //__________________________________________________
 CCMRootIO::CCMRootIO()
   : fEventHandle(std::make_unique<CCMEventTreeHandle>()),
