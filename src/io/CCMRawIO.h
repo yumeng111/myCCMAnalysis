@@ -31,7 +31,6 @@ class RawData;
 class CCMRawIO 
 {
   public:
-    //static std::shared_ptr<CCMRawIO> GetInstance();
 
     /*!
      * \fn CCMRawIO
@@ -194,7 +193,6 @@ class CCMRawIO
     uint32_t    fFlushFreq;                     ///< Flush output every n events
     long long   fOutSizeLimit;                  ///< Output size limit
 
-    //static std::shared_ptr<CCMRawIO> fgInstance; ///< static instance for the class
     std::unique_ptr<RawData> fRawData;
 
     event_t fData;

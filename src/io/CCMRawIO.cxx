@@ -14,22 +14,11 @@
 #include <cstdio>
 #include <cstring>
 
+#include "Utility.h"
+#include "PMTInfoMap.h"
 #include "MsgLog.h"
 #include "CCMRawIO.h"
 #include "RawData.h"
-
-//std::shared_ptr<CCMRawIO> CCMRawIO::fgInstance = nullptr;
-
-//__________________________________________________
-//std::shared_ptr<CCMRawIO> CCMRawIO::GetInstance()
-//{
-//  if (fgInstance != nullptr) {
-//    return fgInstance;
-//  }
-//
-//  fgInstance = std::shared_ptr<CCMRawIO>(new CCMRawIO());
-//  return fgInstance;
-//}
 
 //__________________________________________________
 CCMRawIO::CCMRawIO()
@@ -83,37 +72,8 @@ int CCMRawIO::AddFile(const char* file_regexp, bool hasWildcards)
 {
   int nfiles = 0;
   if (hasWildcards) {
-    // Cheap way to get list of files matching the expression (assumes
-    // some flavor of unix
-    char tmp_name[128] = {"/tmp/IOMOD.XXXXXX"};
-    mkstemp(tmp_name);
-    std::string cmd;
-    cmd  = "(ls ";
-    cmd += file_regexp;
-    cmd += " > ";
-    cmd += tmp_name;
-    cmd += ") >& /dev/null";
-    system(cmd.c_str());
-
-    // Open the temp file and get the list of files which matched
-    static const int s = 256;
-    char             buff[s];
-    FILE*            fp     = fopen(tmp_name,"r");
-    std::string      file;
-    while ( fgets(buff,s-1,fp) != NULL ) {
-      int len = strlen(buff);
-      while (buff[len]==' ' || buff[len]=='\n' || buff[len]=='\0') --len;
-      buff[len+1]='\0';
-      file = buff;
-      fInFileList.push_back(file);
-      ++nfiles;
-    }
-    fclose(fp);
-
-    // Remove the temporary file
-    unlink(tmp_name);
-  }
-  else {
+    fInFileList = Utility::GetListOfFiles(file_regexp);
+  } else {
     fInFileList.push_back(std::string(file_regexp));
     ++nfiles;
   }
@@ -234,21 +194,22 @@ uint32_t CCMRawIO::Advance(uint32_t n)
     MsgFatal("No file open! Need to run SetupInputFile first.");
   }
 
-  int startPosition = fInFile.tellg();
+  long startPosition = fInFile.tellg();
   fInFile.seekg(0,fInFile.end);
-  int totalLength = fInFile.tellg();
+  long totalLength = fInFile.tellg();
 
-  int length = sizeof(event_t);
-  int ndone = n;
-  while (startPosition + length*ndone > totalLength) {
-    --ndone;
+  long length = sizeof(event_t);
+  long ndone = n;
+  if(startPosition + length*ndone > totalLength) {
+      ndone = (totalLength - startPosition) % length;
   }
 
-  if (ndone == 0) {
+  if (ndone <= 0) {
     fReadOK = false;
     return ndone;
   }
 
+  // Reverted change that replaced "ndone" with "(ndone-1)". May cause issues
   fInFile.seekg(startPosition+length*ndone);
   fInFile.read((char*)&fData, length);
   if (fInFile.eof()) {
@@ -474,7 +435,9 @@ void CCMRawIO::ConvertEventToRawData()
 
     // loop through the channels
     for (int channel = 0; channel < NCHANNELS; ++channel) {
-      fRawData->SetWaveform(channel,fData.digitizers.samples[board][channel]);
+      auto key = PMTInfoMap::CreateKey(board, channel);
+      //MsgInfo(MsgLog::Form("Board  %d Event Number %d",board,fData.digitizers.samples[board][channel]));
+      fRawData->SetWaveform(key,fData.digitizers.samples[board][channel]);
     } // end for channel
   } // end for board
 
