@@ -353,9 +353,9 @@ void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double fiv
   G4double mult5 = mult;
 
   G4double lar_Energy_abs[47];
-  G4double lar_wlv_abs[47];
+  //G4double lar_wlv_abs[47];
   for (int i=0;i<47;++i){
-    lar_wlv_abs[i] = i*20+80;
+    //lar_wlv_abs[i] = i*20+80;
     lar_Energy_abs[i] = (1293.847/(i*20.0+80.0))*eV;
   }
   G4double lar_ABSL[47];
