@@ -27,17 +27,18 @@ include(${ROOT_USE_FILE})
 include_directories(${ROOT_INCLUDE_DIR})
 set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES})
 set(CCMAnalysis_INCLUDE_DIRS
-    ${CMAKE_SOURCE_DIR}/../src/
-    ${CMAKE_SOURCE_DIR}/../src/utils
-    ${CMAKE_SOURCE_DIR}/../src/ds
-    ${CMAKE_SOURCE_DIR}/../src/io
-    ${CMAKE_SOURCE_DIR}/../src/spe
-    ${CMAKE_SOURCE_DIR}/../src/modules/framework
-    ${CMAKE_SOURCE_DIR}/../src/modules/reco
-    ${CMAKE_SOURCE_DIR}/../src/modules/nearline
-    ${CMAKE_SOURCE_DIR}/../src/modules/plots
-    ${CMAKE_SOURCE_DIR}/../src/modules/templates
+    ${CMAKE_SOURCE_DIR}/src/
+    ${CMAKE_SOURCE_DIR}/src/utils
+    ${CMAKE_SOURCE_DIR}/src/ds
+    ${CMAKE_SOURCE_DIR}/src/io
+    ${CMAKE_SOURCE_DIR}/src/spe
+    ${CMAKE_SOURCE_DIR}/src/modules/framework
+    ${CMAKE_SOURCE_DIR}/src/modules/reco
+    ${CMAKE_SOURCE_DIR}/src/modules/nearline
+    ${CMAKE_SOURCE_DIR}/src/modules/plots
+    ${CMAKE_SOURCE_DIR}/src/modules/templates
 )
+message(STATUS ${CCMAnalysis_INCLUDE_DIRS})
 
 
 #----------------------------------------------------------------------------

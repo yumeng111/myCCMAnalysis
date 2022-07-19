@@ -88,6 +88,7 @@ add_subdirectory(src/io)
 add_subdirectory(src/spe)
 add_subdirectory(src/modules)
 
+add_subdirectory(simulationCCM)
 #---Create  a main program using the library
 #add_executable(EnergyCalibration energyCalibration.cc)
 #target_link_libraries(EnergyCalibration Event)
