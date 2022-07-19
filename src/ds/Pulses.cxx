@@ -193,7 +193,7 @@ void Pulses::DerivativeFilter(const u_int16_t input[], int length, float trigger
   int timeOffset = 2;
   float alpha = 2e-9/10e-9;
   float smoothWidth = 0;//alpha*input[0];
-  constexpr samples_to_start_average = 4;
+  constexpr int samples_to_start_average = 4;
   for (int loc = 0; loc < samples_to_start_average; ++loc) {
     //fOrigArray[key][loc] = input[loc];
     smoothWidth += alpha*(input[loc] - smoothWidth);

@@ -2,73 +2,75 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(CCMAnalysis)
 
-if(DEFINED ENV{CCMINSTALL})
-  #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "$ENV{CCMINSTALLBuild}")
-  #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "$ENV{CCMINSTALLBuild}")
-  #set(CMAKE_INCLUDE_OUTPUT_DIRECTORY "$ENV{CCMINSTALLBuild}")
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "$ENV{CCMINSTALLBuild}")
-else()
-  message(FATAL_ERROR "You must have CCMINSTALL defined")
-endif()
+message(STATUS "source dir: ${CMAKE_SOURCE_DIR}")
+message(STATUS "binary dir: ${CMAKE_BINARY_DIR}")
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
 #   - ROOT built with CMake. Add in CMAKE_PREFIX_PATH the installation prefix for ROOT
-#list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
-#list(APPEND CMAKE_MODULE_PATH $ENV{ROOTSYS}/etc/root/cmake)
-#list(APPEND CMAKE_MODULE_PATH $ENV{ROOTSYS}/share/root/cmake)
-#list(APPEND CMAKE_MODULE_PATH /usr/share/root/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 #---Locate the ROOT package and defines a number of variables (e.g. ROOT_INCLUDE_DIRS)
 find_package(ROOT REQUIRED COMPONENTS MathCore RIO Hist Tree Net)
 
+if(DEFINED ENV{XERCESINSTALL})
+    set(XercesC_INCLUDE_DIRS $ENV{XERCESINSTALL}/include)
+    set(XercesC_LIBRARIES xerces-c)
+    set(XercesC_LIBRARY_DIRS $ENV{XERCESINSTALL}/lib)
+else()
+    message("-- XercesC not found in env variables")
+    message("-- Checking for XercesC with find_package")
+    find_package(XercesC)
+    if(XercesC_FOUND)
+        message("-- XercesC found by find_package")
+    else()
+        message(FATAL_ERROR "XercesC not found by find_package")
+    endif()
+
+endif()
+
 #---Define useful ROOT functions and macros (e.g. ROOT_GENERATE_DICTIONARY)
-#message("${ROOT_USE_FILE}")
 include(${ROOT_USE_FILE})
-#message("INCLUDE ${ROOT_INCLUDE_DIR} LIBRARY ${ROOT_LIBRARY_DIR}")
-#message("LIBRARIES ${ROOT_LIBRARIES}")
-#message("XERCESINCLUDE $ENV{XERCESINCLUDE}")
 include_directories(${ROOT_INCLUDE_DIR} $ENV{XERCESINCLUDE})
 set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} $ENV{XERCESLIB}/libxerces-c.so)
-#message("LIBRARIES ${LIBRARIES}")
 
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} $ENV{XERCESINCLUD})
 add_definitions(${ROOT_CXX_FLAGS} -std=c++14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14 -O3")
 
 set(CCMAnalysis_INCLUDE_DIRS
-  ${CMAKE_SOURCE_DIR}/src/utils
-  ${CMAKE_SOURCE_DIR}/src/ds
-  ${CMAKE_SOURCE_DIR}/src/io
-  ${CMAKE_SOURCE_DIR}/src/spe
-  ${CMAKE_SOURCE_DIR}/src/modules/framework
-  ${CMAKE_SOURCE_DIR}/src/modules/detsim
-  ${CMAKE_SOURCE_DIR}/src/modules/reco
-  ${CMAKE_SOURCE_DIR}/src/modules/nearline
-  ${CMAKE_SOURCE_DIR}/src/modules/plots
-  ${CMAKE_SOURCE_DIR}/src/modules/templates
-  )
+    ${CMAKE_SOURCE_DIR}/src/
+    ${CMAKE_SOURCE_DIR}/src/utils
+    ${CMAKE_SOURCE_DIR}/src/ds
+    ${CMAKE_SOURCE_DIR}/src/io
+    ${CMAKE_SOURCE_DIR}/src/spe
+    ${CMAKE_SOURCE_DIR}/src/modules/framework
+    ${CMAKE_SOURCE_DIR}/src/modules/detsim
+    ${CMAKE_SOURCE_DIR}/src/modules/reco
+    ${CMAKE_SOURCE_DIR}/src/modules/nearline
+    ${CMAKE_SOURCE_DIR}/src/modules/plots
+    ${CMAKE_SOURCE_DIR}/src/modules/templates
+)
 
 #Set the library version
 set(CCMAnalysis_MAJOR_VERSION 4)
 set(CCMAnalysis_MINOR_VERSION 0)
 set(CCMAnalysis_PATCH_VERSION 0)
 set(CCMAnalysis_VERSION
-  "${CCMAnalysis_MAJOR_VERSION}.${CCMAnalysis_MINOR_VERSION}.${CCMAnalysis_PATCH_VERSION}")
+    "${CCMAnalysis_MAJOR_VERSION}.${CCMAnalysis_MINOR_VERSION}.${CCMAnalysis_PATCH_VERSION}")
 set(CCMAnalysis_LIBRARY_PROPERTIES ${CCMAnalysis_LIBRARY_PROPERTIES}
-  VERSION "${CCMAnalysis_VERSION}"
-  SOVERSIONI "${CCMAnalysis_MAJOR_VERSION}"
-  SUFFIX ".so"
-  )
+    VERSION "${CCMAnalysis_VERSION}"
+    SOVERSIONI "${CCMAnalysis_MAJOR_VERSION}"
+    SUFFIX ".so"
+)
 
 
 #uninstall target
 configure_file(
-  "${CMAKE_MODULE_PATH}/cmake_uninstall.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-  IMMEDIATE @ONLY
-  )
+    "${CMAKE_MODULE_PATH}/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY
+)
 
 add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
@@ -94,3 +96,4 @@ add_subdirectory(src/modules)
 #target_link_libraries(FindEvents Event)
 #add_executable(ApplyPreCuts applyPreCuts.cc)
 #target_link_libraries(ApplyPreCuts Event)
+

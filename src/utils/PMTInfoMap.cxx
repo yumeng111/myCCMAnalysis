@@ -14,6 +14,7 @@
 #include "TROOT.h"
 #include "TTreeReader.h"
 #include "TTreeReaderValue.h"
+#include "Utility.h"
 
 #include <algorithm>
 #include <utility>
@@ -26,6 +27,15 @@ std::vector<int> PMTInfoMap::fgHVOffList;
 
 bool PMTInfoMap::fgMapLoaded = false;
 bool PMTInfoMap::fgBadListLoaded = false;
+
+int PMTInfoMap::fgEJStart = 249;
+int PMTInfoMap::fgEJEnd = 254;
+size_t PMTInfoMap::fgMinKey = 0;
+size_t PMTInfoMap::fgMaxKey = 240;
+
+/*
+detsim/libCCMDetSim.so: undefined reference to `PMTInfoMap::ConvertRowColToKey(int const&, int const&)'
+*/
 
 /*!************************************************************************************************
  * \fn void PMTInfoMap::DefaultFillPMTMap()
@@ -243,8 +253,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
             tempString.clear();
             currentString.erase(currentString.begin(),currentString.begin()+findLoc+1);
             col = std::stoi(currentString);
-	    } */
-          } else {
+	    } */  else {
             row = -20; 
             col = -20;
           }
@@ -330,19 +339,6 @@ int PMTInfoMap::CreateKey(int digit, int channel) {
   return digit*16+channel;
 }
 
-/*!************************************************************************************************
- * \fn void PMTInfoMap::DecodeKey(int key, int & digit, int & channel)
- * \brief Static function that decodes the map key
- * \param[in] key The key value
- * \param[out] digit Board number
- * \param[out] channel Channel number
- **************************************************************************************************/
-void PMTInfoMap::DecodeKey(int key, int & digit, int & channel) {
-  digit = key/16;
-  channel = key%16;
-
-  return;
-}
 
 /*!************************************************************************************************
  * \fn int PMTInfoMap::ConvertHVBoardChanToKey(const int & box, const int & channel, bool veto)
@@ -367,6 +363,22 @@ int PMTInfoMap::ConvertHVBoardChanToKey(const int & box, const int & channel, bo
 
   return -1;
 }
+
+/*!************************************************************************************************
+ * \fn int PMTInfoMap::ConvertRowColToKey(const int & row, const int & col)
+ * \brief Static function that gets the key given HV board and col numbers
+ * \param[in] row HV Board number
+ * \param[in] col HV Channel number
+ * \return key value
+ **************************************************************************************************/
+int PMTInfoMap::ConvertRowColToKey(const int & row, const int & col) {
+  for (const auto & pmtInfo : fgPMTInfo) {
+    if (pmtInfo.second->GetRow() == row && pmtInfo.second->GetColumn() == col) {
+      return CreateKey(pmtInfo.second->GetBoard(),pmtInfo.second->GetBoardChan());
+    }
+  }
+  return -1;
+} 
 
 /*!************************************************************************************************
  * \fn void PMTInfoMap::ConvertKeyToHVBoardChan(cosnt int key, int & box, int & channel)

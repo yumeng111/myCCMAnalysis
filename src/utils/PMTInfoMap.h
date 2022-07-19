@@ -32,8 +32,8 @@ class PMTInfoMap
     static bool IsActive(int key);
     static bool IsActive(int digitizer, int channel);
     static int CreateKey(int digit, int channel);
-    static void DecodeKey(int key, int & digit, int & channel);
-    static void DecodeKey(size_t key, size_t & digit, size_t & channel);
+    template<typename T, typename U>
+    static void DecodeKey(T key, U & digit, U & channel);
     static int ConvertHVBoardChanToKey(const int & box, const int & channel, bool veto = false);
     static void ConvertKeyToHVBoardChan(const int key, int & box, int & channel);
     static int ConvertRowColToKey(const int & row, const int & col);
@@ -62,8 +62,8 @@ class PMTInfoMap
     static void SetParameter(std::string name, const double value);
     static void SetParameter(std::string name, std::string value);
 
-    static int GetEJStart() const {return fgEJStart;};
-    static int GetEJEnd() const {return fgEJEnd;};
+    static int GetEJStart() {return fgEJStart;};
+    static int GetEJEnd() {return fgEJEnd;};
 
   private:
 
@@ -82,5 +82,7 @@ class PMTInfoMap
     static bool fgBadListLoaded;
 
 };
+
+#include "PMTInfoMap.tcc"
 
 #endif // PMTInfoMap_h
