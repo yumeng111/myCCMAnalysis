@@ -135,7 +135,7 @@ int main (int argc, char** argv)
   if (cfgfile.empty() || (infileList.empty() && rawInfileList.empty())) {
     MsgError("Problem reading input parameters or no input file supplied");
     Usage();
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
   }
 
   if (removeFirstSubRun) {
@@ -161,13 +161,13 @@ int main (int argc, char** argv)
   if (!infileList.empty() && !rawInfileList.empty()) {
     MsgError("Both binary and root input file(s) are set, only one type should be set");
     Usage();
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
   }
 
   if (!outfileList.empty() && !rawOutfileList.empty()) {
     MsgError("Both binary and root output file(s) are set, only one type should be set");
     Usage();
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
   }
 
   // Default is to not save anything but only print to screen
