@@ -22,7 +22,6 @@
 #include "PMTInformation.h"
 #include "Pulses.h"
 #include "RawData.h"
-
 #include "data_structures.hh"
 
 #include "TF1.h"
@@ -48,7 +47,7 @@
 MODULE_DECL(CCMFindPulses);
 
 //_______________________________________________________________________________________
-CCMFindPulses::CCMFindPulses(const char* version) 
+CCMFindPulses::CCMFindPulses(const char* version)
   : CCMModule("CCMFindPulses"),
     fTriggerType("ALL"),
     fTruncateWaveform(false),
@@ -57,7 +56,12 @@ CCMFindPulses::CCMFindPulses(const char* version)
     fWriteDBEntry(false),
     fDBHost(""),
     fDBUser(""),
-    fDBPwd("")
+    fDBPwd(""),
+    fNEventsTotal(0),
+    fNEventsSkipped(0),
+    fHighestTemp(0),
+    fFirstTriggerTime(0),
+    fLastTriggerTime(0)
 {
   //Default constructor
   this->SetCfgVersion(version);
@@ -68,7 +72,7 @@ CCMFindPulses::CCMFindPulses(const char* version)
 }
 
 //_______________________________________________________________________________________
-CCMFindPulses::CCMFindPulses(const CCMFindPulses& clufdr) 
+CCMFindPulses::CCMFindPulses(const CCMFindPulses& clufdr)
 : CCMModule(clufdr),
   fTriggerType(clufdr.fTriggerType),
   fTruncateWaveform(clufdr.fTruncateWaveform),
@@ -81,14 +85,19 @@ CCMFindPulses::CCMFindPulses(const CCMFindPulses& clufdr)
   fTriggerTime(clufdr.fTriggerTime),
   fReadData(clufdr.fReadData),
   fPulses(clufdr.fPulses),
-  fRawData(clufdr.fRawData)
+  fRawData(clufdr.fRawData),
+  fNEventsTotal(clufdr.fNEventsTotal),
+  fNEventsSkipped(clufdr.fNEventsSkipped),
+  fHighestTemp(clufdr.fHighestTemp),
+  fFirstTriggerTime(clufdr.fFirstTriggerTime),
+  fLastTriggerTime(clufdr.fLastTriggerTime)
 {
   // copy constructor
 }
 
 //_______________________________________________________________________________________
 CCMFindPulses::~CCMFindPulses()
-{ 
+{
   // destructor
 }
 
@@ -100,9 +109,11 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
     MsgDebug(1,"Starting FindPulses for Trigger");
   }
 
-  RawData localCopy(*fReadData);
+  RawData localCopy;
   if (fFromRootFile) {
     localCopy = *fRawData;
+  } else {
+    localCopy = *fReadData;
   }
 
   if (!localCopy.GetNumBoards()) {
@@ -142,11 +153,14 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
   }
 
   // count number of times we have a mismatched trigger
+  // do not skip because of information for the database
+
   if (!evNumCheck) {
     MsgError(MsgLog::Form("Mismatched Trigger %ld",fNEventsTotal));
     ++fNEventsSkipped;
-    //continue; // do not skip because of information for the database
+    //continue;
   }
+
 
 
   /////////////////////////////////////////////////////////////////
@@ -201,7 +215,7 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
   // Get the computer time of the trigger and keep track of the first and last trigger time
   // this is used to fill the data base for nearline monitoring
   std::chrono::time_point <std::chrono::system_clock,std::chrono::duration<unsigned int>> tp_seconds (
-      std::chrono::duration<unsigned int>(localCopy.GetGPSSecIntoDay()));
+  std::chrono::duration<unsigned int>(localCopy.GetGPSSecIntoDay()));
   std::chrono::system_clock::time_point tp (tp_seconds);
   if (fFirstTriggerTime == 0) {
     fFirstTriggerTime = std::chrono::system_clock::to_time_t(tp);
@@ -259,7 +273,7 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
       // this board contains the trigger decode information
       // and the waveforms from the EJ-301 detectors
       //
-      // otherwise all the waveforms have already been copied 
+      // otherwise all the waveforms have already been copied
       // tot he fRawData object above
       if (board == kNDigitizers-1 && fTruncateWaveform) {
         fRawData->SetWaveform(channel,&samples.front());
@@ -279,9 +293,10 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
         if (pmtInfo != nullptr) {
           // Check to see if the current pmt is a 1 in pmt.
           // If so, set pmtOffset to 21.0 becuse the 1 in pmts
-          // are 42 ns faster than the 8 in pmts based off the 
-          // data sheets provided by Hamamatsu 
-          if (pmtInfo->Is1in()) {
+          // are 42 ns faster than the 8 in pmts based off the
+          // data sheets provided by Hamamatsu
+          //if (pmtInfo->Is1in()) {
+          if (pmtInfo->IsVeto()) {
             pmtOffset = 21.0;
           } else {
             pmtOffset = 0.0;
@@ -322,7 +337,7 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
 }
 
 //_______________________________________________________________________________________
-void CCMFindPulses::Configure(const CCMConfig& c ) 
+void CCMFindPulses::Configure(const CCMConfig& c )
 {
 
   //Initialize any parameters here
@@ -344,8 +359,8 @@ void CCMFindPulses::Configure(const CCMConfig& c )
 }
 
 //_______________________________________________________________________________________
-CCMResult_t CCMFindPulses::EndOfJob() 
-{ 
+CCMResult_t CCMFindPulses::EndOfJob()
+{
   WriteDB();
 
   return kCCMSuccess;
@@ -372,7 +387,9 @@ CCMResult_t CCMFindPulses::NewRun(uint32_t run, uint32_t subRun)
   fNEventsTotal = 0;
   fNEventsSkipped = 0;
   fHighestTemp = 0;
-  
+  fFirstTriggerTime = 0;
+  fLastTriggerTime = 0;
+
   fCurrentRun = run;
   fCurrentSubRun = subRun;
 
@@ -401,17 +418,28 @@ void CCMFindPulses::WriteDB()
   // - User = ccmdaq
   // - pwd = ask someone
   TSQLServer *db = TSQLServer::Connect(fDBHost.c_str(),fDBUser.c_str(),fDBPwd.c_str());
-  std::string insertCommand = "insert into ccmdb.runinfo (start_time,end_time,run_number,subrun_number,num_beam_triggers,num_misaligned_triggers,fHighestTemp) value (";
+
+  // TODO Double check that the database has the same names
+  std::string insertCommand = "insert into ccmdb.runinfo (start_time,end_time,run_number,subrun_number,num_beam_triggers,num_misaligned_triggers,highestTemp) value (";
   MsgInfo(MsgLog::Form("insert command = %s",insertCommand.c_str()));
-  insertCommand  += "'" + std::string(bufferFirstTriggerTime) + "','" + 
-    std::string(bufferLastTriggerTime) + "','" + 
-    fCurrentRun + "','" + 
-    fCurrentSubRun + "','"  + 
-    std::to_string(fNEventsTotal) + "','" + 
-    std::to_string(fNEventsSkipped) + "','" + 
-    std::to_string(fHighestTemp) + "');";
+  insertCommand  += "'" + std::string(bufferFirstTriggerTime) + "','" +
+  std::string(bufferLastTriggerTime) + "','" +
+  fCurrentRun + "','" +
+  fCurrentSubRun + "','"  +
+  std::to_string(fNEventsTotal) + "','" +
+  std::to_string(fNEventsSkipped) + "','" +
+  std::to_string(fHighestTemp) + "');";
+
+  if (MsgLog::GetGlobalDebugLevel() >= 1) {
+    MsgDebug(2, MsgLog::Form("Content:\n %s",insertCommand.c_str()));
+  }
 
   TSQLResult *res = db->Query(insertCommand.c_str());
+
+  if (MsgLog::GetGlobalDebugLevel() >= 1) {
+    MsgDebug(2, MsgLog::Form("Completed Push"));
+  }
+
   res->Print("v");
 
 
