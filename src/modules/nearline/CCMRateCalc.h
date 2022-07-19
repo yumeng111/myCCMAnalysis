@@ -68,10 +68,11 @@ class CCMRateCalc : public CCMModule
     std::string fDBUser;
     std::string fDBPwd;
 
-    ///spe count for each of the 160 pmts in the first 10 boards. use as fSPECount[key] in the pulse loop.       
-    std::vector<double> fSPECount;
-    /// pmt type (0=1inveto,1=uncoated,2=coated) for the 160 pmts. use as fPMTType[key] in pulse loop.              
-    std::vector<double> fPMTType;
+    ///spe count for each of the 240 pmts in the first 16  boards. use as fSPECount[key] in the pulse loop.
+
+    std::array<int,static_cast<int>(Utility::fgkNumPMTs)> fSPECount = std::array<int,static_cast<int>(Utility::fgkNumPMTs)>();
+    /// pmt type (0=1inveto,1=uncoated,2=coated) for the 240 pmts. use as fPMTType[key] in pulse loop.
+    std::array<int,static_cast<int>(Utility::fgkNumPMTs)> fPMTType =  std::array<int,static_cast<int>(Utility::fgkNumPMTs)>();
 
     std::time_t fFirstTriggerTime;
     std::time_t fLastTriggerTime;

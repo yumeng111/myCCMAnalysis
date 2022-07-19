@@ -32,6 +32,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <array>
 #include <map>
 #include <locale>
 
@@ -45,7 +46,7 @@ CCMRateCalc::CCMRateCalc(const char* version)
     fPulses(nullptr),
     fEvents(nullptr),
     fTriggerType("BEAM"),
-    fWriteDBEntry(false),
+    fWriteDBEntry(0),
     fDBHost(""),
     fDBUser(""),
     fDBPwd(""),
@@ -102,11 +103,6 @@ CCMResult_t CCMRateCalc::ProcessTrigger()
     shiftTime = false;
   }
 
-  if (fSPECount.empty()) {
-    fSPECount.assign(fRawData->GetNumBoards()*fRawData->GetNumChannels(),0.0);
-    fPMTType.assign(fRawData->GetNumBoards()*fRawData->GetNumChannels(),0.0);
-  }
-
   // keep track of the number of triggers/events are looked at
   // for rate calculation
   if (Utility::ShiftTime(fPulses->GetTriggerTime(),0,false)> -500) {
@@ -144,7 +140,7 @@ void CCMRateCalc::Configure(const CCMConfig& c )
   }
 
   fIsInit = true;
-
+  std::fill(std::begin(fPMTType),std::end(fPMTType),-1);
 }
 
 //_______________________________________________________________________________________
@@ -188,23 +184,21 @@ void CCMRateCalc::AddPulses()
       continue;
     }
 
-    if (pmtInfo->IsVeto() && pulseIntegral > 5) {
+    // TODO Change the veto threshold / make sure these are defined
+    if (pmtInfo->IsVeto() && pulseIntegral > threshold) {
       ++fSPECount[key];
-      if (pmtInfo->Is1in()) {
-        fPMTType[key] = 1;
-      } else {
-        fPMTType[key] = 0;
-      }
+      fPMTType[key] = 1;
     } else {
       if (pulseIntegral < threshold || pulseIntegral < 0 || spe <= 0) {
         continue;
       } 
 
+      // TODO Change this time shift
       if (Utility::ShiftTime(time,0,false) <= -1000) {
         ++fSPECount[key];
-        if (pmtInfo->IsUncoated()){
+        if (pmtInfo->IsUncoated()) {
           fPMTType[key]=2;
-        }else{
+        } else{
           fPMTType[key]=3;
         }
         // if PulseIntegral is above threshold and 0 and the spe if not less than 0, add 1 to the fSPECount for the [key]
@@ -253,13 +247,15 @@ CCMResult_t CCMRateCalc::EndOfJob()
   int channel = 0;
   double speRate = 0.0;
 
-  std::vector<int> pmtsOfType(4,0);
-  std::vector<int> spesPerType(4,0);
-  std::vector<std::string> pmtsTypeN(4,"");
-  std::vector<float> speRates(4,0);
+  std::array<int,3> pmtsOfType;
+  std::array<int,3> spesPerType;
+  std::array<std::string,3> pmtsTypeN;
+
+  //fill array with all zeros
+  std::fill(std::begin(pmtsOfType),std::end(pmtsOfType),0);
+  std::fill(std::begin(spesPerType),std::end(spesPerType),0);
 
   const size_t kNumChannels = fSPECount.size();
-  MsgInfo(MsgLog::Form("Size of fSPECount %zu",kNumChannels));
   for (size_t pmtc = 0; pmtc<kNumChannels; ++pmtc) {
     // only look at channels that correspond to veto, or tank PMTs
     auto pmtInfo = PMTInfoMap::GetPMTInfo(pmtc);
@@ -276,26 +272,33 @@ CCMResult_t CCMRateCalc::EndOfJob()
     // R. T. Thornton - 9/21/2020
     // the following works since 8.92 is in us and 1000 is converting it to 
     // whichever Hz order it is suppose to be in
+
+    /* This worked for CCM120
     speRate = fSPECount.at(pmtc)/(8.92*static_cast<double>(fTotalTriggers))*1000.0;
     spesPerType.at(fPMTType.at(pmtc)) += speRate;
-
-    //MsgInfo(MsgLog::Form("Board %d Channel %d SPE count %d SPE rate %g",digit,channel,(int)fSPECount.at(pmtc),speRate));                           
     speCountOutput = speCountOutput+Form("%d\t%d\t%d\t%g\t%d\n",digit,channel,(int)fSPECount.at(pmtc),speRate,(int)fPMTType.at(pmtc));
+    */
+    // TODO Fix this for CCM200
+    speRate = fSPECount[pmtc]*1e6/(-(Utility::fgkWindowStartTime + 1000.0)*static_cast<double>(fTotalTriggers));
+    spesPerType[fPMTType[pmtc]-1] += speRate;
+    if (speRate > 1000){
+        MsgInfo(MsgLog::Form("Board %d Channel %d SPE count %d SPE rate %g",digit,channel,fSPECount[pmtc],speRate));
+        speCountOutput = speCountOutput+Form("%d\t%d\t%d\t%g\t%d\n",digit,channel,fSPECount[pmtc],speRate,fPMTType[pmtc]);
+    }
 
-    if (fPMTType.at(pmtc)==0){
-      ++pmtsOfType.at(0);
-      pmtsTypeN.at(0) = "Veto 8in";
-    }else if (fPMTType.at(pmtc)==1){
-      ++pmtsOfType.at(1);
-      pmtsTypeN.at(1) = "Veto 1in";
-    } else if (fPMTType.at(pmtc)==2) {
-      ++pmtsOfType.at(2);
-      pmtsTypeN.at(2) = "Uncoated";
-    } else if (fPMTType.at(pmtc)==3) {
-      ++pmtsOfType.at(3);
-      pmtsTypeN.at(3) = "Coated";
+    if (fPMTType[pmtc]==1){
+      ++pmtsOfType[0];
+      pmtsTypeN[0] = "Veto";
+    } else if (fPMTType[pmtc]==2) {
+      ++pmtsOfType[1];
+      pmtsTypeN[1] = "Uncoated";
+    } else if (fPMTType[pmtc]==3) {
+      ++pmtsOfType[2];
+      pmtsTypeN[2] = "Coated";
     }
   }
+
+  std::array<float,3> speRates;
 
   for (size_t type=0;type<speRates.size();++type){
     speRates.at(type) = spesPerType.at(type)/pmtsOfType.at(type);
@@ -308,34 +311,33 @@ CCMResult_t CCMRateCalc::EndOfJob()
 
   MsgInfo(MsgLog::Form("\n%s",speCountOutput.c_str()));
 
-  //  return EXIT_SUCCESS;
+    struct tm * timeInfo = localtime(&fFirstTriggerTime);
+    char bufferFirstTriggerTime[80];
+    strftime(bufferFirstTriggerTime,80,"%F %T",timeInfo);
+    timeInfo = localtime(&fLastTriggerTime);
+    char bufferLastTriggerTime[80];
+    strftime(bufferLastTriggerTime,80,"%F %T",timeInfo);
 
-  struct tm * timeInfo = localtime(&fFirstTriggerTime);
-  char bufferFirstTriggerTime[80];
-  strftime(bufferFirstTriggerTime,80,"%F %T",timeInfo);
-  timeInfo = localtime(&fLastTriggerTime);
-  char bufferLastTriggerTime[80];
-  strftime(bufferLastTriggerTime,80,"%F %T",timeInfo);
+    MsgInfo(MsgLog::Form("First Time %s Last Time %s",bufferFirstTriggerTime,bufferLastTriggerTime));
+    // TODO Check if this rate calculation is correct
+    // float preBeamRate = fPreBeamTriggers/static_cast<double>(fTotalTriggers)/8.92*1000.;
+    float preBeamRate = fPreBeamTriggers*1e6/static_cast<double>(fTotalTriggers)/-(Utility::fgkWindowStartTime + 1000);
 
-  MsgInfo(MsgLog::Form("First Time %s Last Time %s",bufferFirstTriggerTime,bufferLastTriggerTime));
+    if (fWriteDBEntry) {
+      MsgWarning("Going to write to data base");
+      std::string insertCommand = "insert into ccmdb.nearline_diag (start_time, end_time, prebeam_event_rate, spe_rate_1in, spe_rate_uncoated, spe_rate_coated) value (";
+      insertCommand = Form("%s'%s','%s','%f','%f','%f','%f');",
+          insertCommand.c_str(),
+          bufferFirstTriggerTime,bufferLastTriggerTime,
+          preBeamRate,speRates.at(0),speRates.at(1),speRates.at(2));
 
-  float preBeamRate = fPreBeamTriggers/static_cast<double>(fTotalTriggers)/8.92*1000.;
+      TSQLServer *db = TSQLServer::Connect(fDBHost.c_str(),fDBUser.c_str(),fDBPwd.c_str());
+      MsgInfo(MsgLog::Form("Insert Command = %s",insertCommand.c_str()));
+      TSQLResult *res = db->Query(insertCommand.c_str());
+      delete res;
+      delete db;
+    } // end fWriteDBEntry
 
-  if (fWriteDBEntry) {
-    MsgWarning("Going to write to data base");
-    std::string insertCommand = "insert into ccmdb.nearline_diag (start_time, end_time, prebeam_event_rate, spe_rate_1in, spe_rate_uncoated, spe_rate_coated) value (";
-    insertCommand = Form("%s'%s','%s','%f','%f','%f','%f');",
-        insertCommand.c_str(),
-        bufferFirstTriggerTime,bufferLastTriggerTime,
-        preBeamRate,speRates.at(0),speRates.at(1),speRates.at(2));
-
-    TSQLServer *db = TSQLServer::Connect(fDBHost.c_str(),fDBUser.c_str(),fDBPwd.c_str());
-    MsgInfo(MsgLog::Form("Insert Command = %s",insertCommand.c_str()));
-    TSQLResult *res = db->Query(insertCommand.c_str());
-    delete res;
-    delete db;
-  } // end fWriteDBEntry
-
-  return kCCMSuccess;
+    return kCCMSuccess;
 }
 
