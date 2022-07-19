@@ -47,7 +47,8 @@ CCMSPECalc::CCMSPECalc(const char* version)
   this->SetCfgVersion(version);
 
   fSPEFinder = std::make_unique<NearlineSPEDiag>();
-  fSPEFinder->SetClassVec(Utility::fgkNumPMTs+16);
+  // TODO Make this more generic (should not assue just one more board)
+  fSPEFinder->SetClassVec(Utility::fgkNumDigitizers*Utility::fgkNumChannels);
   fSPEFinder->CreatePEHists();
 }
 
