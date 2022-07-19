@@ -125,6 +125,7 @@ CCMNa22Cuts::CCMNa22Cuts(const char* version)
   fOutfile = nullptr;
   fTree = nullptr;
   fEnergy = 0;
+  fTotalEnergy = 0;
   fLength = 0;
 
   fHits = 0;
@@ -226,6 +227,7 @@ CCMNa22Cuts::CCMNa22Cuts(const CCMNa22Cuts& clufdr)
   fOutfile = clufdr.fOutfile;
   fTree = clufdr.fTree;
   fEnergy = clufdr.fEnergy;
+  fTotalEnergy = clufdr.fTotalEnergy;
   fLength = clufdr.fLength;
   fHits = clufdr.fHits;
   fNumPMTs = clufdr.fNumPMTs;
@@ -320,6 +322,7 @@ CCMResult_t CCMNa22Cuts::ProcessTrigger()
     fLength = simplifiedEvent.GetLength();
 
     fEnergy = simplifiedEvent.GetIntegralTank(true);
+    fTotalEnergy = simplifiedEvent.GetIntegralTank(false);
     fHits = simplifiedEvent.GetNumTank(true);
     fNumPMTs = simplifiedEvent.GetPMTHits();
 
@@ -597,6 +600,7 @@ void CCMNa22Cuts::SetupOutFile()
   }
 
   fEnergy = 0;
+  fTotalEnergy = 0;
   fLength = 0;
   fHits = 0;
   fNumPMTs = 0;
@@ -661,6 +665,7 @@ void CCMNa22Cuts::SetupOutFile()
     fTree->Branch("bcmLength",&fBCMLength);
     fTree->Branch("bcmIntegral",&fBCMIntegral);
     fTree->Branch("energy",&fEnergy);
+    fTree->Branch("totalenergy",&fTotalEnergy);
     fTree->Branch("length",&fLength);
     fTree->Branch("hits",&fHits);
     fTree->Branch("numPMTs",&fNumPMTs);
@@ -766,14 +771,25 @@ void CCMNa22Cuts::RecalculatePosition(const SimplifiedEvent & simplifiedEvent,
       MsgWarning("PMT not Active: should not be here because this should have already been checked");
       continue;
     }
+
+    //skipping every 16th channel.                                                                                                                           
+    if((key+1)%16 == 0){
+      continue;
+    }
+
     auto pmtInfo = PMTInfoMap::GetPMTInfo(key);
     if (!pmtInfo) {
       MsgWarning("PMTInformation does not exists: should not be here because this should have already been checked");
       continue;
     }
+
     if (pmtInfo->IsVeto()) {
       continue;
     }
+    if(key >= 240){
+      continue;
+    }
+
     auto start = pmtInt.begin();
     auto end = pmtInt.end();
     if (kNumBins < pmtInt.size()) {
@@ -873,7 +889,23 @@ bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingInd
     double st2 = simplifiedEvent2.GetStartTime();
     double length = simplifiedEvent2.GetLength();
 
-    if (promptHits2 < 3) {
+    //currentWF = simplifiedEvent2.GetWaveformInt();
+
+    //if (toatlWF.size() == 0) {
+    //  std::assign(currentWF.begin(),currentWF.end());
+    //} else {
+    //  double numZeros = std::fabs(kStartTime - st2+length);
+    //  if (numZeros > 0) {
+    //    totalWF.insert(totalWF.begin(),numZeros,0.0);
+    //  }
+    //  totalWF.insert(totalWF.begin(),currentWF.begin(),currentWF.end());
+    //}
+
+    //if (e2 == kStartingIndex) {
+    //  continue;
+    //}
+
+    if (promptHits2 < 6) {
       //continue;
     }
 
@@ -1019,7 +1051,7 @@ bool CCMNa22Cuts::PassedWaveformMaxCut(double length, double maxWFTime)
  ***********************************************/
 bool CCMNa22Cuts::PassedNumHitsCut(double hits)
 {
-  return !(hits < 3);
+  return !(hits < 6);
 }
 
 /*!**********************************************
