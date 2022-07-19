@@ -5,6 +5,8 @@ project(CCMAnalysis)
 message(STATUS "source dir: ${CMAKE_SOURCE_DIR}")
 message(STATUS "binary dir: ${CMAKE_BINARY_DIR}")
 
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
+
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
 #   - ROOT built with CMake. Add in CMAKE_PREFIX_PATH the installation prefix for ROOT
@@ -26,15 +28,14 @@ else()
     else()
         message(FATAL_ERROR "XercesC not found by find_package")
     endif()
-
 endif()
 
 #---Define useful ROOT functions and macros (e.g. ROOT_GENERATE_DICTIONARY)
 include(${ROOT_USE_FILE})
-include_directories(${ROOT_INCLUDE_DIR} $ENV{XERCESINCLUDE})
-set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} $ENV{XERCESLIB}/libxerces-c.so)
+include_directories(${ROOT_INCLUDE_DIR} ${XercesC_INCLUDE_DIRS})
+set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} ${XercesC_LIBRARIES})
 
-include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} $ENV{XERCESINCLUD})
+include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} ${XercesC_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS} -std=c++14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14 -O3")
 

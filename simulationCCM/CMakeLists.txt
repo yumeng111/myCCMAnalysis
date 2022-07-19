@@ -5,6 +5,8 @@
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(simulationCCM)
 
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
+set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
 # You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui
@@ -25,11 +27,17 @@ include(${ROOT_USE_FILE})
 include_directories(${ROOT_INCLUDE_DIR})
 set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES})
 set(CCMAnalysis_INCLUDE_DIRS
-  $ENV{CCMINSTALLBuild}/src/utils
-  $ENV{CCMINSTALLBuild}/src/ds
-  $ENV{CCMINSTALLBuild}/src/io
-  $ENV{CCMINSTALLBuild}/include
-  )
+    ${CMAKE_SOURCE_DIR}/../src/
+    ${CMAKE_SOURCE_DIR}/../src/utils
+    ${CMAKE_SOURCE_DIR}/../src/ds
+    ${CMAKE_SOURCE_DIR}/../src/io
+    ${CMAKE_SOURCE_DIR}/../src/spe
+    ${CMAKE_SOURCE_DIR}/../src/modules/framework
+    ${CMAKE_SOURCE_DIR}/../src/modules/reco
+    ${CMAKE_SOURCE_DIR}/../src/modules/nearline
+    ${CMAKE_SOURCE_DIR}/../src/modules/plots
+    ${CMAKE_SOURCE_DIR}/../src/modules/templates
+)
 
 
 #----------------------------------------------------------------------------
@@ -38,10 +46,7 @@ set(CCMAnalysis_INCLUDE_DIRS
 #
 include(${Geant4_USE_FILE})
 include_directories(${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIR} ${CCMAnalysis_INCLUDE_DIRS})
-
-set(LINK_DIRECTORIES /usr/lib64/ ${ROOT_LIBRARY_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${CCMAnalysis_INCLUDE_DIRS})
-
-link_directories(${LINK_DIRECTORIES})
+link_directories(/usr/lib64/ ${ROOT_LIBRARY_DIR} ${CMAKE_INSTALL_LIBDIR})
 
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
@@ -55,7 +60,8 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #
 set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES}")
 add_executable(simulationCCM fullsim_CCM.cc ${sources} ${headers})
-target_link_libraries(simulationCCM ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} $ENV{CCMINSTALLBuild}/src/io/libCCMIO.so $ENV{CCMINSTALLBuild}/src/ds/libCCMDS.so)
+#target_link_libraries(simulationCCM ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} ${CMAKE_SHARED_LIBRARY_PREFIX}/libCCMIO.so ${CMAKE_SHARED_LIBRARY_PREFIX}/libCCMDS.so ${CMAKE_SHARED_LIBRARY_PREFIX}/libCCMUtils.so)
+target_link_libraries(simulationCCM ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} ${CMAKE_INSTALL_LIBDIR}/libCCMIO.so ${CMAKE_INSTALL_LIBDIR}/libCCMDS.so ${CMAKE_INSTALL_LIBDIR}/libCCMUtils.so)
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
@@ -79,4 +85,8 @@ endforeach()
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
-install(TARGETS simulationCCM DESTINATION bin)
+#message(STATUS ${CMAKE_INSTALL_PREFIX})
+#install(TARGETS simulationCCM DESTINATION bin)
+install(TARGETS simulationCCM
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
