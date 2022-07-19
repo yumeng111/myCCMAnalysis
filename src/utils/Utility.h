@@ -198,7 +198,7 @@ namespace Utility
   extern std::vector<std::string> GetListOfFiles(const char * file_regexp);
   extern void IndirectFileList(const char* file, std::vector<std::string>& infileList);
 
-};
+}
 
 /*!**********************************************
  * \fn void Utility::LinearUnweightedLS(size_t nPoints, T * x, T * y, T & par0, T & par1)
