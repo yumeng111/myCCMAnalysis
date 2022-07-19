@@ -131,6 +131,9 @@ namespace Utility
   /// The width of each bin in the DAQ window in ns
   constexpr const double fgkBinWidth = 2.0;
 
+  /// The number of channels per digitizer board
+  constexpr const double fgkNumChannels = NCHANNELS;
+
   /// The number of digitizer channels that contains all the PMTs
   /// Assumes there is one auxiliary board as the last board
   constexpr const double fgkNumPMTs = NCHANNELS*(NDIGITIZERS - 1);  //240 // for 16 boards;
