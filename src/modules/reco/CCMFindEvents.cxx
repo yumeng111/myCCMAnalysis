@@ -22,6 +22,7 @@
 
 #include "TROOT.h"
 #include "TFile.h"
+#include "TH2.h"
 
 #include <memory>
 #include <iostream>
@@ -34,7 +35,8 @@
 //See CCMModuleTable for info
 MODULE_DECL(CCMFindEvents);
 
-const int gkMaxBinLoc = 7960;
+const int gkMaxBinLoc = 5960;
+//const int gkMaxBinLoc = 7960;//for CCM120.
 
 //_______________________________________________________________________________________
 CCMFindEvents::CCMFindEvents(const char* version) 
@@ -102,6 +104,7 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
   fEvents->SetBeamIntegral(fAccumWaveform->GetBeamIntegral());
   fEvents->SetBeamLength(fAccumWaveform->GetBeamLength());
 
+
   fEvents->SetTriggerTime(fAccumWaveform->GetTriggerTime());
 
   // count trigger
@@ -121,6 +124,7 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
 
   int prevEnd = 0;
 
+
   for (size_t timeBin = 0; timeBin < gkMaxBinLoc && timeBin < Utility::fgkNumBins; ++timeBin) {
     if (MsgLog::GetGlobalDebugLevel() >= 3) {
       MsgDebug(3,MsgLog::Form("Passed DAQ time cut %zu",timeBin));
@@ -131,6 +135,8 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
     //        fAccumWaveform->GetIndex(timeBin,fAccumWaveformMethodID,kCCMIntegralTimeID),fThreshold));
     //}
     //}
+
+
     if (fAccumWaveform->GetIndex(timeBin,fAccumWaveformMethodID,kCCMIntegralTimeID) < fThreshold) {
       continue;
     }
@@ -158,8 +164,9 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
         MsgDebug(3,MsgLog::Form("event %ld bin %zu start bin = %d",fEvents->GetEventNumber(),timeBin,startBin));
     }
 
-    // find end of event: defined as 10 consecutive empty bins
-    endBin = Utility::fgkNumBins-1;
+
+    // find end of event: defined as 10 consecutive empty bins: CCM120
+    /*endBin = Utility::fgkNumBins-1;
     if (fEventFinderID == kCCMDynamicLengthEventID) {
       for (bin2 = timeBin; bin2 < Utility::fgkNumBins-10; ++bin2) {
         if (fAccumWaveform->Integrate(bin2,bin2+10,fAccumWaveformMethodID,kCCMPulsesTimeID) == 0.f) {
@@ -169,7 +176,47 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
       } // end for size_t bin2 = bin
     } else {
       endBin = std::min(endBin,startBin+fFixedLength);
+      }*/
+
+
+
+    //end of an event for CCM200: 2021 run                                                                                                                  
+    endBin = Utility::fgkNumBins-1;
+    if (fEventFinderID == kCCMDynamicLengthEventID) {
+      for (bin2 = timeBin; bin2 < Utility::fgkNumBins-10; ++bin2) { 
+        double integral_1 = fAccumWaveform->GetIndex(bin2,fAccumWaveformMethodID,kCCMIntegralTimeID);
+        double integral_2 = fAccumWaveform->GetIndex(bin2+1,fAccumWaveformMethodID,kCCMIntegralTimeID);
+        double integral_3 = fAccumWaveform->GetIndex(bin2+2,fAccumWaveformMethodID,kCCMIntegralTimeID);
+        double integral_4 = fAccumWaveform->GetIndex(bin2+3,fAccumWaveformMethodID,kCCMIntegralTimeID);
+        double integral_5 = fAccumWaveform->GetIndex(bin2+4,fAccumWaveformMethodID,kCCMIntegralTimeID);
+	double integral_6 = fAccumWaveform->GetIndex(bin2+5,fAccumWaveformMethodID,kCCMIntegralTimeID);
+	double integral_7 = fAccumWaveform->GetIndex(bin2+6,fAccumWaveformMethodID,kCCMIntegralTimeID);
+	double integral_8 = fAccumWaveform->GetIndex(bin2+7,fAccumWaveformMethodID,kCCMIntegralTimeID);
+	double integral_9 = fAccumWaveform->GetIndex(bin2+8,fAccumWaveformMethodID,kCCMIntegralTimeID);
+	double integral_10 = fAccumWaveform->GetIndex(bin2+9,fAccumWaveformMethodID,kCCMIntegralTimeID);
+
+        if((integral_1 <= 0.10) && (integral_2 <= 0.10) && (integral_3 <= 0.10) && (integral_4 <= 0.10) && (integral_5 <= 0.10) && (integral_6 <= 0.10) && (integral_7 <= 0.10) && (integral_8 <= 0.10) && (integral_9 <= 0.10) && (integral_10 <= 0.10)){
+	  endBin = bin2;
+	  /*std::cout<<"***********************************************************"<<"\n";
+	  std::cout<<"event end found"<<"\n";
+	  std::cout<<"bin 1 = "<<bin2<<"  has integral = "<<integral_1<<"\n";
+	  std::cout<<"bin 2 = "<<bin2+1<<"  has integral = "<<integral_2<<"\n";
+	  std::cout<<"bin 3 = "<<bin2+2<<"  has integral = "<<integral_3<<"\n";
+	  std::cout<<"bin 4 = "<<bin2+3<<"  has integral = "<<integral_4<<"\n";
+	  std::cout<<"bin 5 = "<<bin2+4<<"  has integral = "<<integral_5<<"\n";
+	  std::cout<<"bin 6 = "<<bin2+5<<"  has integral = "<<integral_6<<"\n";
+	  std::cout<<"bin 7 = "<<bin2+6<<"  has integral = "<<integral_7<<"\n";
+	  std::cout<<"bin 8 = "<<bin2+7<<"  has integral = "<<integral_8<<"\n";
+	  std::cout<<"bin 9 = "<<bin2+8<<"  has integral = "<<integral_9<<"\n";
+	  std::cout<<"bin 10 = "<<bin2+9<<"  has integral = "<<integral_10<<"\n";
+	  std::cout<<"***********************************************************"<<"\n";*/
+	  break;
+	}
+      }
+    } else {
+      endBin = std::min(endBin,startBin+fFixedLength);
     }
+
 
     // just a check
     endBin = std::min(Utility::fgkNumBins-1,endBin);
@@ -186,6 +233,7 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
       MsgDebug(3,MsgLog::Form("event %ld bin %zu start bin = %d and end bin = %d",fEvents->GetEventNumber(),timeBin,startBin,endBin));
     }
 
+
     // now that we have the start and end of the event grab
     // the necessary information and save it in the Events
     // class container
@@ -197,13 +245,19 @@ CCMResult_t CCMFindEvents::ProcessTrigger()
     prevEnd = endBin;
     timeBin = endBin;
   } // end for size_t timeBin
+  
 
+  
   if (fEvents->GetNumEvents() == 0) {
     return kCCMDoNotWrite;
   }
 
   return kCCMSuccess;
 }
+
+
+
+
 
 //_______________________________________________________________________________________
 void CCMFindEvents::Configure(const CCMConfig& c ) 
@@ -235,6 +289,10 @@ void CCMFindEvents::Configure(const CCMConfig& c )
   fIsInit = true;
 }
 
+
+
+
+
 //_______________________________________________________________________________________
 CCMResult_t CCMFindEvents::EndOfJob() 
 { 
@@ -244,6 +302,11 @@ CCMResult_t CCMFindEvents::EndOfJob()
 
   return kCCMSuccess;
 }
+
+
+
+
+
 
 //_______________________________________________________________________________________
 int CCMFindEvents::ExtrapolateStartTime(int startBin) 
@@ -329,11 +392,16 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
 
 } // end int CCMFindEvents::ExtrapolateStartTime
 
+
+
+
+
+
 //-------------------------------------------------------------------------------------------------
 void CCMFindEvents::SaveEvent(int startBin, int endBin)
 {
   std::unique_ptr<SimplifiedEvent> event = std::make_unique<SimplifiedEvent>();
-
+  std::cout<<"event found "<<"\n";
   // declear variables used in the for loops
   TVector3 pos;
   auto pmtInfo = PMTInfoMap::GetPMTInfo(0);
@@ -406,6 +474,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   const int kNumBins40ns = 40.0/Utility::fgkBinWidth;
   const int kNumBins60ns = 60.0/Utility::fgkBinWidth;
   const int kNumBins90ns = 90.0/Utility::fgkBinWidth;
+
   //const int kNumBins30ns = 30.0/Utility::fgkBinWidth;
   //const int kNumBins1p6us = 1.6e3/Utility::fgkBinWidth;
 
@@ -413,6 +482,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   float startTime = Utility::ShiftTime(startBin,fAccumWaveform->GetBeamOffset());
   float endTime = Utility::ShiftTime(endBin,fAccumWaveform->GetBeamOffset());
 
+  
   start = std::max(startBin - kNumBins90ns,0);
   end90nsBin = std::min(startBin+kNumBins90ns,Utility::fgkNumBins-1);
   end60nsBin = std::min(startBin+kNumBins60ns,Utility::fgkNumBins-1);
@@ -514,6 +584,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
 
   //MsgInfo(MsgLog::Form("Max Veto Location(Prompt) %d(%d) Amount(Prompt) %d(%d)",
   //      maxVetoStart,maxVetoPromptStart,maxVeto,maxVetoPrompt));
+  
 
   fAccumWaveform->Max(maxLoc,maxValue,startBin,endBin,fAccumWaveformMethodID,kCCMIntegralTimeID);
 
@@ -548,12 +619,32 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   if (MsgLog::GetGlobalDebugLevel() >= 6) {
     MsgDebug(6,"Loop over pmts");
   }
+
+  
   for (pmt=0; pmt < Utility::fgkNumPMTs; ++pmt) {
     pmtInfo = PMTInfoMap::GetPMTInfo(pmt);
     if (!pmtInfo) {
       continue;
-    }
+      }
+    if (!PMTInfoMap::IsActive(pmt)) {
+      continue;
+    }    
     if (pmtInfo->IsVeto()) {
+      continue;
+    }
+    if((pmt+1)%16 == 0){
+      continue;
+    }
+    if(pmt == 162){
+      continue;
+    }
+    if(pmt == 98 || pmt == 213){
+      continue;
+    }
+    if(pmt == 199){
+      continue;
+    }
+    if(pmt > 254){
       continue;
     }
 
@@ -564,7 +655,6 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
     total = fAccumWaveform->Integrate(startBin,endTotalBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
     //time = Utility::FindFirstNoneEmptyBin<float>(itPMTWaveformBegin,itPMTWaveformBegin+startBin,itPMTWaveformBegin+endTotalBin);
     time = fAccumWaveform->FindFirstNoneEmptyBin(startBin,endTotalBin,fAccumWaveformMethodID,kCCMPMTWaveformID,pmt);
-
     if (total == 0) {
       continue;
     }
@@ -606,6 +696,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
       //largestPMT = pmt;
       //largestPMTCharge = prompt90;
     }
+  
 
     if (pmtInfo->IsUncoated()) {
       promptUncoated += prompt90;
@@ -613,7 +704,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
       if (time != -1) {
         timeUncoated = std::min(time,timeUncoated);
       }
-    } else {
+    }else {
       promptCoated += prompt90;
       totalCoated += total;
       if (time != -1) {
@@ -624,6 +715,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
       pos += *(pmtInfo->GetPosition())*prompt20*prompt20;
       promptFit += prompt20*prompt20;
     }
+  
   } // end for over all digitizer channels
   pos *= 1.0/promptFit;
 
@@ -633,6 +725,9 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
     MsgDebug(4,"Set events parameters");
   }
+
+
+  
 
   // keep track which methods were used to find the event since it all gets put into one big vector
   event->SetEventFinderMethod(fEventFinderID);
@@ -658,6 +753,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   fAccumWaveform->CopyVec<float>(energy,startBin,endTotalBin,fAccumWaveformMethodID,kCCMIntegralTimeID);
   event->AddWaveforms(hits,energy);
 
+  event->SetLength((endBin-startBin)*2.0);
   event->SetLength(endTime-startTime);
   event->SetLargestPMTFraction(largestPMTFraction);
 
@@ -689,6 +785,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   event->SetPMTHits40(pmt40Vec);
   event->SetPMTHits20(pmt20Vec);
   event->SetPMTHitsStart(pmtTimeVec);
+  
 
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
     MsgDebug(4,"Add Event");
