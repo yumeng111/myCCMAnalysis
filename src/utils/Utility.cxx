@@ -257,7 +257,7 @@ std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
   // Cheap way to get list of files matching the expression (assumes
   // some flavor of unix
   char tmp_name[128] = {"/tmp/IOMOD.XXXXXX"};
-  int unused = mkstemp(tmp_name);
+  mkstemp(tmp_name);
   std::string temp_file_regexp(file_regexp);
   bool inLustre = temp_file_regexp.find("lustre") != std::string::npos;
   std::string cmd;
@@ -271,7 +271,7 @@ std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
   cmd += tmp_name;
   cmd += ") >& /dev/null";
   MsgInfo(MsgLog::Form("Command Used %s",cmd.c_str()));
-  unused = system(cmd.c_str());
+  system(cmd.c_str());
 
   std::vector<std::string> localVec;
   // Open the temp file and get the list of files which matched
