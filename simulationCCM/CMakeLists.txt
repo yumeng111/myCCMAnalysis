@@ -50,8 +50,7 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #
 set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES}")
 add_executable(simulationCCM fullsim_CCM.cc ${sources} ${headers})
-#target_link_libraries(simulationCCM ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} ${CMAKE_SHARED_LIBRARY_PREFIX}/libCCMIO.so ${CMAKE_SHARED_LIBRARY_PREFIX}/libCCMDS.so ${CMAKE_SHARED_LIBRARY_PREFIX}/libCCMUtils.so)
-target_link_libraries(simulationCCM ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} ${CMAKE_INSTALL_LIBDIR}/libCCMIO.so ${CMAKE_INSTALL_LIBDIR}/libCCMDS.so ${CMAKE_INSTALL_LIBDIR}/libCCMUtils.so)
+target_link_libraries(simulationCCM ${Geant4_LIBRARIES} ${ROOT_LIBRARIES} CCMIO CCMDS CCMUtils)
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
