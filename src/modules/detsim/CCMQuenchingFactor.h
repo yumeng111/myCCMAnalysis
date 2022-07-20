@@ -1,15 +1,15 @@
 #ifndef CCMQuenchingFactor_h
 #define CCMQuenchingFactor_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-
+#include <map>
+#include <random>
 #include <vector>
+#include <utility>
 #include <iterator>
 #include <algorithm>
-#include <random>
-#include <map>
-#include <utility>
+
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 class CCMQuenchingFactor : public CCMModule
 {

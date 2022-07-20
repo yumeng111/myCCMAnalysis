@@ -9,20 +9,20 @@
  *
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMNuDMPlots.h"
-#include "CCMModuleTable.h"
-
-#include "Events.h"
-#include "SimplifiedEvent.h"
-#include "MsgLog.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-#include "CCMBeamInfo.h"
-
-#include <iterator>
 #include <sstream>
+#include <iterator>
+
+#include "CCMAnalysis/modules/plots/CCMNuDMPlots.h"
+
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/ds/Events.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/CCMBeamInfo.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 #include "TFile.h"
 #include "TH1D.h"

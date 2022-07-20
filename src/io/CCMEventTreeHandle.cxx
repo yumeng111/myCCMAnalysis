@@ -12,26 +12,27 @@
  *               Date: 11-Sep-2008
  *
  *-----------------------------------------------------------*/
-#include "MsgLog.h"
-#include "CCMEventTreeHandle.h"
-#include "RawData.h"
-#include "Pulses.h"
-#include "MCTruth.h"
-#include "SimplifiedEvent.h"
-#include "Events.h"
-#include "AccumWaveform.h"
-#include "Utility.h"
+
+#include <TProcessID.h>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <algorithm>
+
+#include "CCMAnalysis/io/CCMEventTreeHandle.h"
+
+#include "CCMAnalysis/ds/Events.h"
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/MCTruth.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/ds/AccumWaveform.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 #include "TFile.h"
 #include "TTree.h"
 #include "TBranch.h"
-
-#include <TProcessID.h>
-#include <cstring>
-#include <iostream>
-#include <cstdlib>
-#include <algorithm>
-#include <algorithm>
 
 static const char* gsRawData = "rawData";
 static const char* gsPulses = "pulses";

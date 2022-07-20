@@ -10,13 +10,14 @@ Adapter: R. T. Thornton (IU)
 Date: 14-May-2013
 
 -------------------------------------------------------*/
-#include "CCMTaskManager.h"
-#include "CCMRawIO.h"
-#include "CCMRootIO.h"
 
-
-#include <cstdlib>
 #include <ctime>
+#include <cstdlib>
+
+#include "CCMAnalysis/modules/framework/CCMTaskManager.h"
+
+#include "CCMAnalysis/io/CCMRawIO.h"
+#include "CCMAnalysis/io/CCMRootIO.h"
 
 std::unique_ptr<CCMTaskConfig> CCMTaskManager::fgkTaskConfig = nullptr;  //Static instance of config object
 //------------------------------------------------------

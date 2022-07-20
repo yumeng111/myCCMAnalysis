@@ -9,33 +9,33 @@
  *
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMNa22Cuts.h"
-#include "CCMModuleTable.h"
-
-#include "Events.h"
-#include "SimplifiedEvent.h"
-#include "MsgLog.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-
-#include <iostream>
 #include <cmath>
-#include <vector>
-#include <fstream>
 #include <limits>
 #include <memory>
+#include <vector>
+#include <fstream>
+#include <iostream>
 
-#include "TFile.h"
-#include "TChain.h"
-#include "TTree.h"
+#include "CCMAnalysis/modules/reco/CCMNa22Cuts.h"
+
+#include "CCMAnalysis/ds/Events.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
+
+#include "TF1.h"
 #include "TH1D.h"
 #include "TH2D.h"
-#include "TProfile.h"
-#include "TF1.h"
-#include "TVector3.h"
+#include "TFile.h"
 #include "TROOT.h"
+#include "TTree.h"
+#include "TChain.h"
+#include "TProfile.h"
+#include "TVector3.h"
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMNa22Cuts);

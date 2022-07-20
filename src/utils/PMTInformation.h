@@ -7,9 +7,9 @@
 #ifndef PMTInformation_h
 #define PMTInformation_h
 
-#include "TObject.h"
 #include <string>
 
+#include "TObject.h"
 #include "TVector3.h"
 
 /*!**********************************************

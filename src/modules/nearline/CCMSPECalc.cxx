@@ -7,28 +7,28 @@
  * Main code for the SPECalc executable.
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMSPECalc.h"
-#include "CCMModuleTable.h"
-
-#include "RawData.h"
-#include "Pulses.h"
-#include "PMTInfoMap.h"
-#include "SinglePulse.h"
-#include "PMTInformation.h"
-#include "SimplifiedEvent.h"
-#include "MsgLog.h"
-#include "Utility.h"
-#include "NearlineSPEDiag.h"
-
-#include <memory>
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <array>
 #include <map>
+#include <array>
+#include <cmath>
 #include <locale>
+#include <memory>
+#include <vector>
+#include <iostream>
+
+#include "CCMAnalysis/modules/nearline/CCMSPECalc.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/ds/SinglePulse.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/spe/NearlineSPEDiag.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMSPECalc);

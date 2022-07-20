@@ -7,20 +7,20 @@
 #ifndef Utility_h
 #define Utility_h
 
-#include <iostream>
-#include <iomanip>
+#include <map>
+#include <array>
 #include <cmath>
-#include <algorithm>
 #include <chrono>
 #include <vector>
-#include <array>
-#include <map>
 #include <cstring>
 #include <numeric>
-#include <iterator>
-
+#include <iomanip>
 #include <utility>
-#include "data_structures.hh"
+#include <iostream>
+#include <iterator>
+#include <algorithm>
+
+#include "CCMAnalysis/ds/data_structures.hh"
 
 /*!**********************************************
  * \enum HistInfo_t

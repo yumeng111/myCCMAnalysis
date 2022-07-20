@@ -12,9 +12,9 @@
 #ifndef CCMTASKCONFIG_H
 #define CCMTASKCONFIG_H
 
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
 
 class CCMRootIO;
 class CCMRawIO;

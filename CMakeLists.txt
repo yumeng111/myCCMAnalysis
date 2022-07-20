@@ -1,11 +1,11 @@
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(CCMAnalysis)
 
 message(STATUS "source dir: ${CMAKE_SOURCE_DIR}")
 message(STATUS "binary dir: ${CMAKE_BINARY_DIR}")
 
-set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include/${CMAKE_PROJECT_NAME})
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
@@ -41,16 +41,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14 -O3")
 
 set(CCMAnalysis_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/src/
-    ${CMAKE_SOURCE_DIR}/src/utils
-    ${CMAKE_SOURCE_DIR}/src/ds
-    ${CMAKE_SOURCE_DIR}/src/io
-    ${CMAKE_SOURCE_DIR}/src/spe
-    ${CMAKE_SOURCE_DIR}/src/modules/framework
-    ${CMAKE_SOURCE_DIR}/src/modules/detsim
-    ${CMAKE_SOURCE_DIR}/src/modules/reco
-    ${CMAKE_SOURCE_DIR}/src/modules/nearline
-    ${CMAKE_SOURCE_DIR}/src/modules/plots
-    ${CMAKE_SOURCE_DIR}/src/modules/templates
 )
 
 #Set the library version

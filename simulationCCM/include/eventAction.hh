@@ -7,11 +7,12 @@ Does not contain any actions.
 #ifndef eventAction_h
 #define eventAction_h 1
 
-#include "G4UserEventAction.hh"
+#include <memory>
+
 #include "globals.hh"
 
-#include <memory>
-#include "CCMRootIO.h"
+#include "CCMAnalysis/io/CCMRootIO.h"
+#include "G4UserEventAction.hh"
 
 class TObjArray;
 class TFile;

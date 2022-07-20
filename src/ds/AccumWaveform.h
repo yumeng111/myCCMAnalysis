@@ -7,13 +7,13 @@
 #ifndef AccumWaveform_h
 #define AccumWaveform_h
 
-#include <vector>
 #include <map>
+#include <vector>
 #include <utility>
 #include <iterator>
 
-#include "Utility.h"
-#include "MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/MsgLog.h"
 
 #include "TObject.h"
 

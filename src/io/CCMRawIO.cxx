@@ -9,16 +9,18 @@
  *     Date: May 7, 2020
  *
  *-----------------------------------------------------------*/
-#include <cstdlib>
-#include <unistd.h>
-#include <cstdio>
-#include <cstring>
 
-#include "Utility.h"
-#include "PMTInfoMap.h"
-#include "MsgLog.h"
-#include "CCMRawIO.h"
-#include "RawData.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <unistd.h>
+
+#include "CCMAnalysis/io/CCMRawIO.h"
+
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/MsgLog.h"
 
 //__________________________________________________
 CCMRawIO::CCMRawIO()

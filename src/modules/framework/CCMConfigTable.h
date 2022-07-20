@@ -14,10 +14,10 @@
 #ifndef CCMCONFIGTABLE_H
 #define CCMCONFIGTABLE_H
 
-#include <iostream>
-#include <string>
-#include <list>
 #include <map>
+#include <list>
+#include <string>
+#include <iostream>
 
 class CCMConfig;
 

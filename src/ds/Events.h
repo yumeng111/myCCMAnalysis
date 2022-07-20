@@ -7,12 +7,13 @@
 #ifndef Events_h
 #define Events_h
 
-#include <vector>
 #include <array>
+#include <vector>
 #include <iostream>
 #include <sys/types.h>
 
-#include "SimplifiedEvent.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+
 #include "TObject.h"
 
 /*!**********************************************

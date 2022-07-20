@@ -16,65 +16,59 @@
  *
  ***********************************************/
 // include your .h file here
-#include "CCMSingletTriplet.h"
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMModuleTable.h"
-
-#include "Events.h"
-#include "SimplifiedEvent.h"
-#include "MsgLog.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-
-#include "RawData.h"
-#include "Pulses.h"
-#include "Utility.h"
-#include "SinglePulse.h"
-#include "SimplifiedEvent.h"
-
-#include <sstream>
-#include <numeric>
-#include <iostream>
-#include <cmath>
-#include <vector>
-#include <array>
 #include <map>
-#include <algorithm>
-#include <memory>
-#include <math.h>
-
-#include <fstream>
-#include <limits>
+#include <array>
+#include <cmath>
 #include <locale>
+#include <limits>
+#include <math.h>
+#include <memory>
+#include <vector>
+#include <fstream>
+#include <numeric>
+#include <sstream>
+#include <iostream>
+#include <algorithm>
 
-#include "TROOT.h"
-#include "TFile.h"
-#include "TChain.h"
-#include "TTree.h"
-#include "TH2.h"
-#include "TStyle.h"
-#include "TCanvas.h"
-#include "TText.h"
-#include "TMath.h"
-#include "TLatex.h"
-#include "TLegend.h"
-#include "TLine.h"
-#include "TVector.h"
-#include "TTreeReader.h"
-#include "TTreeReaderValue.h"
-#include "TMultiGraph.h"
-#include "TSystemDirectory.h"
-#include "TSystemFile.h"
-#include "TSQLServer.h"
-#include "TSQLResult.h"
-#include "TSQLRow.h"
+#include "CCMAnalysis/modules/reco/CCMSingletTriplet.h"
 
+#include "CCMAnalysis/ds/Events.h"
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/ds/SinglePulse.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 #include "TF1.h"
+#include "TH2.h"
+#include "TFile.h"
+#include "TLine.h"
+#include "TMath.h"
+#include "TROOT.h"
+#include "TText.h"
+#include "TTree.h"
+#include "TChain.h"
+#include "TStyle.h"
+#include "TLatex.h"
+#include "TCanvas.h"
+#include "TLegend.h"
+#include "TSQLRow.h"
+#include "TVector.h"
 #include "TVector3.h"
-
+#include "TSQLServer.h"
+#include "TSQLResult.h"
+#include "TMultiGraph.h"
+#include "TSystemFile.h"
+#include "TTreeReader.h"
+#include "TSystemDirectory.h"
+#include "TTreeReaderValue.h"
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMSingletTriplet);

@@ -10,7 +10,6 @@
 #include <vector>
 #include <iostream>
 #include <sys/types.h>
-#include <vector>
 
 #include "TObject.h"
 

@@ -7,15 +7,16 @@
 #ifndef SimplifiedEvent_h
 #define SimplifiedEvent_h
 
-#include "SinglePulse.h"
-#include "TObject.h"
-#include "Utility.h"
-#include "MsgLog.h"
+#include "CCMAnalysis/ds/SinglePulse.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
 
-#include <iostream>
-#include <vector>
 #include <map>
+#include <vector>
 #include <utility>
+#include <iostream>
+
+#include "TObject.h"
 
 //class BoardInfo;
 //class ChannelInfo;

@@ -6,25 +6,25 @@
  * Main code to model the LiqAr quenching factor.
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMQuenchingFactor.h"
-#include "CCMModuleTable.h"
+#include <map>
+#include <array>
+#include <cmath>
+#include <locale>
+#include <memory>
+#include <vector>
+#include <iostream>
 
-#include "MCTruth.h"
-#include "MsgLog.h"
-#include "Utility.h"
+#include "CCMAnalysis/modules/detsim/CCMQuenchingFactor.h"
+
+#include "CCMAnalysis/ds/MCTruth.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 #include "TROOT.h"
 #include "TFile.h"
-
-#include <memory>
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <array>
-#include <map>
-#include <locale>
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMQuenchingFactor);

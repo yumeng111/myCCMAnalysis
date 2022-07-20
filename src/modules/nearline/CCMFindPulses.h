@@ -1,15 +1,15 @@
 #ifndef CCMFindPulses_h
 #define CCMFindPulses_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-#include "data_structures.hh"
+#include <map>
+#include <vector>
+
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/ds/data_structures.hh"
+#include "CCMAnalysis/modules/framework/CCMModule.h"
 
 class Pulses;
 class RawData;
-
-#include <vector>
-#include <map>
 
 class CCMFindPulses : public CCMModule
 {

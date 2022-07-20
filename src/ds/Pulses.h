@@ -7,15 +7,15 @@
 #ifndef Pulses_h
 #define Pulses_h
 
-#include <vector>
 #include <array>
+#include <vector>
 #include <iostream>
 #include <sys/types.h>
 
-#include "Utility.h"
-#include "PMTInfoMap.h"
+#include "CCMAnalysis/ds/SinglePulse.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
 
-#include "SinglePulse.h"
 #include "TObject.h"
 
 /*!**********************************************

@@ -14,11 +14,12 @@
 #ifndef CCMMODULE_H
 #define CCMMODULE_H
 
-#include <stdint.h>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
+#include <stdint.h>
 
-#include "Utility.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 class CCMModule; //needed for typedef
 class CCMConfig;
@@ -27,8 +28,6 @@ class AccumWaveform;
 class RawData;
 class Pulses;
 class MCTruth;
-
-#include <vector>
 
 typedef CCMModule* (*ModuleMaker_t)(const char* version);
 

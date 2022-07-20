@@ -1,10 +1,10 @@
 #ifndef CCMSPECalc_h
 #define CCMSPECalc_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-
 #include <memory>
+
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 
 class RawData;

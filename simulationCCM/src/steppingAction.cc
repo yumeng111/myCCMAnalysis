@@ -7,6 +7,10 @@ Adjustment to the output, perhaps to better fit the .root data style, should be 
 
 Current active functions:
  */
+
+#include <sstream>
+#include <string>
+
 #include "steppingAction.hh"
 #include "eventAction.hh"
 #include "detectorConstruction.hh"
@@ -18,8 +22,6 @@ Current active functions:
 #include "G4LogicalVolume.hh"
 #include "G4UnitsTable.hh"
 #include "G4SystemOfUnits.hh"
-#include <sstream>
-#include <string>
 
 //Constructor
 steppingAction::steppingAction(eventAction* eventaction)

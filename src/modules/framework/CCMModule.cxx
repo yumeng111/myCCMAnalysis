@@ -11,8 +11,10 @@
   Date: 14-May-2013
 
 -------------------------------------------------------*/
-#include "CCMModule.h"
-#include "MsgLog.h"
+
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+
+#include "CCMAnalysis/utils/MsgLog.h"
 
 //------------------------------------------------------
 CCMModule::CCMModule(const char* name)

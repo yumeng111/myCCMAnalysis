@@ -3,32 +3,32 @@
  * \author R.T. Thornton (LANL), E. Dunton (Columbia)
  * \date November 19, 2020
  *
- * Main code to modle the response of the PMTs
+ * Main code to model the response of the PMTs
  * in the simulation.
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMStrobeOverlay.h"
-#include "CCMModuleTable.h"
+#include <map>
+#include <array>
+#include <cmath>
+#include <locale>
+#include <memory>
+#include <vector>
+#include <iostream>
 
-#include "CCMRootIO.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-#include "AccumWaveform.h"
-#include "MsgLog.h"
-#include "Utility.h"
+#include "CCMAnalysis/modules/detsim/CCMStrobeOverlay.h"
+
+#include "CCMAnalysis/ds/AccumWaveform.h"
+#include "CCMAnalysis/io/CCMRootIO.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 #include "TROOT.h"
 #include "TFile.h"
-
-#include <memory>
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <array>
-#include <map>
-#include <locale>
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMStrobeOverlay);

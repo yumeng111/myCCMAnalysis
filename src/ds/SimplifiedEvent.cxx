@@ -4,12 +4,14 @@
  * \author R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
-#include "SimplifiedEvent.h"
-#include "MsgLog.h"
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
 #include <iterator>
+
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+
+#include "CCMAnalysis/utils/MsgLog.h"
 
 ClassImp(SimplifiedEvent)
 

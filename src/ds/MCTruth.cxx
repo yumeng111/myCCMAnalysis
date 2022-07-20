@@ -4,12 +4,14 @@
  * \author R. T. Thornton (LANL)
  * \date November 11, 2020
  ***********************************************/
-#include "MCTruth.h"
-#include "MsgLog.h"
 
 #include <memory>
-#include <algorithm>
 #include <numeric>
+#include <algorithm>
+
+#include "CCMAnalysis/ds/MCTruth.h"
+
+#include "CCMAnalysis/utils/MsgLog.h"
 
 ClassImp(MCTruth)
 

@@ -1,12 +1,12 @@
 #ifndef CCMPMTResponse_h
 #define CCMPMTResponse_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-
-#include <random>
 #include <map>
+#include <random>
 #include <utility>
+
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 class TFile;
 //class TH1D;

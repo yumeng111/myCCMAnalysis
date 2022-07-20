@@ -8,9 +8,10 @@
 #ifndef MakeSPECalibrationHists_h
 #define MakeSPECalibrationHists_h
 
-#include "Utility.h"
 #include <memory>
 #include <map>
+
+#include "CCMAnalysis/utils/Utility.h"
 
 class TLine;
 class TTree;

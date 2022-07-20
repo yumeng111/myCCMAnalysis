@@ -9,26 +9,27 @@
  *     Date: May 7, 2020
  *
  *-----------------------------------------------------------*/
-#include <cstdlib>
-#include <unistd.h>
 #include <cstdio>
-#include <cstring>
-#include <iostream>
 #include <vector>
-#include <sstream>
+#include <cstdlib>
+#include <cstring>
 #include <numeric>
-#include <algorithm>
-#include <iterator>
+#include <sstream>
 #include <fstream>
+#include <iostream>
+#include <iterator>
+#include <unistd.h>
+#include <algorithm>
 
-#include "MsgLog.h"
-#include "CCMRootIO.h"
-#include "RawData.h"
-#include "Pulses.h"
-#include "MCTruth.h"
-#include "AccumWaveform.h"
-#include "Events.h"
-#include "SimplifiedEvent.h"
+#include "CCMAnalysis/io/CCMRootIO.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/Events.h"
+#include "CCMAnalysis/ds/MCTruth.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/ds/AccumWaveform.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/utils/MsgLog.h"
 
 #include "TFile.h"
 #include "TObjString.h"

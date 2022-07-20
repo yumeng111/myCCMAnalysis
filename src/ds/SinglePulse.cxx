@@ -4,10 +4,12 @@
  * \author R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
-#include "SinglePulse.h"
-#include "MsgLog.h"
 
 #include <cmath>
+
+#include "CCMAnalysis/ds/SinglePulse.h"
+
+#include "CCMAnalysis/utils/MsgLog.h"
 
 ClassImp(SinglePulse)
 

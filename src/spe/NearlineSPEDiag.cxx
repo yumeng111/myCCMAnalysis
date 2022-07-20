@@ -4,25 +4,27 @@
  * \author T.J. Schuab and R.T. Thornton
  * \date February 24, 2020
  ***********************************************/
-#include "NearlineSPEDiag.h"
-#include "MakeSPECalibrationHists.h"
-#include "SPECalibrationVariables.h"
-#include "Pulses.h"
-#include "RawData.h"
-#include "MsgLog.h"
-#include "PMTInfoMap.h"
-#include "Utility.h"
-#include "PMTInformation.h"
 
-#include "TChain.h"
-#include "TTree.h"
-#include "TFile.h"
-#include "TH1D.h"
-#include "TF1.h"
-
+#include <cstring>
 #include <fstream>
 #include <iostream>
-#include <cstring>
+
+#include "CCMAnalysis/spe/NearlineSPEDiag.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/spe/MakeSPECalibrationHists.h"
+#include "CCMAnalysis/spe/SPECalibrationVariables.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
+
+#include "TF1.h"
+#include "TH1D.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TChain.h"
 
 NearlineSPEDiag::NearlineSPEDiag()
 {

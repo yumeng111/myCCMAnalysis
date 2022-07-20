@@ -14,10 +14,11 @@
 #ifndef CCMMODULETABLE_H
 #define CCMMODULETABLE_H
 
-#include <string>
 #include <map>
+#include <string>
 
-#include "CCMModule.h"
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/MsgLog.h"
 
 class CCMConfig;
 class CCMModule;
@@ -40,7 +41,6 @@ private:
 
 };
 
-#include "MsgLog.h"
 ////////////////////////////////////////////////////////////////////////
 // MODULE_DECL is a macro to declare the existence of a module to a
 // program

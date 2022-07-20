@@ -1,12 +1,12 @@
 #ifndef CCMStrobeOverlay_h
 #define CCMStrobeOverlay_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-
 #include <vector>
 #include <iterator>
 #include <algorithm>
+
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 class CCMRootIO;
 

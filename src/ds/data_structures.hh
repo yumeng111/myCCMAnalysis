@@ -7,11 +7,11 @@
  ***********************************************/
 #ifndef data_structures_hh
 #define data_structures_hh
-#include <sys/types.h>
 #include <time.h>
-#include <stdbool.h>
-#include <vector>
 #include <bitset>
+#include <vector>
+#include <stdbool.h>
+#include <sys/types.h>
 //#define NEVENTSSHM 1000
 #define NEVENTSSHM 5000
 #define NEVENTSDELAY 50

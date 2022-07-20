@@ -4,22 +4,24 @@
  * \author R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
-#include "Pulses.h"
-#include "Utility.h"
-#include "MsgLog.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
+
+#include <map>
+#include <cmath>
+#include <limits>
+#include <utility>
+#include <iterator>
+#include <algorithm>
+
+#include "CCMAnalysis/ds/Pulses.h"
+
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 #include "TFile.h"
 #include "TTreeReader.h"
 #include "TTreeReaderValue.h"
-
-#include <cmath>
-#include <algorithm>
-#include <iterator>
-#include <limits>
-#include <map>
-#include <utility>
 
 ClassImp(Pulses)
 

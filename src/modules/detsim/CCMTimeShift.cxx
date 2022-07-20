@@ -7,14 +7,14 @@
  * in the simulation.
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMTimeShift.h"
-#include "CCMModuleTable.h"
+#include "CCMAnalysis/modules/detsim/CCMTimeShift.h"
 
-#include "Pulses.h"
-#include "MsgLog.h"
-#include "Utility.h"
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 #include "TROOT.h"
 #include "TFile.h"

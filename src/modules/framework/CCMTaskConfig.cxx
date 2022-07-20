@@ -9,32 +9,32 @@
   Date: 14-May-2013
 
 -------------------------------------------------------*/
+#include <cstring>
+#include <fstream>
 #include <iostream>
 #include <stdlib.h>
 #include <algorithm>
-#include <fstream>
-#include <cstring>
+
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+
+#include "CCMAnalysis/io/CCMRootIO.h"
+#include "CCMAnalysis/io/CCMRawIO.h"
+#include "CCMAnalysis/modules/framework/DOMCount.hpp"
+#include "CCMAnalysis/modules/framework/CCMTaskConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMConfigTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+
+//XML Parsing
+#include <xercesc/dom/DOM.hpp>
+#include <xercesc/util/XMLString.hpp>
+#include <xercesc/sax/HandlerBase.hpp>
+#include <xercesc/util/PlatformUtils.hpp>
+#include <xercesc/parsers/XercesDOMParser.hpp>
 
 #include "RConfigure.h"
-
-//SciBath resources
-#include "CCMTaskConfig.h"
-#include "MsgLog.h"
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMConfigTable.h"
-#include "Utility.h"
-#include "CCMRootIO.h"
-#include "CCMRawIO.h"
-#include "PMTInfoMap.h"
-//#include "CCMRawIO.h"
-//XML Parsing
-#include <xercesc/parsers/XercesDOMParser.hpp>
-#include <xercesc/dom/DOM.hpp>
-#include <xercesc/sax/HandlerBase.hpp>
-#include <xercesc/util/XMLString.hpp>
-#include <xercesc/util/PlatformUtils.hpp>
-#include "DOMCount.hpp"
 
 XERCES_CPP_NAMESPACE_USE
 

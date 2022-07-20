@@ -7,28 +7,26 @@
  * in the simulation.
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMPMTResponse.h"
-#include "CCMModuleTable.h"
+#include <array>
+#include <cctype>
 
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-#include "MCTruth.h"
-#include "SinglePulse.h"
-#include "Pulses.h"
-#include "MsgLog.h"
-#include "Utility.h"
+#include "CCMAnalysis/modules/detsim/CCMPMTResponse.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/MCTruth.h"
+#include "CCMAnalysis/ds/SinglePulse.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 #include "TROOT.h"
 #include "TFile.h"
 #include "TH2D.h"
-
 #include "TRandom3.h"
-
-#include <array>
-#include <cctype>
-
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMPMTResponse);

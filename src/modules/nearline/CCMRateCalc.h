@@ -1,11 +1,10 @@
 #ifndef CCMRateCalc_h
 #define CCMRateCalc_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-
 #include <array>
 
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 class CCMRateCalc : public CCMModule
 {

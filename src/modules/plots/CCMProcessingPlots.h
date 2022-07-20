@@ -1,11 +1,11 @@
 #ifndef CCMProcessingPlots_h
 #define CCMProcessingPlots_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-
 #include <map>
 #include <ctime>
+
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 #include "THnSparse.h"
 

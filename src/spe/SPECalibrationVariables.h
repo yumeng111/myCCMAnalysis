@@ -16,7 +16,6 @@ class TH1D;
 class TCanvas;
 
 
-
 /*!**********************************************
  * \class SPECalibrationVariables
  * \brief Container for the information obtained while determining the SPE values

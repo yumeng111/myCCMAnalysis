@@ -1,12 +1,12 @@
 #ifndef CCMTemplateAna_h
 #define CCMTemplateAna_h
 
-#include "Utility.h"
-#include "CCMModule.h"
-
 #include <vector>
 #include <iterator>
 #include <algorithm>
+
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/modules/framework/CCMModule.h"
 
 class TFile;
 class TH1D;

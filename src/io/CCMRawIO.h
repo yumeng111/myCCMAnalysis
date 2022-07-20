@@ -9,15 +9,15 @@
  * \date May 7, 2020
  */
 
-#include <cstring>
-#include <stdint.h>
-#include <vector>
 #include <memory>
-#include <iostream>
+#include <vector>
+#include <cstring>
 #include <fstream>
+#include <iostream>
+#include <stdint.h>
 
-#include "Utility.h"
-#include "data_structures.hh"
+#include "CCMAnalysis/ds/data_structures.hh"
+#include "CCMAnalysis/utils/Utility.h"
 
 class RawData;
 

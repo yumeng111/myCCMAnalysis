@@ -6,19 +6,19 @@ Currently handles the output to ROOT, using a file defined in the BeginOfEventAc
 trigger information obtained in the EndOfEventAction, and defines a method for adding
 a hit (optical photon to PMT).
 */
+#include <sstream>
+#include <iostream>
+
 #include "eventAction.hh"
 #include "runAction.hh"
 #include "primaryGenerator.hh"
 #include "detectorConstruction.hh"
 
-#include "MCTruth.h"
+#include "CCMAnalysis/ds/MCTruth.h"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
 #include "G4EventManager.hh"
-#include <sstream>
-
-#include <iostream>
 
 //Constructor
 eventAction::eventAction(runAction* runaction)

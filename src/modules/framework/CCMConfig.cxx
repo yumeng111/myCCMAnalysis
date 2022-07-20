@@ -17,9 +17,12 @@
   Date: 14-May-2013
 
 -------------------------------------------------------*/
+
 #include <sstream>
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
+
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
 
 //------------------------------------------------------
 CCMConfig::CCMConfig(const char* name, const char* version, const char* source) 

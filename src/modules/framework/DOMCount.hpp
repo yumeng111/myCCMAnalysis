@@ -62,8 +62,8 @@
 // ---------------------------------------------------------------------------
 //#include <dom/DOMErrorHandler.hpp>
 //#include <util/XMLString.hpp>
-#include <xercesc/dom/DOMErrorHandler.hpp>
 #include <xercesc/util/XMLString.hpp>
+#include <xercesc/dom/DOMErrorHandler.hpp>
 #if defined(XERCES_NEW_IOSTREAMS)
 #include <iostream>
 #else

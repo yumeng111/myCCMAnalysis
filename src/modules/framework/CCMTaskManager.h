@@ -13,29 +13,26 @@
 #ifndef CCMTASKMANAGER_H
 #define CCMTASKMANAGER_H
 
-#include <string>
-#include <vector>
 #include <list>
 #include <memory>
+#include <string>
+#include <vector>
 
-//Include these her so we don't have to in the derived classes
-#include "CCMTaskConfig.h"
-#include "CCMModule.h"
-#include "CCMModuleTable.h"
-#include "MsgLog.h"
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMConfigTable.h"
+// Include these here so we don't have to in the derived classes
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/modules/framework/CCMTaskConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMConfigTable.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
 
-#include "Utility.h"
-
-#include "MsgLog.h"
-
-#include "AccumWaveform.h"
-#include "MCTruth.h"
-#include "Events.h"
-#include "RawData.h"
-#include "Pulses.h"
+#include "CCMAnalysis/ds/Events.h"
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/MCTruth.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/ds/AccumWaveform.h"
 
 class CCMRootIO;
 class CCMRawIO;

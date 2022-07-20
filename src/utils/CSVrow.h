@@ -11,12 +11,12 @@
 #ifndef CSVrow_h
 #define CSVrow_h
 
-#include <iterator>
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include <vector>
 #include <string>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <iterator>
 
 //-------------------------------------------------------------------------------------------------
 /*!**********************************************

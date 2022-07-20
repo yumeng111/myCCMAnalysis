@@ -4,16 +4,17 @@
  * \author R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
-#include "Events.h"
-#include "Utility.h"
-#include "MsgLog.h"
-
-#include <cmath>
-#include <algorithm>
-#include <iterator>
-#include <limits>
 #include <map>
+#include <cmath>
+#include <limits>
 #include <utility>
+#include <iterator>
+#include <algorithm>
+
+#include "CCMAnalysis/ds/Events.h"
+
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 ClassImp(Events)
 

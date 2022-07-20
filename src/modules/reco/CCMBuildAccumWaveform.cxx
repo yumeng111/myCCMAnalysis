@@ -7,31 +7,33 @@
  * that are for a specific trigger
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMBuildAccumWaveform.h"
-#include "CCMModuleTable.h"
 
-#include "RawData.h"
-#include "Pulses.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-#include "SimplifiedEvent.h"
-#include "AccumWaveform.h"
-#include "MsgLog.h"
-#include "Utility.h"
+#include <map>
+#include <array>
+#include <cmath>
+#include <locale>
+#include <memory>
+#include <vector>
+#include <iterator>
+#include <iostream>
+
+#include "CCMAnalysis/modules/reco/CCMBuildAccumWaveform.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/ds/AccumWaveform.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 #include "TROOT.h"
 #include "TFile.h"
 #include "TH2.h"
-
-#include <memory>
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <array>
-#include <map>
-#include <locale>
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMBuildAccumWaveform);

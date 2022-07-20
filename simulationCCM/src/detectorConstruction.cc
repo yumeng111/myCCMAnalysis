@@ -9,6 +9,8 @@ This code is very long, and should be split into a number of seperate portions e
 This version is the current best fit for the calibration data I have. It includes the layered detector that clouds the outer edges of the upper portions of the Fiducial volume, the lower absorption lengths near the bottom, the bottom 'foil cone' that helps match data and represents the LED and foil distortions in the area, the less effective TPB for the foils as opposed to the PMTs. It also uses a number of tricks that the other versions don't to make it easier to change a number of variables without messing up their relations (as the best fit is not yet a perfect fit, I am continuing to improve it constantly and thus this version will not likely stay the best for long). 
  */
 
+#include <sstream>
+
 #include "detectorConstruction.hh"
 #include "detectorMessenger.hh"
 
@@ -40,7 +42,6 @@ This version is the current best fit for the calibration data I have. It include
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4SubtractionSolid.hh"
-#include <sstream>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 

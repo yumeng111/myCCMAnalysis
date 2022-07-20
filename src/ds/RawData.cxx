@@ -4,13 +4,15 @@
  * \author R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
-#include "RawData.h"
-#include "Pulses.h"
-#include "MsgLog.h"
 
 #include <memory>
-#include <algorithm>
 #include <numeric>
+#include <algorithm>
+
+#include "CCMAnalysis/ds/RawData.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/utils/MsgLog.h"
 
 ClassImp(RawData)
 

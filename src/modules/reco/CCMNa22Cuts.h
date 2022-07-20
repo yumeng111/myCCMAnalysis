@@ -1,8 +1,8 @@
 #ifndef CCMNa22Cuts_h
 #define CCMNa22Cuts_h
 
-#include "Utility.h"
-#include "CCMModule.h"
+#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/utils/Utility.h"
 
 class TTree;
 class TFile;
@@ -185,6 +185,7 @@ class CCMNa22Cuts : public CCMModule
     TFile * fOutfile;
     TTree * fTree;
     double fEnergy;
+    double fTotalEnergy;
     double fLength;
     double fHits;
     int fNumPMTs;

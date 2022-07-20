@@ -10,41 +10,39 @@
  * in the module subdir where your module resides (eg reco)
  ***********************************************/
 // include your .h file here
-#include "CCMTemplateAna.h"
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMModuleTable.h"
-
-#include "Events.h"
-#include "SimplifiedEvent.h"
-#include "MsgLog.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-
-#include "RawData.h"
-#include "Pulses.h"
-#include "Utility.h"
-
-#include <iostream>
-#include <cmath>
-#include <vector>
-#include <fstream>
-#include <limits>
-#include <memory>
-#include <array>
 #include <map>
+#include <array>
+#include <cmath>
+#include <memory>
+#include <vector>
+#include <limits>
 #include <locale>
+#include <fstream>
+#include <iostream>
 
-#include "TROOT.h"
-#include "TFile.h"
-#include "TChain.h"
-#include "TTree.h"
+#include "CCMAnalysis/modules/templates/CCMTemplateAna.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/Events.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/ds/SimplifiedEvent.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
+
+#include "TF1.h"
 #include "TH1D.h"
 #include "TH2D.h"
-#include "TF1.h"
+#include "TFile.h"
+#include "TROOT.h"
+#include "TTree.h"
+#include "TChain.h"
 #include "TVector3.h"
-
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMTemplateAna);

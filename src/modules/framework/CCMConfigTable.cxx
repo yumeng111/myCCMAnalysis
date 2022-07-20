@@ -11,9 +11,11 @@
   Date: 14-May-2013
 
 -------------------------------------------------------*/
-#include "CCMConfigTable.h"
-#include "CCMConfig.h"
-#include "MsgLog.h"
+
+#include "CCMAnalysis/modules/framework/CCMConfigTable.h"
+
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/utils/MsgLog.h"
 
 CCMConfigTable* CCMConfigTable::fInstance = 0;
 

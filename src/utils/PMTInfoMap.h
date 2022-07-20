@@ -7,11 +7,11 @@
 #ifndef PMTInfoMap_h
 #define PMTInfoMap_h
 
-#include <fstream>
 #include <map>
-#include <cstring>
-#include <iostream>
 #include <vector>
+#include <cstring>
+#include <fstream>
+#include <iostream>
 
 class TTree;
 class PMTInformation;
@@ -83,6 +83,6 @@ class PMTInfoMap
 
 };
 
-#include "PMTInfoMap.tcc"
+#include "CCMAnalysis/utils/PMTInfoMap.tcc"
 
 #endif // PMTInfoMap_h

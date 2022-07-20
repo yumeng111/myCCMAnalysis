@@ -17,7 +17,6 @@
 -------------------------------------------------------*/
 #include "CCMConfigParam.h"
 
-
 //------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const CCMConfigParam& p)
 {

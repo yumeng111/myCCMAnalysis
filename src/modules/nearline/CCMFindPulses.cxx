@@ -12,36 +12,36 @@
  *
  ***********************************************/
 
-#include "CCMConfig.h"
-#include "CCMConfigParam.h"
-#include "CCMFindPulses.h"
-#include "CCMModuleTable.h"
-
-#include "MsgLog.h"
-#include "PMTInfoMap.h"
-#include "PMTInformation.h"
-#include "Pulses.h"
-#include "RawData.h"
-#include "data_structures.hh"
-
-#include "TF1.h"
-#include "TFile.h"
-#include "TH2D.h"
-#include "TROOT.h"
-#include "TSQLResult.h"
-#include "TSQLRow.h"
-#include "TSQLServer.h"
-#include "TSystem.h"
-#include "TTree.h"
-
 #include <cmath>
 #include <cstdio>
+#include <vector>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
-#include <vector>
+#include <iostream>
+
+#include "CCMAnalysis/modules/nearline/CCMFindPulses.h"
+
+#include "CCMAnalysis/ds/Pulses.h"
+#include "CCMAnalysis/ds/RawData.h"
+#include "CCMAnalysis/ds/data_structures.hh"
+#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
+
+#include "TF1.h"
+#include "TH2D.h"
+#include "TFile.h"
+#include "TROOT.h"
+#include "TTree.h"
+#include "TSystem.h"
+#include "TSQLRow.h"
+#include "TSQLResult.h"
+#include "TSQLServer.h"
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMFindPulses);

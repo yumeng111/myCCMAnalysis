@@ -6,24 +6,26 @@
  * This code was originally written by T.J. Schuab and was adapted 
  * by R. T. Thornton to fit the CCM analysis framework
  ***********************************************/
-#include "MakeSPECalibrationHists.h"
-#include "SPECalibrationVariables.h"
-#include "MsgLog.h"
-
-#include "TFile.h"
-#include "TTree.h"
-#include "TH1D.h"
-#include "TH2Poly.h"
-#include "TH2D.h"
-#include "TLegend.h"
-#include "TCanvas.h"
-#include "TStyle.h"
-#include "TLine.h"
-#include "TGaxis.h"
-#include "TLatex.h"
-#include "TMath.h"
 
 #include <sstream>
+
+#include "CCMAnalysis/spe/MakeSPECalibrationHists.h"
+
+#include "CCMAnalysis/spe/SPECalibrationVariables.h"
+#include "CCMAnalysis/utils/MsgLog.h"
+
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TMath.h"
+#include "TFile.h"
+#include "TLine.h"
+#include "TTree.h"
+#include "TGaxis.h"
+#include "TLatex.h"
+#include "TStyle.h"
+#include "TCanvas.h"
+#include "TH2Poly.h"
+#include "TLegend.h"
 
 /////////////////////////////////////////////////
 // Define static variables

@@ -8,8 +8,10 @@
   Date: 14-May-2013
 
 -------------------------------------------------------*/
-#include "CCMModuleTable.h"
-#include "MsgLog.h"
+
+#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+
+#include "CCMAnalysis/utils/MsgLog.h"
 
 CCMModuleTable* CCMModuleTable::fInstance = 0;
 
