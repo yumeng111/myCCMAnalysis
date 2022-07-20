@@ -13,7 +13,7 @@ set(LOCAL_SRCS
   )
 
 if(${CMAKE_VERSION} VERSION_LESS "3.20.0")
-    set(LOCAL_PATH "CCMAnalysis/src/spe")
+    set(LOCAL_PATH "src/CCMAnalysis/spe")
 else()
     cmake_path(RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR BASE_DIRECTORY "${PROJECT_SOURCE_DIR}" OUTPUT_VARIABLE LOCAL_PATH)
 endif()
