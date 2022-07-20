@@ -1,5 +1,5 @@
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
-cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(CCMAnalysis)
 
 message(STATUS "source dir: ${CMAKE_SOURCE_DIR}")
@@ -78,7 +78,13 @@ add_subdirectory(src/io)
 add_subdirectory(src/spe)
 add_subdirectory(src/modules)
 
-add_subdirectory(simulationCCM)
+if(NOT DEFINED BUILD_SIMULATION)
+    message(STATUS "Setting BUILD_SIMULATION=TRUE by default.")
+    set(BUILD_SIMULATION true)
+endif()
+if(${BUILD_SIMULATION})
+    add_subdirectory(simulationCCM)
+endif()
 #---Create  a main program using the library
 #add_executable(EnergyCalibration energyCalibration.cc)
 #target_link_libraries(EnergyCalibration Event)
