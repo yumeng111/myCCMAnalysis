@@ -271,8 +271,7 @@ std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
   cmd += tmp_name;
   cmd += ") >& /dev/null";
   MsgInfo(MsgLog::Form("Command Used %s",cmd.c_str()));
-  system(cmd.c_str());
-
+  
   std::vector<std::string> localVec;
   // Open the temp file and get the list of files which matched
   static const int s = 256;

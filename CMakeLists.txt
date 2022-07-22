@@ -37,7 +37,8 @@ set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} ${XercesC_LIBRARIES})
 
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} ${XercesC_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS} -std=c++14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14 -O3")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14 -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wno-unused-result -std=c++14 -Og")
 
 set(CCMAnalysis_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/src/
