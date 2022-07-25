@@ -212,7 +212,7 @@ uint32_t CCMRawIO::Advance(uint32_t n)
   }
 
   // Reverted change that replaced "ndone" with "(ndone-1)". May cause issues
-  fInFile.seekg(startPosition+length*ndone);
+  fInFile.seekg(startPosition+length*(ndone-1));
   fInFile.read((char*)&fData, length);
   if (fInFile.eof()) {
     fReadOK = false;
