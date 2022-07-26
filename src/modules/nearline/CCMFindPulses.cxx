@@ -111,8 +111,14 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
 
   RawData localCopy;
   if (fFromRootFile) {
+    if (MsgLog::GetGlobalDebugLevel() >= 1) {
+      MsgDebug(1,"Using ROOT file");
+    }
     localCopy = *fRawData;
   } else {
+    if (MsgLog::GetGlobalDebugLevel() >= 1) {
+      MsgDebug(1,"Using Binary file");
+    }
     localCopy = *fReadData;
   }
 
