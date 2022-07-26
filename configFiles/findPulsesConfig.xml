@@ -31,15 +31,15 @@
   </Config>
 
   <Config name="PMTMapSetup" version="default">
-    <Param name="MappingFile"><string>/home/daquser/CCMCode/daq_machine_software/sources/CCM_analysis_200/mappings/2021/mapping_master*</string>
+    <Param name="MappingFile"><string>$CCMSOFTWARE/mappings/2021/mapping_master*</string>
       The PMT mapping file to read in. If default is passed the files in $CCMPROJECT/calibrationFiles/2019/mapping_master* will be used
       Must be the first param in this config
     </Param>
-    <Param name="HVOffFile"><string>/home/daquser/CCMCode/daq_machine_software/sources/CCM_analysis_200/mappings/2021/hv_off_2021.csv</string>
+    <Param name="HVOffFile"><string>$CCMSOFTWARE/mappings/2021/hv_off_2021.csv</string>
       List of the HV channels that are off.
       default is $CCMPROJECT/calibrationFiles/2019/hv_off_2019.csv
     </Param>
-    <Param name="CalibrationFile"><string>/home/daquser/CCMCode/daq_machine_software/sources/CCM_analysis_200/mappings/2021/speCalc_run1529to1542.root</string>
+    <Param name="CalibrationFile"><string>$CCMSOFTWARE/mappings/2021/speCalc_run1529to1542.root</string>
       Name of the calibration file to use
       default is $CCMPROJECT/calibrationFiles/2019/root_out_2019ledData_run179_legFix_integral_all_round4_.root
     </Param>
