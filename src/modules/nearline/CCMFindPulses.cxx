@@ -112,13 +112,9 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
   RawData localCopy;
   if (fFromRootFile) {
     localCopy = *fRawData;
-    //MsgWarning("Reading from Root Data");
   } else {
     localCopy = *fReadData;
-    //MsgWarning("Reading from Binary Data");
   }
-
-  //std::cout << "Boards Number = " << localCopy.GetNumBoards() << " channel number = " << localCopy.GetNumChannels() << " board number = " << localCopy.GetBoardEventNum(0) << '\n';
 
   if (!localCopy.GetNumBoards()) {
     MsgWarning("Number of boards is equal to 0, moving on");

@@ -18,7 +18,7 @@
 #pragma link C++ class std::vector<vector<unsigned short>>+;
 #pragma link C++ class std::pair<std::vector<float>,std::vector<int>>+;
 #pragma link C++ class std::map<int,std::pair<std::vector<float>,std::vector<int>>>+;
-#pragma link C++ class std::map<int,std::array<float,6000>>+;
-#pragma link C++ class std::map<int,std::vector<std::array<float,6000>>>+;
+#pragma link C++ class std::map<int,std::array<float,8000>>+;
+#pragma link C++ class std::map<int,std::vector<std::array<float,8000>>>+;
 
 #endif /* __CINT__ */

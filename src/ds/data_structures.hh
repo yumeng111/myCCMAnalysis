@@ -12,18 +12,13 @@
 #include <vector>
 #include <stdbool.h>
 #include <sys/types.h>
-//#define NEVENTSSHM 1000
 #define NEVENTSSHM 5000
 #define NEVENTSDELAY 50
-//#define NDIGITIZERS 17
 #define NDIGITIZERS 5
 #define NCHANNELS 16
-//#define NSAMPLES 9900
 // Remember to update NSAMPLES in src/ds/LinkDef.h
-//#define NSAMPLES 6000
 #define NSAMPLES 8000
 #define PERCENTAFTER 38 // CCM120 8000 samples
-//#define PERCENTAFTER 18 // CCM200 6000 samples
 
 /* Note: DAQ running requires 62.5 pll lock or else will crash without exception. */
 
