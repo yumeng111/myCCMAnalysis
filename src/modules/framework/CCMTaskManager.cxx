@@ -13,6 +13,7 @@ Date: 14-May-2013
 
 #include <ctime>
 #include <cstdlib>
+#include <stdexcept>
 
 #include "CCMAnalysis/modules/framework/CCMTaskManager.h"
 
@@ -131,10 +132,12 @@ CCMResult_t CCMTaskManager::Execute(int32_t nevt)
     outRoot = false;
   }
 
-  if (!rootFileListOut.empty()) {
+  if (not rootFileListOut.empty()) {
     fCurrentOutFileName = rootFileListOut.front();
-  } else {
+  } else if(not rawFileListOut.empty()) {
     fCurrentOutFileName = rawFileListOut.front();
+  } else {
+      throw std::runtime_error("Both output file lists (root and raw) are empty!");
   }
 
   if (!rootFileList.empty()) {
