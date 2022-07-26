@@ -83,7 +83,6 @@ CCMBuildAccumWaveform::~CCMBuildAccumWaveform()
 //_______________________________________________________________________________________
 CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
 {
-  std::cout<<"inside baw"<<"\n";
   if (MsgLog::GetGlobalDebugLevel() >= 1) {
     MsgDebug(1,"Starting BuildAccumWaveform for Trigger");
   }
