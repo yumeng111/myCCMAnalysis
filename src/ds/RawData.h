@@ -96,7 +96,7 @@ class RawData : public TObject
     std::vector<float> fOffset;
     /// Waveform for each PMT
     std::vector<std::vector<u_int16_t>> fWaveforms;
-    /// The size of each waveform for each PMT
+    /// The size of each waveform for each PMT by board and channel
     std::vector<std::vector<u_int16_t>> fSize;
     /// The channel mask for each PMT
     std::vector<std::vector<u_int16_t>> fChannelMask;
