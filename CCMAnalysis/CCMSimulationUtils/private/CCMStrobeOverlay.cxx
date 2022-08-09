@@ -126,8 +126,7 @@ void CCMStrobeOverlay::Configure(const CCMConfig& c )
   c("FileList").Get(tempString);
 
   if (!tempString.empty()) {
-    std::vector<std::string> fileList;
-    Utility::IndirectFileList(tempString.c_str(),fileList);
+    std::vector<std::string> fileList = Utility::IndirectFileList(tempString.c_str());
 
     fStrobeData = std::make_shared<CCMRootIO>();
     fStrobeData->SetParameter("ReadBranches","accumWaveform");

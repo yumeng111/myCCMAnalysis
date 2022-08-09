@@ -57,7 +57,6 @@ public:
   virtual void ConnectAccumWaveform(std::shared_ptr<AccumWaveform> accumWaveform);
   virtual void ConnectMCTruth(std::shared_ptr<MCTruth> mcTruth);
   virtual void ConnectEvents(std::shared_ptr<Events> evt);
-  virtual void ConnectBinaryRawData(std::shared_ptr<RawData> rawData);
   virtual void ConnectRawData(std::shared_ptr<RawData> rawData);
   virtual void ConnectPulses(std::shared_ptr<Pulses> pulses);
   virtual void ConnectInFileName(std::string name);

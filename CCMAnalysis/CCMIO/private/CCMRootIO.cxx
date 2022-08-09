@@ -69,11 +69,10 @@ CCMRootIO::~CCMRootIO()
 }
 
 //__________________________________________________
-void CCMRootIO::SetInFileName(const char* infile)
+void CCMRootIO::SetInFileName(std::string const & infile)
 {
   fInFileList.clear();
-  std::string ifName(infile);
-  fInFileList.push_back(ifName);
+  fInFileList.push_back(infile);
   fFileIndex = 0;
 
 }

@@ -1,9 +1,11 @@
+#include <tuple>
 #include <vector>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <stdint.h>
 #include <string.h>
+#include <argagg/argagg.hpp>
 
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
@@ -12,193 +14,224 @@
 #include "TH1.h"
 #include "TApplication.h"
 
-//
-extern "C" {
-#include <unistd.h>
-#include <sys/time.h>
-#include "getopt.h"
+#define RETURNCHECK(VARTYPE, VARNAME, ARG) VARTYPE VARNAME;\
+    try {\
+        VARNAME = ARG;\
+    } catch (ExitStatus & status) {\
+        success &= status.status == (int)(EXIT_SUCCESS);\
+    }
+
+struct ExitStatus {
+    ExitStatus(int status) : status(status) {}
+    int status;
+};
+
+std::tuple<argagg::parser, argagg::parser_results> parse_arguments(int argc, char ** argv) {
+    argagg::parser argparser = {{
+        {
+            "help", {"-h", "--help"},
+                "Print help and exit", 0,
+        },
+        {
+            "output_file", {"-o", "--output-file"},
+            "Filename for the output. Only root file output is supported.", 1,
+        },
+        {
+            "input_file", {"-i", "--input-file"},
+            "Filename for the input. Both root and binary input files are supported.", 1,
+        },
+        {
+            "input_list", {"-I", "--input-list"},
+            "Filename for a list of input files. Input files should be separated by line-breaks.", 1,
+        },
+        {
+            "config_file", {"-c", "--config-file"},
+            "Filename for the xml configuration file.", 1,
+        },
+        {
+            "log_file", {"-l", "--log-file"},
+            "Filename for the log file.", 1,
+        },
+        {
+            "debug_level", {"-d", "--debug-level"},
+            "Debugging level for log output.", 1,
+        },
+        {
+            "number_of_events", {"-n", "--number-of-events", "--num-events"},
+            "Number of events to process.", 1,
+        },
+        {
+            "remove_first_subrun", {"-s", "--remove-first-subrun", "--remove-subrun"},
+            "Remove the first subrun.", 0,
+        },
+    }};
+    std::ostringstream usage;
+    usage << argv[0] << std::endl;
+
+    argagg::parser_results args;
+    try {
+        args = argparser.parse(argc, argv);
+    } catch (const std::exception& e) {
+        argagg::fmt_ostream fmt(std::cerr);
+        fmt << usage.str() << argparser << std::endl
+            << "Encountered exception while parsing arguments: " << e.what()
+            << std::endl;
+        throw ExitStatus(EXIT_FAILURE);
+    }
+
+    // Print the usage information when we help is requested
+    if(args["help"]) {
+        std::cerr << argparser;
+        throw ExitStatus(EXIT_SUCCESS);
+    }
+
+    return std::make_tuple(argparser, args);
 }
-// ROOT
-//#include "TRint.h"
-//#include "TSystem.h"
-//#include "TROOT.h"
-//#include "TDatabasePDG.h"
-//
 
-void Usage() {
-
-  std::stringstream* usage = new std::stringstream;
-  (*usage) << "Usage: CCMAnalysis [options] \n"
-    << "options are:\n"
-    << "  -c configfile.xml     : Name of XML config file for job processing\n"
-    << "  -i file.root          : Add input root data file\n"
-    << "  -I file_list.txt      : Indirect root file list\n"
-    << "  -o file.root          : Set output root data file\n"
-    << "  -r file.bin           : Add input binary data file\n"
-    << "  -R file_list.txt      : Indirect binary file list\n"
-    << "  -b file.bin           : Set output binary data file\n"
-    << "  -l outputLogFileName  : The name of the log file to save the output (default is none)\n"
-    << "  -d #                  : Debugging level of output\n"
-    << "  -n #                  : Set number of events to process (default is all)\n"
-    << "must include -c and either (-i/-I) or  (-r/-R) but not both\n";
-
-  MsgError((char*)(usage->str().c_str()));
-  delete usage;
-  return;
+std::string get_output(argagg::parser & argparser, argagg::parser_results & args) {
+    // Require output file
+    if(not args["output_file"]) {
+        std::cerr << "--output-file required!" << std::endl;
+        throw ExitStatus(EXIT_FAILURE);
+    }
+    std::string output = args["output_file"].as<std::string>("");
+    return output;
 }
+
+std::vector<std::string> get_input(argagg::parser & argparser, argagg::parser_results & args) {
+    // Require input file
+    bool have_input = args["input_file"];
+    bool have_input_list = args["input_list"];
+    if(have_input and have_input_list) {
+        std::cerr << "Only one of --input-file or --input-list can be specified!" << std::endl;
+        throw ExitStatus(EXIT_FAILURE);
+    }
+    if((not have_input) and (not have_input_list)) {
+        std::cerr << "Must specify either --input-file or --input-list!" << std::endl;
+        throw ExitStatus(EXIT_FAILURE);
+    }
+    std::vector<std::string> input_files;
+    if(have_input_list) {
+        std::string input = args["input_list"].as<std::string>("");
+        try {
+            input_files = Utility::IndirectFileList(input);
+        } catch (...) {
+            std::cerr << "Issue finding input files!" << std::endl;
+            throw ExitStatus(EXIT_FAILURE);
+        }
+    } else if (have_input) {
+        std::string input = args["input_file"].as<std::string>("");
+        try {
+            input_files = Utility::GetListOfFiles(input);
+        } catch (...) {
+            std::cerr << "Issue finding input file list!" << std::endl;
+            throw ExitStatus(EXIT_FAILURE);
+        }
+    }
+    return input_files;
+}
+
+std::string get_config(argagg::parser & argparser, argagg::parser_results & args) {
+    // Require config file
+    if(not args["config_file"]) {
+        std::cerr << "--config-file required!" << std::endl;
+        throw ExitStatus(EXIT_FAILURE);
+    }
+    std::string output = args["config_file"].as<std::string>("");
+    return output;
+}
+
+std::string get_log(argagg::parser & argparser, argagg::parser_results & args) {
+    return args["log_file"].as<std::string>("");
+}
+
+int get_debug_level(argagg::parser & argparser, argagg::parser_results & args) {
+    return args["debug_level"].as<int>(0);
+}
+
+int get_number_of_events(argagg::parser & argparser, argagg::parser_results & args) {
+    return args["number_of_events"].as<int>(-1);
+}
+
+bool get_remove_first_subrun(argagg::parser & argparser, argagg::parser_results & args) {
+    return bool(args["remove_first_subrun"]);
+}
+
 
 //main program
-int main (int argc, char** argv) 
-{
+int main (int argc, char** argv) {
+try {
+    std::tuple<argagg::parser, argagg::parser_results> argarg = parse_arguments(argc, argv);
+    argagg::parser & argparser = std::get<0>(argarg);
+    argagg::parser_results & args = std::get<1>(argarg);
 
-  // set it so square of the sum of the weights
-  // is used to calculate the error on any histograms
-  // that are generated
-  TH1::SetDefaultSumw2(true);
-  
-  // set so ROOT will not manage any memory of ROOT objects
-  // that are created
-  TH1::AddDirectory(0);
+    // set it so square of the sum of the weights
+    // is used to calculate the error on any histograms
+    // that are generated
+    TH1::SetDefaultSumw2(true);
 
-  bool removeFirstSubRun = false;
-  std::string cfgfile;
-  std::string outputLogFile = "";
-  std::vector<std::string> outfileList;
-  std::vector<std::string> infileList;
-  std::vector<std::string> rawOutfileList;
-  std::vector<std::string> rawInfileList;
-  int debug = 0;        //debugging level
-  int32_t nevents = -1; //process all events in file unless otherwise directed
+    // set so ROOT will not manage any memory of ROOT objects
+    // that are created
+    TH1::AddDirectory(0);
 
-  static const int kConfigOpt   = 'c';
-  static const int kInputOpt    = 'i';
-  static const int kRawInputOpt = 'r';
-  static const int kRawIndirectOpt = 'R';
-  static const int kIndirectOpt = 'I';
-  static const int kRemoveFirstSubRun = 's';
-  static const int kOutputOpt   = 'o';
-  static const int kRawOutputOpt = 'b';
-  static const int kOutputLogOpt  = 'l';
-  static const int kDebugOpt    = 'd';
-  static const int kNevtOpt     = 'n';
-  static const int kHelpOpt     = 'h';
-  static struct option long_options[] = {
-    {"config",       required_argument, 0, kConfigOpt},
-    {"input",        required_argument, 0, kInputOpt},
-    {"indirect",     required_argument, 0, kIndirectOpt},
-    {"rawinput",     required_argument, 0, kRawInputOpt},
-    {"rawindirect",  required_argument, 0, kRawIndirectOpt},
-    {"removefirstsubrun", no_argument,  0, kRemoveFirstSubRun},
-    {"output",       required_argument, 0, kOutputOpt},
-    {"rawoutput",    required_argument, 0, kRawOutputOpt},
-    {"logout",       required_argument, 0, kOutputLogOpt},
-    {"debug",        required_argument, 0, kDebugOpt},
-    {"nevt",         required_argument, 0, kNevtOpt},
-    {"help",         no_argument,       0, kHelpOpt},
-    { NULL, 0, 0, 0} // This is a filler for -1 
-  };
+    bool success = true;
 
-  while (1) {
-    int c;
-    int optindx = 0;
-    c = getopt_long(argc, argv, "c:i:o:l:I:d:n:r:R:b:sh", long_options, &optindx);
+    RETURNCHECK(std::vector<std::string>, input_files, get_input(argparser, args))
+    RETURNCHECK(std::string, output_file, get_output(argparser, args))
+    RETURNCHECK(std::string, config_file, get_config(argparser, args))
+    std::string log_file = get_log(argparser, args);
+    int debug_level = get_debug_level(argparser, args);
+    int number_of_events = get_number_of_events(argparser, args);
+    bool remove_first_subrun = get_remove_first_subrun(argparser, args);
 
-    if (c==-1) break;
-    std::string fname;
-    switch (c) {
-      case kConfigOpt:    cfgfile           = std::string(optarg);            break;
-      case kInputOpt:     fname             = std::string(optarg); 
-                          infileList = Utility::GetListOfFiles(optarg);       break;
-      case kRawInputOpt:  fname             = std::string(optarg); 
-                          rawInfileList.push_back(fname);                     break;
-      case kIndirectOpt:  Utility::IndirectFileList(optarg,infileList);                break;
-      case kRawIndirectOpt:  Utility::IndirectFileList(optarg,rawInfileList);          break;
-      case kOutputOpt:    fname             = std::string(optarg); 
-                          outfileList.push_back(fname);                       break;
-      case kRawOutputOpt: fname             = std::string(optarg); 
-                          rawOutfileList.push_back(fname);                    break;
-      case kOutputLogOpt: outputLogFile     = std::string(optarg);            break;
-      case kDebugOpt:     debug             = std::atoi(optarg);              break;
-      case kNevtOpt:      nevents           = std::atoi(optarg);              break;
-      case kRemoveFirstSubRun: removeFirstSubRun = true;                      break;
-      case kHelpOpt:      Usage(); exit(0);                                   break;
-      default:
-                          MsgError(MsgLog::Form("Unknown option %d %s",optind,argv[optind]));
-                          Usage();
-                          exit(1);
-    }
-  }
-  for (; optind<argc; ++optind) {
-    infileList.push_back(std::string(argv[optind]));
-  }
+    if(not success)
+        throw ExitStatus(EXIT_FAILURE);
 
-  if (cfgfile.empty() || (infileList.empty() && rawInfileList.empty())) {
-    MsgError("Problem reading input parameters or no input file supplied");
-    Usage();
-    return EXIT_FAILURE;
-  }
+    if (remove_first_subrun) {
+        MsgInfo("Going to remove the first subrun");
+        auto it = input_files.begin();
+        while ((it = std::find_if(input_files.begin(),input_files.end(),
+                        [](const std::string& s) { return s.find("000000") != std::string::npos;})) != input_files.end()) {
+            input_files.erase(it);
+        }
 
-  if (removeFirstSubRun) {
-    MsgInfo("Going to remove the first subrun");
-    auto it = infileList.begin();
-    while ((it = std::find_if(infileList.begin(),infileList.end(),
-            [](const std::string& s) { return s.find("000000") != std::string::npos;})) != infileList.end()) {
-      infileList.erase(it);
+        if (input_files.empty()) {
+            MsgFatal("No more input files after removing those that match the 0th sub run");
+        }
     }
 
-    if (infileList.empty() && rawInfileList.empty()) {
-      MsgFatal("No more input files after removing those that match the 0th sub run");
+    MsgLog::SetGlobalDebugLevel(debug_level);
+    MsgLog::SetPrintRepetitions(false);
+    if (!log_file.empty()) {
+        MsgInfo(MsgLog::Form("Setting output log file %s",log_file.c_str()));
+        MsgLog::SetFileOutput(log_file.c_str());
     }
-  }
 
-  MsgLog::SetGlobalDebugLevel(debug);
-  MsgLog::SetPrintRepetitions(false);
-  if (!outputLogFile.empty()) {
-    MsgInfo(MsgLog::Form("Setting output log file %s",outputLogFile.c_str()));
-    MsgLog::SetFileOutput(outputLogFile.c_str());
-  }
+    std::unique_ptr<CCMTaskManager> taskMan =
+        std::make_unique<CCMTaskManager>(config_file, input_files, output_file);
 
-  if (!infileList.empty() && !rawInfileList.empty()) {
-    MsgError("Both binary and root input file(s) are set, only one type should be set");
-    Usage();
-    return EXIT_FAILURE;
-  }
+    // check to see if process type is event display
+    // if so start the TApplication in order to show
+    // the event display
+    std::unique_ptr<TApplication> app = nullptr;
+    if(taskMan->GetTaskConfig().ProcessType() == "EventDisplay") {
+        app = std::unique_ptr<TApplication>(new TApplication("EventDisplay", &argc, argv));
+    }
 
-  if (!outfileList.empty() && !rawOutfileList.empty()) {
-    MsgError("Both binary and root output file(s) are set, only one type should be set");
-    Usage();
-    return EXIT_FAILURE;
-  }
+    taskMan->Execute(number_of_events);
 
-  // Default is to not save anything but only print to screen
-  //if(outfileList.empty()) {
-  //  std::string outfile = "ccm-output.root";
-  //  outfileList.push_back(outfile);
-  //  //MsgInfo(MsgLog::Form("Setting up default output file: %s",outfile.c_str()));
-  //}
-  
-  std::unique_ptr<CCMTaskManager> taskMan = 
-    std::make_unique<CCMTaskManager>(cfgfile,infileList,outfileList,rawInfileList,rawOutfileList);
+    taskMan->Terminate(); // Writes data to output file
 
-  // check to see if process type is event display
-  // if so start the TApplication in order to show
-  // the event display
-  std::unique_ptr<TApplication> app = nullptr;
-  if(taskMan->GetTaskConfig().ProcessType() == "EventDisplay") {
-    app = std::unique_ptr<TApplication>(new TApplication("EventDisplay",&argc,argv));
-  }
+    if(app != nullptr) {
+        app->Run();
+    }
 
-  taskMan->Execute(nevents);
+    delete MsgLog::Instance();
 
-  taskMan->Terminate(); //writes data to output file
+    return EXIT_SUCCESS;
 
-  if(app != nullptr) {
-    app->Run();
-  }
-
-  delete MsgLog::Instance();
-
-  return EXIT_SUCCESS;
-
+} catch(ExitStatus const & status) {
+    return status.status;
+}
 }
 

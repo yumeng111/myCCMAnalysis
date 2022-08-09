@@ -55,7 +55,6 @@ class CCMFindPulses : public CCMModule
      */
     void Configure(const CCMConfig& c);
 
-    void ConnectBinaryRawData(std::shared_ptr<RawData> rawData)  { fReadData = rawData; }
     void ConnectRawData(std::shared_ptr<RawData> rawData)  { fRawData = rawData; }
     void ConnectPulses(std::shared_ptr<Pulses> pulses) {fPulses = pulses; }
 
@@ -69,7 +68,6 @@ class CCMFindPulses : public CCMModule
     //private data members
     std::string fTriggerType;
     int fTruncateWaveform;
-    int fFromRootFile;
     int fResetPulses;
 
 
@@ -79,7 +77,6 @@ class CCMFindPulses : public CCMModule
     std::string fDBPwd;
 
     std::vector<float> fTriggerTime;
-    std::shared_ptr<RawData> fReadData;
     std::shared_ptr<Pulses> fPulses;
     std::shared_ptr<RawData> fRawData;
 

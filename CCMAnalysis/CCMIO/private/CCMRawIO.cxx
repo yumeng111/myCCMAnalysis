@@ -50,7 +50,7 @@ CCMRawIO::~CCMRawIO()
 }
 
 //__________________________________________________
-void CCMRawIO::SetInFileName(const char* infile)
+void CCMRawIO::SetInFileName(std::string const & infile)
 {
   fInFileList.clear();
   std::string ifName(infile);

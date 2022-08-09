@@ -195,8 +195,22 @@ namespace Utility
   extern double ShiftTime(int start, int beamTime, bool applyFP3Offset = true);
   extern double UndoShiftTime(double start, int beamTime, bool applyFP3Offset = true);
 
-  extern std::vector<std::string> GetListOfFiles(const char * file_regexp);
-  extern void IndirectFileList(const char* file, std::vector<std::string>& infileList);
+  extern std::vector<std::string> GetListOfFiles(std::string const & file_regexp);
+  extern std::vector<std::string> IndirectFileList(std::string const & file);
+
+class ExponentialCounter {
+private:
+  unsigned int count;
+  unsigned int leading_digit;
+  unsigned int exponent;
+  unsigned int power;
+public:
+  ExponentialCounter();
+  ExponentialCounter(unsigned int exponent, unsigned int power);
+  operator bool() const;
+  void Increment();
+  unsigned int Count() const;
+};
 
 }
 

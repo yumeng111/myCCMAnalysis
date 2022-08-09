@@ -34,6 +34,8 @@
 #include "CCMAnalysis/CCMDataStructures/RawData.h"
 #include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
 
+#include "CCMAnalysis/io/IOUtils.h"
+
 class CCMRootIO;
 class CCMRawIO;
 
@@ -43,11 +45,9 @@ public:
 
   CCMTaskManager(); //default constructor
   CCMTaskManager(const CCMTaskManager& task); //copy constructor
-  CCMTaskManager(std::string configfile, 
-      std::vector<std::string> rootInfileList,
-      std::vector<std::string> rootOutfileList,
-      std::vector<std::string> rawInfileList,
-      std::vector<std::string> rawOutfileList); // primary constructor
+  CCMTaskManager(std::string configfile,
+      std::vector<std::string> infileList,
+      std::string outfile); // primary constructor
   virtual ~CCMTaskManager(); //destructor
 
   CCMResult_t Execute(int32_t nevt);
@@ -66,12 +66,17 @@ private:
   static void SetTaskConfig(CCMTaskConfig* tskCfg) { fgkTaskConfig = std::unique_ptr<CCMTaskConfig>(tskCfg);}
 
   std::list<std::shared_ptr<CCMModule>> GetModuleList() const { return fModuleList;}
-  
-  CCMResult_t ExecuteRaw(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot = true);
-  CCMResult_t ExecuteRoot(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot = true);
 
+  CCMResult_t Execute(int32_t nevt, const std::vector<std::string> & fileList);
   CCMResult_t ExecuteTask();
   CCMResult_t FinishTask();
+
+  void SetNextFile(CCMFileType file_type, std::string const & fname);
+  void NextEvent(CCMFileType file_type);
+  bool ReadOK(CCMFileType file_type) const;
+  void ReadTrigger(CCMFileType file_type);
+  uint32_t GetTriggerNumber(CCMFileType file_type) const;
+
 
   void ClearDataVectors();
 
@@ -87,13 +92,12 @@ private:
   std::shared_ptr<AccumWaveform>  fAccumWaveform;
   std::shared_ptr<MCTruth>  fMCTruth;
   std::shared_ptr<Events>  fEvents;
-  std::shared_ptr<RawData>  fBinaryRawData;
   std::shared_ptr<RawData>  fRawData;
   std::shared_ptr<Pulses>  fPulses;
 
   std::string fCurrentInFileName;
   std::string fCurrentOutFileName;
-  
+
   int fCurrentRunNum;
   int fCurrentSubRunNum;
 

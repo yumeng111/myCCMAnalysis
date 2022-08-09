@@ -19,6 +19,8 @@ Date: 14-May-2013
 
 #include "CCMAnalysis/CCMIO/CCMRawIO.h"
 #include "CCMAnalysis/CCMIO/CCMRootIO.h"
+#include "CCMAnalysis/CCMIO/IOUtils.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
 
 std::unique_ptr<CCMTaskConfig> CCMTaskManager::fgkTaskConfig = nullptr;  //Static instance of config object
 //------------------------------------------------------
@@ -27,13 +29,12 @@ CCMTaskManager::CCMTaskManager()
   //default constructor
   fRootIO = std::make_shared<CCMRootIO>();
   fRawIO = std::make_shared<CCMRawIO>();
-  
+
   fAccumWaveform = std::make_shared<AccumWaveform>();
   fMCTruth = std::make_shared<MCTruth>();
   fEvents = std::make_shared<Events>();
   fPulses = std::make_shared<Pulses>();
   fRawData = std::make_shared<RawData>();
-  fBinaryRawData = std::make_shared<RawData>();
 
   fCurrentInFileName = "";
   fCurrentOutFileName = "";
@@ -47,13 +48,12 @@ CCMTaskManager::CCMTaskManager(const CCMTaskManager& task)
   //copy constructor
   fRootIO = std::make_shared<CCMRootIO>();
   fRawIO = std::make_shared<CCMRawIO>();
-  
+
   fAccumWaveform = std::make_shared<AccumWaveform>();
   fMCTruth = std::make_shared<MCTruth>();
   fEvents = std::make_shared<Events>();
   fPulses = std::make_shared<Pulses>();
   fRawData = std::make_shared<RawData>();
-  fBinaryRawData = std::make_shared<RawData>();
 
   fCurrentInFileName = "";
   fCurrentOutFileName = "";
@@ -62,24 +62,21 @@ CCMTaskManager::CCMTaskManager(const CCMTaskManager& task)
 }
 
 //------------------------------------------------------
-CCMTaskManager::~CCMTaskManager() 
-{ 
+CCMTaskManager::~CCMTaskManager()
+{
   //destructor
 }
 
 //------------------------------------------------------
-CCMTaskManager::CCMTaskManager(std::string configfile, 
-    std::vector<std::string> rootInfileList,
-    std::vector<std::string> rootOutfileList,
-    std::vector<std::string> rawInfileList,
-    std::vector<std::string> rawOutfileList)
+CCMTaskManager::CCMTaskManager(std::string configfile,
+    std::vector<std::string> infileList,
+    std::string outfile)
 {
 
   fRootIO = std::make_shared<CCMRootIO>();
   fRawIO = std::make_shared<CCMRawIO>();
 
-  SetTaskConfig(new CCMTaskConfig(configfile,rootInfileList,rootOutfileList,
-        rawInfileList,rawOutfileList,fRootIO,fRawIO));
+  SetTaskConfig(new CCMTaskConfig(configfile, infileList, outfile, fRootIO,fRawIO));
 
   CCMResult_t val = RegisterModules();
   if(val != kCCMSuccess)
@@ -101,8 +98,8 @@ CCMTaskManager::CCMTaskManager(std::string configfile,
   fMCTruth = std::make_shared<MCTruth>();
   fEvents = std::make_shared<Events>(fRootIO->GetEvents());
   fPulses = std::make_shared<Pulses>(fRootIO->GetPulses());
+  // TODO switch on which IO we are using
   fRawData = std::make_shared<RawData>(fRootIO->GetRawData());
-  fBinaryRawData = std::make_shared<RawData>(fRawIO->GetRawData());
 
   fCurrentInFileName = "";
   fCurrentOutFileName = "";
@@ -122,188 +119,91 @@ CCMResult_t CCMTaskManager::Execute(int32_t nevt)
   //if(fgkTaskConfig->ProcessType() == "EventDisplay")
   //return ExecuteTask();
 
-  auto rootFileList = fgkTaskConfig->InputFileList();
-  auto rawFileList = fgkTaskConfig->RawInputFileList();
-  auto rootFileListOut = fgkTaskConfig->OutputFileList();
-  auto rawFileListOut = fgkTaskConfig->RawOutputFileList();
+  std::vector<std::string> input_file_list = fgkTaskConfig->InputFileList();
+  std::string output_file = fgkTaskConfig->OutputFile();
 
-  bool outRoot = true;
-  if (rootFileListOut.empty() || !rawFileListOut.empty()) {
-    outRoot = false;
-  }
-
-  if (not rootFileListOut.empty()) {
-    fCurrentOutFileName = rootFileListOut.front();
-  } else if(not rawFileListOut.empty()) {
-    fCurrentOutFileName = rawFileListOut.front();
+  if(output_file == "") {
+    throw std::runtime_error("No output file specified!");
   } else {
-      throw std::runtime_error("Both output file lists (root and raw) are empty!");
+    fCurrentOutFileName = output_file;
   }
 
-  if (!rootFileList.empty()) {
-    return ExecuteRoot(nevt,rootFileList,outRoot);
-  } else if (!rawFileList.empty()) {
-    return ExecuteRaw(nevt,rawFileList,outRoot);
-  }
-
-  return status;
+  return Execute(nevt, input_file_list);
 }
 
-//------------------------------------------------------
-CCMResult_t CCMTaskManager::ExecuteRaw(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot)
-{
+CCMResult_t CCMTaskManager::Execute(int32_t n_events, std::vector<std::string> const & file_list) {
   CCMResult_t status = kCCMSuccess;
 
-  MsgInfo(MsgLog::Form("FileListSize %zu",fileList.size()));
-  int32_t count = 1;
-  int digit = 1;
-  int exp = 0;
+  MsgInfo(MsgLog::Form("FileListSize %zu",file_list.size()));
   int run = 0;
   int subRun = 0;
-  for (auto & file : fileList) {
-    MsgDebug(2,MsgLog::Form("File Name: %s",file.c_str()));
-    fCurrentInFileName = file;
 
-    Utility::ParseStringForRunNumber(file,run,subRun);
+  // Setup output file
+  fRootIO->SetOutFileName(fCurrentOutFileName);
+  fRootIO->SetupOutputFile();
+
+  Utility::ExponentialCounter event_counter;
+
+  for(auto & file_name : file_list) {
+    MsgDebug(2,MsgLog::Form("File Name: %s", file_name.c_str()));
+
+    if(not FileExists(file_name)) {
+      std::stringstream ss;
+      ss << "File \"" << file_name << "\" does not exist!";
+      MsgError(ss.str());
+    }
+
+
+    Utility::ParseStringForRunNumber(file_name, run, subRun);
     if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
       fCurrentRunNum = run;
       fCurrentSubRunNum = subRun;
       NewRun(run,subRun);
     }
 
-    for(; // no initiation
-        fRawIO->ReadOK(); // check to see if tree read is still ok
-        fRawIO->Advance()) // advance to next event that passes cuts
-    {
-      if(count == nevt && nevt != -1) {
+    CCMFileType file_type = DetermineFileType(file_name);
+    SetNextFile(file_type, file_name);
+
+    // Loop until we have processed n_events, or loop indefinitely if n_events is negative
+    while(n_events < 0 or (int)(event_counter.Count()) <= n_events) {
+      // Continue only if the reader for this file_type has more events
+      if(not ReadOK(file_type))
         break;
+
+      // Read in the next event
+      ReadTrigger(file_type);
+
+      // Increment the counter and print out periodically
+      event_counter.Increment();
+      if(event_counter) {
+        MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",event_counter.Count(),Utility::tstamp(),
+              GetTriggerNumber(file_type), fCurrentInFileName));
       }
 
-      int mod = digit*std::pow(10,exp);
-      if (count%mod == 0) {
-        MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count,Utility::tstamp(),
-              fRawIO->GetTriggerNumber(), fRawIO->CurrentFileName()));
-        ++digit;
-        if (digit == 10) {
-          digit = 1;
-          ++exp;
-        }
-      } // end count module
-
-      fBinaryRawData->operator=(fRawIO->GetRawData());
-
+      // Assign the pointers to each module
       ConnectDataToModules();
 
+      // Run all the modules
       status = ExecuteTask();
 
       if (status != kCCMFailure && status != kCCMDoNotWrite) {
-        if (outRoot) {
-          fRootIO->SetAccumWaveform(*fAccumWaveform);
-          fRootIO->SetMCTruth(*fMCTruth);
-          fRootIO->SetEvents(*fEvents);
-          fRootIO->SetRawData(*fRawData);
-          fRootIO->SetPulses(*fPulses);
-          fRootIO->WriteTrigger();
-        } else {
-          fRawIO->SetRawData(*fRawData);
-          fRawIO->WriteTrigger();
-        }
+        // Set the pointers correctly for output
+        fRootIO->SetAccumWaveform(*fAccumWaveform);
+        fRootIO->SetMCTruth(*fMCTruth);
+        fRootIO->SetEvents(*fEvents);
+        fRootIO->SetRawData(*fRawData);
+        fRootIO->SetPulses(*fPulses);
+
+        // Write the trigger to a root file
+        fRootIO->WriteTrigger();
       }
-      ++count;
 
-      // Don't think I need to do these
-      //ClearDataVectors();
+      // Load the next event
+      NextEvent(file_type);
     }
-
-    if(count == nevt && nevt != -1) {
-      break;
-    }
-
-    fRawIO->AdvanceFile();
   }
-
-  return status;
+  return kCCMSuccess;
 }
-
-//------------------------------------------------------
-CCMResult_t CCMTaskManager::ExecuteRoot(int32_t nevt, const std::vector<std::string> & fileList, bool outRoot)
-{
-  CCMResult_t status = kCCMSuccess;
-
-  MsgInfo(MsgLog::Form("FileListSize %zu",fileList.size()));
-  int32_t count = 0;
-  int digit = 1;
-  int exp = 0;
-  int run = 0;
-  int subRun = 0;
-  for (auto & file : fileList) {
-    MsgDebug(2,MsgLog::Form("File Name: %s",file.c_str()));
-    fCurrentInFileName = file;
-
-    Utility::ParseStringForRunNumber(file,run,subRun);
-    if (run != fCurrentRunNum || subRun != fCurrentSubRunNum) {
-      fCurrentRunNum = run;
-      fCurrentSubRunNum = subRun;
-      NewRun(run,subRun);
-    }
-
-    for(; // no initiation
-        fRootIO->ReadOK(); // check to see if tree read is still ok
-        fRootIO->Advance()) // advance to next event that passes cuts
-    {
-      if(count == nevt && nevt != -1) {
-        break;
-      }
-
-      int mod = digit*std::pow(10,exp);
-      if ((count+1)%mod == 0) {
-        MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",count+1,Utility::tstamp(),
-              fRootIO->GetTriggerNumber(), fRootIO->CurrentFileName()));
-        ++digit;
-        if (digit == 10) {
-          digit = 1;
-          ++exp;
-        }
-      } // end count module
-
-      fAccumWaveform->operator=(fRootIO->GetAccumWaveform());
-      fMCTruth->operator=(fRootIO->GetMCTruth());
-      fEvents->operator=(fRootIO->GetEvents());
-      fRawData->operator=(fRootIO->GetRawData());
-      fPulses->operator=(fRootIO->GetPulses());
-
-      ConnectDataToModules();
-
-      status = ExecuteTask();
-
-      if (status != kCCMFailure && status != kCCMDoNotWrite) {
-        if (outRoot) {
-          fRootIO->SetAccumWaveform(*fAccumWaveform);
-          fRootIO->SetMCTruth(*fMCTruth);
-          fRootIO->SetEvents(*fEvents);
-          fRootIO->SetRawData(*fRawData);
-          fRootIO->SetPulses(*fPulses);
-          fRootIO->WriteTrigger();
-        } else {
-          fRawIO->SetRawData(*fRawData);
-          fRawIO->WriteTrigger();
-        }
-      }
-      ++count;
-
-      // Don't think I need to do these
-      //ClearDataVectors();
-    } // end for loop over events
-
-    if(count == nevt && nevt != -1) {
-      break;
-    }
-
-    fRootIO->AdvanceFile();
-  }
-
-  return status;
-} // end ExecuteRoot
 
 //------------------------------------------------------
 CCMResult_t CCMTaskManager::Terminate()
@@ -353,7 +253,6 @@ void CCMTaskManager::ConnectDataToModules()
 {
   //Connect data vectors to the registered modules
   for (auto & module : fModuleList) {
-    module->ConnectBinaryRawData(fBinaryRawData);
     module->ConnectAccumWaveform(fAccumWaveform);
     module->ConnectMCTruth(fMCTruth);
     module->ConnectEvents(fEvents);
@@ -398,6 +297,94 @@ CCMResult_t CCMTaskManager::ExecuteTask()
 
 }
 
+void CCMTaskManager::SetNextFile(CCMFileType file_type, std::string const & fname) {
+  fCurrentInFileName = fname;
+  switch(file_type) {
+    case CCMFileType::ROOT:
+      fRootIO->SetInFileName(fname);
+      fRootIO->SetupInputFile();
+      break;
+    case CCMFileType::RawBinary:
+      fRawIO->SetInFileName(fname);
+      fRawIO->SetupInputFile();
+      break;
+    default:
+      std::stringstream ss;
+      ss << "Received unknown file type: " << fname;
+      MsgError(ss.str());
+      break;
+  }
+}
+
+void CCMTaskManager::NextEvent(CCMFileType file_type) {
+  switch(file_type) {
+    case CCMFileType::ROOT:
+      fRootIO->Advance();
+      break;
+    case CCMFileType::RawBinary:
+      fRawIO->Advance();
+      break;
+    default:
+      std::stringstream ss;
+      ss << "Received unknown file type!";
+      MsgError(ss.str());
+      break;
+  }
+}
+
+bool CCMTaskManager::ReadOK(CCMFileType file_type) const {
+  switch(file_type) {
+    case CCMFileType::ROOT:
+      return fRootIO->ReadOK();
+      break;
+    case CCMFileType::RawBinary:
+      return fRawIO->ReadOK();
+      break;
+    default:
+      std::stringstream ss;
+      ss << "Received unknown file type!";
+      MsgError(ss.str());
+      return false;
+      break;
+  }
+}
+
+void CCMTaskManager::ReadTrigger(CCMFileType file_type) {
+  switch(file_type) {
+    case CCMFileType::ROOT:
+      fAccumWaveform->operator=(fRootIO->GetAccumWaveform());
+      fMCTruth->operator=(fRootIO->GetMCTruth());
+      fEvents->operator=(fRootIO->GetEvents());
+      fRawData->operator=(fRootIO->GetRawData());
+      fPulses->operator=(fRootIO->GetPulses());
+      break;
+    case CCMFileType::RawBinary:
+      fRawData->operator=(fRawIO->GetRawData());
+      break;
+    default:
+      std::stringstream ss;
+      ss << "Received unknown file type!";
+      MsgError(ss.str());
+      break;
+  }
+}
+
+uint32_t CCMTaskManager::GetTriggerNumber(CCMFileType file_type) const {
+  switch(file_type) {
+    case CCMFileType::ROOT:
+      return fRootIO->GetTriggerNumber();
+      break;
+    case CCMFileType::RawBinary:
+      return fRawIO->GetTriggerNumber();
+      break;
+    default:
+      std::stringstream ss;
+      ss << "Received unknown file type!";
+      MsgError(ss.str());
+      return 0;
+      break;
+  }
+}
 
 //------------------------------------------------------
 CCMResult_t CCMTaskManager::FinishTask()

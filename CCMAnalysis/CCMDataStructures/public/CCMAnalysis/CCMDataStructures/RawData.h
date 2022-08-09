@@ -38,7 +38,10 @@ class RawData : public TObject
 
     float GetOffset(int detector) { return fOffset[detector]; }
     std::vector<u_int16_t> & GetSamples(int detector) { return fWaveforms[detector]; }
-    u_int16_t GetSample(int detector, int sample) { return fWaveforms[detector][sample]; }
+    u_int16_t GetSample(int detector, int sample) {
+        std::cout << "Sample: " << detector << " " << sample << std::endl;
+        return fWaveforms[detector][sample];
+    }
     u_int16_t GetSize(int board, int channel) { return fSize[board][channel]; }
     u_int16_t GetChannelMask(int board, int channel) { return fChannelMask[board][channel]; }
     u_int16_t GetTemp(int board, int channel) { return fTemp[board][channel]; }

@@ -99,7 +99,7 @@ class CCMRawIO
      * \brief When only using one file, one can set the name by using this function
      * \param[in] infile name of the infile
      */
-    void SetInFileName(const char* infile);
+    void SetInFileName(std::string const & infile);
     /*!
      * \fn SetInFileList(std::vector<std::string> infileList)
      * \brief Set the entire file list at once
@@ -145,7 +145,7 @@ class CCMRawIO
      * \fn bool ReadOK()
      * \brief Returns true if the last read from the break-in-board tree was sucessful
      */
-    bool ReadOK()    { return fReadOK; }
+    bool ReadOK() const { return fReadOK; }
 
     //void SetOutSizeLimit(int mbLimit) {
     //  fOutSizeLimit = mbLimit; fOutSizeLimit *= 1000000;
@@ -160,7 +160,7 @@ class CCMRawIO
     int Reload();
     int WriteTrigger();
 
-    uint32_t GetTriggerNumber() { return fTriggerNumber; }
+    uint32_t GetTriggerNumber() const { return fTriggerNumber; }
 
     void SetParameter(std::string name, const int value);
     void SetParameter(std::string name, const double value);

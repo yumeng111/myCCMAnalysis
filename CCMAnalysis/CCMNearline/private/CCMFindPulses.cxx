@@ -51,7 +51,6 @@ CCMFindPulses::CCMFindPulses(const char* version)
   : CCMModule("CCMFindPulses"),
     fTriggerType("ALL"),
     fTruncateWaveform(false),
-    fFromRootFile(false),
     fResetPulses(true),
     fWriteDBEntry(false),
     fDBHost(""),
@@ -76,14 +75,12 @@ CCMFindPulses::CCMFindPulses(const CCMFindPulses& clufdr)
 : CCMModule(clufdr),
   fTriggerType(clufdr.fTriggerType),
   fTruncateWaveform(clufdr.fTruncateWaveform),
-  fFromRootFile(clufdr.fFromRootFile),
   fResetPulses(clufdr.fResetPulses),
   fWriteDBEntry(clufdr.fWriteDBEntry),
   fDBHost(clufdr.fDBHost),
   fDBUser(clufdr.fDBUser),
   fDBPwd(clufdr.fDBPwd),
   fTriggerTime(clufdr.fTriggerTime),
-  fReadData(clufdr.fReadData),
   fPulses(clufdr.fPulses),
   fRawData(clufdr.fRawData),
   fNEventsTotal(clufdr.fNEventsTotal),
@@ -110,17 +107,7 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
   }
 
   RawData localCopy;
-  if (fFromRootFile) {
-    if (MsgLog::GetGlobalDebugLevel() >= 1) {
-      MsgDebug(1,"Using ROOT file");
-    }
-    localCopy = *fRawData;
-  } else {
-    if (MsgLog::GetGlobalDebugLevel() >= 1) {
-      MsgDebug(1,"Using Binary file");
-    }
-    localCopy = *fReadData;
-  }
+  localCopy = *fRawData;
 
   if (!localCopy.GetNumBoards()) {
     MsgWarning("Number of boards is equal to 0, moving on");
@@ -151,11 +138,9 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
   // check to make sure all the board event numbers are the same
   int channelEvtNum0 = localCopy.GetBoardEventNum(0);
   bool evNumCheck = true;
-  for (board = 0; board < kNDigitizers && !fFromRootFile; ++board) {
+  for (board = 0; board < kNDigitizers; ++board) {
     int channelEvtNum = localCopy.GetBoardEventNum(board);
-    if (channelEvtNum != channelEvtNum0) {
-      evNumCheck = false;
-    }
+    evNumCheck &= channelEvtNum == channelEvtNum0;
   }
 
   // count number of times we have a mismatched trigger
@@ -178,38 +163,32 @@ CCMResult_t CCMFindPulses::ProcessTrigger()
   double minTriggerTime = 9e9;
   double maxTriggerTime = 9e9;
   // used if not saving trigger to channel 15
-  if (!fFromRootFile) {
-    std::vector<double> times;
-    std::vector<double> amps;
-    double baseline = 0.0;
-    double adjustedADC = 0.0;
-    int firstSample = 0;
-    for (board = 0; board < kNDigitizers; ++board) {
-      channel = kNChannels - 1; // only look at beam trigger channel
-      int key = PMTInfoMap::CreateKey(board,channel);
-      baseline = 0.0;
-      for (sample = 0; sample < 50; ++sample) {
-        baseline += localCopy.GetSample(key,sample);
-      }
-      baseline /= 50.0;
-
-      firstSample = 0;
-      for (sample = 0; sample < kNSamples; ++sample) {
-        adjustedADC = baseline - static_cast<double>(localCopy.GetSample(key,sample));
-        if (adjustedADC > 400) {
-          firstSample = sample;
-          break;
-        }
-      } // end for sample < kNSamples
-
-      fTriggerTime.at(board) = firstSample;
-
-    } // end for board < kNDigitizers
-  } else {
-    for (board = 0; board < kNDigitizers; ++board) {
-      fTriggerTime.at(board) = localCopy.GetOffset(board);
+  std::vector<double> times;
+  std::vector<double> amps;
+  double baseline = 0.0;
+  double adjustedADC = 0.0;
+  int firstSample = 0;
+  for (board = 0; board < kNEffDigitizers; ++board) {
+    channel = kNChannels - 1; // only look at beam trigger channel
+    int key = PMTInfoMap::CreateKey(board,channel);
+    baseline = 0.0;
+    for (sample = 0; sample < 50; ++sample) {
+      baseline += localCopy.GetSample(key,sample);
     }
-  }// end if !fFromRootFile
+    baseline /= 50.0;
+
+    firstSample = 0;
+    for (sample = 0; sample < kNSamples; ++sample) {
+      adjustedADC = baseline - static_cast<double>(localCopy.GetSample(key,sample));
+      if (adjustedADC > 400) {
+        firstSample = sample;
+        break;
+      }
+    } // end for sample < kNSamples
+
+    fTriggerTime.at(board) = firstSample;
+
+  }
 
   // skips event if trigger time did not change (no channel 15 NIM signal)
   minTriggerTime = *std::min_element(fTriggerTime.begin(),fTriggerTime.end());
@@ -351,7 +330,6 @@ void CCMFindPulses::Configure(const CCMConfig& c )
 
   c("TriggerType").Get(fTriggerType);
   c("TruncateWaveform").Get(fTruncateWaveform);
-  c("FromRootFile").Get(fFromRootFile);
   c("ResetPulses").Get(fResetPulses);
   c("WriteDBEntry").Get(fWriteDBEntry);
   if (fWriteDBEntry) {

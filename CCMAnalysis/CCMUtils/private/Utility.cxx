@@ -183,13 +183,13 @@ CCMAccumWaveformMethod_t Utility::ConvertStringToCCMAccumWaveformMethod(std::str
  *  \param[in] start The start bin of the pulse
  *  \param[in] beamOffset The time in the DAQ window the BCM was observed
  *  \param[in] applyFP3Offset If true apply the FP3Offset correction (default: true)
- *  \return The time of the event in ns (input is bin count) 
+ *  \return The time of the event in ns (input is bin count)
  *
- *  Shift the time of the pulse to account for the jitter of the BCM. #Utility::fgkFP3Offset 
- *  is used to account for the time difference between the PMTs in CCM and the 
- *  EJ301 detector in FP3 
+ *  Shift the time of the pulse to account for the jitter of the BCM. #Utility::fgkFP3Offset
+ *  is used to account for the time difference between the PMTs in CCM and the
+ *  EJ301 detector in FP3
  *
- *  If beamTime == 0 then the trigger was STROBE or LED so shift the time of the event 
+ *  If beamTime == 0 then the trigger was STROBE or LED so shift the time of the event
  *  based on the DAQ window true start time (#Utility::fgkWindowStartTime)
  ***********************************************/
 double Utility::ShiftTime(int time, int beamOffset, bool applyFP3Offset)
@@ -218,13 +218,13 @@ double Utility::ShiftTime(int time, int beamOffset, bool applyFP3Offset)
  *  \param[in] start The start bin of the pulse
  *  \param[in] beamOffset The time in the DAQ window the BCM was observed
  *  \param[in] applyFP3Offset If true apply the FP3Offset correction (default: true)
- *  \return The time of the event in ns (input is bin count) 
+ *  \return The time of the event in ns (input is bin count)
  *
- *  Shift the time of the pulse to account for the jitter of the BCM. #Utility::fgkFP3Offset 
- *  is used to account for the time difference between the PMTs in CCM and the 
- *  EJ301 detector in FP3 
+ *  Shift the time of the pulse to account for the jitter of the BCM. #Utility::fgkFP3Offset
+ *  is used to account for the time difference between the PMTs in CCM and the
+ *  EJ301 detector in FP3
  *
- *  If beamTime == 0 then the trigger was STROBE or LED so shift the time of the event 
+ *  If beamTime == 0 then the trigger was STROBE or LED so shift the time of the event
  *  based on the DAQ window true start time (#Utility::fgkWindowStartTime)
  ***********************************************/
 double Utility::UndoShiftTime(double time, int beamOffset, bool applyFP3Offset)
@@ -248,50 +248,53 @@ double Utility::UndoShiftTime(double time, int beamOffset, bool applyFP3Offset)
 }
 
 
+namespace {
+std::string exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+}
+
 /*!**********************************************
  *  \brief Gets the list of files
- *  \param[in] file_regexp The command to pass to ls, can contain wild cards
- *  \return A vector containg all the files that match file_regexp
+ *  \param[in] file_glob The command to pass to ls, can contain wild cards
+ *  \return A vector containg all the files that match file_glob
  ***********************************************/
-std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
+std::vector<std::string> Utility::GetListOfFiles(std::string const & file_glob)
 {
   // Cheap way to get list of files matching the expression (assumes
   // some flavor of unix
-  char tmp_name[128] = {"/tmp/IOMOD.XXXXXX"};
-  mkstemp(tmp_name);
-  std::string temp_file_regexp(file_regexp);
-  bool inLustre = temp_file_regexp.find("lustre") != std::string::npos;
+  std::string temp_file_glob(file_glob);
+  bool inLustre = temp_file_glob.find("lustre") != std::string::npos;
   std::string cmd;
   if (!inLustre) {
-    cmd  = "(ls ";
+    cmd  = "ls -1 ";
   } else {
-    cmd = "(lfs find ";
+    cmd = "lfs find ";
   }
-  cmd += file_regexp;
-  cmd += " > ";
-  cmd += tmp_name;
-  cmd += ") >& /dev/null";
-  MsgInfo(MsgLog::Form("Command Used %s",cmd.c_str()));
-  
-  std::vector<std::string> localVec;
-  // Open the temp file and get the list of files which matched
-  static const int s = 256;
-  char             buff[s];
-  FILE*            fp     = fopen(tmp_name,"r");
-  std::string      file;
-  while ( fgets(buff,s-1,fp) != NULL ) {
-    int len = strlen(buff);
-    while (buff[len]==' ' || buff[len]=='\n' || buff[len]=='\0') --len;
-    buff[len+1]='\0';
-    file = buff;
-    localVec.emplace_back(file);
+  cmd += file_glob;
+  cmd += " 2> /dev/null";
+
+  std::stringstream ss;
+  ss << exec(cmd.c_str());
+
+  std::vector<std::string> file_names;
+  std::string line;
+  while(std::getline(ss, line)) {
+    if(line.empty())
+      continue;
+    file_names.push_back(line);
   }
-  fclose(fp);
 
-  // Remove the temporary file
-  std::remove(tmp_name);
-
-  return localVec;
+  return file_names;
 }
 
 /*!**********************************************
@@ -299,24 +302,22 @@ std::vector<std::string> Utility::GetListOfFiles(const char * file_regexp)
  *  \param[in] file The file name that contains the list of files
  *  \param[out] infileList The vector containing the list of files
  ***********************************************/
-void Utility::IndirectFileList(const char* file, std::vector<std::string>& infileList)
-{
+std::vector<std::string> Utility::IndirectFileList(std::string const & file) {
   // Open the file and pull the file names in
-  std::ifstream infile;
-  infile.open(file);
+  std::ifstream infile(file);
   if (!infile) {
     MsgError(MsgLog::Form("File %s not found.",file));
     exit(1);
   }
 
-  std::string fname;
   std::string line;
-  while (infile >> line) {
-    // from the indirect file
-    fname = line;
-    infileList.push_back(fname);
+  std::vector<std::string> file_names;
+  while(std::getline(infile, line)) {
+    if(line.empty())
+      continue;
+    file_names.push_back(line);
   }
-  infile.close();
+  return file_names;
 }
 
 std::istream& std::operator >> (std::istream& is, std::pair<int, double>& ps)
@@ -326,4 +327,39 @@ std::istream& std::operator >> (std::istream& is, std::pair<int, double>& ps)
 std::ostream& std::operator << (std::ostream& os, const std::pair<const int, double>& ps)
 {
   return os << ps.first << "==>>" << ps.second;
+}
+
+Utility::ExponentialCounter::ExponentialCounter()
+  : count(0), leading_digit(1), exponent(0), power(10) {
+}
+
+Utility::ExponentialCounter::ExponentialCounter(unsigned int exponent, unsigned int power)
+  : count(0), leading_digit(1), exponent(exponent), power(power) {
+}
+
+Utility::ExponentialCounter::operator bool() const {
+  int mod = leading_digit * std::pow(double(power), double(exponent));
+  return count % mod == 0;
+}
+
+void Utility::ExponentialCounter::Increment() {
+  // Increment the counter
+  ++count;
+
+  // Check if we want to increment the leading digit
+  if(not this->operator bool())
+    return;
+
+  ++leading_digit;
+
+  // Check if we have reached the max leading digit
+  if(leading_digit < power)
+    return;
+
+  leading_digit = 1;
+  ++exponent;
+}
+
+unsigned int Utility::ExponentialCounter::Count() const {
+  return count;
 }

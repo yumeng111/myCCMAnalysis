@@ -117,13 +117,6 @@ void CCMModule::ConnectEvents(std::shared_ptr<Events> /* evt */)
 }
 
 //------------------------------------------------------
-void CCMModule::ConnectBinaryRawData(std::shared_ptr<RawData> /* rawData */)
-{
-  //Connect the event to be processed
-
-}
-
-//------------------------------------------------------
 void CCMModule::ConnectRawData(std::shared_ptr<RawData> /* rawData */)
 {
   //Connect the event to be processed

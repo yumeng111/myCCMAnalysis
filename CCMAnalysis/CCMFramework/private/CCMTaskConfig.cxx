@@ -42,7 +42,7 @@ XERCES_CPP_NAMESPACE_USE
 CCMTaskConfig::CCMTaskConfig()
 {
   //default constructor
-  
+
 
 }
 
@@ -54,19 +54,17 @@ CCMTaskConfig::CCMTaskConfig(const CCMTaskConfig& reco)
 }
 
 //------------------------------------------------------
-CCMTaskConfig::~CCMTaskConfig() 
-{ 
+CCMTaskConfig::~CCMTaskConfig()
+{
   //destructor
-  
+
 }
 
 //------------------------------------------------------
 CCMTaskConfig::CCMTaskConfig(std::string configfile,
-    std::vector<std::string> rootInfileList, std::vector<std::string> rootOutfileList,
-    std::vector<std::string> rawInfileList, std::vector<std::string> rawOutfileList,
+    std::vector<std::string> infileList, std::string outfile,
     std::shared_ptr<CCMRootIO> rootIO, std::shared_ptr<CCMRawIO> rawIO)
-  : fConfigFile(configfile),fInputFileList(rootInfileList),fOutputFileList(rootOutfileList),
-  fRawInputFileList(rawInfileList),fRawOutputFileList(rawOutfileList)
+  : fConfigFile(configfile),fInputFileList(infileList),fOutputFile(outfile)
 {
   //constructor
   int status = ReadConfigFile(rootIO,rawIO);
@@ -84,7 +82,7 @@ CCMTaskConfig::CCMTaskConfig(std::string configfile,
 //------------------------------------------------------
 CCMTaskConfig::CCMTaskConfig(std::string configfile, std::shared_ptr<CCMRootIO> rootIO,
     std::shared_ptr<CCMRawIO> rawIO)
-  : fConfigFile(configfile),fInputFileList(0),fOutputFileList(0)
+  : fConfigFile(configfile),fInputFileList(0),fOutputFile("")
 {
   //constructor
   int status = ReadConfigFile(rootIO,rawIO);
@@ -115,7 +113,7 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
   }
 
   XercesDOMParser* parser = new XercesDOMParser();
-  parser->setValidationScheme(XercesDOMParser::Val_Always);    
+  parser->setValidationScheme(XercesDOMParser::Val_Always);
   parser->setDoNamespaces(true);    // optional
 
   ErrorHandler* errHandler = (ErrorHandler*) new HandlerBase();
@@ -237,7 +235,7 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
         if(cuttype != "bool") {
 
           if(cuttype == "int") {
-            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stoi(cutval),comment.c_str()));	
+            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stoi(cutval),comment.c_str()));
             if(cfgname.find("ROOTSetup") != std::string::npos && rootIO != nullptr) {
               rootIO->SetParameter(parname,std::stoi(cutval));
             } else if(cfgname.find("RawSetup") != std::string::npos && rawIO != nullptr) {
@@ -246,7 +244,7 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
               PMTInfoMap::SetParameter(parname,std::stoi(cutval));
             }
           } else if(cuttype == "double" || cuttype == "float") {
-            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stod(cutval),comment.c_str()));	
+            cfgObj->AdoptParam(new CCMConfigParam(parname.c_str(),std::stod(cutval),comment.c_str()));
             if(cfgname.find("ROOTSetup") != std::string::npos && rootIO != nullptr) {
               rootIO->SetParameter(parname,std::stod(cutval));
             } else if(cfgname.find("RawSetup") != std::string::npos && rawIO != nullptr) {
@@ -254,7 +252,7 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
             } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
               PMTInfoMap::SetParameter(parname,std::stod(cutval));
             }
-          } else if(cuttype == "string") {	    
+          } else if(cuttype == "string") {
             //Convert the string to uppercase
             //if(parname.find("File") == std::string::npos)
             //  std::transform(cutval.begin(), cutval.end(), cutval.begin(), toupper);
@@ -268,14 +266,14 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
             } else if(cfgname.find("PMTMapSetup") != std::string::npos) {
               PMTInfoMap::SetParameter(parname,cutval);
             }
-          } // end if cuttype == 
+          } // end if cuttype ==
         } // end if cuttype != "bool"
       }
       //add the config object to the table
       cfgTable.AdoptConfig(cfgObj);
     }
     if(MsgLog::GetGlobalDebugLevel() > 3) {
-      cfgTable.Print();	
+      cfgTable.Print();
     }
   } else {
     MsgError(MsgLog::Form("Error getting XML info out of %s",fConfigFile.c_str()));
@@ -286,26 +284,6 @@ int CCMTaskConfig::ReadConfigFile(std::shared_ptr<CCMRootIO> rootIO,
   delete errHandler;
 
   XMLPlatformUtils::Terminate();
-  
-  //Load the input file
-  if (!fInputFileList.empty() && rootIO != nullptr) {
-    rootIO->SetInFileList(fInputFileList);
-    rootIO->SetupInputFile();
-  }
-  if (!fOutputFileList.empty() && rootIO != nullptr) {
-    rootIO->SetOutFileName(fOutputFileList.front());
-    rootIO->SetupOutputFile();
-  }
-
-  if (!fRawInputFileList.empty() && rawIO != nullptr) {
-    rawIO->SetInFileList(fRawInputFileList);
-    rawIO->SetupInputFile();
-  }
-  if (!fRawOutputFileList.empty() && rawIO != nullptr) {
-    rawIO->SetOutFileName(fRawOutputFileList.front());
-    rawIO->SetupOutputFile();
-  }
-
 
   return kCCMSuccess;
 
@@ -318,27 +296,20 @@ void CCMTaskConfig::Print()
 
   MsgInfo(MsgLog::Form("\tConfig File: %s",fConfigFile.c_str()));
   for(unsigned int i = 0; i < fInputFileList.size(); i++) {
-    MsgInfo(MsgLog::Form("\tInput file[%d]: %s",i,fInputFileList[i].c_str()));
-  }
-  for(unsigned int i = 0; i < fRawInputFileList.size(); i++) {
-    MsgInfo(MsgLog::Form("\tRaw Input file[%d]: %s",i,fRawInputFileList[i].c_str()));
+    std::stringstream ss;
+    ss << "Input file[" << i << "]: " << fInputFileList[i];
+    MsgInfo(ss.str());
   }
   MsgInfo(MsgLog::Form("\tJob type: %s",fProcessType.c_str()));
   MsgInfo(MsgLog::Form("\tModules to run:"));
   for(unsigned int i = 0; i< fModuleList.size(); i++) {
     MsgInfo(MsgLog::Form("\t\t %s version %s",fModuleList.at(i).first.c_str(),fModuleList.at(i).second.c_str()));
   }
-  for(unsigned int i = 0; i < fOutputFileList.size(); i++) {
-    MsgInfo(MsgLog::Form("\tOutput file[%d]: %s",i,fOutputFileList[i].c_str()));
-  }
-  for(unsigned int i = 0; i < fRawOutputFileList.size(); i++) {
-    MsgInfo(MsgLog::Form("\tRaw Output file[%d]: %s",i,fRawOutputFileList[i].c_str()));
-  }
-
+  MsgInfo(MsgLog::Form("\tOutput file: %s",fOutputFile.c_str()));
 }
 
 //------------------------------------------------------
-int CCMTaskConfig::Split(const char* line, const char* tok, 
+int CCMTaskConfig::Split(const char* line, const char* tok,
     std::vector<std::string>& fields)
 {
   //Split the text line "line" into sub-strings delimited by the
@@ -398,3 +369,33 @@ int CCMTaskConfig::Split(const char* line, const char* tok,
   return nfields;
 }
 
+std::string CCMTaskConfig::ConfigFile() const {
+  return fConfigFile;
+}
+
+std::vector<std::string> CCMTaskConfig::InputFileList() const {
+  return fInputFileList;
+}
+
+std::string CCMTaskConfig::InputFileName(unsigned int i) const {
+  if(fInputFileList.size() > i)
+    return fInputFileList[i];
+  else
+    return "";
+}
+
+std::string CCMTaskConfig::OutputFile() const {
+  return fOutputFile;
+}
+
+std::string CCMTaskConfig::ProcessType() const {
+  return fProcessType;
+}
+
+std::vector<std::pair<std::string,std::string>> CCMTaskConfig::ModuleList() const {
+  return fModuleList;
+}
+
+std::string CCMTaskConfig::ConfigInfo() const {
+  return fConfigInfo;
+}
