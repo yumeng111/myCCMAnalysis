@@ -42,7 +42,7 @@ std::tuple<argagg::parser, argagg::parser_results> parse_arguments(int argc, cha
         },
         {
             "input_list", {"-I", "--input-list"},
-            "Filename for a list of input files. Input files should be separated by line-breaks.", 1,
+            "Filename for a list of input files. File should contain input file names\n\t in plain text, separated by line-breaks.", 1,
         },
         {
             "config_file", {"-c", "--config-file"},
@@ -184,8 +184,10 @@ try {
     int number_of_events = get_number_of_events(argparser, args);
     bool remove_first_subrun = get_remove_first_subrun(argparser, args);
 
-    if(not success)
+    if(not success) {
+        std::cerr << argparser;
         throw ExitStatus(EXIT_FAILURE);
+    }
 
     if (remove_first_subrun) {
         MsgInfo("Going to remove the first subrun");
