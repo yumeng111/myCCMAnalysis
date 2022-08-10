@@ -7,31 +7,43 @@
 
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 
-std::ostream & write_binary(std::ostream & os, uint32_t const & x) {
+inline std::ostream & write_binary(std::ostream & os, uint32_t const & x) {
     constexpr size_t size = sizeof(uint32_t);
     os.write((char*)&x, size);
     return os;
 }
 
-std::istream & read_binary(std::istream & is, uint32_t & s) {
+inline std::istream & read_binary(std::istream & is, uint32_t & s) {
     constexpr size_t size = sizeof(uint32_t);
     is.read((char*)&s, size);
     return is;
 }
 
-std::ostream & write_binary(std::ostream & os, float const & x) {
+inline std::ostream & write_binary(std::ostream & os, float const & x) {
     constexpr size_t size = sizeof(float);
     os.write((char*)&x, size);
     return os;
 }
 
-std::istream & read_binary(std::istream & is, float & s) {
+inline std::istream & read_binary(std::istream & is, float & s) {
     constexpr size_t size = sizeof(float);
     is.read((char*)&s, size);
     return is;
 }
 
-std::ostream & write_binary(std::ostream & os, std::string const & s) {
+inline std::ostream & write_binary(std::ostream & os, timespec const & x) {
+    constexpr size_t size = sizeof(timespec);
+    os.write((char*)&x, size);
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, timespec & s) {
+    constexpr size_t size = sizeof(timespec);
+    is.read((char*)&s, size);
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, std::string const & s) {
     constexpr size_t size_size = sizeof(uint64_t);
     uint64_t string_size = s.size();
     os.write((char*)&string_size, size_size);
@@ -39,7 +51,7 @@ std::ostream & write_binary(std::ostream & os, std::string const & s) {
     return os;
 }
 
-std::istream & read_binary(std::istream & is, std::string & s) {
+inline std::istream & read_binary(std::istream & is, std::string & s) {
     constexpr size_t size_size = sizeof(uint64_t);
     uint64_t string_size;
     is.read((char*)&string_size, size_size);
@@ -50,7 +62,7 @@ std::istream & read_binary(std::istream & is, std::string & s) {
     return is;
 }
 
-std::ostream & write_binary(std::ostream & os, ChannelHeader const & header) {
+inline std::ostream & write_binary(std::ostream & os, ChannelHeader const & header) {
     if(header.version == 0) {
         write_binary(os, header.version);
         write_binary(os, header.physical_board_id);
@@ -65,7 +77,7 @@ std::ostream & write_binary(std::ostream & os, ChannelHeader const & header) {
     return os;
 }
 
-std::istream & read_binary(std::istream & is, ChannelHeader & header) {
+inline std::istream & read_binary(std::istream & is, ChannelHeader & header) {
     read_binary(is, header.version);
     if(header.version == 0) {
         read_binary(is, header.physical_board_id);
@@ -136,6 +148,60 @@ inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config) {
         read_binary(is, config.digitizer_boards);
     } else {
         throw std::runtime_error("Can only read CCMDAQConfig version <= 0");
+    }
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, CCMDigitizerReadout const & digi_readout) {
+    if(digi_readout.version == 0) {
+        write_binary(os, digi_readout.version);
+        write_binary(os, digi_readout.channel_sizes);
+        write_binary(os, digi_readout.channel_masks);
+        write_binary(os, digi_readout.board_temperatures);
+        write_binary(os, digi_readout.board_event_numbers);
+        write_binary(os, digi_readout.board_times);
+        write_binary(os, digi_readout.samples);
+    } else {
+        throw std::runtime_error("Can only write CCMDigitizerReadout version <= 0");
+    }
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, CCMDigitizerReadout & digi_readout) {
+    read_binary(is, digi_readout.version);
+    if(digi_readout.version == 0) {
+        read_binary(is, digi_readout.channel_sizes);
+        read_binary(is, digi_readout.channel_masks);
+        read_binary(is, digi_readout.board_temperatures);
+        read_binary(is, digi_readout.board_event_numbers);
+        read_binary(is, digi_readout.board_times);
+        read_binary(is, digi_readout.samples);
+    } else {
+        throw std::runtime_error("Can only read CCMDigitizerReadout version <= 0");
+    }
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, CCMTriggerReadout const & trigger_readout) {
+    if(trigger_readout.version == 0) {
+        write_binary(os, trigger_readout.version);
+        write_binary(os, trigger_readout.evNum);
+        write_binary(os, trigger_readout.digitizer_readout);
+        write_binary(os, trigger_readout.computer_time);
+    } else {
+        throw std::runtime_error("Can only write CCMTriggerReadout version <= 0");
+    }
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, CCMTriggerReadout & trigger_readout) {
+    read_binary(is, trigger_readout.version);
+    if(trigger_readout.version == 0) {
+        read_binary(is, trigger_readout.evNum);
+        read_binary(is, trigger_readout.digitizer_readout);
+        read_binary(is, trigger_readout.computer_time);
+    } else {
+        throw std::runtime_error("Can only read CCMTriggerReadout version <= 0");
     }
     return is;
 }

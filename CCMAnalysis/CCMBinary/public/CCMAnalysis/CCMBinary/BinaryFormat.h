@@ -36,7 +36,7 @@ struct CCMDigitizerReadout {
     /// The number of samples for each channel (should be equal to #NSAMPLES)
     std::vector<uint16_t> channel_sizes;
     /// Lets you know if the channel was masked in the hardware
-    std::vector<int16_t> channel_masks;
+    std::vector<uint16_t> channel_masks;
     /// The temperatures of each channel (updated periodically)
     std::vector<uint16_t> board_temperatures;
     /// The event number on each board
