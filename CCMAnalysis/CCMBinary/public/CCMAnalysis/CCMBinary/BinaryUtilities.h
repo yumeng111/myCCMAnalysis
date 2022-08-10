@@ -45,6 +45,7 @@ inline std::ostream & write_binary(std::ostream & os, std::vector<float> const &
 template<>
 inline std::istream & read_binary(std::istream & is, std::vector<float> & v);
 
+#include "CCMAnalysis/CCMBinary/BinaryUtilities.cxx"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.tcc"
 
 #endif // CCMAnalysis_BinaryUtilities_H

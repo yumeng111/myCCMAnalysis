@@ -1,3 +1,6 @@
+#ifndef CCMAnalysis_BinaryUtilities_CXX
+#define CCMAnalysis_BinaryUtilities_CXX
+
 #include <string>
 #include <vector>
 #include <iostream>
@@ -118,6 +121,7 @@ inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & confi
     } else {
         throw std::runtime_error("Can only write CCMDAQConfig version <= 0");
     }
+    return os;
 }
 
 inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config) {
@@ -133,5 +137,7 @@ inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config) {
     } else {
         throw std::runtime_error("Can only read CCMDAQConfig version <= 0");
     }
+    return is;
 }
 
+#endif // CCMAnalysis_BinaryUtilities_CXX
