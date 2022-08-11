@@ -5,6 +5,9 @@
 #include <vector>
 #include <iostream>
 
+namespace CCMAnalysis {
+namespace Binary {
+
 template<typename T>
 std::ostream & write_binary(std::ostream & os, std::vector<T> const & v) {
     constexpr size_t size_size = sizeof(uint64_t);
@@ -75,5 +78,8 @@ template<>
 std::istream & read_binary(std::istream & is, std::vector<float> & v) {
     return read_binary_contiguous_vector<float>(is, v);
 }
+
+} // namespace Binary
+} // namespace CCMAnalsysis
 
 #endif // CCMAnalysis_BinaryUtilities_TCC

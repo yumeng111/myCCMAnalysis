@@ -7,10 +7,17 @@
 
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
+namespace CCMAnalysis {
+namespace Binary {
+
 inline std::ostream & write_binary(std::ostream & os, uint32_t const & x);
 inline std::istream & read_binary(std::istream & is, uint32_t & s);
+inline std::ostream & write_binary(std::ostream & os, uint16_t const & x);
+inline std::istream & read_binary(std::istream & is, uint16_t & s);
 inline std::ostream & write_binary(std::ostream & os, float const & x);
 inline std::istream & read_binary(std::istream & is, float & s);
+inline std::ostream & write_binary(std::ostream & os, char const * x, size_t n);
+inline std::istream & read_binary(std::istream & is, char * x, size_t n);
 inline std::ostream & write_binary(std::ostream & os, timespec const & x);
 inline std::istream & read_binary(std::istream & is, timespec & s);
 inline std::ostream & write_binary(std::ostream & os, std::string const & s);
@@ -25,6 +32,12 @@ inline std::ostream & write_binary(std::ostream & os, CCMDigitizerReadout const 
 inline std::istream & read_binary(std::istream & is, CCMDigitizerReadout const & digi_readout);
 inline std::ostream & write_binary(std::ostream & os, CCMTriggerReadout const & trigger_readout);
 inline std::istream & read_binary(std::istream & is, CCMTriggerReadout & trigger_readout);
+inline std::ostream & write_magic_number(std::ostream & os);
+inline std::istream & read_magic_number(std::istream & is, bool & result);
+inline std::ostream & write_binary(std::ostream & os, CCMData const & data);
+inline std::istream & read_binary(std::istream & is, CCMData & data);
+
+//bool IsVersionedBinary(std::)
 
 template<typename T>
 inline std::ostream & write_binary(std::ostream & os, std::vector<T> const & v);
@@ -55,5 +68,8 @@ inline std::istream & read_binary(std::istream & is, std::vector<float> & v);
 
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.cxx"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.tcc"
+
+} // namespace Binary
+} // namespace CCMAnalsysis
 
 #endif // CCMAnalysis_BinaryUtilities_H

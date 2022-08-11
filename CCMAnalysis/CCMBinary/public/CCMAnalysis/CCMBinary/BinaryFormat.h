@@ -1,6 +1,9 @@
 #ifndef CCMAnalysis_BinaryFormat_H
 #define CCMAnalysis_BinaryFormat_H
 
+namespace CCMAnalysis {
+namespace Binary {
+
 struct ChannelHeader {
     uint32_t version;
     std::string physical_board_id;
@@ -57,10 +60,15 @@ struct CCMTriggerReadout {
 };
 
 struct CCMData {
-    char file_identifier[18] = {'C','C','M','V','e','r','s','i','o','n','e','d','B','i','n','a','r','y'};
     uint32_t version;
     CCMDAQConfig daq_config;
     std::vector<CCMTriggerReadout> trigger_readout;
 };
+
+static const char lexical_magic_number[] = "CCMVersionedBinary";
+static constexpr size_t magic_size = sizeof(lexical_magic_number) - 1;
+
+} // namespace Binary
+} // namespace CCMAnalsysis
 
 #endif // CCMAnalysis_BinaryFormat_H

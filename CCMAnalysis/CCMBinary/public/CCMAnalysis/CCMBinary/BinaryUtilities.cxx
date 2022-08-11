@@ -3,9 +3,14 @@
 
 #include <string>
 #include <vector>
+#include <cstring>
+#include <sstream>
 #include <iostream>
 
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
+
+namespace CCMAnalysis {
+namespace Binary {
 
 inline std::ostream & write_binary(std::ostream & os, uint32_t const & x) {
     constexpr size_t size = sizeof(uint32_t);
@@ -13,9 +18,21 @@ inline std::ostream & write_binary(std::ostream & os, uint32_t const & x) {
     return os;
 }
 
-inline std::istream & read_binary(std::istream & is, uint32_t & s) {
+inline std::istream & read_binary(std::istream & is, uint32_t & x) {
     constexpr size_t size = sizeof(uint32_t);
-    is.read((char*)&s, size);
+    is.read((char*)&x, size);
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, uint16_t const & x) {
+    constexpr size_t size = sizeof(uint16_t);
+    os.write((char*)&x, size);
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, uint16_t & x) {
+    constexpr size_t size = sizeof(uint16_t);
+    is.read((char*)&x, size);
     return is;
 }
 
@@ -25,9 +42,19 @@ inline std::ostream & write_binary(std::ostream & os, float const & x) {
     return os;
 }
 
-inline std::istream & read_binary(std::istream & is, float & s) {
+inline std::istream & read_binary(std::istream & is, float & x) {
     constexpr size_t size = sizeof(float);
-    is.read((char*)&s, size);
+    is.read((char*)&x, size);
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, char const * x, size_t n) {
+    os.write(x, n);
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, char * x, size_t n) {
+    is.read(x, n);
     return is;
 }
 
@@ -205,5 +232,52 @@ inline std::istream & read_binary(std::istream & is, CCMTriggerReadout & trigger
     }
     return is;
 }
+
+inline std::ostream & write_magic_number(std::ostream & os) {
+    write_binary(os, lexical_magic_number, magic_size);
+    return os;
+}
+
+inline std::istream & read_magic_number(std::istream & is, bool & result) {
+    char file_identifier[magic_size];
+    read_binary(is, file_identifier, magic_size);
+    result = std::strncmp(file_identifier, lexical_magic_number, magic_size);
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, CCMData const & data) {
+    if(data.version == 0) {
+        write_magic_number(os);
+        write_binary(os, data.version);
+        write_binary(os, data.daq_config);
+        write_binary(os, data.trigger_readout);
+    } else {
+        throw std::runtime_error("Can only write CCMData version <= 0");
+    }
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, CCMData & data) {
+    bool has_magic_number = false;
+    read_magic_number(is, has_magic_number);
+    if(not has_magic_number) {
+        std::stringstream ss;
+        ss << "Binary file must begin with the magic number '";
+        ss << lexical_magic_number;
+        ss << "'";
+        throw std::runtime_error(ss.str());
+    }
+    read_binary(is, data.version);
+    if(data.version == 0) {
+        read_binary(is, data.daq_config);
+        read_binary(is, data.trigger_readout);
+    } else {
+        throw std::runtime_error("Can only read CCMData version <= 0");
+    }
+    return is;
+}
+
+} // namespace Binary
+} // namespace CCMAnalsysis
 
 #endif // CCMAnalysis_BinaryUtilities_CXX
