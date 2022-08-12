@@ -20,7 +20,7 @@ find_package(ROOT 6.26 CONFIG REQUIRED COMPONENTS MathCore RIO Hist Tree Net)
 if(DEFINED ENV{XERCESINSTALL})
     set(XercesC_INCLUDE_DIRS $ENV{XERCESINSTALL}/include)
     set(XercesC_LIBRARIES xerces-c)
-    set(XercesC_LIBRARY_DIRS $ENV{XERCESINSTALL}/lib)
+    set(XercesC_LIBRARY_DIRS $ENV{XERCESINSTALL}/lib64)
 else()
     message("-- XercesC not found in env variables")
     message("-- Checking for XercesC with find_package")
@@ -69,6 +69,36 @@ configure_file(
 
 add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
+function(ccm_module module_name local_headers local_sources)
+    cmake_path(RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/src" OUTPUT_VARIABLE local_header_path)
+    set(local_include_path "include/${CMAKE_PROJECT_NAME}/${local_header_path}")
+    set(abs_local_include_path "${PROJECT_SOURCE_DIR}/${local_include_path}")
+    cmake_path(RELATIVE_PATH abs_local_include_path BASE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" OUTPUT_VARIABLE rel_local_include_path)
+    list(TRANSFORM local_headers PREPEND "${abs_local_include_path}/" OUTPUT_VARIABLE abs_local_headers)
+    list(TRANSFORM local_headers PREPEND "${local_include_path}/" OUTPUT_VARIABLE rel_local_headers)
+
+    set(LOCAL_LINKDEF "${rel_local_include_path}/LinkDef.h")
+    set(LOCAL_DICTIONARY "${module_name}Dict")
+    set(LINK_DIRECTORIES ${ROOT_LIBRARY_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+
+    set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_CXX_LINKER_FLAGS} ${ROOT_LIBRARIES}")
+
+    add_library(${module_name} SHARED ${LOCAL_SRCS})
+    target_include_directories(${module_name} PRIVATE $<BUILD_INTERFACE:${ROOT_INCLUDE_DIR}>)
+    target_include_directories(${module_name} PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/${CCMAnalysis_INCLUDE_DIRS}> $<INSTALL_INTERFACE:${CCMAnalysis_INCLUDE_DIRS}>)
+    set_target_properties(${module_name} PROPERTIES PUBLIC_HEADER "${abs_local_headers}")
+    target_link_libraries(${module_name} ${ROOT_LIBRARIES} ${XercesC_LIBRARIES})
+    target_link_directories(${module_name} PUBLIC ${ROOT_LIBRARY_DIR} ${XercesC_LIBRARY_DIRS} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+
+    ROOT_GENERATE_DICTIONARY(${LOCAL_DICTIONARY} ${abs_local_headers} MODULE ${module_name} LINKDEF "${LOCAL_LINKDEF}")
+
+    install(TARGETS ${module_name}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${CMAKE_PROJECT_NAME}/${local_header_path}")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/lib${module_name}_rdict.pcm"
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/lib)
+endfunction()
+
 # Recurse into the the following subdirectories.
 #   src/utils
 #   src/ds
@@ -77,10 +107,10 @@ add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_D
 # This does not actually cause another cmake executable to run. The same process
 # will talk through the project's entire directory structure.
 add_subdirectory(src/utils)
-#add_subdirectory(src/ds)
-#add_subdirectory(src/io)
-#add_subdirectory(src/spe)
-#add_subdirectory(src/modules)
+add_subdirectory(src/ds)
+add_subdirectory(src/io)
+add_subdirectory(src/spe)
+add_subdirectory(src/modules)
 
 #if(NOT DEFINED BUILD_SIMULATION)
 #    message(STATUS "Setting BUILD_SIMULATION=TRUE by default.")
