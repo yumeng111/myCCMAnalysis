@@ -4,13 +4,14 @@
  * \author R. T. Thornton (LANL)
  * \date May 7, 2020
  **************************************************************************************************/
-#include "CCMBeamInfo.h"
-#include "MsgLog.h"
 
-#include <fstream>
-#include <iterator>
-#include <sstream>
 #include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <iterator>
+
+#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/utils/CCMBeamInfo.h"
 
 MapTimeDouble CCMBeamInfo::fgCurrentInfo;
 std::tm CCMBeamInfo::fgLocalTM = {0,0,0,1,1,119,0,0,1};

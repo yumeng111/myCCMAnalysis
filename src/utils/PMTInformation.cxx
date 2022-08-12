@@ -1,4 +1,4 @@
-#include "PMTInformation.h"
+#include "CCMAnalysis/utils/PMTInformation.h"
 
 #include "TROOT.h"
 

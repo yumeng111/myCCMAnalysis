@@ -6,14 +6,16 @@ message(STATUS "source dir: ${CMAKE_SOURCE_DIR}")
 message(STATUS "binary dir: ${CMAKE_BINARY_DIR}")
 
 set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include/${CMAKE_PROJECT_NAME})
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
 #   - ROOT built with CMake. Add in CMAKE_PREFIX_PATH the installation prefix for ROOT
+
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 #---Locate the ROOT package and defines a number of variables (e.g. ROOT_INCLUDE_DIRS)
-find_package(ROOT REQUIRED COMPONENTS MathCore RIO Hist Tree Net)
+find_package(ROOT 6.26 CONFIG REQUIRED COMPONENTS MathCore RIO Hist Tree Net)
 
 if(DEFINED ENV{XERCESINSTALL})
     set(XercesC_INCLUDE_DIRS $ENV{XERCESINSTALL}/include)
@@ -33,15 +35,16 @@ endif()
 #---Define useful ROOT functions and macros (e.g. ROOT_GENERATE_DICTIONARY)
 include(${ROOT_USE_FILE})
 include_directories(${ROOT_INCLUDE_DIR} ${XercesC_INCLUDE_DIRS})
-set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} ${XercesC_LIBRARIES})
+#include_directories(${XercesC_INCLUDE_DIRS})
+#set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES} ${XercesC_LIBRARIES})
 
-include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} ${XercesC_INCLUDE_DIRS})
+#include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS} ${XercesC_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS} -std=c++14)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Werror -std=c++14 -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wno-unused-result -std=c++14 -Og")
 
 set(CCMAnalysis_INCLUDE_DIRS
-    ${CMAKE_SOURCE_DIR}/src/
+    ./include
 )
 
 #Set the library version
@@ -74,18 +77,18 @@ add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_D
 # This does not actually cause another cmake executable to run. The same process
 # will talk through the project's entire directory structure.
 add_subdirectory(src/utils)
-add_subdirectory(src/ds)
-add_subdirectory(src/io)
-add_subdirectory(src/spe)
-add_subdirectory(src/modules)
+#add_subdirectory(src/ds)
+#add_subdirectory(src/io)
+#add_subdirectory(src/spe)
+#add_subdirectory(src/modules)
 
-if(NOT DEFINED BUILD_SIMULATION)
-    message(STATUS "Setting BUILD_SIMULATION=TRUE by default.")
-    set(BUILD_SIMULATION true)
-endif()
-if(${BUILD_SIMULATION})
-    add_subdirectory(simulationCCM)
-endif()
+#if(NOT DEFINED BUILD_SIMULATION)
+#    message(STATUS "Setting BUILD_SIMULATION=TRUE by default.")
+#    set(BUILD_SIMULATION true)
+#endif()
+#if(${BUILD_SIMULATION})
+#    add_subdirectory(simulationCCM)
+#endif()
 #---Create  a main program using the library
 #add_executable(EnergyCalibration energyCalibration.cc)
 #target_link_libraries(EnergyCalibration Event)
