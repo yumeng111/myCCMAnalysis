@@ -15,12 +15,12 @@
 #include <cstring>
 #include <unistd.h>
 
-#include "CCMAnalysis/io/CCMRawIO.h"
+#include "CCMAnalysis/CCMIO/CCMRawIO.h"
 
-#include "CCMAnalysis/ds/RawData.h"
-#include "CCMAnalysis/utils/Utility.h"
-#include "CCMAnalysis/utils/PMTInfoMap.h"
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMDataStructures/RawData.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
+#include "CCMAnalysis/CCMUtils/PMTInfoMap.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 //__________________________________________________
 CCMRawIO::CCMRawIO()

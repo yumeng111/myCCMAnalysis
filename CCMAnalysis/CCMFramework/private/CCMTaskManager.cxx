@@ -15,10 +15,10 @@ Date: 14-May-2013
 #include <cstdlib>
 #include <stdexcept>
 
-#include "CCMAnalysis/modules/framework/CCMTaskManager.h"
+#include "CCMAnalysis/CCMFramework/CCMTaskManager.h"
 
-#include "CCMAnalysis/io/CCMRawIO.h"
-#include "CCMAnalysis/io/CCMRootIO.h"
+#include "CCMAnalysis/CCMIO/CCMRawIO.h"
+#include "CCMAnalysis/CCMIO/CCMRootIO.h"
 
 std::unique_ptr<CCMTaskConfig> CCMTaskManager::fgkTaskConfig = nullptr;  //Static instance of config object
 //------------------------------------------------------

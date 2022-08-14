@@ -19,20 +19,20 @@
 #include <vector>
 
 // Include these here so we don't have to in the derived classes
-#include "CCMAnalysis/utils/MsgLog.h"
-#include "CCMAnalysis/utils/Utility.h"
-#include "CCMAnalysis/modules/framework/CCMConfig.h"
-#include "CCMAnalysis/modules/framework/CCMModule.h"
-#include "CCMAnalysis/modules/framework/CCMTaskConfig.h"
-#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
-#include "CCMAnalysis/modules/framework/CCMConfigTable.h"
-#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
+#include "CCMAnalysis/CCMFramework/CCMConfig.h"
+#include "CCMAnalysis/CCMFramework/CCMModule.h"
+#include "CCMAnalysis/CCMFramework/CCMTaskConfig.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigParam.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigTable.h"
+#include "CCMAnalysis/CCMFramework/CCMModuleTable.h"
 
-#include "CCMAnalysis/ds/Events.h"
-#include "CCMAnalysis/ds/Pulses.h"
-#include "CCMAnalysis/ds/MCTruth.h"
-#include "CCMAnalysis/ds/RawData.h"
-#include "CCMAnalysis/ds/AccumWaveform.h"
+#include "CCMAnalysis/CCMDataStructures/Events.h"
+#include "CCMAnalysis/CCMDataStructures/Pulses.h"
+#include "CCMAnalysis/CCMDataStructures/MCTruth.h"
+#include "CCMAnalysis/CCMDataStructures/RawData.h"
+#include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
 
 class CCMRootIO;
 class CCMRawIO;

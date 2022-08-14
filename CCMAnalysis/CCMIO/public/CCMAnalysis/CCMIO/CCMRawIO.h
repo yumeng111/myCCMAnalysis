@@ -16,8 +16,8 @@
 #include <iostream>
 #include <stdint.h>
 
-#include "CCMAnalysis/ds/data_structures.hh"
-#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/CCMBinary/data_structures.hh"
+#include "CCMAnalysis/CCMUtils/Utility.h"
 
 class RawData;
 

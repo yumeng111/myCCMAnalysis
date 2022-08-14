@@ -9,16 +9,16 @@
 #include <fstream>
 #include <iostream>
 
-#include "CCMAnalysis/spe/NearlineSPEDiag.h"
+#include "CCMAnalysis/CCMSPE/NearlineSPEDiag.h"
 
-#include "CCMAnalysis/ds/Pulses.h"
-#include "CCMAnalysis/ds/RawData.h"
-#include "CCMAnalysis/spe/MakeSPECalibrationHists.h"
-#include "CCMAnalysis/spe/SPECalibrationVariables.h"
-#include "CCMAnalysis/utils/MsgLog.h"
-#include "CCMAnalysis/utils/Utility.h"
-#include "CCMAnalysis/utils/PMTInfoMap.h"
-#include "CCMAnalysis/utils/PMTInformation.h"
+#include "CCMAnalysis/CCMDataStructures/Pulses.h"
+#include "CCMAnalysis/CCMDataStructures/RawData.h"
+#include "CCMAnalysis/CCMSPE/MakeSPECalibrationHists.h"
+#include "CCMAnalysis/CCMSPE/SPECalibrationVariables.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
+#include "CCMAnalysis/CCMUtils/PMTInfoMap.h"
+#include "CCMAnalysis/CCMUtils/PMTInformation.h"
 
 #include "TF1.h"
 #include "TH1D.h"

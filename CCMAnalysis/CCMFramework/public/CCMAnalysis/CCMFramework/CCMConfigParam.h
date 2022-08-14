@@ -24,7 +24,7 @@
 #include <iostream>
 #include <typeinfo>
 
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 class CCMConfigParam
 {

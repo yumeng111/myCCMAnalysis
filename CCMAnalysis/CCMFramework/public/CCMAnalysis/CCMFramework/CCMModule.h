@@ -19,7 +19,7 @@
 #include <vector>
 #include <stdint.h>
 
-#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
 
 class CCMModule; //needed for typedef
 class CCMConfig;

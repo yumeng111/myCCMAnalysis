@@ -17,8 +17,8 @@
 #include <map>
 #include <string>
 
-#include "CCMAnalysis/modules/framework/CCMModule.h"
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMFramework/CCMModule.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 class CCMConfig;
 class CCMModule;

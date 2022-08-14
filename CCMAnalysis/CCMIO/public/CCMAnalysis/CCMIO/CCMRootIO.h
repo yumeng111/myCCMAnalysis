@@ -15,8 +15,8 @@
 #include <cstring>
 #include <stdint.h>
 
-#include "CCMAnalysis/io/CCMEventTreeHandle.h"
-#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/CCMIO/CCMEventTreeHandle.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
 
 class TFile;
 class RawData;

@@ -12,10 +12,10 @@
 
 -------------------------------------------------------*/
 
-#include "CCMAnalysis/modules/framework/CCMConfigTable.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigTable.h"
 
-#include "CCMAnalysis/modules/framework/CCMConfig.h"
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMFramework/CCMConfig.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 CCMConfigTable* CCMConfigTable::fInstance = 0;
 

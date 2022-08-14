@@ -9,10 +9,10 @@
 
 #include <sstream>
 
-#include "CCMAnalysis/spe/MakeSPECalibrationHists.h"
+#include "CCMAnalysis/CCMSPE/MakeSPECalibrationHists.h"
 
-#include "CCMAnalysis/spe/SPECalibrationVariables.h"
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMSPE/SPECalibrationVariables.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 #include "TH1D.h"
 #include "TH2D.h"

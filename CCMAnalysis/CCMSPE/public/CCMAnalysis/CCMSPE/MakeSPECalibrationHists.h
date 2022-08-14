@@ -11,7 +11,7 @@
 #include <memory>
 #include <map>
 
-#include "CCMAnalysis/utils/Utility.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
 
 class TLine;
 class TTree;

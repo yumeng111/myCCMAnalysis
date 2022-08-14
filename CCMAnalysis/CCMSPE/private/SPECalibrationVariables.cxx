@@ -4,7 +4,7 @@
  * \author T. J. Schuab and R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
-#include "CCMAnalysis/spe/SPECalibrationVariables.h"
+#include "CCMAnalysis/CCMSPE/SPECalibrationVariables.h"
 
 SPECalibrationVariables::SPECalibrationVariables()
 

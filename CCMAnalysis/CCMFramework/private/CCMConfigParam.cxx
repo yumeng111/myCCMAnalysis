@@ -15,7 +15,7 @@
   Date: 14-May-2013
 
 -------------------------------------------------------*/
-#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigParam.h"
 
 //------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const CCMConfigParam& p)

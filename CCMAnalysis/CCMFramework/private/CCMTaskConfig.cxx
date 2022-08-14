@@ -15,17 +15,17 @@
 #include <stdlib.h>
 #include <algorithm>
 
-#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/CCMFramework/CCMConfig.h"
 
-#include "CCMAnalysis/io/CCMRootIO.h"
-#include "CCMAnalysis/io/CCMRawIO.h"
-#include "CCMAnalysis/modules/framework/DOMCount.hpp"
-#include "CCMAnalysis/modules/framework/CCMTaskConfig.h"
-#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
-#include "CCMAnalysis/modules/framework/CCMConfigTable.h"
-#include "CCMAnalysis/utils/MsgLog.h"
-#include "CCMAnalysis/utils/Utility.h"
-#include "CCMAnalysis/utils/PMTInfoMap.h"
+#include "CCMAnalysis/CCMIO/CCMRootIO.h"
+#include "CCMAnalysis/CCMIO/CCMRawIO.h"
+#include "CCMAnalysis/CCMFramework/DOMCount.hpp"
+#include "CCMAnalysis/CCMFramework/CCMTaskConfig.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigParam.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigTable.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
+#include "CCMAnalysis/CCMUtils/PMTInfoMap.h"
 
 //XML Parsing
 #include <xercesc/dom/DOM.hpp>

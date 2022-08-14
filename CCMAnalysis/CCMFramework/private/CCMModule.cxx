@@ -12,9 +12,9 @@
 
 -------------------------------------------------------*/
 
-#include "CCMAnalysis/modules/framework/CCMModule.h"
+#include "CCMAnalysis/CCMFramework/CCMModule.h"
 
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 //------------------------------------------------------
 CCMModule::CCMModule(const char* name)

@@ -20,9 +20,9 @@
 
 #include <sstream>
 
-#include "CCMAnalysis/modules/framework/CCMConfig.h"
+#include "CCMAnalysis/CCMFramework/CCMConfig.h"
 
-#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigParam.h"
 
 //------------------------------------------------------
 CCMConfig::CCMConfig(const char* name, const char* version, const char* source) 

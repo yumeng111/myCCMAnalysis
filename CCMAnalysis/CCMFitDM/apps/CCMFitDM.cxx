@@ -12,11 +12,11 @@
 #include <iterator>
 #include <algorithm>
 
-#include "CCMAnalysis/modules/framework/CCMConfig.h"
-#include "CCMAnalysis/modules/framework/CCMTaskConfig.h"
-#include "CCMAnalysis/modules/framework/CCMConfigParam.h"
-#include "CCMAnalysis/modules/framework/CCMConfigTable.h"
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMFramework/CCMConfig.h"
+#include "CCMAnalysis/CCMFramework/CCMTaskConfig.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigParam.h"
+#include "CCMAnalysis/CCMFramework/CCMConfigTable.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 #include "TCanvas.h"
 #include "TColor.h"

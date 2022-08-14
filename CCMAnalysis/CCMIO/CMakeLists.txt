@@ -1,16 +1,15 @@
-set(MODULENAME CCMIO)
+set(PROJECT_NAME CCMIO)
 
-set(LOCAL_HEADERS
-    CCMRootIO.h
-    CCMRawIO.h
-    CCMEventTreeHandle.h
-    )
+ccm_project(${PROJECT_NAME})
 
-set(LOCAL_SRCS
-    CCMRootIO.cxx
-    CCMRawIO.cxx
-    CCMEventTreeHandle.cxx
-    )
-
-ccm_module("${MODULENAME}" "${LOCAL_HEADERS}" "${LOCAL_SOURCES}")
-
+ccm_add_library(${PROJECT_NAME}
+    private/CCMRootIO.cxx
+    private/CCMRawIO.cxx
+    private/CCMEventTreeHandle.cxx
+    USE_TOOLS root
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures
+    ROOTCINT
+    public/CCMAnalysis/CCMIO/CCMRootIO.h
+    public/CCMAnalysis/CCMIO/CCMRawIO.h
+    public/CCMAnalysis/CCMIO/CCMEventTreeHandle.h
+)

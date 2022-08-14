@@ -1,16 +1,15 @@
-set(MODULENAME CCMSPE)
+set(PROJECT_NAME CCMSPE)
 
-set(LOCAL_HEADERS
-  SPECalibrationVariables.h
-  MakeSPECalibrationHists.h
-  NearlineSPEDiag.h
-  )
+ccm_project(${PROJECT_NAME})
 
-set(LOCAL_SRCS
-  SPECalibrationVariables.cxx
-  MakeSPECalibrationHists.cxx
-  NearlineSPEDiag.cxx
-  )
-
-ccm_module("${MODULENAME}" "${LOCAL_HEADERS}" "${LOCAL_SOURCES}")
-
+ccm_add_library(${PROJECT_NAME}
+    private/SPECalibrationVariables.cxx
+    private/MakeSPECalibrationHists.cxx
+    private/NearlineSPEDiag.cxx
+    USE_TOOLS root
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures
+    ROOTCINT
+    public/CCMAnalysis/CCMSPE/SPECalibrationVariables.h
+    public/CCMAnalysis/CCMSPE/MakeSPECalibrationHists.h
+    public/CCMAnalysis/CCMSPE/NearlineSPEDiag.h
+)

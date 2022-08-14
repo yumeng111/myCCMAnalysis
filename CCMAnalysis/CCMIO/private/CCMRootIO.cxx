@@ -21,15 +21,15 @@
 #include <unistd.h>
 #include <algorithm>
 
-#include "CCMAnalysis/io/CCMRootIO.h"
+#include "CCMAnalysis/CCMIO/CCMRootIO.h"
 
-#include "CCMAnalysis/ds/Pulses.h"
-#include "CCMAnalysis/ds/Events.h"
-#include "CCMAnalysis/ds/MCTruth.h"
-#include "CCMAnalysis/ds/RawData.h"
-#include "CCMAnalysis/ds/AccumWaveform.h"
-#include "CCMAnalysis/ds/SimplifiedEvent.h"
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMDataStructures/Pulses.h"
+#include "CCMAnalysis/CCMDataStructures/Events.h"
+#include "CCMAnalysis/CCMDataStructures/MCTruth.h"
+#include "CCMAnalysis/CCMDataStructures/RawData.h"
+#include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
+#include "CCMAnalysis/CCMDataStructures/SimplifiedEvent.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 #include "TFile.h"
 #include "TObjString.h"

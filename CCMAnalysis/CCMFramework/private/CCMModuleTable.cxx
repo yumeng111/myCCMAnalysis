@@ -9,9 +9,9 @@
 
 -------------------------------------------------------*/
 
-#include "CCMAnalysis/modules/framework/CCMModuleTable.h"
+#include "CCMAnalysis/CCMFramework/CCMModuleTable.h"
 
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 CCMModuleTable* CCMModuleTable::fInstance = 0;
 
