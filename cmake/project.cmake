@@ -110,9 +110,7 @@ macro(use_projects THIS_TARGET)
 
 
     include_directories(${CCM_SRC}/${USED_PROJECT}/public)
-    if(${LIB_${USED_PROJECT}_EXISTS})
-      target_link_libraries(${THIS_TARGET} ${USED_PROJECT})
-    endif(${LIB_${USED_PROJECT}_EXISTS})
+    target_link_libraries(${THIS_TARGET} ${USED_PROJECT})
   endforeach(USED_PROJECT ${${THIS_TARGET}_USE_PROJECTS_PROJECTS})
 endmacro(use_projects THIS_TARGET)
 
@@ -126,7 +124,7 @@ macro(ccm_add_library THIS_LIB_NAME)
     #
     parse_arguments(${THIS_LIB_NAME}_ARGS
       "USE_TOOLS;USE_PROJECTS;ROOTCINT;INSTALL_DESTINATION;LINK_LIBRARIES;COMPILE_FLAGS"
-      "MODULE;EXCLUDE_FROM_ALL;WITHOUT_CCM_HEADERS;NO_DOXYGEN;IWYU;PYBIND11;NOUNDERSCORE"
+      "MODULE;EXCLUDE_FROM_ALL;WITHOUT_CCM_HEADERS;NO_DOXYGEN;IWYU;PYBIND11;NOUNDERSCORE;INTERFACE"
       ${ARGN}
       )
 
@@ -172,7 +170,11 @@ macro(ccm_add_library THIS_LIB_NAME)
     endif (${THIS_LIB_NAME}_ARGS_MODULE)
 
 
-    add_library(${THIS_LIB_NAME} ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
+    if(${THIS_LIB_NAME}_ARGS_INTERFACE)
+      add_library(${THIS_LIB_NAME} INTERFACE)
+    else(${THIS_LIB_NAME}_ARGS_INTERFACE)
+      add_library(${THIS_LIB_NAME} ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
+    endif(${THIS_LIB_NAME}_ARGS_INTERFACE)
     set(LIB_${THIS_LIB_NAME}_EXISTS ON)
     add_dependencies(${THIS_LIB_NAME} env-check)
 
@@ -189,10 +191,13 @@ macro(ccm_add_library THIS_LIB_NAME)
         )
     endif()
 
+    if(${THIS_LIB_NAME}_ARGS_INTERFACE)
+    else(${THIS_LIB_NAME}_ARGS_INTERFACE)
     add_custom_command(TARGET ${THIS_LIB_NAME}
       PRE_LINK
       COMMAND mkdir -p ${LIBRARY_OUTPUT_PATH}
       )
+    endif(${THIS_LIB_NAME}_ARGS_INTERFACE)
 
     # Disabled all special linker flags for APPLE:
     #  - single_module: this is the default anyway
