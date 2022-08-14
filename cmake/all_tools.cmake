@@ -1,7 +1,7 @@
 #
 #  These guys are in subdirectory 'tools'
 #
-set(ALL_TOOLS root geant4
+set(ALL_TOOLS root geant4 xercesc
     ${CCM_EXTRA_TOOLS}   # add the extra tools and dedupe
     )
 # set(ALL_TOOLS pthread python boost boostnumpy root 

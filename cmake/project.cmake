@@ -318,7 +318,7 @@ macro(ccm_project PROJECT_NAME)
     if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/public/CCMAnalysis/${PROJECT_NAME} AND INSTALL_HEADERS)
       message(STATUS "Installing headers for" ${PROJECT_NAME})
       install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/public/CCMAnalysis/${PROJECT_NAME}
-      DESTINATION include
+      DESTINATION include/CCMAnalysis
       PATTERN ".git" EXCLUDE
       PATTERN ".svn" EXCLUDE)
     endif (IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/public/CCMAnalysis/${PROJECT_NAME} AND INSTALL_HEADERS)
@@ -415,7 +415,7 @@ endmacro(ccm_executable_script THIS_EXECUTABLE_NAME THIS_SCRIPT_NAME)
 
 
 macro(ccm_executable THIS_EXECUTABLE_NAME)
-  if(BUILD_${ccm_PROJECT})
+  if(BUILD_${CCM_PROJECT})
     parse_arguments(${PROJECT_NAME}_${THIS_EXECUTABLE_NAME}
       "USE_TOOLS;USE_PROJECTS;LINK_LIBRARIES"
       "NO_PREFIX;WITHOUT_CCM_HEADERS;IWYU"
