@@ -28,6 +28,71 @@
 #  
 #  SPDX-License-Identifier: BSD-2-Clause
 
+#
+# rootcint() handles root dictionary generation
+#
+if(NOT ROOT_FOUND OR NOT USE_CINT)
+  message(STATUS "ROOT CINT is OFF")
+  macro(ROOTCINT)
+  endmacro(ROOTCINT)
+else()
+  message(STATUS "ROOT CINT is ON")
+  macro(ROOTCINT TARGET)
+    parse_arguments(ARG
+      "LINKDEF;SOURCES;INCLUDE_DIRECTORIES;USE_TOOLS;USE_PROJECTS"
+      ""
+      ${ARGN}
+      )
+
+    get_directory_property(incdirs INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR})
+    foreach(dir ${incdirs})
+      list(APPEND ROOTCINT_INCLUDE_FLAGS -I${dir})
+    endforeach(dir ${ARG_INCLUDE_DIRECTORIES})
+
+    foreach(TOOL_ ${ARG_USE_TOOLS})
+      string(TOUPPER ${TOOL_} TOOL)
+      foreach(PATH_ ${${TOOL}_INCLUDE_DIR})
+    list(APPEND ROOTCINT_INCLUDE_FLAGS "-I${PATH_}")
+      endforeach(PATH_ ${${TOOL}_INCLUDE_DIR})
+    endforeach(TOOL_ ${ARG_USE_TOOLS})
+
+    foreach(PROJECT ${ARG_USE_PROJECTS})
+      list(APPEND ROOTCINT_INCLUDE_FLAGS -I${CMAKE_SOURCE_DIR}/CCMAnalysis/${PROJECT}/public)
+    endforeach(PROJECT ${ARG_USE_PROJECTS})
+
+    set(ROOTCINT_HEADERS "")
+    set(ROOTINTERNAL_HEADERS "")
+    foreach(header ${ARG_SOURCES})
+      if(EXISTS ${ROOT_INCLUDE_DIR}/${header})
+    # If this is a ROOT header, don't add to dependencies or
+    # rootcint flags as root adds these automagically.
+    list(APPEND ROOTINTERNAL_HEADERS ${header})
+      elseif(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${header})
+    # if it isn't in our project (and isn't a root header), it
+    # isn't legal here, the other project needs to build the dict.
+    # I guess.
+    message("In ${CMAKE_CURRENT_SOURCE_DIR}:")
+    message(FATAL_ERROR "Header '${header}' passed to rootcint does not exist")
+      else()
+    # okay, it exists in our project, add it to our commandline
+    # and be dependent on it.
+    list(APPEND ROOTCINT_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${header})
+      endif()
+    endforeach(header ${ARG_SOURCES})
+
+    message(STATUS "Using linkdef: ${ARG_LINKDEF}")
+    add_custom_command(
+      OUTPUT ${TARGET}
+      DEPENDS ${ARG_LINKDEF} ${ROOTCINT_HEADERS}
+      COMMAND ${CMAKE_BINARY_DIR}/env-shell.sh
+      # rootcint found and ROOTSYS set in env-shell.sh path
+      ARGS rootcint -f ${TARGET} -c -DCCM_USE_ROOT -DCCM_USE_CINT ${ROOTCINT_INCLUDE_FLAGS} -p ${CCM_UBER_HEADER} ${ROOTCINT_HEADERS} ${ROOTINTERNAL_HEADERS} ${ARG_LINKDEF}
+      COMMENT "Generating ${TARGET} with rootcint"
+      VERBATIM
+      )
+  ENDMACRO(ROOTCINT)
+ENDIF()
+
 macro(use_projects THIS_TARGET)
   parse_arguments(${THIS_TARGET}_USE_PROJECTS
     "PROJECTS"
@@ -45,7 +110,9 @@ macro(use_projects THIS_TARGET)
 
 
     include_directories(${CCM_SRC}/${USED_PROJECT}/public)
-    target_link_libraries(${THIS_TARGET} ${USED_PROJECT})
+    if(${LIB_${USED_PROJECT}_EXISTS})
+      target_link_libraries(${THIS_TARGET} ${USED_PROJECT})
+    endif(${LIB_${USED_PROJECT}_EXISTS})
   endforeach(USED_PROJECT ${${THIS_TARGET}_USE_PROJECTS_PROJECTS})
 endmacro(use_projects THIS_TARGET)
 
@@ -71,6 +138,8 @@ macro(ccm_add_library THIS_LIB_NAME)
     no_dotfile_glob(${THIS_LIB_NAME}_ARGS_SOURCES ${${THIS_LIB_NAME}_ARGS_DEFAULT_ARGS})
 
     if(${THIS_LIB_NAME}_ARGS_ROOTCINT)
+      message(STATUS "ROOT CINT enabled for ${THIS_LIB_NAME}")
+      message(STATUS "Looking for: ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h")
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
     set(LINKDEF_FILE ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
       else()
@@ -104,6 +173,7 @@ macro(ccm_add_library THIS_LIB_NAME)
 
 
     add_library(${THIS_LIB_NAME} ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
+    set(LIB_${THIS_LIB_NAME}_EXISTS ON)
     add_dependencies(${THIS_LIB_NAME} env-check)
 
     set_target_properties(${THIS_LIB_NAME}
@@ -296,8 +366,8 @@ macro(ccm_project PROJECT_NAME)
     endif (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${ARG_PYTHON_DIR}/__init__.py)
 
     if(NOT ARG_PYTHON_DEST)
-      set(ARG_PYTHON_DEST icecube/${PROJECT_NAME})
-      string(REPLACE "-" "_" ARG_PYTHON_DEST "icecube/${PROJECT_NAME}")
+      set(ARG_PYTHON_DEST ccm/${PROJECT_NAME})
+      string(REPLACE "-" "_" ARG_PYTHON_DEST "ccm/${PROJECT_NAME}")
     endif(NOT ARG_PYTHON_DEST)
 
     #
