@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "CCMAnalysis/utils/Utility.h"
-#include "CCMAnalysis/utils/MsgLog.h"
-#include "CCMAnalysis/modules/framework/CCMTaskManager.h"
+#include "CCMAnalysis/CCMUtils/Utility.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
+#include "CCMAnalysis/CCMFramework/CCMTaskManager.h"
 
 #include "TH1.h"
 #include "TApplication.h"
