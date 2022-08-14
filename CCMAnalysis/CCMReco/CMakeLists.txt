@@ -1,0 +1,17 @@
+set(PROJECT_NAME CCMReco)
+
+ccm_project(${PROJECT_NAME})
+
+ccm_add_library(${PROJECT_NAME}
+    private/CCMFindEvents.cxx
+    private/CCMNa22Cuts.cxx
+    private/CCMBuildAccumWaveform.cxx
+    private/CCMSingletTriplet.cxx
+    USE_TOOLS root xercesc
+    USE_PROJECTS CCMBinary CCMUtils CCMIO
+    ROOTCINT
+    public/CCMAnalysis/CCMReco/CCMFindEvents.h
+    public/CCMAnalysis/CCMReco/CCMNa22Cuts.h
+    public/CCMAnalysis/CCMReco/CCMBuildAccumWaveform.h
+    public/CCMAnalysis/CCMReco/CCMSingletTriplet.h
+)
