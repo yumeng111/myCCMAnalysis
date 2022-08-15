@@ -171,7 +171,7 @@ macro(ccm_add_library THIS_LIB_NAME)
 
 
     if(${THIS_LIB_NAME}_ARGS_INTERFACE)
-      add_library(${THIS_LIB_NAME} INTERFACE)
+      add_library(${THIS_LIB_NAME} INTERFACE ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
     else(${THIS_LIB_NAME}_ARGS_INTERFACE)
       add_library(${THIS_LIB_NAME} ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
     endif(${THIS_LIB_NAME}_ARGS_INTERFACE)
