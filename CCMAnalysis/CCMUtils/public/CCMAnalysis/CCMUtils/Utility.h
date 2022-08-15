@@ -200,16 +200,17 @@ namespace Utility
 
 class ExponentialCounter {
 private:
-  unsigned int count;
-  unsigned int leading_digit;
-  unsigned int exponent;
-  unsigned int power;
+    unsigned int count;
+    unsigned int leading_digit;
+    unsigned int exponent;
+    unsigned int power;
 public:
-  ExponentialCounter();
-  ExponentialCounter(unsigned int exponent, unsigned int power);
-  operator bool() const;
-  void Increment();
-  unsigned int Count() const;
+    ExponentialCounter();
+    ExponentialCounter(unsigned int exponent, unsigned int power);
+    unsigned int NextPrintout() const;
+    operator bool() const;
+    void Increment();
+    unsigned int Count() const;
 };
 
 }

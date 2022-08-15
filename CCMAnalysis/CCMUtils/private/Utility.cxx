@@ -330,36 +330,31 @@ std::ostream& std::operator << (std::ostream& os, const std::pair<const int, dou
 }
 
 Utility::ExponentialCounter::ExponentialCounter()
-  : count(0), leading_digit(1), exponent(0), power(10) {
-}
+    : count(0), leading_digit(0), exponent(0), power(10) {
+    }
 
 Utility::ExponentialCounter::ExponentialCounter(unsigned int exponent, unsigned int power)
-  : count(0), leading_digit(1), exponent(exponent), power(power) {
+    : count(0), leading_digit(0), exponent(exponent), power(power) {                          }
+
+unsigned int Utility::ExponentialCounter::NextPrintout() const {
+    return leading_digit * std::pow(double(power), double(exponent));
 }
 
 Utility::ExponentialCounter::operator bool() const {
-  int mod = leading_digit * std::pow(double(power), double(exponent));
-  return count % mod == 0;
+    return count >= NextPrintout();
 }
 
 void Utility::ExponentialCounter::Increment() {
-  // Increment the counter
-  ++count;
-
-  // Check if we want to increment the leading digit
-  if(not this->operator bool())
-    return;
-
-  ++leading_digit;
-
-  // Check if we have reached the max leading digit
-  if(leading_digit < power)
-    return;
-
-  leading_digit = 1;
-  ++exponent;
+    if(this->operator bool()) {
+        leading_digit += 1;
+    }
+    if(leading_digit >= power) {
+        leading_digit = 1;
+        exponent += 1;
+    }
+    count += 1;
 }
 
 unsigned int Utility::ExponentialCounter::Count() const {
-  return count;
+    return count;
 }

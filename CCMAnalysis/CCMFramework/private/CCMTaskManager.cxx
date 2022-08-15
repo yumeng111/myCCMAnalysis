@@ -177,7 +177,7 @@ CCMResult_t CCMTaskManager::Execute(int32_t n_events, std::vector<std::string> c
       event_counter.Increment();
       if(event_counter) {
         MsgInfo(MsgLog::Form("[%d] %s /%d/ %s",event_counter.Count(),Utility::tstamp(),
-              GetTriggerNumber(file_type), fCurrentInFileName));
+              GetTriggerNumber(file_type), fCurrentInFileName.c_str()));
       }
 
       // Assign the pointers to each module
