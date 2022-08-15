@@ -14,10 +14,10 @@
 #include <sys/types.h>
 #define NEVENTSSHM 5000
 #define NEVENTSDELAY 50
-#define NDIGITIZERS 5
+#define NDIGITIZERS 17
 #define NCHANNELS 16
 // Remember to update NSAMPLES in src/ds/LinkDef.h
-#define NSAMPLES 8000
+#define NSAMPLES 6000
 #define PERCENTAFTER 38 // CCM120 8000 samples
 
 /* Note: DAQ running requires 62.5 pll lock or else will crash without exception. */
