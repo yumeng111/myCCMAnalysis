@@ -310,7 +310,7 @@ macro(ccm_project PROJECT_NAME)
 
     if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources)
       install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/
-    DESTINATION ${PROJECT_NAME}/resources/
+	  DESTINATION lib/CCMAnalysis/${PROJECT_NAME}/resources/
     PATTERN ".svn" EXCLUDE
     PATTERN ".git" EXCLUDE
     PATTERN "*.py"
