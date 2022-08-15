@@ -13,5 +13,5 @@ ccm_add_library(${PROJECT_NAME}
     public/CCMAnalysis/CCMIO/CCMRootIO.h
     public/CCMAnalysis/CCMIO/CCMRawIO.h
     public/CCMAnalysis/CCMIO/CCMEventTreeHandle.h
-    public/CCMAnalysis/CCMIO/IOUtils.cxx
+    public/CCMAnalysis/CCMIO/IOUtils.h
 )

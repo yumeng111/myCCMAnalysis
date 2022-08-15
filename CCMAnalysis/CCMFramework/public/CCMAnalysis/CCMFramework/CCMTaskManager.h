@@ -34,7 +34,7 @@
 #include "CCMAnalysis/CCMDataStructures/RawData.h"
 #include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
 
-#include "CCMAnalysis/io/IOUtils.h"
+#include "CCMAnalysis/CCMIO/IOUtils.h"
 
 class CCMRootIO;
 class CCMRawIO;

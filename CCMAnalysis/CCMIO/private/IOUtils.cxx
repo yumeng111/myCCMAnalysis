@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "CCMAnalysis/io/IOUtils.h"
+#include "CCMAnalysis/CCMIO/IOUtils.h"
 
 CCMFileType DetermineFileType(std::string fname) {
     if(IsRootFile(fname)) {

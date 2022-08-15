@@ -94,7 +94,7 @@ else()
       )
   get_filename_component(dict_parent_dir ${TARGET} DIRECTORY)
   install(FILES "${dict_parent_dir}/${ARG_LIBNAME}Dict_rdict.pcm"
-      DESTINATION lib RENAME lib${ARG_LIBNAME}_rdict.pcm)
+      DESTINATION lib)
   ENDMACRO(ROOTCINT)
 ENDIF()
 
