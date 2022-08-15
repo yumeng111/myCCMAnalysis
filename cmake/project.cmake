@@ -80,9 +80,6 @@ else()
       endif()
     endforeach(header ${ARG_SOURCES})
 
-    message(STATUS "Using linkdef: ${ARG_LINKDEF}")
-    message(STATUS "Dict source: ${TARGET}")
-    message(STATUS "LIBNAME: ${ARG_LIBNAME}")
     add_custom_command(
       OUTPUT ${TARGET}
       DEPENDS ${ARG_LINKDEF} ${ROOTCINT_HEADERS}
@@ -105,7 +102,6 @@ macro(use_projects THIS_TARGET)
     ${ARGN}
     )
   foreach(USED_PROJECT ${${THIS_TARGET}_USE_PROJECTS_PROJECTS})
-    message(STATUS "Using project: " ${CCM_SRC}/${USED_PROJECT})
     if(NOT IS_DIRECTORY ${CCM_SRC}/${USED_PROJECT})
       message(FATAL_ERROR "Attempt to use nonexistent project '${USED_PROJECT}'")
     endif(NOT IS_DIRECTORY ${CCM_SRC}/${USED_PROJECT})
@@ -141,12 +137,10 @@ macro(ccm_add_library THIS_LIB_NAME)
     no_dotfile_glob(${THIS_LIB_NAME}_ARGS_SOURCES ${${THIS_LIB_NAME}_ARGS_DEFAULT_ARGS})
 
     if(${THIS_LIB_NAME}_ARGS_ROOTCINT)
-      message(STATUS "ROOT CINT enabled for ${THIS_LIB_NAME}")
-      message(STATUS "Looking for: ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h")
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
-    set(LINKDEF_FILE ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
+        set(LINKDEF_FILE ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
       else()
-    set(LINKDEF_FILE "NOTFOUND")
+        set(LINKDEF_FILE "NOTFOUND")
       endif()
     endif(${THIS_LIB_NAME}_ARGS_ROOTCINT)
 
@@ -324,10 +318,7 @@ macro(ccm_project PROJECT_NAME)
         ${SPHINX_DIR}/source/projects/${PROJECT_NAME})
     endif(ARG_DOCS_DIR)
 
-    message(STATUS "Checking " ${CMAKE_CURRENT_SOURCE_DIR}/public/${PROJECT_NAME})
-    message(STATUS "INSTALL_HEADERS: " ${INSTALL_HEADERS})
     if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/public/CCMAnalysis/${PROJECT_NAME} AND INSTALL_HEADERS)
-      message(STATUS "Installing headers for" ${PROJECT_NAME})
       install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/public/CCMAnalysis/${PROJECT_NAME}
       DESTINATION include/CCMAnalysis
       PATTERN ".git" EXCLUDE

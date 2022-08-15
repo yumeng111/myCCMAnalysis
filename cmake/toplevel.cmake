@@ -189,7 +189,6 @@ if (NOT CCM_PROJECTS)
   file(GLOB cmake_projects RELATIVE ${CMAKE_BINARY_DIR} ${CCM_SRC}/*/CMakeLists.txt)
   file(GLOB hidden_projects RELATIVE ${CMAKE_BINARY_DIR} ${CCM_SRC}/.*/CMakeLists.txt)
   message(STATUS "CCM_SRC:" ${CCM_SRC})
-  message(STATUS "Projects globbed:" ${cmake_projects})
 
   if(hidden_projects)
     list(REMOVE_ITEM cmake_projects ${hidden_projects})
