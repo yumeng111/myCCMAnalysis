@@ -39,7 +39,7 @@ else()
   message(STATUS "ROOT CINT is ON")
   macro(ROOTCINT TARGET)
     parse_arguments(ARG
-      "LINKDEF;SOURCES;INCLUDE_DIRECTORIES;USE_TOOLS;USE_PROJECTS"
+	"LINKDEF;SOURCES;INCLUDE_DIRECTORIES;USE_TOOLS;USE_PROJECTS;LIBNAME"
       ""
       ${ARGN}
       )
@@ -81,6 +81,8 @@ else()
     endforeach(header ${ARG_SOURCES})
 
     message(STATUS "Using linkdef: ${ARG_LINKDEF}")
+    message(STATUS "Dict source: ${TARGET}")
+    message(STATUS "LIBNAME: ${ARG_LIBNAME}")
     add_custom_command(
       OUTPUT ${TARGET}
       DEPENDS ${ARG_LINKDEF} ${ROOTCINT_HEADERS}
@@ -90,6 +92,9 @@ else()
       COMMENT "Generating ${TARGET} with rootcint"
       VERBATIM
       )
+  get_filename_component(dict_parent_dir ${TARGET} DIRECTORY)
+  install(FILES "${dict_parent_dir}/${ARG_LIBNAME}Dict_rdict.pcm"
+      DESTINATION lib RENAME lib${ARG_LIBNAME}_rdict.pcm)
   ENDMACRO(ROOTCINT)
 ENDIF()
 
@@ -157,6 +162,7 @@ macro(ccm_add_library THIS_LIB_NAME)
     SOURCES ${${THIS_LIB_NAME}_ARGS_ROOTCINT}
     USE_PROJECTS ${${THIS_LIB_NAME}_ARGS_USE_PROJECTS} ${THIS_LIB_NAME}
     USE_TOOLS    ${${THIS_LIB_NAME}_ARGS_USE_TOOLS}
+    LIBNAME ${THIS_LIB_NAME}
     )
 
     endif (LINKDEF_FILE AND ${THIS_LIB_NAME}_ARGS_ROOTCINT AND USE_CINT)

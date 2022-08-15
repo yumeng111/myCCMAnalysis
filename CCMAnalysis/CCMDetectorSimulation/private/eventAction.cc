@@ -9,12 +9,12 @@ a hit (optical photon to PMT).
 #include <sstream>
 #include <iostream>
 
-#include "eventAction.hh"
-#include "runAction.hh"
-#include "primaryGenerator.hh"
-#include "detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/eventAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/runAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 
-#include "CCMAnalysis/ds/MCTruth.h"
+#include "CCMAnalysis/CCMDataStructures/MCTruth.h"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"

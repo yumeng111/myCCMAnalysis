@@ -9,8 +9,8 @@ Sodium: setting Sodium to true creates events with the proper Sodium-22 decay ch
 Neither: setting both to false allows the creation of other kinds of initial events, 
          such as 120 keV gammas for cobalt, or neutrons/Ar-39 decay events. 
  */
-#include "primaryGenerator.hh"
-#include "detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"

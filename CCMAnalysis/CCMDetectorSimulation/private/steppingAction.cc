@@ -11,10 +11,10 @@ Current active functions:
 #include <sstream>
 #include <string>
 
-#include "steppingAction.hh"
-#include "eventAction.hh"
-#include "detectorConstruction.hh"
-#include "primaryGenerator.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/steppingAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/eventAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
 
 #include "G4Step.hh"
 #include "G4Event.hh"

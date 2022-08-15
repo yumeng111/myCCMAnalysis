@@ -6,9 +6,9 @@ Currently it prints an event number every 1000 runs.
 Also does a few variable translations and print statements
  */
 
-#include "runAction.hh"
-#include "primaryGenerator.hh"
-#include "detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/runAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 
 #include "G4Run.hh"
 #include "G4RunManager.hh"

@@ -7,12 +7,12 @@ rather than a code which does anything itself.
 
 */
 
-#include "actionInitialization.hh"
-#include "primaryGenerator.hh"
-#include "runAction.hh"
-#include "eventAction.hh"
-#include "steppingAction.hh"
-#include "detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/actionInitialization.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/runAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/eventAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/steppingAction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 
 //Constructor
 actionInitialization::actionInitialization()

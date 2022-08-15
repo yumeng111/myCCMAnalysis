@@ -9,7 +9,7 @@
 #include <iostream>
 #include <algorithm>
 
-#include "CCMAnalysis/utils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 #include "TF1.h"
 #include "TH1.h"

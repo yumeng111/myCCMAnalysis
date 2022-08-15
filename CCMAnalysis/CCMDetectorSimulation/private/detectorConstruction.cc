@@ -11,8 +11,8 @@ This version is the current best fit for the calibration data I have. It include
 
 #include <sstream>
 
-#include "detectorConstruction.hh"
-#include "detectorMessenger.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorMessenger.hh"
 
 #include "G4SDManager.hh"
 #include "G4RunManager.hh"

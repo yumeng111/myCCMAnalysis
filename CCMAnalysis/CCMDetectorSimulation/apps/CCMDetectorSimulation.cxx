@@ -11,8 +11,8 @@ Otherwise this is just a container code that calls the more specific headers and
 */
 
 #include "G4Types.hh"
-#include "detectorConstruction.hh"
-#include "actionInitialization.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/actionInitialization.hh"
 
 #ifdef G4MULTITHREADED
 #include "G4MTRunManager.hh"

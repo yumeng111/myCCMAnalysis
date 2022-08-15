@@ -11,7 +11,7 @@ Does not contain any actions.
 
 #include "globals.hh"
 
-#include "CCMAnalysis/io/CCMRootIO.h"
+#include "CCMAnalysis/CCMIO/CCMRootIO.h"
 #include "G4UserEventAction.hh"
 
 class TObjArray;

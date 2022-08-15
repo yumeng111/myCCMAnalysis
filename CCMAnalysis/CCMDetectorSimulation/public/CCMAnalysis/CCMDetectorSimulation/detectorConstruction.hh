@@ -15,7 +15,7 @@ class G4Tubs;
 class G4Sphere;
 
 #include "G4Material.hh"
-#include "detectorMessenger.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorMessenger.hh"
 #include "G4VisAttributes.hh"
 #include "G4RotationMatrix.hh"
 

@@ -7,8 +7,8 @@ Be careful trying to make a detector that can be completely controlled from the 
 
 See the detector Construction methods for explanations of what each command does.
 */
-#include "detectorMessenger.hh"
-#include "detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorMessenger.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 
 #include "G4UIcmdWithADoubleAndUnit.hh"
 #include "G4UIcmdWith3VectorAndUnit.hh"
