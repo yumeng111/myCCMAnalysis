@@ -116,6 +116,11 @@ execute_process(COMMAND git rev-parse --verify HEAD
   COMMAND tr -d \\n
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   OUTPUT_VARIABLE GIT_REVISION)
+execute_process(COMMAND git describe --long --all --abbrev=40 --dirty --broken
+  COMMAND cut -b 7-
+  COMMAND tr -d \\n
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_LONG_VERSION)
 
 set(GIT_SHORT_REVISION "GIT_SHORT_REVISION-NOTFOUND")
 if(GIT_REVISION)

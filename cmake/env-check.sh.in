@@ -1,0 +1,32 @@
+#!/bin/sh
+
+printerr ()
+{
+    echo "[----]" $*
+}
+
+exit_error () 
+{
+    printerr 
+    printerr BUILD ENVIRONMENT CORRUPTION
+    printerr
+    printerr Environment says CCM_BUILD is \'$CCM_BUILD\'
+    printerr    But current build dir is \'@CMAKE_BINARY_DIR@\'
+    printerr
+    printerr  Environment says CCM_SRC is \'$CCM_SRC\'
+    printerr   But current source dir is \'@CMAKE_SOURCE_DIR@\'
+    printerr
+    exit 2
+}
+
+if [ -n "$CCM_BUILD" -a "$CCM_BUILD" != "@CMAKE_BINARY_DIR@" ]
+    then 
+    exit_error
+fi
+
+if [ -n "$CCM_SRC" -a "$CCM_SRC" != "@CMAKE_SOURCE_DIR@" ]
+    then 
+    exit_error
+fi
+
+exit 0

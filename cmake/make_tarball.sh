@@ -1,0 +1,28 @@
+
+#!/bin/sh
+#
+#  $Id$
+#
+echo "Generating BUILD_INFO"
+
+cat > @CMAKE_INSTALL_PREFIX@/ABOUT <<EOF
+Tarball built on `date`
+On host `uname -a`
+By user `whoami`
+From git revision `cd @CMAKE_SOURCE_DIR@; git rev-props --verify HEAD`
+Host has `@CMAKE_CXX_COMPILER@ --version`
+EOF
+
+if [ -f @CMAKE_BINARY_DIR@/tarball_hook.sh ]
+then
+    echo "Tarball hook script 'tarball_hook.sh' exists in metaproject directory."
+    if [ -x @CMAKE_BINARY_DIR@/tarball_hook.sh ]
+    then
+    echo "Running tarball_hook.sh"
+    @CMAKE_BINARY_DIR@/tarball_hook.sh
+    else
+    echo "Not running it because it is not executable."
+    fi
+
+fi
+
