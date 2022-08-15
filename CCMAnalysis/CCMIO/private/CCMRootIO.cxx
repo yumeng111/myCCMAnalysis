@@ -10,6 +10,7 @@
  *
  *-----------------------------------------------------------*/
 #include <cstdio>
+#include <memory>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
@@ -30,6 +31,7 @@
 #include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
 #include "CCMAnalysis/CCMDataStructures/SimplifiedEvent.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/MakeUniquePatch.h"
 
 #include "TFile.h"
 #include "TObjString.h"

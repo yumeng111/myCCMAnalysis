@@ -17,4 +17,5 @@ ccm_add_library(${PROJECT_NAME}
     public/CCMAnalysis/CCMUtils/PMTInfoMap.tcc
     public/CCMAnalysis/CCMUtils/CCMBeamInfo.h
     public/CCMAnalysis/CCMUtils/Utility.h
+    public/CCMAnalysis/CCMUtils/MakeUniquePatch.h
 )

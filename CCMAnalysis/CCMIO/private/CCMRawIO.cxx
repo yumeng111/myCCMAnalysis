@@ -21,6 +21,7 @@
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/PMTInfoMap.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/MakeUniquePatch.h"
 
 //__________________________________________________
 CCMRawIO::CCMRawIO()

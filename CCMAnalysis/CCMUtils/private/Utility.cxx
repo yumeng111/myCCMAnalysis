@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <sstream>
 
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"

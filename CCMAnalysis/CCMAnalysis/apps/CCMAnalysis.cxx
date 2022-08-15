@@ -9,6 +9,7 @@
 
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
+#include "CCMAnalysis/CCMUtils/MakeUniquePatch.h"
 #include "CCMAnalysis/CCMFramework/CCMTaskManager.h"
 
 #include "TH1.h"

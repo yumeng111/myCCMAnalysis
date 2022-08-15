@@ -29,6 +29,7 @@
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/PMTInfoMap.h"
 #include "CCMAnalysis/CCMUtils/PMTInformation.h"
+#include "CCMAnalysis/CCMUtils/MakeUniquePatch.h"
 
 //See CCMModuleTable for info
 MODULE_DECL(CCMSPECalc);
