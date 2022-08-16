@@ -8,6 +8,7 @@ struct ChannelHeader {
     uint32_t version;
     std::string physical_board_id;
     std::string board_serial_number;
+    std::string physical_channel_type;
     std::string physical_channel_id;
     uint32_t caen_optical_link_number;
     uint32_t caen_optical_link_board_number;
