@@ -94,6 +94,7 @@ inline std::ostream & write_binary(std::ostream & os, ChannelHeader const & head
         write_binary(os, header.version);
         write_binary(os, header.physical_board_id);
         write_binary(os, header.board_serial_number);
+        write_binary(os, header.physical_channel_type);
         write_binary(os, header.physical_channel_id);
         write_binary(os, header.caen_optical_link_number);
         write_binary(os, header.caen_optical_link_board_number);
@@ -109,6 +110,7 @@ inline std::istream & read_binary(std::istream & is, ChannelHeader & header) {
     if(header.version == 0) {
         read_binary(is, header.physical_board_id);
         read_binary(is, header.board_serial_number);
+        read_binary(is, header.physical_channel_type);
         read_binary(is, header.physical_channel_id);
         read_binary(is, header.caen_optical_link_number);
         read_binary(is, header.caen_optical_link_board_number);
