@@ -1,6 +1,10 @@
 #ifndef CCMAnalysis_BinaryFormat_H
 #define CCMAnalysis_BinaryFormat_H
 
+#include <string>
+#include <time.h>
+#include <vector>
+
 namespace CCMAnalysis {
 namespace Binary {
 
@@ -31,7 +35,7 @@ struct CCMDAQConfig {
     uint32_t num_channels;
     uint32_t num_samples;
     uint32_t ring_buffer_size;
-    float trigger_percent_after;
+    uint32_t trigger_percent_after;
     std::vector<DigitizerBoard> digitizer_boards;
 };
 
@@ -54,10 +58,10 @@ struct CCMDigitizerReadout {
 struct CCMTriggerReadout {
     uint32_t version;
     uint32_t evNum;
-    /// The digitizer information
-    CCMDigitizerReadout digitizer_readout;
     /// The computer time of the event
     struct timespec computer_time;  // needed to explicitly declare as a struct - stackoverflow 11153334
+    /// The digitizer information
+    CCMDigitizerReadout digitizer_readout;
 };
 
 struct CCMData {
