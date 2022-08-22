@@ -11,6 +11,7 @@
 #include <sstream>
 
 #include "CCMAnalysis/CCMUtils/Utility.h"
+#include "CCMAnalysis/CCMUtils/MakeUniquePatch.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 /*!**********************************************
@@ -307,7 +308,7 @@ std::vector<std::string> Utility::IndirectFileList(std::string const & file) {
   // Open the file and pull the file names in
   std::ifstream infile(file);
   if (!infile) {
-    MsgError(MsgLog::Form("File %s not found.",file));
+    MsgError(MsgLog::Form("File %s not found.",file.c_str()));
     exit(1);
   }
 

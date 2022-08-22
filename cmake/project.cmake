@@ -89,6 +89,12 @@ else()
       COMMENT "Generating ${TARGET} with rootcint"
       VERBATIM
       )
+  if(${CMAKE_VERSION} VERSION_LESS "3.19.0")
+   add_custom_target(
+       "ROOTCINT_${ARG_LIBNAME}"
+       ALL
+       DEPENDS ${TARGET})
+  endif()
   get_filename_component(dict_parent_dir ${TARGET} DIRECTORY)
   install(FILES "${dict_parent_dir}/${ARG_LIBNAME}Dict_rdict.pcm"
       DESTINATION lib)
@@ -171,18 +177,25 @@ macro(ccm_add_library THIS_LIB_NAME)
 
 
     if(${THIS_LIB_NAME}_ARGS_INTERFACE)
-      add_library(${THIS_LIB_NAME} INTERFACE ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
+  	if(${CMAKE_VERSION} VERSION_LESS "3.19.0")
+            add_library(${THIS_LIB_NAME} INTERFACE ${ARGS})
+        else(${CMAKE_VERSION} VERSION_LESS "3.19.0")
+            add_library(${THIS_LIB_NAME} INTERFACE ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
+  	endif(${CMAKE_VERSION} VERSION_LESS "3.19.0")
     else(${THIS_LIB_NAME}_ARGS_INTERFACE)
       add_library(${THIS_LIB_NAME} ${ARGS} ${${THIS_LIB_NAME}_ARGS_SOURCES})
     endif(${THIS_LIB_NAME}_ARGS_INTERFACE)
     set(LIB_${THIS_LIB_NAME}_EXISTS ON)
     add_dependencies(${THIS_LIB_NAME} env-check)
 
+    if(${THIS_LIB_NAME}_ARGS_INTERFACE AND ${CMAKE_VERSION} VERSION_LESS "3.19.0")
+    else(${THIS_LIB_NAME}_ARGS_INTERFACE AND ${CMAKE_VERSION} VERSION_LESS "3.19.0")
     set_target_properties(${THIS_LIB_NAME}
       PROPERTIES
       COMPILE_DEFINITIONS PROJECT=${PROJECT_NAME}
       NO_SYSTEM_FROM_IMPORTED TRUE
       )
+    endif(${THIS_LIB_NAME}_ARGS_INTERFACE AND ${CMAKE_VERSION} VERSION_LESS "3.19.0")
 
     if(${THIS_LIB_NAME}_ARGS_IWYU AND USE_IWYU)
       set_target_properties(${THIS_LIB_NAME}
@@ -213,6 +226,8 @@ macro(ccm_add_library THIS_LIB_NAME)
     #    )
     #endif(APPLE)
 
+    if(${THIS_LIB_NAME}_ARGS_INTERFACE AND ${CMAKE_VERSION} VERSION_LESS "3.19.0")
+    else(${THIS_LIB_NAME}_ARGS_INTERFACE AND ${CMAKE_VERSION} VERSION_LESS "3.19.0")
     if(NOT ${THIS_LIB_NAME}_ARGS_WITHOUT_CCM_HEADERS)
       set_target_properties(${THIS_LIB_NAME}
     PROPERTIES
@@ -225,6 +240,7 @@ macro(ccm_add_library THIS_LIB_NAME)
     COMPILE_FLAGS ${${THIS_LIB_NAME}_ARGS_COMPILE_FLAGS}
     )
     endif(${THIS_LIB_NAME}_ARGS_COMPILE_FLAGS)
+    endif(${THIS_LIB_NAME}_ARGS_INTERFACE AND ${CMAKE_VERSION} VERSION_LESS "3.19.0")
 
     if (${THIS_LIB_NAME}_ARGS_LINK_LIBRARIES)
       target_link_libraries(${THIS_LIB_NAME} ${${THIS_LIB_NAME}_ARGS_LINK_LIBRARIES})

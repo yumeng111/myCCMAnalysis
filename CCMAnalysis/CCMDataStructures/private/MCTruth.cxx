@@ -135,11 +135,11 @@ void MCTruth::AddHitInformation(int row, int col, bool uncoated, float energy, f
 {
 	fHitRow.emplace_back(row);
 	fHitCol.emplace_back(col);
-	fHitUncoated.emplace_back(uncoated);
+	fHitUncoated.push_back(uncoated);
 	fHitEnergy.emplace_back(energy);
 	fHitTime.emplace_back(time);
 	fHitAngle.emplace_back(angle);
-	fPassedQF.emplace_back(quench);
+	fPassedQF.push_back(quench);
 
 	return;
 }
