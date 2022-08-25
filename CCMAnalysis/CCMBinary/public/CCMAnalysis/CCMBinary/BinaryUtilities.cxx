@@ -186,7 +186,7 @@ inline std::ostream & write_binary(std::ostream & os, CCMDigitizerReadout const 
         write_binary(os, digi_readout.version);
         write_binary(os, digi_readout.channel_sizes);
         write_binary(os, digi_readout.channel_masks);
-        write_binary(os, digi_readout.board_temperatures);
+        write_binary(os, digi_readout.channel_temperatures);
         write_binary(os, digi_readout.board_event_numbers);
         write_binary(os, digi_readout.board_times);
         write_binary(os, digi_readout.samples);
@@ -201,7 +201,7 @@ inline std::istream & read_binary(std::istream & is, CCMDigitizerReadout & digi_
     if(digi_readout.version == 0) {
         read_binary(is, digi_readout.channel_sizes);
         read_binary(is, digi_readout.channel_masks);
-        read_binary(is, digi_readout.board_temperatures);
+        read_binary(is, digi_readout.channel_temperatures);
         read_binary(is, digi_readout.board_event_numbers);
         read_binary(is, digi_readout.board_times);
         read_binary(is, digi_readout.samples);
@@ -214,7 +214,7 @@ inline std::istream & read_binary(std::istream & is, CCMDigitizerReadout & digi_
 inline std::ostream & write_binary(std::ostream & os, CCMTriggerReadout const & trigger_readout) {
     if(trigger_readout.version == 0) {
         write_binary(os, trigger_readout.version);
-        write_binary(os, trigger_readout.evNum);
+        write_binary(os, trigger_readout.event_number);
         write_binary(os, trigger_readout.digitizer_readout);
         write_binary(os, trigger_readout.computer_time);
     } else {
@@ -226,7 +226,7 @@ inline std::ostream & write_binary(std::ostream & os, CCMTriggerReadout const & 
 inline std::istream & read_binary(std::istream & is, CCMTriggerReadout & trigger_readout) {
     read_binary(is, trigger_readout.version);
     if(trigger_readout.version == 0) {
-        read_binary(is, trigger_readout.evNum);
+        read_binary(is, trigger_readout.event_number);
         read_binary(is, trigger_readout.digitizer_readout);
         read_binary(is, trigger_readout.computer_time);
     } else {

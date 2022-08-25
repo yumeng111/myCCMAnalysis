@@ -9,7 +9,7 @@ namespace CCMAnalysis {
 namespace Binary {
 
 struct ChannelHeader {
-    uint32_t version;
+    uint32_t version = 0;
     std::string physical_board_id;
     std::string board_serial_number;
     std::string physical_channel_type;
@@ -20,7 +20,7 @@ struct ChannelHeader {
 };
 
 struct DigitizerBoard {
-    uint32_t version;
+    uint32_t version = 0;
     std::string physical_board_id;
     std::string board_serial_number;
     uint32_t caen_optical_link_number;
@@ -29,7 +29,7 @@ struct DigitizerBoard {
 };
 
 struct CCMDAQConfig {
-    uint32_t version;
+    uint32_t version = 0;
     std::string machine_identifier;
     uint32_t num_digitizer_boards;
     uint32_t num_channels;
@@ -40,13 +40,13 @@ struct CCMDAQConfig {
 };
 
 struct CCMDigitizerReadout {
-    uint32_t version;
+    uint32_t version = 0;
     /// The number of samples for each channel (should be equal to #NSAMPLES)
     std::vector<uint16_t> channel_sizes;
     /// Lets you know if the channel was masked in the hardware
     std::vector<uint16_t> channel_masks;
     /// The temperatures of each channel (updated periodically)
-    std::vector<uint16_t> board_temperatures;
+    std::vector<uint32_t> channel_temperatures;
     /// The event number on each board
     std::vector<uint32_t> board_event_numbers;
     /// The internal clock time for each board
@@ -56,8 +56,8 @@ struct CCMDigitizerReadout {
 };
 
 struct CCMTriggerReadout {
-    uint32_t version;
-    uint32_t evNum;
+    uint32_t version = 0;
+    uint32_t event_number;
     /// The computer time of the event
     struct timespec computer_time;  // needed to explicitly declare as a struct - stackoverflow 11153334
     /// The digitizer information
@@ -65,7 +65,7 @@ struct CCMTriggerReadout {
 };
 
 struct CCMData {
-    uint32_t version;
+    uint32_t version = 0;
     CCMDAQConfig daq_config;
     std::vector<CCMTriggerReadout> trigger_readout;
 };
