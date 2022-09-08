@@ -156,8 +156,9 @@ inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & confi
         write_binary(os, config.num_digitizer_boards);
         write_binary(os, config.num_channels);
         write_binary(os, config.num_samples);
-        write_binary(os, config.ring_buffer_size);
         write_binary(os, config.trigger_percent_after);
+        write_binary(os, config.trigger_time_tolerance);
+        write_binary(os, config.missed_trigger_tolerance);
         write_binary(os, config.digitizer_boards);
     } else {
         throw std::runtime_error("Can only write CCMDAQConfig version <= 0");
@@ -172,8 +173,9 @@ inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config) {
         read_binary(is, config.num_digitizer_boards);
         read_binary(is, config.num_channels);
         read_binary(is, config.num_samples);
-        read_binary(is, config.ring_buffer_size);
         read_binary(is, config.trigger_percent_after);
+        read_binary(is, config.trigger_time_tolerance);
+        read_binary(is, config.missed_trigger_tolerance);
         read_binary(is, config.digitizer_boards);
     } else {
         throw std::runtime_error("Can only read CCMDAQConfig version <= 0");

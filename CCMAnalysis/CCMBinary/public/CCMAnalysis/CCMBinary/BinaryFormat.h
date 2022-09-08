@@ -34,8 +34,9 @@ struct CCMDAQConfig {
     uint32_t num_digitizer_boards;
     uint32_t num_channels;
     uint32_t num_samples;
-    uint32_t ring_buffer_size;
     uint32_t trigger_percent_after;
+    uint32_t trigger_time_tolerance;
+    uint32_t missed_trigger_tolerance;
     std::vector<DigitizerBoard> digitizer_boards;
 };
 
