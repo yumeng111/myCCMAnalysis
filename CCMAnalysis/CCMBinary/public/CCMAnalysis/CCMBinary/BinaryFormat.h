@@ -26,6 +26,7 @@ struct DigitizerBoard {
     uint32_t caen_optical_link_number;
     uint32_t caen_optical_link_board_number;
     std::vector<ChannelHeader> channels;
+    std::string trigger_out_type;
 };
 
 struct CCMDAQConfig {

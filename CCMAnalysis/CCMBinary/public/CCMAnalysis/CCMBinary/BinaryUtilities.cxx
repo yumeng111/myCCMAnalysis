@@ -129,6 +129,7 @@ inline std::ostream & write_binary(std::ostream & os, DigitizerBoard const & boa
         write_binary(os, board.caen_optical_link_number);
         write_binary(os, board.caen_optical_link_board_number);
         write_binary(os, board.channels);
+        write_binary(os, board.trigger_out_type);
     } else {
         throw std::runtime_error("Can only write DigitizerBoard version <= 0");
     }
@@ -143,6 +144,7 @@ inline std::istream & read_binary(std::istream & is, DigitizerBoard & board) {
         read_binary(is, board.caen_optical_link_number);
         read_binary(is, board.caen_optical_link_board_number);
         read_binary(is, board.channels);
+        read_binary(is, board.trigger_out_type);
     } else {
         throw std::runtime_error("Can only read DigitizerBoard version <= 0");
     }
