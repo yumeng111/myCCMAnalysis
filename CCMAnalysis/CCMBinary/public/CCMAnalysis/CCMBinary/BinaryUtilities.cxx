@@ -185,7 +185,7 @@ inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config) {
     return is;
 }
 
-inline std::ostream & write_binary(std::ostream & os, CCMDigitizerReadout const & digi_readout) {
+inline std::ostream & write_binary(std::ostream & os, CCMTrigger const & digi_readout) {
     if(digi_readout.version == 0) {
         write_binary(os, digi_readout.version);
         write_binary(os, digi_readout.channel_sizes);
@@ -193,14 +193,13 @@ inline std::ostream & write_binary(std::ostream & os, CCMDigitizerReadout const 
         write_binary(os, digi_readout.channel_temperatures);
         write_binary(os, digi_readout.board_event_numbers);
         write_binary(os, digi_readout.board_times);
-        write_binary(os, digi_readout.samples);
     } else {
-        throw std::runtime_error("Can only write CCMDigitizerReadout version <= 0");
+        throw std::runtime_error("Can only write CCMTrigger version <= 0");
     }
     return os;
 }
 
-inline std::istream & read_binary(std::istream & is, CCMDigitizerReadout & digi_readout) {
+inline std::istream & read_binary(std::istream & is, CCMTrigger & digi_readout) {
     read_binary(is, digi_readout.version);
     if(digi_readout.version == 0) {
         read_binary(is, digi_readout.channel_sizes);
@@ -208,9 +207,8 @@ inline std::istream & read_binary(std::istream & is, CCMDigitizerReadout & digi_
         read_binary(is, digi_readout.channel_temperatures);
         read_binary(is, digi_readout.board_event_numbers);
         read_binary(is, digi_readout.board_times);
-        read_binary(is, digi_readout.samples);
     } else {
-        throw std::runtime_error("Can only read CCMDigitizerReadout version <= 0");
+        throw std::runtime_error("Can only read CCMTrigger version <= 0");
     }
     return is;
 }
@@ -220,7 +218,8 @@ inline std::ostream & write_binary(std::ostream & os, CCMTriggerReadout const & 
         write_binary(os, trigger_readout.version);
         write_binary(os, trigger_readout.event_number);
         write_binary(os, trigger_readout.computer_time);
-        write_binary(os, trigger_readout.digitizer_readout);
+        write_binary(os, trigger_readout.triggers);
+        write_binary(os, trigger_readout.samples);
     } else {
         throw std::runtime_error("Can only write CCMTriggerReadout version <= 0");
     }
@@ -232,7 +231,8 @@ inline std::istream & read_binary(std::istream & is, CCMTriggerReadout & trigger
     if(trigger_readout.version == 0) {
         read_binary(is, trigger_readout.event_number);
         read_binary(is, trigger_readout.computer_time);
-        read_binary(is, trigger_readout.digitizer_readout);
+        read_binary(is, trigger_readout.triggers);
+        read_binary(is, trigger_readout.samples);
     } else {
         throw std::runtime_error("Can only read CCMTriggerReadout version <= 0");
     }

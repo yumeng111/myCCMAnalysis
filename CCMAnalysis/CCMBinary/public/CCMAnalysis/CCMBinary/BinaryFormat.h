@@ -41,7 +41,7 @@ struct CCMDAQConfig {
     std::vector<DigitizerBoard> digitizer_boards;
 };
 
-struct CCMDigitizerReadout {
+struct CCMTrigger {
     uint32_t version = 0;
     /// The number of samples for each channel (should be equal to #NSAMPLES)
     std::vector<uint16_t> channel_sizes;
@@ -53,8 +53,6 @@ struct CCMDigitizerReadout {
     std::vector<uint32_t> board_event_numbers;
     /// The internal clock time for each board
     std::vector<uint32_t> board_times;
-    /// The ADC value for each sample on a given channel
-    std::vector<std::vector<uint16_t>> samples;
 };
 
 struct CCMTriggerReadout {
@@ -62,8 +60,12 @@ struct CCMTriggerReadout {
     uint32_t event_number;
     /// The computer time of the event
     struct timespec computer_time;  // needed to explicitly declare as a struct - stackoverflow 11153334
-    /// The digitizer information
-    CCMDigitizerReadout digitizer_readout;
+    /// The triggers within the readout window
+    std::vector<CCMTrigger> triggers;
+    /// The ADC value for each sample on a given channel
+    ///  samples has one entry for each sample
+    ///  each channel entry is a vector of ADC counts ordered in time
+    std::vector<std::vector<uint16_t>> samples;
 };
 
 struct CCMData {

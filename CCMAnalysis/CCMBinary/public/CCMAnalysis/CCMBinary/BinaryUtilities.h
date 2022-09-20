@@ -28,8 +28,8 @@ inline std::ostream & write_binary(std::ostream & os, DigitizerBoard const & boa
 inline std::istream & read_binary(std::istream & is, DigitizerBoard & board);
 inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & config);
 inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config);
-inline std::ostream & write_binary(std::ostream & os, CCMDigitizerReadout const & digi_readout);
-inline std::istream & read_binary(std::istream & is, CCMDigitizerReadout const & digi_readout);
+inline std::ostream & write_binary(std::ostream & os, CCMTrigger const & trigger);
+inline std::istream & read_binary(std::istream & is, CCMTrigger const & trigger);
 inline std::ostream & write_binary(std::ostream & os, CCMTriggerReadout const & trigger_readout);
 inline std::istream & read_binary(std::istream & is, CCMTriggerReadout & trigger_readout);
 inline std::ostream & write_magic_number(std::ostream & os);
