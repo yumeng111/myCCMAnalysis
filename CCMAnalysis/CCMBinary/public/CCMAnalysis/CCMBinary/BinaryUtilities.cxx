@@ -48,6 +48,30 @@ inline std::istream & read_binary(std::istream & is, float & x) {
     return is;
 }
 
+inline std::ostream & write_binary(std::ostream & os, double const & x) {
+    constexpr size_t size = sizeof(double);
+    os.write((char*)&x, size);
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, double & x) {
+    constexpr size_t size = sizeof(double);
+    is.read((char*)&x, size);
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, long double const & x) {
+    constexpr size_t size = sizeof(long double);
+    os.write((char*)&x, size);
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, long double & x) {
+    constexpr size_t size = sizeof(long double);
+    is.read((char*)&x, size);
+    return is;
+}
+
 inline std::ostream & write_binary(std::ostream & os, char const * x, size_t n) {
     os.write(x, n);
     return os;
@@ -161,6 +185,10 @@ inline std::ostream & write_binary(std::ostream & os, CCMDAQMachineConfig const 
         write_binary(os, config.trigger_percent_after);
         write_binary(os, config.trigger_time_tolerance);
         write_binary(os, config.missed_trigger_tolerance);
+        write_binary(os, config.offset_estimate_min_triggers);
+        write_binary(os, config.offset_estimate_abs_error_threshold);
+        write_binary(os, config.offset_estimate_rel_error_threshold);
+        write_binary(os, config.offset_estimate_tau);
     } else {
         throw std::runtime_error("Can only write CCMDAQMachineConfig version <= 0");
     }
@@ -177,6 +205,10 @@ inline std::istream & read_binary(std::istream & is, CCMDAQMachineConfig & confi
         read_binary(is, config.trigger_percent_after);
         read_binary(is, config.trigger_time_tolerance);
         read_binary(is, config.missed_trigger_tolerance);
+        read_binary(is, config.offset_estimate_min_triggers);
+        read_binary(is, config.offset_estimate_abs_error_threshold);
+        read_binary(is, config.offset_estimate_rel_error_threshold);
+        read_binary(is, config.offset_estimate_tau);
     } else {
         throw std::runtime_error("Can only read CCMDAQMachineConfig version <= 0");
     }

@@ -38,6 +38,10 @@ struct CCMDAQMachineConfig {
     uint32_t trigger_percent_after;
     uint32_t trigger_time_tolerance;
     uint32_t missed_trigger_tolerance;
+    uint32_t offset_estimate_min_triggers;
+    long double offset_estimate_abs_error_threshold;
+    long double offset_estimate_rel_error_threshold;
+    long double offset_estimate_tau;
 };
 
 struct CCMDAQConfig {
