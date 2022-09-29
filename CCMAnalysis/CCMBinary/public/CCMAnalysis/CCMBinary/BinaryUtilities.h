@@ -26,6 +26,8 @@ inline std::ostream & write_binary(std::ostream & os, ChannelHeader const & head
 inline std::istream & read_binary(std::istream & is, ChannelHeader & header);
 inline std::ostream & write_binary(std::ostream & os, DigitizerBoard const & board);
 inline std::istream & read_binary(std::istream & is, DigitizerBoard & board);
+inline std::ostream & write_binary(std::ostream & os, CCMDAQMachineConfig const & config);
+inline std::istream & read_binary(std::istream & is, CCMDAQMachineConfig & config);
 inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & config);
 inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config);
 inline std::ostream & write_binary(std::ostream & os, CCMTrigger const & trigger);

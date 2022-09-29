@@ -29,7 +29,7 @@ struct DigitizerBoard {
     std::string trigger_out_type;
 };
 
-struct CCMDAQConfig {
+struct CCMDAQMachineConfig {
     uint32_t version = 0;
     std::string machine_identifier;
     uint32_t num_digitizer_boards;
@@ -38,6 +38,11 @@ struct CCMDAQConfig {
     uint32_t trigger_percent_after;
     uint32_t trigger_time_tolerance;
     uint32_t missed_trigger_tolerance;
+};
+
+struct CCMDAQConfig {
+    uint32_t version = 0;
+    std::vector<CCMDAQMachineConfig> machine_configurations;
     std::vector<DigitizerBoard> digitizer_boards;
 };
 

@@ -151,7 +151,7 @@ inline std::istream & read_binary(std::istream & is, DigitizerBoard & board) {
     return is;
 }
 
-inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & config) {
+inline std::ostream & write_binary(std::ostream & os, CCMDAQMachineConfig const & config) {
     if(config.version == 0) {
         write_binary(os, config.version);
         write_binary(os, config.machine_identifier);
@@ -161,6 +161,32 @@ inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & confi
         write_binary(os, config.trigger_percent_after);
         write_binary(os, config.trigger_time_tolerance);
         write_binary(os, config.missed_trigger_tolerance);
+    } else {
+        throw std::runtime_error("Can only write CCMDAQMachineConfig version <= 0");
+    }
+    return os;
+}
+
+inline std::istream & read_binary(std::istream & is, CCMDAQMachineConfig & config) {
+    read_binary(is, config.version);
+    if(config.version == 0) {
+        read_binary(is, config.machine_identifier);
+        read_binary(is, config.num_digitizer_boards);
+        read_binary(is, config.num_channels);
+        read_binary(is, config.num_samples);
+        read_binary(is, config.trigger_percent_after);
+        read_binary(is, config.trigger_time_tolerance);
+        read_binary(is, config.missed_trigger_tolerance);
+    } else {
+        throw std::runtime_error("Can only read CCMDAQMachineConfig version <= 0");
+    }
+    return is;
+}
+
+inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & config) {
+    if(config.version == 0) {
+        write_binary(os, config.version);
+        write_binary(os, config.machine_configurations);
         write_binary(os, config.digitizer_boards);
     } else {
         throw std::runtime_error("Can only write CCMDAQConfig version <= 0");
@@ -171,13 +197,7 @@ inline std::ostream & write_binary(std::ostream & os, CCMDAQConfig const & confi
 inline std::istream & read_binary(std::istream & is, CCMDAQConfig & config) {
     read_binary(is, config.version);
     if(config.version == 0) {
-        read_binary(is, config.machine_identifier);
-        read_binary(is, config.num_digitizer_boards);
-        read_binary(is, config.num_channels);
-        read_binary(is, config.num_samples);
-        read_binary(is, config.trigger_percent_after);
-        read_binary(is, config.trigger_time_tolerance);
-        read_binary(is, config.missed_trigger_tolerance);
+        read_binary(is, config.machine_configurations);
         read_binary(is, config.digitizer_boards);
     } else {
         throw std::runtime_error("Can only read CCMDAQConfig version <= 0");
