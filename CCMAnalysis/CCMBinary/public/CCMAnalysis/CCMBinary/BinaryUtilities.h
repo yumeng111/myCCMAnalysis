@@ -22,8 +22,8 @@ inline std::ostream & write_binary(std::ostream & os, long double const & x);
 inline std::istream & read_binary(std::istream & is, long double & s);
 inline std::ostream & write_binary(std::ostream & os, char const * x, size_t n);
 inline std::istream & read_binary(std::istream & is, char * x, size_t n);
-inline std::ostream & write_binary(std::ostream & os, timespec const & x);
-inline std::istream & read_binary(std::istream & is, timespec & s);
+inline std::ostream & write_binary(std::ostream & os, struct timespec const & x);
+inline std::istream & read_binary(std::istream & is, struct timespec & s);
 inline std::ostream & write_binary(std::ostream & os, std::string const & s);
 inline std::istream & read_binary(std::istream & is, std::string & s);
 inline std::ostream & write_binary(std::ostream & os, ChannelHeader const & header);
@@ -41,6 +41,8 @@ inline std::istream & read_binary(std::istream & is, CCMTriggerReadout & trigger
 inline std::ostream & write_magic_number(std::ostream & os);
 inline std::istream & read_magic_number(std::istream & is, bool & result);
 inline std::ostream & write_binary(std::ostream & os, CCMData const & data);
+inline std::istream & read_config(std::istream & is, CCMData & data);
+inline std::istream & read_size(std::istream & is, size_t & size);
 inline std::istream & read_binary(std::istream & is, CCMData & data);
 
 //bool IsVersionedBinary(std::)

@@ -62,6 +62,8 @@ struct CCMTrigger {
     std::vector<uint32_t> board_event_numbers;
     /// The internal clock time for each board
     std::vector<uint32_t> board_times;
+    /// The computer time the event was read out
+    std::vector<struct timespec> board_computer_times;
 };
 
 struct CCMTriggerReadout {
@@ -75,6 +77,18 @@ struct CCMTriggerReadout {
     ///  samples has one entry for each sample
     ///  each channel entry is a vector of ADC counts ordered in time
     std::vector<std::vector<uint16_t>> samples;
+
+    /// Not saved
+    /// Used only for event alignment
+    bool stop = false;
+    CCMTriggerReadout() = default;
+    CCMTriggerReadout(CCMTriggerReadout const & other) :
+        version(other.version),
+        event_number(other.event_number),
+        computer_time(other.computer_time),
+        triggers(other.triggers),
+        samples(other.samples),
+        stop(other.stop) {}
 };
 
 struct CCMData {

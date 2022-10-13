@@ -82,14 +82,14 @@ inline std::istream & read_binary(std::istream & is, char * x, size_t n) {
     return is;
 }
 
-inline std::ostream & write_binary(std::ostream & os, timespec const & x) {
-    constexpr size_t size = sizeof(timespec);
+inline std::ostream & write_binary(std::ostream & os, struct timespec const & x) {
+    constexpr size_t size = sizeof(struct timespec);
     os.write((char*)&x, size);
     return os;
 }
 
-inline std::istream & read_binary(std::istream & is, timespec & s) {
-    constexpr size_t size = sizeof(timespec);
+inline std::istream & read_binary(std::istream & is, struct timespec & s) {
+    constexpr size_t size = sizeof(struct timespec);
     is.read((char*)&s, size);
     return is;
 }
@@ -245,6 +245,7 @@ inline std::ostream & write_binary(std::ostream & os, CCMTrigger const & digi_re
         write_binary(os, digi_readout.channel_temperatures);
         write_binary(os, digi_readout.board_event_numbers);
         write_binary(os, digi_readout.board_times);
+        write_binary(os, digi_readout.board_computer_times);
     } else {
         throw std::runtime_error("Can only write CCMTrigger version <= 0");
     }
@@ -259,6 +260,7 @@ inline std::istream & read_binary(std::istream & is, CCMTrigger & digi_readout) 
         read_binary(is, digi_readout.channel_temperatures);
         read_binary(is, digi_readout.board_event_numbers);
         read_binary(is, digi_readout.board_times);
+        read_binary(is, digi_readout.board_computer_times);
     } else {
         throw std::runtime_error("Can only read CCMTrigger version <= 0");
     }
@@ -313,6 +315,34 @@ inline std::ostream & write_binary(std::ostream & os, CCMData const & data) {
         throw std::runtime_error("Can only write CCMData version <= 0");
     }
     return os;
+}
+
+inline std::istream & read_config(std::istream & is, CCMDAQConfig & config) {
+    bool has_magic_number = false;
+    read_magic_number(is, has_magic_number);
+    if(not has_magic_number) {
+        std::stringstream ss;
+        ss << "Binary file must begin with the magic number '";
+        ss << lexical_magic_number;
+        ss << "'";
+        throw std::runtime_error(ss.str());
+    }
+    uint32_t version = 0;
+    read_binary(is, version);
+    if(version == 0) {
+        read_binary(is, config);
+    } else {
+        throw std::runtime_error("Can only read CCMData version <= 0");
+    }
+    return is;
+}
+
+inline std::istream & read_size(std::istream & is, size_t & size) {
+    constexpr size_t size_size = sizeof(uint64_t);
+    uint64_t read_size;
+    is.read((char*)&read_size, size_size);
+    size = size_t(read_size);
+    return is;
 }
 
 inline std::istream & read_binary(std::istream & is, CCMData & data) {
