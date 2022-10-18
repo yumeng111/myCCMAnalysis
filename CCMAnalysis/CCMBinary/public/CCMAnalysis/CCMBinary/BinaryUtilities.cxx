@@ -301,7 +301,7 @@ inline std::ostream & write_magic_number(std::ostream & os) {
 inline std::istream & read_magic_number(std::istream & is, bool & result) {
     char file_identifier[magic_size];
     read_binary(is, file_identifier, magic_size);
-    result = std::strncmp(file_identifier, lexical_magic_number, magic_size);
+    result = std::strncmp(file_identifier, lexical_magic_number, magic_size) == 0;
     return is;
 }
 
