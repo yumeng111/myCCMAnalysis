@@ -57,7 +57,7 @@ else()
     endforeach(TOOL_ ${ARG_USE_TOOLS})
 
     foreach(PROJECT ${ARG_USE_PROJECTS})
-      list(APPEND ROOTCINT_INCLUDE_FLAGS -I${CMAKE_SOURCE_DIR}/CCMAnalysis/${PROJECT}/public)
+      list(APPEND ROOTCINT_INCLUDE_FLAGS -I${CMAKE_SOURCE_DIR}/projects/${PROJECT}/public)
     endforeach(PROJECT ${ARG_USE_PROJECTS})
 
     set(ROOTCINT_HEADERS "")

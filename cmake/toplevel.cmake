@@ -82,7 +82,7 @@ if (APPLE)
 endif (APPLE)
 
 ## set some convenience variables
-set(CCM_SRC "${CMAKE_SOURCE_DIR}/CCMAnalysis")
+set(CCM_SRC "${CMAKE_SOURCE_DIR}/projects")
 set(CCM_BUILD ${CMAKE_BINARY_DIR})
 
 execute_process(COMMAND mkdir -p ${CMAKE_BINARY_DIR}/bin)
