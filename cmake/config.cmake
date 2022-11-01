@@ -29,7 +29,7 @@
 #
 #
 colormsg("")
-colormsg(_HIBLUE_ "CCM Configuration starting")
+colormsg(_HIBLUE_ "IceCube Configuration starting")
 colormsg("")
 
 ## set some cmake flags - see cmake_variables(7)
@@ -43,38 +43,38 @@ set(DOXYGEN_OUTPUT_PATH ${CMAKE_BINARY_DIR}/docs/doxygen)
 #  Check build sanity
 #
 ## ensure that we're not cmake'ing under an env-shell from another workspace
-if(DEFINED ENV{CCM_BUILD})
-  if(NOT "$ENV{CCM_BUILD}" STREQUAL "${CCM_BUILD}")
+if(DEFINED ENV{I3_BUILD})
+  if(NOT "$ENV{I3_BUILD}" STREQUAL "${I3_BUILD}")
     message("***")
     message("*** You appear to be trying to configure cmake from within an environment with a different workspace")
-    message("*** CCM_BUILD = $ENV{CCM_BUILD}")
-    message("*** CMAKE_BINARY_DIR = ${CCM_BUILD}")
+    message("*** I3_BUILD = $ENV{I3_BUILD}")
+    message("*** CMAKE_BINARY_DIR = ${I3_BUILD}")
     message("***")
     message("*** Retry from a clean environment (exit your env-shell.sh)")
     message("***")
     message(FATAL_ERROR "Environment corrupt")
   else()
-    message(STATUS "CCM_BUILD appears to be sane.")
+    message(STATUS "I3_BUILD appears to be sane.")
   endif()
 else()
-  #message(STATUS "CCM_BUILD not yet set in environment.  ok.")
+  #message(STATUS "I3_BUILD not yet set in environment.  ok.")
 endif()
 
-if(DEFINED ENV{CCM_SRC})
-  if(NOT "$ENV{CCM_SRC}" STREQUAL "${CCM_SRC}")
+if(DEFINED ENV{I3_SRC})
+  if(NOT "$ENV{I3_SRC}" STREQUAL "${I3_SRC}")
     message("***")
     message("*** You appear to be trying to configure cmake from within an environment with a different workspace")
-    message("*** CCM_SRC = $ENV{CCM_SRC}")
-    message("*** CMAKE_SOURCE_DIR = ${CCM_SRC}")
+    message("*** I3_SRC = $ENV{I3_SRC}")
+    message("*** CMAKE_SOURCE_DIR = ${I3_SRC}")
     message("***")
     message("*** Retry from a clean environment (exit your env-shell.sh)")
     message("***")
     message(FATAL_ERROR "Environment corrupt")
   else()
-    message(STATUS "CCM_SRC appears to be sane.")
+    message(STATUS "I3_SRC appears to be sane.")
   endif()
 else()
-  #message(STATUS "CCM_SRC not yet set in environment.  ok.")
+  #message(STATUS "I3_SRC not yet set in environment.  ok.")
 endif()
 
 ## default the option SYSTEM_PACKAGES to ON
@@ -142,7 +142,7 @@ execute_process(COMMAND ${CMAKE_CXX_COMPILER} --version
 execute_process(COMMAND ${CMAKE_CXX_COMPILER} -v ERROR_VARIABLE COMPILER_ID_TAG)
 set(COMPILER_ID_TAG "REGEXPS IN CMAKE SUCK\n${COMPILER_ID_TAG}")
 string(REGEX REPLACE "^.*(g(cc|[+][+])|clang|Apple LLVM)[ -][Vv]ers(ion|ión|io|ão) ([^ \n]+).*"
-                     "\\1-\\4" COMPILER_ID_TAG ${COMPILER_ID_TAG})
+  "\\1-\\4" COMPILER_ID_TAG ${COMPILER_ID_TAG})
 
 #
 # Get system info
@@ -225,6 +225,13 @@ if (CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
   endif()
 endif()
 
+## set the uber header. this file is included via command line for
+## every compiled file.
+set(I3_UBER_HEADER ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/I3.h)
+configure_file(${CMAKE_SOURCE_DIR}/cmake/I3.h.in
+  ${I3_UBER_HEADER}
+  @ONLY)
+
 colormsg("")
 colormsg(_HIBLUE_ "Setting compiler, compile drivers, and linker")
 colormsg("")
@@ -263,8 +270,8 @@ if(CCACHE_PROGRAM)
       set(CMAKE_CXX_COMPILE_OBJECT "${CCACHE_PROGRAM} ${CMAKE_CXX_COMPILE_OBJECT}")
       set(CMAKE_C_COMPILE_OBJECT "${CCACHE_PROGRAM} ${CMAKE_C_COMPILE_OBJECT}")
       execute_process(COMMAND ${CCACHE_PROGRAM} -s
-    OUTPUT_FILE ${NOTES_DIR}/ccache-s.txt
-    OUTPUT_VARIABLE NOWHERE)
+        OUTPUT_FILE ${NOTES_DIR}/ccache-s.txt
+        OUTPUT_VARIABLE NOWHERE)
     else(CCACHE_PROGRAM)
       message(STATUS "USE_CCACHE enabled, but ccache not found: disabling.")
       file(WRITE ${NOTES_DIR}/ccache-s.txt "USE_CCACHE enabled but ccache binary not found.")
@@ -279,15 +286,15 @@ endif(CCACHE_PROGRAM)
 # include-what-you-use
 #
 if(USE_IWYU AND (CMAKE_BUILD_TYPE MATCHES "Debug"))
-    find_program(IWYU_PROGRAM NAMES "iwyu" "include-what-you-use" HINTS ENV PATH)
-    if(IWYU_PROGRAM)
-        message(STATUS "iwyu found at ${IWYU_PROGRAM}")
-    else()
-        message(STATUS "iwyu not found.")
-        set(USE_IWYU OFF)
-    endif()
+  find_program(IWYU_PROGRAM NAMES "iwyu" "include-what-you-use" HINTS ENV PATH)
+  if(IWYU_PROGRAM)
+    message(STATUS "iwyu found at ${IWYU_PROGRAM}")
+  else()
+    message(STATUS "iwyu not found.")
+    set(USE_IWYU OFF)
+  endif()
 else()
-set(USE_IWYU OFF)
+  set(USE_IWYU OFF)
 endif()
 
 #
@@ -327,7 +334,7 @@ endif()
 # on Apple. :(
 #
 if((CMAKE_CXX_COMPILER_ID MATCHES "AppleClang") OR
-    (APPLE AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND (CMAKE_CXX_COMPILER MATCHES "/Applications/Xcode")))
+  (APPLE AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND (CMAKE_CXX_COMPILER MATCHES "/Applications/Xcode")))
   numeric_version(${CMAKE_CXX_COMPILER_VERSION} "clang")
   if(CLANG_NUMERIC_VERSION LESS 60000)
     message("***")
@@ -390,7 +397,7 @@ string(REPLACE ";" " " C_WARNING_FLAGS "${C_WARNING_FLAGS}")
 #
 include(CheckCXXCompilerFlag)
 if (NOT CXX_WARNING_SUPPRESSION_FLAGS)
-    foreach(f -Wdeprecated -Wunused-variable -Wunused-local-typedef -Wunused-local-typedefs -Wpotentially-evaluated-expression)
+  foreach(f -Wdeprecated -Wunused-variable -Wunused-local-typedef -Wunused-local-typedefs -Wpotentially-evaluated-expression)
     string(REPLACE "-" "_" FLAG ${f})
     check_cxx_compiler_flag(${f} CXX_HAS${FLAG})
     if (CXX_HAS${FLAG})
@@ -434,10 +441,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # libraries everybody links to
 #
 if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
-    # FreeBSD keeps libdl stuff in libc
-    link_libraries(m stdc++)
+  # FreeBSD keeps libdl stuff in libc
+  link_libraries(m stdc++)
 else (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
-    link_libraries(m dl) # stdc++)
+  link_libraries(m dl) # stdc++)
 endif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
 
 #
@@ -539,9 +546,9 @@ set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
 
 ## optimization remarks
 #if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  if(NOT REMARK_TYPE)
-    set(REMARK_TYPE ".*")
-  endif()
+if(NOT REMARK_TYPE)
+  set(REMARK_TYPE ".*")
+endif()
 set(CMAKE_CXX_FLAGS_REMARKS "${CMAKE_CXX_FLAGS_RELEASE} -gline-tables-only -gcolumn-info -Rpass='${REMARK_TYPE}' -Rpass-missed='${REMARK_TYPE}' -Rpass-analysis='${REMARK_TYPE}'" CACHE STRING
   "Flags used by the C compiler to output remarks about how it's optimizing")
 set(CMAKE_C_FLAGS_REMARKS ${CMAKE_CXX_FLAGS_REMARKS} CACHE STRING
@@ -615,7 +622,6 @@ check_language(CUDA)
 if (CMAKE_CUDA_COMPILER)
   enable_language(CUDA)
 endif(CMAKE_CUDA_COMPILER)
-
 
 #
 # Install headers
