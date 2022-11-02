@@ -2,13 +2,13 @@
 #
 # Icetray environment script for tarballs.  Sets everything relative
 # to the directory that this shell runs in.  Different than the env-shell.sh
-# which knows about values of CCM_BUILD, etc.
+# which knows about values of I3_BUILD, etc.
 #
 
 if [[ "$1" = "help" ]]
     then
     echo "Usage: $0 [SHELL]"
-    echo "Spawn a new shell with a CCMAnalysis environment loaded"
+    echo "Spawn a new shell with an Icetray environment loaded"
     echo ""
     echo "SHELL can specified with or without a full path.  If SHELL"
     echo "is omitted the login shell is used by default."
@@ -18,23 +18,23 @@ if [[ "$1" = "help" ]]
     echo "   $0 /bin/tcsh"
     echo "   $0 /path/to/script.py"
     echo ""
-    echo "To exit the CCMAnalysis environment simply exit the new shell."
+    echo "To exit the Icetray environment simply exit the new shell."
     echo ""
     exit 1
 fi
 
 if [[ -z "$1" ]]
     then # user did not specify a shell
-    NEW_SHELL=$SHELL 
-    # only exit if no shell specified on command line *and* env already loaded 
-    if [[ -n "$CCM_SHELL" ]] 
-    then  
-    echo "****************************************************************"
-    echo "You are currently in a shell with a CCMAnalysis environment loaded."
-    echo "Please exit the current shell and re-run $0 from a clean shell."
-    echo "****************************************************************"
-    echo "Environment not (re)loaded."
-    exit 2
+    NEW_SHELL=$SHELL
+    # only exit if no shell specified on command line *and* env already loaded
+    if [[ -n "$I3_SHELL" ]]
+	then
+	echo "****************************************************************"
+	echo "You are currently in a shell with an Icetray environment loaded."
+	echo "Please exit the current shell and re-run $0 from a clean shell."
+	echo "****************************************************************"
+	echo "Environment not (re)loaded."
+	exit 2
     fi
 else
     NEW_SHELL=$1
@@ -42,7 +42,7 @@ else
     ARGV=$*
 fi
 
-_CCM_SHELL=$NEW_SHELL
+_I3_SHELL=$NEW_SHELL
 
 #
 # Determine directory that this shell lives in.
@@ -51,18 +51,18 @@ pushd `dirname $0` >/dev/null
 BASEDIR=`pwd`
 popd >/dev/null
 
-_CCM_SRC=$BASEDIR
-_CCM_BUILD=$BASEDIR
+_I3_SRC=$BASEDIR
+_I3_BUILD=$BASEDIR
 
-# Check for CCM_BUILD mismatch
-if [ -n "$CCM_BUILD" -a "$CCM_BUILD" != "$_CCM_BUILD" ]
+# Check for I3_BUILD mismatch
+if [ -n "$I3_BUILD" -a "$I3_BUILD" != "$_I3_BUILD" ]
 then
     echo "****************************************************************"
-    echo "CCM_BUILD CHANGED"
-    echo "It appears that you are attempting to load an CCMAnalysis environment different"
+    echo "I3_BUILD CHANGED"
+    echo "It appears that you are attempting to load an icetray environment different"
     echo "than the one already loaded"
-    echo "          This CCM_BUILD=$_CCM_BUILD"
-    echo "Already loaded CCM_BUILD=$CCM_BUILD"
+    echo "          This I3_BUILD=$_I3_BUILD"
+    echo "Already loaded I3_BUILD=$I3_BUILD"
     echo "****************************************************************"
     echo "Environment not (re)loaded."
     exit 2
@@ -77,7 +77,7 @@ _DYLD_LIBRARY_PATH=$BASEDIR/lib:$_ROOTSYS/lib:$BASEDIR/lib/tools
 _USE_CVMFS=@USE_CVMFS@
 if [[ "${_USE_CVMFS}" == "TRUE" ]]; then
 if [[ "$SROOTBASE" != "@CVMFS_SROOTBASE@" ]]; then
-    eval $(@CVMFS_SROOTBASE@/setup.sh)
+	eval $(@CVMFS_SROOTBASE@/setup.sh)
 fi
 _GSL_FOUND=@GSL_FOUND@
 if [[ "${_GSL_FOUND}" == "TRUE" ]]; then
@@ -87,16 +87,16 @@ if [[ "${_GSL_FOUND}" == "TRUE" ]]; then
         GSL_LIBRARY_DIR=`gsl-config --prefix`/lib/gsl
     fi
     if [[ -d ${GSL_LIBRARY_DIR} ]]; then
-    _LD_LIBRARY_PATH=${_LD_LIBRARY_PATH}:${GSL_LIBRARY_DIR}
-    _DYLD_LIBRARY_PATH=${_DYLD_LIBRARY_PATH}:${GSL_LIBRARY_DIR}
+	_LD_LIBRARY_PATH=${_LD_LIBRARY_PATH}:${GSL_LIBRARY_DIR}
+	_DYLD_LIBRARY_PATH=${_DYLD_LIBRARY_PATH}:${GSL_LIBRARY_DIR}
     fi
 fi
 _GEANT4_FOUND=@GEANT4_FOUND@
 if [[ "${_GEANT4_FOUND}" == "TRUE" ]]; then
     GEANT4_LIBRARY_DIR=@GEANT4_LIB_DIR@
     if [[ -d ${GEANT4_LIBRARY_DIR} ]]; then
-    _LD_LIBRARY_PATH=${_LD_LIBRARY_PATH}:${GEANT4_LIBRARY_DIR}
-    _DYLD_LIBRARY_PATH=${_DYLD_LIBRARY_PATH}:${GEANT4_LIBRARY_DIR}
+	_LD_LIBRARY_PATH=${_LD_LIBRARY_PATH}:${GEANT4_LIBRARY_DIR}
+	_DYLD_LIBRARY_PATH=${_DYLD_LIBRARY_PATH}:${GEANT4_LIBRARY_DIR}
     fi
 fi
 fi
@@ -130,7 +130,7 @@ if [[ -z "$ARGV" ]]
     then
     printf "$TOPBAR\n"
     printctr ""
-    printctr "W E L C O M E  to  C C M A n a l y s i s"
+    printctr "W E L C O M E  to  I C E T R A Y"
     printctr ""
     #printctr "Version @META_PROJECT@     git:@GIT_SHORT_REVISION@"
     printctr "Version"
@@ -141,28 +141,28 @@ if [[ -z "$ARGV" ]]
     printctr ""
     printf "$TOPBAR\n"
     printf "\n"
-    printf "CCMAnalysis environment has:\n"
-    printf "   CCM_SRC       = %s\n" $_CCM_SRC
-    printf "   CCM_BUILD     = %s\n" $_CCM_BUILD
+    printf "Icetray environment has:\n"
+    printf "   I3_SRC       = %s\n" $_I3_SRC
+    printf "   I3_BUILD     = %s\n" $_I3_BUILD
 fi
 
-if [[ -z "$CCM_SHELL" ]] # a clean, first invocation
+if [[ -z "$I3_SHELL" ]] # a clean, first invocation
     then
 
     # GEANT4_ENV_VARS pulls in GEANT4 variables,
     # generated by cmake/make_geant4_env.py
 
     PATH=$_PATH \
-    LD_LIBRARY_PATH=$_LD_LIBRARY_PATH \
-    DYLD_LIBRARY_PATH=$_DYLD_LIBRARY_PATH \
-    PYTHONPATH=$_PYTHONPATH \
-    CCM_SRC=$_CCM_SRC \
-    CCM_BUILD=$_CCM_BUILD \
-    ROOTSYS=$_ROOTSYS \
-    CCM_SHELL=$_CCM_SHELL \
+	LD_LIBRARY_PATH=$_LD_LIBRARY_PATH \
+	DYLD_LIBRARY_PATH=$_DYLD_LIBRARY_PATH \
+	PYTHONPATH=$_PYTHONPATH \
+	I3_SRC=$_I3_SRC \
+	I3_BUILD=$_I3_BUILD \
+	ROOTSYS=$_ROOTSYS \
+	I3_SHELL=$_I3_SHELL \
     HDF5_USE_FILE_LOCKING=$_HDF5_USE_FILE_LOCKING \
-    @GEANT4_ENV_VARS@ \
-    $NEW_SHELL $ARGV
+	@GEANT4_ENV_VARS@ \
+	$NEW_SHELL $ARGV
 
 else  # not clean, use previous environment
     $NEW_SHELL $ARGV
@@ -172,6 +172,6 @@ STATUS=$?
 
 if [ -z "$ARGV" ]
 then
-    echo "Exited CCMAnalysis Environment."
+    echo "Exited Icetray Environment."
 fi
 exit $STATUS
