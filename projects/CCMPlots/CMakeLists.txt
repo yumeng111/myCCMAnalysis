@@ -1,8 +1,8 @@
 set(PROJECT_NAME CCMPlots)
 
-ccm_project(${PROJECT_NAME})
+i3_project(${PROJECT_NAME})
 
-ccm_add_library(${PROJECT_NAME}
+i3_add_library(${PROJECT_NAME}
     private/CCMSumWaveforms.cxx
     private/CCMProcessingPlots.cxx
     private/CCMNuDMPlots.cxx

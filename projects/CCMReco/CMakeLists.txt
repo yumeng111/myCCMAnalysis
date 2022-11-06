@@ -1,8 +1,8 @@
 set(PROJECT_NAME CCMReco)
 
-ccm_project(${PROJECT_NAME})
+i3_project(${PROJECT_NAME})
 
-ccm_add_library(${PROJECT_NAME}
+i3_add_library(${PROJECT_NAME}
     private/CCMFindEvents.cxx
     private/CCMNa22Cuts.cxx
     private/CCMBuildAccumWaveform.cxx

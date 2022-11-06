@@ -1,8 +1,8 @@
 set(PROJECT_NAME CCMUtils)
 
-ccm_project(${PROJECT_NAME})
+i3_project(${PROJECT_NAME})
 
-ccm_add_library(${PROJECT_NAME}
+i3_add_library(${PROJECT_NAME}
     private/MsgLog.cxx
     private/PMTInformation.cxx
     private/PMTInfoMap.cxx
