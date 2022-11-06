@@ -1,0 +1,86 @@
+Release Notes
+=============
+
+trunk
+-----
+
+Jul. 27, 2022 don la dieu (nega AT icecube.umd.edu)
+---------------------------------------------------
+IceTray Release v1.4.0
+
+* Drop support for Python 2
+* Clean up python bindings / modules
+* Clean up documentation
+
+Dec. 15, 2021 Kevin Meagher
+---------------------------
+IceTray Release v1.3.0
+
+* Fix race between tests
+* Add class `I3Ecliptic` for ecliptic coordinates and functions `I3GetEclipticFromEquatorial()` 
+  and `I3GetEquatorialFromEcliptic`
+* The PAL not found error message not gives the correct link to the install instructions
+* Use with statements for opening files in unit tests
+* Remove print statements from unit tests
+* Make example scripts more interesting and add plot_sun_azimuth.py
+* In order to avoid confusion example code refers to the location of Icecube's center as 
+  `icecube` rather than `south_pole`
+
+Dec. 20, 2019 Alex Olivas (aolivas@umd.edu)
+-------------------------------------------
+Combo Release V00-00-00
+
+* update documentation
+* add example compare_with_astropy.py
+
+June 13, 2018, Alex Olivas  (olivas@icecube.umd.edu)
+----------------------------------------------------
+Release V18-06-00
+
+* minor cleanups
+
+
+November 15, 2017, Alex Olivas  (olivas@icecube.umd.edu)
+--------------------------------------------------------
+Release V17-11-00
+
+* remove support for SLALIB
+
+March 27, 2017, Alex Olivas  (olivas@icecube.umd.edu)
+-----------------------------------------------------
+Release V17-03-00
+
+* Add deprication notices for SLALIB
+* Add support for serialization
+* Add fractional_mjd() python funciton
+* Update diagram in docs to include I3SuperGalactic
+* Python3 compliance
+* Loosen criteria for azimuth on horizons test
+* Cleanup after tests
+
+March 18, 2016, don la dieu  (nega@icecube.umd.edu)
+---------------------------------------------------
+Release V16-03-00
+
+* documentation updates
+* test updates
+* Add converters for supergalactic coordinates
+
+December 14, 2015, don la dieu  (nega@icecube.umd.edu)
+------------------------------------------------------
+Release V15-12-00
+
+* improve test coverage
+* convert from tables to ra,da
+* Add table_to_equa to directly convert tables
+* Add numpy array functions for quick access to booked data
+* Switch to using palOap and palOap to convert between apparent and
+  observed place, insead of doing it manually
+* Switch to using palMap and palAmp to calculate precession, nutation,
+  and annual aberration instead of just precession
+* add constructors for I3Equatorial and I3Galactic
+* pybindings load icetray first to prevent I3FrameObject error
+
+August 31, 2015 Alex Olivas (olivas@icecube.umd.edu)
+----------------------------------------------------
+V15-08-00 : First release
