@@ -9,23 +9,39 @@ pkg_check_modules(PC_LA QUIET libarchive)
 pkg_check_modules(PC_LZMA QUIET liblzma)
 
 find_library(LZMA_LIBRARIES lzma
-             HINTS ${PC_LZMA_LIBDIR}
-                   ${PC_LZMA_LIBRARY_DIRS}
-		   /usr/local)
+    PATHS ENV LD_LIBRARY_PATH
+    HINTS ${PC_LZMA_LIBDIR}
+    ${PC_LZMA_LIBRARY_DIRS}
+    /usr/local)
+colormsg(STATUS ${LZMA_LIBRARIES})
 
 find_path(LZMA_INCLUDE_DIR lzma.h
-          HINTS ${PC_LZMA_INCLUDEDIR}
-                ${PC_LZMA_INCLUDE_DIRS}
-		/usr/local)
+    PATHS ENV CXX_INCLUDE_PATH
+    HINTS ${PC_LZMA_INCLUDEDIR}
+    ${PC_LZMA_INCLUDE_DIRS}
+    /usr/local)
+colormsg(STATUS ${LZMA_INCLUDE_DIR})
 
 find_library(LZMA_LIBRARIES lzma
-             HINTS ${PC_LA_LIBDIR}                   
-                   ${PC_LA_LIBRARY_DIRS}
-                   ${TOOL_SYSTEM_PATH})
+    PATHS ENV LD_LIBRARY_PATH
+    HINTS ${PC_LA_LIBDIR}
+    ${PC_LA_LIBRARY_DIRS}
+    ${TOOL_SYSTEM_PATH})
+colormsg(STATUS ${LZMA_LIBRARIES})
 
 find_path(LZMA_INCLUDE_DIR lzma.h
-          HINTS ${PC_LA_INCLUDEDIR}                
-                ${PC_LA_INCLUDE_DIRS})
+    PATHS ENV CXX_INCLUDE_PATH
+    HINTS ${PC_LA_INCLUDEDIR}                
+    ${PC_LA_INCLUDE_DIRS})
+colormsg(STATUS ${LZMA_INCLUDE_DIR})
+
+
+if(${LZMA_INCLUDE_DIR} MATCHES "-NOTFOUND")
+  found_not_ok("lzma.h not found")
+endif()
+if(${LZMA_LIBRARIES} MATCHES "-NOTFOUND")
+  found_not_ok("liblzma not found")
+endif()
 
 ## look in Homebrew for libarchive. BREW_PREFIX defined in tooldef.cmake
 if(APPLE)
@@ -78,4 +94,10 @@ if(LIBARCHIVE_INCLUDE_DIR AND LIBARCHIVE_LIBRARIES)
     COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/lib/tools
     COMMAND ${CMAKE_SOURCE_DIR}/cmake/install_shlib.py ${LIBARCHIVE_LIBRARIES} ${CMAKE_INSTALL_PREFIX}/lib/tools)
 endif(LIBARCHIVE_INCLUDE_DIR AND LIBARCHIVE_LIBRARIES)
+endif()
+if(LZMA_LIBRARIES)
+    list(APPEND LIBARCHIVE_LIBRARIES ${LZMA_LIBRARIES})
+endif()
+if(LZMA_INCLUDE_DIR)
+    list(APPEND LIBARCHIVE_INCLUDE_DIR ${LZMA_INCLUDE_DIR})
 endif()
