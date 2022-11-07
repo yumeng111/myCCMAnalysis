@@ -30,6 +30,29 @@ ChannelHeader::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("caen_channel_number", caen_channel_number);
 }
 
+bool ChannelHeader::operator==(ChannelHeader const & other) const {
+    return std::tie(
+    physical_board_id,
+    board_serial_number,
+    physical_channel_type,
+    physical_channel_id,
+    caen_optical_link_number,
+    caen_optical_link_board_number,
+    caen_channel_number)
+      == std::tie(
+    other.physical_board_id,
+    other.board_serial_number,
+    other.physical_channel_type,
+    other.physical_channel_id,
+    other.caen_optical_link_number,
+    other.caen_optical_link_board_number,
+    other.caen_channel_number);
+}
+
+bool ChannelHeader::operator!=(ChannelHeader const & other) const {
+    return not this->operator==(other);
+}
+
 template <class Archive>
 void
 DigitizerBoard::serialize(Archive& ar, unsigned version) {
@@ -41,6 +64,27 @@ DigitizerBoard::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("caen_optical_link_board_number", caen_optical_link_board_number);
     ar & make_nvp("channels", channels);
     ar & make_nvp("trigger_out_type", trigger_out_type);
+}
+
+bool DigitizerBoard::operator==(DigitizerBoard const & other) const {
+    return std::tie(
+    physical_board_id,
+    board_serial_number,
+    caen_optical_link_number,
+    caen_optical_link_board_number,
+    channels,
+    trigger_out_type)
+        == std::tie(
+    other.physical_board_id,
+    other.board_serial_number,
+    other.caen_optical_link_number,
+    other.caen_optical_link_board_number,
+    other.channels,
+    other.trigger_out_type);
+}
+
+bool DigitizerBoard::operator!=(DigitizerBoard const & other) const {
+    return not this->operator==(other);
 }
 
 template <class Archive>
@@ -61,6 +105,37 @@ CCMDAQMachineConfig::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("offset_estimate_tau", offset_estimate_tau);
 }
 
+bool CCMDAQMachineConfig::operator==(CCMDAQMachineConfig const & other) const {
+    return std::tie(
+    machine_identifier,
+    num_digitizer_boards,
+    num_channels,
+    num_samples,
+    trigger_percent_after,
+    trigger_time_tolerance,
+    missed_trigger_tolerance,
+    offset_estimate_min_triggers,
+    offset_estimate_abs_error_threshold,
+    offset_estimate_rel_error_threshold,
+    offset_estimate_tau)
+        == std::tie(
+    other.machine_identifier,
+    other.num_digitizer_boards,
+    other.num_channels,
+    other.num_samples,
+    other.trigger_percent_after,
+    other.trigger_time_tolerance,
+    other.missed_trigger_tolerance,
+    other.offset_estimate_min_triggers,
+    other.offset_estimate_abs_error_threshold,
+    other.offset_estimate_rel_error_threshold,
+    other.offset_estimate_tau);
+}
+
+bool CCMDAQMachineConfig::operator!=(CCMDAQMachineConfig const & other) const {
+    return not this->operator==(other);
+}
+
 template <class Archive>
 void
 CCMDAQConfig::serialize(Archive& ar, unsigned version) {
@@ -68,6 +143,15 @@ CCMDAQConfig::serialize(Archive& ar, unsigned version) {
         log_fatal("Attempting to read version %u from file but running version %u of CCMDAQConfig class.", version, ccmdaqconfig_version_);
         ar & make_nvp("machine_configurations", machine_configurations);
         ar & make_nvp("digitizer_boards", digitizer_boards);
+}
+
+bool CCMDAQConfig::operator==(CCMDAQConfig const & other) const {
+    return std::tie(machine_configurations, digitizer_boards)
+        == std::tie(other.machine_configurations, other.digitizer_boards);
+}
+
+bool CCMDAQConfig::operator!=(CCMDAQConfig const & other) const {
+    return not this->operator==(other);
 }
 
 template <class Archive>

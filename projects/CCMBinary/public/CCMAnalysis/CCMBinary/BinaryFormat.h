@@ -22,6 +22,8 @@ struct ChannelHeader : public I3FrameObject {
     uint32_t caen_channel_number;
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
+    bool operator==(ChannelHeader const & other) const;
+    bool operator!=(ChannelHeader const & other) const;
 };
 I3_POINTER_TYPEDEFS(ChannelHeader);
 
@@ -36,6 +38,8 @@ struct DigitizerBoard : public I3FrameObject{
     std::string trigger_out_type;
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
+    bool operator==(DigitizerBoard const & other) const;
+    bool operator!=(DigitizerBoard const & other) const;
 };
 I3_POINTER_TYPEDEFS(DigitizerBoard);
 
@@ -55,6 +59,8 @@ struct CCMDAQMachineConfig : public I3FrameObject{
     long double offset_estimate_tau;
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
+    bool operator==(CCMDAQMachineConfig const & other) const;
+    bool operator!=(CCMDAQMachineConfig const & other) const;
 };
 I3_POINTER_TYPEDEFS(CCMDAQMachineConfig);
 
@@ -65,6 +71,8 @@ struct CCMDAQConfig : public I3FrameObject {
     std::vector<DigitizerBoard> digitizer_boards;
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
+    bool operator==(CCMDAQConfig const & other) const;
+    bool operator!=(CCMDAQConfig const & other) const;
 };
 I3_POINTER_TYPEDEFS(CCMDAQConfig);
 
