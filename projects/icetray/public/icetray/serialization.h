@@ -54,6 +54,7 @@
 #include <serialization/utility.hpp>
 #include <serialization/split_member.hpp>
 #include <serialization/version.hpp>
+#include <serialization/timespec.hpp>
 
 #include <icetray/is_shared_ptr.h>
 #include <boost/utility/enable_if.hpp>
