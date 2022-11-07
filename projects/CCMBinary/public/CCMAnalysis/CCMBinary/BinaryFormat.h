@@ -5,11 +5,14 @@
 #include <time.h>
 #include <vector>
 
+#include <icetray/I3FrameObject.h>
+
 namespace CCMAnalysis {
 namespace Binary {
 
-struct ChannelHeader {
-    uint32_t version = 0;
+static const unsigned channelheader_version_ = 0;
+struct ChannelHeader : public I3FrameObject {
+    uint32_t version = channelheader_version_;
     std::string physical_board_id;
     std::string board_serial_number;
     std::string physical_channel_type;
@@ -17,20 +20,28 @@ struct ChannelHeader {
     uint32_t caen_optical_link_number;
     uint32_t caen_optical_link_board_number;
     uint32_t caen_channel_number;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned version);
 };
+I3_POINTER_TYPEDEFS(ChannelHeader);
 
-struct DigitizerBoard {
-    uint32_t version = 0;
+static const unsigned digitizerboard_version_ = 0;
+struct DigitizerBoard : public I3FrameObject{
+    uint32_t version = digitizerboard_version_;
     std::string physical_board_id;
     std::string board_serial_number;
     uint32_t caen_optical_link_number;
     uint32_t caen_optical_link_board_number;
     std::vector<ChannelHeader> channels;
     std::string trigger_out_type;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned version);
 };
+I3_POINTER_TYPEDEFS(DigitizerBoard);
 
-struct CCMDAQMachineConfig {
-    uint32_t version = 0;
+static const unsigned ccmdaqmachineconfig_version_ = 0;
+struct CCMDAQMachineConfig : public I3FrameObject{
+    uint32_t version = ccmdaqmachineconfig_version_;
     std::string machine_identifier;
     uint32_t num_digitizer_boards;
     uint32_t num_channels;
@@ -42,16 +53,24 @@ struct CCMDAQMachineConfig {
     long double offset_estimate_abs_error_threshold;
     long double offset_estimate_rel_error_threshold;
     long double offset_estimate_tau;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned version);
 };
+I3_POINTER_TYPEDEFS(CCMDAQMachineConfig);
 
-struct CCMDAQConfig {
-    uint32_t version = 0;
+static const unsigned ccmdaqconfig_version_ = 0;
+struct CCMDAQConfig : public I3FrameObject {
+    uint32_t version = ccmdaqconfig_version_;
     std::vector<CCMDAQMachineConfig> machine_configurations;
     std::vector<DigitizerBoard> digitizer_boards;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned version);
 };
+I3_POINTER_TYPEDEFS(CCMDAQConfig);
 
-struct CCMTrigger {
-    uint32_t version = 0;
+static const unsigned ccmtrigger_version_ = 0;
+struct CCMTrigger : public I3FrameObject {
+    uint32_t version = ccmtrigger_version_;
     /// The number of samples for each channel (should be equal to #NSAMPLES)
     std::vector<uint16_t> channel_sizes;
     /// Lets you know if the channel was masked in the hardware
@@ -64,10 +83,14 @@ struct CCMTrigger {
     std::vector<uint32_t> board_times;
     /// The computer time the event was read out
     std::vector<struct timespec> board_computer_times;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned version);
 };
+I3_POINTER_TYPEDEFS(CCMTrigger);
 
-struct CCMTriggerReadout {
-    uint32_t version = 0;
+static const unsigned ccmtriggerreadout_version_ = 0;
+struct CCMTriggerReadout : public I3FrameObject {
+    uint32_t version = ccmtriggerreadout_version_;
     uint32_t event_number;
     /// The computer time of the event
     struct timespec computer_time;  // needed to explicitly declare as a struct - stackoverflow 11153334
@@ -89,13 +112,20 @@ struct CCMTriggerReadout {
         triggers(other.triggers),
         samples(other.samples),
         stop(other.stop) {}
+    template <class Archive>
+    void serialize(Archive& ar, unsigned version);
 };
+I3_POINTER_TYPEDEFS(CCMTriggerReadout);
 
-struct CCMData {
-    uint32_t version = 0;
+static const unsigned ccmdata_version_ = 0;
+struct CCMData : public I3FrameObject {
+    uint32_t version = ccmdata_version_;
     CCMDAQConfig daq_config;
     std::vector<CCMTriggerReadout> trigger_readout;
+    template <class Archive>
+    void serialize(Archive& ar, unsigned version);
 };
+I3_POINTER_TYPEDEFS(CCMData);
 
 static const char lexical_magic_number[] = "CCMVersionedBinary";
 static constexpr size_t magic_size = sizeof(lexical_magic_number) - 1;
