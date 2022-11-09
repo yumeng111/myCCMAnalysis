@@ -21,6 +21,7 @@ ChannelHeader::serialize(Archive& ar, unsigned version) {
     if(version > channelheader_version_)
         log_fatal("Attempting to read version %u from file but running version %u of ChannelHeader class.", version, channelheader_version_);
 
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("physical_board_id", physical_board_id);
     ar & make_nvp("board_serial_number", board_serial_number);
     ar & make_nvp("physical_channel_type", physical_channel_type);
@@ -58,6 +59,7 @@ void
 DigitizerBoard::serialize(Archive& ar, unsigned version) {
     if(version > digitizerboard_version_)
         log_fatal("Attempting to read version %u from file but running version %u of DigitizerBoard class.", version, digitizerboard_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("physical_board_id", physical_board_id);
     ar & make_nvp("board_serial_number", board_serial_number);
     ar & make_nvp("caen_optical_link_number", caen_optical_link_number);
@@ -92,6 +94,7 @@ void
 CCMDAQMachineConfig::serialize(Archive& ar, unsigned version) {
     if(version > ccmdaqmachineconfig_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMDAQMachineConfig class.", version, ccmdaqmachineconfig_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("machine_identifier", machine_identifier);
     ar & make_nvp("num_digitizer_boards", num_digitizer_boards);
     ar & make_nvp("num_channels", num_channels);
@@ -141,8 +144,9 @@ void
 CCMDAQConfig::serialize(Archive& ar, unsigned version) {
     if(version > ccmdaqconfig_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMDAQConfig class.", version, ccmdaqconfig_version_);
-        ar & make_nvp("machine_configurations", machine_configurations);
-        ar & make_nvp("digitizer_boards", digitizer_boards);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+    ar & make_nvp("machine_configurations", machine_configurations);
+    ar & make_nvp("digitizer_boards", digitizer_boards);
 }
 
 bool CCMDAQConfig::operator==(CCMDAQConfig const & other) const {
@@ -159,6 +163,7 @@ void
 CCMTrigger::serialize(Archive& ar, unsigned version) {
     if(version > ccmtrigger_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMTrigger class.", version, ccmtrigger_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("channel_sizes", channel_sizes);
     ar & make_nvp("channel_masks", channel_masks);
     ar & make_nvp("channel_temperatures", channel_temperatures);
@@ -172,6 +177,7 @@ void
 CCMTriggerReadout::serialize(Archive& ar, unsigned version) {
     if(version > ccmtriggerreadout_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMTriggerReadout class.", version, ccmtriggerreadout_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("event_number", event_number);
     ar & make_nvp("computer_time", computer_time);
     ar & make_nvp("triggers", triggers);
@@ -183,6 +189,7 @@ void
 CCMData::serialize(Archive& ar, unsigned version) {
     if(version > ccmdata_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMData class.", version, ccmdata_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("daq_config", daq_config);
     ar & make_nvp("trigger_readout", trigger_readout);
 }

@@ -41,6 +41,7 @@
 #include <set>
 #include <tuple>
 #include <fstream>
+#include <iostream>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -49,8 +50,8 @@
 
 #include "dataio/I3FileStager.h"
 
-#include "CCMAnalysis/Binary/BinaryFormat.h"
-#include "CCMAnalysis/Binary/BinaryUtilities.h"
+#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
+#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 
 class CCMBinaryReader : public I3Module {
 
@@ -62,11 +63,11 @@ class CCMBinaryReader : public I3Module {
     bool drop_duplicate_configs_;
 
     boost::iostreams::filtering_istream ifs_;
-    std::ifstrean file_stream_;
+    std::ifstream file_stream_;
 
     boost::shared_ptr<CCMAnalysis::Binary::CCMDAQConfig> last_config_;
     size_t num_triggers_in_file_;
-    bool config_read;
+    bool config_read_;
     boost::shared_ptr<CCMAnalysis::Binary::CCMTriggerReadout> readout_;
 
     std::vector<std::string>::iterator filenames_iter_;
@@ -163,14 +164,14 @@ CCMBinaryReader::Process() {
             if(drop_duplicate_configs_ and *config == *last_config_) {
                 return;
             } else {
-                frame.SetStop(I3Frame::Geometry);
-                frame.Put("CCMDAQConfig", config);
+                frame->SetStop(I3Frame::Geometry);
+                frame->Put("CCMDAQConfig", config);
                 last_config_ = config;
             }
         } else {
             CCMAnalysis::Binary::read_binary(file_stream_, *readout_);
-            frame.SetStop(I3Frame::DAQ);
-            frame.Put("CCMTriggerReadout", readout_);
+            frame->SetStop(I3Frame::DAQ);
+            frame->Put("CCMTriggerReadout", readout_);
         }
     } catch (const std::exception &e) {
         log_fatal("Error reading %s at frame %d: %s!",
@@ -183,7 +184,7 @@ CCMBinaryReader::Process() {
 
     void
 CCMBinaryReader::OpenNextFile() {
-    config_read = false;
+    config_read_ = false;
     current_filename_.reset();
     current_filename_ = file_stager_->GetReadablePath(*filenames_iter_);
     nframes_ = 0;

@@ -25,7 +25,6 @@ struct ChannelHeader : public I3FrameObject {
     bool operator==(ChannelHeader const & other) const;
     bool operator!=(ChannelHeader const & other) const;
 };
-I3_POINTER_TYPEDEFS(ChannelHeader);
 
 static const unsigned digitizerboard_version_ = 0;
 struct DigitizerBoard : public I3FrameObject{
@@ -41,7 +40,6 @@ struct DigitizerBoard : public I3FrameObject{
     bool operator==(DigitizerBoard const & other) const;
     bool operator!=(DigitizerBoard const & other) const;
 };
-I3_POINTER_TYPEDEFS(DigitizerBoard);
 
 static const unsigned ccmdaqmachineconfig_version_ = 0;
 struct CCMDAQMachineConfig : public I3FrameObject{
@@ -62,7 +60,6 @@ struct CCMDAQMachineConfig : public I3FrameObject{
     bool operator==(CCMDAQMachineConfig const & other) const;
     bool operator!=(CCMDAQMachineConfig const & other) const;
 };
-I3_POINTER_TYPEDEFS(CCMDAQMachineConfig);
 
 static const unsigned ccmdaqconfig_version_ = 0;
 struct CCMDAQConfig : public I3FrameObject {
@@ -74,7 +71,6 @@ struct CCMDAQConfig : public I3FrameObject {
     bool operator==(CCMDAQConfig const & other) const;
     bool operator!=(CCMDAQConfig const & other) const;
 };
-I3_POINTER_TYPEDEFS(CCMDAQConfig);
 
 static const unsigned ccmtrigger_version_ = 0;
 struct CCMTrigger : public I3FrameObject {
@@ -94,7 +90,6 @@ struct CCMTrigger : public I3FrameObject {
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
 };
-I3_POINTER_TYPEDEFS(CCMTrigger);
 
 static const unsigned ccmtriggerreadout_version_ = 0;
 struct CCMTriggerReadout : public I3FrameObject {
@@ -123,7 +118,6 @@ struct CCMTriggerReadout : public I3FrameObject {
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
 };
-I3_POINTER_TYPEDEFS(CCMTriggerReadout);
 
 static const unsigned ccmdata_version_ = 0;
 struct CCMData : public I3FrameObject {
@@ -133,12 +127,26 @@ struct CCMData : public I3FrameObject {
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
 };
-I3_POINTER_TYPEDEFS(CCMData);
 
 static const char lexical_magic_number[] = "CCMVersionedBinary";
 static constexpr size_t magic_size = sizeof(lexical_magic_number) - 1;
 
+I3_POINTER_TYPEDEFS(ChannelHeader);
+I3_POINTER_TYPEDEFS(DigitizerBoard);
+I3_POINTER_TYPEDEFS(CCMDAQMachineConfig);
+I3_POINTER_TYPEDEFS(CCMDAQConfig);
+I3_POINTER_TYPEDEFS(CCMTrigger);
+I3_POINTER_TYPEDEFS(CCMTriggerReadout);
+I3_POINTER_TYPEDEFS(CCMData);
 } // namespace Binary
 } // namespace CCMAnalsysis
+
+I3_CLASS_VERSION(CCMAnalysis::Binary::ChannelHeader, CCMAnalysis::Binary::channelheader_version_);
+I3_CLASS_VERSION(CCMAnalysis::Binary::DigitizerBoard, CCMAnalysis::Binary::digitizerboard_version_);
+I3_CLASS_VERSION(CCMAnalysis::Binary::CCMDAQMachineConfig, CCMAnalysis::Binary::ccmdaqmachineconfig_version_);
+I3_CLASS_VERSION(CCMAnalysis::Binary::CCMDAQConfig, CCMAnalysis::Binary::ccmdaqconfig_version_);
+I3_CLASS_VERSION(CCMAnalysis::Binary::CCMTrigger, CCMAnalysis::Binary::ccmtrigger_version_);
+I3_CLASS_VERSION(CCMAnalysis::Binary::CCMTriggerReadout, CCMAnalysis::Binary::ccmtriggerreadout_version_);
+I3_CLASS_VERSION(CCMAnalysis::Binary::CCMData, CCMAnalysis::Binary::ccmdata_version_);
 
 #endif // CCMAnalysis_BinaryFormat_H
