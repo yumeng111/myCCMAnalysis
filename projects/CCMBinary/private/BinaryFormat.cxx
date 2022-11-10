@@ -271,7 +271,7 @@ std::string GetTimeStringToSecond(time_t now) {
 
 std::ostream & CCMTrigger::Print(std::ostream & os) const {
     os << "[CCMTrigger\n";
-    os << "ChannelsSizes:[";
+    os << "ChannelSizes:[";
     bool first = true;
     for(size_t i=0; i< channel_sizes.size(); ++i) {
         if(first) first = false; else os << ",";
@@ -285,14 +285,14 @@ std::ostream & CCMTrigger::Print(std::ostream & os) const {
         os << channel_masks[i];
     }
     os << "],\n";
-    os << "ChannelMasks:[";
+    os << "ChannelTemperatures:[";
     first = true;
     for(size_t i=0; i< channel_temperatures.size(); ++i) {
         if(first) first = false; else os << ",";
         os << channel_temperatures[i];
     }
     os << "],\n";
-    os << "BoardsEventNumbers:[";
+    os << "BoardEventNumbers:[";
     first = true;
     for(size_t i=0; i<board_event_numbers.size(); ++i) {
         if(first) first = false; else os << ",";
@@ -343,7 +343,7 @@ std::ostream & CCMTriggerReadout::Print(std::ostream & os) const {
         os << "\n";
         os << triggers[i];
     }
-    os << "]\n";
+    os << "],\n";
     os << "Samples:[";
     first = true;
     for(size_t i=0; i< samples.size(); ++i) {
