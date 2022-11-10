@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <icetray/I3FrameObject.h>
+#include <icetray/serialization.h>
 
 namespace CCMAnalysis {
 namespace Binary {
