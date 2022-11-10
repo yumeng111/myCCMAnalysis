@@ -4,6 +4,7 @@
 #include <string>
 #include <time.h>
 #include <vector>
+#include <iostream>
 
 #include <icetray/I3FrameObject.h>
 #include <icetray/serialization.h>
@@ -25,6 +26,7 @@ struct ChannelHeader : public I3FrameObject {
     void serialize(Archive& ar, unsigned version);
     bool operator==(ChannelHeader const & other) const;
     bool operator!=(ChannelHeader const & other) const;
+    std::ostream & Print(std::ostream & os) const override;
 };
 
 static const unsigned digitizerboard_version_ = 0;
@@ -40,6 +42,7 @@ struct DigitizerBoard : public I3FrameObject{
     void serialize(Archive& ar, unsigned version);
     bool operator==(DigitizerBoard const & other) const;
     bool operator!=(DigitizerBoard const & other) const;
+    std::ostream & Print(std::ostream & os) const override;
 };
 
 static const unsigned ccmdaqmachineconfig_version_ = 0;
@@ -60,6 +63,7 @@ struct CCMDAQMachineConfig : public I3FrameObject{
     void serialize(Archive& ar, unsigned version);
     bool operator==(CCMDAQMachineConfig const & other) const;
     bool operator!=(CCMDAQMachineConfig const & other) const;
+    std::ostream & Print(std::ostream & os) const override;
 };
 
 static const unsigned ccmdaqconfig_version_ = 0;
@@ -71,6 +75,7 @@ struct CCMDAQConfig : public I3FrameObject {
     void serialize(Archive& ar, unsigned version);
     bool operator==(CCMDAQConfig const & other) const;
     bool operator!=(CCMDAQConfig const & other) const;
+    std::ostream & Print(std::ostream & os) const override;
 };
 
 static const unsigned ccmtrigger_version_ = 0;
@@ -90,6 +95,7 @@ struct CCMTrigger : public I3FrameObject {
     std::vector<struct timespec> board_computer_times;
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
+    std::ostream & Print(std::ostream & os) const override;
 };
 
 static const unsigned ccmtriggerreadout_version_ = 0;
@@ -118,6 +124,7 @@ struct CCMTriggerReadout : public I3FrameObject {
         stop(other.stop) {}
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
+    std::ostream & Print(std::ostream & os) const override;
 };
 
 static const unsigned ccmdata_version_ = 0;
@@ -141,6 +148,13 @@ I3_POINTER_TYPEDEFS(CCMTriggerReadout);
 I3_POINTER_TYPEDEFS(CCMData);
 } // namespace Binary
 } // namespace CCMAnalsysis
+
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::ChannelHeader c);
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::DigitizerBoard c);
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMDAQMachineConfig c);
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMDAQConfig c);
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMTrigger c);
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMTriggerReadout c);
 
 I3_CLASS_VERSION(CCMAnalysis::Binary::ChannelHeader, CCMAnalysis::Binary::channelheader_version_);
 I3_CLASS_VERSION(CCMAnalysis::Binary::DigitizerBoard, CCMAnalysis::Binary::digitizerboard_version_);

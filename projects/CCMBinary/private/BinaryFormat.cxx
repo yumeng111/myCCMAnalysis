@@ -1,8 +1,12 @@
 #ifndef CCMAnalysis_BinaryFormat_CXX
 #define CCMAnalysis_BinaryFormat_CXX
 
+#include <ctime>
+#include <cstdio>
 #include <string>
+#include <time.h>
 #include <vector>
+#include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -54,6 +58,15 @@ bool ChannelHeader::operator!=(ChannelHeader const & other) const {
     return not this->operator==(other);
 }
 
+std::ostream & ChannelHeader::Print(std::ostream & os) const {
+    os << '[';
+    os << physical_board_id;
+    os << '(' << caen_optical_link_number << ',' << caen_optical_link_board_number << ',' << caen_channel_number << "), ";
+    os << physical_channel_type << ", ";
+    os << physical_channel_id << ']';
+    return os;
+}
+
 template <class Archive>
 void
 DigitizerBoard::serialize(Archive& ar, unsigned version) {
@@ -87,6 +100,31 @@ bool DigitizerBoard::operator==(DigitizerBoard const & other) const {
 
 bool DigitizerBoard::operator!=(DigitizerBoard const & other) const {
     return not this->operator==(other);
+}
+
+std::ostream & DigitizerBoard::Print(std::ostream & os) const {
+    os << "[Board:";
+    os << physical_board_id;
+    os << '(' << caen_optical_link_number << ',' << caen_optical_link_board_number << "),\n";
+    os << "TriggerOutType:" << trigger_out_type << ", \n";
+    if(channels.size() > 0) {
+        os << "Channels:\n";
+        bool first = true;
+        for(size_t i=0; i<channels.size(); ++i) {
+            if(first)
+                first = false;
+            else {
+                os << ',';
+                os << '\n';
+            }
+            os << '[' << channels[i].physical_channel_type << ": ";
+            os << channels[i].physical_channel_id << ']';
+        }
+    } else {
+        os << "Channels: []";
+    }
+    os << "\n]";
+    return os;
 }
 
 template <class Archive>
@@ -139,6 +177,22 @@ bool CCMDAQMachineConfig::operator!=(CCMDAQMachineConfig const & other) const {
     return not this->operator==(other);
 }
 
+std::ostream & CCMDAQMachineConfig::Print(std::ostream & os) const {
+    os << "[Machine:" << machine_identifier << ",\n";
+    os << "NBoards:" << num_digitizer_boards << ",\n";
+    os << "NChannels:" << num_channels << ",\n";
+    os << "NSamples:" << num_samples << ",\n";
+    os << "TriggerPercentAfter:" << trigger_percent_after << ",\n";
+    os << "TriggerTimeTolerance:" << trigger_time_tolerance << ",\n";
+    os << "MissedTriggerTolerance:" << missed_trigger_tolerance << ",\n";
+    os << "OffsetEstimateMinTriggers:" << offset_estimate_min_triggers << ",\n";
+    os << "OffsetEstimateAbsErrorThreshold:" << offset_estimate_abs_error_threshold << ",\n";
+    os << "OffsetEstimateRelErrorThreshold:" << offset_estimate_rel_error_threshold << ",\n";
+    os << "OffsetEstimateTau:" << offset_estimate_tau << '\n';
+    os << ']';
+    return os;
+}
+
 template <class Archive>
 void
 CCMDAQConfig::serialize(Archive& ar, unsigned version) {
@@ -158,6 +212,41 @@ bool CCMDAQConfig::operator!=(CCMDAQConfig const & other) const {
     return not this->operator==(other);
 }
 
+std::ostream & CCMDAQConfig::Print(std::ostream & os) const {
+    os << "[Machines:[\n";
+    bool first = true;
+    size_t board_idx = 0;
+    for(size_t i=0; i<machine_configurations.size(); ++i) {
+        if(first)
+            first = false;
+        else
+            os << ",\n";
+        os << machine_configurations[i];
+        os << "\n[Boards:";
+        size_t max_idx = board_idx + machine_configurations[i].num_digitizer_boards;
+        bool bfirst = true;
+        for(; board_idx<max_idx; ++board_idx) {
+            if(bfirst)
+                bfirst = false;
+            else
+                os << ", ";
+            os << digitizer_boards[board_idx].physical_board_id;
+        }
+    }
+    os << "],\n";
+    os << "[BoardConfigurations:\n";
+    first = true;
+    for(size_t i=0; i<digitizer_boards.size(); ++i) {
+        if(first)
+            first = false;
+        else
+            os << ",\n";
+        os << digitizer_boards[i];
+    }
+    os << "]\n]";
+    return os;
+}
+
 template <class Archive>
 void
 CCMTrigger::serialize(Archive& ar, unsigned version) {
@@ -172,6 +261,61 @@ CCMTrigger::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("board_computer_times", board_computer_times);
 }
 
+namespace {
+std::string GetTimeStringToSecond(time_t now) {
+    char buf[sizeof "2011-10-08T07:07:09Z"];
+    std::strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
+    return std::string(buf);
+}
+}
+
+std::ostream & CCMTrigger::Print(std::ostream & os) const {
+    os << "[CCMTrigger\n";
+    os << "ChannelsSizes:[";
+    bool first = true;
+    for(size_t i=0; i< channel_sizes.size(); ++i) {
+        if(first) first = false; else os << ",";
+        os << channel_sizes[i];
+    }
+    os << "],\n";
+    os << "ChannelMasks:[";
+    first = true;
+    for(size_t i=0; i< channel_masks.size(); ++i) {
+        if(first) first = false; else os << ",";
+        os << channel_masks[i];
+    }
+    os << "],\n";
+    os << "ChannelMasks:[";
+    first = true;
+    for(size_t i=0; i< channel_temperatures.size(); ++i) {
+        if(first) first = false; else os << ",";
+        os << channel_temperatures[i];
+    }
+    os << "],\n";
+    os << "BoardsEventNumbers:[";
+    first = true;
+    for(size_t i=0; i<board_event_numbers.size(); ++i) {
+        if(first) first = false; else os << ",";
+        os << board_event_numbers[i];
+    }
+    os << "],\n";
+    os << "BoardTimes:[";
+    first = true;
+    for(size_t i=0; i<board_times.size(); ++i) {
+        if(first) first = false; else os << ",";
+        os << "(" << (bool((0x1 << 31) & board_times[i])) << ")" << ((~(0x1 << 31)) & board_times[i]);
+    }
+    os << "],\n";
+    first = true;
+    for(size_t i=0; i<board_computer_times.size(); ++i) {
+        if(first) first = false; else os << ",";
+        os << GetTimeStringToSecond(board_computer_times[i].tv_sec) << "." << std::setfill('0') << std::setw(9) << board_computer_times[i].tv_nsec % 1000000000l;
+    }
+    os << "]\n";
+    os << "]";
+    return os;
+}
+
 template <class Archive>
 void
 CCMTriggerReadout::serialize(Archive& ar, unsigned version) {
@@ -182,6 +326,35 @@ CCMTriggerReadout::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("computer_time", computer_time);
     ar & make_nvp("triggers", triggers);
     ar & make_nvp("samples", samples);
+}
+
+std::ostream & CCMTriggerReadout::Print(std::ostream & os) const {
+    os << "[CCMTriggerReadout\n";
+    os << "ComputerTime:";
+    os << GetTimeStringToSecond(computer_time.tv_sec) << "." << std::setfill('0') << std::setw(9) << computer_time.tv_nsec % 1000000000l;
+    os << "\n";
+    os << "Triggers:[";
+    bool first = true;
+    for(size_t i=0; i<triggers.size(); ++i) {
+        if(first)
+            first = false;
+        else
+            os << ",";
+        os << "\n";
+        os << triggers[i];
+    }
+    os << "]\n";
+    os << "Samples:[";
+    first = true;
+    for(size_t i=0; i< samples.size(); ++i) {
+        if(first)
+            first = false;
+        else
+            os << ",";
+        os << samples[i].size();
+    }
+    os << "]\n]";
+    return os;
 }
 
 template <class Archive>
@@ -196,6 +369,25 @@ CCMData::serialize(Archive& ar, unsigned version) {
 
 } // namespace Binary
 } // namespace CCMAnalsysis
+
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::ChannelHeader c) {
+    return(c.Print(os));
+}
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::DigitizerBoard c) {
+    return(c.Print(os));
+}
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMDAQMachineConfig c) {
+    return(c.Print(os));
+}
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMDAQConfig c) {
+    return(c.Print(os));
+}
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMTrigger c) {
+    return(c.Print(os));
+}
+std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMTriggerReadout c) {
+    return(c.Print(os));
+}
 
 I3_SERIALIZABLE(CCMAnalysis::Binary::ChannelHeader);
 I3_SERIALIZABLE(CCMAnalysis::Binary::DigitizerBoard);
