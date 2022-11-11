@@ -16,6 +16,12 @@
 
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
+namespace {
+bool operator==(timespec const & a, timespec const & b) {
+    return (a.tv_sec == b.tv_sec) and (a.tv_nsec == b.tv_nsec);
+}
+}
+
 namespace CCMAnalysis {
 namespace Binary {
 
