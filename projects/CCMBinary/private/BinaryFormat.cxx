@@ -316,6 +316,25 @@ std::ostream & CCMTrigger::Print(std::ostream & os) const {
     return os;
 }
 
+bool CCMTriggerReadout::operator==(CCMTriggerReadout const & other) const {
+    return std::tie(
+    channel_sizes,
+    channel_masks,
+    channel_temperatures,
+    physical_channel_id,
+    board_event_numbers,
+    board_times,
+    board_computer_times)
+      == std::tie(
+    other.channel_sizes,
+    other.channel_masks,
+    other.channel_temperatures,
+    other.physical_channel_id,
+    other.board_event_numbers,
+    other.board_times,
+    other.board_computer_times);
+}
+
 template <class Archive>
 void
 CCMTriggerReadout::serialize(Archive& ar, unsigned version) {

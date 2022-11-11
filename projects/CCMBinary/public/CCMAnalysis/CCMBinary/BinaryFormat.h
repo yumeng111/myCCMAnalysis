@@ -96,6 +96,8 @@ struct CCMTrigger : public I3FrameObject {
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
     std::ostream & Print(std::ostream & os) const override;
+    bool operator==(CCMTrigger const & other) const;
+    bool operator!=(CCMTrigger const & other) const;
 };
 
 static const unsigned ccmtriggerreadout_version_ = 0;
