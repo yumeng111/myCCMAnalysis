@@ -16,10 +16,8 @@
 
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
-namespace {
 bool operator==(timespec const & a, timespec const & b) {
     return (a.tv_sec == b.tv_sec) and (a.tv_nsec == b.tv_nsec);
-}
 }
 
 namespace CCMAnalysis {
@@ -275,6 +273,27 @@ std::string GetTimeStringToSecond(time_t now) {
 }
 }
 
+bool CCMTrigger::operator==(CCMTrigger const & other) const {
+    return std::tie(
+    channel_sizes,
+    channel_masks,
+    channel_temperatures,
+    board_event_numbers,
+    board_times,
+    board_computer_times)
+      == std::tie(
+    other.channel_sizes,
+    other.channel_masks,
+    other.channel_temperatures,
+    other.board_event_numbers,
+    other.board_times,
+    other.board_computer_times);
+}
+
+bool CCMTrigger::operator!=(CCMTrigger const & other) const {
+    return not this->operator==(other);
+}
+
 std::ostream & CCMTrigger::Print(std::ostream & os) const {
     os << "[CCMTrigger\n";
     os << "ChannelSizes:[";
@@ -322,24 +341,6 @@ std::ostream & CCMTrigger::Print(std::ostream & os) const {
     return os;
 }
 
-bool CCMTriggerReadout::operator==(CCMTriggerReadout const & other) const {
-    return std::tie(
-    channel_sizes,
-    channel_masks,
-    channel_temperatures,
-    physical_channel_id,
-    board_event_numbers,
-    board_times,
-    board_computer_times)
-      == std::tie(
-    other.channel_sizes,
-    other.channel_masks,
-    other.channel_temperatures,
-    other.physical_channel_id,
-    other.board_event_numbers,
-    other.board_times,
-    other.board_computer_times);
-}
 
 template <class Archive>
 void
