@@ -1,0 +1,182 @@
+Release Notes
+=============
+
+trunk
+-----
+
+Jul. 29, 2022 don la dieu (nega AT icecube.umd.edu)
+---------------------------------------------------
+IceTray Release v1.4.0
+
+* Drop support for Python 2
+
+Feb. 21, 2022 don la dieu (nega AT icecube.umd.edu)
+---------------------------------------------------
+IceTray release v1.3.0
+
+* 80e09f4: Update waveform plotting colors.  Allow saving plots by command-line args.
+
+Dec. 20, 2019 Alex Olivas (aolivas@umd.edu)
+-------------------------------------------
+Combo Release V00-00-00
+
+November 29, 2017 Kevin Meagher (kmeagher@ulb.ac.be)
+----------------------------------------------------
+Release V01-01-02
+
+* python3 fixes
+* script cleanup
+
+March 24, 2017 Jim Braun
+------------------------
+Release V01-01-01
+
+* Update (r151313): Update for 2016 GCD; improve tests (#1896)
+* Update (r147745): Make tests clean up after themselves. (#1759)
+* Update (r146654): Switch all projects to using our own serialization library
+
+- r136997
+
+  - Example script doesn't need to deal with beacon baselines anymore.
+  - Change internally to producing errata lists as vector<OMKey> and not as
+    I3CompactKeyList
+
+April 2, 2015 don la dieu (nega@icecube.umd.edu)
+--------------------------------------------------------------------
+Release V01-00-10
+
+- Give wavedeform the ability to apply per digitizer s.p.e. corrections. 
+  Add necessary calibration constants to I3DOMCalibration. 
+  Remove unused old constants from I3DOMCalibration.
+
+  -- Chris Weaver
+
+- Update cmake output
+
+  -- Don La Dieu
+
+December 9, 2014 Meike de With (meike.de.with@desy.de)
+--------------------------------------------------------------------
+Release V01-00-09
+
+- Fail gracefully if --keys isn't set
+
+  -- Jakob van Santen
+
+- Fix inline math in docs so it renders with new matplotlib
+
+  -- Don la Dieu
+
+
+September 23, 2014 Meike de With (meike.de.with@desy.de)
+--------------------------------------------------------------------
+Release V01-00-08
+
+- Change I3_SERIALIZABLE to I3_SPLIT_SERIALIZABLE
+
+  -- Claudio Kopper
+
+
+January 15, 2014 Meike de With (meike.de.with@desy.de)
+--------------------------------------------------------------------
+Release V01-00-07
+
+- Make project compatible with Python 3
+
+  -- Nathan Whitehorn
+
+- Make option parsing errors more comprehensible
+
+  -- Jakob van Santen
+
+
+August 20, 2013 Meike de With (meike.de.with@desy.de)
+--------------------------------------------------------------------
+Release V01-00-06
+
+- Make plot_brights.py executable (`set svn:executable to *`)
+
+  -- Jakob van Santen
+
+- Make project compatible with Python 3 and Numpy 1.7
+
+  -- Nathan Whitehorn / Jakob van Santen
+
+
+February 21, 2013 Emanuel Jacobi  (emanuel.jacobi@desy.de)
+--------------------------------------------------------------------
+Release V01-00-05
+
+- Make plot_brights.py swallow GCD frames
+- Teach WaveformPlotter about I3TimeWindow for errata-plotting.
+
+  -- Jakob van Santen
+
+- Fix build with new offline-software
+- Remove dependence on log4cplus
+
+  -- Nathan Whitehorn
+
+
+June 25, 2012 Emanuel Jacobi  (emanuel.jacobi@desy.de)
+--------------------------------------------------------------------
+Release V01-00-04
+
+- Add options for examining single DOMs.
+- Make the static functions in I3Wavereform public.
+
+  -- Jakob van Santen
+
+
+June 25, 2012 Emanuel Jacobi  (emanuel.jacobi@desy.de)
+--------------------------------------------------------------------
+Release V01-00-03
+
+- Static-ify WaveformPlotter methods for external use.
+
+  -- Jakob van Santen
+
+
+January 11, 2012 Emanuel Jacobi  (emanuel.jacobi@desy.de)
+--------------------------------------------------------------------
+Release V01-00-02
+
+- Adapt to changes in dataclasses
+
+  -- Chris Weaver
+
+- Added invert option to I3LaunchSelector
+- Support for extra SuperDST sanity checks
+
+  -- Jakob van Santen
+
+
+August 24, 2011 Emanuel Jacobi  (emanuel.jacobi@desy.de)
+--------------------------------------------------------------------
+Release V01-00-01
+
+- Tweak DOMsimulator pulse templates
+
+  -- Jakob van Santen
+
+August 9, 2011 Emanuel Jacobi  (emanuel.jacobi@desy.de)
+--------------------------------------------------------------------
+Release V01-00-00
+
+Features:
+
+- Q-ified.
+- Support of multichannel ATWD
+- pybindings
+- Add DOMsimulator pulses (from pulsefitter, not cweaver).
+
+  -- Jakob van Santen
+
+Bugfix:
+
+- Adapted to various changes in offline-software
+
+
+April 14, 2011, Fabian Kislat  (fabian.kislat@desy.de)
+--------------------------------------------------------------------
+Release V00-01-00. Initial release.
