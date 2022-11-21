@@ -113,6 +113,7 @@ def find_pairs(times0, times1, offset1, max_delta):
     last_j = None
     while i < len(times0) or j < len(times1):
         if i == len(times0) or j == len(times1):
+            # print("Reached the end, adding all orphans")
             i = len(times0)
             j = len(times1)
             if last_i is None:
@@ -131,7 +132,12 @@ def find_pairs(times0, times1, offset1, max_delta):
             last_j = j
             last_i = i
             continue
-        time_diff = times0[i] - (times1[i] + offset1)
+        # print("i=="+str(i), "j=="+str(j))
+        # print("Time 0:", times0[i])
+        # print("Time 1:", times1[j])
+        # print("Time 1:", times1[j] + offset1)
+        # print()
+        time_diff = times0[i] - (times1[j] + offset1)
         if abs(time_diff) <= max_delta:
             if (last_i is not None and last_i < i-1) or (last_j is not None and last_j < j-1):
                 triplets = []
@@ -149,33 +155,103 @@ def find_pairs(times0, times1, offset1, max_delta):
             last_i = i; last_j = j
             i += 1; j += 1
         else:
-            if times0[i] > times1[j] + offset1:
+            if times0[i] < times1[j] + offset1:
                 i += 1
             else:
                 j += 1
 
     return pairs, good_pairs, orphans
 
-class TimeComparison:
-    def __init__(self, fname0, fname1):
-        self.reader_0 = TimeReader(fname0)
-        self.reader_1 = TimeReader(fname1)
-
-m_reader = TimeReader("mills.i3.zst")
-m_times = np.array([m_reader.get_times() for i in range(100)]).T
-w_reader = TimeReader("wills.i3.zst")
-w_times = np.array([w_reader.get_times() for i in range(100)]).T
-
-# for i in range(1, len(w_times)):
-#     pairs, good_pairs, orphans = find_pairs(w_times[0], w_times[i], w_times[0][0] - w_times[i][0], 2)
-#     print(len(pairs), len(good_pairs), len(orphans))
-
-for delta_trigger in range(-50, 51):
+def get_time_delta(times0, times1, delta_trigger):
     if delta_trigger < 0:
-        delta = m_times[0][0] - w_times[0][-delta_trigger]
+        delta = times0[0][0] - times1[0][-delta_trigger]
     else:
-        delta = m_times[0][delta_trigger] - w_times[0][0]
-    pairs, good_pairs, orphans = find_pairs(m_times[0], w_times[0], delta, 2)
-    print(len(pairs), len(good_pairs), len(orphans))
+        delta = times0[0][delta_trigger] - times1[0][0]
+    return delta
 
+def compute_trigger_offset(fname0, fname1, max_delta=2, min_triggers=100, increment=25, threshold=0.9):
+    reader0 = TimeReader(fname0)
+    reader1 = TimeReader(fname1)
+    for i in range(100):
+        reader1.get_times()
+    n_triggers = min_triggers
+    prev_min = 0
+    prev_max = 0
+    new_min = -int(n_triggers/2)
+    new_max = int(n_triggers/2)+1
+    times0 = np.array([reader0.get_times() for i in range(n_triggers)]).T
+    times1 = np.array([reader1.get_times() for i in range(n_triggers)]).T
+    deltas_above = range(prev_max, new_max)
+    deltas_below = range(new_min, prev_min)
+    prev_min = new_min
+    prev_max = new_max
+    results = []
 
+    while True:
+        results_above = []
+        results_below = []
+        for delta_trigger in deltas_above:
+            delta = get_time_delta(times0, times1, delta_trigger)
+            pairs, good_pairs, orphans = find_pairs(times0[0], times1[0], delta, 2)
+            results_above.append((delta_trigger, len(pairs), len(good_pairs), len(orphans)))
+        for delta_trigger in deltas_below:
+            delta = get_time_delta(times0, times1, delta_trigger)
+            pairs, good_pairs, orphans = find_pairs(times0[0], times1[0], delta, 2)
+            results_below.append((delta_trigger, len(pairs), len(good_pairs), len(orphans)))
+
+        results = results_below + results + results_above
+        best_pair_result = max(results, key=lambda x: x[2])
+        delta_trigger, pairs, good_pairs, orphans = best_pair_result
+
+        print(len(times0[0]))
+        print("With", n_triggers, "triggers found", good_pairs, "good pairs")
+        print("With an offset of", delta_trigger, "we expect at most", (n_triggers - abs(delta_trigger)), "good pairs")
+        print("Achieved a ratio of", good_pairs / (n_triggers - abs(delta_trigger)))
+        print()
+        if good_pairs / (n_triggers - abs(delta_trigger)) >= threshold:
+            break
+
+        n_triggers += increment
+        new_max = int(0.5*n_triggers)+1
+        new_min = -int(0.5*n_triggers)
+        deltas_above = range(prev_max, new_max)
+        deltas_below = range(new_min, prev_min)
+        read0 = np.array([reader0.get_times() for i in range(increment)]).T
+        read1 = np.array([reader1.get_times() for i in range(increment)]).T
+        times0 = np.concatenate([times0, read0], axis=1)
+        times1 = np.concatenate([times1, read1], axis=1)
+        prev_min = new_min
+        prev_max = new_max
+
+    return best_pair_result, get_time_delta(times0, times1, delta_trigger), n_triggers
+
+best_pair_result, delta, n_triggers = compute_trigger_offset("mills.i3.zst", "wills.i3.zst")
+delta_trigger, pairs, good_pairs, orphans = best_pair_result
+
+print("Found best match with", best_pair_result[2], "good pairs and", best_pair_result[3], "orphans after testing", n_triggers, "triggers")
+print("Offset by", ("+"+str(delta_trigger)) if delta_trigger > 0 else delta_trigger, "triggers")
+print("With a time offset of", ("+"+str(-delta)) if -delta > 0 else -delta, "time steps")
+
+# reader0 = TimeReader("mills.i3.zst")
+# reader1 = TimeReader("wills.i3.zst")
+# times0 = reader0.get_times()
+# times1 = reader1.get_times()
+# real_time_diff = times0[0] - times1[0]
+# print("Real time diff", real_time_diff)
+# reader0 = TimeReader("mills.i3.zst")
+# reader1 = TimeReader("wills.i3.zst")
+# for i in range(10):
+#     reader1.get_times()
+# min_triggers = 100
+# times0 = np.array([reader0.get_times() for i in range(min_triggers)]).T
+# times1 = np.array([reader1.get_times() for i in range(min_triggers)]).T
+# delta_trigger = 10
+# delta = get_time_delta(times0, times1, delta_trigger)
+# print("Test time diff", delta)
+# pairs, good_pairs, orphans = find_pairs(times0[0], times1[0], delta, 2)
+# print(len(pairs), len(good_pairs), len(orphans))
+
+# for delta_trigger in range(-50, 51):
+#     delta = get_time_delta(times0, times1, delta_trigger)
+#     pairs, good_pairs, orphans = find_pairs(times0[0], times1[0], delta, 2)
+#     print(delta_trigger, len(pairs), len(good_pairs), len(orphans))
