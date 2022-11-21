@@ -332,6 +332,7 @@ std::ostream & CCMTrigger::Print(std::ostream & os) const {
     }
     os << "],\n";
     first = true;
+    os << "BoardComputerTimes:[";
     for(size_t i=0; i<board_computer_times.size(); ++i) {
         if(first) first = false; else os << ",";
         os << GetTimeStringToSecond(board_computer_times[i].tv_sec) << "." << std::setfill('0') << std::setw(9) << board_computer_times[i].tv_nsec % 1000000000l;
