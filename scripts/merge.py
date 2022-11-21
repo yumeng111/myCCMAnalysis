@@ -112,17 +112,24 @@ def find_pairs(times0, times1, offset1, max_delta):
     last_i = None
     last_j = None
     while i < len(times0) or j < len(times1):
-        if i == len(times0):
-            orphaned_pair = (None, j)
-            pairs.append(orphaned_pair)
-            orphans.append(orphaned_pair)
-            j += 1
-            continue
-        elif j == len(times1):
-            orphaned_pair = (i, None)
-            pairs.append(orphaned_pair)
-            orphans.append(orphaned_pair)
-            i += 1
+        if i == len(times0) or j == len(times1):
+            i = len(times0)
+            j = len(times1)
+            if last_i is None:
+                last_i = -1
+            if last_j is None:
+                last_j = -1
+            triplets = []
+            for _i in range(last_i + 1, i):
+                triplets.append((_i, None, times0[_i]))
+            for _j in range(last_j + 1, j):
+                triplets.append((None, _j, times1[_j] + offset1))
+            triplets = sorted(triplets, key=lambda x: x[2])
+            orphaned_pairs = [t[:2] for t in triplets]
+            pairs.extend(orphaned_pairs)
+            orphans.extend(orphaned_pairs)
+            last_j = j
+            last_i = i
             continue
         time_diff = times0[i] - (times1[i] + offset1)
         if abs(time_diff) <= max_delta:
