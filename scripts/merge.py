@@ -159,11 +159,16 @@ m_times = np.array([m_reader.get_times() for i in range(100)]).T
 w_reader = TimeReader("wills.i3.zst")
 w_times = np.array([w_reader.get_times() for i in range(100)]).T
 
-for i in range(1, len(w_times)):
-    pairs, good_pairs, orphans = find_pairs(w_times[0], w_times[i], w_times[0][0] - w_times[i][0], 16)
-    print(len(pairs), len(good_pairs), len(orphans))
+# for i in range(1, len(w_times)):
+#     pairs, good_pairs, orphans = find_pairs(w_times[0], w_times[i], w_times[0][0] - w_times[i][0], 2)
+#     print(len(pairs), len(good_pairs), len(orphans))
 
-#for delta_trigger in range(-50, 51):
-#    find_pairs(m_times[0], w_times[1])
+for delta_trigger in range(-50, 51):
+    if delta_trigger < 0:
+        delta = m_times[0][0] - w_times[0][-delta_trigger]
+    else:
+        delta = m_times[0][delta_trigger] - w_times[0][0]
+    pairs, good_pairs, orphans = find_pairs(m_times[0], w_times[0], delta, 2)
+    print(len(pairs), len(good_pairs), len(orphans))
 
 
