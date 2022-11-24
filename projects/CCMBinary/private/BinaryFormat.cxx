@@ -355,6 +355,22 @@ CCMTriggerReadout::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("samples", samples);
 }
 
+bool CCMTriggerReadout::operator==(CCMTriggerReadout const & other) const {
+    return std::tie(
+        this->event_number,
+        this->computer_time,
+        this->triggers,
+        this->samples) == std::tie(
+        other.event_number,
+        other.computer_time,
+        other.triggers,
+        other.samples);
+}
+
+bool CCMTriggerReadout::operator!=(CCMTriggerReadout const & other) const {
+    return not this->operator==(other);
+}
+
 std::ostream & CCMTriggerReadout::Print(std::ostream & os) const {
     os << "[CCMTriggerReadout\n";
     os << "ComputerTime:";
@@ -392,6 +408,18 @@ CCMData::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("daq_config", daq_config);
     ar & make_nvp("trigger_readout", trigger_readout);
+}
+
+bool CCMData::operator==(CCMData const & other) const {
+    return std::tie(
+        this->daq_config,
+        this->trigger_readout) == std::tie(
+        other.daq_config,
+        other.trigger_readout);
+}
+
+bool CCMData::operator!=(CCMData const & other) const {
+    return not this->operator==(other);
 }
 
 } // namespace Binary

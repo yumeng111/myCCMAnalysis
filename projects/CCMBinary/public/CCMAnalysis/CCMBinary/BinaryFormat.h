@@ -127,6 +127,8 @@ struct CCMTriggerReadout : public I3FrameObject {
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
     std::ostream & Print(std::ostream & os) const override;
+    bool operator==(CCMTriggerReadout const & other) const;
+    bool operator!=(CCMTriggerReadout const & other) const;
 };
 
 static const unsigned ccmdata_version_ = 0;
@@ -136,6 +138,8 @@ struct CCMData : public I3FrameObject {
     std::vector<CCMTriggerReadout> trigger_readout;
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
+    bool operator==(CCMData const & other) const;
+    bool operator!=(CCMData const & other) const;
 };
 
 static const char lexical_magic_number[] = "CCMVersionedBinary";

@@ -27,7 +27,10 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("caen_optical_link_number",&CCMAnalysis::Binary::ChannelHeader::caen_optical_link_number)
     .def_readwrite("caen_optical_link_board_number",&CCMAnalysis::Binary::ChannelHeader::caen_optical_link_board_number)
     .def_readwrite("caen_channel_number",&CCMAnalysis::Binary::ChannelHeader::caen_channel_number);
-  
+
+  class_<std::vector<CCMAnalysis::Binary::ChannelHeader> >("vector_ChannelHeader")
+  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::ChannelHeader> >());
+
   scope().attr("digitizerboard_version_") = CCMAnalysis::Binary::digitizerboard_version_;
   class_<CCMAnalysis::Binary::DigitizerBoard,bases<I3FrameObject> >("DigitizerBoard",
     "Container class for digitizer board information")
@@ -42,7 +45,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::DigitizerBoard>, true>())
     ;
   from_python_sequence<std::vector<CCMAnalysis::Binary::DigitizerBoard>, variable_capacity_policy>();
-  
+
   scope().attr("ccmdaqmachineconfig_version_") = CCMAnalysis::Binary::ccmdaqmachineconfig_version_;
   class_<CCMAnalysis::Binary::CCMDAQMachineConfig,bases<I3FrameObject> >("CCMAnalysis::Binary::CCMDAQMachineConfig",
     "Container class for DAQ machine information")
@@ -57,7 +60,10 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("offset_estimate_abs_error_threshold",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_abs_error_threshold)
     .def_readwrite("offset_estimate_rel_error_threshold",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_rel_error_threshold)
     .def_readwrite("offset_estimate_tau",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_tau);
-  
+
+  class_<std::vector<CCMAnalysis::Binary::CCMDAQMachineConfig> >("vector_CCMDAQMachineConfig")
+  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMDAQMachineConfig> >());
+
   scope().attr("ccmdaqconfig_version_") = CCMAnalysis::Binary::ccmdaqconfig_version_;
   class_<CCMAnalysis::Binary::CCMDAQConfig,bases<I3FrameObject> >("CCMAnalysis::Binary::CCMDAQConfig",
     "Container class for DAQ config information")
@@ -69,7 +75,7 @@ I3_PYTHON_MODULE(CCMBinary)
       .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMDAQConfig>, true>())
       ;
   from_python_sequence<std::vector<CCMAnalysis::Binary::CCMDAQConfig>, variable_capacity_policy>();
-  
+
   scope().attr("ccmtrigger_version_") = CCMAnalysis::Binary::ccmtrigger_version_;
   class_<CCMAnalysis::Binary::CCMTrigger,bases<I3FrameObject> >("CCMAnalysis::Binary::CCMTrigger",
     "Container class for trigger information")
@@ -81,6 +87,9 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("board_times",&CCMAnalysis::Binary::CCMTrigger::board_times)
     .def_readwrite("board_computer_times",&CCMAnalysis::Binary::CCMTrigger::board_computer_times);
 
+  class_<std::vector<CCMAnalysis::Binary::CCMTrigger> >("vector_CCMTrigger")
+  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMTrigger> >());
+
   scope().attr("ccmtriggerreadout_version_") = CCMAnalysis::Binary::ccmtriggerreadout_version_;
   class_<CCMAnalysis::Binary::CCMTriggerReadout,bases<I3FrameObject> >("CCMAnalysis::Binary::CCMTriggerReadout",
     "Container class for CCM trigger readout information")
@@ -88,7 +97,10 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readonly("event_number",&CCMAnalysis::Binary::CCMTriggerReadout::event_number)
     .def_readonly("triggers",&CCMAnalysis::Binary::CCMTriggerReadout::triggers)
     .def_readonly("samples",&CCMAnalysis::Binary::CCMTriggerReadout::samples);
-  
+
+  class_<std::vector<CCMAnalysis::Binary::CCMTriggerReadout> >("vector_CCMTriggerReadout")
+  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMTriggerReadout> >());
+
   scope().attr("ccmdata_version_") = CCMAnalysis::Binary::ccmdata_version_;
   class_<CCMAnalysis::Binary::CCMData,bases<I3FrameObject> >("CCMAnalysis::Binary::CCMData",
     "Container class for CCM data information")
@@ -96,19 +108,19 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readonly("daq_config",&CCMAnalysis::Binary::CCMData::daq_config)
     .def_readonly("trigger_readout",&CCMAnalysis::Binary::CCMData::trigger_readout);
 
+  class_<std::vector<CCMAnalysis::Binary::CCMData> >("vector_CCMData")
+  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMData> >());
+
   // Define vectors of types
   class_<std::vector<uint16_t> >("vector_uint16_t")
   .def(vector_indexing_suite<std::vector<uint16_t> >());
-  
+
   class_<std::vector<std::vector<uint16_t>> >("vector_vector_uint16_t")
   .def(vector_indexing_suite<std::vector<std::vector<uint16_t>> >());
-  
+
   class_<std::vector<uint32_t> >("vector_uint32_t")
   .def(vector_indexing_suite<std::vector<uint32_t> >());
-  
-  class_<std::vector<CCMAnalysis::Binary::CCMTrigger> >("vector_CCMTrigger")
-  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMTrigger> >());
-  
+
   class_<std::vector<timespec> >("vector_timespec")
     .def(vector_indexing_suite<std::vector<timespec>, true>())
     ;
