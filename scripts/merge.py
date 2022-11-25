@@ -1,5 +1,6 @@
 import numpy as np
 import icecube
+from icecube import icetray
 from icecube import dataio
 from icecube import CCMBinary
 
@@ -50,25 +51,35 @@ def empty_mask(frame):
     nboards = len(config.digitizer_boards)
     mask = np.zeros(nboards).astype(bool)
     channel_sizes = np.array(list(frame["CCMTriggerReadout"].triggers[0].channel_sizes))
-    # board_times = np.array(list(frame["CCMTriggerReadout"].triggers[0].board_times))
+    last_idx = 0
     for i in range(nboards):
-        mask[i] = np.any(channel_sizes[i*16:(i+1)*16] > 0)
+        n_channels = len(config.digitizer_boards[i].channels)
+        next_idx = last_idx + n_channels
+        mask[i] = np.any(channel_sizes[last_idx:next_idx] > 0)
+        last_idx = next_idx
     return mask
 
 class TimeReader:
-    def __init__(self, fname):
-        self.f = dataio.I3File(fname)
+    def __init__(self, fnames, n_skip=0):
+        self.f = dataio.I3FrameSequence(fnames)
         self.pop()
         time_read = np.array(list(self.frame["CCMTriggerReadout"].triggers[0].board_times))
         computer_time_read = np.array(list(self.frame["CCMTriggerReadout"].triggers[0].board_computer_times))
         mask = empty_mask(self.frame)
         self.time_cache = np.zeros((len(time_read), 0)).tolist()
-        self.computer_time_cache = np.zeros((len(time_read), 0)).tolist()
+        self.last_raw_time = np.zeros(len(time_read)).astype(np.uint32)
         for i in range(len(self.time_cache)):
             if mask[i]:
                 self.time_cache[i].append(time_read[i])
-        self.last_raw_times = np.zeros(len(self.time_cache)).astype(np.uint32)
-        self.last_times = np.zeros(len(self.time_cache)).astype(np.int64)
+                self.last_raw_time[i] = time_read[i]
+        while not np.all([len(self.time_cache[i]) > n_skip for i in range(len(self.time_cache))]):
+            self.pop_times()
+        for i in range(len(self.time_cache)):
+            if len(self.time_cache[i]) > 0:
+                self.time_cache[i] = self.time_cache[i][n_skip:]
+
+    def n_boards(self):
+        return len(self.time_cache)
 
     def pop(self):
         if not self.f.more():
@@ -87,21 +98,15 @@ class TimeReader:
         mask = empty_mask(self.frame)
         for i in range(len(self.time_cache)):
             if mask[i]:
-                self.time_cache[i].append(time_read[i])
+                raw_time = time_read[i]
+                abs_time = self.time_cache[i][-1] + subtract_times(raw_time, self.last_raw_time[i])
+                self.time_cache[i].append(abs_time)
+                self.last_raw_time[i] = raw_time
 
-    def get_times(self):
-        times_to_return = np.zeros(len(self.time_cache)).astype(np.int64)
-        while not np.all([len(l) > 0 for l in self.time_cache]):
+    def get_times(self, N, board_idx):
+        while len(self.time_cache[board_idx]) < N:
             self.pop_times()
-        for i in range(len(times_to_return)):
-            raw_time = self.time_cache[i].pop(0)
-            time_diff = subtract_times(raw_time, self.last_raw_times[i])
-            abs_time = self.last_times[i] + time_diff
-            times_to_return[i] = abs_time
-
-            self.last_raw_times[i] = raw_time
-            self.last_times[i] = abs_time
-        return times_to_return
+        return list(self.time_cache[board_idx][:N])
 
 def find_pairs(times0, times1, offset1, max_delta):
     good_pairs = []
@@ -164,46 +169,40 @@ def find_pairs(times0, times1, offset1, max_delta):
 
 def get_time_delta(times0, times1, delta_trigger):
     if delta_trigger < 0:
-        delta = times0[0][0] - times1[0][-delta_trigger]
+        delta = times0[0] - times1[-delta_trigger]
     else:
-        delta = times0[0][delta_trigger] - times1[0][0]
+        delta = times0[delta_trigger] - times1[0]
     return delta
 
-def compute_trigger_offset(fname0, fname1, max_delta=2, min_triggers=100, increment=25, threshold=0.9):
-    reader0 = TimeReader(fname0)
-    reader1 = TimeReader(fname1)
-    for i in range(100):
-        reader1.get_times()
+def compute_trigger_offset(reader0, board_idx0, reader1, board_idx1, jitter_tests=None, max_delta=2, min_triggers=100, max_triggers=2000, increment=25, threshold=0.9):
+    if jitter_tests is None:
+        jitter_tests = [-2, 2]
     n_triggers = min_triggers
     prev_min = 0
     prev_max = 0
     new_min = -int(n_triggers/2)
     new_max = int(n_triggers/2)+1
-    times0 = np.array([reader0.get_times() for i in range(n_triggers)]).T
-    times1 = np.array([reader1.get_times() for i in range(n_triggers)]).T
-    deltas_above = range(prev_max, new_max)
-    deltas_below = range(new_min, prev_min)
+    times0 = np.array(reader0.get_times(n_triggers, board_idx0))
+    times1 = np.array(reader1.get_times(n_triggers, board_idx1))
+    deltas_above = list(range(prev_max, new_max))
+    deltas_below = list(range(new_min, prev_min))
     prev_min = new_min
     prev_max = new_max
     results = []
 
     while True:
-        results_above = []
-        results_below = []
-        for delta_trigger in deltas_above:
+        for delta_trigger in deltas_above + deltas_below:
             delta = get_time_delta(times0, times1, delta_trigger)
-            pairs, good_pairs, orphans = find_pairs(times0[0], times1[0], delta, 2)
-            results_above.append((delta_trigger, len(pairs), len(good_pairs), len(orphans)))
-        for delta_trigger in deltas_below:
-            delta = get_time_delta(times0, times1, delta_trigger)
-            pairs, good_pairs, orphans = find_pairs(times0[0], times1[0], delta, 2)
-            results_below.append((delta_trigger, len(pairs), len(good_pairs), len(orphans)))
+            pairs, good_pairs, orphans = find_pairs(times0, times1, delta, max_delta)
+            results.append((delta_trigger, delta, len(pairs), len(good_pairs), len(orphans)))
+            for t in jitter_tests:
+                pairs, good_pairs, orphans = find_pairs(times0, times1, delta + t, max_delta)
+                results.append((delta_trigger, delta + t, len(pairs), len(good_pairs), len(orphans)))
 
-        results = results_below + results + results_above
-        best_pair_result = max(results, key=lambda x: x[2])
-        delta_trigger, pairs, good_pairs, orphans = best_pair_result
+        best_pair_result = max(results, key=lambda x: x[3])
+        delta_trigger, delta, pairs, good_pairs, orphans = best_pair_result
 
-        print(len(times0[0]))
+        print(len(times0))
         print("With", n_triggers, "triggers found", good_pairs, "good pairs")
         print("With an offset of", delta_trigger, "we expect at most", (n_triggers - abs(delta_trigger)), "good pairs")
         print("Achieved a ratio of", good_pairs / (n_triggers - abs(delta_trigger)))
@@ -212,21 +211,45 @@ def compute_trigger_offset(fname0, fname1, max_delta=2, min_triggers=100, increm
             break
 
         n_triggers += increment
+        if(n_triggers > max_triggers):
+            return None
         new_max = int(0.5*n_triggers)+1
         new_min = -int(0.5*n_triggers)
-        deltas_above = range(prev_max, new_max)
-        deltas_below = range(new_min, prev_min)
-        read0 = np.array([reader0.get_times() for i in range(increment)]).T
-        read1 = np.array([reader1.get_times() for i in range(increment)]).T
-        times0 = np.concatenate([times0, read0], axis=1)
-        times1 = np.concatenate([times1, read1], axis=1)
+        deltas_above = list(range(prev_max, new_max))
+        deltas_below = list(range(new_min, prev_min))
+        times0 = np.array(reader0.get_times(n_triggers, board_idx0))
+        times1 = np.array(reader1.get_times(n_triggers, board_idx1))
         prev_min = new_min
         prev_max = new_max
 
-    return best_pair_result, get_time_delta(times0, times1, delta_trigger), n_triggers
+    return best_pair_result, n_triggers
 
-best_pair_result, delta, n_triggers = compute_trigger_offset("mills.i3.zst", "wills.i3.zst")
-delta_trigger, pairs, good_pairs, orphans = best_pair_result
+class MergedSource(icetray.I3Module) :
+    def __init__(self, context):
+        icetray.I3Module.__init__(self, context)
+        self.AddParameter("FileLists", "File lists to merge", [])
+    def Configure(self):
+        file_lists = self.GetParameter("FileLists")
+        n_daqs = len(file_lists)
+        readers = [TimeReader(file_lists[i]) for i in range(n_daqs)]
+        n_boards = [r.n_boards() for r in readers]
+        offsets = [[None for i in range(n)] for n in n_boards]
+        offsets[0][0] = 0
+
+    def Process(self):
+        frame = self.PopFrame()
+        self.writer.convert(frame)
+        self.PushFrame(frame)
+        return True
+
+    def Finish(self):
+        if self.writer is not None:
+            self.writer.finish()
+
+reader0 = TimeReader(["mills.i3.zst"])
+reader1 = TimeReader(["wills.i3.zst"])
+best_pair_result, n_triggers = compute_trigger_offset(reader0, 0, reader1, 0)
+delta_trigger, delta, pairs, good_pairs, orphans = best_pair_result
 
 print("Found best match with", best_pair_result[2], "good pairs and", best_pair_result[3], "orphans after testing", n_triggers, "triggers")
 print("Offset by", ("+"+str(delta_trigger)) if delta_trigger > 0 else delta_trigger, "triggers")
