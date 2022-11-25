@@ -118,7 +118,6 @@ def find_pairs(times0, times1, offset1, max_delta):
     last_j = None
     while i < len(times0) or j < len(times1):
         if i == len(times0) or j == len(times1):
-            # print("Reached the end, adding all orphans")
             i = len(times0)
             j = len(times1)
             if last_i is None:
@@ -137,11 +136,7 @@ def find_pairs(times0, times1, offset1, max_delta):
             last_j = j
             last_i = i
             continue
-        # print("i=="+str(i), "j=="+str(j))
-        # print("Time 0:", times0[i])
-        # print("Time 1:", times1[j])
-        # print("Time 1:", times1[j] + offset1)
-        # print()
+
         time_diff = times0[i] - (times1[j] + offset1)
         if abs(time_diff) <= max_delta:
             if (last_i is not None and last_i < i-1) or (last_j is not None and last_j < j-1):
@@ -228,13 +223,81 @@ class MergedSource(icetray.I3Module) :
     def __init__(self, context):
         icetray.I3Module.__init__(self, context)
         self.AddParameter("FileLists", "File lists to merge", [])
+
     def Configure(self):
         file_lists = self.GetParameter("FileLists")
         n_daqs = len(file_lists)
-        readers = [TimeReader(file_lists[i]) for i in range(n_daqs)]
-        n_boards = [r.n_boards() for r in readers]
-        offsets = [[None for i in range(n)] for n in n_boards]
+        self.readers = [TimeReader(file_lists[i]) for i in range(n_daqs)]
+        self.n_boards = [r.n_boards() for r in self.readers]
+        offsets = [[None for i in range(n)] for n in self.n_boards]
         offsets[0][0] = 0
+        for i in range(1, offsets):
+            result = compute_trigger_offsets(self.readers[0], 0, self.readers[i], 0)
+            if result is None:
+                s = "Error: cannot align DAQ 0 and DAQ " + str(i)
+                print(s)
+                raise RuntimeError(s)
+            else:
+                (delta_trigger, delta, pairs, good_pairs, orphans), n_triggers = result
+                offsets[i][0] = delta
+        for i in range(offsets):
+            for j in range(1, self.n_boards[i]):
+            result = compute_trigger_offsets(self.readers[0], 0, self.readers[i], 0)
+            (delta_trigger, delta, pairs, good_pairs, orphans), n_triggers = result
+            offsets[i][0] = delta
+
+        self.offsets = offsets
+        self.frame_cache = np.zeros((len(self.offsets), 0)).tolist()
+        self.frame_idxs = [np.zeros(n)-1 for n in self.n_boards]
+        self.mask_cache = np.zeros((len(self.offsets), 0)).tolist()
+        self.next_triggers()
+
+    def pop_frame(self, idx):
+        frame = self.readers.pop_daq()
+        self.frame_cache[idx].append(frame)
+        self.mask_cache[idx].append(empty_mask(frame))
+
+    def next_trigger(self, daq_idx, board_idx):
+        current_frame_idx = self.frame_idxs[daq_idx][board_idx]
+        frame_idx = current_frame_idx + 1
+        while True:
+            while len(self.frame_cache[daq_idx]) <= frame_idx:
+                self.pop_frame(daq_idx)
+            if self.mask_cache[daq_idx][frame_idx][board_idx]:
+                break
+            frame_idx += 1
+        self.frame_idxs[daq_idx][board_idx] = frame_idx
+
+    def next_triggers(self):
+        for daq_idx in range(len(self.frame_idxs)):
+            for board_idx in range(self.n_boards[daq_idx]):
+                self.next_trigger(daq_idx, board_idx)
+        self.clear_unused_frames()
+
+    def clear_unused_frames(self):
+        min_idx = min([np.amin(idxs) in self.frame_idxs])
+        for daq_idx in range(len(self.frame_cache)):
+            for i in range(min_idx):
+                self.frame_cache[daq_idx].pop(0)
+                self.mask_cache[daq_idx].pop(0)
+            self.frame_idxs[daq_idx] -= min_idx
+
+    def get_trigger_readout(self):
+        self.next_trigger()
+        readout = CCMBinary.CCMTriggerReadout()
+        trigger = CCMBinary.CCMTrigger()
+
+        for daq_idx, n in enumerate(self.n_boards):
+            for board_idx in range(n):
+                tr = self.frame_cache[daq_idx][self.frame_idxs[daq_idx][board_idx]]["CCMTriggerReadout"]
+                trigger.channel_sizes.extend(tr.triggers[0].channel_sizes)
+                trigger.channel_masks.extend(tr.triggers[0].channel_masks)
+                trigger.channel_temperatures.extend(tr.triggers[0].channel_temperatures)
+                trigger.board_event_numbers.extend(tr.triggers[0].board_event_numbers)
+                trigger.board_times.extend(tr.triggers[0].board_times)
+                trigger.board_computer_times.extend(tr.triggers[0].board_computer_times)
+                readout.samples.extend(tr.samples)
+        readout.triggers.append(trigger)
 
     def Process(self):
         frame = self.PopFrame()
