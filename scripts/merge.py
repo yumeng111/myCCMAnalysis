@@ -1,5 +1,6 @@
 import numpy as np
 import icecube
+import I3Tray
 from icecube import icetray
 from icecube import dataio
 from icecube import CCMBinary
@@ -223,16 +224,19 @@ class MergedSource(icetray.I3Module) :
     def __init__(self, context):
         icetray.I3Module.__init__(self, context)
         self.AddParameter("FileLists", "File lists to merge", [])
+        self.AddParameter("MaxTimeDiff", "Maximum time difference between associated triggers (ns)", 16)
 
     def Configure(self):
         file_lists = self.GetParameter("FileLists")
+        max_delta_t = self.GetParameter("MaxTimeDiff")
+        self.max_delta = int(np.ceil(max_delta_t / 8))
         n_daqs = len(file_lists)
-        self.readers = [TimeReader(file_lists[i]) for i in range(n_daqs)]
-        self.n_boards = [r.n_boards() for r in self.readers]
+        readers = [TimeReader(file_lists[i]) for i in range(n_daqs)]
+        self.n_boards = [r.n_boards() for r in readers]
         offsets = [[None for i in range(n)] for n in self.n_boards]
         offsets[0][0] = 0
-        for i in range(1, offsets):
-            result = compute_trigger_offsets(self.readers[0], 0, self.readers[i], 0)
+        for i in range(1, len(offsets)):
+            result = compute_trigger_offset(readers[0], 0, readers[i], 0)
             if result is None:
                 s = "Error: cannot align DAQ 0 and DAQ " + str(i)
                 print(s)
@@ -240,74 +244,135 @@ class MergedSource(icetray.I3Module) :
             else:
                 (delta_trigger, delta, pairs, good_pairs, orphans), n_triggers = result
                 offsets[i][0] = delta
-        for i in range(offsets):
+        for i in range(len(offsets)):
             for j in range(1, self.n_boards[i]):
-            result = compute_trigger_offsets(self.readers[0], 0, self.readers[i], 0)
-            (delta_trigger, delta, pairs, good_pairs, orphans), n_triggers = result
-            offsets[i][0] = delta
+                result = compute_trigger_offset(readers[0], 0, readers[i], j)
+                (delta_trigger, delta, pairs, good_pairs, orphans), n_triggers = result
+                offsets[i][j] = delta
+
+        self.frame_sequences = [dataio.I3FrameSequence(file_lists[i]) for i in range(n_daqs)]
 
         self.offsets = offsets
         self.frame_cache = np.zeros((len(self.offsets), 0)).tolist()
-        self.frame_idxs = [np.zeros(n)-1 for n in self.n_boards]
+        self.frame_idxs = [np.zeros(n).astype(int)-1 for n in self.n_boards]
+        self.empty_cache = [np.zeros(n).astype(bool) for n in self.n_boards]
         self.mask_cache = np.zeros((len(self.offsets), 0)).tolist()
+        self.time_cache = [np.zeros((n, 0)).tolist() for n in self.n_boards]
+        self.last_raw_time = [np.zeros(n).astype(np.uint32) for n in self.n_boards]
         self.next_triggers()
 
     def pop_frame(self, idx):
-        frame = self.readers.pop_daq()
+        if not self.frame_sequences[idx].more():
+            return False
+        frame = self.frame_sequences[idx].pop_daq()
+        while "CCMTriggerReadout" not in frame.keys() or len(frame["CCMTriggerReadout"].triggers) == 0:
+            if not self.frame_sequences[idx].more():
+                return False
+            frame = self.frame_sequences[idx].pop_daq()
         self.frame_cache[idx].append(frame)
-        self.mask_cache[idx].append(empty_mask(frame))
+        mask = empty_mask(frame)
+        self.mask_cache[idx].append(mask)
+        time_read = np.array(list(frame["CCMTriggerReadout"].triggers[0].board_times))
+        for i in range(len(self.time_cache[idx])):
+            if mask[i]:
+                raw_time = time_read[i]
+                rel_time = subtract_times(raw_time, self.last_raw_time[idx][i])
+                if len(self.time_cache[idx][i]):
+                    abs_time = self.time_cache[idx][i][-1] + rel_time
+                else:
+                    abs_time = rel_time
+                self.time_cache[idx][i].append(abs_time)
+                self.last_raw_time[idx][i] = raw_time
+        return True
 
     def next_trigger(self, daq_idx, board_idx):
         current_frame_idx = self.frame_idxs[daq_idx][board_idx]
         frame_idx = current_frame_idx + 1
         while True:
             while len(self.frame_cache[daq_idx]) <= frame_idx:
-                self.pop_frame(daq_idx)
+                res = self.pop_frame(daq_idx)
+                if not res:
+                    return False
             if self.mask_cache[daq_idx][frame_idx][board_idx]:
                 break
             frame_idx += 1
         self.frame_idxs[daq_idx][board_idx] = frame_idx
+        return True
 
     def next_triggers(self):
         for daq_idx in range(len(self.frame_idxs)):
             for board_idx in range(self.n_boards[daq_idx]):
-                self.next_trigger(daq_idx, board_idx)
+                res = self.next_trigger(daq_idx, board_idx)
+                if not res:
+                    return False
         self.clear_unused_frames()
+        return True
 
     def clear_unused_frames(self):
-        min_idx = min([np.amin(idxs) in self.frame_idxs])
+        min_idx = min([np.amin(idxs) for idxs in self.frame_idxs])
         for daq_idx in range(len(self.frame_cache)):
             for i in range(min_idx):
                 self.frame_cache[daq_idx].pop(0)
                 self.mask_cache[daq_idx].pop(0)
+                for j in range(len(self.mask_cache[daq_idx])):
+                    self.time_cache[daq_idx][j].pop(0)
             self.frame_idxs[daq_idx] -= min_idx
 
     def get_trigger_readout(self):
-        self.next_trigger()
         readout = CCMBinary.CCMTriggerReadout()
         trigger = CCMBinary.CCMTrigger()
 
+        times = [[self.time_cache[daq_idx][board_idx][self.frame_idxs[daq_idx][board_idx]] + self.offsets[daq_idx][board_idx] for board_idx in range(n)] for daq_idx, n in enumerate(self.n_boards)]
+        min_time = min([np.amin(times[i]) for i in range(len(self.n_boards))])
+
+        all_bad = np.all([np.all(self.empty_cache[daq_idx]) for daq_idx in range(len(self.n_boards))])
+
+        if all_bad or min_time == np.inf:
+            return None
+
         for daq_idx, n in enumerate(self.n_boards):
+            config = frame["CCMDAQConfig"]
+            channel_sizes = np.array(list(frame["CCMTriggerReadout"].triggers[0].channel_sizes))
+            last_idx = 0
             for board_idx in range(n):
-                tr = self.frame_cache[daq_idx][self.frame_idxs[daq_idx][board_idx]]["CCMTriggerReadout"]
-                trigger.channel_sizes.extend(tr.triggers[0].channel_sizes)
-                trigger.channel_masks.extend(tr.triggers[0].channel_masks)
-                trigger.channel_temperatures.extend(tr.triggers[0].channel_temperatures)
-                trigger.board_event_numbers.extend(tr.triggers[0].board_event_numbers)
-                trigger.board_times.extend(tr.triggers[0].board_times)
-                trigger.board_computer_times.extend(tr.triggers[0].board_computer_times)
-                readout.samples.extend(tr.samples)
+                n_channels = len(config.digitizer_boards[i].channels)
+                next_idx = last_idx + n_channels
+                mask[i] = np.any(channel_sizes[last_idx:next_idx] > 0)
+                last_idx = next_idx
+                if times[daq_idx][board_idx] - min_time > self.max_delta:
+                    zero_time = CCMBinary.timespec()
+                    zero_time.tv_sec = 0; zero_time.tv_nsec = 0
+                    trigger.channel_sizes.extend([0]*n_channels)
+                    trigger.channel_masks.extend([0]*n_channels)
+                    trigger.channel_temperatures.extend([0]*n_channels)
+                    trigger.board_event_numbers.append(0)
+                    trigger.board_times.append(zero_time)
+                    trigger.board_computer_times.append(zero_time)
+                    readout.samples.extend([[]]*n_channels)
+                else:
+                    tr = self.frame_cache[daq_idx][self.frame_idxs[daq_idx][board_idx]]["CCMTriggerReadout"]
+                    trigger.channel_sizes.extend(tr.triggers[0].channel_sizes[last_idx:next_idx])
+                    trigger.channel_masks.extend(tr.triggers[0].channel_masks[last_idx:next_idx])
+                    trigger.channel_temperatures.extend(tr.triggers[0].channel_temperatures[last_idx:next_idx])
+                    trigger.board_event_numbers.append(tr.triggers[0].board_event_numbers[board_idx])
+                    trigger.board_times.append(tr.triggers[0].board_times[board_idx])
+                    if len(tr.triggers[0].board_computer_times) > 0:
+                        trigger.board_computer_times.append(tr.triggers[0].board_computer_times[board_idx])
+                    readout.samples.extend(tr.samples[last_idx:next_idx])
+                    res = self.next_trigger(daq_idx, board_idx)
+                    if not res:
+                        times[daq_idx][board_idx] = np.inf
+                        self.empty_cache[daq_idx][board_idx] = True
         readout.triggers.append(trigger)
+        return readout
 
     def Process(self):
-        frame = self.PopFrame()
-        self.writer.convert(frame)
+        frame = icecube.icetray.I3Frame(icecube.icetray.I3Frame.DAQ)
+        readout = self.get_trigger_readout()
+        if readout is None:
+            return
+        frame.Put("CCMTriggerReadout", readout, icecube.icetray.I3Frame.DAQ)
         self.PushFrame(frame)
-        return True
-
-    def Finish(self):
-        if self.writer is not None:
-            self.writer.finish()
 
 reader0 = TimeReader(["mills.i3.zst"])
 reader1 = TimeReader(["wills.i3.zst"])
@@ -317,6 +382,13 @@ delta_trigger, delta, pairs, good_pairs, orphans = best_pair_result
 print("Found best match with", best_pair_result[2], "good pairs and", best_pair_result[3], "orphans after testing", n_triggers, "triggers")
 print("Offset by", ("+"+str(delta_trigger)) if delta_trigger > 0 else delta_trigger, "triggers")
 print("With a time offset of", ("+"+str(-delta)) if -delta > 0 else -delta, "time steps")
+
+tray = I3Tray.I3Tray()
+
+tray.AddModule(MergedSource, "reader", FileLists=[["mills.i3.zst"],["wills.i3.zst"]])
+tray.AddModule("I3MultiWriter", "writer", SizeLimit=1, SyncStream=icetray.I3Frame.Calibration, FileName="test-%04d.i3.zst")
+
+tray.Execute()
 
 # reader0 = TimeReader("mills.i3.zst")
 # reader1 = TimeReader("wills.i3.zst")
