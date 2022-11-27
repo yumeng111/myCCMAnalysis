@@ -1,6 +1,7 @@
 #include <time.h>
 
 #include <CCMAnalysis/CCMBinary/BinaryFormat.h>
+#include <CCMAnalysis/CCMBinary/BinaryUtilities.h>
 #include <icetray/load_project.h>
 #include <boost/python.hpp>
 // #include <icetray/scratch.h>
@@ -17,7 +18,7 @@ I3_PYTHON_MODULE(CCMBinary)
   import("icecube.icetray");
 
   scope().attr("channelheader_version_") = CCMAnalysis::Binary::channelheader_version_;
-  class_<CCMAnalysis::Binary::ChannelHeader,bases<I3FrameObject> >("ChannelHeader",
+  class_<CCMAnalysis::Binary::ChannelHeader, boost::shared_ptr<CCMAnalysis::Binary::ChannelHeader>, bases<I3FrameObject> >("ChannelHeader",
     "Container class for channel header information")
     .def_readonly("version",&CCMAnalysis::Binary::ChannelHeader::version)
     .def_readwrite("physical_board_id",&CCMAnalysis::Binary::ChannelHeader::physical_board_id)
@@ -91,7 +92,7 @@ I3_PYTHON_MODULE(CCMBinary)
   .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMTrigger> >());
 
   scope().attr("ccmtriggerreadout_version_") = CCMAnalysis::Binary::ccmtriggerreadout_version_;
-  class_<CCMAnalysis::Binary::CCMTriggerReadout,bases<I3FrameObject> >("CCMTriggerReadout",
+  class_<CCMAnalysis::Binary::CCMTriggerReadout, boost::shared_ptr<CCMAnalysis::Binary::CCMTriggerReadout>, bases<I3FrameObject> >("CCMTriggerReadout",
     "Container class for CCM trigger readout information")
     .def_readonly("version",&CCMAnalysis::Binary::CCMTriggerReadout::version)
     .def_readonly("event_number",&CCMAnalysis::Binary::CCMTriggerReadout::event_number)
@@ -130,5 +131,12 @@ I3_PYTHON_MODULE(CCMBinary)
     .def(vector_indexing_suite<std::vector<timespec>, true>())
     ;
   from_python_sequence<std::vector<timespec>, variable_capacity_policy>();
+    
+  CCMAnalysis::Binary::CCMTriggerReadout (*merge1)(CCMAnalysis::Binary::CCMTriggerReadout &, CCMAnalysis::Binary::CCMTriggerReadout const &, size_t, size_t, size_t, bool) = &CCMAnalysis::Binary::merge_triggers;
+  // CCMAnalysis::Binary::CCMTriggerReadout&(*merge2)(CCMAnalysis::Binary::CCMTriggerReadout &, CCMAnalysis::Binary::CCMTriggerReadout &&, size_t, size_t, size_t, bool) = &CCMAnalysis::Binary::merge_triggers;
+  def("merge_triggers", merge1);
+
+  CCMAnalysis::Binary::CCMTriggerReadout (*merge_empty)(CCMAnalysis::Binary::CCMTriggerReadout &, size_t, bool) = &CCMAnalysis::Binary::merge_empty_trigger;
+  def("merge_empty_trigger", merge_empty);
 
 }
