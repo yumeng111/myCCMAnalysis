@@ -99,7 +99,7 @@ class TimeReader {
     dataio::I3FrameSequence frame_seq;
     I3FramePtr current_frame;
     size_t n_boards;
-    std::vector<std::vector<int64_t>> time_cache;
+    std::vector<std::deque<int64_t>> time_cache;
     std::vector<uint32_t> last_raw_time;
 
     bool FrameMeetsRequirements(I3FramePtr frame) {
@@ -136,7 +136,7 @@ class TimeReader {
     }
 
 public:
-    TimeReader(std::vector<std::string> const & file_names, size_t n_skip=0) :
+    TimeReader(std::vector<std::string> const & file_names, size_t n_skip) :
     frame_seq(file_names) {
         PopFrame();
         CCMAnalysis::Binary::CCMDAQConfig const & config = current_frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
@@ -152,8 +152,23 @@ public:
             time_cache[i].push_back(time_read[i]);
             last_raw_time[i] = time_read[i];
         }
-
+        while(true) {
+            bool all_skipped = true;
+            for(size_t i=0; i<n_boards; ++i) {
+                all_skipped &= time_cache[i].size() > n_skip;
+            }
+            if(not all_skipped)
+                break;
+            PopTimes();
+        }
+        for(size_t i=0; i<n_boards; ++i) {
+            size_t size = time_cache[i].size();
+            size = std::min(size, n_skip);
+            for(size_t j=0; j<size; ++j)
+                time_cache[i].pop_front();
+        }
     }
+    TimeReader(std::vector<std::string> const & file_names) : TimeReader(file_names, 0) {}
 
     std::vector<int64_t> GetTimes(size_t N, size_t board_idx) {
         while(time_cache[board_idx].size() < N) {
@@ -165,5 +180,112 @@ public:
     }
 };
 
+struct IDX {
+    bool present = false;
+    int64_t value = 0;
+    IDX() {}
+    IDX(IDX const & idx) : present(idx.present), value(idx.value) {}
+    IDX(int64_t v) : present(true), value(v) {}
+    IDX & operator=(int64_t v) {
+        present = true;
+        value = v;
+        return *this;
+    }
+    IDX & operator=(IDX const & v) {
+        present = v.present;
+        value = v.value;
+        return *this;
+    }
+    operator int64_t() {
+        if(not present)
+            throw std::runtime_error("No value present");
+        return value;
+    }
+    operator bool() {
+        return present;
+    }
+    bool operator<(int64_t v) {
+        if(not present)
+            throw std::runtime_error("No value present");
+        return value < v;
+    }
+    bool operator>(int64_t v) {
+        if(not present)
+            throw std::runtime_error("No value present");
+        return value > v;
+    }
+    IDX operator+(int64_t v) {
+        if(not present)
+            throw std::runtime_error("No value present");
+        return IDX(value + v);
+    }
+};
 
+std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> find_pairs(std::vector<int64_t> const & times0, std::vector<int64_t> const & times1, int64_t offset1, int64_t max_delta) {
+    std::vector<std::tuple<IDX, IDX>> good_pairs;
+    std::vector<std::tuple<IDX, IDX>> orphans;
+    std::vector<std::tuple<IDX, IDX>> pairs;
+    int64_t i = 0;
+    int64_t j = 0;
+    IDX last_i;
+    IDX last_j;
+    while(i < times0.size() or j < times1.size()) {
+        if(i == times0.size() or j == times1.size()) {
+            i = times0.size();
+            j = times1.size();
+            if(not last_i)
+                last_i = -1;
+            if(not last_j)
+                last_j = -1;
+            std::vector<std::tuple<IDX, IDX, int64_t>> triplets;
+            for(int64_t _i = last_i + int64_t(1); _i<i; ++_i)
+                triplets.emplace_back(_i, IDX(), times0[_i]);
+            for(int64_t _j = last_j + int64_t(1); _j<j; ++_j)
+                triplets.emplace_back(_j, IDX(), times1[_j] + offset1);
+            for(size_t _i=0; _i<triplets.size(); ++_i) {
+                orphans.emplace_back(std::get<0>(triplets[_i]), std::get<1>(triplets[_i]));
+                pairs.emplace_back(std::get<0>(triplets[_i]), std::get<1>(triplets[_i]));
+            }
+            last_j = j;
+            last_i = i;
+            continue;
+        }
+
+        int64_t time_diff = times0[i] - (times1[j] + offset1);
+        if(std::abs(time_diff) <= max_delta) {
+            if((not last_i and last_i < i-1) or (not last_j and last_j < j-1)) {
+                std::vector<std::tuple<IDX, IDX, int64_t>> triplets;
+                for(int64_t _i = last_i + int64_t(1); _i<i; ++_i)
+                    triplets.emplace_back(_i, IDX(), times0[_i]);
+                for(int64_t _j = last_j + int64_t(1); _j<j; ++_j)
+                    triplets.emplace_back(_j, IDX(), times1[_j] + offset1);
+                std::sort(triplets.begin(), triplets.end(), [](std::tuple<IDX, IDX, int64_t> const & a, std::tuple<IDX, IDX, int64_t> const & b){return std::get<2>(a) < std::get<2>(b);});
+                for(size_t _i=0; _i<triplets.size(); ++_i) {
+                    orphans.emplace_back(std::get<0>(triplets[_i]), std::get<1>(triplets[_i]));
+                    pairs.emplace_back(std::get<0>(triplets[_i]), std::get<1>(triplets[_i]));
+                }
+            }
+            pairs.emplace_back(i, j);
+            good_pairs.emplace_back(pairs.back());
+            last_i = i;
+            last_j = j;
+            i += 1;
+            j += 1;
+        } else {
+            if(times0[i] < times1[i] + offset1) {
+                i += 1;
+            } else {
+                j += 1;
+            }
+        }
+    }
+    return {pairs, good_pairs, orphans};
+}
+
+int64_t get_time_delta(std::vector<int64_t> times0, std::vector<int64_t> times1, size_t delta_trigger) {
+    if(delta_trigger < 0)
+        return times0[0] - times1[-delta_trigger];
+    else
+        return times0[delta_trigger] - times1[0];
+}
 
