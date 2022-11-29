@@ -289,3 +289,67 @@ int64_t get_time_delta(std::vector<int64_t> times0, std::vector<int64_t> times1,
         return times0[delta_trigger] - times1[0];
 }
 
+int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeReader & reader1, size_t board_idx1, std::vector<int64_t> jitter_tests={-2, 2}, int64_t max_delta=2, size_t min_triggers=100, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
+    int64_t n_triggers = min_triggers;
+    int64_t prev_min = 0;
+    int64_t prev_max = 0;
+    int64_t new_min = -(n_triggers/2);
+    int64_t new_max = (n_triggers/2) + 1;
+    std::vector<int64_t> times0 = reader0.GetTimes(n_triggers, board_idx0);
+    std::vector<int64_t> times1 = reader1.GetTimes(n_triggers, board_idx1);
+    size_t x = prev_max;
+    std::vector<int64_t> deltas;
+    std::generate_n(std::back_inserter(deltas), new_max - prev_max, [&](){return x++;});
+    x = new_min;
+    std::generate_n(std::back_inserter(deltas), prev_min - new_min, [&](){return x++;});
+    std::vector<std::tuple<int64_t, int64_t, size_t, size_t, size_t>> results;
+    std::tuple<int64_t, int64_t, size_t, size_t, size_t> best_pair_result;
+
+    while(true) {
+        for(int64_t const & delta_trigger : deltas) {
+            int64_t delta = get_time_delta(times0, times1, delta_trigger);
+            std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times1, times0, delta, max_delta);
+            results.emplace_back(delta_trigger, delta, std::get<0>(pair_result).size(), std::get<1>(pair_result).size(), std::get<2>(pair_result).size());
+            for(int64_t t : jitter_tests) {
+                std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times1, times0, delta + t, max_delta);
+                results.emplace_back(delta_trigger, delta + t, std::get<0>(pair_result).size(), std::get<1>(pair_result).size(), std::get<2>(pair_result).size());
+            }
+        }
+
+        best_pair_result = *std::max_element(results.begin(), results.end(), [](std::tuple<int64_t, int64_t, size_t, size_t, size_t> const & a, std::tuple<int64_t, int64_t, size_t, size_t, size_t> const & b){return std::get<3>(a) < std::get<3>(b);});
+
+        int64_t delta_trigger = std::get<0>(best_pair_result);
+        int64_t delta = std::get<1>(best_pair_result);
+        size_t pairs = std::get<2>(best_pair_result);
+        size_t good_pairs = std::get<3>(best_pair_result);
+        size_t orphans = std::get<4>(best_pair_result);
+
+        if(double(good_pairs) / double(n_triggers - std::abs(delta_trigger)) >= threshold)
+            break;
+
+        n_triggers += increment;
+        if(n_triggers > max_triggers)
+            throw std::runtime_error("Could not align triggers");
+
+        new_max = int64_t(0.5*n_triggers) + 1;
+        new_min = -int64_t(0.5*n_triggers);
+        deltas.resize(0);
+        x = prev_max;
+        std::generate_n(std::back_inserter(deltas), new_max - prev_max, [&](){return x++;});
+        x = new_min;
+        std::generate_n(std::back_inserter(deltas), prev_min - new_min, [&](){return x++;});
+
+        times0 = reader0.GetTimes(n_triggers, board_idx0);
+        times1 = reader1.GetTimes(n_triggers, board_idx1);
+
+        prev_min = new_min;
+        prev_max = new_max;
+    }
+
+    return std::get<1>(best_pair_result);
+}
+
+std::vector<int64_t> compute_offsets(std::vector<std::vector<std::string>> file_lists, double max_time_diff) {
+    int64_t max_delta = std::ceil(max_time_diff / 8.0);
+}
+
