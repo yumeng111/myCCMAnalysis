@@ -5,6 +5,7 @@
 #include <icetray/load_project.h>
 #include <boost/python.hpp>
 // #include <icetray/scratch.h>
+#include "I3Vectors.h"
 
 using namespace boost::python;
 
@@ -94,6 +95,8 @@ I3_PYTHON_MODULE(CCMBinary)
   scope().attr("ccmtriggerreadout_version_") = CCMAnalysis::Binary::ccmtriggerreadout_version_;
   class_<CCMAnalysis::Binary::CCMTriggerReadout, boost::shared_ptr<CCMAnalysis::Binary::CCMTriggerReadout>, bases<I3FrameObject> >("CCMTriggerReadout",
     "Container class for CCM trigger readout information")
+    .def(init<>())
+    .def(init<CCMAnalysis::Binary::CCMTriggerReadout>())
     .def_readonly("version",&CCMAnalysis::Binary::CCMTriggerReadout::version)
     .def_readonly("event_number",&CCMAnalysis::Binary::CCMTriggerReadout::event_number)
     .def_readonly("triggers",&CCMAnalysis::Binary::CCMTriggerReadout::triggers)
@@ -132,11 +135,15 @@ I3_PYTHON_MODULE(CCMBinary)
     ;
   from_python_sequence<std::vector<timespec>, variable_capacity_policy>();
     
-  CCMAnalysis::Binary::CCMTriggerReadout (*merge1)(CCMAnalysis::Binary::CCMTriggerReadout &, CCMAnalysis::Binary::CCMTriggerReadout const &, size_t, size_t, size_t, bool) = &CCMAnalysis::Binary::merge_triggers;
+  void (*merge1)(CCMAnalysis::Binary::CCMTriggerReadout &, CCMAnalysis::Binary::CCMTriggerReadout const &, size_t, size_t, size_t, bool) = &CCMAnalysis::Binary::merge_triggers;
   // CCMAnalysis::Binary::CCMTriggerReadout&(*merge2)(CCMAnalysis::Binary::CCMTriggerReadout &, CCMAnalysis::Binary::CCMTriggerReadout &&, size_t, size_t, size_t, bool) = &CCMAnalysis::Binary::merge_triggers;
   def("merge_triggers", merge1);
 
-  CCMAnalysis::Binary::CCMTriggerReadout (*merge_empty)(CCMAnalysis::Binary::CCMTriggerReadout &, size_t, bool) = &CCMAnalysis::Binary::merge_empty_trigger;
+  void (*merge_empty)(CCMAnalysis::Binary::CCMTriggerReadout &, size_t, bool) = &CCMAnalysis::Binary::merge_empty_trigger;
   def("merge_empty_trigger", merge_empty);
+
+  register_i3vector_of<uint16_t>("UInt16");
+  register_i3vector_of<I3Vector<uint16_t>>("I3VectorUInt16");
+  register_i3vector_of<CCMAnalysis::Binary::CCMTrigger>("CCMTrigger");
 
 }

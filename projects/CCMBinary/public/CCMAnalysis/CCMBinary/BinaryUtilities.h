@@ -74,7 +74,7 @@ inline std::ostream & write_binary(std::ostream & os, std::vector<float> const &
 template<>
 inline std::istream & read_binary(std::istream & is, std::vector<float> & v);
 
-inline CCMAnalysis::Binary::CCMTriggerReadout merge_triggers(
+inline void merge_triggers(
         CCMAnalysis::Binary::CCMTriggerReadout & output_trigger,
         CCMAnalysis::Binary::CCMTriggerReadout && source_trigger,
         size_t board_idx,
@@ -86,23 +86,33 @@ inline CCMAnalysis::Binary::CCMTriggerReadout merge_triggers(
     assert(s.channel_sizes.size() > first_idx and s.channel_sizes.size() >= last_idx);
     assert(s.channel_masks.size() > first_idx and s.channel_masks.size() >= last_idx);
     assert(s.channel_temperatures.size() > first_idx and s.channel_sizes.size() >= last_idx);
-    assert(source_trigger.samples.size() > first_idx and source_trigger.samples.size() >= last_idx);
     assert(s.board_event_numbers.size() > board_idx);
     assert(s.board_times.size() > board_idx);
     std::copy(s.channel_sizes.begin() + first_idx, s.channel_sizes.begin() + last_idx, std::back_inserter(o.channel_sizes));
     std::copy(s.channel_masks.begin() + first_idx, s.channel_masks.begin() + last_idx, std::back_inserter(o.channel_masks));
     std::copy(s.channel_temperatures.begin() + first_idx, s.channel_temperatures.begin() + last_idx, std::back_inserter(o.channel_temperatures));
-    std::copy(source_trigger.samples.begin() + first_idx, source_trigger.samples.begin() + last_idx, std::back_inserter(output_trigger.samples));
     std::copy(s.board_event_numbers.begin() + board_idx, s.board_event_numbers.begin() + board_idx + 1, std::back_inserter(o.board_event_numbers));
     std::copy(s.board_times.begin() + board_idx, s.board_times.begin() + board_idx + 1, std::back_inserter(o.board_times));
     if(fill_computer_time) {
         assert(s.board_computer_times.size() > board_idx);
         std::copy(s.board_computer_times.begin() + board_idx, s.board_computer_times.begin() + board_idx + 1, std::back_inserter(o.board_computer_times));
     }
-    return output_trigger;
+    if(source_trigger.samples.size() == s.channel_masks.size()) {
+        assert(source_trigger.samples.size() > first_idx and source_trigger.samples.size() >= last_idx);
+        std::copy(source_trigger.samples.begin() + first_idx, source_trigger.samples.begin() + last_idx, std::back_inserter(output_trigger.samples));
+    } else {
+        size_t new_first_idx = 0;
+        for(size_t i=0; i<first_idx; ++i) {
+            if(s.channel_masks[i])
+                ++new_first_idx;
+        }
+        size_t new_last_idx = new_first_idx + last_idx - first_idx;
+        assert(source_trigger.samples.size() > new_first_idx and source_trigger.samples.size() >= new_last_idx);
+        std::copy(source_trigger.samples.begin() + new_first_idx, source_trigger.samples.begin() + new_last_idx, std::back_inserter(output_trigger.samples));
+    }
 }
 
-inline CCMAnalysis::Binary::CCMTriggerReadout merge_triggers(
+inline void merge_triggers(
         CCMAnalysis::Binary::CCMTriggerReadout & output_trigger,
         CCMAnalysis::Binary::CCMTriggerReadout const & source_trigger,
         size_t board_idx,
@@ -113,7 +123,7 @@ inline CCMAnalysis::Binary::CCMTriggerReadout merge_triggers(
     return merge_triggers(output_trigger, std::move(trigger), board_idx, first_idx, last_idx, fill_computer_time);
 }
 
-inline CCMAnalysis::Binary::CCMTriggerReadout merge_empty_trigger(
+inline void merge_empty_trigger(
         CCMAnalysis::Binary::CCMTriggerReadout & output_trigger,
         size_t n_channels,
         bool fill_computer_time = false) {
@@ -132,7 +142,6 @@ inline CCMAnalysis::Binary::CCMTriggerReadout merge_empty_trigger(
         struct timespec t; t.tv_sec = 0; t.tv_nsec = 0;
         std::fill_n(std::back_inserter(o.board_computer_times), 1, t);
     }
-    return output_trigger;
 }
 
 } // namespace Binary

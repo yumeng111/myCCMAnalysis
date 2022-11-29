@@ -6,6 +6,7 @@
 #include <vector>
 #include <iostream>
 
+#include <dataclasses/I3Vector.h>
 #include <icetray/I3FrameObject.h>
 #include <icetray/serialization.h>
 
@@ -100,6 +101,8 @@ struct CCMTrigger : public I3FrameObject {
     bool operator!=(CCMTrigger const & other) const;
 };
 
+typedef I3Vector<CCMTrigger> I3VectorCCMTrigger;
+
 static const unsigned ccmtriggerreadout_version_ = 0;
 struct CCMTriggerReadout : public I3FrameObject {
     uint32_t version = ccmtriggerreadout_version_;
@@ -131,6 +134,8 @@ struct CCMTriggerReadout : public I3FrameObject {
     bool operator!=(CCMTriggerReadout const & other) const;
 };
 
+typedef I3Vector<I3Vector<uint16_t>> I3VectorI3VectorUInt16;
+
 static const unsigned ccmdata_version_ = 0;
 struct CCMData : public I3FrameObject {
     uint32_t version = ccmdata_version_;
@@ -152,8 +157,12 @@ I3_POINTER_TYPEDEFS(CCMDAQConfig);
 I3_POINTER_TYPEDEFS(CCMTrigger);
 I3_POINTER_TYPEDEFS(CCMTriggerReadout);
 I3_POINTER_TYPEDEFS(CCMData);
+
+I3_POINTER_TYPEDEFS(I3VectorCCMTrigger);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt16);
 } // namespace Binary
 } // namespace CCMAnalsysis
+
 
 std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::ChannelHeader c);
 std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::DigitizerBoard c);
