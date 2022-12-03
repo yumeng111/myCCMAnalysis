@@ -178,6 +178,10 @@ public:
         std::copy(std::begin(time_cache[board_idx]), std::begin(time_cache[board_idx]) + N, std::begin(result));
         return result;
     }
+
+    size_t NBoards() const {
+        return this->n_boards;
+    }
 };
 
 struct IDX {
@@ -349,7 +353,52 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
     return std::get<1>(best_pair_result);
 }
 
-std::vector<int64_t> compute_offsets(std::vector<std::vector<std::string>> file_lists, double max_time_diff) {
+std::vector<std::vector<int64_t>> compute_offsets(std::vector<std::vector<std::string>> file_lists, double max_time_diff) {
     int64_t max_delta = std::ceil(max_time_diff / 8.0);
+    size_t n_daqs = file_lists.size();
+    std::vector<std::vector<int64_t>> offsets(n_daqs);
+    std::vector<size_t> n_boards;
+    std::vector<TimeReader> readers;
+    readers.reserve(n_daqs);
+    for(size_t i=0; i<n_daqs; ++i) {
+        readers.emplace_back(file_lists[i]);
+        n_boards.emplace_back(readers.back().NBoards());
+        offsets[i] = std::vector<int64_t>(n_boards.back(), 0);
+    }
+    for(size_t i=1; i<n_daqs; ++i)
+        offsets[i][0] = compute_trigger_offset(readers[0], 0, readers[i], 0);
+    for(size_t i=0; i<n_daqs; ++i)
+        for(size_t j=1; j<n_boards[i]; ++j)
+            offsets[i][j] = compute_trigger_offset(readers[0], 0, readers[i], j);
+    return offsets;
 }
 
+class MergedSource : public I3Module {
+    size_t max_delta;
+    size_t n_daqs;
+    std::vector<size_t> n_boards;
+    std::vector<dataio::I3FrameSequencePtr> frame_sequences;
+    std::vector<std::vector<I3FramePtr>> frame_cache;
+    std::vector<std::vector<size_t>> frame_idxs;
+    std::vector<std::vector<uint8_t>> empty;
+    std::vector<std::vector<uint8_t>> mask_cache;
+    std::vector<std::vector<int64_t>> time_cache;
+    std::vector<std::vector<uint32_t>> last_raw_time;
+    std::vector<std::vector<int64_t>> last_time;
+    std::vector<CCMAnalysis::Binary::CCMDAQConfig> configs;
+    int fill_computer_time = -1;
+    bool push_config = false;
+
+    bool PopFrame(size_t daq_idx);
+    void GetConfigFrame();
+    bool NextTrigger(size_t daq_idx, size_t board_idx);
+    bool NextTriggers();
+    void ClearUnusedFrames();
+    CCMAnalysis::Binary::CCMTriggerReadoutPtr GetTriggerReadout();
+public:
+    MergedSource(const I3Context&);
+    void Configure();
+    void Process();
+
+    SET_LOGGER("MergedSource");
+};
