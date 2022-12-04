@@ -474,7 +474,7 @@ bool MergedSource::NextTrigger(size_t daq_idx, size_t board_idx) {
 
 bool MergedSource::NextTriggers() {
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
-        for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++ board_idx) {
+        for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
             bool res = NextTrigger(daq_idx, board_idx);
             if(not res)
                 return false;
@@ -485,5 +485,15 @@ bool MergedSource::NextTriggers() {
 }
 
 void MergedSource::ClearUnusedFrames() {
-
+    for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
+        size_t min_idx = *std::min_element(std::begin(frame_idxs[daq_idx]), std::end(frame_idxs[daq_idx]));
+        for(size_t i=0; i<min_idx; ++i) {
+            frame_cache[daq_idx].pop_front();
+            for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
+                mask_cache[daq_idx][board_idx].pop_front();
+                time_cache[daq_idx][board_idx].pop_front();
+                frame_idxs[daq_idx][board_idx] -= 1;
+            }
+        }
+    }
 }
