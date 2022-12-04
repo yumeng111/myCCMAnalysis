@@ -378,19 +378,19 @@ class MergedSource : public I3Module {
     size_t n_daqs;
     std::vector<size_t> n_boards;
     std::vector<dataio::I3FrameSequencePtr> frame_sequences;
-    std::vector<std::vector<I3FramePtr>> frame_cache;
+    std::vector<std::deque<I3FramePtr>> frame_cache;
     std::vector<std::vector<size_t>> frame_idxs;
     std::vector<std::vector<uint8_t>> empty;
-    std::vector<std::vector<uint8_t>> mask_cache;
-    std::vector<std::vector<int64_t>> time_cache;
+    std::vector<std::vector<std::deque<uint8_t>>> mask_cache;
+    std::vector<std::vector<std::deque<long double>>> time_cache;
     std::vector<std::vector<uint32_t>> last_raw_time;
     std::vector<std::vector<int64_t>> last_time;
-    std::vector<CCMAnalysis::Binary::CCMDAQConfig> configs;
+    std::vector<CCMAnalysis::Binary::CCMDAQConfigConstPtr> configs;
     int fill_computer_time = -1;
     bool push_config = false;
 
     bool PopFrame(size_t daq_idx);
-    void GetConfigFrame();
+    I3FramePtr GetConfigFrame();
     bool NextTrigger(size_t daq_idx, size_t board_idx);
     bool NextTriggers();
     void ClearUnusedFrames();
@@ -402,3 +402,88 @@ public:
 
     SET_LOGGER("MergedSource");
 };
+
+bool MergedSource::PopFrame(size_t daq_idx) {
+    I3FramePtr frame;
+    while(true) {
+        if(not frame_sequences[daq_idx]->more())
+            return false;
+        frame = frame_sequences[daq_idx]->pop_frame();
+        if(frame->GetStop() == I3Frame::Geometry) {
+            configs[daq_idx] = frame->Get<CCMAnalysis::Binary::CCMDAQConfigConstPtr>("CCMDAQConfig");
+            push_config = true;
+            continue;
+        } else if(frame->GetStop() != I3Frame::DAQ) {
+            continue;
+        }
+        if((not frame->Has("CCMTriggerReadout")) or (frame->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout")->triggers.size() == 0))
+            continue;
+        break;
+    }
+    frame_cache[daq_idx].push_back(frame);
+    CCMAnalysis::Binary::CCMTriggerReadoutConstPtr readout = frame->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
+    std::vector<uint32_t> const & time_read = readout->triggers[0].board_times;
+    if(fill_computer_time < 0)
+        fill_computer_time = readout->triggers[0].board_computer_times.size() > 0;
+    std::vector<uint8_t> mask = empty_mask(frame);
+    for(size_t board_idx=0; board_idx<n_boards[daq_idx]; ++board_idx) {
+        mask_cache[daq_idx][board_idx].push_back(mask[board_idx]);
+        if(not mask[board_idx]) {
+            time_cache[daq_idx][board_idx].push_back(std::numeric_limits<long double>::infinity());
+            continue;
+        }
+        uint32_t raw_time = time_read[board_idx];
+        int64_t rel_time = subtract_times(raw_time, last_raw_time[daq_idx][board_idx]);
+        long double abs_time = rel_time;
+        if(time_cache[daq_idx][board_idx].size() > 0)
+            abs_time += last_time[daq_idx][board_idx];
+        time_cache[daq_idx][board_idx].push_back(abs_time);
+        last_raw_time[daq_idx][board_idx] = raw_time;
+        last_time[daq_idx][board_idx] = abs_time;
+    }
+    return true;
+}
+
+I3FramePtr MergedSource::GetConfigFrame() {
+    CCMAnalysis::Binary::CCMDAQConfigPtr config = boost::make_shared<CCMAnalysis::Binary::CCMDAQConfig>();
+    for(CCMAnalysis::Binary::CCMDAQConfigConstPtr c : configs) {
+        std::copy(c->machine_configurations.begin(), c->machine_configurations.end(), std::back_inserter(config->machine_configurations));
+        std::copy(c->digitizer_boards.begin(), c->digitizer_boards.end(), std::back_inserter(config->digitizer_boards));
+    }
+    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Geometry);
+    frame->Put("CCMDAQConfig", config, I3Frame::Geometry);
+    return frame;
+}
+
+bool MergedSource::NextTrigger(size_t daq_idx, size_t board_idx) {
+    size_t current_frame_idx = frame_idxs[daq_idx][board_idx];
+    size_t frame_idx = current_frame_idx + 1;
+    while(true) {
+        while(frame_cache[daq_idx].size() <= frame_idx) {
+            bool res = PopFrame(daq_idx);
+            if(not res)
+                return false;
+        }
+        if(mask_cache[daq_idx][board_idx][frame_idx])
+            break;
+        frame_idx += 1;
+    }
+    frame_idxs[daq_idx][board_idx] = frame_idx;
+    return true;
+}
+
+bool MergedSource::NextTriggers() {
+    for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
+        for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++ board_idx) {
+            bool res = NextTrigger(daq_idx, board_idx);
+            if(not res)
+                return false;
+        }
+    }
+    ClearUnusedFrames();
+    return true;
+}
+
+void MergedSource::ClearUnusedFrames() {
+
+}
