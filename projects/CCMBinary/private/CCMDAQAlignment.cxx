@@ -389,6 +389,8 @@ class MergedSource : public I3Module {
     int fill_computer_time = -1;
     bool push_config = false;
 
+    std::vector<std::vector<int64_t>> offsets;
+
     bool PopFrame(size_t daq_idx);
     I3FramePtr GetConfigFrame();
     bool NextTrigger(size_t daq_idx, size_t board_idx);
@@ -496,4 +498,110 @@ void MergedSource::ClearUnusedFrames() {
             }
         }
     }
+}
+
+inline void merge_triggers(
+        CCMAnalysis::Binary::CCMTriggerReadoutPtr output_trigger,
+        CCMAnalysis::Binary::CCMTriggerReadoutConstPtr source_trigger,
+        size_t board_idx,
+        size_t first_idx,
+        size_t last_idx,
+        bool fill_computer_time = false) {
+    CCMAnalysis::Binary::CCMTrigger & o = output_trigger->triggers[0];
+    CCMAnalysis::Binary::CCMTrigger const & s = source_trigger->triggers[0];
+    assert(s.channel_sizes.size() > first_idx and s.channel_sizes.size() >= last_idx);
+    assert(s.channel_masks.size() > first_idx and s.channel_masks.size() >= last_idx);
+    assert(s.channel_temperatures.size() > first_idx and s.channel_sizes.size() >= last_idx);
+    assert(s.board_event_numbers.size() > board_idx);
+    assert(s.board_times.size() > board_idx);
+    std::copy(s.channel_sizes.begin() + first_idx, s.channel_sizes.begin() + last_idx, std::back_inserter(o.channel_sizes));
+    std::copy(s.channel_masks.begin() + first_idx, s.channel_masks.begin() + last_idx, std::back_inserter(o.channel_masks));
+    std::copy(s.channel_temperatures.begin() + first_idx, s.channel_temperatures.begin() + last_idx, std::back_inserter(o.channel_temperatures));
+    std::copy(s.board_event_numbers.begin() + board_idx, s.board_event_numbers.begin() + board_idx + 1, std::back_inserter(o.board_event_numbers));
+    std::copy(s.board_times.begin() + board_idx, s.board_times.begin() + board_idx + 1, std::back_inserter(o.board_times));
+    if(fill_computer_time) {
+        assert(s.board_computer_times.size() > board_idx);
+        std::copy(s.board_computer_times.begin() + board_idx, s.board_computer_times.begin() + board_idx + 1, std::back_inserter(o.board_computer_times));
+    }
+    if(source_trigger->samples.size() == s.channel_masks.size()) {
+        assert(source_trigger->samples.size() > first_idx and source_trigger->samples.size() >= last_idx);
+        std::copy(source_trigger->samples.begin() + first_idx, source_trigger->samples.begin() + last_idx, std::back_inserter(output_trigger->samples));
+    } else {
+        size_t new_first_idx = 0;
+        for(size_t i=0; i<first_idx; ++i) {
+            if(s.channel_masks[i])
+                ++new_first_idx;
+        }
+        size_t new_last_idx = new_first_idx + last_idx - first_idx;
+        assert(source_trigger->samples.size() > new_first_idx and source_trigger->samples.size() >= new_last_idx);
+        std::copy(source_trigger->samples.begin() + new_first_idx, source_trigger->samples.begin() + new_last_idx, std::back_inserter(output_trigger->samples));
+    }
+}
+
+inline void merge_empty_trigger(
+        CCMAnalysis::Binary::CCMTriggerReadoutPtr output_trigger,
+        size_t n_channels,
+        bool fill_computer_time = false) {
+    CCMAnalysis::Binary::CCMTrigger & o = output_trigger->triggers[0];
+    std::fill_n(std::back_inserter(o.channel_sizes), n_channels, 0);
+    std::fill_n(std::back_inserter(o.channel_masks), n_channels, 0);
+    std::fill_n(std::back_inserter(o.channel_temperatures), n_channels, 0);
+    output_trigger->samples.reserve(output_trigger->samples.size() + n_channels);
+    for(size_t i=0; i<n_channels; ++i) {
+        output_trigger->samples.emplace_back();
+    }
+    std::fill_n(std::back_inserter(o.board_event_numbers), 1, 0);
+    std::fill_n(std::back_inserter(o.board_times), 1, 0);
+    if(fill_computer_time) {
+        struct timespec t; t.tv_sec = 0; t.tv_nsec = 0;
+        std::fill_n(std::back_inserter(o.board_computer_times), 1, t);
+    }
+}
+
+CCMAnalysis::Binary::CCMTriggerReadoutPtr MergedSource::GetTriggerReadout() {
+    CCMAnalysis::Binary::CCMTriggerReadoutPtr readout = boost::make_shared<CCMAnalysis::Binary::CCMTriggerReadout>();
+    readout->triggers.resize(1);
+    std::vector<std::vector<long double>> times;
+    times.resize(n_daqs);
+    long double min_time = std::numeric_limits<long double>::infinity();
+    bool all_bad = true;
+    for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
+        std::vector<long double> & t = times[daq_idx];
+        t.resize(n_boards[daq_idx]);
+        for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
+            size_t frame_idx = frame_idxs[daq_idx][board_idx];
+            t[board_idx] = time_cache[daq_idx][board_idx][frame_idx] + offsets[daq_idx][board_idx];
+            min_time = std::min(min_time, t[board_idx]);
+            all_bad &= empty[daq_idx][board_idx];
+        }
+    }
+
+    if(all_bad or std::isinf(min_time))
+        return nullptr;
+    for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
+        size_t last_idx = 0;
+        for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
+            size_t n_channels = configs[daq_idx]->digitizer_boards[board_idx].channels.size();
+            size_t next_idx = last_idx + n_channels;
+            size_t frame_idx = frame_idxs[daq_idx][board_idx];
+            if(empty[daq_idx][board_idx])
+                merge_empty_trigger(readout, n_channels, fill_computer_time);
+            else if(std::isinf(times[daq_idx][board_idx])) {
+                throw std::runtime_error("Should not see inf here!");
+            } else if(times[daq_idx][board_idx] - min_time > max_delta)
+                merge_empty_trigger(readout, n_channels, fill_computer_time);
+            else {
+                CCMAnalysis::Binary::CCMTriggerReadoutConstPtr tr = frame_cache[daq_idx][frame_idx]->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
+                merge_triggers(readout, tr, board_idx, last_idx, next_idx, fill_computer_time);
+                bool res = NextTrigger(daq_idx, board_idx);
+                if(not res) {
+                    times[daq_idx][board_idx] = std::numeric_limits<long double>::infinity();
+                    empty[daq_idx][board_idx] = true;
+                }
+            }
+            last_idx = next_idx;
+        }
+    }
+    ClearUnusedFrames();
+    return readout;
 }
