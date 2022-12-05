@@ -103,7 +103,7 @@ class TimeReader {
     std::vector<uint32_t> last_raw_time;
 
     bool FrameMeetsRequirements(I3FramePtr frame) {
-        return frame->Has("CCMTriggerReadout") and frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers.size() > 0;
+        return frame->Has("CCMTriggerReadout") and frame->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout")->triggers.size() > 0;
     }
 
     bool PopFrame() {
@@ -157,7 +157,7 @@ public:
             for(size_t i=0; i<n_boards; ++i) {
                 all_skipped &= time_cache[i].size() > n_skip;
             }
-            if(not all_skipped)
+            if(all_skipped)
                 break;
             PopTimes();
         }
@@ -233,8 +233,8 @@ std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>,
     int64_t j = 0;
     IDX last_i;
     IDX last_j;
-    while(i < times0.size() or j < times1.size()) {
-        if(i == times0.size() or j == times1.size()) {
+    while(i < int64_t(times0.size()) or j < int64_t(times1.size())) {
+        if(i == int64_t(times0.size()) or j == int64_t(times1.size())) {
             i = times0.size();
             j = times1.size();
             if(not last_i)
@@ -257,7 +257,7 @@ std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>,
 
         int64_t time_diff = times0[i] - (times1[j] + offset1);
         if(std::abs(time_diff) <= max_delta) {
-            if((not last_i and last_i < i-1) or (not last_j and last_j < j-1)) {
+            if((last_i and last_i < i-1) or (last_j and last_j < j-1)) {
                 std::vector<std::tuple<IDX, IDX, int64_t>> triplets;
                 for(int64_t _i = last_i + int64_t(1); _i<i; ++_i)
                     triplets.emplace_back(_i, IDX(), times0[_i]);
@@ -294,7 +294,7 @@ int64_t get_time_delta(std::vector<int64_t> times0, std::vector<int64_t> times1,
 }
 
 int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeReader & reader1, size_t board_idx1, std::vector<int64_t> jitter_tests={-2, 2}, int64_t max_delta=2, size_t min_triggers=100, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
-    int64_t n_triggers = min_triggers;
+    uint64_t n_triggers = min_triggers;
     int64_t prev_min = 0;
     int64_t prev_max = 0;
     int64_t new_min = -(n_triggers/2);
@@ -312,10 +312,10 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
     while(true) {
         for(int64_t const & delta_trigger : deltas) {
             int64_t delta = get_time_delta(times0, times1, delta_trigger);
-            std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times1, times0, delta, max_delta);
+            std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times0, times1, delta, max_delta);
             results.emplace_back(delta_trigger, delta, std::get<0>(pair_result).size(), std::get<1>(pair_result).size(), std::get<2>(pair_result).size());
             for(int64_t t : jitter_tests) {
-                std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times1, times0, delta + t, max_delta);
+                std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times0, times1, delta + t, max_delta);
                 results.emplace_back(delta_trigger, delta + t, std::get<0>(pair_result).size(), std::get<1>(pair_result).size(), std::get<2>(pair_result).size());
             }
         }
