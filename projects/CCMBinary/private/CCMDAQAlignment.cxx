@@ -660,11 +660,10 @@ void MergedSource::Configure() {
         frame_sequences.emplace_back(boost::make_shared<dataio::I3FrameSequence>(file_lists[daq_idx]));
         size_t n = file_lists[daq_idx].size();
         n_boards[daq_idx] = n;
-        frame_idxs[daq_idx] = std::vector<int64_t>(-1, n);
-        empty[daq_idx] = std::vector<uint8_t>(0, n);
-        last_raw_time[daq_idx] = std::vector<uint32_t>(0, n);
-        last_time[daq_idx] = std::vector<int64_t>(0, n);
-        offsets[daq_idx] = std::vector<int64_t>(0, n);
+        frame_idxs[daq_idx] = std::vector<int64_t>(n, 0);
+        empty[daq_idx] = std::vector<uint8_t>(n, 0);
+        last_raw_time[daq_idx] = std::vector<uint32_t>(n, 0);
+        last_time[daq_idx] = std::vector<int64_t>(n, 0);
         for(size_t j=0; j<n; ++j) {
             mask_cache[daq_idx].emplace_back();
             time_cache[daq_idx].emplace_back();
