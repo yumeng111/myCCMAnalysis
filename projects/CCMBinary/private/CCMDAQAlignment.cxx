@@ -379,7 +379,7 @@ class MergedSource : public I3Module {
     std::vector<size_t> n_boards;
     std::vector<dataio::I3FrameSequencePtr> frame_sequences;
     std::vector<std::deque<I3FramePtr>> frame_cache;
-    std::vector<std::vector<size_t>> frame_idxs;
+    std::vector<std::vector<int64_t>> frame_idxs;
     std::vector<std::vector<uint8_t>> empty;
     std::vector<std::vector<std::deque<uint8_t>>> mask_cache;
     std::vector<std::vector<std::deque<long double>>> time_cache;
@@ -396,7 +396,7 @@ class MergedSource : public I3Module {
     bool NextTrigger(size_t daq_idx, size_t board_idx);
     bool NextTriggers();
     void ClearUnusedFrames();
-    CCMAnalysis::Binary::CCMTriggerReadoutPtr GetTriggerReadout();
+    std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>> GetTriggerReadout();
 public:
     MergedSource(const I3Context&);
     void Configure();
@@ -404,6 +404,8 @@ public:
 
     SET_LOGGER("MergedSource");
 };
+
+I3_MODULE(MergedSource);
 
 bool MergedSource::PopFrame(size_t daq_idx) {
     I3FramePtr frame;
@@ -501,13 +503,14 @@ void MergedSource::ClearUnusedFrames() {
 }
 
 inline void merge_triggers(
-        CCMAnalysis::Binary::CCMTriggerReadoutPtr output_trigger,
+        boost::shared_ptr<I3Vector<I3Vector<uint16_t>>> output_samples,
+        boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers,
         CCMAnalysis::Binary::CCMTriggerReadoutConstPtr source_trigger,
         size_t board_idx,
         size_t first_idx,
         size_t last_idx,
         bool fill_computer_time = false) {
-    CCMAnalysis::Binary::CCMTrigger & o = output_trigger->triggers[0];
+    CCMAnalysis::Binary::CCMTrigger & o = (*output_triggers)[0];
     CCMAnalysis::Binary::CCMTrigger const & s = source_trigger->triggers[0];
     assert(s.channel_sizes.size() > first_idx and s.channel_sizes.size() >= last_idx);
     assert(s.channel_masks.size() > first_idx and s.channel_masks.size() >= last_idx);
@@ -525,7 +528,12 @@ inline void merge_triggers(
     }
     if(source_trigger->samples.size() == s.channel_masks.size()) {
         assert(source_trigger->samples.size() > first_idx and source_trigger->samples.size() >= last_idx);
-        std::copy(source_trigger->samples.begin() + first_idx, source_trigger->samples.begin() + last_idx, std::back_inserter(output_trigger->samples));
+        size_t n_channels = last_idx - first_idx;
+        output_samples->reserve(output_samples->size() + n_channels);
+        for(size_t i=first_idx; i<last_idx; ++i) {
+            output_samples->emplace_back(source_trigger->samples[i]);
+        }
+        // std::copy(source_trigger->samples.begin() + first_idx, source_trigger->samples.begin() + last_idx, std::back_inserter(*static_cast<boost::shared_ptr<std::vector<I3Vector<uint16_t>>>>(output_samples)));
     } else {
         size_t new_first_idx = 0;
         for(size_t i=0; i<first_idx; ++i) {
@@ -534,21 +542,27 @@ inline void merge_triggers(
         }
         size_t new_last_idx = new_first_idx + last_idx - first_idx;
         assert(source_trigger->samples.size() > new_first_idx and source_trigger->samples.size() >= new_last_idx);
-        std::copy(source_trigger->samples.begin() + new_first_idx, source_trigger->samples.begin() + new_last_idx, std::back_inserter(output_trigger->samples));
+        size_t n_channels = new_last_idx - new_first_idx;
+        output_samples->reserve(output_samples->size() + n_channels);
+        for(size_t i=new_first_idx; i<new_last_idx; ++i) {
+            output_samples->emplace_back(source_trigger->samples[i]);
+        }
+        // std::copy(source_trigger->samples.begin() + new_first_idx, source_trigger->samples.begin() + new_last_idx, std::back_inserter(*static_cast<boost::shared_ptr<std::vector<I3Vector<uint16_t>>>>(output_samples)));
     }
 }
 
 inline void merge_empty_trigger(
-        CCMAnalysis::Binary::CCMTriggerReadoutPtr output_trigger,
+        boost::shared_ptr<I3Vector<I3Vector<uint16_t>>> output_samples,
+        boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers,
         size_t n_channels,
         bool fill_computer_time = false) {
-    CCMAnalysis::Binary::CCMTrigger & o = output_trigger->triggers[0];
+    CCMAnalysis::Binary::CCMTrigger & o = (*output_triggers)[0];
     std::fill_n(std::back_inserter(o.channel_sizes), n_channels, 0);
     std::fill_n(std::back_inserter(o.channel_masks), n_channels, 0);
     std::fill_n(std::back_inserter(o.channel_temperatures), n_channels, 0);
-    output_trigger->samples.reserve(output_trigger->samples.size() + n_channels);
+    output_samples->reserve(output_samples->size() + n_channels);
     for(size_t i=0; i<n_channels; ++i) {
-        output_trigger->samples.emplace_back();
+        output_samples->emplace_back();
     }
     std::fill_n(std::back_inserter(o.board_event_numbers), 1, 0);
     std::fill_n(std::back_inserter(o.board_times), 1, 0);
@@ -558,9 +572,11 @@ inline void merge_empty_trigger(
     }
 }
 
-CCMAnalysis::Binary::CCMTriggerReadoutPtr MergedSource::GetTriggerReadout() {
+std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>>
+    MergedSource::GetTriggerReadout() {
     CCMAnalysis::Binary::CCMTriggerReadoutPtr readout = boost::make_shared<CCMAnalysis::Binary::CCMTriggerReadout>();
-    readout->triggers.resize(1);
+    boost::shared_ptr<I3Vector<I3Vector<uint16_t>>> output_samples = boost::make_shared<I3Vector<I3Vector<uint16_t>>>();
+    boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers = boost::make_shared<I3Vector<CCMAnalysis::Binary::CCMTrigger>>(1);
     std::vector<std::vector<long double>> times;
     times.resize(n_daqs);
     long double min_time = std::numeric_limits<long double>::infinity();
@@ -577,7 +593,7 @@ CCMAnalysis::Binary::CCMTriggerReadoutPtr MergedSource::GetTriggerReadout() {
     }
 
     if(all_bad or std::isinf(min_time))
-        return nullptr;
+        return {nullptr, nullptr};
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
         size_t last_idx = 0;
         for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
@@ -585,14 +601,14 @@ CCMAnalysis::Binary::CCMTriggerReadoutPtr MergedSource::GetTriggerReadout() {
             size_t next_idx = last_idx + n_channels;
             size_t frame_idx = frame_idxs[daq_idx][board_idx];
             if(empty[daq_idx][board_idx])
-                merge_empty_trigger(readout, n_channels, fill_computer_time);
+                merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
             else if(std::isinf(times[daq_idx][board_idx])) {
                 throw std::runtime_error("Should not see inf here!");
             } else if(times[daq_idx][board_idx] - min_time > max_delta)
-                merge_empty_trigger(readout, n_channels, fill_computer_time);
+                merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
             else {
                 CCMAnalysis::Binary::CCMTriggerReadoutConstPtr tr = frame_cache[daq_idx][frame_idx]->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
-                merge_triggers(readout, tr, board_idx, last_idx, next_idx, fill_computer_time);
+                merge_triggers(output_samples, output_triggers, tr, board_idx, last_idx, next_idx, fill_computer_time);
                 bool res = NextTrigger(daq_idx, board_idx);
                 if(not res) {
                     times[daq_idx][board_idx] = std::numeric_limits<long double>::infinity();
@@ -603,5 +619,74 @@ CCMAnalysis::Binary::CCMTriggerReadoutPtr MergedSource::GetTriggerReadout() {
         }
     }
     ClearUnusedFrames();
-    return readout;
+    return {output_samples, output_triggers};
+}
+
+MergedSource::MergedSource(const I3Context& context) : I3Module(context) {
+    AddParameter("FileLists",
+            "File lists to merge",
+            std::vector<std::vector<std::string>>());
+
+    AddParameter("MaxTimeDiff",
+            "Maximum time difference between associated triggers (ns)",
+            16);
+
+}
+
+void MergedSource::Configure() {
+    std::vector<std::vector<std::string>> file_lists;
+    GetParameter("FileLists", file_lists);
+
+    double max_time_diff;
+    GetParameter("MaxTimeDiff", max_time_diff);
+    max_delta = std::ceil(max_time_diff / 8.0);
+
+    offsets = compute_offsets(file_lists, max_time_diff);
+
+    n_daqs = file_lists.size();
+    frame_sequences.reserve(n_daqs);
+
+    n_boards.resize(n_daqs);
+    frame_cache.resize(n_daqs);
+    frame_idxs.resize(n_daqs);
+    empty.resize(n_daqs);
+    mask_cache.resize(n_daqs);
+    time_cache.resize(n_daqs);
+    last_raw_time.resize(n_daqs);
+    last_time.resize(n_daqs);
+    configs.resize(n_daqs);
+
+    for(size_t daq_idx=0; daq_idx<n_daqs; ++daq_idx) {
+        frame_sequences.emplace_back(boost::make_shared<dataio::I3FrameSequence>(file_lists[daq_idx]));
+        size_t n = file_lists[daq_idx].size();
+        n_boards[daq_idx] = n;
+        frame_idxs[daq_idx] = std::vector<int64_t>(-1, n);
+        empty[daq_idx] = std::vector<uint8_t>(0, n);
+        last_raw_time[daq_idx] = std::vector<uint32_t>(0, n);
+        last_time[daq_idx] = std::vector<int64_t>(0, n);
+        offsets[daq_idx] = std::vector<int64_t>(0, n);
+        for(size_t j=0; j<n; ++j) {
+            mask_cache[daq_idx].emplace_back();
+            time_cache[daq_idx].emplace_back();
+        }
+    }
+
+    NextTriggers();
+}
+
+void MergedSource::Process() {
+    if(push_config) {
+        PushFrame(GetConfigFrame());
+        push_config = false;
+    }
+
+    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::DAQ);
+    std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>> readout = GetTriggerReadout();
+    if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr) {
+        RequestSuspension();
+        return;
+    }
+    frame->Put("CCMDigitalReadout", std::get<0>(readout), I3Frame::DAQ);
+    frame->Put("CCMTriggers", std::get<1>(readout), I3Frame::DAQ);
+    PushFrame(frame);
 }
