@@ -598,28 +598,28 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
             all_bad &= empty[daq_idx][board_idx];
         }
     }
-    std::cerr << "Min time: " << min_time << std::endl;
 
     if(all_bad or std::isinf(min_time))
         return {nullptr, nullptr};
     std::vector<std::vector<int>> state(n_daqs);
-    std::cerr << "Empty : [" << std::endl;
+    bool print_empty = false;
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
-        std::cerr << "\t[";
         size_t last_idx = 0;
         for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
             size_t n_channels = configs[daq_idx]->digitizer_boards[board_idx].channels.size();
             // channel_sizes.push_back(n_channels);
             size_t next_idx = last_idx + n_channels;
             size_t frame_idx = frame_idxs[daq_idx][board_idx];
-            // std::cerr << int(empty[daq_idx][board_idx]) << " ";
             if(empty[daq_idx][board_idx]) {
+                print_empty = true;
                 merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
                 state[daq_idx].push_back(0);
             } else if(std::isinf(times[daq_idx][board_idx])) {
+                print_empty = true;
                 state[daq_idx].push_back(1);
                 throw std::runtime_error("Should not see inf here!");
             } else if(times[daq_idx][board_idx] - min_time > max_delta) {
+                print_empty = true;
                 merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
                 state[daq_idx].push_back(2);
             } else {
@@ -629,17 +629,27 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
                 if(not res) {
                     times[daq_idx][board_idx] = std::numeric_limits<long double>::infinity();
                     empty[daq_idx][board_idx] = true;
+                    print_empty = true;
                     state[daq_idx].push_back(4);
                 } else {
                     state[daq_idx].push_back(3);
                 }
             }
-            std::cerr << int(state[daq_idx][board_idx]) << " ";
             last_idx = next_idx;
         }
-        std::cerr << "]," << std::endl;
     }
-    std::cerr << "]" << std::endl;
+    if(print_empty) {
+        std::cerr << "Min time: " << min_time << std::endl;
+        std::cerr << "Empty : [" << std::endl;
+        for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
+            std::cerr << "\t[";
+            for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
+                std::cerr << int(state[daq_idx][board_idx]) << " ";
+            }
+            std::cerr << "]," << std::endl;
+        }
+        std::cerr << "]" << std::endl;
+    }
     ClearUnusedFrames();
     return {output_samples, output_triggers};
 }
