@@ -703,7 +703,7 @@ void MergedSource::Process() {
 
     I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::DAQ);
     std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>> readout = GetTriggerReadout();
-    if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr or counter > 1100) {
+    if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr) {
         RequestSuspension();
         return;
     }
