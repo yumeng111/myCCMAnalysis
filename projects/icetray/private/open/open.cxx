@@ -47,7 +47,11 @@
 #include "socket_source.hpp"
 
 #ifdef I3_WITH_ZSTD
+#if(BOOST_VERSION >= 107000)
+#include <boost/iostreams/filter/zstd.hpp>
+#else
 #include "zstd_filter.hpp"
+#endif
 #endif
 
 #ifdef I3_WITH_LIBARCHIVE
@@ -93,7 +97,11 @@ namespace I3 {
         }
         else if (ends_with(filename,".zst")){
 #ifdef I3_WITH_ZSTD
+#if(BOOST_VERSION >= 107000)
+          ifs.push(io::basic_zstd_decompressor());
+#else
           ifs.push(zstd_decompressor());
+#endif
           log_trace("Input file ends in .zst. Using zstd decompressor.");
 #else
           log_fatal("Input file ends in .zst, however zstd is not found.");
@@ -156,7 +164,11 @@ namespace I3 {
 #ifdef I3_WITH_ZSTD	
         if(compression_level<=0)
           compression_level=4;
+#if(BOOST_VERSION >= 107000)
+        ofs.push(io::basic_zstd_compressor(compression_level));
+#else
         ofs.push(zstd_compressor(compression_level));
+#endif
         log_trace("Output file ends in .zst. Using zstd compressor.");
 #else
         log_fatal("Output file ends in .zst, but libzstd-dev isn't installed.");
