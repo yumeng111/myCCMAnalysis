@@ -135,6 +135,7 @@ private:
 	void initStream(){
 		cstream.reset(ZSTD_createCStream());
 		ZSTD_initCStream(cstream.get(),compressionLevel);
+		// ZSTD_CCtx_setParameter(cstream.get(), ZSTD_c_nborkers, 4);
 		ibufSize=ZSTD_CStreamInSize();
 		ibufUsed=0;
 		ibuf.reset(new char_type[ibufSize]);

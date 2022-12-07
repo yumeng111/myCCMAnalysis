@@ -42,7 +42,12 @@ class I3MultiWriter : public I3WriterBase
   
   uint64_t size_limit_;
   I3Frame::Stream sync_stream_;
+  I3Frame::Stream counter_stream_;
+  unsigned int size_check_interval_;
+  size_t size_check_counter_;
   bool sync_seen_;
+  unsigned int num_workers_;
+  uint64_t bytes_written_;
   unsigned    file_counter_;
   std::vector<I3Frame::Stream> metadata_streams_;
   std::vector<I3FramePtr> metadata_cache_;

@@ -55,7 +55,8 @@ namespace I3 {
     void open(boost::iostreams::filtering_ostream&, 
               const std::string& filename,
               int compression_level_ = 0,
-              std::ios::openmode mode = std::ios::binary);
+              std::ios::openmode mode = std::ios::binary,
+              unsigned int num_workers = 0);
 
   } // namespace dataio
 }  //  namespace I3

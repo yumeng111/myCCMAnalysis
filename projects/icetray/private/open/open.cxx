@@ -48,7 +48,8 @@
 
 #ifdef I3_WITH_ZSTD
 #if(BOOST_VERSION >= 107000)
-#include <boost/iostreams/filter/zstd.hpp>
+// #include <boost/iostreams/filter/zstd.hpp>
+#include "zstd.hpp"
 #else
 #include "zstd_filter.hpp"
 #endif
@@ -144,7 +145,8 @@ namespace I3 {
     void open(io::filtering_ostream& ofs,
 	      const std::string& filename,
 	      int compression_level,
-	      std::ios::openmode mode)
+	      std::ios::openmode mode,
+          unsigned int num_workers)
     {
       if (!ofs.empty())
         ofs.pop();
@@ -165,7 +167,7 @@ namespace I3 {
         if(compression_level<=0)
           compression_level=4;
 #if(BOOST_VERSION >= 107000)
-        ofs.push(io::basic_zstd_compressor(compression_level));
+        ofs.push(io::multithread_zstd_compressor(compression_level, num_workers));
 #else
         ofs.push(zstd_compressor(compression_level));
 #endif
