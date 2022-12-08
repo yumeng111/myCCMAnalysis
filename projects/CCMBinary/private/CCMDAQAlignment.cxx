@@ -359,8 +359,7 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
     return std::get<1>(best_pair_result);
 }
 
-std::vector<std::vector<int64_t>> compute_offsets(std::vector<std::vector<std::string>> file_lists, double max_time_diff) {
-    int64_t max_delta = std::ceil(max_time_diff / 8.0);
+std::vector<std::vector<int64_t>> compute_offsets(std::vector<std::vector<std::string>> file_lists, int64_t max_delta=2, std::vector<int64_t> jitter_tests={-2, 2}, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
     size_t n_daqs = file_lists.size();
     std::vector<std::vector<int64_t>> offsets(n_daqs);
     std::vector<size_t> n_boards;
@@ -372,10 +371,10 @@ std::vector<std::vector<int64_t>> compute_offsets(std::vector<std::vector<std::s
         offsets[i] = std::vector<int64_t>(n_boards.back(), 0);
     }
     for(size_t i=1; i<n_daqs; ++i)
-        offsets[i][0] = compute_trigger_offset(readers[0], 0, readers[i], 0);
+        offsets[i][0] = compute_trigger_offset(readers[0], 0, readers[i], 0, jitter_tests, max_delta, min_triggers, max_triggers, increment, threshold);
     for(size_t i=0; i<n_daqs; ++i)
         for(size_t j=1; j<n_boards[i]; ++j)
-            offsets[i][j] = compute_trigger_offset(readers[0], 0, readers[i], j);
+            offsets[i][j] = compute_trigger_offset(readers[0], 0, readers[i], j, jitter_tests, max_delta, min_triggers, max_triggers, increment, threshold);
     return offsets;
 }
 
@@ -680,7 +679,7 @@ void MergedSource::Configure() {
     GetParameter("MaxTimeDiff", max_time_diff);
     max_delta = std::ceil(max_time_diff / 8.0);
 
-    offsets = compute_offsets(file_lists, max_time_diff);
+    offsets = compute_offsets(file_lists, max_delta);
     int64_t max_offset = 0;
     int64_t min_offset = 0;
     for(size_t daq_idx=0; daq_idx < offsets.size(); ++daq_idx) {
