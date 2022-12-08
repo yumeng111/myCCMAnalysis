@@ -14,7 +14,7 @@ def merge(files, output_file):
     load("CCMBinary", False)
 
     tray = I3Tray.I3Tray()
-    tray.AddModule("MergedSource", "reader", FileLists=fnames)
+    tray.AddModule("MergedSource", "reader", FileLists=fnames, MaxTimeDiff=16)
     if "%" in output_file:
         tray.AddModule("I3MultiWriter", "writer", SizeLimit=(3*1024**3), FileName=output_file, MetadataStreams=[icetray.I3Frame.Geometry, icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus], CounterStream=icetray.I3Frame.DAQ, SizeCheckInterval=1000, NWorkers=8)
     else:
