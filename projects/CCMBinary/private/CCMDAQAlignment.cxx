@@ -16,6 +16,7 @@
 #include <icetray/I3Frame.h>
 #include <icetray/I3TrayInfo.h>
 #include <icetray/I3Module.h>
+#include <icetray/I3Logging.h>
 
 #include "dataio/I3FileStager.h"
 #include "dataio/I3FrameSequence.h"
@@ -159,7 +160,9 @@ public:
             }
             if(all_skipped)
                 break;
-            PopTimes();
+            bool res = PopTimes();
+            if(not res)
+                log_fatal("Not enough frames to align data streams");
         }
         for(size_t i=0; i<n_boards; ++i) {
             size_t size = time_cache[i].size();
@@ -172,7 +175,9 @@ public:
 
     std::vector<int64_t> GetTimes(size_t N, size_t board_idx) {
         while(time_cache[board_idx].size() < N) {
-            PopTimes();
+            bool res = PopTimes();
+            if(not res)
+                log_fatal("Not enough frames to align data streams");
         }
         std::vector<int64_t> result(N);
         std::copy(std::begin(time_cache[board_idx]), std::begin(time_cache[board_idx]) + N, std::begin(result));
@@ -293,7 +298,7 @@ int64_t get_time_delta(std::vector<int64_t> times0, std::vector<int64_t> times1,
         return times0[delta_trigger] - times1[0];
 }
 
-int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeReader & reader1, size_t board_idx1, std::vector<int64_t> jitter_tests={-2, 2}, int64_t max_delta=2, size_t min_triggers=100, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
+int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeReader & reader1, size_t board_idx1, std::vector<int64_t> jitter_tests={-2, 2}, int64_t max_delta=2, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
     uint64_t n_triggers = min_triggers;
     int64_t prev_min = 0;
     int64_t prev_max = 0;
@@ -315,8 +320,9 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
             std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times0, times1, delta, max_delta);
             results.emplace_back(delta_trigger, delta, std::get<0>(pair_result).size(), std::get<1>(pair_result).size(), std::get<2>(pair_result).size());
             for(int64_t t : jitter_tests) {
-                std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times0, times1, delta + t, max_delta);
-                results.emplace_back(delta_trigger, delta + t, std::get<0>(pair_result).size(), std::get<1>(pair_result).size(), std::get<2>(pair_result).size());
+                std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> j_pair_result = find_pairs(times0, times1, delta + t, max_delta);
+                if(std::get<2>(j_pair_result).size() > std::get<2>(pair_result).size())
+                    results.emplace_back(delta_trigger, delta + t, std::get<0>(j_pair_result).size(), std::get<1>(j_pair_result).size(), std::get<2>(j_pair_result).size());
             }
         }
 
@@ -392,6 +398,7 @@ class MergedSource : public I3Module {
     std::vector<std::vector<int64_t>> offsets;
 
     size_t counter = 0;
+    size_t incomplete_counter = 0;
 
     bool PopFrame(size_t daq_idx);
     I3FramePtr GetConfigFrame();
@@ -403,6 +410,7 @@ public:
     MergedSource(const I3Context&);
     void Configure();
     void Process();
+    void Finish();
 
     SET_LOGGER("MergedSource");
 };
@@ -416,7 +424,6 @@ bool MergedSource::PopFrame(size_t daq_idx) {
             return false;
         frame = frame_sequences[daq_idx]->pop_frame();
         if(frame->GetStop() == I3Frame::Geometry) {
-            std::cerr << "Setting config for " << daq_idx << std::endl;
             CCMAnalysis::Binary::CCMDAQConfigConstPtr new_config = frame->Get<CCMAnalysis::Binary::CCMDAQConfigConstPtr>("CCMDAQConfig");
             if(configs[daq_idx] == nullptr or *(configs[daq_idx]) != *new_config) {
                 configs[daq_idx] = new_config;
@@ -465,6 +472,11 @@ I3FramePtr MergedSource::GetConfigFrame() {
     }
     I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Geometry);
     frame->Put("CCMDAQConfig", config, I3Frame::Geometry);
+    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> frame_offsets = boost::make_shared<I3Vector<I3Vector<int64_t>>>();
+    frame_offsets->reserve(offsets.size());
+    for(size_t i=0; i<offsets.size(); ++i)
+        frame_offsets->emplace_back(offsets[i]);
+    frame->Put("BoardTimeOffsets", frame_offsets, I3Frame::Geometry);
     return frame;
 }
 
@@ -608,7 +620,7 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
     if(all_bad or std::isinf(min_time))
         return {nullptr, nullptr};
     std::vector<std::vector<int>> state(n_daqs);
-    bool print_empty = false;
+    bool is_incomplete = false;
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
         size_t last_idx = 0;
         for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
@@ -617,15 +629,15 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
             size_t next_idx = last_idx + n_channels;
             size_t frame_idx = frame_idxs[daq_idx][board_idx];
             if(empty[daq_idx][board_idx]) {
-                print_empty = true;
+                is_incomplete = true;
                 merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
                 state[daq_idx].push_back(0);
             } else if(std::isinf(times[daq_idx][board_idx])) {
-                print_empty = true;
+                is_incomplete = true;
                 state[daq_idx].push_back(1);
-                throw std::runtime_error("Should not see inf here!");
+                log_fatal("Should not see inf here!");
             } else if(times[daq_idx][board_idx] - min_time > max_delta) {
-                print_empty = true;
+                is_incomplete = true;
                 merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
                 state[daq_idx].push_back(2);
             } else {
@@ -635,7 +647,6 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
                 if(not res) {
                     times[daq_idx][board_idx] = std::numeric_limits<long double>::infinity();
                     empty[daq_idx][board_idx] = true;
-                    print_empty = true;
                     state[daq_idx].push_back(4);
                 } else {
                     state[daq_idx].push_back(3);
@@ -644,18 +655,8 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
             last_idx = next_idx;
         }
     }
-    if(print_empty) {
-        std::cerr << "Min time: " << min_time << std::endl;
-        std::cerr << "Empty : [" << std::endl;
-        for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
-            std::cerr << "\t[";
-            for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
-                std::cerr << int(state[daq_idx][board_idx]) << " ";
-            }
-            std::cerr << "]," << std::endl;
-        }
-        std::cerr << "]" << std::endl;
-    }
+    if(is_incomplete)
+        ++incomplete_counter;
     ClearUnusedFrames();
     return {output_samples, output_triggers};
 }
@@ -680,6 +681,39 @@ void MergedSource::Configure() {
     max_delta = std::ceil(max_time_diff / 8.0);
 
     offsets = compute_offsets(file_lists, max_time_diff);
+    int64_t max_offset = 0;
+    int64_t min_offset = 0;
+    for(size_t daq_idx=0; daq_idx < offsets.size(); ++daq_idx) {
+        for(size_t board_idx=0; board_idx < offsets[daq_idx].size(); ++board_idx) {
+            int64_t x = offsets[daq_idx][board_idx];
+            if(x > max_offset)
+                max_offset = x;
+            if(x < min_offset)
+                min_offset = x;
+        }
+    }
+    std::stringstream ss;
+    ss << max_offset;
+    size_t width = ss.str().size();
+    ss.str("");
+    ss << min_offset;
+    width = std::max(width, ss.str().size());
+    ss.str("");
+    ss << "Board offsets computed:";
+    for(size_t daq_idx=0; daq_idx < offsets.size(); ++daq_idx) {
+        ss << "\n[";
+        bool first = true;
+        for(size_t board_idx=0; board_idx < offsets[daq_idx].size(); ++board_idx) {
+            if(first)
+                first = false;
+            else
+                ss << ", ";
+            ss << std::setw(width) << offsets[daq_idx][board_idx];
+        }
+        ss << "]";
+    }
+    ss << "\n";
+    log_notice(ss.str().c_str());
 
     n_daqs = file_lists.size();
     frame_sequences.reserve(n_daqs);
@@ -726,6 +760,11 @@ void MergedSource::Process() {
     frame->Put("CCMDigitalReadout", std::get<0>(readout), I3Frame::DAQ);
     frame->Put("CCMTriggers", std::get<1>(readout), I3Frame::DAQ);
     PushFrame(frame);
-    std::cerr << "Pushed frame " << counter << std::endl;
     ++counter;
+}
+
+void MergedSource::Finish() {
+    log_notice_stream(
+        "Merged " << offsets.size() << " DAQ streams into " << counter << " separate triggers. Encountered "
+        << counter-incomplete_counter << " complete triggers and " << incomplete_counter << " incomplete triggers");
 }
