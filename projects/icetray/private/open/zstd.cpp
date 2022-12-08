@@ -69,34 +69,13 @@ int zstd_multithread_base::deflate(int action)
     if (eof_ && in->size == 0) return zstd::stream_end;
     ZSTD_EndDirective directive = action == zstd::finish ? ZSTD_e_end : (action == zstd::flush ? ZSTD_e_flush : ZSTD_e_continue);
     size_t result = ZSTD_compressStream2(s, out, in, directive);
-    if(ZSTD_isError(result)) {
-        std::cerr << "Got error code: " << result << std::endl;
-        std::cerr << "Is this an error? " << ZSTD_isError(result) << std::endl;
-        std::cerr << "This error is called: " << ZSTD_getErrorName(result) << std::endl;
-    }
     zstd_error::check BOOST_PREVENT_MACRO_SUBSTITUTION(result);
-    if(ZSTD_isError(result))
-        std::cerr << "Post error check" << std::endl;
     if (action != zstd::run)
     {
-        std::cerr << "Got a finish or flush command, entering while loop" << std::endl;
         while(action == zstd::finish && result != 0) {
             result = ZSTD_compressStream2(s, out, in, directive);
-            if(ZSTD_isError(result)) {
-                std::cerr << "Got error code: " << result << std::endl;
-                std::cerr << "Is this an error? " << ZSTD_isError(result) << std::endl;
-                std::cerr << "This error is called: " << ZSTD_getErrorName(result) << std::endl;
-            }
             zstd_error::check BOOST_PREVENT_MACRO_SUBSTITUTION(result);
-            if(ZSTD_isError(result)) {
-        std::cerr << "Post error check" << std::endl;
-            }
         }
-        std::cerr << "Exiting while loop" << std::endl;
-        // result = action == zstd::finish ? ZSTD_endStream(s, out) : ZSTD_flushStream(s, out);
-        // while(action == zstd::finish and result > 0) {
-        //     ZSTD_flushStream(s, out);
-        // }
         eof_ = action == zstd::finish && result == 0;
         return result == 0 ? zstd::stream_end : zstd::okay;
     }
