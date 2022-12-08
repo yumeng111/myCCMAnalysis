@@ -261,6 +261,7 @@ class MergedSource(icetray.I3Module) :
         self.mask_cache = np.zeros((len(self.offsets), 0)).tolist()
         self.time_cache = [np.zeros((n, 0)).tolist() for n in self.n_boards]
         self.last_raw_time = [np.zeros(n).astype(np.uint32) for n in self.n_boards]
+        self.last_time = [np.zeros(n).astype(np.uint64) for n in self.n_boards]
         self.configs = [None for n in self.n_boards]
         self.fill_computer_time = None
         self.push_config = False
@@ -305,17 +306,24 @@ class MergedSource(icetray.I3Module) :
                 raw_time = time_read[i]
                 rel_time = subtract_times(raw_time, self.last_raw_time[idx][i])
                 if len(self.time_cache[idx][i]):
-                    abs_time = self.time_cache[idx][i][-1] + rel_time
+                    abs_time = self.last_time[idx][i] + rel_time
                 else:
                     abs_time = rel_time
                 self.time_cache[idx][i].append(abs_time)
                 self.last_raw_time[idx][i] = raw_time
+                self.last_time[idx][i] = abs_time
             else:
                 self.time_cache[idx][i].append(np.inf)
         return True
 
     def get_config_frame(self):
-        pass
+        config = CCMBinary.CCMDAQConfig()
+        for c in self.configs:
+            config.machine_configurations.extend(c.machine_configurations)
+            config.digitizer_boards.extend(c.digitizer_boards)
+        frame = icecube.icetray.I3Frame(icecube.icetray.I3Frame.Geometry)
+        frame.Put("CCMDAQConfig", config, icecube.icetray.I3Frame.Geometry)
+        return frame
 
     def next_trigger(self, daq_idx, board_idx):
         #print()
@@ -388,11 +396,9 @@ class MergedSource(icetray.I3Module) :
                 n_channels = len(self.configs[daq_idx].digitizer_boards[board_idx].channels)
                 next_idx = last_idx + n_channels
                 if times[daq_idx][board_idx] - min_time > self.max_delta or self.empty_cache[daq_idx][board_idx]:
-                    print("placing empty trigger")
                     CCMBinary.merge_empty_trigger(readout, n_channels, self.fill_computer_time)
                 else:
                     tr = self.frame_cache[daq_idx][self.frame_idxs[daq_idx][board_idx]]["CCMTriggerReadout"]
-                    print("placing normal trigger")
                     CCMBinary.merge_triggers(readout, tr, board_idx, last_idx, next_idx, self.fill_computer_time)
                     res = self.next_trigger(daq_idx, board_idx)
                     if not res:
@@ -403,17 +409,16 @@ class MergedSource(icetray.I3Module) :
         return readout
 
     def Process(self):
+        if self.push_config:
+            self.PushFrame(self.get_config_frame())
+            self.push_config = False
         frame = icecube.icetray.I3Frame(icecube.icetray.I3Frame.DAQ)
         readout = self.get_trigger_readout()
         if readout is None:
-            exit(1)
-            return False
-        frame.Put("CCMTriggerReadout", readout, icecube.icetray.I3Frame.DAQ)
-        if self.push_config:
-            self.push_config = False
-        for f in self.frames_to_push:
-            self.PushFrame(f)
-        self.frames_to_push = []
+            self.RequestSuspension()
+            return
+        frame.Put("CCMDigitalReadout", CCMBinary.I3VectorI3VectorUInt16(readout.samples), icecube.icetray.I3Frame.DAQ)
+        frame.Put("CCMTriggers", CCMBinary.I3VectorCCMTrigger(readout.triggers), icecube.icetray.I3Frame.DAQ)
         self.PushFrame(frame)
 
 reader0 = TimeReader(["mills.i3.zst"])
