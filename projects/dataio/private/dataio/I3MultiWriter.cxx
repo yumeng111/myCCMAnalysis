@@ -111,8 +111,42 @@ I3MultiWriter::NewFile()
   log_info("Starting new file '%s'", current_filename_->c_str());
   dataio::open(filterstream_, *current_filename_, gzip_compression_level_, std::ios::binary, num_workers_);
 
-  BOOST_FOREACH(I3FramePtr frame, metadata_cache_)
-	frame->save(filterstream_, skip_keys_);
+  if(metadata_cache_.size() > 0) {
+    while(true) {
+        I3FramePtr frame = PeekFrame();
+        if(frame != nullptr) {
+          if (std::find(metadata_streams_.begin(), metadata_streams_.end(),
+            frame->GetStop()) != metadata_streams_.end() &&
+            (streams_.size() == 0 || std::find(streams_.begin(), streams_.end(),
+              frame->GetStop()) != streams_.end())) {
+            // If this is a frame type we need to cache for file-start metadata,
+            // insert it into the cache in a way that preserves the ordering of the
+            // frames as they were first inserted into the stream.
+            
+            // Duplicate frame so it can't be modified by following modules
+            I3FramePtr cache_copy(new I3Frame(frame->GetStop()));
+            cache_copy->merge(*frame);
+
+            size_t i;
+            for (i = 0; i < metadata_cache_.size(); i++) {
+                if (metadata_cache_[i]->GetStop() == frame->GetStop()) {
+                    metadata_cache_[i] = cache_copy;
+                    break;
+                }
+            }
+            if (i == metadata_cache_.size())
+                metadata_cache_.push_back(cache_copy);
+            PopFrame();
+          } else {
+              break;
+          }
+        }
+    }
+    for(I3FramePtr frame : metadata_cache_) {
+      frame->save(filterstream_, skip_keys_);
+    }
+  }
+  bytes_written_ = 0;
 }
 
 void

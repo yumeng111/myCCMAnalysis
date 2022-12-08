@@ -417,8 +417,14 @@ bool MergedSource::PopFrame(size_t daq_idx) {
         frame = frame_sequences[daq_idx]->pop_frame();
         if(frame->GetStop() == I3Frame::Geometry) {
             std::cerr << "Setting config for " << daq_idx << std::endl;
-            configs[daq_idx] = frame->Get<CCMAnalysis::Binary::CCMDAQConfigConstPtr>("CCMDAQConfig");
-            push_config = true;
+            CCMAnalysis::Binary::CCMDAQConfigConstPtr new_config = frame->Get<CCMAnalysis::Binary::CCMDAQConfigConstPtr>("CCMDAQConfig");
+            if(configs[daq_idx] == nullptr or *(configs[daq_idx]) != *new_config) {
+                configs[daq_idx] = new_config;
+                push_config = true;
+                for(CCMAnalysis::Binary::CCMDAQConfigConstPtr c : configs)
+                    if(c == nullptr)
+                        push_config = false;
+            }
             continue;
         } else if(frame->GetStop() != I3Frame::DAQ) {
             continue;
