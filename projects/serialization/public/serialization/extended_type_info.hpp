@@ -55,6 +55,8 @@ private:
     virtual bool is_equal(const extended_type_info & /*rhs*/) const = 0;
     const char * m_key;
 
+public:
+    void key_add(const char *) const;
 protected:
     void key_unregister() const;
     void key_register() const;

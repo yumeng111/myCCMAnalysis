@@ -12,8 +12,10 @@
 #  pragma warning (disable : 4786) // too long name, harmless warning
 #endif
 
+#include <iostream>
 #include <algorithm>
 #include <set>
+#include <map>
 #include <utility>
 #include <boost/assert.hpp>
 #include <cstddef> // NULL
@@ -65,7 +67,7 @@ struct key_compare
     }
 };
 
-typedef std::multiset<const extended_type_info *, key_compare> ktmap;
+typedef std::multimap<std::string, const extended_type_info *> ktmap;
 
 #ifdef BOOST_MSVC
 #  pragma warning(push)
@@ -110,39 +112,40 @@ public:
 } // namespace detail
 
 I3_SERIALIZATION_DECL(void)
-extended_type_info::key_register() const{
-    if(NULL == get_key())
-        return;
-    singleton<detail::ktmap>::get_mutable_instance().insert(this);
+extended_type_info::key_add(const char * key) const {
+    singleton<detail::ktmap>::get_mutable_instance().insert({std::string(key), this});
 }
 
 I3_SERIALIZATION_DECL(void)
-extended_type_info::key_unregister() const{
+extended_type_info::key_register() const {
+    if(NULL == get_key())
+        return;
+    singleton<detail::ktmap>::get_mutable_instance().insert({std::string(get_key()), this});
+}
+
+I3_SERIALIZATION_DECL(void)
+extended_type_info::key_unregister() const {
     if(NULL == get_key())
         return;
     if(! singleton<detail::ktmap>::is_destroyed()){
         detail::ktmap & x = singleton<detail::ktmap>::get_mutable_instance();
-        detail::ktmap::iterator start = x.lower_bound(this);
-        detail::ktmap::iterator end = x.upper_bound(this);
-        // remove entry in map which corresponds to this type
-        for(;start != end; ++start){
-            if(this == *start){
-                x.erase(start);
-                break;
+        for(detail::ktmap::iterator it = x.begin(); it != x.end(); ++it) {
+            if(it->second == this) {
+                x.erase(it);
             }
         }
     }
 }
 
-I3_SERIALIZATION_DECL(const extended_type_info *)
+I3_SERIALIZATION_DECL(const icecube::serialization::extended_type_info *)
 extended_type_info::find(const char *key) {
     BOOST_ASSERT(NULL != key);
     const detail::ktmap & k = singleton<detail::ktmap>::get_const_instance();
-    const detail::extended_type_info_arg eti_key(key);
-    const detail::ktmap::const_iterator it = k.find(& eti_key);
+    const std::string eti_key(key);
+    const detail::ktmap::const_iterator it = k.find(eti_key);
     if(k.end() == it)
         return NULL;
-    return *(it);
+    return it->second;
 }
 
 I3_SERIALIZATION_DECL(BOOST_PP_EMPTY())

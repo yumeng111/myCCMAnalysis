@@ -16,6 +16,7 @@
 #error Included too late
 #endif
 
+#include <iostream>
 #include <cstring>
 #include <cassert>
 

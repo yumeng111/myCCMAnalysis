@@ -82,6 +82,18 @@ AsXML(const T& t)
   template void T::serialize(icecube::archive::xml_iarchive&, unsigned);	\
   template void T::serialize(icecube::archive::xml_oarchive&, unsigned);
 
+template<class T>
+class i3_export_extra_key {
+    const char * extra_key;
+public:
+    i3_export_extra_key(const char *key) : extra_key(key) {
+        icecube::serialization::singleton<i3_extended_type_info<T>>::get_mutable_instance().key_add(extra_key);
+    }
+};
+
+#define I3_EXPORT_EXTRA_KEY(T, K) \
+  static i3_export_extra_key<T> BOOST_PP_CAT(i3_export_extra_key_, __LINE__) (BOOST_PP_STRINGIZE(K));
+
 #define I3_EXPORT(T)				\
   static i3_export_key_setter<T> BOOST_PP_CAT(i3_export_key_setter_, __LINE__) (BOOST_PP_STRINGIZE(T));	\
   I3_CLASS_EXPORT(T);			\
