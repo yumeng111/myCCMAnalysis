@@ -453,8 +453,5 @@ I3_SERIALIZABLE(CCMAnalysis::Binary::CCMTriggerReadout);
 I3_SERIALIZABLE(CCMAnalysis::Binary::CCMData);
 
 I3_SERIALIZABLE(CCMAnalysis::Binary::I3VectorCCMTrigger);
-//I3_SERIALIZABLE(I3Vector<uint16_t>);
-I3_SERIALIZABLE(CCMAnalysis::Binary::I3VectorI3VectorUInt16);
-I3_SERIALIZABLE(I3Vector<I3Vector<int64_t>>);
 
 #endif // CCMAnalysis_BinaryFormat_CXX

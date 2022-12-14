@@ -142,7 +142,6 @@ I3_PYTHON_MODULE(CCMBinary)
   void (*merge_empty)(CCMAnalysis::Binary::CCMTriggerReadout &, size_t, bool) = &CCMAnalysis::Binary::merge_empty_trigger;
   def("merge_empty_trigger", merge_empty);
 
-  register_i3vector_of<uint16_t>("UInt16");
   register_i3vector_of<I3Vector<uint16_t>>("I3VectorUInt16");
   register_i3vector_of<CCMAnalysis::Binary::CCMTrigger>("CCMTrigger");
 

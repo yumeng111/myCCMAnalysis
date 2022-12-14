@@ -35,4 +35,5 @@
 void register_I3VectorUShort()
 {
 	register_i3vector_of<uint16_t>("UShort");
+	register_i3vector_of<I3VectorI3VectorUShort::value_type>("I3VectorUInt16");
 }

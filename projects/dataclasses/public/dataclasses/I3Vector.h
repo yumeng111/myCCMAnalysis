@@ -111,6 +111,14 @@ typedef I3Vector<TankKey> I3VectorTankKey;
 typedef I3Vector<StationKey> I3VectorStationKey;
 typedef I3Vector<ModuleKey> I3VectorModuleKey;
 
+typedef I3Vector<I3Vector<uint16_t>> I3VectorI3VectorUShort;
+typedef I3Vector<I3Vector<uint32_t>> I3VectorI3VectorUInt;
+typedef I3Vector<I3Vector<uint64_t>> I3VectorI3VectorUInt64;
+
+typedef I3Vector<I3Vector<int16_t>> I3VectorI3VectorShort;
+typedef I3Vector<I3Vector<int32_t>> I3VectorI3VectorInt;
+typedef I3Vector<I3Vector<int64_t>> I3VectorI3VectorInt64;
+
 I3_POINTER_TYPEDEFS(I3VectorBool);
 I3_POINTER_TYPEDEFS(I3VectorChar);
 I3_POINTER_TYPEDEFS(I3VectorInt);
@@ -127,6 +135,14 @@ I3_POINTER_TYPEDEFS(I3VectorStationKey);
 I3_POINTER_TYPEDEFS(I3VectorModuleKey);
 I3_POINTER_TYPEDEFS(I3VectorDoubleDouble);
 I3_POINTER_TYPEDEFS(I3VectorI3Position);
+
+I3_POINTER_TYPEDEFS(I3VectorI3VectorUShort);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt64);
+
+I3_POINTER_TYPEDEFS(I3VectorI3VectorShort);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorInt);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorInt64);
 
 // inconsistent... if you take this out, though, you have to be sure
 // that you add it to I3Vector.cxx so that I3VectorUnsignedInt is

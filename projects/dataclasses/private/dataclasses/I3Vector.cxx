@@ -28,3 +28,13 @@ I3_SERIALIZABLE(I3VectorModuleKey);
 I3_SERIALIZABLE(I3VectorDoubleDouble);
 I3_SERIALIZABLE(I3VectorI3Position);
 
+I3_SERIALIZABLE(I3VectorI3VectorUShort);
+I3_EXPORT_EXTRA_KEY(I3VectorI3VectorUShort, CCMAnalysis::Binary::I3VectorI3VectorUInt16)
+I3_SERIALIZABLE(I3VectorI3VectorUInt);
+I3_SERIALIZABLE(I3VectorI3VectorUInt64);
+
+I3_SERIALIZABLE(I3VectorI3VectorShort);
+I3_SERIALIZABLE(I3VectorI3VectorInt);
+I3_SERIALIZABLE(I3VectorI3VectorInt64);
+I3_EXPORT_EXTRA_KEY(I3VectorI3VectorInt64, I3Vector<I3Vector<int64_t>>);
+
