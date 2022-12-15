@@ -47,6 +47,7 @@ namespace bp = boost::python;
 //  that does the boost.python registration for class Nick.
 //
 #define REGISTER_THESE_THINGS                                           \
+  (CCMGeometry)(CCMOMGeo)                                               \
   (I3Time)(I3Position)(I3Direction)(I3Geometry)(I3MCTree)               \
   (I3Particle)(I3RecoPulse)(I3LinearizedMCTree)(I3TimeWindow)           \
   (I3Waveform)(I3WaveformSeries)(I3WaveformSeriesMap)                   \

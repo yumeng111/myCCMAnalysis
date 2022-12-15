@@ -17,7 +17,7 @@ i3_add_library(dataclasses
   )
 
 
-i3_test_executable(test 
+i3_test_executable(test
   private/test/*.cxx
   USE_PROJECTS serialization dataclasses dataio
   USE_PYBINDINGS dataio
@@ -38,7 +38,9 @@ i3_add_pybindings(dataclasses
   private/pybindings/I3FlasherInfo.cxx
   private/pybindings/I3FilterResult.cxx
   private/pybindings/I3Geometry.cxx
+  private/pybindings/CCMGeometry.cxx
   private/pybindings/I3OMGeo.cxx
+  private/pybindings/CCMOMGeo.cxx
   private/pybindings/I3TankGeo.cxx
   private/pybindings/I3MCHit/*.cxx
   private/pybindings/I3MCTree.cxx
@@ -99,12 +101,13 @@ set(DATACLASSES_PYTHON_TEST_SCRIPTS
   resources/test/test_FFTHilbertEnvelope.py
   resources/test/test_I3ComplexVector.py
   resources/test/test_I3Vectors.py
-  resources/test/test_particle_masses.py  
+  resources/test/test_particle_masses.py
   resources/test/i3calibration_version_test.py
   resources/test/i3matrix_test.py
   resources/test/std_map_indexing_suite_test.py
   resources/test/test_I3DOMCalibration.py
   resources/test/test_I3Geometry.py
+  resources/test/test_CCMGeometry.py
   resources/test/test_i3particlevect.py
   resources/test/test_I3Time.py
   resources/test/test_I3VEMCalibration.py
@@ -137,6 +140,7 @@ set(DATACLASSES_PYTHON_TEST_SCRIPTS
   resources/test/test_I3Calibration.py
   resources/test/test_I3FilterResult.py
   resources/test/test_I3OMGeo.py
+  resources/test/test_CCMOMGeo.py
   resources/test/test_I3SuperDST_merge.py
   resources/test/test_I3UInt64.py
   resources/test/test_mctree_physics_library.py
