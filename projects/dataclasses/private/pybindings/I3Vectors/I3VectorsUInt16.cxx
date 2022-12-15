@@ -32,8 +32,8 @@
 
 #include "I3Vectors.h"
 
-void register_I3VectorInt64()
+void register_I3VectorUInt16()
 {
-	register_i3vector_of<int64_t>("Int64");
-    register_i3vector_of<I3Vector<int64_t>>("I3VectorInt64");
+	register_i3vector_of<uint16_t>("UInt16");
+	register_i3vector_of<I3Vector<uint16_t>>("I3VectorUInt16");
 }

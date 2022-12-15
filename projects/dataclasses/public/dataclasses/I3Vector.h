@@ -23,14 +23,14 @@
 
 template <typename T>
 struct I3Vector : public std::vector<T>, public I3FrameObject
-{ 
+{
   typedef std::vector<T> base_t;
 
   I3Vector() { }
-  
-  I3Vector(typename base_t::size_type s, const T& value) 
+
+  I3Vector(typename base_t::size_type s, const T& value)
     : base_t(s, value) { }
-    
+
   explicit I3Vector(typename base_t::size_type n) : base_t(n) { }
 
   I3Vector(const I3Vector& rhs) : base_t(rhs) { }
@@ -50,12 +50,12 @@ struct I3Vector : public std::vector<T>, public I3FrameObject
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("vector", base_object< std::vector<T> >(*this));
   }
-  
+
   std::ostream& Print(std::ostream& os) const override{
     constexpr bool can_print=has_operator::insertion<std::ostream&,T>::value;
     return(PrintImpl(os,std::integral_constant<bool,can_print>()));
   }
-  
+
 private:
   std::ostream& PrintImpl(std::ostream& os, std::true_type can_print) const{
     os << '[';
@@ -76,29 +76,23 @@ private:
     return os;
   }
 };
-  
+
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const I3Vector<T> v){
   return(v.Print(os));
 }
 
-// important to use the raw types here.  Don't do I3Vector<int64_t>, as that
-// will be I3Vector<long> some places and I3Vector<long long> others, and then
-// dynamic casting breaks since the two have different typeids. 
 typedef I3Vector<bool> I3VectorBool;
-typedef I3Vector<char> I3VectorChar;
-typedef I3Vector<short> I3VectorShort;
-typedef I3Vector<unsigned short> I3VectorUShort;
-typedef I3Vector<int> I3VectorInt;
-typedef I3Vector<unsigned int> I3VectorUInt;
 
-#if __WORDSIZE == 64 || defined(_LP64)
-typedef I3Vector<long> I3VectorInt64;
-typedef I3Vector<unsigned long> I3VectorUInt64;
-#else
-typedef I3Vector<long long> I3VectorInt64;
-typedef I3Vector<unsigned long long> I3VectorUInt64;
-#endif
+typedef I3Vector<uint8_t> I3VectorUInt8;
+typedef I3Vector<uint16_t> I3VectorUInt16;
+typedef I3Vector<uint32_t> I3VectorUInt32;
+typedef I3Vector<uint64_t> I3VectorUInt64;
+
+typedef I3Vector<int8_t> I3VectorInt8;
+typedef I3Vector<int16_t> I3VectorInt16;
+typedef I3Vector<int32_t> I3VectorInt32;
+typedef I3Vector<int64_t> I3VectorInt64;
 
 typedef I3Vector<std::string> I3VectorString;
 typedef I3Vector<float> I3VectorFloat;
@@ -111,20 +105,25 @@ typedef I3Vector<TankKey> I3VectorTankKey;
 typedef I3Vector<StationKey> I3VectorStationKey;
 typedef I3Vector<ModuleKey> I3VectorModuleKey;
 
-typedef I3Vector<I3Vector<uint16_t>> I3VectorI3VectorUShort;
-typedef I3Vector<I3Vector<uint32_t>> I3VectorI3VectorUInt;
+typedef I3Vector<I3Vector<uint8_t>> I3VectorI3VectorUInt8;
+typedef I3Vector<I3Vector<uint16_t>> I3VectorI3VectorUInt16;
+typedef I3Vector<I3Vector<uint32_t>> I3VectorI3VectorUInt32;
 typedef I3Vector<I3Vector<uint64_t>> I3VectorI3VectorUInt64;
 
-typedef I3Vector<I3Vector<int16_t>> I3VectorI3VectorShort;
-typedef I3Vector<I3Vector<int32_t>> I3VectorI3VectorInt;
+typedef I3Vector<I3Vector<int8_t>> I3VectorI3VectorInt8;
+typedef I3Vector<I3Vector<int16_t>> I3VectorI3VectorInt16;
+typedef I3Vector<I3Vector<int32_t>> I3VectorI3VectorInt32;
 typedef I3Vector<I3Vector<int64_t>> I3VectorI3VectorInt64;
 
 I3_POINTER_TYPEDEFS(I3VectorBool);
-I3_POINTER_TYPEDEFS(I3VectorChar);
-I3_POINTER_TYPEDEFS(I3VectorInt);
-I3_POINTER_TYPEDEFS(I3VectorUInt);
-I3_POINTER_TYPEDEFS(I3VectorInt64);
+I3_POINTER_TYPEDEFS(I3VectorUInt8);
+I3_POINTER_TYPEDEFS(I3VectorUInt16);
+I3_POINTER_TYPEDEFS(I3VectorUInt32);
 I3_POINTER_TYPEDEFS(I3VectorUInt64);
+I3_POINTER_TYPEDEFS(I3VectorInt8);
+I3_POINTER_TYPEDEFS(I3VectorInt16);
+I3_POINTER_TYPEDEFS(I3VectorInt32);
+I3_POINTER_TYPEDEFS(I3VectorInt64);
 I3_POINTER_TYPEDEFS(I3VectorFloat);
 I3_POINTER_TYPEDEFS(I3VectorDouble);
 I3_POINTER_TYPEDEFS(I3VectorString);
@@ -136,19 +135,15 @@ I3_POINTER_TYPEDEFS(I3VectorModuleKey);
 I3_POINTER_TYPEDEFS(I3VectorDoubleDouble);
 I3_POINTER_TYPEDEFS(I3VectorI3Position);
 
-I3_POINTER_TYPEDEFS(I3VectorI3VectorUShort);
-I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt8);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt16);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt32);
 I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt64);
 
-I3_POINTER_TYPEDEFS(I3VectorI3VectorShort);
-I3_POINTER_TYPEDEFS(I3VectorI3VectorInt);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorInt8);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorInt16);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorInt32);
 I3_POINTER_TYPEDEFS(I3VectorI3VectorInt64);
-
-// inconsistent... if you take this out, though, you have to be sure
-// that you add it to I3Vector.cxx so that I3VectorUnsignedInt is
-// always serialized with that name.  
-typedef I3Vector<unsigned int> I3VectorUnsignedInt;
-I3_POINTER_TYPEDEFS(I3VectorUnsignedInt);
 
 #endif // I3VECTOR_H_INCLUDED
 

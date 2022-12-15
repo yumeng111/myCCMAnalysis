@@ -10,7 +10,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMDAQAlignment.cxx
     IWYU
     USE_TOOLS boost python
-    USE_PROJECTS icetray serialization dataio
+    USE_PROJECTS icetray serialization dataio dataclasses
 )
 
 i3_add_pybindings(CCMBinary

@@ -1,6 +1,6 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim  
-//   
+//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim
+//
 //   $Id$
 //
 //   This file is part of IceTray.
@@ -13,7 +13,7 @@
 //   2. Redistributions in binary form must reproduce the above copyright
 //      notice, this list of conditions and the following disclaimer in the
 //      documentation and/or other materials provided with the distribution.
-//   
+//
 //   THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 //   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 //   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,9 +25,9 @@
 //   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 //   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 //   SUCH DAMAGE.
-//   
+//
 //   SPDX-License-Identifier: BSD-2-Clause
-//   
+//
 //
 
 #include <icetray/I3FrameObject.h>
@@ -42,7 +42,7 @@ namespace bp = boost::python;
 //  Don't forget to watch that the newlines are backslashed.
 //  To register class Nick, add (Nick) to the list below, add
 //  Nick.cxx to the list of i3_add_library out in CMakeLists.txt,
-//  and create a file Nick.cxx that contains a function 
+//  and create a file Nick.cxx that contains a function
 //    void register_Nick();
 //  that does the boost.python registration for class Nick.
 //
@@ -68,10 +68,11 @@ namespace bp = boost::python;
   (I3Double)(I3String)(I3Constants)(I3RecoPulseSeriesMapMask)           \
   (I3RecoPulseSeriesMapUnion)(I3SuperDST)(TankKey)(I3Orientation)       \
   (ModuleKey)(I3ModuleGeo)(I3OMGeo)(I3TankGeo)(I3FilterResult)          \
-  (I3MapI3ParticleID)(I3VectorChar)(I3VectorString)(I3VectorBool)       \
-  (I3VectorOMKey)(I3VectorModuleKey)(I3VectorShort)(I3VectorTankKey)    \
-  (I3VectorUShort)(I3VectorInt)(I3VectorUInt)(I3VectorInt64)            \
-  (I3VectorUInt64)(I3VectorFloat)(I3VectorDouble)(I3VectorDoubleDouble) \
+  (I3MapI3ParticleID)(I3VectorString)(I3VectorBool)                     \
+  (I3VectorOMKey)(I3VectorModuleKey)(I3VectorTankKey)                   \
+  (I3VectorUInt8)(I3VectorUInt16)(I3VectorUInt32)(I3VectorUInt64)       \
+  (I3VectorInt8)(I3VectorInt16)(I3VectorInt32)(I3VectorInt64)           \
+  (I3VectorFloat)(I3VectorDouble)(I3VectorDoubleDouble)                 \
   (I3VectorI3Particle)(I3VectorParticleType)(I3VectorI3Position)        \
   (I3VectorPairDoubleDouble)(I3MCTreePhysicsLibrary)(I3VectorUtils)     \
   (I3VectorAntennaKey)(I3VectorScintKey)                                \
