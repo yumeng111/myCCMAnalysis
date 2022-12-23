@@ -1,7 +1,10 @@
 
 if(TARGET argagg)
 else(TARGET argagg)
+    #set(ARGAGG_BUILD OFF)
     add_subdirectory("${PROJECT_SOURCE_DIR}/extern/argagg" "extern/argagg")
+    target_compile_options(argagg INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=array-bounds>)
+    target_compile_options(argagg INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wno-array-bounds>)
     set(ARGAGG_FOUND ON)
     set(ARGAGG_LIBRARIES "")
     set(ARGAGG_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/extern/argagg/include")

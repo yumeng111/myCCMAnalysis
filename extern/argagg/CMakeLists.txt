@@ -39,7 +39,7 @@ option(
 
 set(
   ARGAGG_TEST_COMPILE_FLAGS
-  "-g -Wall -Wextra -Wpedantic -Wsign-conversion -Werror -std=c++11"
+  "-g -Wall -Wextra -Wpedantic -Wsign-conversion -Werror -std=c++11 -Wno-error=array-bounds"
   CACHE STRING "Compiler flags for all project targets"
 )
 
