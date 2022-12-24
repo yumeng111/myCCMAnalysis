@@ -24,7 +24,7 @@ static const unsigned ccmomgeo_version_ = 0;
  * the class.
  */
 #define CCMOMGEO_H_CCMOMGeo_OMType        \
-  (UnknownType)(SBND8in)(CCM8inCoated)(CCM8inUncoated)(CCM3in)
+  (UnknownType)(CCM8inCoated)(CCM8inUncoated)(CCM1in)
 
 //Simple struct to contain all pertinent OM info.
 //See CCMGeometry.h for more info
@@ -32,7 +32,7 @@ static const unsigned ccmomgeo_version_ = 0;
 class CCMOMGeo
 {
 public:
-    enum OMType {UnknownType = 0, SBND8in = 10, CCM8inCoated = 20, CCM8inUncoated = 30, CCM3in = 40,};
+    enum OMType {UnknownType = 0, CCM8inCoated = 10, CCM8inUncoated = 20, CCM1in = 30,};
 
     CCMOMGeo():omtype(UnknownType){}
 
@@ -67,8 +67,7 @@ public:
     {
       return (position == rhs.position &&
               orientation == rhs.orientation &&
-              omtype == rhs.omtype &&
-              area == rhs.area);
+              omtype == rhs.omtype);
     }
     bool operator!=(const CCMOMGeo& rhs) const
     {
