@@ -13,7 +13,6 @@ CCMOMGeo::serialize(Archive& ar, unsigned version)
     ar & make_nvp("Position", position);
     ar & make_nvp("Orientation", orientation);
     ar & make_nvp("OMType", omtype);
-    ar & make_nvp("Area", area);
 }
 
 I3_SERIALIZABLE(CCMOMGeo);
@@ -22,8 +21,7 @@ I3_SERIALIZABLE(CCMOMGeoMap);
 std::ostream& CCMOMGeo::Print(std::ostream& os) const{
     os << "[CCMOMGeo Position: " << position << '\n'
        << "      Orientation: " << orientation << '\n'
-       << "           OMType: " << omtype << '\n'
-       << "             Area: " << area << " ]";
+       << "           OMType: " << omtype << " ]";
     return os;
 }
 
