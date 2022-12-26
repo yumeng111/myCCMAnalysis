@@ -18,7 +18,7 @@ public:
   ~CCMGeometry();
 
   //Map of all OMs based on their OMKey
-  I3Map<OMKey, CCMOMGeo> omgeo;
+  I3Map<CCMPMTKey, CCMOMGeo> omgeo;
 
   I3Time startTime;
   I3Time endTime;

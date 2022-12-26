@@ -1,0 +1,166 @@
+/**
+ *  $Id$
+ *  
+ *  Copyright (C) 2003-2007
+ *  The IceCube Collaboration <http://www.icecube.wisc.edu>
+ *  
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *  1. Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *  
+ *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ *  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ *  SUCH DAMAGE.
+ *  
+ *  SPDX-License-Identifier: BSD-2-Clause
+ *  
+ */
+
+#ifndef CCMCHANNELKEY_H_INCLUDED
+#define CCMCHANNELKEY_H_INCLUDED
+
+#include <utility>
+#include "Utility.h"
+#include <iostream>
+#include <icetray/IcetrayFwd.h>
+#include <icetray/serialization.h>
+
+static const unsigned ccmchannelkey_version_ = 0;
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
+/**
+ * @brief A small class which is the board number, om number
+ * and pmt number for a specific PMT inside a DOM.
+ *
+ * For IceCube, the PMT number will always be 0
+ * and "PMT" is equivalent to "DOM". For IceTop, the PMT number
+ * can be 0 or 1.
+ */
+
+class CCMChannelKey
+{
+  uint16_t boardNumber_;
+  uint8_t channelNumber_;
+
+ public:
+
+  CCMChannelKey() : boardNumber_(0), channelNumber_(0) {}
+
+  CCMChannelKey(uint16_t board, uint8_t channel) 
+    : boardNumber_(board), channelNumber_(channel) {}
+
+  virtual ~CCMChannelKey(); 
+
+  /**
+   * retrieves the board number for this CCMChannelKey
+   */
+  int GetBoard() const { return boardNumber_; }
+
+  /**
+   * Sets the board number for this OM
+   */
+  void SetBoard(int board){ boardNumber_ = board; }
+
+  /**
+   * gets the channel number
+   */
+  unsigned int GetChannel() const { return channelNumber_; }
+
+  /**
+   * sets the channel number in this board
+   */
+  void SetChannel(unsigned int channel){ channelNumber_ = channel; }
+
+  /**
+   * equality operator.  
+   * @return true if the string and om numbers of the two CCMChannelKey's match
+   * @param rhs the CCMChannelKey to compare this one to.
+   */
+  bool operator==(const CCMChannelKey& rhs) const
+    {
+      return (rhs.channelNumber_ == channelNumber_ && 
+         rhs.boardNumber_ == boardNumber_);
+    }
+
+  /**
+   * inequality operator
+   * @return false if the string or om numbers are different
+   * @param rhs the CCMChannelKey to compare this one to.
+   */
+  bool operator!=(const CCMChannelKey& rhs) const
+    {
+      return not (rhs == *this);
+    }
+
+  std::string str() const;
+
+  struct hash
+  {
+    size_t operator()(const CCMChannelKey& key) const
+    {
+      return (((static_cast<uint64_t>(abs(key.GetBoard())) * 256) + 
+               static_cast<uint64_t>(key.GetChannel())));
+    }
+  };
+
+ private:
+  friend class icecube::serialization::access;
+
+  template <class Archive>
+  void save(Archive& ar, unsigned version) const;
+
+  template <class Archive>
+  void load(Archive& ar, unsigned version);
+
+  I3_SERIALIZATION_SPLIT_MEMBER()
+};
+
+I3_CLASS_VERSION(CCMChannelKey, ccmchannelkey_version_);
+
+/**
+ * comparison operator.  First compares the string numbers, then compares
+ * the om numbers.  Required to put CCMChannelKeys as the key of a map
+ * @param lhs the left-hand CCMChannelKey
+ * @param rhs the right-hand CCMChannelKey
+ * @return true if the lhs should be ordered before the rhs
+ */
+inline bool operator<(const CCMChannelKey& lhs,const CCMChannelKey& rhs)
+{
+  if(lhs.GetBoard() < rhs.GetBoard()) {
+    return true;
+  } else if(lhs.GetBoard() > rhs.GetBoard()) {
+    return false;
+  } else if(lhs.GetChannel() < rhs.GetChannel()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/**
+ * streams an CCMChannelKey to an arbitrary ostream.  These are important,
+ * the tray uses these conversion internally.
+ */
+std::ostream& operator<<(std::ostream&, const CCMChannelKey& key);
+std::istream& operator>>(std::istream&,  CCMChannelKey&);
+#pragma GCC diagnostic pop
+
+I3_POINTER_TYPEDEFS(CCMChannelKey);
+
+#endif //CCMCHANNELKEY_H_INCLUDED

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 #include "icetray/OMKey.h"
+#include "icetray/CCMPMTKey.h"
 #include "dataclasses/Utility.h"
 
 
@@ -82,7 +83,7 @@ std::ostream& operator<<(std::ostream&, const CCMOMGeo&);
 I3_POINTER_TYPEDEFS(CCMOMGeo);
 I3_CLASS_VERSION(CCMOMGeo, ccmomgeo_version_);
 
-typedef I3Map<OMKey, CCMOMGeo> CCMOMGeoMap;
+typedef I3Map<CCMPMTKey, CCMOMGeo> CCMOMGeoMap;
 I3_POINTER_TYPEDEFS(CCMOMGeoMap);
 
 #endif //CCMOMGEO_H_INCLUDED
