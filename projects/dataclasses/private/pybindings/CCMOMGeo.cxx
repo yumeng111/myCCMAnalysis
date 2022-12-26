@@ -48,7 +48,7 @@ void register_CCMOMGeo()
   {
     scope omg = class_<CCMOMGeo, boost::shared_ptr<CCMOMGeo> >("CCMOMGeo")
       .add_property("direction", &CCMOMGeo::GetDirection)
-      #define CCMOMGEOPROPS (position)(omtype)(orientation)(area)
+      #define CCMOMGEOPROPS (position)(omtype)(orientation)
       BOOST_PP_SEQ_FOR_EACH(WRAP_RW_RECASE, CCMOMGeo, CCMOMGEOPROPS )
       #undef CCMOMGEOPROPS
       .def(dataclass_suite<CCMOMGeo>())
