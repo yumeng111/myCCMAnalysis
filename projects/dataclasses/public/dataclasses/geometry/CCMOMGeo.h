@@ -54,11 +54,6 @@ public:
     OMType omtype;
 
     /**
-     * Effective collection area (use I3Units)
-     */
-    double area;
-
-    /**
      * Gets the I3Direction from the I3Orientation
      */
     inline I3Direction GetDirection() const {return orientation.GetDir();}
