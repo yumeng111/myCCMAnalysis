@@ -8,6 +8,7 @@
 #include "dataclasses/I3Time.h"
 #include <icetray/I3DefaultName.h>
 #include "icetray/I3FrameObject.h"
+#include "icetray/CCMTriggerKey.h"
 #include "dataclasses/I3Map.h"
 
 static const unsigned ccmgeometry_version_ = 0;
@@ -18,7 +19,10 @@ public:
   ~CCMGeometry();
 
   //Map of all OMs based on their OMKey
-  I3Map<CCMPMTKey, CCMOMGeo> omgeo;
+  I3Map<CCMPMTKey, CCMOMGeo> pmt_geo;
+  I3Map<CCMPMTKey, uint32_t> pmt_channel_map;
+  I3Map<CCMTriggerKey, uint32_t> trigger_channel_map;
+  I3Map<CCMPMTKey, CCMTriggerKey> trigger_copy_map;
 
   I3Time startTime;
   I3Time endTime;
@@ -27,7 +31,10 @@ public:
 
   bool operator==(const CCMGeometry& rhs)
   {
-    return (omgeo == rhs.omgeo &&
+    return (pmt_geo == rhs.pmt_geo &&
+            pmt_channel_map == rhs.pmt_channel_map &&
+            trigger_channel_map == rhs.trigger_channel_map &&
+            trigger_copy_map == rhs.trigger_copy_map &&
             startTime == rhs.startTime &&
             endTime == rhs.endTime);
   }
