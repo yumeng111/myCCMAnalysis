@@ -26,6 +26,7 @@
 
 int32_t subtract_times(uint32_t t1, uint32_t t0) {
     // Compute the difference of two unsigned time counters with one overflow bit
+
     // Cover the trivial case
     if(t1 == t0) {
         return 0;
@@ -70,12 +71,13 @@ int32_t subtract_times(uint32_t t1, uint32_t t0) {
         } else {
             diff = diff_1;
         }
-        // diff = std::min(diff_0, diff_1);
     }
     return diff;
 }
 
 std::vector<uint8_t> empty_mask(I3FramePtr frame) {
+    // Create a mask that ignores empty triggers
+
     CCMAnalysis::Binary::CCMDAQConfig const & config = frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
     std::vector<uint16_t> const & channel_sizes = frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].channel_sizes;
     size_t n_boards = config.digitizer_boards.size();
@@ -85,6 +87,7 @@ std::vector<uint8_t> empty_mask(I3FramePtr frame) {
         size_t n_channels = config.digitizer_boards[i].channels.size();
         size_t next_idx = last_idx + n_channels;
         for(size_t j=last_idx; j<next_idx; ++j) {
+            // An empty trigger is marked by having a channel size of zero
             mask[i] |= channel_sizes[j] > 0;
         }
         last_idx = next_idx;
@@ -93,21 +96,32 @@ std::vector<uint8_t> empty_mask(I3FramePtr frame) {
 }
 
 std::vector<uint32_t> read_times(I3FramePtr frame) {
+    // Get the raw board times from the frame
     return frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].board_times;
 }
 
 class TimeReader {
+    // Frame sequence to read from
     dataio::I3FrameSequence frame_seq;
+    // Currently loaded frame
     I3FramePtr current_frame;
+    // Number of boards
     size_t n_boards;
+    // Cache of read times
     std::vector<std::deque<int64_t>> time_cache;
+    // Last raw time read
     std::vector<uint32_t> last_raw_time;
 
     bool FrameMeetsRequirements(I3FramePtr frame) {
+        // Check if the frame has the necessary information for merging
         return frame->Has("CCMTriggerReadout") and frame->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout")->triggers.size() > 0;
     }
 
     bool PopFrame() {
+        // Get another frame and cache it
+        // Skip frames if they do not meet requirements
+        // Return true for a found frame
+        // Return false if no more frames are available
         if(not frame_seq.more())
             return false;
         current_frame = frame_seq.pop_daq();
@@ -120,13 +134,14 @@ class TimeReader {
     }
 
     bool PopTimes() {
+        // Pop a frame and put the times into the time cache
         bool result = PopFrame();
         if(not result)
             return false;
         std::vector<uint32_t> time_read = read_times(current_frame);
         std::vector<uint8_t> mask = empty_mask(current_frame);
         for(size_t i=0; i<n_boards; ++i) {
-            if(not mask[i])
+            if(not mask[i]) // Empty triggers have no time associated so we can skip placing anything in the cache
                 continue;
             uint32_t raw_time = time_read[i];
             int64_t abs_time = time_cache[i].back() + subtract_times(raw_time, last_raw_time[i]);
@@ -139,8 +154,12 @@ class TimeReader {
 public:
     TimeReader(std::vector<std::string> const & file_names, size_t n_skip) :
     frame_seq(file_names) {
+        // Get the first frame
         PopFrame();
+        // Assume we have the configuration from the first frame
         CCMAnalysis::Binary::CCMDAQConfig const & config = current_frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
+
+        // Set up the containers and fill the cache
         this->n_boards = config.digitizer_boards.size();
         time_cache.resize(n_boards);
         last_raw_time.resize(n_boards);
@@ -153,6 +172,8 @@ public:
             time_cache[i].push_back(time_read[i]);
             last_raw_time[i] = time_read[i];
         }
+
+        // Load more times until we have at least the number we intend to skip in each cache
         while(true) {
             bool all_skipped = true;
             for(size_t i=0; i<n_boards; ++i) {
@@ -164,6 +185,8 @@ public:
             if(not res)
                 log_fatal("Not enough frames to align data streams");
         }
+
+        // Skip times on each board
         for(size_t i=0; i<n_boards; ++i) {
             size_t size = time_cache[i].size();
             size = std::min(size, n_skip);
@@ -171,25 +194,33 @@ public:
                 time_cache[i].pop_front();
         }
     }
+
+    // By default we should not skip any timed
+    // Skipping is for testing purposes only
     TimeReader(std::vector<std::string> const & file_names) : TimeReader(file_names, 0) {}
 
     std::vector<int64_t> GetTimes(size_t N, size_t board_idx) {
+        // Get the specified number of times for the chosen board
+        // Pop frames and store times until we have enough
         while(time_cache[board_idx].size() < N) {
             bool res = PopTimes();
             if(not res)
                 log_fatal("Not enough frames to align data streams");
         }
+        // Copy and return the resulting times
         std::vector<int64_t> result(N);
         std::copy(std::begin(time_cache[board_idx]), std::begin(time_cache[board_idx]) + N, std::begin(result));
         return result;
     }
 
     size_t NBoards() const {
+        // Return the number of boards
         return this->n_boards;
     }
 };
 
 struct IDX {
+    // Represents an index and replicates python-style missing data with a "None" value
     bool present = false;
     int64_t value = 0;
     IDX() {}
@@ -231,14 +262,24 @@ struct IDX {
 };
 
 std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> find_pairs(std::vector<int64_t> const & times0, std::vector<int64_t> const & times1, int64_t offset1, int64_t max_delta) {
+    // Attempts to pair up times from two streams that match within a specified tolerance
+    // Paired times are represented as a pair of two value indices
     std::vector<std::tuple<IDX, IDX>> good_pairs;
+    // Unpaired times are represented by a pair with one "missing data" index and one valid index
     std::vector<std::tuple<IDX, IDX>> orphans;
+    // All paired and unpaired times are collected in the following structure
     std::vector<std::tuple<IDX, IDX>> pairs;
+
+    // Indicated the current position being processed in each time stream
     int64_t i = 0;
     int64_t j = 0;
+
+    // Indicates the last position saved as a pair or orphan in each time stream
+    // An invalid index indicates no times in the corresponding stream have been saved
     IDX last_i;
     IDX last_j;
     while(i < int64_t(times0.size()) or j < int64_t(times1.size())) {
+        // If either time stream have no times to process, process the remaining times in the other stream as orphans
         if(i == int64_t(times0.size()) or j == int64_t(times1.size())) {
             i = times0.size();
             j = times1.size();
@@ -260,20 +301,29 @@ std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>,
             continue;
         }
 
+        // Compute the time difference between the two currently selected times (including the offset)
         int64_t time_diff = times0[i] - (times1[j] + offset1);
+
+        // Check if the time difference is within the matching threshold
         if(std::abs(time_diff) <= max_delta) {
+            // If the last saved index is invalid or the last saved index is less than the previously processed index
+            //   then there are orphaned times to save
             if((last_i and last_i < i-1) or (last_j and last_j < j-1)) {
+                // Grab the orphaned indices and their times
                 std::vector<std::tuple<IDX, IDX, int64_t>> triplets;
                 for(int64_t _i = last_i + int64_t(1); _i<i; ++_i)
                     triplets.emplace_back(_i, IDX(), times0[_i]);
                 for(int64_t _j = last_j + int64_t(1); _j<j; ++_j)
                     triplets.emplace_back(_j, IDX(), times1[_j] + offset1);
+                // Sort the orphaned indices by their times
                 std::sort(triplets.begin(), triplets.end(), [](std::tuple<IDX, IDX, int64_t> const & a, std::tuple<IDX, IDX, int64_t> const & b){return std::get<2>(a) < std::get<2>(b);});
+                // Add the orphaned indices to the relevant structures
                 for(size_t _i=0; _i<triplets.size(); ++_i) {
                     orphans.emplace_back(std::get<0>(triplets[_i]), std::get<1>(triplets[_i]));
                     pairs.emplace_back(std::get<0>(triplets[_i]), std::get<1>(triplets[_i]));
                 }
             }
+            // Store the matching pair and increment the appropriate counters
             pairs.emplace_back(i, j);
             good_pairs.emplace_back(pairs.back());
             last_i = i;
@@ -281,6 +331,7 @@ std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>,
             i += 1;
             j += 1;
         } else {
+            // Increment the appropriate counter to try and find a matching time
             if(times0[i] < times1[i] + offset1) {
                 i += 1;
             } else {
@@ -288,10 +339,13 @@ std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>,
             }
         }
     }
+
+    // Return the matched and unmatched indices
     return {pairs, good_pairs, orphans};
 }
 
 int64_t get_time_delta(std::vector<int64_t> times0, std::vector<int64_t> times1, size_t delta_trigger) {
+    // Get the time difference based on a signed index offset between the two streams
     if(delta_trigger < 0)
         return times0[0] - times1[-delta_trigger];
     else
@@ -299,13 +353,24 @@ int64_t get_time_delta(std::vector<int64_t> times0, std::vector<int64_t> times1,
 }
 
 int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeReader & reader1, size_t board_idx1, std::vector<int64_t> jitter_tests={-2, 2}, int64_t max_delta=2, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
+    // Compute the time offset by testing various offsets and selecting the offset that results the the most valid time pairs
+
+    // Number of triggers to test
     uint64_t n_triggers = min_triggers;
+
+    // Boundaries of previously tested offsets
     int64_t prev_min = 0;
     int64_t prev_max = 0;
+
+    // Boundaries of offsets to test
     int64_t new_min = -(n_triggers/2);
     int64_t new_max = (n_triggers/2) + 1;
+
+    // Times used for testing the offsets
     std::vector<int64_t> times0 = reader0.GetTimes(n_triggers, board_idx0);
     std::vector<int64_t> times1 = reader1.GetTimes(n_triggers, board_idx1);
+
+    // Generate offsets to test
     size_t x = prev_max;
     std::vector<int64_t> deltas;
     std::generate_n(std::back_inserter(deltas), new_max - prev_max, [&](){return x++;});
@@ -315,6 +380,7 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
     std::tuple<int64_t, int64_t, size_t, size_t, size_t> best_pair_result;
 
     while(true) {
+        // Generate results for each offset
         for(int64_t const & delta_trigger : deltas) {
             int64_t delta = get_time_delta(times0, times1, delta_trigger);
             std::tuple<std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>, std::vector<std::tuple<IDX, IDX>>> pair_result = find_pairs(times0, times1, delta, max_delta);
@@ -326,6 +392,7 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
             }
         }
 
+        // Find the result with the most pairs
         best_pair_result = *std::max_element(results.begin(), results.end(), [](std::tuple<int64_t, int64_t, size_t, size_t, size_t> const & a, std::tuple<int64_t, int64_t, size_t, size_t, size_t> const & b){return std::get<3>(a) < std::get<3>(b);});
 
         int64_t delta_trigger = std::get<0>(best_pair_result);
@@ -334,8 +401,11 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
         size_t good_pairs = std::get<3>(best_pair_result);
         size_t orphans = std::get<4>(best_pair_result);
 
+        // Check if the fraction of good pairs exceeds the threshold
         if(double(good_pairs) / double(n_triggers - std::abs(delta_trigger)) >= threshold)
             break;
+
+        // If the threshold is not met, increment the boundaries of the offsets, generate new offsets, and read the newly needed times
 
         n_triggers += increment;
         if(n_triggers > max_triggers)
@@ -360,6 +430,7 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
 }
 
 std::vector<std::vector<int64_t>> compute_offsets(std::vector<std::vector<std::string>> file_lists, int64_t max_delta=2, std::vector<int64_t> jitter_tests={-2, 2}, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
+    // Compute offsets for all boards
     size_t n_daqs = file_lists.size();
     std::vector<std::vector<int64_t>> offsets(n_daqs);
     std::vector<size_t> n_boards;
