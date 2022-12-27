@@ -489,39 +489,54 @@ I3_MODULE(MergedSource);
 
 bool MergedSource::PopFrame(size_t daq_idx) {
     I3FramePtr frame;
+    // Grab frames until we get a DAQ frame
     while(true) {
+        // Fail if we do not have any more frames
         if(not frame_sequences[daq_idx]->more())
             return false;
         frame = frame_sequences[daq_idx]->pop_frame();
         if(frame->GetStop() == I3Frame::Geometry) {
+            // Update stored configurations if we see a Geometry frame
             CCMAnalysis::Binary::CCMDAQConfigConstPtr new_config = frame->Get<CCMAnalysis::Binary::CCMDAQConfigConstPtr>("CCMDAQConfig");
             if(configs[daq_idx] == nullptr or *(configs[daq_idx]) != *new_config) {
                 configs[daq_idx] = new_config;
                 push_config = true;
+                // Set the push_config flag to false if any configs are missing
                 for(CCMAnalysis::Binary::CCMDAQConfigConstPtr c : configs)
                     if(c == nullptr)
                         push_config = false;
             }
             continue;
         } else if(frame->GetStop() != I3Frame::DAQ) {
+            // SKip non-DAQ and non-Geometry frames
             continue;
         }
+        // Skip this frame if we do not have the necessary information in the frame
         if((not frame->Has("CCMTriggerReadout")) or (frame->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout")->triggers.size() == 0))
             continue;
         break;
     }
+
+    // Store the frame
     frame_cache[daq_idx].push_back(frame);
     CCMAnalysis::Binary::CCMTriggerReadoutConstPtr readout = frame->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
     std::vector<uint32_t> const & time_read = readout->triggers[0].board_times;
+
+    // If the fill_computer_time flag is negative unset (i.e. negative), then set it
     if(fill_computer_time < 0)
+        // Check if the computer times are stored in the input
         fill_computer_time = readout->triggers[0].board_computer_times.size() > 0;
+
+    // Compute which boards have the appropriate data
     std::vector<uint8_t> mask = empty_mask(frame);
     for(size_t board_idx=0; board_idx<n_boards[daq_idx]; ++board_idx) {
         mask_cache[daq_idx][board_idx].push_back(mask[board_idx]);
+        // Store inf in time cache if data is missing
         if(not mask[board_idx]) {
             time_cache[daq_idx][board_idx].push_back(std::numeric_limits<long double>::infinity());
             continue;
         }
+        // Add times to cache
         uint32_t raw_time = time_read[board_idx];
         int64_t rel_time = subtract_times(raw_time, last_raw_time[daq_idx][board_idx]);
         long double abs_time = rel_time;
@@ -535,6 +550,7 @@ bool MergedSource::PopFrame(size_t daq_idx) {
 }
 
 I3FramePtr MergedSource::GetConfigFrame() {
+    // Create a Geometry frame that contains the CCMDAQConfig composed of cached configurations from each DAQ, and the board time offsets
     CCMAnalysis::Binary::CCMDAQConfigPtr config = boost::make_shared<CCMAnalysis::Binary::CCMDAQConfig>();
     for(CCMAnalysis::Binary::CCMDAQConfigConstPtr c : configs) {
         std::copy(c->machine_configurations.begin(), c->machine_configurations.end(), std::back_inserter(config->machine_configurations));
@@ -551,8 +567,13 @@ I3FramePtr MergedSource::GetConfigFrame() {
 }
 
 bool MergedSource::NextTrigger(size_t daq_idx, size_t board_idx) {
+    // Current frame index
     size_t current_frame_idx = frame_idxs[daq_idx][board_idx];
+
+    // Desired frame index
     size_t frame_idx = current_frame_idx + 1;
+
+    // Add frames to the cache until the desired frame index is present
     while(true) {
         while(frame_cache[daq_idx].size() <= frame_idx) {
             bool res = PopFrame(daq_idx);
@@ -563,11 +584,14 @@ bool MergedSource::NextTrigger(size_t daq_idx, size_t board_idx) {
             break;
         frame_idx += 1;
     }
+
+    // Set the current frame index to be the desired frame index
     frame_idxs[daq_idx][board_idx] = frame_idx;
     return true;
 }
 
 bool MergedSource::NextTriggers() {
+    // Call NextTrigger for each board
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
         for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
             bool res = NextTrigger(daq_idx, board_idx);
@@ -601,6 +625,7 @@ inline void merge_triggers(
         size_t first_idx,
         size_t last_idx,
         bool fill_computer_time = false) {
+    // Append trigger information from one DAQ into a combined ouput
     CCMAnalysis::Binary::CCMTrigger & o = (*output_triggers)[0];
     CCMAnalysis::Binary::CCMTrigger const & s = source_trigger->triggers[0];
     assert(s.channel_sizes.size() > first_idx and s.channel_sizes.size() >= last_idx);
@@ -608,37 +633,47 @@ inline void merge_triggers(
     assert(s.channel_temperatures.size() > first_idx and s.channel_sizes.size() >= last_idx);
     assert(s.board_event_numbers.size() > board_idx);
     assert(s.board_times.size() > board_idx);
+
+    // Copy channel_sizes, channel_masks, channel_temperatures, board_event_times, board_event_numbers, and board_times
     std::copy(s.channel_sizes.begin() + first_idx, s.channel_sizes.begin() + last_idx, std::back_inserter(o.channel_sizes));
     std::copy(s.channel_masks.begin() + first_idx, s.channel_masks.begin() + last_idx, std::back_inserter(o.channel_masks));
     std::copy(s.channel_temperatures.begin() + first_idx, s.channel_temperatures.begin() + last_idx, std::back_inserter(o.channel_temperatures));
     std::copy(s.board_event_numbers.begin() + board_idx, s.board_event_numbers.begin() + board_idx + 1, std::back_inserter(o.board_event_numbers));
     std::copy(s.board_times.begin() + board_idx, s.board_times.begin() + board_idx + 1, std::back_inserter(o.board_times));
+
+    // Optionall copy board_computer_times
     if(fill_computer_time) {
         assert(s.board_computer_times.size() > board_idx);
         std::copy(s.board_computer_times.begin() + board_idx, s.board_computer_times.begin() + board_idx + 1, std::back_inserter(o.board_computer_times));
     }
+
+    // Check if all expected samples are present
     if(source_trigger->samples.size() == s.channel_masks.size()) {
+        // Copy all the samples in the specified range
         assert(source_trigger->samples.size() > first_idx and source_trigger->samples.size() >= last_idx);
         size_t n_channels = last_idx - first_idx;
         output_samples->reserve(output_samples->size() + n_channels);
         for(size_t i=first_idx; i<last_idx; ++i) {
             output_samples->emplace_back(source_trigger->samples[i]);
         }
-        // std::copy(source_trigger->samples.begin() + first_idx, source_trigger->samples.begin() + last_idx, std::back_inserter(*static_cast<boost::shared_ptr<std::vector<I3Vector<uint16_t>>>>(output_samples)));
     } else {
+        // Iterate over channel_mask
+        // Only increment counter if channel_mask is set to true
+        // Counter represents the number of samples actually present in the samples vector
         size_t new_first_idx = 0;
         for(size_t i=0; i<first_idx; ++i) {
             if(s.channel_masks[i])
                 ++new_first_idx;
         }
+        // Assume all samples we want are present, so the last_idx is just the first_idx plus the difference
         size_t new_last_idx = new_first_idx + last_idx - first_idx;
         assert(source_trigger->samples.size() > new_first_idx and source_trigger->samples.size() >= new_last_idx);
+        // Copy all the samples in the specified range
         size_t n_channels = new_last_idx - new_first_idx;
         output_samples->reserve(output_samples->size() + n_channels);
         for(size_t i=new_first_idx; i<new_last_idx; ++i) {
             output_samples->emplace_back(source_trigger->samples[i]);
         }
-        // std::copy(source_trigger->samples.begin() + new_first_idx, source_trigger->samples.begin() + new_last_idx, std::back_inserter(*static_cast<boost::shared_ptr<std::vector<I3Vector<uint16_t>>>>(output_samples)));
     }
 }
 
@@ -647,6 +682,7 @@ inline void merge_empty_trigger(
         boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers,
         size_t n_channels,
         bool fill_computer_time = false) {
+    // Append an empty trigger to the output
     CCMAnalysis::Binary::CCMTrigger & o = (*output_triggers)[0];
     std::fill_n(std::back_inserter(o.channel_sizes), n_channels, 0);
     std::fill_n(std::back_inserter(o.channel_masks), n_channels, 0);
@@ -670,6 +706,7 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
     boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers = boost::make_shared<I3Vector<CCMAnalysis::Binary::CCMTrigger>>(1);
     std::vector<std::vector<long double>> times;
     times.resize(n_daqs);
+    // Fill the times from current frame indices
     long double min_time = std::numeric_limits<long double>::infinity();
     bool all_bad = true;
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
@@ -687,8 +724,10 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
         }
     }
 
+    // Check if we have run out of triggers
     if(all_bad or std::isinf(min_time))
         return {nullptr, nullptr};
+
     std::vector<std::vector<int>> state(n_daqs);
     bool is_incomplete = false;
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
@@ -711,8 +750,10 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
                 merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
                 state[daq_idx].push_back(2);
             } else {
+                // Fill the trigger output from the appropriate input
                 CCMAnalysis::Binary::CCMTriggerReadoutConstPtr tr = frame_cache[daq_idx][frame_idx]->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
                 merge_triggers(output_samples, output_triggers, tr, board_idx, last_idx, next_idx, fill_computer_time);
+                // Grab the next trigger
                 bool res = NextTrigger(daq_idx, board_idx);
                 if(not res) {
                     times[daq_idx][board_idx] = std::numeric_limits<long double>::infinity();
@@ -727,6 +768,7 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
     }
     if(is_incomplete)
         ++incomplete_counter;
+    // Clear out frames that can no longer be referenced
     ClearUnusedFrames();
     return {output_samples, output_triggers};
 }
@@ -750,6 +792,7 @@ void MergedSource::Configure() {
     GetParameter("MaxTimeDiff", max_time_diff);
     max_delta = std::ceil(max_time_diff / 8.0);
 
+    // Compute the offsets to use for trigger alignment
     offsets = compute_offsets(file_lists, max_delta);
     int64_t max_offset = 0;
     int64_t min_offset = 0;
@@ -785,6 +828,7 @@ void MergedSource::Configure() {
     ss << "\n";
     log_notice(ss.str().c_str());
 
+    // Set up all the data structures
     n_daqs = file_lists.size();
     frame_sequences.reserve(n_daqs);
 
@@ -812,21 +856,30 @@ void MergedSource::Configure() {
         }
     }
 
+    // Grab the first set of triggers
     NextTriggers();
 }
 
 void MergedSource::Process() {
+    // Push the Geometry frame and config if needed
     if(push_config) {
         PushFrame(GetConfigFrame());
         push_config = false;
     }
 
+    // Create a new frame
     I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::DAQ);
+
+    // Get the readout output
     std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>> readout = GetTriggerReadout();
+
+    // Exit if we cannot create any more output
     if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr) {
         RequestSuspension();
         return;
     }
+
+    // Put the output objects in the frame and push the frame
     frame->Put("CCMDigitalReadout", std::get<0>(readout), I3Frame::DAQ);
     frame->Put("CCMTriggers", std::get<1>(readout), I3Frame::DAQ);
     PushFrame(frame);
