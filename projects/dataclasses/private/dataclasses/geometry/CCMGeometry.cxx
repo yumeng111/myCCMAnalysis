@@ -10,13 +10,16 @@ CCMGeometry::serialize(Archive& ar, unsigned version) {
     log_fatal("Attempting to read version %u from file but running version %u of CCMGeometry class.", version, ccmgeometry_version_);
 
   ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
-  ar & make_nvp("OMGeo", omgeo);
+  ar & make_nvp("PMTGeo", pmt_geo);
+  ar & make_nvp("PMTChannelFormat", pmt_channel_map);
+  ar & make_nvp("TriggerChannelMap", trigger_channel_map);
+  ar & make_nvp("TriggerCopyMap", trigger_copy_map);
   ar & make_nvp("StartTime", startTime);
   ar & make_nvp("EndTime", endTime);
 }
 
 const CCMGeometry& CCMGeometry::operator=(const CCMGeometry& geometry) {
-  omgeo = geometry.omgeo;
+  pmt_geo = geometry.pmt_geo;
   startTime = geometry.startTime;
   endTime = geometry.endTime;
 

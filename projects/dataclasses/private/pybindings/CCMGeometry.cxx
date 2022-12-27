@@ -46,7 +46,7 @@ void register_CCMGeometry()
     // CCMGeometry
     //
     bp::class_<CCMGeometry, bp::bases<I3FrameObject>, boost::shared_ptr<CCMGeometry> >("CCMGeometry")
-    #define GEOMPROPS (omgeo)(startTime)(endTime)
+    #define GEOMPROPS (pmt_geo)(pmt_channel_map)(trigger_channel_map)(trigger_copy_map)(startTime)(endTime)
     BOOST_PP_SEQ_FOR_EACH(WRAP_RW_RECASE, CCMGeometry, GEOMPROPS )
     #undef GEOMPROPS
     .def(bp::dataclass_suite<CCMGeometry>())
