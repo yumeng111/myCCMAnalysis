@@ -9,8 +9,6 @@ This code is very long, and should be split into a number of seperate portions e
 This version is the current best fit for the calibration data I have. It includes the layered detector that clouds the outer edges of the upper portions of the Fiducial volume, the lower absorption lengths near the bottom, the bottom 'foil cone' that helps match data and represents the LED and foil distortions in the area, the less effective TPB for the foils as opposed to the PMTs. It also uses a number of tricks that the other versions don't to make it easier to change a number of variables without messing up their relations (as the best fit is not yet a perfect fit, I am continuing to improve it constantly and thus this version will not likely stay the best for long). 
  */
 
-#include <sstream>
-
 #include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 #include "CCMAnalysis/CCMDetectorSimulation/detectorMessenger.hh"
 
@@ -42,6 +40,7 @@ This version is the current best fit for the calibration data I have. It include
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4SubtractionSolid.hh"
+#include <sstream>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -302,8 +301,8 @@ void detectorConstruction::DefineMaterials(){
   TPBProp = new G4MaterialPropertiesTable();
   TPBProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
   TPBProp->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, nTPBEntries);
-  TPBProp->AddConstProperty("WLSTIMECONSTANT", 0.01*ns);
-  //TPBProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
+  TPBProp->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
+  TPBProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
   //allows geant to produce multiple photons per incoming, with the mean number being 1.2. if off WLSabsorbed to emitted is 1:1
   tPB->SetMaterialPropertiesTable(TPBProp);
   
@@ -311,7 +310,8 @@ void detectorConstruction::DefineMaterials(){
   TPBsProp = new G4MaterialPropertiesTable();
   TPBsProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
   TPBsProp->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, nTPBEntries);
-  TPBsProp->AddConstProperty("WLSTIMECONSTANT", 0.01*ns);
+  TPBsProp->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
+  TPBsProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
   tPBhundred->SetMaterialPropertiesTable(TPBsProp);
 
   DefineTpb(foilEff,tpbEff,tpbAbs);
@@ -354,10 +354,10 @@ void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double fiv
   G4double mult5 = mult;
 
   G4double lar_Energy_abs[47];
-  //G4double lar_wlv_abs[47];
+  G4double lar_wlv_abs[47];
   for (int i=0;i<47;++i){
-    //lar_wlv_abs[i] = i*20+80;
-    lar_Energy_abs[i] = (1293.847/(i*20.0+80.0))*eV;
+    lar_wlv_abs[i] = i*20+80;
+    lar_Energy_abs[i] = (1239.847/(i*20.0+80.0))*eV;
   }
   G4double lar_ABSL[47];
   G4double lar2_ABSL[47];
@@ -548,11 +548,14 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     //G4cout << "EdwardNote Defined Up to foils" << G4endl;
     
     //defines volumes for the TPB on the foils if it is on. Defines two seperate TPB volumes to distinguish the TPB on the top/bottom (unsmooth foil) from the TPB on the sides (smooth foil).
+    G4double totalH = 136.0/2.0;
+    if (ccm200) { totalH = 123.2/2.0; }
+
     if (fTPBfoilOn) {
-      fTPBSides = new G4Tubs("TPBfoil", 0*cm, (96.0*cm+thick), 68.0*cm, 0*deg, 360*deg);
+      fTPBSides = new G4Tubs("TPBfoil", 0*cm, (96.0*cm+thick), totalH*cm, 0*deg, 360*deg);
       fLogicTPB = new G4LogicalVolume(fTPBSides,tPB,"TPBfoil");//*/
       
-      fTPBBottom = new G4Tubs("TPBfoilb", 0*cm, (96.0*cm+thick), (68.0*cm+deep), 0*deg, 360*deg);
+      fTPBBottom = new G4Tubs("TPBfoilb", 0*cm, (96.0*cm+thick), (totalH*cm+deep), 0*deg, 360*deg);
       fLogicTPBb = new G4LogicalVolume(fTPBBottom,tPB,"TPBfoilb");//*/
     }
     
@@ -590,16 +593,13 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     TPBfoilOS->SetMaterialPropertiesTable(TPBfoilMPT);
 
     //define the fiducal volumes of liquid Argon.
-    fFiducialAr = new G4Tubs("Fiducial", 0*cm, 96*cm, 68.0*cm, 0*deg, 360*deg);//no ice
+    fFiducialAr = new G4Tubs("Fiducial", 0*cm, 96*cm, totalH*cm, 0*deg, 360*deg);
     fLogicFiduc = new G4LogicalVolume(fFiducialAr,lAr,"Fiducial");
 
     //defines layers for the lAr volumes, rather than having constant properties across all depths. 
     //These layers can be made as solid cylinders (0*cm to 96*cm) or as shells to modify the properties only near the outer edges (current: 70 to 96*cm)
     //each layer can have a different type of lAr (currently only two are available, but more can be added). 
     G4double innerradius = 96*cm - r5radius*cm;
-    fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, 16.0*cm, 0*deg, 360*deg);
-    fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
-
     fFiducialAr2 = new G4Tubs("Fiducial2", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
     fLogicFiduc2 = new G4LogicalVolume(fFiducialAr2,lAr,"Fiducial2");
 
@@ -609,8 +609,14 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     fFiducialAr4 = new G4Tubs("Fiducial4", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
     fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr,"Fiducial4");//*/
 
+    totalH = totalH - 36.0;
+    G4double remainder = totalH/2.0;
+    G4double row1place = (totalH+36.0)-remainder;//134 -> 52
+    fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, remainder*cm, 0*deg, 360*deg);
+    fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
+
     //The bottom layer is different from the prior (best fit so far). It has much cloudier lAR and a much larger contaminated ring.
-    fFiducialAr5 = new G4Tubs("Fiducial5", 75*cm, 96*cm, 15.0*cm, 0*deg, 360*deg);
+    fFiducialAr5 = new G4Tubs("Fiducial5", 75*cm, 96*cm, remainder*cm, 0*deg, 360*deg);
     fLogicFiduc5 = new G4LogicalVolume(fFiducialAr5,lAr,"Fiducial5");
 
     //G4cout << "EdwardNote Defined TPB OS table" << G4endl;
@@ -648,7 +654,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     //if the reflector is on, place it.
     if (fReflectorOn) {
       //Places reflector if reflector is on
-      G4Tubs* ffoilSides = new G4Tubs("ptfefoil", 0*cm, 96.05*cm, 68.05*cm, 0*deg, 360*deg);
+      G4Tubs* ffoilSides = new G4Tubs("ptfefoil", 0*cm, 96.05*cm, (totalH+0.05)*cm, 0*deg, 360*deg);
       G4LogicalVolume* fLogicfoil = new G4LogicalVolume(ffoilSides,ptfe,"ptfefoil");
       G4VPhysicalVolume* fPhysfoil = new G4PVPlacement(0,
 						       G4ThreeVector(0,0,0),
@@ -659,28 +665,6 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 						       0,
 						       true);
 
-      //defines a second reflector optical surface for different reflectivity in certain areas (was used for top and bottom in earlier tests). Is left in for convenience.
-      G4OpticalSurface *refl2foilOS = new G4OpticalSurface("refl2");
-      
-      refl2foilOS->SetModel(glisur); //Optical model                    
-      refl2foilOS->SetType(dielectric_metal);
-      refl2foilOS->SetFinish(ground);
-      refl2foilOS->SetSigmaAlpha(0.01);
-      
-      G4double vs2rf = vsRf;
-
-      G4MaterialPropertiesTable *refl2foilMPT = new G4MaterialPropertiesTable();
-      G4double refl2foilOSReflect[nAcTefEntries] =
-	{vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, 
-	 vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, vs2rf, 
-	 vs2rf, vs2rf, vs2rf, vs2rf, uvRf, uvRf, uvRf, 
-	 uvRf, uvRf, uvRf, uvRf};
-      refl2foilMPT->AddProperty("REFLECTIVITY", reflfoilOSEnergy, refl2foilOSReflect, nAcTefEntries);
-      refl2foilMPT->AddProperty("EFFICIENCY", reflfoilOSEnergy, reflfoilOSEff, nAcTefEntries);
-      refl2foilOS->SetMaterialPropertiesTable(refl2foilMPT);
-
-      //G4cout << "EdwardNote Defined Reflector" << G4endl;
-      
       //if TPB foil is on place it and the fiducial volume within. 
       if (fTPBfoilOn){
 	//TPB and Fiducial for both TPB foils and Reflector On
@@ -704,8 +688,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 							0,
 							true);//*/
 
-	G4double sidedown = 10.0;
-        G4double sideplace = (68.0-sidedown)*cm;
+	/*G4double sidedown = 10.0;
+        G4double sideplace = (totalH-sidedown)*cm;
         G4double inrad = 96.0*cm+thick/4.0;
         G4Tubs* ffoilDown = new G4Tubs("ptfedown", inrad, (96.0*cm+thick), sidedown*cm, 0*deg, 360*deg);
         G4LogicalVolume* fLogicDown = new G4LogicalVolume(ffoilDown,ptfe,"ptfedown");
@@ -717,6 +701,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
                                                          false,
                                                          0,
                                                          true);
+	new G4LogicalBorderSurface("refldown", fPhysTPB, fPhysDown, reflfoilOS);//*/
 
 	
 	lArFiducial = new G4PVPlacement(0,
@@ -730,8 +715,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
 	//lAr to tpb optical surfaces, for both top/bottom and side layers
 	new G4LogicalBorderSurface("refl", fPhysTPB, fPhysfoil, reflfoilOS);
-        new G4LogicalBorderSurface("refldown", fPhysTPB, fPhysDown, reflfoilOS);
-	new G4LogicalBorderSurface("refl2", fPhysTPBb, fPhysfoil, refl2foilOS);
+ 	new G4LogicalBorderSurface("refl2", fPhysTPBb, fPhysfoil, reflfoilOS);
 
 	new G4LogicalBorderSurface("TPB", lArFiducial, fPhysTPB, TPBfoilOS);
 	new G4LogicalBorderSurface("TPB2", fPhysTPB, lArFiducial, TPBfoilOS);
@@ -742,7 +726,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	//adds in the layers of lAr if they are enabled. They are by default, but this can be changed.
 	if (fLayers) {
 	  lArFiducial1 = new G4PVPlacement(0,
-					   G4ThreeVector(0*cm, 0*cm, 52.000*cm),
+					   G4ThreeVector(0*cm, 0*cm, row1place*cm),
 					   fLogicFiduc1,
 					   "Fiducial1",
 					   fLogicFiduc,
@@ -778,7 +762,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 					   true);//*/
 	  
 	  lArFiducial5 = new G4PVPlacement(0, 
-					   G4ThreeVector(0*cm, 0*cm, -51.000*cm),
+					   G4ThreeVector(0*cm, 0*cm, -1*row1place*cm),
 					   fLogicFiduc5,
 					   "Fiducial5",
 					   fLogicFiduc,
@@ -787,9 +771,9 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 					   true);//*/
 	  
 	  //Adds a small cone on the bottom near the center. makes the simulation better fit data and matches the LED in reality.
-	  G4double bconewidth = conewide*cm;
+	  /*G4double bconewidth = conewide*cm;
 	  G4double bconeheight = bconewidth*conehigh;
-	  G4double bconeplace = bconeheight-68*cm;
+	  G4double bconeplace = bconeheight-totalH*cm;
 	  
 	  G4Cons* foilbcone = new G4Cons("ptfebcone", 0*cm, bconewidth, 0*cm, 0*cm, bconeheight, 0*deg, 360*deg);
 	  G4LogicalVolume* fFoilBcone = new G4LogicalVolume(foilbcone, ptfe, "ptfebcone");
@@ -800,7 +784,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 							      G4ThreeVector(0*cm, 0*cm, bconeplace),
 							      fTPBBcone,
 							      "tpbbcone",
-							      fLogicFiduc,
+							      fLogicFiduc5,
 							      false,
 							      0,
 							      true);
@@ -817,8 +801,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	  //Layers require a lot of new border surfaces. Thus they are established.
 	  new G4LogicalBorderSurface("reflbcone", tpbBconePhys, foilBconePhys, reflfoilOS);
 	  
-	  new G4LogicalBorderSurface("TPBbcone", lArFiducial, tpbBconePhys, TPBfoilOS);
-	  new G4LogicalBorderSurface("TPB2bcone", tpbBconePhys, lArFiducial, TPBfoilOS);//*/
+	  new G4LogicalBorderSurface("TPBbcone", lArFiducial5, tpbBconePhys, TPBfoilOS);
+	  new G4LogicalBorderSurface("TPB2bcone", tpbBconePhys, lArFiducial5, TPBfoilOS);//*/
 	  
 	  new G4LogicalBorderSurface("1-TPB", lArFiducial1, fPhysTPB, TPBfoilOS);
 	  new G4LogicalBorderSurface("1-TPB2", fPhysTPB, lArFiducial1, TPBfoilOS);
@@ -832,6 +816,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	  new G4LogicalBorderSurface("4-TPB2", fPhysTPB, lArFiducial4, TPBfoilOS);//*/
 	  new G4LogicalBorderSurface("5-TPB", lArFiducial5, fPhysTPB, TPBfoilOS);
 	  new G4LogicalBorderSurface("5-TPB2", fPhysTPB, lArFiducial5, TPBfoilOS);//*/
+	  new G4LogicalBorderSurface("5-TPBb", lArFiducial5, fPhysTPBb, TPBfoilOS);
+	  new G4LogicalBorderSurface("5-TPBb2", fPhysTPBb, lArFiducial5, TPBfoilOS);//*/
 	
 	  //G4cout << "EdwardNote Defined Placed foil and fiducial" << G4endl;
 
@@ -938,7 +924,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       if (rodHeight > 30*cm) {
 	coneheight = 3.87*cm;
       }
-      G4double coneplace = 68*cm-coneheight;
+      G4double coneplace = totalH*cm-coneheight;
       G4double topwide = 15.2*cm;
       
       G4Cons* foilcone = new G4Cons("ptfecone", 1.8*cm, 1.81*cm, 1.8*cm, topwide, coneheight, 0*deg, 360*deg);
@@ -1081,24 +1067,29 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
       //define the pmtzz value to translate row 1 (i/24=0) to the top and row 5 (i/24=4) to the bottom
       zs = 2-(i/24);
-      pmtzz = zs*23.11;
+      pmtzz = zs*22.86;
       
       //iterate the angle according to the interval
       angle += itang;
 
-      //determine if the pmt is to be coated or uncoated. Rows 1,3,and 5 are coated
-      if (zs == -2 || zs == 2 || zs == 0) {
+      //define if PMTs are coated or uncoated.
+      if (ccm200) {
+	//start all pmts as coated and uncoated the appropriate ones
 	pmtcoat = true;
-      } else if ((i%24)%2 != 0 && zs == -1) {
-	//as are the evens on row 4 (remember that the iterator goes from 0 to 23, while the names go from 1 to 24).
+	//Uncoated: Row 1: 2,6,10,14,18,22. Row2: 4,8,12,16,20,24. Row4: 1,5,9,13,17,21. Row5: 3,7,11,15,19,23.
+	//Iterator %24 = column-1.
+	if ((i%24)%4 == 1 && zs = 2)  { pmtcoat = false; }
+	if ((i%24)%4 == 3 && zs = 1)  { pmtcoat = false; }
+	if ((i%24)%4 == 0 && zs = -1) { pmtcoat = false; }
+	if ((i%24)%4 == 2 && zs = -2) { pmtcoat = false; }
+      }
+      else {
+	//start all pmts as coated and uncoated the selected.
 	pmtcoat = true;
-      } else if ((i%24)%2 == 0 && zs == 1) {
-	//and the odds on row 2
-	pmtcoat = true;
-      } else {
-	//the remainder are uncoated
-	pmtcoat = false;
-      }//*/
+	//uncoated the odds on row 4 and the evens on row 2. Remember iterator is column-1. 
+	else if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
+	else if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
+      }
       //for universal, uncomment this and make all pmts whatever you want.
       //pmtcoat=false;
       if (cylinderOn){//old flag for turning all pmts to uncoated for the LBOC design
@@ -1128,10 +1119,10 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       for (G4int n=0; n<npmts; ++n) {
 	if (n%2 == 0) {
 	  zs = 0;
-	  pmtzz = -68.0;
+	  pmtzz = +61.6;
 	} else { 
 	  zs = 6;
-	  pmtzz = +68.0;
+	  pmtzz = -61.6;
 	}//let 6 be bottom and 0 be top, alternating around the circle in every other position from the design of CCM220
 	
 	//Uncoated on cross1, ring 4: 7, 17, 4, 14
@@ -1172,10 +1163,11 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	//if (n%3 == 0) { pmtcoat = false; }//every third pmt in the second row is uncoated. 10 total
 	if (cylinderOn) { pmtcoat=false; }
 
-	pmtzz = -68.0;
+	pmtzz = -1*totalH;
+	//ring3 uncoated: top 301, bottom 307, 314.
 	if (n==6 || n==13) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
-	pmtzz = 68.0;
+	pmtzz = totalH;
 	if (n==0 || n==8) { 
 	  pmtcoat=false;
 	} else { pmtcoat=true; }
@@ -1200,11 +1192,12 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	//if (n%3 == 2) { pmtcoat = false; }//every second pmt in the third row is uncoated, for another 10 total and thus all 20 uncoated on the top and bottom accounted for
 	if (cylinderOn) { pmtcoat=false; }
-	
-	pmtzz = -68.0;
+
+	//ring 2 uncoated: top 209, 204, bottom 202
+	pmtzz = -1*totalH;
 	if (n==1 || n==6) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
-	pmtzz = 68.0;
+	pmtzz = totalH;
 	if (n==3 || n==8) { 
 	  pmtcoat=false;
 	} else { pmtcoat=true; }
@@ -1229,10 +1222,11 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	if (cylinderOn) { pmtcoat=false; }
 
-	pmtzz = -68.0;
+	//ring 1 uncoated: top 101, 104, bottom 103
+	pmtzz = -1*totalH;
 	if (n==2 || n==4) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
-	pmtzz = 68.0;
+	pmtzz = totalH;
 	if (n==0 || n==3) { 
 	  pmtcoat=false;
 	} else { pmtcoat=true; }
@@ -1245,55 +1239,6 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
   }//end place main volumes
 
   //G4cout << "Edwardnote Main Volume Done" << G4endl;
-
-  //This is an old artifact of the code. Once more it is left in for potential interest and guidance if one wants to make a single PMT detector again.
-  if (!mainVolOn) {//place volumes for single PMT test with coating (make sure to correct placePMT if this is false
-    fArgonOuter = new G4Tubs("Cryo", 0*cm, 12*cm, 13*cm, 0*deg, 360*deg);
-    fLogicArout = new G4LogicalVolume(fArgonOuter,lAr, "Cryo");
-    new G4PVPlacement(0,
-		      G4ThreeVector(0,0,0),
-		      fLogicArout,
-		      "Cryo",
-		      wLog,
-		      false,
-		      0,
-		      true);
-    
-
-    fInnerFrame = new G4Tubs("Frame",0*cm, 11*cm, 12*cm, 0*deg, 360*deg);
-    fLogicFrame = new G4LogicalVolume(fInnerFrame,alum, "Frame");
-    new G4PVPlacement(0,
-		      G4ThreeVector(0,0,0),
-		      fLogicFrame,
-		      "Frame",
-		      fLogicArout,
-		      false,
-		      0,
-		      true);
-
-
-    fFiducialAr = new G4Tubs("Fiducial", 0*cm, 10.22*cm, 11*cm, 0*deg, 360*deg);
-    fLogicFiduc = new G4LogicalVolume(fFiducialAr,lAr,"Fiducial");
-    lArFiducial = new G4PVPlacement(0,
-				    G4ThreeVector(0,0,0),
-				    fLogicFiduc,
-				    "Fiducial",
-				    fLogicFrame,
-				    false,
-				    0,
-				    true);
-
-    
-
-    G4String pmtnm = "coated";
-    G4double pmtxx = 0.0;
-    G4double pmtyy = 0.0;
-    G4double pmtzz = -11.0;
-    G4bool pmtcoat = true;
-    placePMT(pmtnm,pmtxx,pmtyy,pmtzz,pmtcoat);
-  }
-
-  //G4cout << "Edwardnote Returning world" << G4endl;
 
   return wPhys;
 }
@@ -1316,6 +1261,13 @@ void detectorConstruction::placePMT(G4String name,
     fin_angle = 360*deg;
     vert_angle= 90*deg;
   }
+
+  G4double totalH = 136.0/2.0;
+  if (ccm200) { totalH = 123.2/2.0; }
+  
+  totalH = totalH - 36.0;
+  G4double remainder = totalH/2.0-0.005;
+  G4double row1place = (totalH+36.0)-remainder;//134 -> 52
 
   //set the outer radii of the glass and the thickness of the TPB.
   G4double radout = 10.2*cm;
@@ -1383,7 +1335,7 @@ void detectorConstruction::placePMT(G4String name,
     //if Layered detector, place the TPB spheres in the proper fiducial volume layer
     if (fLayers) {
       if (pmt_z > 40) {
-	pmt_z = pmt_z-52.0;
+	pmt_z = pmt_z-row1place;
 	trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
 	
 	G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
@@ -1468,7 +1420,7 @@ void detectorConstruction::placePMT(G4String name,
 				   tpbCoat);
 	//*/
       } else {//*/
-	pmt_z = pmt_z+51.9;
+	pmt_z = pmt_z+row1place;
 	trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
 
 	G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
@@ -1752,6 +1704,7 @@ void detectorConstruction::SetDefaults() {
   fAr39=false;
   fCosmic=false;
   darkMatter=false;
+  alp=false;
   fLayers=true;
   ccm200 = false;
   conewide = 7.555;
@@ -1774,7 +1727,7 @@ void detectorConstruction::SetDefaults() {
 
 //method to randomize all variables without correlations
 void detectorConstruction::SetRandoms() {
-  conewide = G4RandFlat::shoot(3.5,9.0);
+  /*conewide = G4RandFlat::shoot(3.5,9.0);
   conehigh = G4RandFlat::shoot(0.45,0.65);
   ultra = G4RandFlat::shoot(20.0,80.0);
   threehun = G4RandFlat::shoot(1000.0,1600.);
@@ -1782,10 +1735,19 @@ void detectorConstruction::SetRandoms() {
   topthick = G4RandFlat::shoot(1.0,50.0);
   fifth = G4RandFlat::shoot(10.0,50.0);
   r5radius = G4RandFlat::shoot(20.0,60.0);
-  foilEff = G4RandFlat::shoot(0.30,0.60);
-  G4double base = G4RandFlat::shoot(20.0,70.0);
+  foilEff = G4RandFlat::shoot(0.30,0.60);*/
+
+  //ccm200 variable set:
+  G4double base = G4RandFlat::shoot(20.0,70.0);//AbsLAr < 200 nm
+  ultra = G4RandFlat::shoot(20.0,200.0);// AbsLAr 200-300 nm
+  threehun = G4RandFlat::shoot(1000.0,1600.);//AbsLAr 300-400 nm
+  G4double mult = G4RandFlat::shoot(1000,4000.0);//AbsLAr 400+ nm
+  fifth = G4RandFlat::shoot(50.0,100.0);//AbsLAr modifier top row
   
-  G4double mult = 2800.0;
+  tpbEff = G4RandFlat::shoot(0.80,0.99);//pmt tpb eff
+  foilEff = G4RandFlat::shoot(0.70,0.99);//foil tpb eff
+  tpbAbs = G4RandFlat::shoot(0.80,0.99);//all tpb abs (visible light)
+  
  
   DefineLAr(base,ultra,fifth,threehun,mult);
   DefineTpb(foilEff, tpbEff, tpbAbs);
@@ -1794,7 +1756,8 @@ void detectorConstruction::SetRandoms() {
 
   std::ostringstream oss;
 
-  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
+  //oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;
+  oss << "Randoms: abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << trheehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
 
   randomized = true;
   
@@ -1855,6 +1818,18 @@ void detectorConstruction::SetDarkMatter(G4bool b) {
     lAr2_mt->AddConstProperty("YIELDRATIO",0.25);//twentyfive percent in singlet for ee
   }
   G4cout << "Setting Dark Matter to " << darkMatter << G4endl;  
+}
+//sets the alp and changes the scintillation to nuclear recoil or electronic
+void detectorConstruction::SetALP(G4bool b) {
+  alp=b;
+  if (b) {
+      lAr_mt->AddConstProperty("YIELDRATIO",0.25);//twentyfive percent in singlet for ee
+      lAr2_mt->AddConstProperty("YIELDRATIO",0.25);//twentyfive percent in singlet for ee
+  } else {
+    lAr_mt->AddConstProperty("YIELDRATIO",1.0);//all in singlet for nuclear recoil
+    lAr2_mt->AddConstProperty("YIELDRATIO",1.0);//all in singlet for nuclear recoil
+  }
+  G4cout << "Setting ALP to " << alp << G4endl;  
 }
 //sets ccm200 on or off. off defaults to ccm120
 void detectorConstruction::SetCCM200(G4bool b) {

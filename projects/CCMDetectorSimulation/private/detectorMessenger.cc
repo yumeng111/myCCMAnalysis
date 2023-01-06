@@ -75,6 +75,11 @@ detectorMessenger::detectorMessenger(detectorConstruction* detector)
   fDMCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fDMCmd->SetToBeBroadcasted(false);
 
+  fALPCmd = new G4UIcmdWithABool("/ccm/detector/alp",this);
+  fALPCmd->SetGuidance("Enable/Disable the ALP Source.");
+  fALPCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fALPCmd->SetToBeBroadcasted(false);
+
   f200Cmd = new G4UIcmdWithABool("/ccm/detector/set200",this);
   f200Cmd->SetGuidance("Enable/Disable the 200 pmt detector.");
   f200Cmd->AvailableForStates(G4State_PreInit,G4State_Idle);
@@ -147,6 +152,7 @@ detectorMessenger::~detectorMessenger()
   delete fAr39Cmd;
   delete fCosmicCmd;
   delete fDMCmd;
+  delete fALPCmd;
   delete fRodCmd;
   delete f200Cmd;
   delete fTPBfoilCmd;
@@ -180,6 +186,9 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   }
   else if (command == fDMCmd){
     fdetector->SetDarkMatter(fDMCmd->GetNewBoolValue(newValue));
+  }
+  else if (command == fALPCmd){
+    fdetector->SetALP(fALPCmd->GetNewBoolValue(newValue));
   }
   else if (command == f200Cmd){
     fdetector->SetCCM200(f200Cmd->GetNewBoolValue(newValue));
