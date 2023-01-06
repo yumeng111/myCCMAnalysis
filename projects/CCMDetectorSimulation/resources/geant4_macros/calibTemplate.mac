@@ -26,9 +26,9 @@
 #/ccm/detector/randoms
 /ccm/detector/onerand 13
 /ccm/detector/sodium true
-/ccm/detector/root tenkSodiumScan{step}
-/control/cout/setCoutFile tenkSodiumScan{step}.txt
-/run/beamOn 10000
+/ccm/detector/root tenSodiumScan{step}
+/control/cout/setCoutFile tenSodiumScan{step}.txt
+/run/beamOn 10
 #
 #
 #

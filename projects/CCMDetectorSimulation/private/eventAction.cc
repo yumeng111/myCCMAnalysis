@@ -95,7 +95,7 @@ void eventAction::EndOfEventAction(const G4Event* event)
 }
 
 //Method to AddHitInformation to the root output (used in steppingAction).
-void eventAction::AddHit( G4int row, G4int col, G4bool coat, G4double eneg, G4double time, G4double angle)
+void eventAction::AddHit( G4int row, G4int col, G4bool coat, G4double eneg, G4double time, G4double angle, G4String creatorProcess)
 {
   //test output string for matching to AddHit output.
   //G4cout << row << '\t' << col << '\t' << coat << '\t' << eneg << '\t' << time << '\t' << angle << G4endl;

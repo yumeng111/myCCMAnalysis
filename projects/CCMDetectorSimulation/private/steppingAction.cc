@@ -7,10 +7,6 @@ Adjustment to the output, perhaps to better fit the .root data style, should be 
 
 Current active functions:
  */
-
-#include <sstream>
-#include <string>
-
 #include "CCMAnalysis/CCMDetectorSimulation/steppingAction.hh"
 #include "CCMAnalysis/CCMDetectorSimulation/eventAction.hh"
 #include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
@@ -22,6 +18,8 @@ Current active functions:
 #include "G4LogicalVolume.hh"
 #include "G4UnitsTable.hh"
 #include "G4SystemOfUnits.hh"
+#include <sstream>
+#include <string>
 
 //Constructor
 steppingAction::steppingAction(eventAction* eventaction)
@@ -91,6 +89,11 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 
   //obtain the kinetic energy of the particle.
   kinEn = step->GetTrack()->GetKineticEnergy();
+  time = step->GetTrack()->GetGlobalTime();
+  if (time >= 20000*ns) {
+    step->GetTrack()->SetTrackStatus(fStopAndKill);
+    return;
+  }
 
   //if the particle is not an optical photon and is in the Fiducial volume, 
   // calculate the energy deposited during the step and output it. 
@@ -139,13 +142,13 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     angle = (2*CLHEP::pi/24)*(col-1);
     pmtx = 96*std::cos(angle);
     pmty = 96*std::sin(angle);
-    pmtz = (row-3)*23.11;
+    pmtz = (3-row)*22.86;
 
-    //get pmt location of rows 0 and 6 (bottom and top, ccm200)
+    //get pmt location of rows 0 and 6 (top and bottom, ccm200)
     if (row == 0 || row == 6) {
-      pmtz = -68.0;
+      pmtz = 61.6;
       if (row == 6) {
-	pmtz = 68.0;
+	pmtz = -61.6;
       }
       int col2 = col%100;
       row2 = col/100;
@@ -178,7 +181,9 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     xx = pos.x();
     xy = pos.y();
     xz = pos.z();
-    time = step->GetTrack()->GetGlobalTime();
+
+    //get the original process.
+    G4String creatorProcess = step->GetTrack()->GetCreatorProcess()->GetProcessName();
 
     //define the radial vector of the PMT matched to the location of photon impact.
     pmtx = xx-pmtx;
@@ -194,7 +199,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     step->GetTrack()->SetTrackStatus(fStopAndKill);
   
     //abbreviated output with only the relevant information (pmt, photon energy, time, and angle)
-    fEventAction->AddHit(row,col,coated,kinEn/eV,time/ns,dot);
+    fEventAction->AddHit(row,col,coated,kinEn/eV,time/ns,dot,creatorProcess);
     //G4cout << row << '\t' << col << '\t' << coated << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
     //G4cout << volname << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
     return;
@@ -203,7 +208,10 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 
   //If the particle is a optical photon, and has just transferred from the reflector foil on the top or bottom,
   //alter the direction to induce a slight randomness due to the unsmoothness of the foils there.
-  if ( (particlen == "opticalphoton" && volname=="TPBfoilb" && volpname == "ptfefoil") || (particlen == "opticalphoton" && volname=="tpbbcone" && volpname == "ptfebcone") ) {
+  //if ( (particlen == "opticalphoton" && volname=="TPBfoilb" && volpname == "ptfefoil") || (particlen == "opticalphoton" && volname=="tpbbcone" && volpname == "ptfebcone") ) {
+  
+  //CCM200 alter path of all photons in tpb volume of any sort. 
+  if ( (particlen == "opticalphoton" && volname.find("TPB") != std::string::npos) || (particlen == "opticalphoton" && volname.find("tpb") != std::string::npos) ) {
     const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
 
     mom = step->GetPostStepPoint()->GetMomentumDirection();
@@ -213,10 +221,15 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     
     //creates three random variables, two angles and a test.
     //the gaussian angles are for a slight rotation biased towards maintaing the same direction, 
-    G4double randwide = detector->GetUnsmooth();
-    G4double thmax = randwide/2.0;
-    G4double phi = G4RandGauss::shoot(0,randwide);
-    G4double theta = G4RandGauss::shoot(0,thmax);
+    //G4double randwide = detector->GetUnsmooth();
+    //G4double thmax = randwide/2.0;
+    //G4double phi = G4RandGauss::shoot(0,randwide);
+    //G4double theta = G4RandGauss::shoot(0,thmax);
+
+    //CCM200 randmization of photons in TPB: total random as in white paint. 
+    G4double pi = CLHEP::pi;
+    G4double phi = G4RandFlat::shoot(0.0,pi);
+    G4double theta = G4RandFlat::shoot(0.0,2*pi);
     
     //Use the two angles to calculate a new outgoing angle based on a rotation from the original
     G4double px1 = px;

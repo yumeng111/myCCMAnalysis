@@ -9,8 +9,8 @@ Sodium: setting Sodium to true creates events with the proper Sodium-22 decay ch
 Neither: setting both to false allows the creation of other kinds of initial events, 
          such as 120 keV gammas for cobalt, or neutrons/Ar-39 decay events. 
  */
-#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
-#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
+#include "primaryGenerator.hh"
+#include "detectorConstruction.hh"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
@@ -66,6 +66,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
   G4bool Laser = true;
   G4bool Ar39 = false;
   G4bool darkMatter = false;
+  G4bool alp = false;
   G4bool Cosmic = false;
   nameString = "Cobalt";
 
@@ -102,6 +103,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     Ar39 = detector->GetfAr39();
     darkMatter = detector->GetDarkMatter();
     Cosmic = detector->GetfCosmic();
+    alp = detector->GetALP();
     //    G4cout << "Primary found sodium as " << Sodium << G4endl;
   }
 
@@ -114,8 +116,10 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     shootSodium(anEvent);
   } else if (Cosmic) {
     shootCosmic(anEvent);
+  } else if (alp) {
+    shootALP(anEvent);
   }
-  
+
   //begin the primary generation for laser runs.
   if (Laser) {
     nameString = "Laser";
@@ -422,5 +426,73 @@ void primaryGenerator::shootCosmic(G4Event* anEvent) {
   fParticleGun->GeneratePrimaryVertex(anEvent);
   
   //  G4cout << "Generated Muon: " << E << "\t" << G4ThreeVector(momx,momy,momz) << '\t' << G4ThreeVector(xpos/cm,ypos/cm,zpos/cm) << G4endl; 
+
+}
+
+
+//defines a method for generating an ALP event
+void primaryGenerator::shootALP(G4Event* anEvent) {
+  //rewrites the particle energy for the particle creation
+  nameString = "ALP";
+
+  //section to define particle type
+  //find some way to switch between these
+  //G4ParticleDefinition* particle = particleTable->FindParticle(particleName="e-");
+  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+  G4String particleName;
+
+  G4ParticleDefinition* particle = particleTable->FindParticle(particleName="gamma");
+  fParticleGun->SetParticleDefinition(particle);
+
+  //method to get ALP energy from detector? /ccm/detector/alp {energy} {unit}
+  //partEneg=detector->GetALPenergy(); //move to main, pass to function
+  //
+  //alternatively, have energy input separately with '/gun/energy {energy} {unit}'
+  partEneg = fParticleGun->GetParticleEnergy()/keV;
+  
+  fParticleGun->SetParticleEnergy(partEneg*keV);
+
+  //generates random isotropic position in Fiducial volume. 
+  G4double phi = G4RandFlat::shoot(-0.28, 6.0032);
+  G4double radi = G4RandFlat::shoot(0.01, 96.0)*cm; //full radius of detector
+  zpos = G4RandFlat::shoot(-61.6,61.6)*cm; //ccm200 height dimension
+  ypos = radi*sin(phi);
+  xpos = radi*cos(phi);
+
+  //determine the location of the target -> somewhere between columns 15 and 16
+  //column 1 is at angle of 0.
+  G4double angle = (360.0/24)*(15.5-1)*CLHEP::pi/180; //angle to column 15.5
+  G4double distance = 21.0*m; //distance to target
+  G4double tx = distance*cos(angle);
+  G4double ty = distance*sin(angle);
+  G4double tz = 0.0;//assume target height equal to center of detector
+
+  //set momentum direction as straight line from target
+  G4double momx1 = xpos-tx;
+  G4double momy1 = ypos-ty;
+  G4double momz1 = zpos-tz;
+
+  //'simulate' speed of light partticle from the target to get the variable delay across the detector (delta is approx 7 ns from front to back). 
+  distance = sqrt(momx1*momx1 + momy1*momy1 + momz1*momz1);
+  G4double time = (distance)/(299792458*m/s);
+  fParticleGun->SetParticleTime(time);
+  
+  // set momentum to unit vector
+  momx1 = momx1/distance;
+  momy1 = momy1/distance;
+  momz1 = momz1/distance;
+
+  //add direction correction based on Adrian's distributions.
+  phi = 0.0;//G4RandFlat::shoot(-0.28, 6.0032);
+  G4double theta = 0.0;
+  momx = cos(theta)*momx1-sin(theta)*momy1;
+  momy = cos(phi)*sin(theta)*momx1+cos(phi)*cos(theta)*momy1-sin(phi)*momz1;
+  momz = sin(phi)*sin(theta)*momx1+sin(phi)*cos(theta)*momy1+cos(phi)*momz1;
+  
+  
+  //shoot the particle
+  fParticleGun->SetParticlePosition(G4ThreeVector(xpos, ypos, zpos));
+  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(momx, momy, momz));
+  fParticleGun->GeneratePrimaryVertex(anEvent);
 
 }
