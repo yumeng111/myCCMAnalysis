@@ -64,8 +64,6 @@ namespace detail {
     double default_start_pmt_number = 1;
     int default_num_pmts = 24;
     int default_middle_pmt_row = 3;
-    double default_pmt_row_separation = 23.11;
-    double default_row_direction = -1.0;
 
     double angle_from_cylinder_pmt_number(
             int pmt_number,
@@ -86,6 +84,8 @@ namespace detail {
     }
 
     /*
+    double default_pmt_row_separation = 23.11;
+    double default_row_direction = -1.0;
     double z_from_row_number(
             int pmt_row,
             int middle_pmt_row = default_middle_pmt_row,
