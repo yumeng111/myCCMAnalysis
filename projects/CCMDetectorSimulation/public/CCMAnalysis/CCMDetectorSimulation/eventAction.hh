@@ -34,7 +34,7 @@ public:
   virtual void BeginOfEventAction(const G4Event* event);
   virtual void EndOfEventAction(const G4Event* event);
 
-  void AddHit( G4int , G4int , G4bool , G4double , G4double , G4double );
+  void AddHit( G4int , G4int , G4bool , G4double , G4double , G4double , G4String );
 
 private:
   runAction* fRunAction;

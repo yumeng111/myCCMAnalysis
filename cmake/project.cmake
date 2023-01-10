@@ -85,15 +85,23 @@ else()
       DEPENDS ${ARG_LINKDEF} ${ROOTCINT_HEADERS}
       COMMAND ${CMAKE_BINARY_DIR}/env-shell.sh
       # rootcint found and ROOTSYS set in env-shell.sh path
-      ARGS rootcint -f ${TARGET} -c -DI3_USE_ROOT -DI3_USE_CINT ${ROOTCINT_INCLUDE_FLAGS} -p ${I3_UBER_HEADER} ${ROOTCINT_HEADERS} ${ROOTINTERNAL_HEADERS} ${ARG_LINKDEF}
+      ARGS rootcling -f ${TARGET} -c -DI3_USE_ROOT -DI3_USE_CINT ${ROOTCINT_INCLUDE_FLAGS} -p ${I3_UBER_HEADER} ${ROOTCINT_HEADERS} ${ROOTINTERNAL_HEADERS} ${ARG_LINKDEF} && sed -i "s/#include <assert.h>/#include <assert.h>\\n#include <limits>/g" ${TARGET}
       COMMENT "Generating ${TARGET} with rootcint"
       VERBATIM
       )
+  #add_custom_command(
+  #    OUTPUT ${TARGET}_SED
+  #    DEPENDS ${TARGET}
+  #    COMMAND "sed -i 's/#include <assert.h>/#include <assert.h>\n#include <limits>/g' -f ${TARGET}"
+  #    # rootcint found and ROOTSYS set in env-shell.sh path
+  #    COMMENT "Adding limits include to ${TARGET} after rootcint is run"
+  #    )
     if(${CMAKE_VERSION} VERSION_LESS "3.19.0")
       add_custom_target(
         "ROOTCINT_${ARG_LIBNAME}"
         ALL
-        DEPENDS ${TARGET})
+	DEPENDS ${TARGET})
+	#DEPENDS ${TARGET} ${TARGET}_SED)
     endif()
     get_filename_component(dict_parent_dir ${TARGET} DIRECTORY)
     install(FILES "${dict_parent_dir}/${ARG_LIBNAME}Dict_rdict.pcm"
