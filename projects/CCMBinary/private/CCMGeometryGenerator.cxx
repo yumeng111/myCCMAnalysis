@@ -61,7 +61,7 @@ void CCMGeometryGenerator::Configure() {
 }
 
 namespace detail {
-    int default_start_pmt_number = 1;
+    double default_start_pmt_number = 1;
     int default_num_pmts = 24;
     int default_middle_pmt_row = 3;
     double default_pmt_row_separation = 23.11;
@@ -69,7 +69,7 @@ namespace detail {
 
     double angle_from_cylinder_pmt_number(
             int pmt_number,
-            int start_pmt_number = default_start_pmt_number,
+            double start_pmt_number = default_start_pmt_number,
             int num_pmts = default_num_pmts) {
         return double(pmt_number - start_pmt_number) / double(num_pmts) * 2.0 * M_PI;
     }
@@ -77,7 +77,7 @@ namespace detail {
     std::pair<double, double> xy_position_from_cylinder_pmt_number(
             int pmt_number,
             double radius,
-            int start_pmt_number = default_start_pmt_number,
+            double start_pmt_number = default_start_pmt_number,
             int num_pmts = default_num_pmts,
             double angular_offset = 0.0) {
         double angle = angle_from_cylinder_pmt_number(pmt_number, start_pmt_number, num_pmts);
@@ -99,13 +99,13 @@ namespace detail {
     std::map<int, double> pmt_region_z_positions = {
         {-2, 75.00},
         {-1, 65.00},
-        {0,  61.60},
-        {1,  45.72},
-        {2,  22.86},
+        {0,  58.00},
+        {1,  46.22},
+        {2,  23.11},
         {3,   0.00},
-        {4, -22.86},
-        {5, -45.72},
-        {6, -61.60},
+        {4, -23.11},
+        {5, -46.22},
+        {6, -58.00},
         {7, -65.00},
         {8, -75.00},
     };
@@ -117,7 +117,7 @@ namespace detail {
         {2,  42.0}, //
         {3,  64.2}, //
         {4,  85.5}, // Outer ring on top/bottom
-        {5, 115.0} // Veto PMT ring
+        {5, 115.0}  // Veto PMT ring
     };
 
     // The number of possible pmt positions in each ring (not all positions will be filled)
@@ -129,7 +129,27 @@ namespace detail {
         {4, 20}, // Outer ring on top/bottom
     };
 
-    I3Position get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, int starting_pmt_number = 1, double angular_offset = 0.0) {
+    std::set<std::tuple<int, int, int>> cap_uncoated_pmts = {
+        // Ring, col, row
+        {1,  1, 0},
+        {1,  3, 0},
+        {2,  3, 0},
+        {2,  8, 0},
+        {3,  1, 0},
+        {3,  8, 0},
+        {4,  5, 0},
+        {4, 15, 0},
+        {1,  3, 6},
+        {1,  5, 6},
+        {2,  2, 6},
+        {2,  7, 6},
+        {3,  7, 6},
+        {3, 14, 6},
+        {4,  4, 6},
+        {4, 14, 6},
+    };
+
+    I3Position get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
         double z = pmt_region_z_positions[pmt_row];
         std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
                 pmt_number, 
@@ -141,16 +161,16 @@ namespace detail {
         return pos;
     }
 
-    I3Position get_pmt_wall_position(int pmt_row, int pmt_number, int starting_pmt_number = 1, double angular_offset = 0.0) {
+    I3Position get_pmt_wall_position(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
         return get_pmt_cap_position(pmt_row, 0, pmt_number, starting_pmt_number, angular_offset);
     }
 
-    I3Position get_pmt_veto_position(int pmt_row, int pmt_number, int starting_pmt_number = 23, double angular_offset = (0.5 / 180.0 * M_PI)) {
+    I3Position get_pmt_veto_position(int pmt_row, int pmt_number, double starting_pmt_number = 0.5, double angular_offset = 0.0) {
         int pmt_veto_ring = 5;
         return get_pmt_cap_position(pmt_row, pmt_veto_ring, pmt_number, starting_pmt_number, angular_offset);
     }
 
-    I3Orientation get_pmt_wall_orientation(int pmt_row, int pmt_number, int starting_pmt_number = 1, double angular_offset = 0.0) {
+    I3Orientation get_pmt_wall_orientation(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
         I3Position pos = get_pmt_wall_position(pmt_row, pmt_number, starting_pmt_number, angular_offset);
         I3Position dir = I3Position(0, 0, 0) - pos;
         dir.Normalize();
@@ -158,7 +178,7 @@ namespace detail {
         return I3Orientation(dir.GetX(), dir.GetY(), dir.GetZ(), up.GetX(), up.GetY(), up.GetZ());
     }
 
-    I3Orientation get_pmt_cap_orientation(int pmt_row, int ring_number, int pmt_number, int starting_pmt_number = 1, double angular_offset = 0.0) {
+    I3Orientation get_pmt_cap_orientation(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
         I3Position pos = get_pmt_cap_position(pmt_row, ring_number, pmt_number, starting_pmt_number, angular_offset);
         I3Position up = I3Position(0, 0, 0) - pos;
         up.Normalize();
@@ -167,7 +187,7 @@ namespace detail {
         return I3Orientation(dir.GetX(), dir.GetY(), dir.GetZ(), up.GetX(), up.GetY(), up.GetZ());
     }
 
-    I3Orientation get_pmt_veto_orientation(int pmt_row, int pmt_number, double up_down, int starting_pmt_number = 23, double angular_offset = (0.5 / 180.0 * M_PI)) {
+    I3Orientation get_pmt_veto_orientation(int pmt_row, int pmt_number, double up_down, double starting_pmt_number = 0.5, double angular_offset = 0.0) {
         I3Position pos = get_pmt_veto_position(pmt_row, pmt_number, starting_pmt_number, angular_offset);
         I3Position up = I3Position(0, 0, 0) - pos;
         up.Normalize();
@@ -176,12 +196,13 @@ namespace detail {
         return I3Orientation(dir.GetX(), dir.GetY(), dir.GetZ(), up.GetX(), up.GetY(), up.GetZ());
     }
 
-    std::tuple<I3Position, I3Orientation, CCMPMTKey> ParsePMT8inPosition(std::string position_string) {
+    std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> ParsePMT8inPosition(std::string position_string) {
         I3Position position;
         I3Orientation orientation;
         CCMPMTKey key;
-        if(position_string.size() < 2)
-            throw std::runtime_error("PMT position string must be at least 2 characters long: " + position_string);
+        CCMOMGeo::OMType omtype = CCMOMGeo::OMType::CCM8inCoated;
+        if(position_string.size() < 4)
+            throw std::runtime_error("PMT position string must be at least 4 characters long: " + position_string);
         if(position_string[0] == 'c') {
             size_t r_pos = position_string.find("r");
             if(r_pos == std::string::npos)
@@ -200,18 +221,27 @@ namespace detail {
                     if(p.first < ring and p.first > 0)
                         pmt_number += p.second;
                 pmt_number += col;
+                std::tuple<int, int, int> cap_coated_key = {ring, col, row};
+                if(cap_uncoated_pmts.count(cap_coated_key) > 0)
+                    omtype = CCMOMGeo::OMType::CCM8inUncoated;
             } else {
                 int col = std::atoi(position_string.substr(1, r_pos - 1).c_str());
                 row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
                 position = get_pmt_wall_position(row, col);
                 orientation = get_pmt_wall_orientation(row, col);
                 pmt_number = col;
+                if( (row ==  2 and col % 4 == 1) or
+                    (row ==  1 and col % 4 == 3) or
+                    (row == -1 and col % 4 == 0) or
+                    (row == -2 and col % 4 == 2)) {
+                    omtype = CCMOMGeo::OMType::CCM8inUncoated;
+                }
             }
             key = CCMPMTKey(row, pmt_number);
         } else {
             throw std::runtime_error("PMT position must start with \"C\": " + position_string);
         }
-        return {position, orientation, key};
+        return {position, orientation, key, omtype};
     }
 
 /* Regions:
@@ -226,41 +256,42 @@ namespace detail {
  * Row: 0 cylinder top
  * Row: -1 VCT on top
  * */
-    std::tuple<I3Position, I3Orientation, CCMPMTKey> ParsePMT1inPosition(std::string position_string) {
+    std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> ParsePMT1inPosition(std::string position_string) {
         I3Position position;
         I3Orientation orientation;
         CCMPMTKey key;
+        CCMOMGeo::OMType omtype = CCMOMGeo::OMType::CCM1in;
         if(position_string[0] == 'v') {
             int row;
             double up_down;
-            size_t pos;
-            if((pos = position_string.find("vct")) == 0) {
-                pos += 3;
+            size_t char_pos;
+            if((char_pos = position_string.find("vct")) == 0) {
+                char_pos += 3; // Skip the VCT chars
                 row = -1;
-                up_down = -1;
-            } else if((pos = position_string.find("vcb")) == 0) {
-                pos += 3;
+                up_down = -1; // Pointing down
+            } else if((char_pos = position_string.find("vcb")) == 0) {
+                char_pos += 3; // Skip the VCB chars
                 row = 7;
-                up_down = 1;
-            } else if((pos = position_string.find("vt")) == 0) {
-                pos += 2;
+                up_down = 1; // Pointing up
+            } else if((char_pos = position_string.find("vt")) == 0) {
+                char_pos += 2; // Skip the VT chars
                 row = 8;
-                up_down = 1;
-            } else if((pos = position_string.find("vb")) == 0) {
-                pos += 2;
+                up_down = 1; // Pointing up
+            } else if((char_pos = position_string.find("vb")) == 0) {
+                char_pos += 2; // Skip the VB chars
                 row = 8;
-                up_down = -1;
+                up_down = -1; // Pointing down
             } else {
                 throw std::runtime_error("PMT position string must start with \"VCT\", \"VCB\", \"VT\", or \"VB\": " + position_string);
             }
-            int pmt_number = std::atoi(position_string.substr(pos, std::string::npos).c_str());
+            int pmt_number = std::atoi(position_string.substr(char_pos, std::string::npos).c_str());
             position = get_pmt_veto_position(row, pmt_number);
             orientation = get_pmt_veto_orientation(row, pmt_number, up_down);
             key = CCMPMTKey(row, pmt_number);
         } else {
             throw std::runtime_error("PMT position string must start with \"V\": " + position_string);
         }
-        return {position, orientation, key};
+        return {position, orientation, key, omtype};
     }
 }
 
@@ -309,26 +340,32 @@ void CCMGeometryGenerator::Process() {
 
             if(type == detail::tolower("PMT 1in")) {
                 is_sensor = true;
-                std::tuple<I3Position, I3Orientation, CCMPMTKey> p = detail::ParsePMT1inPosition(id);
+                std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT1inPosition(id);
                 position = std::get<0>(p);
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
+                omtype = std::get<3>(p);
             } else if(type == detail::tolower("PMT 8in")) {
                 is_sensor = true;
-                std::tuple<I3Position, I3Orientation, CCMPMTKey> p = detail::ParsePMT8inPosition(id);
+                std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT8inPosition(id);
                 position = std::get<0>(p);
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
+                omtype = std::get<3>(p);
             } else if(type == detail::tolower("EJ")) {
                 is_sensor = true;
+                omtype = CCMOMGeo::OMType::EJ301;
             } else if(type == detail::tolower("EJ301")) {
                 is_sensor = true;
+                omtype = CCMOMGeo::OMType::EJ301;
             } else if(type == detail::tolower("Flight Path 3 Monitor")) {
                 is_sensor = true;
+                omtype = CCMOMGeo::OMType::EJ301;
             } else if(type == detail::tolower("Trigger Copy")) {
                 is_trigger = true;
             } else if(type == detail::tolower("BCM Monitor")) {
                 is_sensor = true;
+                omtype = CCMOMGeo::OMType::BeamCurrentMonitor;
             } else if(type == detail::tolower("BEAM Trigger")) {
                 is_trigger = true;
             } else if(type == detail::tolower("STROBE Trigger")) {
