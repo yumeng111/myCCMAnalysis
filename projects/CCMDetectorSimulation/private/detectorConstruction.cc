@@ -1078,16 +1078,15 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	//Uncoated: Row 1: 2,6,10,14,18,22. Row2: 4,8,12,16,20,24. Row4: 1,5,9,13,17,21. Row5: 3,7,11,15,19,23.
 	//Iterator %24 = column-1.
-	if ((i%24)%4 == 1 && zs = 2)  { pmtcoat = false; }
-	if ((i%24)%4 == 3 && zs = 1)  { pmtcoat = false; }
-	if ((i%24)%4 == 0 && zs = -1) { pmtcoat = false; }
-	if ((i%24)%4 == 2 && zs = -2) { pmtcoat = false; }
-      }
-      else {
+	if (((i%24)%4 == 1) && zs == 2)  { pmtcoat = false; }
+	if (((i%24)%4 == 3) && zs == 1)  { pmtcoat = false; }
+	if (((i%24)%4 == 0) && zs == -1) { pmtcoat = false; }
+	if (((i%24)%4 == 2) && zs == -2) { pmtcoat = false; }
+    } else {
 	//start all pmts as coated and uncoated the selected.
 	pmtcoat = true;
 	//uncoated the odds on row 4 and the evens on row 2. Remember iterator is column-1. 
-	else if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
+	if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
 	else if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
       }
       //for universal, uncomment this and make all pmts whatever you want.
@@ -1757,7 +1756,7 @@ void detectorConstruction::SetRandoms() {
   std::ostringstream oss;
 
   //oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;
-  oss << "Randoms: abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << trheehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
+  oss << "Randoms: abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << threehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
 
   randomized = true;
   

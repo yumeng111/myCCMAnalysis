@@ -13,6 +13,7 @@
  *
  *-----------------------------------------------------------*/
 
+#include <limits>
 #include <TProcessID.h>
 #include <cstdlib>
 #include <cstring>
