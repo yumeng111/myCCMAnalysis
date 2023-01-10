@@ -30,10 +30,12 @@
  *  
  */
 #include <string>
+#include <memory>
 
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/filter/zstd.hpp>
 #include <boost/iostreams/constants.hpp>
 #include <boost/iostreams/categories.hpp>
 #include <boost/iostreams/device/file.hpp>
@@ -99,7 +101,7 @@ namespace I3 {
         else if (ends_with(filename,".zst")){
 #ifdef I3_WITH_ZSTD
 #if(BOOST_VERSION >= 107000)
-          ifs.push(io::basic_zstd_decompressor());
+          ifs.push(io::basic_zstd_decompressor<std::allocator<char>>());
 #else
           ifs.push(zstd_decompressor());
 #endif
