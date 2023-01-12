@@ -117,7 +117,8 @@ namespace detail {
         {2,  42.0}, //
         {3,  64.2}, //
         {4,  85.5}, // Outer ring on top/bottom
-        {5, 115.0}  // Veto PMT ring
+        {5, 101.6}  // Veto VT and VB rings
+        {6, 111.6}  // Veto VCT and VCB rings
     };
 
     // The number of possible pmt positions in each ring (not all positions will be filled)
@@ -143,10 +144,10 @@ namespace detail {
         {1,  5, 6},
         {2,  2, 6},
         {2,  7, 6},
-        {3,  7, 6},
-        {3, 14, 6},
-        {4,  4, 6},
-        {4, 14, 6},
+        {3,  6, 6},
+        {3, 13, 6},
+        {4,  2, 6},
+        {4, 12, 6},
     };
 
     I3Position get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
@@ -166,7 +167,11 @@ namespace detail {
     }
 
     I3Position get_pmt_veto_position(int pmt_row, int pmt_number, double starting_pmt_number = 0.5, double angular_offset = 0.0) {
-        int pmt_veto_ring = 5;
+        int pmt_veto_ring;
+        if(pmt_row >= -1 and pmt_row <= 7)
+            pmt_veto_ring = 5;
+        else
+            pmt_veto_ring = 6;
         return get_pmt_cap_position(pmt_row, pmt_veto_ring, pmt_number, starting_pmt_number, angular_offset);
     }
 
@@ -275,7 +280,7 @@ namespace detail {
                 up_down = 1; // Pointing up
             } else if((char_pos = position_string.find("vt")) == 0) {
                 char_pos += 2; // Skip the VT chars
-                row = 8;
+                row = -2;
                 up_down = 1; // Pointing up
             } else if((char_pos = position_string.find("vb")) == 0) {
                 char_pos += 2; // Skip the VB chars
