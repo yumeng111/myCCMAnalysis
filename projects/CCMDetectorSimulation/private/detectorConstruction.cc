@@ -1097,6 +1097,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	//Uncoated: Row 1: 2,6,10,14,18,22. Row2: 4,8,12,16,20,24. Row4: 1,5,9,13,17,21. Row5: 3,7,11,15,19,23.
 	//Iterator %24 = column-1.
+<<<<<<< HEAD
 	if ((i%24)%4 == 1 && zs == 2)  { pmtcoat = false; }
 	if ((i%24)%4 == 3 && zs == 1)  { pmtcoat = false; }
 	if ((i%24)%4 == 0 && zs == -1) { pmtcoat = false; }
@@ -1108,6 +1109,18 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	//uncoated the odds on row 4 and the evens on row 2. Remember iterator is column-1. 
         if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
 	if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
+=======
+	if (((i%24)%4 == 1) && zs == 2)  { pmtcoat = false; }
+	if (((i%24)%4 == 3) && zs == 1)  { pmtcoat = false; }
+	if (((i%24)%4 == 0) && zs == -1) { pmtcoat = false; }
+	if (((i%24)%4 == 2) && zs == -2) { pmtcoat = false; }
+    } else {
+	//start all pmts as coated and uncoated the selected.
+	pmtcoat = true;
+	//uncoated the odds on row 4 and the evens on row 2. Remember iterator is column-1. 
+	if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
+	else if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
+>>>>>>> 93c022780794761e9f846ea70423d05ce958998a
       }
       //for universal, uncomment this and make all pmts whatever you want.
       //pmtcoat=false;
