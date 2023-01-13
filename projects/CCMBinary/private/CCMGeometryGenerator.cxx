@@ -117,7 +117,7 @@ namespace detail {
         {2,  42.0}, //
         {3,  64.2}, //
         {4,  85.5}, // Outer ring on top/bottom
-        {5, 101.6}  // Veto VT and VB rings
+        {5, 101.6},  // Veto VT and VB rings
         {6, 111.6}  // Veto VCT and VCB rings
     };
 
@@ -250,6 +250,8 @@ namespace detail {
     }
 
 /* Regions:
+ * 10: BCM
+ * 9: External sensors
  * Row: 8 VT and VB on bottom
  * Row: 7 VCB on bottom
  * Row: 6 cylinder bottom
@@ -298,6 +300,21 @@ namespace detail {
         }
         return {position, orientation, key, omtype};
     }
+
+    CCMTriggerKey ParseTriggerCopy(std::string copy_string) {
+        std::string prefix = detail::tolower("Trigger Copy ");
+        size_t char_pos = copy_string.find(prefix);
+        if(char_pos == std::string::npos) {
+            throw std::runtime_error("Trigger Copy ID must begin with \"Trigger Copy \". Saw: " + copy_string);
+        }
+        char_pos += prefix.size();
+
+        int trigger_copy_number = std::atoi(copy_string.substr(char_pos, std::string::npos).c_str());
+        if(trigger_copy_number < 0)
+            throw std::runtime_error("Trigger copy number must be positive: " + copy_string);
+
+        return CCMTriggerKey(CCMTriggerKey::TriggerType::BoardTriggerCopy, size_t(trigger_copy_number));
+    }
 }
 
 void CCMGeometryGenerator::Process() {
@@ -309,11 +326,27 @@ void CCMGeometryGenerator::Process() {
     }
 
     CCMAnalysis::Binary::CCMDAQConfig config = frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
+    boost::shared_ptr<CCMGeometry> geometry = boost::make_shared<CCMGeometry>();
+
+    unsigned int fp3_monitor_count = 0;
+    unsigned int ej_idx = 2;
+    unsigned int bcm_idx = 1;
+// enum TriggerType {UnknownType = 0, BoardTriggerCopy = 10, BeamTrigger = 20, StrobeTrigger = 30, CosmicTrigger = 40, LaserTrigger = 50, LEDTopTrigger = 60, LEDBottomTrigger = 70};
+    unsigned int beam_trigger_count = 0;
+    unsigned int strobe_trigger_count = 0;
+    unsigned int cosmic_trigger_count = 0;
+    unsigned int laser_trigger_count = 0;
+    unsigned int led_top_trigger_count = 0;
+    unsigned int led_bottom_trigger_count = 0;
 
     size_t absolute_idx = 0;
     for(size_t board_idx = 0; board_idx < config.digitizer_boards.size(); ++board_idx) {
         CCMAnalysis::Binary::DigitizerBoard const & board = config.digitizer_boards[board_idx];
         size_t n_channels = board.channels.size();
+        std::vector<CCMPMTKey> board_pmt_keys;
+        board_pmt_keys.reserve(n_channels);
+        CCMTriggerKey board_trigger_copy;
+        bool board_has_trigger_copy = false;
         for(size_t channel_idx = 0; channel_idx < n_channels; ++channel_idx, ++absolute_idx) {
             CCMAnalysis::Binary::ChannelHeader const & channel = board.channels[channel_idx];
             std::string type = detail::tolower(channel.physical_channel_type);
@@ -345,50 +378,105 @@ void CCMGeometryGenerator::Process() {
 
             if(type == detail::tolower("PMT 1in")) {
                 is_sensor = true;
-                std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT1inPosition(id);
+                std::string position_string = pmt_positions_by_id[id];
+                std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT1inPosition(position_string);
                 position = std::get<0>(p);
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
                 omtype = std::get<3>(p);
             } else if(type == detail::tolower("PMT 8in")) {
                 is_sensor = true;
-                std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT8inPosition(id);
+                std::string position_string = pmt_positions_by_id[id];
+                std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT8inPosition(position_string);
                 position = std::get<0>(p);
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
                 omtype = std::get<3>(p);
-            } else if(type == detail::tolower("EJ")) {
+            } else if(type == detail::tolower("EJ")
+                   or type == detail::tolower("EJ301")) {
                 is_sensor = true;
                 omtype = CCMOMGeo::OMType::EJ301;
-            } else if(type == detail::tolower("EJ301")) {
-                is_sensor = true;
-                omtype = CCMOMGeo::OMType::EJ301;
+                position = I3Position(0,0, -1000);
+                orientation = I3Orientation(0,0,1,1,0,0);
+                unsigned int sensor_number = ej_idx;
+                int region = 9;
+                ej_idx += 1;
+                pmt_key = CCMPMTKey(region, sensor_number);
             } else if(type == detail::tolower("Flight Path 3 Monitor")) {
                 is_sensor = true;
                 omtype = CCMOMGeo::OMType::EJ301;
+                position = I3Position(0, 0, -1000);
+                orientation = I3Orientation(0,0,1,1,0,0);
+                unsigned int sensor_number = 0;
+                int region = 9;
+                if(fp3_monitor_count > 0) {
+                    sensor_number = ej_idx;
+                    ej_idx += 1;
+                } else {
+                    sensor_number = 1;
+                    fp3_monitor_count += 1;
+                }
+                pmt_key = CCMPMTKey(region, sensor_number);
             } else if(type == detail::tolower("Trigger Copy")) {
                 is_trigger = true;
+                trigger_key = detail::ParseTriggerCopy(id);
+                board_trigger_copy = trigger_key;
+                board_has_trigger_copy = true;
             } else if(type == detail::tolower("BCM Monitor")) {
                 is_sensor = true;
                 omtype = CCMOMGeo::OMType::BeamCurrentMonitor;
+                unsigned int sensor_number = bcm_idx;
+                int region = 10;
+                bcm_idx += 1;
+                pmt_key = CCMPMTKey(region, sensor_number);
             } else if(type == detail::tolower("BEAM Trigger")) {
                 is_trigger = true;
+                beam_trigger_count += 1;
+                trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::BeamTrigger, beam_trigger_count);
             } else if(type == detail::tolower("STROBE Trigger")) {
                 is_trigger = true;
+                strobe_trigger_count += 1;
+                trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::StrobeTrigger, strobe_trigger_count);
             } else if(type == detail::tolower("LEDTOP Trigger")) {
                 is_trigger = true;
+                led_top_trigger_count += 1;
+                trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::LEDTopTrigger, led_top_trigger_count);
             } else if(type == detail::tolower("LEDBOTTOM Trigger")) {
                 is_trigger = true;
+                led_bottom_trigger_count += 1;
+                trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::LEDBottomTrigger, led_bottom_trigger_count);
             } else if(type == detail::tolower("Cosmic Watch Trigger")) {
                 is_trigger = true;
+                cosmic_trigger_count += 1;
+                trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, cosmic_trigger_count);
+            } else {
+                throw std::runtime_error("Unknown channel type: " + channel.physical_channel_type);
+            }
+
+            if(is_trigger) {
+                geometry->trigger_channel_map.insert({trigger_key, absolute_idx});
+            } else if(is_sensor) {
+                geometry->pmt_channel_map.insert({pmt_key, absolute_idx});
+                CCMOMGeo om;
+                om.position = position;
+                om.orientation = orientation;
+                om.omtype = omtype;
+                geometry->pmt_geo.insert({pmt_key, om});
+                board_pmt_keys.push_back(pmt_key);
+            } else {
+                throw std::runtime_error("Channel must be either trigger or sensor: " + channel.physical_channel_type);
+            }
+        }
+
+        if(board_has_trigger_copy) {
+            for(CCMPMTKey const & k : board_pmt_keys) {
+                geometry->trigger_copy_map.insert({k, board_trigger_copy});
             }
         }
     }
 
-    // Put the output objects in the frame and push the frame
-    // frame->Put("CCMDigitalReadout", std::get<0>(readout), I3Frame::DAQ);
-    // frame->Put("CCMTriggers", std::get<1>(readout), I3Frame::DAQ);
-    // ++counter;
+    frame->Put("CCMGeometry", geometry);
+    PushFrame(frame);
 }
 
 void CCMGeometryGenerator::Finish() {
