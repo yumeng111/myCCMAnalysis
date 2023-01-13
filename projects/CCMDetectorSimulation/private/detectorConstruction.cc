@@ -400,13 +400,24 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs) 
       2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
       3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
       6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
- 
-  G4double wlAbf21 = -0.002/(std::log((1-foil)));
-  G4double wlAbf24 = -0.002/(std::log((1-(.222*foil/0.2))));
-  G4double wlAbf19 = -0.002/(std::log((1-(.156*foil/0.2))));
-  G4double wlAbf15 = -0.002/(std::log((1-(.114*foil/0.2))));
-  G4double wlAbf12 = -0.002/(std::log((1-(.191*foil/0.2))));
-  G4double wlAbf11 = wlAbf21/(std::log(5.797944));
+
+  G4double lengthconst = 0.0019/(std::log(1-foil));
+  G4double wlAbf11 = lengthconst/(std::log(0.067));
+  G4double wlAbf12 = lengthconst/(std::log(0.2));
+  G4double wlAbf15 = lengthconst/(std::log(0.4));
+  G4double wlAbf19 = lengthconst/(std::log(0.533));
+  G4double wlAbf21 = lengthconst/(std::log(0.4));
+  G4double wlAbf24 = lengthconst/(std::log(0.367));
+  
+  if (!ccm200) {
+    wlAbf21 = -0.002/(std::log((1-foil)));
+    wlAbf24 = -0.002/(std::log((1-(.222*foil/0.2))));
+    wlAbf19 = -0.002/(std::log((1-(.156*foil/0.2))));
+    wlAbf15 = -0.002/(std::log((1-(.114*foil/0.2))));
+    wlAbf12 = -0.002/(std::log((1-(.191*foil/0.2))));
+    wlAbf11 = wlAbf21/(std::log(5.797944));
+  }    
+    
   G4double TPBWLSAbsorption[nTPBEntries] =
     { 0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
       1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
@@ -415,7 +426,7 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs) 
       wlAbf19*mm, wlAbf15*mm, wlAbf12*mm, wlAbf11*mm, wlAbf11*mm, };
     
   
-  G4double lengthconst = 0.0019/(std::log(1-pmt));
+  lengthconst = 0.0019/(std::log(1-pmt));
   G4double wlsAb110 = lengthconst/(std::log(0.067));
   G4double wlsAb128 = lengthconst/(std::log(0.2));
   G4double wlsAb190 = lengthconst/(std::log(0.533));
@@ -428,6 +439,13 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs) 
 	 100000.0*m, 100000.0*m, 100000.0*m, wlsAb240*mm, wlsAb213*mm, 
 	 wlsAb190*mm, wlsAb213*mm, wlsAb128*mm, wlsAb110*mm, wlsAb110*mm
     };
+
+  std::ostringstream oss;
+
+  oss << "TPBAbsorptionLengths: " << wlAbf11 << ',' << wlAbf12 << ',' << wlAbf15 << ',' << wlAbf19 << ',' << wlAbf21 << ',' << wlAbf24 << ',' << '\n' << wlsAb110 << ',' << wlsAb128 << ',' << wlsAb190 << ',' << wlsAb213 << ',' << wlsAb240 << ',' << G4endl;
+
+  G4String tpbstring = oss.str();
+  G4cout << tpbstring << G4endl;
 
   G4double absltwo = -0.00211/(std::log(abs));
   G4double abslttw = absltwo*1.4;
@@ -555,7 +573,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       fTPBSides = new G4Tubs("TPBfoil", 0*cm, (96.0*cm+thick), totalH*cm, 0*deg, 360*deg);
       fLogicTPB = new G4LogicalVolume(fTPBSides,tPB,"TPBfoil");//*/
       
-      fTPBBottom = new G4Tubs("TPBfoilb", 0*cm, (96.0*cm+thick), (totalH*cm+deep), 0*deg, 360*deg);
+      fTPBBottom = new G4Tubs("TPBfoilb", 13.34*cm, (96.0*cm+thick), (totalH*cm+deep), 0*deg, 360*deg);
       fLogicTPBb = new G4LogicalVolume(fTPBBottom,tPB,"TPBfoilb");//*/
     }
     
@@ -716,6 +734,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	//lAr to tpb optical surfaces, for both top/bottom and side layers
 	new G4LogicalBorderSurface("refl", fPhysTPB, fPhysfoil, reflfoilOS);
  	new G4LogicalBorderSurface("refl2", fPhysTPBb, fPhysfoil, reflfoilOS);
+ 	new G4LogicalBorderSurface("reflhole", lArFiducial, fPhysfoil, reflfoilOS);
 
 	new G4LogicalBorderSurface("TPB", lArFiducial, fPhysTPB, TPBfoilOS);
 	new G4LogicalBorderSurface("TPB2", fPhysTPB, lArFiducial, TPBfoilOS);
@@ -1078,17 +1097,17 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	//Uncoated: Row 1: 2,6,10,14,18,22. Row2: 4,8,12,16,20,24. Row4: 1,5,9,13,17,21. Row5: 3,7,11,15,19,23.
 	//Iterator %24 = column-1.
-	if ((i%24)%4 == 1 && zs = 2)  { pmtcoat = false; }
-	if ((i%24)%4 == 3 && zs = 1)  { pmtcoat = false; }
-	if ((i%24)%4 == 0 && zs = -1) { pmtcoat = false; }
-	if ((i%24)%4 == 2 && zs = -2) { pmtcoat = false; }
+	if ((i%24)%4 == 1 && zs == 2)  { pmtcoat = false; }
+	if ((i%24)%4 == 3 && zs == 1)  { pmtcoat = false; }
+	if ((i%24)%4 == 0 && zs == -1) { pmtcoat = false; }
+	if ((i%24)%4 == 2 && zs == -2) { pmtcoat = false; }
       }
       else {
 	//start all pmts as coated and uncoated the selected.
 	pmtcoat = true;
 	//uncoated the odds on row 4 and the evens on row 2. Remember iterator is column-1. 
-	else if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
-	else if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
+        if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
+	if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
       }
       //for universal, uncomment this and make all pmts whatever you want.
       //pmtcoat=false;
@@ -1757,7 +1776,7 @@ void detectorConstruction::SetRandoms() {
   std::ostringstream oss;
 
   //oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;
-  oss << "Randoms: abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << trheehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
+  oss << "Randoms: abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << threehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
 
   randomized = true;
   

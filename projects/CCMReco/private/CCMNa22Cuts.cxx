@@ -859,7 +859,7 @@ bool CCMNa22Cuts::PassedEnergyCut(double energy)
 bool CCMNa22Cuts::PassedPrevCut(const double kStartTime, const long kStartingIndex, const double kEnergy)
 {
   if (fEnergyLengthFile == nullptr) {
-    fEnergyLengthFile = std::make_shared<TFile>("$CCMPROJECT/calibrationFiles/2019/energyLength_0p2Thresh.root","READ");
+    fEnergyLengthFile = std::make_shared<TFile>("/usr/projects/w20_ccm_lanl/calibrationFiles/2019/energyLength_0p2Thresh.root","READ");
     fEnergyLengthFile->GetObject("eneLength_pfx",fEnergyLengthProf);
   }
   std::vector<float> currentWF;

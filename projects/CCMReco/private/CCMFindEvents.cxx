@@ -389,7 +389,7 @@ int CCMFindEvents::ExtrapolateStartTime(int startBin)
 void CCMFindEvents::SaveEvent(int startBin, int endBin)
 {
   std::unique_ptr<SimplifiedEvent> event = std::make_unique<SimplifiedEvent>();
-  std::cout<<"event found "<<"\n";
+  //std::cout<<"event found "<<"\n";
   // declear variables used in the for loops
   TVector3 pos;
   auto pmtInfo = PMTInfoMap::GetPMTInfo(0);
