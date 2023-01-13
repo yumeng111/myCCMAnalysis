@@ -29,6 +29,9 @@
 
 class CCMGeometryGenerator : public I3Module {
     I3Map<std::string, std::string> pmt_positions_by_id;
+    CCMAnalysis::Binary::CCMDAQConfig cached_config;
+    size_t n_configs_seen = 0;;
+    bool squash_duplicate_configs;
 public:
     CCMGeometryGenerator(const I3Context&);
     void Configure();
@@ -46,10 +49,13 @@ namespace detail {
     }
 }
 
-CCMGeometryGenerator::CCMGeometryGenerator(const I3Context& context) : I3Module(context) {
+CCMGeometryGenerator::CCMGeometryGenerator(const I3Context& context) : I3Module(context), n_configs_seen(0) {
     AddParameter("PMTPositionsByID",
             "Map from PMTID strings to PMTPosition strings",
             I3Map<std::string, std::string>());
+    AddParameter("SquashDuplicateConfigs",
+            "Prevent duplicate CCMDAQConfig objects from producing additional geometries.",
+            bool(true));
 }
 
 void CCMGeometryGenerator::Configure() {
@@ -58,6 +64,7 @@ void CCMGeometryGenerator::Configure() {
     for(auto const & p : positions) {
         pmt_positions_by_id.insert({detail::tolower(p.first), detail::tolower(p.second)});
     }
+    GetParameter("SquashDuplicateConfigs", squash_duplicate_configs);
 }
 
 namespace detail {
@@ -325,7 +332,14 @@ void CCMGeometryGenerator::Process() {
         return;
     }
 
+
     CCMAnalysis::Binary::CCMDAQConfig config = frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
+    n_configs_seen += 1;
+    bool is_duplicate_config = config == cached_config;
+    cached_config = config;
+    if(n_configs_seen > 1 and is_duplicate_config and squash_duplicate_configs)
+        return;
+
     boost::shared_ptr<CCMGeometry> geometry = boost::make_shared<CCMGeometry>();
 
     unsigned int fp3_monitor_count = 0;
