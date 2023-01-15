@@ -25,7 +25,7 @@ static const unsigned ccmomgeo_version_ = 0;
  * the class.
  */
 #define CCMOMGEO_H_CCMOMGeo_OMType        \
-  (UnknownType)(CCM8inCoated)(CCM8inUncoated)(CCM1in)(EJ301)(BeamCurrentMonitor)
+  (UnknownType)(CCM8inCoated)(CCM8inUncoated)(CCM1in)(EJ301)(BeamCurrentMonitor)(CsISinglePMT)
 
 //Simple struct to contain all pertinent OM info.
 //See CCMGeometry.h for more info
@@ -33,7 +33,7 @@ static const unsigned ccmomgeo_version_ = 0;
 class CCMOMGeo
 {
 public:
-    enum OMType {UnknownType = 0, CCM8inCoated = 10, CCM8inUncoated = 20, CCM1in = 30, EJ301 = 40, BeamCurrentMonitor = 50};
+    enum OMType {UnknownType = 0, CCM8inCoated = 10, CCM8inUncoated = 20, CCM1in = 30, EJ301 = 40, BeamCurrentMonitor = 50, CsISinglePMT = 60};
 
     CCMOMGeo():omtype(UnknownType){}
 

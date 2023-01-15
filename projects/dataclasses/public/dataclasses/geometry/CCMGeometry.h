@@ -52,4 +52,13 @@ I3_DEFAULT_NAME(CCMGeometry);
 I3_POINTER_TYPEDEFS(CCMGeometry);
 I3_CLASS_VERSION(CCMGeometry, ccmgeometry_version_);
 
+typedef I3Map<CCMPMTKey, uint32_t> CCMPMTChannelMap;
+I3_POINTER_TYPEDEFS(CCMPMTChannelMap);
+
+typedef I3Map<CCMTriggerKey, uint32_t> CCMTriggerChannelMap;
+I3_POINTER_TYPEDEFS(CCMTriggerChannelMap);
+
+typedef I3Map<CCMPMTKey, CCMTriggerKey> CCMTriggerCopyMap;
+I3_POINTER_TYPEDEFS(CCMTriggerCopyMap);
+
 #endif // CCMGEOMETRY_H_INCLUDED

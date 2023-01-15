@@ -53,27 +53,32 @@ static object ccmtriggerkey_getitem(value_type const& x, int i) {
         return object(); // None
     }
 }
-// __len__ = 3
+// __len__ = 2
 static int ccmtriggerkey_len(value_type const& x) { return 2; }
+
+#define DEFINE_ENUM_FORMAT(r, data, elem)             \
+        case CCMTriggerKey::elem:                       \
+            return BOOST_PP_STRINGIZE(elem);
+
+inline const char* format_trigger_type(CCMTriggerKey::TriggerType val) {
+    switch (val) {
+        BOOST_PP_SEQ_FOR_EACH(DEFINE_ENUM_FORMAT, , CCMTriggerKey_H_CCMTriggerKey_TriggerType)
+        default:
+            return 0;
+    }
+}
 
 std::string repr(const CCMTriggerKey& key){
   std::stringstream s;
-  s << "CCMTriggerKey(" << static_cast<int>(key.GetType()) << "," << key.GetNumber() << ")";
+  s << "CCMTriggerKey(" << format_trigger_type(key.GetType()) << "," << key.GetNumber() << ")";
   return s.str();
 }
 
 void
 register_CCMTriggerKey()
 {
-
-  enum_<CCMTriggerKey::TriggerType>("TriggerType")
-    BOOST_PP_SEQ_FOR_EACH(ENUM_DEF,CCMTriggerKey,CCMTriggerKey_H_CCMTriggerKey_TriggerType)
-    .export_values()
-    ;
-  ;
-
-  def("identity", identity_<CCMTriggerKey::TriggerType>);
-  class_<CCMTriggerKey>("CCMTriggerKey")
+  {
+  scope tkey = class_<CCMTriggerKey>("CCMTriggerKey")
     .def(init<CCMTriggerKey::TriggerType, unsigned int>())
     PROPERTY(CCMTriggerKey, type, Type)
     PROPERTY(CCMTriggerKey, number, Number)
@@ -87,6 +92,14 @@ register_CCMTriggerKey()
     .def(self < self)
     .def_pickle(boost_serializable_pickle_suite<CCMTriggerKey>())
     ;
-
   from_python_sequence<std::vector<CCMTriggerKey>, variable_capacity_policy>();
+
+  enum_<CCMTriggerKey::TriggerType>("TriggerType")
+    BOOST_PP_SEQ_FOR_EACH(ENUM_DEF,CCMTriggerKey,CCMTriggerKey_H_CCMTriggerKey_TriggerType)
+    .export_values()
+    ;
+  ;
+  }
+  def("identity", identity_<CCMTriggerKey::TriggerType>);
+
 }

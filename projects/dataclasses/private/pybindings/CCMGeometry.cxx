@@ -32,6 +32,8 @@
 
 #include <vector>
 
+#include <icetray/CCMPMTKey.h>
+#include <icetray/CCMTriggerKey.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <icetray/python/dataclass_suite.hpp>
 
@@ -46,11 +48,24 @@ void register_CCMGeometry()
     // CCMGeometry
     //
     bp::class_<CCMGeometry, bp::bases<I3FrameObject>, boost::shared_ptr<CCMGeometry> >("CCMGeometry")
-    #define GEOMPROPS (pmt_geo)(pmt_channel_map)(trigger_channel_map)(trigger_copy_map)(startTime)(endTime)
+    #define GEOMPROPS (startTime)(endTime)
     BOOST_PP_SEQ_FOR_EACH(WRAP_RW_RECASE, CCMGeometry, GEOMPROPS )
+    #undef GEOMPROPS
+    #define GEOMPROPS (pmt_geo)(pmt_channel_map)(trigger_channel_map)(trigger_copy_map)
+    BOOST_PP_SEQ_FOR_EACH(WRAP_RW, CCMGeometry, GEOMPROPS )
     #undef GEOMPROPS
     .def(bp::dataclass_suite<CCMGeometry>())
     ;
 
     register_pointer_conversions<CCMGeometry>();
+
+    bp::class_<CCMPMTChannelMap, bp::bases<I3FrameObject>, CCMPMTChannelMapPtr>("CCMPMTChannelMap")
+    .def(bp::dataclass_suite<CCMPMTChannelMap>())
+    ;
+    bp::class_<CCMTriggerChannelMap, bp::bases<I3FrameObject>, CCMTriggerChannelMapPtr>("CCMTriggerChannelMap")
+    .def(bp::dataclass_suite<CCMTriggerChannelMap>())
+    ;
+    bp::class_<CCMTriggerCopyMap, bp::bases<I3FrameObject>, CCMTriggerCopyMapPtr>("CCMTriggerCopyMap")
+    .def(bp::dataclass_suite<CCMTriggerCopyMap>())
+    ;
 }

@@ -185,6 +185,7 @@ namespace detail {
     I3Orientation get_pmt_wall_orientation(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
         I3Position pos = get_pmt_wall_position(pmt_row, pmt_number, starting_pmt_number, angular_offset);
         I3Position dir = I3Position(0, 0, 0) - pos;
+        dir.SetZ(0);
         dir.Normalize();
         I3Position up(0, 0, 1);
         return I3Orientation(dir.GetX(), dir.GetY(), dir.GetZ(), up.GetX(), up.GetY(), up.GetZ());
@@ -193,6 +194,7 @@ namespace detail {
     I3Orientation get_pmt_cap_orientation(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
         I3Position pos = get_pmt_cap_position(pmt_row, ring_number, pmt_number, starting_pmt_number, angular_offset);
         I3Position up = I3Position(0, 0, 0) - pos;
+        up.SetZ(0);
         up.Normalize();
         double z_dir = pos.GetZ() > 0 ? -1 : 1;
         I3Position dir(0, 0, z_dir);
@@ -202,6 +204,7 @@ namespace detail {
     I3Orientation get_pmt_veto_orientation(int pmt_row, int pmt_number, double up_down, double starting_pmt_number = 0.5, double angular_offset = 0.0) {
         I3Position pos = get_pmt_veto_position(pmt_row, pmt_number, starting_pmt_number, angular_offset);
         I3Position up = I3Position(0, 0, 0) - pos;
+        up.SetZ(0);
         up.Normalize();
         I3Position dir(0, 0, up_down);
         dir.Normalize();
@@ -214,7 +217,7 @@ namespace detail {
         CCMPMTKey key;
         CCMOMGeo::OMType omtype = CCMOMGeo::OMType::CCM8inCoated;
         if(position_string.size() < 4)
-            throw std::runtime_error("PMT position string must be at least 4 characters long: " + position_string);
+            throw std::runtime_error("PMT position string must be at least 4 characters long: \"" + position_string + "\"");
         if(position_string[0] == 'c') {
             size_t r_pos = position_string.find("r");
             if(r_pos == std::string::npos)
@@ -229,7 +232,7 @@ namespace detail {
                 row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
                 position = get_pmt_cap_position(row, ring, col);
                 orientation = get_pmt_cap_orientation(row, ring, col);
-                for(std::pair<int, int> const & p : ring_pmt_pos_count)
+                for(std::pair<const int, int> const & p : ring_pmt_pos_count)
                     if(p.first < ring and p.first > 0)
                         pmt_number += p.second;
                 pmt_number += col;
@@ -384,14 +387,19 @@ void CCMGeometryGenerator::Process() {
  * Row: 0 cylinder top
  * Row: -1 VCT on top
  * */
-            if(pmt_positions_by_id.count(id) == 0) {
-                std::stringstream ss;
-                ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map";
-                throw std::runtime_error(ss.str());
-            }
 
             if(type == detail::tolower("PMT 1in")) {
                 is_sensor = true;
+                if(pmt_positions_by_id.count(id) == 0) {
+                    if(id == "") {
+                        log_warn("PMT ID is empty but channel type indicates this is a 1in PMT!");
+                        continue;
+                    } else {
+                        std::stringstream ss;
+                        ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map";
+                        throw std::runtime_error(ss.str());
+                    }
+                }
                 std::string position_string = pmt_positions_by_id[id];
                 std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT1inPosition(position_string);
                 position = std::get<0>(p);
@@ -400,6 +408,16 @@ void CCMGeometryGenerator::Process() {
                 omtype = std::get<3>(p);
             } else if(type == detail::tolower("PMT 8in")) {
                 is_sensor = true;
+                if(pmt_positions_by_id.count(id) == 0) {
+                    if(id == "") {
+                        log_warn("PMT ID is empty but channel type indicates this is an 8in PMT!");
+                        continue;
+                    } else {
+                        std::stringstream ss;
+                        ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map";
+                        throw std::runtime_error(ss.str());
+                    }
+                }
                 std::string position_string = pmt_positions_by_id[id];
                 std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT8inPosition(position_string);
                 position = std::get<0>(p);
@@ -430,6 +448,14 @@ void CCMGeometryGenerator::Process() {
                     sensor_number = 1;
                     fp3_monitor_count += 1;
                 }
+                pmt_key = CCMPMTKey(region, sensor_number);
+            } else if (type == detail::tolower("CsI Crystal Single PMT")) {
+                is_sensor = true;
+                omtype = CCMOMGeo::OMType::CsISinglePMT;
+                position = I3Position(0, 0, -1000);
+                orientation = I3Orientation(0,0,1,1,0,0);
+                unsigned int sensor_number = 10;
+                int region = 9;
                 pmt_key = CCMPMTKey(region, sensor_number);
             } else if(type == detail::tolower("Trigger Copy")) {
                 is_trigger = true;
@@ -463,8 +489,14 @@ void CCMGeometryGenerator::Process() {
                 is_trigger = true;
                 cosmic_trigger_count += 1;
                 trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, cosmic_trigger_count);
+            } else if(type == detail::tolower("LASER Trigger")) {
+                is_trigger = true;
+                laser_trigger_count += 1;
+                trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::LaserTrigger, laser_trigger_count);
+            } else if(type == detail::tolower("")) {
+                continue;
             } else {
-                throw std::runtime_error("Unknown channel type: " + channel.physical_channel_type);
+                throw std::runtime_error("Unknown channel type: \"" + channel.physical_channel_type + "\"");
             }
 
             if(is_trigger) {
