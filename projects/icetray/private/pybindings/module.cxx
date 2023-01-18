@@ -35,6 +35,9 @@
 #include <icetray/scratch.h>
 #include <signal.h>
 
+
+void register_CCMPMTKey();
+void register_CCMTriggerKey();
 void register_OMKey();
 void register_I3Bool();
 void register_I3Int();
@@ -90,6 +93,8 @@ I3_PYTHON_MODULE(icetray)
   def("get_scratch_directory", &I3::dataio::GetScratchDirectory);
   def("set_scratch_directory", &I3::dataio::SetScratchDirectory);
 
+  register_CCMPMTKey();
+  register_CCMTriggerKey();
   register_OMKey();
   register_I3PhysicsUsage();
   register_I3Tray();

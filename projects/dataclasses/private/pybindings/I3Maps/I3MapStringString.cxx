@@ -1,6 +1,6 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim
-//
+//   Copyright (c) 2004, 2005, 2006, 2007, 2008   Troy D. Straszheim  
+//   
 //   $Id$
 //
 //   This file is part of IceTray.
@@ -13,7 +13,7 @@
 //   2. Redistributions in binary form must reproduce the above copyright
 //      notice, this list of conditions and the following disclaimer in the
 //      documentation and/or other materials provided with the distribution.
-//
+//   
 //   THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 //   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 //   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,47 +25,21 @@
 //   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 //   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 //   SUCH DAMAGE.
-//
+//   
 //   SPDX-License-Identifier: BSD-2-Clause
-//
+//   
 //
 
-#include <vector>
-
-#include <icetray/CCMPMTKey.h>
-#include <icetray/CCMTriggerKey.h>
-#include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/I3Map.h>
 #include <icetray/python/dataclass_suite.hpp>
+#include <dataclasses/ostream_overloads.hpp>
 
-#include <boost/foreach.hpp>
+using namespace boost::python;
 
-namespace bp = boost::python;
-
-void register_CCMGeometry()
+void register_I3MapStringString()
 {
-
-    //
-    // CCMGeometry
-    //
-    bp::class_<CCMGeometry, bp::bases<I3FrameObject>, boost::shared_ptr<CCMGeometry> >("CCMGeometry")
-    #define GEOMPROPS (startTime)(endTime)
-    BOOST_PP_SEQ_FOR_EACH(WRAP_RW_RECASE, CCMGeometry, GEOMPROPS )
-    #undef GEOMPROPS
-    #define GEOMPROPS (pmt_geo)(pmt_channel_map)(trigger_channel_map)(trigger_copy_map)
-    BOOST_PP_SEQ_FOR_EACH(WRAP_RW, CCMGeometry, GEOMPROPS )
-    #undef GEOMPROPS
-    .def(bp::dataclass_suite<CCMGeometry>())
+  class_<I3MapStringString, bases<I3FrameObject>, I3MapStringStringPtr>("I3MapStringString")
+    .def(dataclass_suite<I3MapStringString >())
     ;
-
-    register_pointer_conversions<CCMGeometry>();
-
-    bp::class_<CCMPMTChannelMap, bp::bases<I3FrameObject>, CCMPMTChannelMapPtr>("CCMPMTChannelMap")
-    .def(bp::dataclass_suite<CCMPMTChannelMap>())
-    ;
-    bp::class_<CCMTriggerChannelMap, bp::bases<I3FrameObject>, CCMTriggerChannelMapPtr>("CCMTriggerChannelMap")
-    .def(bp::dataclass_suite<CCMTriggerChannelMap>())
-    ;
-    bp::class_<CCMTriggerCopyMap, bp::bases<I3FrameObject>, CCMTriggerCopyMapPtr>("CCMTriggerCopyMap")
-    .def(bp::dataclass_suite<CCMTriggerCopyMap>())
-    ;
+  register_pointer_conversions<I3MapStringString>();
 }

@@ -65,7 +65,7 @@ namespace bp = boost::python;
   (I3MapKeyUInt)(I3MapKeyVectorInt)(I3MapTriggerDouble)                 \
   (I3MapTriggerVectorUInt)(I3MapStringDouble)(I3MapStringInt)           \
   (I3MapStringBool)(I3MapStringVectorDouble)(I3MapStringStringDouble)   \
-  (I3MapStringTestMapStringString)(I3MapTriggerUInt)                    \
+  (I3MapStringTestMapStringString)(I3MapTriggerUInt)(I3MapStringString) \
   (I3Double)(I3String)(I3Constants)(I3RecoPulseSeriesMapMask)           \
   (I3RecoPulseSeriesMapUnion)(I3SuperDST)(TankKey)(I3Orientation)       \
   (ModuleKey)(I3ModuleGeo)(I3OMGeo)(I3TankGeo)(I3FilterResult)          \
