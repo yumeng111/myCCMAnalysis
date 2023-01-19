@@ -7,7 +7,7 @@ i3_add_library(${PROJECT_NAME}
     private/MakeSPECalibrationHists.cxx
     private/NearlineSPEDiag.cxx
     USE_TOOLS root
-    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMSPE/SPECalibrationVariables.h
     public/CCMAnalysis/CCMSPE/MakeSPECalibrationHists.h

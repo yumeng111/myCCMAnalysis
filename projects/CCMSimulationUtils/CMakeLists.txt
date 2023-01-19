@@ -8,7 +8,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMTimeShift.cxx
     private/CCMQuenchingFactor.cxx
     USE_TOOLS root xercesc
-    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMFramework CCMIO
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMFramework CCMIO icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMSimulationUtils/CCMPMTResponse.h
     public/CCMAnalysis/CCMSimulationUtils/CCMStrobeOverlay.h

@@ -7,7 +7,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMProcessingPlots.cxx
     private/CCMNuDMPlots.cxx
     USE_TOOLS root xercesc
-    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMIO CCMFramework
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMIO CCMFramework icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMPlots/CCMSumWaveforms.h
     public/CCMAnalysis/CCMPlots/CCMProcessingPlots.h

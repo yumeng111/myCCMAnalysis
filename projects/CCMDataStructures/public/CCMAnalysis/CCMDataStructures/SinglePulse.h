@@ -10,6 +10,13 @@
 #include <vector>
 #include <iostream>
 #include <sys/types.h>
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+#include <icetray/serialization.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3DefaultName.h>
+#endif // __MAKECINT__ || __ROOTCLING__
+
+static const unsigned legacy_single_pulse_version_ = 3;
 
 #include "TObject.h"
 
@@ -17,7 +24,11 @@
  * \class SinglePulse
  * \brief The information for a given pulse found
  ***********************************************/
-class SinglePulse : public TObject
+class SinglePulse :
+    public TObject
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+    , public I3FrameObject
+#endif // __MAKECINT__ || __ROOTCLING__
 {
   public:
     SinglePulse(int key = 0);
@@ -108,10 +119,22 @@ class SinglePulse : public TObject
 
     /// The waveform that made up the pulse (currently not being saved)
     std::vector<float> fWaveform; //!
+                                  //
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
 
-  ClassDef(SinglePulse,3)
+  ClassDef(SinglePulse, legacy_single_pulse_version_)
 
 };
+
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+I3_DEFAULT_NAME(SinglePulse, LegacySinglePulse);
+I3_POINTER_TYPEDEFS(SinglePulse);
+I3_CLASS_VERSION(SinglePulse, legacy_single_pulse_version_);
+#endif // __MAKECINT__ || __ROOTCLING__
+
 
 #endif // #ifndef SinglePulse_h
 

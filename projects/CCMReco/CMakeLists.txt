@@ -8,7 +8,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMBuildAccumWaveform.cxx
     private/CCMSingletTriplet.cxx
     USE_TOOLS root xercesc
-    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMIO CCMFramework
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMIO CCMFramework icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMReco/CCMFindEvents.h
     public/CCMAnalysis/CCMReco/CCMNa22Cuts.h

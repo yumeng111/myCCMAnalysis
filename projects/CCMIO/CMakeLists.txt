@@ -8,7 +8,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMEventTreeHandle.cxx
     private/IOUtils.cxx
     USE_TOOLS root
-    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMIO/CCMRootIO.h
     public/CCMAnalysis/CCMIO/CCMRawIO.h

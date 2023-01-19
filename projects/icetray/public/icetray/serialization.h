@@ -1,10 +1,10 @@
 /**
  *  $Id$
- *  
+ *
  *  Copyright (C) 2007
  *  Troy D. Straszheim  <troy@icecube.umd.edu>
  *  and the IceCube Collaboration <http://www.icecube.wisc.edu>
- *  
+ *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions
  *  are met:
@@ -13,7 +13,7 @@
  *  2. Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- *  
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,9 +25,9 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *  
+ *
  *  SPDX-License-Identifier: BSD-2-Clause
- *  
+ *
  */
 #ifndef ICETRAY_SERIALIZATION_H_INCLUDED
 #define ICETRAY_SERIALIZATION_H_INCLUDED
@@ -94,37 +94,64 @@ public:
 #define I3_EXPORT_EXTRA_KEY(T, K) \
   static i3_export_extra_key<T> BOOST_PP_CAT(i3_export_extra_key_, __LINE__) (BOOST_PP_STRINGIZE(K));
 
-#define I3_EXPORT(T)				\
+#define I3_EXPORT1(T)				\
   static i3_export_key_setter<T> BOOST_PP_CAT(i3_export_key_setter_, __LINE__) (BOOST_PP_STRINGIZE(T));	\
   I3_CLASS_EXPORT(T);			\
   I3_SERIALIZATION_SHARED_PTR(T);
 
-#define I3_SERIALIZABLE(T)						\
+#define I3_EXPORT2(T, K)				\
+  static i3_export_key_setter<T> BOOST_PP_CAT(i3_export_key_setter_, __LINE__) (BOOST_PP_STRINGIZE(K));	\
+  I3_CLASS_EXPORT(T, K);			\
+  I3_SERIALIZATION_SHARED_PTR(T);
+
+#define I3_EXPORT_GET_MACRO(_1, _2, NAME, ...) NAME
+#define I3_EXPORT(...) I3_EXPORT_GET_MACRO(__VA_ARGS__, I3_EXPORT2, I3_EXPORT1)(__VA_ARGS__)
+
+#define I3_SERIALIZABLE1(T)						\
   I3_BASIC_SERIALIZABLE(T)						\
   template std::string AsXML(const T&);					\
   template std::string AsXML(boost::shared_ptr<T> const&);		\
   template std::string AsXML(boost::shared_ptr<const T> const&);	\
   I3_EXPORT(T)
 
-#define I3_SPLIT_SERIALIZABLE(T)					\
+#define I3_SERIALIZABLE2(T, K)						\
+  I3_BASIC_SERIALIZABLE(T)						\
+  template std::string AsXML(const T&);					\
+  template std::string AsXML(boost::shared_ptr<T> const&);		\
+  template std::string AsXML(boost::shared_ptr<const T> const&);	\
+  I3_EXPORT(T, K)
+
+#define I3_SERIALIZABLE_GET_MACRO(_1, _2, NAME, ...) NAME
+#define I3_SERIALIZABLE(...) I3_SERIALIZABLE_GET_MACRO(__VA_ARGS__, I3_SERIALIZABLE2, I3_SERIALIZABLE1)(__VA_ARGS__)
+
+#define I3_SPLIT_SERIALIZABLE1(T)					\
   I3_SERIALIZABLE(T)							    \
   template void T::save(icecube::archive::portable_binary_oarchive&, unsigned) const; \
   template void T::load(icecube::archive::portable_binary_iarchive&, unsigned); \
   template void T::load(icecube::archive::xml_iarchive&, unsigned);	\
   template void T::save(icecube::archive::xml_oarchive&, unsigned) const;
-  
+
+#define I3_SPLIT_SERIALIZABLE2(T, K)					\
+  I3_SERIALIZABLE(T, K)							    \
+  template void T::save(icecube::archive::portable_binary_oarchive&, unsigned) const; \
+  template void T::load(icecube::archive::portable_binary_iarchive&, unsigned); \
+  template void T::load(icecube::archive::xml_iarchive&, unsigned);	\
+  template void T::save(icecube::archive::xml_oarchive&, unsigned) const;
+
+#define I3_SPLIT_SERIALIZABLE_GET_MACRO(_1, _2, NAME, ...) NAME
+#define I3_SPLIT_SERIALIZABLE(...) I3_SPLIT_SERIALIZABLE_GET_MACRO(__VA_ARGS__, I3_SPLIT_SERIALIZABLE2, I3_SPLIT_SERIALIZABLE1)(__VA_ARGS__)
 
 #else // __CINT__
 
-#define I3_CLASS_VERSION(T,V) 
+#define I3_CLASS_VERSION(T,V)
 #define I3_IS_ABSTRACT(X)
-#define I3_CLASS_EXPORT(X) 
-#define I3_SHARED_POINTER_EXPORT(X) 
+#define I3_CLASS_EXPORT(X)
+#define I3_SHARED_POINTER_EXPORT(X)
 #define I3_SERIALIZATION_SPLIT_MEMBER()
 
 namespace icecube
 {
-  namespace serialization 
+  namespace serialization
   {
     // normal forward declarations:
     template <class T> struct nvp;

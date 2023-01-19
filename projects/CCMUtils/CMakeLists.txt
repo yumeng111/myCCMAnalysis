@@ -9,7 +9,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMBeamInfo.cxx
     private/Utility.cxx
     USE_TOOLS ROOT
-    USE_PROJECTS CCMBinary
+    USE_PROJECTS CCMBinary icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMUtils/MsgLog.h
     public/CCMAnalysis/CCMUtils/PMTInformation.h

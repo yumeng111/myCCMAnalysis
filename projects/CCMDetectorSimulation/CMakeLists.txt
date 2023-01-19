@@ -11,7 +11,7 @@ i3_add_library(${PROJECT_NAME}
     private/runAction.cc
     private/steppingAction.cc
     USE_TOOLS root geant4
-    USE_PROJECTS CCMBinary CCMUtils CCMIO CCMDataStructures
+    USE_PROJECTS CCMBinary CCMUtils CCMIO CCMDataStructures icetray serialization
 )
 
 i3_executable(CCMG4Simulation

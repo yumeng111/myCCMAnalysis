@@ -11,7 +11,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMModule.cxx
     private/CCMModuleTable.cxx
     USE_TOOLS root xercesc
-    USE_PROJECTS CCMBinary CCMUtils CCMIO CCMDataStructures
+    USE_PROJECTS CCMBinary CCMUtils CCMIO CCMDataStructures icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMFramework/CCMTaskManager.h
     public/CCMAnalysis/CCMFramework/CCMTaskConfig.h

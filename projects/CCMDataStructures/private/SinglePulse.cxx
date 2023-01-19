@@ -6,6 +6,10 @@
  ***********************************************/
 
 #include <cmath>
+#ifndef __CINT__
+#include <icetray/I3Logging.h>
+#include <icetray/serialization.h>
+#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/SinglePulse.h"
 
@@ -97,3 +101,31 @@ SinglePulse & SinglePulse::operator=(const SinglePulse & rhs)
   return *this;
 }
 
+
+#ifndef __CINT__
+template <class Archive>
+void
+SinglePulse::serialize(Archive& ar, unsigned version) {
+  if (version > legacy_single_pulse_version_)
+    log_fatal("Attempting to read version %u from file but running version %u of SinglePulse class.", version, legacy_single_pulse_version_);
+
+  ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+  ar & make_nvp("fKey", fKey);
+
+  ar & make_nvp("fADCToPE", fADCToPE);
+  ar & make_nvp("fTrigOffset", fTrigOffset);
+  ar & make_nvp("fPMTOffset", fPMTOffset);
+
+  ar & make_nvp("fAmplitude", fAmplitude);
+  ar & make_nvp("fBaseline", fBaseline);
+  ar & make_nvp("fMaxDerValue", fMaxDerValue);
+  ar & make_nvp("fIntegral", fIntegral);
+  ar & make_nvp("fTime", fTime);
+  ar & make_nvp("fLength", fLength);
+
+  ar & make_nvp("fWaveformStart", fWaveformStart);
+  ar & make_nvp("fWaveformEnd", fWaveformEnd);
+}
+
+I3_SERIALIZABLE(SinglePulse, LegacySinglePulse);
+#endif // __CINT__

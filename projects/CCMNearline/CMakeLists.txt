@@ -7,7 +7,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMSPECalc.cxx
     private/CCMRateCalc.cxx
     USE_TOOLS root xercesc
-    USE_PROJECTS CCMBinary CCMUtils CCMSPE CCMDataStructures CCMFramework
+    USE_PROJECTS CCMBinary CCMUtils CCMSPE CCMDataStructures CCMFramework icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMNearline/CCMFindPulses.h
     public/CCMAnalysis/CCMNearline/CCMSPECalc.h

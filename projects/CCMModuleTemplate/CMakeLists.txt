@@ -5,7 +5,7 @@ i3_project(${PROJECT_NAME})
 i3_add_library(${PROJECT_NAME}
     private/CCMTemplateAna.cxx
     USE_TOOLS root
-    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMFramework
+    USE_PROJECTS CCMBinary CCMUtils CCMDataStructures CCMFramework icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMModuleTemplate/CCMTemplateAna.h
 )

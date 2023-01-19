@@ -88,7 +88,7 @@ struct I3DefaultName<const boost::shared_ptr<const T> >
 };
 
 
-#define I3_DEFAULT_NAME(TYPE)			\
+#define I3_DEFAULT_NAME1(TYPE)			\
   template <> struct I3DefaultName<TYPE>	\
   {						\
     const static char *value()			\
@@ -96,5 +96,17 @@ struct I3DefaultName<const boost::shared_ptr<const T> >
       return BOOST_PP_STRINGIZE(TYPE);		\
     }						\
   };						\
+
+#define I3_DEFAULT_NAME2(TYPE, K)			\
+  template <> struct I3DefaultName<TYPE>	\
+  {						\
+    const static char *value()			\
+    {						\
+      return BOOST_PP_STRINGIZE(K);		\
+    }						\
+  };						\
+
+#define I3_DEFAULT_NAME_GET_MACRO(_1, _2, NAME, ...) NAME
+#define I3_DEFAULT_NAME(...) I3_DEFAULT_NAME_GET_MACRO(__VA_ARGS__, I3_DEFAULT_NAME2, I3_DEFAULT_NAME1)(__VA_ARGS__)
 
 #endif // I3DEFAULTNAME_H_INCLUDED

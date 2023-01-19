@@ -11,7 +11,7 @@ i3_add_library(${PROJECT_NAME}
     private/AccumWaveform.cxx
     private/MCTruth.cxx
     USE_TOOLS root
-    USE_PROJECTS CCMBinary CCMUtils
+    USE_PROJECTS CCMBinary CCMUtils serialization icetray
     ROOTCINT
     public/CCMAnalysis/CCMDataStructures/Pulses.h
     public/CCMAnalysis/CCMDataStructures/RawData.h

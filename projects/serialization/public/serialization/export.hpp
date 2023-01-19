@@ -223,11 +223,20 @@ namespace {                                                                    \
 // the default exportable class identifier is the class name
 // the default list of archives types for which code id generated
 // are the originally included with this serialization system
-#define I3_CLASS_EXPORT(T)                   \
+#define I3_CLASS_EXPORT1(T)                   \
     I3_CLASS_EXPORT_GUID(                    \
         T,                                      \
         BOOST_PP_STRINGIZE(T)                   \
     )                                           \
     /**/
+
+#define I3_CLASS_EXPORT2(T, K)                   \
+    I3_CLASS_EXPORT_GUID(                    \
+        T,                                      \
+        BOOST_PP_STRINGIZE(K)                   \
+    )                                           \
+    /**/
+#define I3_CLASS_EXPORT_GET_MACRO(_1, _2, NAME, ...) NAME
+#define I3_CLASS_EXPORT(...) I3_CLASS_EXPORT_GET_MACRO(__VA_ARGS__, I3_CLASS_EXPORT2, I3_CLASS_EXPORT1)(__VA_ARGS__)
 
 #endif // I3_SERIALIZATION_EXPORT_HPP
