@@ -99,6 +99,11 @@ class SinglePulse :
     void Append(const SinglePulse & rhs);
 
     SinglePulse & operator=(const SinglePulse & rhs);
+                                  //
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
 
   private:
     size_t fKey;
@@ -119,11 +124,6 @@ class SinglePulse :
 
     /// The waveform that made up the pulse (currently not being saved)
     std::vector<float> fWaveform; //!
-                                  //
-#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
-  friend class icecube::serialization::access;
-  template <class Archive> void serialize(Archive & ar, unsigned version);
-#endif // __MAKECINT__ || __ROOTCLING__
 
   ClassDef(SinglePulse, legacy_single_pulse_version_)
 
