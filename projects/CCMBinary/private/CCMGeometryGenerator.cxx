@@ -201,13 +201,23 @@ namespace detail {
         return I3Orientation(dir.GetX(), dir.GetY(), dir.GetZ(), up.GetX(), up.GetY(), up.GetZ());
     }
 
-    I3Orientation get_pmt_veto_orientation(int pmt_row, int pmt_number, double up_down, double starting_pmt_number = 0.5, double angular_offset = 0.0) {
+    I3Orientation get_pmt_veto_orientation(int pmt_row, int pmt_number, double up_down, int inward, double starting_pmt_number = 0.5, double angular_offset = 0.0) {
         I3Position pos = get_pmt_veto_position(pmt_row, pmt_number, starting_pmt_number, angular_offset);
-        I3Position up = I3Position(0, 0, 0) - pos;
-        up.SetZ(0);
-        up.Normalize();
-        I3Position dir(0, 0, up_down);
-        dir.Normalize();
+        I3Position dir;
+        I3Position up;
+        if(inward){
+          dir = I3Position(0, 0, 0) - pos;
+          dir.SetZ(0);
+          dir.Normalize();
+          up = I3Position(0,0,1);
+        }
+        else {
+          up = I3Position(0, 0, 0) - pos;
+          up.SetZ(0);
+          up.Normalize();
+          dir = I3Position(0, 0, up_down);
+          dir.Normalize();
+        }
         return I3Orientation(dir.GetX(), dir.GetY(), dir.GetZ(), up.GetX(), up.GetY(), up.GetZ());
     }
 
@@ -262,7 +272,7 @@ namespace detail {
 /* Regions:
  * 10: BCM
  * 9: External sensors
- * Row: 8 VT and VB on bottom
+ * Row: 8 VB on bottom
  * Row: 7 VCB on bottom
  * Row: 6 cylinder bottom
  * Row: 5 cylinder wall bottom row
@@ -272,6 +282,7 @@ namespace detail {
  * Row: 1 cylinder wall top row
  * Row: 0 cylinder top
  * Row: -1 VCT on top
+ * Row: -2 VT on top
  * */
     std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> ParsePMT1inPosition(std::string position_string) {
         I3Position position;
@@ -281,29 +292,34 @@ namespace detail {
         if(position_string[0] == 'v') {
             int row;
             double up_down;
+            int inward;
             size_t char_pos;
             if((char_pos = position_string.find("vct")) == 0) {
                 char_pos += 3; // Skip the VCT chars
                 row = -1;
                 up_down = -1; // Pointing down
+                inward = 0; // Not pointing inward
             } else if((char_pos = position_string.find("vcb")) == 0) {
                 char_pos += 3; // Skip the VCB chars
                 row = 7;
                 up_down = 1; // Pointing up
+                inward = 0; // Not pointing inward
             } else if((char_pos = position_string.find("vt")) == 0) {
                 char_pos += 2; // Skip the VT chars
                 row = -2;
-                up_down = 1; // Pointing up
+                up_down = 0; // Pointing inward
+                inward = 1; // Pointing inward
             } else if((char_pos = position_string.find("vb")) == 0) {
                 char_pos += 2; // Skip the VB chars
                 row = 8;
-                up_down = -1; // Pointing down
+                up_down = 0; // Pointing inward
+                inward = 1; // Pointing inward
             } else {
                 throw std::runtime_error("PMT position string must start with \"VCT\", \"VCB\", \"VT\", or \"VB\": " + position_string);
             }
             int pmt_number = std::atoi(position_string.substr(char_pos, std::string::npos).c_str());
             position = get_pmt_veto_position(row, pmt_number);
-            orientation = get_pmt_veto_orientation(row, pmt_number, up_down);
+            orientation = get_pmt_veto_orientation(row, pmt_number, up_down, inward);
             key = CCMPMTKey(row, pmt_number);
         } else {
             throw std::runtime_error("PMT position string must start with \"V\": " + position_string);
