@@ -11,6 +11,10 @@
 #include <utility>
 #include <iterator>
 #include <algorithm>
+#ifndef __CINT__
+#include <icetray/I3Logging.h>
+#include <icetray/serialization.h>
+#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/Pulses.h"
 
@@ -784,3 +788,22 @@ void Pulses::RemoveSinglePulse(std::vector<SinglePulse>::iterator it) { fPulses.
 const SinglePulse * Pulses::GetSinglePulse(size_t pos) { return &fPulses[pos]; }
 const SinglePulse * Pulses::GetSinglePulse(size_t pos) const { return &fPulses[pos]; }
 
+#ifndef __CINT__
+template <class Archive>
+void
+Pulses::serialize(Archive& ar, unsigned version) {
+  if (version > legacy_pulses_version_)
+    log_fatal("Attempting to read version %u from file but running version %u of Pulses class.", version, legacy_pulses_version_);
+
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+    ar & make_nvp("fEventNumber", fEventNumber);
+    ar & make_nvp("fComputerSecIntoEpoch", fComputerSecIntoEpoch);
+    ar & make_nvp("fComputerNSIntoSec", fComputerNSIntoSec);
+    ar & make_nvp("fNumPulses", fNumPulses);
+    ar & make_nvp("fTriggerTime", fTriggerTime);
+    ar & make_nvp("fPulses", fPulses);
+
+}
+
+I3_SERIALIZABLE(Pulses, LegacyPulses);
+#endif // __CINT__

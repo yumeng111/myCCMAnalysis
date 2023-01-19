@@ -11,10 +11,17 @@
 #include <vector>
 #include <iostream>
 #include <sys/types.h>
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+#include <icetray/serialization.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3DefaultName.h>
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #include "CCMAnalysis/CCMDataStructures/SinglePulse.h"
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/PMTInfoMap.h"
+
+static const unsigned legacy_pulses_version_ = 1;
 
 #include "TObject.h"
 
@@ -27,6 +34,9 @@
  * data file.
  ***********************************************/
 class Pulses : public TObject
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+    , public I3FrameObject
+#endif // __MAKECINT__ || __ROOTCLING__
 {
   public:
     Pulses(int board = 0, int channel = 0);
@@ -145,6 +155,11 @@ class Pulses : public TObject
 
     void ShiftTimeOffset(const double & timeOffset);
 
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
+
   private:
     static bool SortCondition(const SinglePulse & a, const SinglePulse & b);
 
@@ -191,8 +206,14 @@ class Pulses : public TObject
 
 
 
-  ClassDef(Pulses,1)
+  ClassDef(Pulses,legacy_pulses_version_)
 
 };
+
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+I3_DEFAULT_NAME(Pulses, LegacyPulses);
+I3_POINTER_TYPEDEFS(Pulses);
+I3_CLASS_VERSION(Pulses, legacy_pulses_version_);
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #endif // #ifndef Pulses_h
