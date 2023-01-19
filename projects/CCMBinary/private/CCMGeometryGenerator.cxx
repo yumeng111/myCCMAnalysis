@@ -135,6 +135,8 @@ namespace detail {
         {2, 10}, //
         {3, 15}, //
         {4, 20}, // Outer ring on top/bottom
+        {5, 24},  // Veto VT and VB rings
+        {6, 24}  // Veto VCT and VCB rings
     };
 
     std::set<std::tuple<int, int, int>> cap_uncoated_pmts = {
