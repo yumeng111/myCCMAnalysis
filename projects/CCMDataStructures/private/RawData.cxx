@@ -8,6 +8,10 @@
 #include <memory>
 #include <numeric>
 #include <algorithm>
+#ifndef __CINT__
+#include <icetray/I3Logging.h>
+#include <icetray/serialization.h>
+#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/RawData.h"
 
@@ -352,4 +356,29 @@ RawData & RawData::operator=(const RawData & rhs)
   return *this;
 }
 
+#ifndef __CINT__
+template <class Archive>
+void
+RawData::serialize(Archive& ar, unsigned version) {
+  if (version > legacy_raw_data_version_)
+    log_fatal("Attempting to read version %u from file but running version %u of RawData class.", version, legacy_raw_data_version_);
+
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+    ar & make_nvp("fNumBoards", fNumBoards);
+    ar & make_nvp("fNumChannels", fNumChannels);
+    ar & make_nvp("fNumSamples", fNumSamples);
+    ar & make_nvp("fEventNumber", fEventNumber);
+    ar & make_nvp("fOffset", fOffset);
+    ar & make_nvp("fWaveforms", fWaveforms);
+    ar & make_nvp("fSize", fSize);
+    ar & make_nvp("fChannelMask", fChannelMask);
+    ar & make_nvp("fTemp", fTemp);
+    ar & make_nvp("fBoardEventNum", fBoardEventNum);
+    ar & make_nvp("fClockTime", fClockTime);
+    ar & make_nvp("fGPSNSIntoSec", fGPSNSIntoSec);
+    ar & make_nvp("fGPSSecIntoDay", fGPSSecIntoDay);
+}
+
+I3_SERIALIZABLE(RawData, LegacyRawData);
+#endif // __CINT__
 

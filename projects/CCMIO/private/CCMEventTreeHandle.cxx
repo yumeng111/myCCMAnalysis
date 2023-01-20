@@ -527,7 +527,7 @@ void CCMEventTreeHandle::Report()
 {
   if (fEventsTree != nullptr) {
     MsgInfo("fEventsTree: ");
-    fRawData->Print();
+    static_cast<std::shared_ptr<TObject>>(fRawData)->Print();
   }
   if(fOutEventTree != nullptr) {
     MsgInfo("OutEventTree: ");

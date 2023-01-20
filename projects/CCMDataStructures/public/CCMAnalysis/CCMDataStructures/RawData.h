@@ -10,6 +10,13 @@
 #include <vector>
 #include <iostream>
 #include <stdlib.h>
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+#include <icetray/serialization.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3DefaultName.h>
+#endif // __MAKECINT__ || __ROOTCLING__
+
+static const unsigned legacy_raw_data_version_ = 2;
 
 #include "TObject.h"
 
@@ -18,6 +25,9 @@
  * \brief Container for the raw data coming out for the detector
  ***********************************************/
 class RawData : public TObject
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+    , public I3FrameObject
+#endif // __MAKECINT__ || __ROOTCLING__
 {
   public:
     RawData();
@@ -83,6 +93,11 @@ class RawData : public TObject
 
     RawData & operator=(const RawData & rhs);
 
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
+
   private:
 
     /// Number of digitizer boards
@@ -113,7 +128,13 @@ class RawData : public TObject
     /// DAQ window time in s
     u_int32_t fGPSSecIntoDay;
 
-  ClassDef(RawData,2)
+  ClassDef(RawData,legacy_raw_data_version_)
 };
+
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+I3_DEFAULT_NAME(RawData, LegacyRawData);
+I3_POINTER_TYPEDEFS(RawData);
+I3_CLASS_VERSION(RawData, legacy_raw_data_version_);
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #endif // RawData_h
