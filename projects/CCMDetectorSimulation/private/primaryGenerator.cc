@@ -104,7 +104,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     darkMatter = detector->GetDarkMatter();
     Cosmic = detector->GetfCosmic();
     alp = detector->GetALP();
-    //    G4cout << "Primary found sodium as " << Sodium << G4endl;
+    //G4cout << "Primary found sodium as " << Sodium << G4endl;
   }
 
   //call methods to generate events of non-laser types. the order of priority is as below, so only one kind of event can be generated at a time. See below methods for details.

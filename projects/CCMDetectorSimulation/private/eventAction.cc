@@ -81,7 +81,7 @@ void eventAction::EndOfEventAction(const G4Event* event)
   G4String partName = generator->GetPartName();
   
   //test output string for matching to primary generator notes
-  //G4cout << "EventActionInitializationString:\t" << xpos << '\t' << ypos << '\t' << zpos << '\t' << momx << '\t' << momy << '\t' << momz << '\t' << partEneg << '\t' << partName << '\t' << G4endl;
+  //G4cout << "EventActionInitializationString:\t" << eventID << '\t' << xpos << '\t' << ypos << '\t' << zpos << '\t' << momx << '\t' << momy << '\t' << momz << '\t' << partEneg << '\t' << partName << '\t' << G4endl;
   
   //output the initial conditions to the rootIO and write for the Trigger.
   mctruth->SetParticlePosition(xpos,ypos,zpos);

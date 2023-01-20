@@ -137,14 +137,14 @@ void detectorConstruction::DefineMaterials(){
   tPBhundred->AddElement(fH, 22);
 
 
-  G4cout << "first definition of lAr below" << G4endl;
+  //G4cout << "first definition of lAr below" << G4endl;
 
   //Define the Materials from liquid Argon to tpb.
   //Liquid Argon; three types defined for gradients of liquid argon absorption length
   lAr = new G4Material("lAr",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
   lAr2 = new G4Material("lAr2",z=18.,a=39.95*g/mole,density=1.396*g/cm3,kStateLiquid,88*kelvin);
 
-  G4cout << "first definition of lAr above" << G4endl;
+  //G4cout << "first definition of lAr above" << G4endl;
 
   
   //Values for liquid Argon (all types)
@@ -445,7 +445,7 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs) 
   oss << "TPBAbsorptionLengths: " << wlAbf11 << ',' << wlAbf12 << ',' << wlAbf15 << ',' << wlAbf19 << ',' << wlAbf21 << ',' << wlAbf24 << ',' << '\n' << wlsAb110 << ',' << wlsAb128 << ',' << wlsAb190 << ',' << wlsAb213 << ',' << wlsAb240 << ',' << G4endl;
 
   G4String tpbstring = oss.str();
-  G4cout << tpbstring << G4endl;
+  //G4cout << tpbstring << G4endl;
 
   G4double absltwo = -0.00211/(std::log(abs));
   G4double abslttw = absltwo*1.4;
@@ -573,7 +573,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       fTPBSides = new G4Tubs("TPBfoil", 0*cm, (96.0*cm+thick), totalH*cm, 0*deg, 360*deg);
       fLogicTPB = new G4LogicalVolume(fTPBSides,tPB,"TPBfoil");//*/
       
-      fTPBBottom = new G4Tubs("TPBfoilb", 13.34*cm, (96.0*cm+thick), (totalH*cm+deep), 0*deg, 360*deg);
+      fTPBBottom = new G4Tubs("TPBfoilb", 0*cm, (96.0*cm+thick), (totalH*cm+deep), 0*deg, 360*deg);
+      //G4cout << "TPBvolumahalfZlength = " << fTPBBottom->GetZHalfLength() << G4endl;
       fLogicTPBb = new G4LogicalVolume(fTPBBottom,tPB,"TPBfoilb");//*/
     }
     
@@ -613,7 +614,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     //define the fiducal volumes of liquid Argon.
     fFiducialAr = new G4Tubs("Fiducial", 0*cm, 96*cm, totalH*cm, 0*deg, 360*deg);
     fLogicFiduc = new G4LogicalVolume(fFiducialAr,lAr,"Fiducial");
-
+    //G4cout << "FiducialhalfZlength = " << fFiducialAr->GetZHalfLength() << G4endl;
+    
     //defines layers for the lAr volumes, rather than having constant properties across all depths. 
     //These layers can be made as solid cylinders (0*cm to 96*cm) or as shells to modify the properties only near the outer edges (current: 70 to 96*cm)
     //each layer can have a different type of lAr (currently only two are available, but more can be added). 
@@ -627,9 +629,9 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     fFiducialAr4 = new G4Tubs("Fiducial4", 70*cm, 96*cm, 12.0*cm, 0*deg, 360*deg);
     fLogicFiduc4 = new G4LogicalVolume(fFiducialAr4,lAr,"Fiducial4");//*/
 
-    totalH = totalH - 36.0;
-    G4double remainder = totalH/2.0;
-    G4double row1place = (totalH+36.0)-remainder;//134 -> 52
+    G4double remainder = totalH - 36.0;
+    remainder = remainder/2.0;
+    G4double row1place = totalH-remainder;//134 -> 52
     fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, remainder*cm, 0*deg, 360*deg);
     fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
 
@@ -870,47 +872,51 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     //places the calibration rod (with extension) if its turned on.
     if (fRodin) {
       //G4cout << "Edwardnote Placing rod"  << G4endl;
-      G4double mainplace = 75*cm+rodHeight;
-      G4double knutplace = 32*cm+rodHeight;
-      G4double extendplace = 15*cm+rodHeight;
+      G4double rodLength = (totalH - 30.0*cm - rodHeight)/2.0;//remaining length of big rod in detector
+      G4double mainplace = 30.0*cm+rodLength+rodHeight;//central position of big rod with respect to 0/center
+      G4double knutplace = 32*cm+rodHeight;//position of the big knut around the end of the big rod
+      G4double extendplace = 15*cm+rodHeight;//central position of the thin extension
 
-      //main rod
-      G4Tubs* sourcerod = new G4Tubs("sourcerod", 0*cm, 2.5*cm, 45*cm, 0*deg, 360*deg);
-      G4LogicalVolume* fLogicRod = new G4LogicalVolume(sourcerod, steel, "sourcerod");
-      new G4PVPlacement(0,
-			G4ThreeVector(0*cm, 0*cm, mainplace),//z=75*cm for extension,45 without
-			//G4ThreeVector(0*cm, 0*cm, 90*cm),//for upper position 18" above middle
-			fLogicRod,
-			"sourcerod",
-			fLogicFiduc,
-			false,
-			0,
-			true);
-      
-      //lAr inside the rod (it's hollow).
-      G4Tubs* hollowrod = new G4Tubs("hollowrod", 0*cm, 2.*cm, 44*cm, 0*deg, 360*deg);
-      G4LogicalVolume* fHoleRod = new G4LogicalVolume(hollowrod, lAr, "hollowrod");
-      new G4PVPlacement(0,
-			G4ThreeVector(0*cm, 0*cm, 0*cm),
-			fHoleRod,
-			"hollowrod",
-			fLogicRod,
-			false,
-			0,
-			true);
-
-      //endcap (that very large knut)
-      G4Tubs* sourcecap = new G4Tubs("sourcecap", 2.5*cm, 3*cm, 2*cm, 0*deg, 360*deg);
-      G4LogicalVolume* fLogicCap = new G4LogicalVolume(sourcecap, steel, "sourcecap");
-      new G4PVPlacement(0,
-			G4ThreeVector(0*cm, 0*cm, knutplace),//z=32*cm for extension, 2 without
-			//G4ThreeVector(0*cm, 0*cm, 47*cm),//for upper position
-			fLogicCap,
-			"sourcecap",
-			fLogicFiduc,
-			false,
-			0,
-			true);
+      //check to make sure some of the rod is within the detector, otherwise do not place those volumes. 
+      if (rodLength > 0) {
+	//main rod
+	G4Tubs* sourcerod = new G4Tubs("sourcerod", 0*cm, 2.5*cm, rodLength, 0*deg, 360*deg);
+	G4LogicalVolume* fLogicRod = new G4LogicalVolume(sourcerod, steel, "sourcerod");
+	new G4PVPlacement(0,
+			  G4ThreeVector(0*cm, 0*cm, mainplace),//z=75*cm for extension,45 without
+			  //G4ThreeVector(0*cm, 0*cm, 90*cm),//for upper position 18" above middle
+			  fLogicRod,
+			  "sourcerod",
+			  fLogicFiduc,
+			  false,
+			  0,
+			  true);
+	
+	//lAr inside the rod (it's hollow).
+	G4Tubs* hollowrod = new G4Tubs("hollowrod", 0*cm, 2.*cm, 44*cm, 0*deg, 360*deg);
+	G4LogicalVolume* fHoleRod = new G4LogicalVolume(hollowrod, lAr, "hollowrod");
+	new G4PVPlacement(0,
+			  G4ThreeVector(0*cm, 0*cm, 0*cm),
+			  fHoleRod,
+			  "hollowrod",
+			  fLogicRod,
+			  false,
+			  0,
+			  true);
+	
+	//endcap (that very large knut)
+	G4Tubs* sourcecap = new G4Tubs("sourcecap", 2.5*cm, 3*cm, 2*cm, 0*deg, 360*deg);
+	G4LogicalVolume* fLogicCap = new G4LogicalVolume(sourcecap, steel, "sourcecap");
+	new G4PVPlacement(0,
+			  G4ThreeVector(0*cm, 0*cm, knutplace),//z=32*cm for extension, 2 without
+			  //G4ThreeVector(0*cm, 0*cm, 47*cm),//for upper position
+			  fLogicCap,
+			  "sourcecap",
+			  fLogicFiduc,
+			  false,
+			  0,
+			  true);
+      }
       
       //the thinner extension
       G4Tubs* sourceextend = new G4Tubs("sourceextend", 0*cm, 0.5*cm, 15*cm, 0*deg, 360*deg);
@@ -1097,7 +1103,6 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	//Uncoated: Row 1: 2,6,10,14,18,22. Row2: 4,8,12,16,20,24. Row4: 1,5,9,13,17,21. Row5: 3,7,11,15,19,23.
 	//Iterator %24 = column-1.
-<<<<<<< HEAD
 	if ((i%24)%4 == 1 && zs == 2)  { pmtcoat = false; }
 	if ((i%24)%4 == 3 && zs == 1)  { pmtcoat = false; }
 	if ((i%24)%4 == 0 && zs == -1) { pmtcoat = false; }
@@ -1108,19 +1113,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	//uncoated the odds on row 4 and the evens on row 2. Remember iterator is column-1. 
         if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
-	if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
-=======
-	if (((i%24)%4 == 1) && zs == 2)  { pmtcoat = false; }
-	if (((i%24)%4 == 3) && zs == 1)  { pmtcoat = false; }
-	if (((i%24)%4 == 0) && zs == -1) { pmtcoat = false; }
-	if (((i%24)%4 == 2) && zs == -2) { pmtcoat = false; }
-    } else {
-	//start all pmts as coated and uncoated the selected.
-	pmtcoat = true;
-	//uncoated the odds on row 4 and the evens on row 2. Remember iterator is column-1. 
-	if ((i%24)%2 != 0 && zs == 1)  {  pmtcoat = false;	}
-	else if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false; }
->>>>>>> 93c022780794761e9f846ea70423d05ce958998a
+	if ((i%24)%2 == 0 && zs == -1) {  pmtcoat = false;      }
       }
       //for universal, uncomment this and make all pmts whatever you want.
       //pmtcoat=false;
@@ -1151,14 +1144,14 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       for (G4int n=0; n<npmts; ++n) {
 	if (n%2 == 0) {
 	  zs = 0;
-	  pmtzz = +61.6;
+	  pmtzz = +1.0*totalH;
 	} else { 
 	  zs = 6;
-	  pmtzz = -61.6;
+	  pmtzz = -1.0*totalH;
 	}//let 6 be bottom and 0 be top, alternating around the circle in every other position from the design of CCM220
 	
-	//Uncoated on cross1, ring 4: 7, 17, 4, 14
-	if (n==6 || n==16 || n==3 || n==13) { 
+	//Uncoated on cross1, ring 4: 5, 15, 2, 12
+	if (n==5 || n==15 || n==1 || n==11) { 
 	  pmtcoat = false;
 	} else { pmtcoat = true; }
 
@@ -1196,11 +1189,11 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	if (cylinderOn) { pmtcoat=false; }
 
 	pmtzz = -1*totalH;
-	//ring3 uncoated: top 301, bottom 307, 314.
-	if (n==6 || n==13) { pmtcoat=false;}
+	//ring3 uncoated: top 301, 308 bottom 306, 313.
+	if (n==5 || n==12) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = totalH;
-	if (n==0 || n==8) { 
+	if (n==0 || n==7) { 
 	  pmtcoat=false;
 	} else { pmtcoat=true; }
 	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
@@ -1225,12 +1218,12 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	//if (n%3 == 2) { pmtcoat = false; }//every second pmt in the third row is uncoated, for another 10 total and thus all 20 uncoated on the top and bottom accounted for
 	if (cylinderOn) { pmtcoat=false; }
 
-	//ring 2 uncoated: top 209, 204, bottom 202
+	//ring 2 uncoated: top 208, 203, bottom 202, 207
 	pmtzz = -1*totalH;
 	if (n==1 || n==6) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = totalH;
-	if (n==3 || n==8) { 
+	if (n==2 || n==7) { 
 	  pmtcoat=false;
 	} else { pmtcoat=true; }
 	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
@@ -1254,12 +1247,12 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	if (cylinderOn) { pmtcoat=false; }
 
-	//ring 1 uncoated: top 101, 104, bottom 103
+	//ring 1 uncoated: top 101, 103, bottom 103, 105
 	pmtzz = -1*totalH;
 	if (n==2 || n==4) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = totalH;
-	if (n==0 || n==3) { 
+	if (n==0 || n==2) { 
 	  pmtcoat=false;
 	} else { pmtcoat=true; }
 	placeTopBot(pmtnam1,pmtxx,pmtyy,pmtzz,pmtcoat);
@@ -1615,7 +1608,8 @@ void detectorConstruction::placeTopBot(G4String name,
   G4String namePMT = "PMT_"+name;
   
   //define the position three-vector
-  G4ThreeVector trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
+  G4ThreeVector trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z);
+  //G4cout << "topbottom PMT position = " << pmt_x << '\t' << pmt_y << '\t' << pmt_z << G4endl;
 
   //redo the tpb optical surface properties.
   const G4int nAcTefEntries = 25;
@@ -1737,7 +1731,7 @@ void detectorConstruction::SetDefaults() {
   fCosmic=false;
   darkMatter=false;
   alp=false;
-  fLayers=true;
+  fLayers=false;
   ccm200 = false;
   conewide = 7.555;
   conehigh = 0.590;
@@ -1789,7 +1783,7 @@ void detectorConstruction::SetRandoms() {
   std::ostringstream oss;
 
   //oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;
-  oss << "Randoms: abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << threehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
+  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << threehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
 
   randomized = true;
   
