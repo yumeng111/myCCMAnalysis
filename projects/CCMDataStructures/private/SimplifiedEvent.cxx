@@ -8,6 +8,10 @@
 #include <cmath>
 #include <iostream>
 #include <iterator>
+#ifndef __CINT__
+#include <icetray/I3Logging.h>
+#include <icetray/serialization.h>
+#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/SimplifiedEvent.h"
 
@@ -322,3 +326,63 @@ void SimplifiedEvent::GetPMTWaveform(int & key, std::vector<float> & vecInt, std
   vecCount = fPMTWaveformItr->second.second;
 }
 
+#ifndef __CINT__
+template <class Archive>
+void
+SimplifiedEvent::serialize(Archive& ar, unsigned version) {
+    if (version > legacy_simplified_event_version_)
+        log_fatal("Attempting to read version %u from file but running version %u of SimplifiedEvent class.", version, legacy_simplified_event_version_);
+
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+
+    ar & make_nvp("fEventFinderMethod", fEventFinderMethod);
+    ar & make_nvp("fAccumWaveformMethod", fAccumWaveformMethod);
+    ar & make_nvp("fThreshold", fThreshold);
+    ar & make_nvp("fPMTHits", fPMTHits);
+    ar & make_nvp("fPMTHits20", fPMTHits20);
+    ar & make_nvp("fPMTHits40", fPMTHits40);
+    ar & make_nvp("fPMTHits60", fPMTHits60);
+    ar & make_nvp("fPMTHitsVec", fPMTHitsVec);
+    ar & make_nvp("fPMTHits20Vec", fPMTHits20Vec);
+    ar & make_nvp("fPMTHits40Vec", fPMTHits40Vec);
+    ar & make_nvp("fPMTHits60Vec", fPMTHits60Vec);
+    ar & make_nvp("fPMTHitsStartVec", fPMTHitsStartVec);
+    ar & make_nvp("fLargestPMTFraction", fLargestPMTFraction);
+
+    ar & make_nvp("fStartTime", fStartTime);
+    ar & make_nvp("fLength", fLength);
+    ar & make_nvp("fCoatedStartTime", fCoatedStartTime);
+    ar & make_nvp("fUncoatedStartTime", fUncoatedStartTime);
+    ar & make_nvp("fVetoBottomStartTime", fVetoBottomStartTime);
+    ar & make_nvp("fVetoTopStartTime", fVetoTopStartTime);
+    ar & make_nvp("fVetoBackStartTime", fVetoBackStartTime);
+    ar & make_nvp("fVetoRightStartTime", fVetoRightStartTime);
+    ar & make_nvp("fVetoLeftStartTime", fVetoLeftStartTime);
+    ar & make_nvp("fVetoFrontStartTime", fVetoFrontStartTime);
+
+    ar & make_nvp("fMaxWaveformTime", fMaxWaveformTime);
+    ar & make_nvp("fMaxWaveformValue", fMaxWaveformValue);
+
+    ar & make_nvp("fCoatedInt", fCoatedInt);
+    ar & make_nvp("fUncoatedInt", fUncoatedInt);
+
+    ar & make_nvp("fHitXPosition", fHitXPosition);
+    ar & make_nvp("fHitYPosition", fHitYPosition);
+    ar & make_nvp("fHitZPosition", fHitZPosition);
+
+    ar & make_nvp("fNCoated", fNCoated);
+    ar & make_nvp("fNUncoated", fNUncoated);
+    ar & make_nvp("fNVetoBottom", fNVetoBottom);
+    ar & make_nvp("fNVetoTop", fNVetoTop);
+    ar & make_nvp("fNVetoBack", fNVetoBack);
+    ar & make_nvp("fNVetoLeft", fNVetoLeft);
+    ar & make_nvp("fNVetoRight", fNVetoRight);
+    ar & make_nvp("fNVetoFront", fNVetoFront);
+
+
+    ar & make_nvp("fAccWaveformCount", fAccWaveformCount);
+    ar & make_nvp("fAccWaveformInt", fAccWaveformInt);
+}
+
+I3_SERIALIZABLE(SimplifiedEvent, LegacySimplifiedEvent);
+#endif // __CINT__

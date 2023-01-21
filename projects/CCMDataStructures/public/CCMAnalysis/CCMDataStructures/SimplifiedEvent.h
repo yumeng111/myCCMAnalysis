@@ -11,10 +11,18 @@
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
 #include "CCMAnalysis/CCMUtils/Utility.h"
 
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+#include <icetray/serialization.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3DefaultName.h>
+#endif // __MAKECINT__ || __ROOTCLING__
+
 #include <map>
 #include <vector>
 #include <utility>
 #include <iostream>
+
+static const unsigned legacy_simplified_event_version_ = 12;
 
 #include "TObject.h"
 
@@ -49,6 +57,9 @@
  * one might want to calculate
  ***********************************************/
 class SimplifiedEvent : public TObject
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+    , public I3FrameObject
+#endif // __MAKECINT__ || __ROOTCLING__
 {
   public:
     SimplifiedEvent();
@@ -203,6 +214,11 @@ class SimplifiedEvent : public TObject
     void SetMaxAccumWaveformTime(float time) { fMaxWaveformTime = time; }
     void SetMaxAccumWaveformValue(float value) { fMaxWaveformValue = value; }
 
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
+
   protected:
     int fEventFinderMethod;        ///< the event finder method converted from #CCMEventFinderID_t
     int fAccumWaveformMethod;        ///< the method used to build the accumulated waveform #CCMAccumWaveformMethod_t
@@ -260,7 +276,13 @@ class SimplifiedEvent : public TObject
     std::map<int,std::pair<std::vector<float>,std::vector<int>>> fPMTWaveform; //!
     mutable std::map<int,std::pair<std::vector<float>,std::vector<int>>>::const_iterator fPMTWaveformItr; //! do not save to file
 
-  ClassDef(SimplifiedEvent,12)  //SimplifiedEvent class
+  ClassDef(SimplifiedEvent,legacy_simplified_event_version_)  //SimplifiedEvent class
 };
+
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+I3_DEFAULT_NAME(SimplifiedEvent, LegacySimplifiedEvent);
+I3_POINTER_TYPEDEFS(SimplifiedEvent);
+I3_CLASS_VERSION(SimplifiedEvent, legacy_simplified_event_version_);
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #endif
