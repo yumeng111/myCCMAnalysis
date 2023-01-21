@@ -7,6 +7,11 @@
 
 #include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
 
+#ifndef __CINT__
+#include <icetray/I3Logging.h>
+#include <icetray/serialization.h>
+#endif // __CINT__
+
 #include <map>
 #include <cmath>
 #include <limits>
@@ -369,3 +374,38 @@ void AccumWaveform::Min(size_t & loc, float & value, size_t start, size_t end,
   return;
 }
 
+#ifndef __CINT__
+template <class Archive>
+void
+AccumWaveform::serialize(Archive& ar, unsigned version) {
+    if (version > legacy_accum_waveform_version_)
+        log_fatal("Attempting to read version %u from file but running version %u of AccumWaveform class.", version, legacy_accum_waveform_version_);
+
+    ar & make_nvp("fEventNumber", fEventNumber);
+    ar & make_nvp("fComputerSecIntoEpoch", fComputerSecIntoEpoch);
+    ar & make_nvp("fComputerNSIntoSec", fComputerNSIntoSec);
+
+    ar & make_nvp("fBeamTime", fBeamTime);
+    ar & make_nvp("fBeamIntegral", fBeamIntegral);
+    ar & make_nvp("fBeamLength", fBeamLength);
+
+    ar & make_nvp("fTriggerTime", fTriggerTime);
+
+    ar & make_nvp("fPulsesTime", fPulsesTime);
+    ar & make_nvp("fIntegralTime", fIntegralTime);
+    ar & make_nvp("fIntegralDer", fIntegralDer);
+
+    ar & make_nvp("fVetoBottomTime", fVetoBottomTime);
+    ar & make_nvp("fVetoTopTime", fVetoTopTime);
+    ar & make_nvp("fVetoCRightTime", fVetoCRightTime);
+    ar & make_nvp("fVetoCLeftTime", fVetoCLeftTime);
+    ar & make_nvp("fVetoCFrontTime", fVetoCFrontTime);
+    ar & make_nvp("fVetoCBackTime", fVetoCBackTime);
+    ar & make_nvp("fVetoTotalTime", fVetoTotalTime);
+
+    ar & make_nvp("fPMTWaveform", fPMTWaveform);
+    ar & make_nvp("fPMTWaveformCount", fPMTWaveformCount);
+}
+
+I3_SERIALIZABLE(AccumWaveform, LegacyAccumWaveform);
+#endif // __CINT__

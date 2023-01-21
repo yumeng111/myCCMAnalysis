@@ -11,11 +11,18 @@
 #include <vector>
 #include <utility>
 #include <iterator>
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+#include <icetray/serialization.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3DefaultName.h>
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
 
 #include "TObject.h"
+
+static const unsigned legacy_accum_waveform_version_ = 3;
 
 /*!**********************************************
  * \class AccumWaveform
@@ -25,6 +32,9 @@
  * The class is saved in the data file.
  ***********************************************/
 class AccumWaveform : public TObject
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+    , public I3FrameObject
+#endif // __MAKECINT__ || __ROOTCLING__
 {
   public:
     AccumWaveform();
@@ -111,6 +121,11 @@ class AccumWaveform : public TObject
     void DumpInfo();
     void AddMethod(CCMAccumWaveformMethod_t method);
 
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
+
   private:
     std::array<float,Utility::fgkNumBins> * Get(CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
 
@@ -144,7 +159,7 @@ class AccumWaveform : public TObject
     MapDAQWF2D fPMTWaveform;
     MapDAQWF2D fPMTWaveformCount;
 
-  ClassDef(AccumWaveform,3)
+  ClassDef(AccumWaveform,legacy_accum_waveform_version_)
 
 };
 
@@ -160,6 +175,12 @@ void AccumWaveform::CopyVec(typename std::vector<T> & outVec, size_t start, size
   std::copy(waveform->begin()+start, waveform->begin()+end,outVec.begin());
   return;
 }
+
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+I3_DEFAULT_NAME(AccumWaveform, LegacyAccumWaveform);
+I3_POINTER_TYPEDEFS(AccumWaveform);
+I3_CLASS_VERSION(AccumWaveform, legacy_accum_waveform_version_);
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #endif // #ifndef AccumWaveform_h
 
