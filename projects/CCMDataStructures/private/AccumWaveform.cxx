@@ -381,6 +381,7 @@ AccumWaveform::serialize(Archive& ar, unsigned version) {
     if (version > legacy_accum_waveform_version_)
         log_fatal("Attempting to read version %u from file but running version %u of AccumWaveform class.", version, legacy_accum_waveform_version_);
 
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("fEventNumber", fEventNumber);
     ar & make_nvp("fComputerSecIntoEpoch", fComputerSecIntoEpoch);
     ar & make_nvp("fComputerNSIntoSec", fComputerNSIntoSec);
