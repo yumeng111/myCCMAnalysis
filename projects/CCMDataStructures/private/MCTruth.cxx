@@ -8,6 +8,10 @@
 #include <memory>
 #include <numeric>
 #include <algorithm>
+#ifndef __CINT__
+#include <icetray/I3Logging.h>
+#include <icetray/serialization.h>
+#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/MCTruth.h"
 
@@ -311,5 +315,36 @@ MCTruth & MCTruth::operator=(const MCTruth & rhs)
   return *this;
 }
 
+#ifndef __CINT__
+template <class Archive>
+void
+MCTruth::serialize(Archive& ar, unsigned version) {
+    if (version > legacy_mc_truth_version_)
+        log_fatal("Attempting to read version %u from file but running version %u of MCTruth class.", version, legacy_mc_truth_version_);
 
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+
+    ar & make_nvp("fParticleID", fParticleID);
+
+    ar & make_nvp("fEnergyDeposited", fEnergyDeposited);
+    ar & make_nvp("fMomX", fMomX);
+    ar & make_nvp("fMomY", fMomY);
+    ar & make_nvp("fMomZ", fMomZ);
+    ar & make_nvp("fPosX", fPosX);
+    ar & make_nvp("fPosY", fPosY);
+    ar & make_nvp("fPosZ", fPosZ);
+
+    ar & make_nvp("fHitEnergy", fHitEnergy);
+    ar & make_nvp("fHitTime", fHitTime);
+    ar & make_nvp("fHitRow", fHitRow);
+    ar & make_nvp("fHitCol", fHitCol);
+    ar & make_nvp("fHitUncoated", fHitUncoated);
+    ar & make_nvp("fHitAngle", fHitAngle);
+
+    ar & make_nvp("fPassedQF", fPassedQF);
+    ar & make_nvp("fQFValue", fQFValue);
+}
+
+I3_SERIALIZABLE(MCTruth, LegacyMCTruth);
+#endif // __CINT__
 

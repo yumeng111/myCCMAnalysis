@@ -10,6 +10,14 @@
 #include <vector>
 #include <iostream>
 
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+#include <icetray/serialization.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3DefaultName.h>
+#endif // __MAKECINT__ || __ROOTCLING__
+
+static const unsigned legacy_mc_truth_version_ = 2;
+
 #include "TObject.h"
 
 /*!**********************************************
@@ -17,6 +25,9 @@
  * \brief Container for the raw data coming out for the detector
  ***********************************************/
 class MCTruth : public TObject
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+    , public I3FrameObject
+#endif // __MAKECINT__ || __ROOTCLING__
 {
   public:
     MCTruth();
@@ -80,6 +91,11 @@ class MCTruth : public TObject
 
     MCTruth & operator=(const MCTruth & rhs);
 
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
+
   private:
 
 		/// initial particle id using pdg encoding
@@ -117,8 +133,14 @@ class MCTruth : public TObject
 		double fQFValue;
 
 
-  ClassDef(MCTruth,2)
+  ClassDef(MCTruth,legacy_mc_truth_version_)
 };
+
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+I3_DEFAULT_NAME(MCTruth, LegacyMCTruth);
+I3_POINTER_TYPEDEFS(MCTruth);
+I3_CLASS_VERSION(MCTruth, legacy_mc_truth_version_);
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #endif // MCTruth_h
 
