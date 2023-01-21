@@ -11,8 +11,15 @@
 #include <vector>
 #include <iostream>
 #include <sys/types.h>
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+#include <icetray/serialization.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3DefaultName.h>
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #include "CCMAnalysis/CCMDataStructures/SimplifiedEvent.h"
+
+static const unsigned legacy_events_version_ = 2;
 
 #include "TObject.h"
 
@@ -25,6 +32,9 @@
  * data file.
  ***********************************************/
 class Events : public TObject
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+    , public I3FrameObject
+#endif // __MAKECINT__ || __ROOTCLING__
 {
   public:
     Events();
@@ -109,7 +119,10 @@ class Events : public TObject
 
     Events & operator=(const Events & rhs);
 
-  private:
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+  friend class icecube::serialization::access;
+  template <class Archive> void serialize(Archive & ar, unsigned version);
+#endif // __MAKECINT__ || __ROOTCLING__
 
   private:
     /// The time of the window with sample number == 0 (not saved)
@@ -147,8 +160,14 @@ class Events : public TObject
 
 
 
-  ClassDef(Events,2)
+  ClassDef(Events,legacy_events_version_)
 
 };
+
+#if !(defined(__MAKECINT__) || defined(__ROOTCLING__))
+I3_DEFAULT_NAME(Events, LegacyEvents);
+I3_POINTER_TYPEDEFS(Events);
+I3_CLASS_VERSION(Events, legacy_events_version_);
+#endif // __MAKECINT__ || __ROOTCLING__
 
 #endif // #ifndef Events_h

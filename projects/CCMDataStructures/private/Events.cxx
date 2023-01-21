@@ -10,6 +10,10 @@
 #include <utility>
 #include <iterator>
 #include <algorithm>
+#ifndef __CINT__
+#include <icetray/I3Logging.h>
+#include <icetray/serialization.h>
+#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/Events.h"
 
@@ -107,4 +111,29 @@ Events & Events::operator=(const Events & rhs)
   return *this;
 }
 
+#ifndef __CINT__
+template <class Archive>
+void
+Events::serialize(Archive& ar, unsigned version) {
+    if (version > legacy_events_version_)
+        log_fatal("Attempting to read version %u from file but running version %u of Events class.", version, legacy_events_version_);
 
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+    ar & make_nvp("fEventNumber", fEventNumber);
+    ar & make_nvp("fComputerSecIntoEpoch", fComputerSecIntoEpoch);
+    ar & make_nvp("fComputerNSIntoSec", fComputerNSIntoSec);
+
+    ar & make_nvp("fNumEvents", fNumEvents);
+
+    ar & make_nvp("fTriggerTime", fTriggerTime);
+
+    ar & make_nvp("fBeamTime", fBeamTime);
+    ar & make_nvp("fBeamIntegral", fBeamIntegral);
+    ar & make_nvp("fBeamLength", fBeamLength);
+
+    ar & make_nvp("fEvents", fEvents);
+
+}
+
+I3_SERIALIZABLE(Events, LegacyEvents);
+#endif // __CINT__
