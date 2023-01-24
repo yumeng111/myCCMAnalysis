@@ -43,12 +43,14 @@ public:
         if(branches.count(branch_name) == 0)
             LoadBranch(branch_name);
         TBranch * branch_ptr = branches[branch_name];
-        if(current_index >= num_entries[branch_name]) {
+        if(branch_ptr == nullptr or current_index >= num_entries[branch_name]) {
             data_ptr = nullptr;
             return;
         }
-        bool new_allocation = data_ptr == nullptr;
         T * ptr_destination = data_ptr.get();
+        bool new_allocation = ptr_destination == nullptr;
+        if(new_allocation)
+            ptr_destination = new T();
         branch_ptr->SetAddress(&ptr_destination);
         branch_ptr->GetEntry(current_index);
 

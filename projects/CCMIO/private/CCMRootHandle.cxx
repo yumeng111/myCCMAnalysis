@@ -49,8 +49,9 @@ std::set<std::string> CCMRootHandle::GetTreeNames() {
     std::set<std::string> tree_names;
     for(TObject * obj_ptr : *key_array) {
         TKey * key_ptr = (TKey *) obj_ptr;
-        std::string branch_name = key_ptr->GetClassName();
-        if(branch_name == "TTree") {
+        std::string class_name = key_ptr->GetClassName();
+        std::string branch_name = key_ptr->GetName();
+        if(class_name == "TTree") {
             tree_names.insert(branch_name);
         }
     }
@@ -69,6 +70,8 @@ void CCMRootHandle::LoadAllBranches() {
     for(std::string const & tree_name : tree_names) {
         std::set<std::string> tree_branch_names;
         TTree * tree_ptr;
+        if(tree_ptr == nullptr)
+            throw std::runtime_error("Could not load tree named \"" + tree_name + "\"");
         input_file_ptr->GetObject(tree_name.c_str(), tree_ptr);
         TObjArray * branch_array = tree_ptr->GetListOfBranches();
         for(TObject * obj_ptr : *branch_array) {
@@ -80,6 +83,7 @@ void CCMRootHandle::LoadAllBranches() {
             if(branch_names.count(branch_name) != 0)
                 throw std::runtime_error("Multiple trees in the root file have branches with the same name");
             TBranch * branch_ptr = tree_ptr->GetBranch(branch_name.c_str());
+            branch_ptr->SetAutoDelete(false);
             branches.insert({branch_name, branch_ptr});
             num_entries.insert({branch_name, branch_ptr->GetEntries()});
             branch_names.insert(branch_name);
@@ -97,12 +101,15 @@ void CCMRootHandle::LoadBranches(std::vector<std::string> const & branch_name_ve
     for(std::string const & tree_name : tree_names) {
         TTree * tree_ptr;
         input_file_ptr->GetObject(tree_name.c_str(), tree_ptr);
+        if(tree_ptr == nullptr)
+            throw std::runtime_error("Could not load tree named \"" + tree_name + "\"");
         for(std::string const & branch_name : branch_names) {
             TBranch * branch_ptr = tree_ptr->GetBranch(branch_name.c_str());
             if(branch_ptr == nullptr)
                 continue;
             if(found_branch_names.count(branch_name) != 0)
                 throw std::runtime_error("Multiple trees in the root file have branches with the same name");
+            branch_ptr->SetAutoDelete(false);
             branches.insert({branch_name, branch_ptr});
             num_entries.insert({branch_name, branch_ptr->GetEntries()});
             if(tree_size < branch_ptr->GetEntries())
@@ -123,6 +130,7 @@ void CCMRootHandle::LoadBranches(std::string const & tree_name, std::vector<std:
         TBranch * branch_ptr = tree_ptr->GetBranch(branch_name.c_str());
         if(branch_ptr == nullptr)
             throw std::runtime_error("Could not find branch named \"" + branch_name + "\" in tree named \"" + tree_name + "\"");
+        branch_ptr->SetAutoDelete(false);
         branches.insert({branch_name, branch_ptr});
         num_entries.insert({branch_name, branch_ptr->GetEntries()});
         if(tree_size < branch_ptr->GetEntries())
@@ -146,6 +154,7 @@ void CCMRootHandle::LoadBranch(std::string const & branch_name) {
             continue;
         if(found_branch_names.count(branch_name) != 0)
             throw std::runtime_error("Multiple trees in the root file have branches with the same name");
+        branch_ptr->SetAutoDelete(false);
         branches.insert({branch_name, branch_ptr});
         num_entries.insert({branch_name, branch_ptr->GetEntries()});
         if(tree_size < branch_ptr->GetEntries())
