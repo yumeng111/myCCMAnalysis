@@ -3,12 +3,13 @@ set(PROJECT_NAME CCMIO)
 i3_project(${PROJECT_NAME})
 
 i3_add_library(${PROJECT_NAME}
+    private/CCMI3RootReader.cxx
     private/CCMRootIO.cxx
     private/CCMRootHandle.cxx
     private/CCMRawIO.cxx
     private/CCMEventTreeHandle.cxx
     private/IOUtils.cxx
-    USE_TOOLS root boost
+    USE_TOOLS root boost python
     USE_PROJECTS CCMBinary CCMUtils CCMDataStructures icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMIO/CCMRootIO.h

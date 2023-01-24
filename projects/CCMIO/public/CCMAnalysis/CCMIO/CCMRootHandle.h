@@ -9,11 +9,12 @@
 #include <stdint.h>
 #include <boost/shared_ptr.hpp>
 
-#include "TBranch.h"
+#include <icetray/I3FrameObject.h>
+#include <icetray/serialization.h>
+
+#include <TBranch.h>
 
 class TFile;
-class TTree;
-class TBranch;
 
 class CCMRootHandle {
 protected:
@@ -46,8 +47,13 @@ public:
             data_ptr = nullptr;
             return;
         }
-        branch_ptr->SetAddress(&(data_ptr.get()));
+        bool new_allocation = data_ptr == nullptr;
+        T * ptr_destination = data_ptr.get();
+        branch_ptr->SetAddress(&ptr_destination);
         branch_ptr->GetEntry(current_index);
+
+        if(new_allocation)
+            data_ptr = boost::shared_ptr<T>(ptr_destination);
     }
 
     template<typename T>
@@ -63,9 +69,7 @@ public:
     bool Valid();
 };
 
-//////////////////////////////////////////////////////////////
-// Template functions must be inlines
-//////////////////////////////////////////////////////////////
+I3_POINTER_TYPEDEFS(CCMRootHandle);
 
 #endif // CCM_CCMRootHandle_H
 
