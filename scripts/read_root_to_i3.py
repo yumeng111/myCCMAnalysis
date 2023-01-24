@@ -12,11 +12,11 @@ def merge(files, output_file):
     from icecube import icetray
     from icecube.icetray import load
     load("CCMBinary", False)
-    load("CCMDataclasses", False);
+    load("CCMDataStructures", False);
     load("CCMIO", False)
 
     tray = I3Tray.I3Tray()
-    tray.AddModule("CCMI3RootReader", "reader", FilenameList=fnames, KeysToLoad=["pulses", "events", "accumWaveform", "mcTruth"])
+    tray.AddModule("CCMI3RootReader", "reader", FilenameList=fnames, KeysToLoad=["rawData", "pulses", "events", "accumWaveform", "mcTruth"])
     if "%" in output_file:
         tray.AddModule("I3MultiWriter", "writer", SizeLimit=(3*1024**3), FileName=output_file, MetadataStreams=[icetray.I3Frame.Geometry, icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus], CounterStream=icetray.I3Frame.DAQ, SizeCheckInterval=1000, NWorkers=8)
     else:
