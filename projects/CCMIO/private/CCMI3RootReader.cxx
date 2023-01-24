@@ -201,7 +201,7 @@ void CCMI3RootReader::OpenNextFile() {
 
   if(file_ptr_ != nullptr)
       file_ptr_->Close();
-  file_ptr_ = boost::make_shared<TFile>(current_filename_.c_str());
+  file_ptr_ = boost::make_shared<TFile>(current_filename_.c_str(), "READ");
   if(tree_name_ != "") {
       if(load_.size() > 0) {
           file_handle_ = boost::make_shared<CCMRootHandle>(file_ptr_.get(), tree_name_, load_);
