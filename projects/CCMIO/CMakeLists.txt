@@ -4,10 +4,11 @@ i3_project(${PROJECT_NAME})
 
 i3_add_library(${PROJECT_NAME}
     private/CCMRootIO.cxx
+    private/CCMRootHandle.cxx
     private/CCMRawIO.cxx
     private/CCMEventTreeHandle.cxx
     private/IOUtils.cxx
-    USE_TOOLS root
+    USE_TOOLS root boost
     USE_PROJECTS CCMBinary CCMUtils CCMDataStructures icetray serialization
     ROOTCINT
     public/CCMAnalysis/CCMIO/CCMRootIO.h
