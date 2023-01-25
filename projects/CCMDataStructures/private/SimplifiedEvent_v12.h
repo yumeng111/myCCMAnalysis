@@ -1,64 +1,31 @@
-/*!**********************************************
- * \file SimplifiedEvent.h
- * \brief Header file for the #SimplifiedEvent class
- * \author R. T. Thornton (LANL)
- * \date February 25, 2020
- ***********************************************/
-#ifndef SimplifiedEvent_h
-#define SimplifiedEvent_h
+#ifndef SimplifiedEvent_v12_h
+#define SimplifiedEvent_v12_h
 
 #include "CCMAnalysis/CCMDataStructures/SinglePulse.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
 #include "CCMAnalysis/CCMUtils/Utility.h"
-
-#include <icetray/serialization.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3DefaultName.h>
 
 #include <map>
 #include <vector>
 #include <utility>
 #include <iostream>
 
-static const unsigned legacy_simplified_event_version_ = 12;
-
 #include "TObject.h"
 
-//class BoardInfo;
-//class ChannelInfo;
-
-
-// from Utility header we get the definition of the
-// different event builder types
-//typedef enum {
-//  kCCMDynamicLengthEventID = 0, 
-//  kCCMFixedLengthEventID = 1, 
-//} CCMEventFinderID_t;
-
-// from Utility header we get the definition
-// of the different accumulated waveform builder
-// types
-//typedef enum {
-//  kCCMAccumWaveformTriangleID = 0,
-//  kCCMAccumWaveformStartID = 1,
-//  kCCMAccumWaveformTrianglePulseCutID = 2,
-//  kCCMAccumWaveformStartPulseCutID = 3,
-//  kCCMAccumWaveformTotalID = 4
-//} CCMAccumWaveformMethod_t;
-
 /*!**********************************************
- * \class SimplifiedEvent
+ * \class SimplifiedEvent_v12
  * \brief All the information needed after finding an event
  *
  * Not all parameters are filled with every event definition
  * but this is a good list of all the various parameters
  * one might want to calculate
  ***********************************************/
-class SimplifiedEvent : public TObject, public I3FrameObject {
+class SimplifiedEvent_v12 : public TObject
+{
   public:
-    SimplifiedEvent();
-    SimplifiedEvent(const SimplifiedEvent & rhs);
-    ~SimplifiedEvent();
+    SimplifiedEvent_v12();
+    SimplifiedEvent_v12(const SimplifiedEvent_v12 & rhs);
+    ~SimplifiedEvent_v12();
 
     void Reset();
 
@@ -208,9 +175,6 @@ class SimplifiedEvent : public TObject, public I3FrameObject {
     void SetMaxAccumWaveformTime(float time) { fMaxWaveformTime = time; }
     void SetMaxAccumWaveformValue(float value) { fMaxWaveformValue = value; }
 
-    friend class icecube::serialization::access;
-    template <class Archive> void serialize(Archive & ar, unsigned version);
-
   protected:
     int fEventFinderMethod;        ///< the event finder method converted from #CCMEventFinderID_t
     int fAccumWaveformMethod;        ///< the method used to build the accumulated waveform #CCMAccumWaveformMethod_t
@@ -268,11 +232,7 @@ class SimplifiedEvent : public TObject, public I3FrameObject {
     std::map<int,std::pair<std::vector<float>,std::vector<int>>> fPMTWaveform; //!
     mutable std::map<int,std::pair<std::vector<float>,std::vector<int>>>::const_iterator fPMTWaveformItr; //! do not save to file
 
-  ClassDef(SimplifiedEvent,legacy_simplified_event_version_ + 1)  //SimplifiedEvent class
+  ClassDef(SimplifiedEvent_v12,legacy_simplified_event_version_)  //SimplifiedEvent_v12 class
 };
-
-I3_DEFAULT_NAME(SimplifiedEvent, LegacySimplifiedEvent);
-I3_POINTER_TYPEDEFS(SimplifiedEvent);
-I3_CLASS_VERSION(SimplifiedEvent, legacy_simplified_event_version_ + 1);
 
 #endif

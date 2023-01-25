@@ -19,7 +19,9 @@ i3_add_library(${PROJECT_NAME}
     public/CCMAnalysis/CCMDataStructures/RawData.h
     private/RawData_v2.h
     public/CCMAnalysis/CCMDataStructures/SimplifiedEvent.h
+    private/SimplifiedEvent_v12.h
     public/CCMAnalysis/CCMDataStructures/SinglePulse.h
+    private/SinglePulse_v3.h
     public/CCMAnalysis/CCMDataStructures/Events.h
     private/Events_v2.h
     public/CCMAnalysis/CCMDataStructures/AccumWaveform.h

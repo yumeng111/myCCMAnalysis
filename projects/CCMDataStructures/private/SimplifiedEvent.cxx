@@ -8,10 +8,8 @@
 #include <cmath>
 #include <iostream>
 #include <iterator>
-#ifndef __CINT__
 #include <icetray/I3Logging.h>
 #include <icetray/serialization.h>
-#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/SimplifiedEvent.h"
 
@@ -326,12 +324,11 @@ void SimplifiedEvent::GetPMTWaveform(int & key, std::vector<float> & vecInt, std
   vecCount = fPMTWaveformItr->second.second;
 }
 
-#ifndef __CINT__
 template <class Archive>
 void
 SimplifiedEvent::serialize(Archive& ar, unsigned version) {
-    if (version > legacy_simplified_event_version_)
-        log_fatal("Attempting to read version %u from file but running version %u of SimplifiedEvent class.", version, legacy_simplified_event_version_);
+    if (version > legacy_simplified_event_version_ + 1)
+        log_fatal("Attempting to read version %u from file but running version %u of SimplifiedEvent class.", version, legacy_simplified_event_version_ + 1);
 
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
 
@@ -385,4 +382,3 @@ SimplifiedEvent::serialize(Archive& ar, unsigned version) {
 }
 
 I3_SERIALIZABLE(SimplifiedEvent, LegacySimplifiedEvent);
-#endif // __CINT__

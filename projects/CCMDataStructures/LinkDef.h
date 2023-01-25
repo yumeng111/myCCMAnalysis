@@ -11,6 +11,7 @@
 #pragma link C++ class RawData+;
 #pragma read sourceClass="RawData" versions="2" targetClass="RawData_v2" source="" target="";
 #pragma link C++ class SimplifiedEvent+;
+#pragma read sourceClass="SimplifiedEvent" versions="12" targetClass="SimplifiedEvent_v12" source="" target="";
 #pragma link C++ class Events+;
 #pragma read sourceClass="Events" versions="2" targetClass="Events_v2" source="" target="";
 #pragma link C++ class AccumWaveform+;
