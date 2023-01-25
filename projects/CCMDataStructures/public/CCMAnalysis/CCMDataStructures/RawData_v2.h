@@ -1,27 +1,31 @@
-#ifndef RawData_h
-#define RawData_h
+/*!**********************************************
+ * \file RawData_v2.h
+ * \brief Header file for the #RawData_v2 class
+ * \author R. T. Thornton (LANL)
+ * \date February 25, 2020
+ ***********************************************/
+#ifndef RawData_v2_h
+#define RawData_v2_h
 
 #include <vector>
 #include <iostream>
 #include <stdlib.h>
-#include <icetray/serialization.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3DefaultName.h>
+
+static const unsigned legacy_raw_data_version_ = 2;
 
 #include "TObject.h"
 
-#include "CCMAnalysis/CCMDataStructures/RawData_v2.h"
-
 /*!**********************************************
- * \class RawData
+ * \class RawData_v2
  * \brief Container for the raw data coming out for the detector
  ***********************************************/
-class RawData : public TObject, public I3FrameObject {
+class RawData_v2 : public TObject
+{
   public:
-    RawData();
-    RawData(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec);
-    RawData(const RawData & rhs);
-    ~RawData();
+    RawData_v2();
+    RawData_v2(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec);
+    RawData_v2(const RawData_v2 & rhs);
+    ~RawData_v2();
 
     void Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay,u_int32_t nsToSec);
     void TruncateWaveform(size_t numberBoards = 1);
@@ -79,10 +83,7 @@ class RawData : public TObject, public I3FrameObject {
     int GetBCMTime(double * integral = 0, double * length = 0);
     int GetBoard10ChannelOffset();
 
-    RawData & operator=(const RawData & rhs);
-
-  friend class icecube::serialization::access;
-  template <class Archive> void serialize(Archive & ar, unsigned version);
+    RawData_v2 & operator=(const RawData_v2 & rhs);
 
   private:
 
@@ -114,12 +115,6 @@ class RawData : public TObject, public I3FrameObject {
     /// DAQ window time in s
     u_int32_t fGPSSecIntoDay;
 
-    ClassDef(RawData, legacy_raw_data_version_ + 1);
-
 };
 
-I3_DEFAULT_NAME(RawData, LegacyRawData);
-I3_POINTER_TYPEDEFS(RawData);
-I3_CLASS_VERSION(RawData, legacy_raw_data_version_ + 1);
-
-#endif // RawData_h
+#endif // RawData_v2_h

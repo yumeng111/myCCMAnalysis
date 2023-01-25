@@ -29,6 +29,7 @@
 #include "CCMAnalysis/CCMDataStructures/RawData.h"
 
 #include "TFile.h"
+#include "TH1.h"
 
 class CCMI3RootReader : public I3Module {
     unsigned nframes_;
@@ -93,6 +94,7 @@ CCMI3RootReader::CCMI3RootReader(const I3Context& context) : I3Module(context), 
 }
 
 void CCMI3RootReader::Configure() {
+    TH1::AddDirectory(0);
     std::string fname;
 
     GetParameter("FileNameList", filenames_);
@@ -182,6 +184,7 @@ void CCMI3RootReader::Process() {
     } catch (const std::exception &e) {
         log_fatal("Error reading %s at frame %d: %s!",
                 current_filename_.c_str(), nframes_, e.what());
+        file_handle_->Advance();
         return;
     }
 
@@ -191,6 +194,7 @@ void CCMI3RootReader::Process() {
         nframes_++;
         PushFrame(frame_map[stream], "OutBox");
     }
+    file_handle_->Advance();
 }
 
 void CCMI3RootReader::OpenNextFile() {

@@ -7,10 +7,12 @@
 #pragma link C++ class SinglePulse+;
 #pragma link C++ class Pulses+;
 #pragma link C++ class RawData+;
+#pragma read sourceClass="RawData" versions="2" targetClass="RawData2" source="" target="";
 #pragma link C++ class SimplifiedEvent+;
 #pragma link C++ class Events+;
 #pragma link C++ class AccumWaveform+;
 #pragma link C++ class MCTruth+;
+#pragma link C++ class I3FrameObject;
 #pragma link C++ class std::vector<SinglePulse*>+;
 #pragma link C++ class std::vector<Pulses*>+;
 #pragma link C++ class std::vector<SimplifiedEvent*>+;

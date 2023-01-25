@@ -1,20 +1,26 @@
+/*!**********************************************
+ * \file RawData_v2.cxx
+ * \brief Source code for the #RawData_v2 class
+ * \author R. T. Thornton (LANL)
+ * \date February 25, 2020
+ ***********************************************/
 
 #include <memory>
 #include <numeric>
 #include <algorithm>
-#include <icetray/I3Logging.h>
-#include <icetray/serialization.h>
 
-#include "CCMAnalysis/CCMDataStructures/RawData.h"
+#include "CCMAnalysis/CCMDataStructures/RawData_v2.h"
 
 #include "CCMAnalysis/CCMDataStructures/Pulses.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
 
+ClassImp(RawData_v2)
+
 /*!**********************************************
- * \fn RawData::RawData()
+ * \fn RawData_v2::RawData_v2()
  * \brief Default Constructor
  ***********************************************/
-RawData::RawData() : TObject()
+RawData_v2::RawData_v2() : TObject()
 {
   fNumBoards = 17; // default settings
   fNumChannels = 16; // default settings
@@ -31,7 +37,7 @@ RawData::RawData() : TObject()
 }
 
 /*!**********************************************
- * \fn RawData::RawData(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
+ * \fn RawData_v2::RawData_v2(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
  * \brief Constructor (calls #Reset)
  * \param[in] numBoards The number of digitizer boards
  * \param[in] numChannels The number of channels on a digitizer board
@@ -40,14 +46,14 @@ RawData::RawData() : TObject()
  * \param[in] secToDay The time of the DAQ window in s
  * \param[in] nsToSec The time of the DAQ window in ns
  ***********************************************/
-RawData::RawData(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
+RawData_v2::RawData_v2(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
 : TObject()
 {
   Reset(numBoards,numChannels,numSamples,evtNum,secToDay,nsToSec);
 }
 
 /*!**********************************************
- * \fn void RawData::Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
+ * \fn void RawData_v2::Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
  * \brief Resets the values to what is passed
  * \param[in] numBoards The number of digitizer boards
  * \param[in] numChannels The number of channels on a digitizer board
@@ -56,7 +62,7 @@ RawData::RawData(size_t numBoards, size_t numChannels, size_t numSamples, u_int3
  * \param[in] secToDay The time of the DAQ window in s
  * \param[in] nsToSec The time of the DAQ window in ns
  ***********************************************/
-void RawData::Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
+void RawData_v2::Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_int32_t evtNum, u_int32_t secToDay, u_int32_t nsToSec)
 {
   fNumBoards       = numBoards;
   fNumChannels     = numChannels;
@@ -76,86 +82,86 @@ void RawData::Reset(size_t numBoards, size_t numChannels, size_t numSamples, u_i
 }
 
 /*!**********************************************
- * \fn void RawData::TruncateWaveform(size_t numBoards)
+ * \fn void RawData_v2::TruncateWaveform(size_t numBoards)
  * \brief Truncates the number of waveforms saved to the numBoards passed * #fNumChannels
  * \param[in] numBoards The number of digitizer boards to save
  ***********************************************/
-void RawData::TruncateWaveform(size_t numBoards)
+void RawData_v2::TruncateWaveform(size_t numBoards)
 {
   fWaveforms.resize(numBoards*fNumChannels,std::vector<u_int16_t>(fNumSamples));
 }
 
 /*!**********************************************
- * \fn RawData::RawData(const RawData & rhs)
+ * \fn RawData_v2::RawData_v2(const RawData_v2 & rhs)
  * \brief Copy constuctor
  * \param[in] rhs The object to copy
  ***********************************************/
-RawData::RawData(const RawData & rhs) : TObject(rhs)
+RawData_v2::RawData_v2(const RawData_v2 & rhs) : TObject(rhs)
 {
   this->operator=(rhs);
 }
 
 /*!**********************************************
- * \fn RawData::~RawData()
+ * \fn RawData_v2::~RawData_v2()
  * \brief Destructor
  ***********************************************/
-RawData::~RawData()
+RawData_v2::~RawData_v2()
 {
   // empty
 }
 
 //-------------------------------------------------------------------------------------------------
-void RawData::SetWaveform(int detector, const u_int16_t input[])
+void RawData_v2::SetWaveform(int detector, const u_int16_t input[])
 {
   fWaveforms[detector].assign(input,input+fNumSamples);
 }
 
 //-------------------------------------------------------------------------------------------------
-void RawData::SetOffset(const std::vector<float> & offsets)
+void RawData_v2::SetOffset(const std::vector<float> & offsets)
 {
   fOffset = offsets;
 }
 
 //-------------------------------------------------------------------------------------------------
-void RawData::SetSize(size_t board, const u_int16_t input[])
+void RawData_v2::SetSize(size_t board, const u_int16_t input[])
 {
   fSize[board].assign(input,input+fNumChannels);
 }
 
 //-------------------------------------------------------------------------------------------------
-void RawData::SetChannelMask(size_t board, const u_int16_t input[])
+void RawData_v2::SetChannelMask(size_t board, const u_int16_t input[])
 {
   fChannelMask[board].assign(input,input+fNumChannels);
 }
 
 //-------------------------------------------------------------------------------------------------
-u_int16_t RawData::SetTemp(size_t board, const u_int16_t input[])
+u_int16_t RawData_v2::SetTemp(size_t board, const u_int16_t input[])
 {
   fTemp[board].assign(input,input+fNumChannels);
   return *std::max_element(input,input+fNumChannels);
 }
 
 //-------------------------------------------------------------------------------------------------
-void RawData::SetBoardEventNum(const u_int32_t input[])
+void RawData_v2::SetBoardEventNum(const u_int32_t input[])
 {
   fBoardEventNum.assign(input,input+fNumBoards);
 }
 
 //-------------------------------------------------------------------------------------------------
-void RawData::SetClockTime(const u_int32_t input[])
+void RawData_v2::SetClockTime(const u_int32_t input[])
 {
   fClockTime.assign(input,input+fNumBoards);
 }
 
 /*!**********************************************
- * \fn int RawData::FindFirstNIMSample(int channelNumber)
+ * \fn int RawData_v2::FindFirstNIMSample(int channelNumber)
  * \brief Find the first sample above threshold for a digitizer channel
  * \param[in] channelNumber The channel number based on the total number of channels saved in #fWaveforms
  * \return The sample number to the turn on of the NIM signal
  *
  * Assumes the pulse that is possibly in the window is a NIM signal
  ***********************************************/
-int RawData::FindFirstNIMSample(int channelNumber)
+int RawData_v2::FindFirstNIMSample(int channelNumber)
 {
   int firstSample = 0;
   auto samples = GetSamples(channelNumber);
@@ -175,7 +181,7 @@ int RawData::FindFirstNIMSample(int channelNumber)
 }
 
 /*!**********************************************
- * \fn bool RawData::IsTriggerPresent(std::string tirggerName)
+ * \fn bool RawData_v2::IsTriggerPresent(std::string tirggerName)
  * \brief Return true if the trigger is present
  * \param[in] triggerName The name of the trigger
  * \return True if the trigger is present
@@ -188,7 +194,7 @@ int RawData::FindFirstNIMSample(int channelNumber)
  * - LED
  * - ALL
  ***********************************************/
-bool RawData::IsTriggerPresent(std::string triggerName)
+bool RawData_v2::IsTriggerPresent(std::string triggerName)
 {
   int boardOffset = GetBoard10ChannelOffset();
   if (boardOffset < 0) {
@@ -251,17 +257,17 @@ bool RawData::IsTriggerPresent(std::string triggerName)
 }
 
 /*!**********************************************
- * \fn float RawData::GetEarliestOffset()
+ * \fn float RawData_v2::GetEarliestOffset()
  * \brief Return the time of the earliest board copy of the trigger
  * \return Return the time of the earliest board copy of the trigger
  ***********************************************/
-float RawData::GetEarliestOffset()
+float RawData_v2::GetEarliestOffset()
 {
   return *std::min_element(fOffset.begin(),fOffset.end());
 }
 
 /*!**********************************************
- * \fn int RawData::GetBCMTime(double * integral, double * length)
+ * \fn int RawData_v2::GetBCMTime(double * integral, double * length)
  * \brief Return the sample number to the beam current monitor turn on
  * \param[out] integral The integral of the BCM signal
  * \param[out] length The length of the BCM signal
@@ -270,7 +276,7 @@ float RawData::GetEarliestOffset()
  * Uses the derivative of the waveform to find the turn on.
  * Function dependent of the Pulses class
  ***********************************************/
-int RawData::GetBCMTime(double * integral, double * length)
+int RawData_v2::GetBCMTime(double * integral, double * length)
 {
   int boardOffset = GetBoard10ChannelOffset();
 
@@ -300,7 +306,7 @@ int RawData::GetBCMTime(double * integral, double * length)
 }
 
 /*!**********************************************
- * \fn int RawData::GetBoard10ChannelOffset()
+ * \fn int RawData_v2::GetBoard10ChannelOffset()
  * \brief Return the number of channels board 10 starts at in the #fWaveforms vector
  * \return Return the number of channels board 10 starts at in the #fWaveforms vector
  *
@@ -308,7 +314,7 @@ int RawData::GetBCMTime(double * integral, double * length)
  * 10 board has its sampels saved. This function returns the number of channels
  * to offset the index in #fWaveforms by to get the right waveform
  ***********************************************/
-int RawData::GetBoard10ChannelOffset()
+int RawData_v2::GetBoard10ChannelOffset()
 {
   int boardOffset = 0;
   if (GetNumBoards() == 0) {
@@ -324,11 +330,11 @@ int RawData::GetBoard10ChannelOffset()
 }
 
 /*!**********************************************
- * \fn RawData & RawData::operator=(const RawData & rhs)
- * \brief Copy assignment for the #RawData class
+ * \fn RawData_v2 & RawData_v2::operator=(const RawData_v2 & rhs)
+ * \brief Copy assignment for the #RawData_v2 class
  * \return Return reference to the current class
  ***********************************************/
-RawData & RawData::operator=(const RawData & rhs)
+RawData_v2 & RawData_v2::operator=(const RawData_v2 & rhs)
 {
   this->fNumBoards       = rhs.fNumBoards;
   this->fNumChannels     = rhs.fNumChannels;
@@ -345,28 +351,4 @@ RawData & RawData::operator=(const RawData & rhs)
 
   return *this;
 }
-
-template <class Archive>
-void
-RawData::serialize(Archive& ar, unsigned version) {
-  if (version > legacy_raw_data_version_ + 1)
-    log_fatal("Attempting to read version %u from file but running version %u of RawData class.", version, legacy_raw_data_version_ + 1);
-
-    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
-    ar & make_nvp("fNumBoards", fNumBoards);
-    ar & make_nvp("fNumChannels", fNumChannels);
-    ar & make_nvp("fNumSamples", fNumSamples);
-    ar & make_nvp("fEventNumber", fEventNumber);
-    ar & make_nvp("fOffset", fOffset);
-    ar & make_nvp("fWaveforms", fWaveforms);
-    ar & make_nvp("fSize", fSize);
-    ar & make_nvp("fChannelMask", fChannelMask);
-    ar & make_nvp("fTemp", fTemp);
-    ar & make_nvp("fBoardEventNum", fBoardEventNum);
-    ar & make_nvp("fClockTime", fClockTime);
-    ar & make_nvp("fGPSNSIntoSec", fGPSNSIntoSec);
-    ar & make_nvp("fGPSSecIntoDay", fGPSSecIntoDay);
-}
-
-I3_SERIALIZABLE(RawData, LegacyRawData);
 

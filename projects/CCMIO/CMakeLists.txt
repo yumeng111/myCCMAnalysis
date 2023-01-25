@@ -12,6 +12,7 @@ i3_add_library(${PROJECT_NAME}
     USE_TOOLS root boost python
     USE_PROJECTS CCMBinary CCMUtils CCMDataStructures icetray serialization
     ROOTCINT
+    ../icetray/public/icetray/I3FrameObject.h
     public/CCMAnalysis/CCMIO/CCMRootIO.h
     public/CCMAnalysis/CCMIO/CCMRawIO.h
     public/CCMAnalysis/CCMIO/CCMEventTreeHandle.h

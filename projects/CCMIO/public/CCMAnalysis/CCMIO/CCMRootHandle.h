@@ -7,14 +7,15 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
+#include <iostream>
 #include <boost/shared_ptr.hpp>
 
 #include <icetray/I3FrameObject.h>
 #include <icetray/serialization.h>
 
+#include <TFile.h>
+#include <TTree.h>
 #include <TBranch.h>
-
-class TFile;
 
 class CCMRootHandle {
 protected:
@@ -40,6 +41,7 @@ public:
 
     template<typename T>
     void Get(std::string const & branch_name, boost::shared_ptr<T> data_ptr) {
+        std::cerr << "Getting entry number " << current_index << " on branch " << branch_name << std::endl;
         if(branches.count(branch_name) == 0)
             LoadBranch(branch_name);
         TBranch * branch_ptr = branches[branch_name];
@@ -47,21 +49,36 @@ public:
             data_ptr = nullptr;
             return;
         }
-        T * ptr_destination = data_ptr.get();
-        bool new_allocation = ptr_destination == nullptr;
-        if(new_allocation)
-            ptr_destination = new T();
-        branch_ptr->SetAddress(&ptr_destination);
+        std::cerr << "Branch has " << branch_ptr->GetEntries() << " entries" << std::endl;
+        T * data = new T();
+        branch_ptr->SetAddress(&data);
         branch_ptr->GetEntry(current_index);
-
-        if(new_allocation)
-            data_ptr = boost::shared_ptr<T>(ptr_destination);
+        data_ptr = boost::shared_ptr<T>(data);
     }
 
     template<typename T>
     boost::shared_ptr<T> Get(std::string const & branch_name) {
-        boost::shared_ptr<T> data_ptr(nullptr);
-        this->Get<T>(branch_name, data_ptr);
+        std::cerr << "Getting entry number " << current_index << " on branch " << branch_name << std::endl;
+        if(branches.count(branch_name) == 0)
+            LoadBranch(branch_name);
+        TBranch * branch_ptr = branches[branch_name];
+        if(branch_ptr == nullptr or current_index >= num_entries[branch_name]) {
+            return nullptr;
+        }
+        T * data = new T();
+        std::cerr << "Branch has " << branch_ptr->GetEntries() << " entries" << std::endl;
+
+        TTree * tree_ptr = nullptr;
+        input_file_ptr->GetObject("EventTree", tree_ptr);
+        TBranch * alt_branch_ptr = nullptr;
+        alt_branch_ptr = tree_ptr->GetBranch("rawData");
+        std::cerr << "stored branch_ptr: " << branch_ptr << std::endl;
+        std::cerr << "new branch_ptr: " << alt_branch_ptr << std::endl;
+        alt_branch_ptr->SetAddress(&data);
+        alt_branch_ptr->GetEntry(current_index);
+        branch_ptr->SetAddress(&data);
+        branch_ptr->GetEntry(current_index);
+        boost::shared_ptr<T> data_ptr(data);
         return data_ptr;
     }
 

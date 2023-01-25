@@ -15,6 +15,7 @@ i3_add_library(${PROJECT_NAME}
     ROOTCINT
     public/CCMAnalysis/CCMDataStructures/Pulses.h
     public/CCMAnalysis/CCMDataStructures/RawData.h
+    ../icetray/public/icetray/I3FrameObject.h
     public/CCMAnalysis/CCMDataStructures/SimplifiedEvent.h
     public/CCMAnalysis/CCMDataStructures/SinglePulse.h
     public/CCMAnalysis/CCMDataStructures/Events.h
