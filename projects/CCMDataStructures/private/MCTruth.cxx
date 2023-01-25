@@ -8,10 +8,8 @@
 #include <memory>
 #include <numeric>
 #include <algorithm>
-#ifndef __CINT__
 #include <icetray/I3Logging.h>
 #include <icetray/serialization.h>
-#endif // __CINT__
 
 #include "CCMAnalysis/CCMDataStructures/MCTruth.h"
 
@@ -315,12 +313,11 @@ MCTruth & MCTruth::operator=(const MCTruth & rhs)
   return *this;
 }
 
-#ifndef __CINT__
 template <class Archive>
 void
 MCTruth::serialize(Archive& ar, unsigned version) {
-    if (version > legacy_mc_truth_version_)
-        log_fatal("Attempting to read version %u from file but running version %u of MCTruth class.", version, legacy_mc_truth_version_);
+    if (version > legacy_mc_truth_version_ + 1)
+        log_fatal("Attempting to read version %u from file but running version %u of MCTruth class.", version, legacy_mc_truth_version_ + 1);
 
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
 
@@ -346,5 +343,4 @@ MCTruth::serialize(Archive& ar, unsigned version) {
 }
 
 I3_SERIALIZABLE(MCTruth, LegacyMCTruth);
-#endif // __CINT__
 

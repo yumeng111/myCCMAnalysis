@@ -1,39 +1,30 @@
-/*!**********************************************
- * \file Events.h
- * \brief Header file for the #Events class
- * \author R. T. Thornton (LANL)
- * \date February 25, 2020
- ***********************************************/
-#ifndef Events_h
-#define Events_h
+#ifndef Events_v2_h
+#define Events_v2_h
 
 #include <array>
 #include <vector>
 #include <iostream>
 #include <sys/types.h>
-#include <icetray/serialization.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3DefaultName.h>
 
+#include "CCMAnalysis/CCMDataStructures/Events.h"
 #include "CCMAnalysis/CCMDataStructures/SimplifiedEvent.h"
-
-static const unsigned legacy_events_version_ = 2;
 
 #include "TObject.h"
 
 /*!**********************************************
- * \class Events
+ * \class Events_v2
  * \brief Container of the #SimplifiedEvent found in a given DAQ window.
  *
  * Container for a vector of #SimplifiedEvent events found in the detector
  * and the methods to find such events. The class is saved in the
  * data file.
  ***********************************************/
-class Events : public TObject, public I3FrameObject {
+class Events_v2 : public TObject
+{
   public:
-    Events();
-    Events(const Events & p);
-    ~Events();
+    Events_v2();
+    Events_v2(const Events_v2 & p);
+    ~Events_v2();
 
     void Reset();
     void ClearEvents();
@@ -111,10 +102,7 @@ class Events : public TObject, public I3FrameObject {
       return;
     }
 
-    Events & operator=(const Events & rhs);
-
-    friend class icecube::serialization::access;
-    template <class Archive> void serialize(Archive & ar, unsigned version);
+    Events_v2 & operator=(const Events_v2 & rhs);
 
   private:
     /// The time of the window with sample number == 0 (not saved)
@@ -149,13 +137,6 @@ class Events : public TObject, public I3FrameObject {
 
     /// Pointer to the current #SimplifiedEvent (not saved)
     SimplifiedEvent * fCurrEvent; //!
-
-  ClassDef(Events,legacy_events_version_ + 1)
-
 };
 
-I3_DEFAULT_NAME(Events, LegacyEvents);
-I3_POINTER_TYPEDEFS(Events);
-I3_CLASS_VERSION(Events, legacy_events_version_ + 1);
-
-#endif // #ifndef Events_h
+#endif // #ifndef Events_v2_h

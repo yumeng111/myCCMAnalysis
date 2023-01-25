@@ -12,9 +12,11 @@
 #pragma read sourceClass="RawData" versions="2" targetClass="RawData_v2" source="" target="";
 #pragma link C++ class SimplifiedEvent+;
 #pragma link C++ class Events+;
+#pragma read sourceClass="Events" versions="2" targetClass="Events_v2" source="" target="";
 #pragma link C++ class AccumWaveform+;
 #pragma read sourceClass="AccumWaveform" versions="3" targetClass="AccumWaveform_v3" source="" target="";
 #pragma link C++ class MCTruth+;
+#pragma read sourceClass="MCTruth" versions="2" targetClass="MCTruth_v2" source="" target="";
 #pragma link C++ class I3FrameObject;
 #pragma link C++ class std::vector<SinglePulse*>+;
 #pragma link C++ class std::vector<Pulses*>+;

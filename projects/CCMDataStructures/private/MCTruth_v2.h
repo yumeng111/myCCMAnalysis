@@ -1,34 +1,24 @@
-/*!**********************************************
- * \file MCTruth.h
- * \brief Header file for the #MCTruth class
- * \author R. T. Thornton (LANL)
- * \date November 11, 2020
- ***********************************************/
-#ifndef MCTruth_h
-#define MCTruth_h
+#ifndef MCTruth_v2_h
+#define MCTruth_v2_h
 
 #include <vector>
 #include <iostream>
 
-#include <icetray/serialization.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3DefaultName.h>
-
-static const unsigned legacy_mc_truth_version_ = 2;
+#include "CCMAnalysis/CCMDataStructures/MCTruth.h"
 
 #include "TObject.h"
 
 /*!**********************************************
- * \class MCTruth
+ * \class MCTruth_v2
  * \brief Container for the raw data coming out for the detector
  ***********************************************/
-class MCTruth : public TObject, public I3FrameObject
+class MCTruth_v2 : public TObject
 {
   public:
-    MCTruth();
-    MCTruth(int particleID);
-    MCTruth(const MCTruth & rhs);
-    ~MCTruth();
+    MCTruth_v2();
+    MCTruth_v2(int particleID);
+    MCTruth_v2(const MCTruth_v2 & rhs);
+    ~MCTruth_v2();
 
     void Reset(int particleID);
 
@@ -84,10 +74,7 @@ class MCTruth : public TObject, public I3FrameObject
 		float GetHitTime(size_t index) const { return fHitTime.at(index); }
     bool GetPassedQF(size_t index) const { return fPassedQF.at(index); }
 
-    MCTruth & operator=(const MCTruth & rhs);
-
-    friend class icecube::serialization::access;
-    template <class Archive> void serialize(Archive & ar, unsigned version);
+    MCTruth_v2 & operator=(const MCTruth_v2 & rhs);
 
   private:
 
@@ -124,14 +111,7 @@ class MCTruth : public TObject, public I3FrameObject
 		
 		std::vector<bool> fPassedQF;
 		double fQFValue;
-
-
-  ClassDef(MCTruth,legacy_mc_truth_version_ + 1)
 };
 
-I3_DEFAULT_NAME(MCTruth, LegacyMCTruth);
-I3_POINTER_TYPEDEFS(MCTruth);
-I3_CLASS_VERSION(MCTruth, legacy_mc_truth_version_ + 1);
-
-#endif // MCTruth_h
+#endif // MCTruth_v2_h
 
