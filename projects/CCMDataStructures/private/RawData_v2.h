@@ -1,9 +1,3 @@
-/*!**********************************************
- * \file RawData_v2.h
- * \brief Header file for the #RawData_v2 class
- * \author R. T. Thornton (LANL)
- * \date February 25, 2020
- ***********************************************/
 #ifndef RawData_v2_h
 #define RawData_v2_h
 
@@ -11,9 +5,9 @@
 #include <iostream>
 #include <stdlib.h>
 
-static const unsigned legacy_raw_data_version_ = 2;
-
 #include "TObject.h"
+
+#include "CCMAnalysis/CCMDataStructures/RawData.h"
 
 /*!**********************************************
  * \class RawData_v2

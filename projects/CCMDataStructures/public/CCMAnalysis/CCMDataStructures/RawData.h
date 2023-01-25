@@ -1,3 +1,9 @@
+/*!**********************************************
+ * \file RawData.h
+ * \brief Header file for the #RawData_v2 class
+ * \author R. T. Thornton (LANL)
+ * \date February 25, 2020
+ ***********************************************/
 #ifndef RawData_h
 #define RawData_h
 
@@ -8,9 +14,9 @@
 #include <icetray/I3FrameObject.h>
 #include <icetray/I3DefaultName.h>
 
-#include "TObject.h"
+static const unsigned legacy_raw_data_version_ = 2;
 
-#include "CCMAnalysis/CCMDataStructures/RawData_v2.h"
+#include "TObject.h"
 
 /*!**********************************************
  * \class RawData
