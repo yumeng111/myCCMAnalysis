@@ -1,32 +1,25 @@
-/*!**********************************************
- * \file SinglePulse.h
- * \brief Header file for the #SinglePulse class
- * \author R. T. Thornton (LANL)
- * \date February 25, 2020
- ***********************************************/
-#ifndef SinglePulse_h
-#define SinglePulse_h
+#ifndef SinglePulse_v3_h
+#define SinglePulse_v3_h
 
 #include <vector>
 #include <iostream>
 #include <sys/types.h>
-#include <icetray/serialization.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3DefaultName.h>
 
-static const unsigned legacy_single_pulse_version_ = 3;
+#include "CCMAnalysis/CCMDataStructures/SinglePulse.h"
 
 #include "TObject.h"
 
 /*!**********************************************
- * \class SinglePulse
+ * \class SinglePulse_v3
  * \brief The information for a given pulse found
  ***********************************************/
-class SinglePulse : public TObject, public I3FrameObject {
+class SinglePulse_v3 :
+    public TObject
+{
   public:
-    SinglePulse(int key = 0);
-    SinglePulse(const SinglePulse & p);
-    ~SinglePulse();
+    SinglePulse_v3(int key = 0);
+    SinglePulse_v3(const SinglePulse_v3 & p);
+    ~SinglePulse_v3();
 
     void Reset();
 
@@ -89,13 +82,10 @@ class SinglePulse : public TObject, public I3FrameObject {
     void AddSample(float sample) { fWaveform.push_back(sample); }
     void SetWaveform(const std::vector<float> & waveform) { fWaveform = waveform; }
 
-    void Append(const SinglePulse & rhs);
+    void Append(const SinglePulse_v3 & rhs);
 
-    SinglePulse & operator=(const SinglePulse & rhs);
-
-    friend class icecube::serialization::access;
-    template <class Archive> void serialize(Archive & ar, unsigned version);
-
+    SinglePulse_v3 & operator=(const SinglePulse_v3 & rhs);
+                                  //
   private:
     size_t fKey;
 
@@ -116,13 +106,7 @@ class SinglePulse : public TObject, public I3FrameObject {
     /// The waveform that made up the pulse (currently not being saved)
     std::vector<float> fWaveform; //!
 
-    ClassDef(SinglePulse, legacy_single_pulse_version_ + 1)
-
 };
 
-I3_DEFAULT_NAME(SinglePulse, LegacySinglePulse);
-I3_POINTER_TYPEDEFS(SinglePulse);
-I3_CLASS_VERSION(SinglePulse, legacy_single_pulse_version_);
-
-#endif // #ifndef SinglePulse_h
+#endif // #ifndef SinglePulse_v3_h
 

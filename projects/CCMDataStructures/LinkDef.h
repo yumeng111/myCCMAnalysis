@@ -5,9 +5,11 @@
 #pragma link C++ nestedclasses;
 
 #pragma link C++ class SinglePulse+;
+#pragma read sourceClass="SinglePulse" versions="3" targetClass="SinglePulse_v3" source="" target="";
 #pragma link C++ class Pulses+;
+#pragma read sourceClass="Pulses" versions="1" targetClass="Pulses_v1" source="" target="";
 #pragma link C++ class RawData+;
-#pragma read sourceClass="RawData" versions="2" targetClass="RawData2" source="" target="";
+#pragma read sourceClass="RawData" versions="2" targetClass="RawData_v2" source="" target="";
 #pragma link C++ class SimplifiedEvent+;
 #pragma link C++ class Events+;
 #pragma link C++ class AccumWaveform+;

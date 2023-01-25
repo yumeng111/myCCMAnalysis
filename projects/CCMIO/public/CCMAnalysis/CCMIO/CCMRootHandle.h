@@ -66,16 +66,7 @@ public:
             return nullptr;
         }
         T * data = new T();
-        std::cerr << "Branch has " << branch_ptr->GetEntries() << " entries" << std::endl;
 
-        TTree * tree_ptr = nullptr;
-        input_file_ptr->GetObject("EventTree", tree_ptr);
-        TBranch * alt_branch_ptr = nullptr;
-        alt_branch_ptr = tree_ptr->GetBranch("rawData");
-        std::cerr << "stored branch_ptr: " << branch_ptr << std::endl;
-        std::cerr << "new branch_ptr: " << alt_branch_ptr << std::endl;
-        alt_branch_ptr->SetAddress(&data);
-        alt_branch_ptr->GetEntry(current_index);
         branch_ptr->SetAddress(&data);
         branch_ptr->GetEntry(current_index);
         boost::shared_ptr<T> data_ptr(data);

@@ -1,46 +1,38 @@
-/*!**********************************************
- * \file Pulses.h
- * \brief Header file for the #Pulses class
- * \author R. T. Thornton (LANL)
- * \date February 25, 2020
- ***********************************************/
-#ifndef Pulses_h
-#define Pulses_h
+#ifndef Pulses_v1_h
+#define Pulses_v1_h
 
 #include <array>
 #include <vector>
 #include <iostream>
 #include <sys/types.h>
-#include <icetray/serialization.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3DefaultName.h>
 
 #include "CCMAnalysis/CCMDataStructures/SinglePulse.h"
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/PMTInfoMap.h"
 
-static const unsigned legacy_pulses_version_ = 1;
+#include "CCMAnalysis/CCMDataStructures/Pulses.h"
 
 #include "TObject.h"
 
 /*!**********************************************
- * \class Pulses
+ * \class Pulses_v1
  * \brief Container of the #SinglePulse found in a given DAQ window.
  *
  * Container for a vector of #SinglePulse pulses found in the detector
  * and the methods to find such pulses. The class is saved in the
  * data file.
  ***********************************************/
-class Pulses : public TObject, public I3FrameObject {
+class Pulses_v1 : public TObject
+{
   public:
-    Pulses(int board = 0, int channel = 0);
-    Pulses(const Pulses & p);
-    ~Pulses();
+    Pulses_v1(int board = 0, int channel = 0);
+    Pulses_v1(const Pulses_v1 & p);
+    ~Pulses_v1();
 
     void Reset();
-    void ClearPulses();
+    void ClearPulses_v1();
 
-    void RemovePulsesByThreshold();
+    void RemovePulses_v1ByThreshold();
 
     /// \fn void SetEventNumber(unsigned int value)
     /// \brief Set the event (trigger) number of the DAQ window currently looking at
@@ -98,7 +90,7 @@ class Pulses : public TObject, public I3FrameObject {
 
     size_t GetKey(size_t pos);
 
-    size_t GetNumPulses();
+    size_t GetNumPulses_v1();
     float GetTriggerTime();
 
     float GetPulseLength(size_t pos);
@@ -111,7 +103,7 @@ class Pulses : public TObject, public I3FrameObject {
 
     size_t GetKey(size_t pos) const;
 
-    size_t GetNumPulses() const;
+    size_t GetNumPulses_v1() const;
     float GetTriggerTime() const;
 
     float GetPulseLength(size_t pos) const;
@@ -144,13 +136,10 @@ class Pulses : public TObject, public I3FrameObject {
     const SinglePulse * FindPreviousPulse(int board, int channel);
     const SinglePulse * FindPreviousPulse(unsigned int key);
 
-    Pulses & operator=(const Pulses & rhs);
-    void CopyPulses(const Pulses & rhs, int startBoard, int endBoard=10, int startChannel=0, int endChannel=15);
+    Pulses_v1 & operator=(const Pulses_v1 & rhs);
+    void CopyPulses_v1(const Pulses_v1 & rhs, int startBoard, int endBoard=10, int startChannel=0, int endChannel=15);
 
     void ShiftTimeOffset(const double & timeOffset);
-
-    friend class icecube::serialization::access;
-    template <class Archive> void serialize(Archive & ar, unsigned version);
 
   private:
     static bool SortCondition(const SinglePulse & a, const SinglePulse & b);
@@ -176,13 +165,13 @@ class Pulses : public TObject, public I3FrameObject {
     unsigned int fComputerNSIntoSec;
 
     /// The number of pulses found
-    size_t fNumPulses;
+    size_t fNumPulses_v1;
 
     /// The trigger time of the trigger
     float fTriggerTime;
 
     /// The vector of pulses found
-    std::vector<SinglePulse> fPulses;
+    std::vector<SinglePulse> fPulses_v1;
 
     /// Array of the waveform (not saved)
     DAQWF2DArrayI fOrigArray; //!
@@ -195,15 +184,6 @@ class Pulses : public TObject, public I3FrameObject {
 
     /// Pointer to the current #SinglePulse (not saved)
     SinglePulse * fCurrPulse; //!
-
-
-
-  ClassDef(Pulses,legacy_pulses_version_ + 1)
-
 };
 
-I3_DEFAULT_NAME(Pulses, LegacyPulses);
-I3_POINTER_TYPEDEFS(Pulses);
-I3_CLASS_VERSION(Pulses, legacy_pulses_version_);
-
-#endif // #ifndef Pulses_h
+#endif // #ifndef Pulses_v1_h

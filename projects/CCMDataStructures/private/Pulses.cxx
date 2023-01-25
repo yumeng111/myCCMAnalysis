@@ -788,12 +788,11 @@ void Pulses::RemoveSinglePulse(std::vector<SinglePulse>::iterator it) { fPulses.
 const SinglePulse * Pulses::GetSinglePulse(size_t pos) { return &fPulses[pos]; }
 const SinglePulse * Pulses::GetSinglePulse(size_t pos) const { return &fPulses[pos]; }
 
-#ifndef __CINT__
 template <class Archive>
 void
 Pulses::serialize(Archive& ar, unsigned version) {
-  if (version > legacy_pulses_version_)
-    log_fatal("Attempting to read version %u from file but running version %u of Pulses class.", version, legacy_pulses_version_);
+  if (version > legacy_pulses_version_ + 1)
+    log_fatal("Attempting to read version %u from file but running version %u of Pulses class.", version, legacy_pulses_version_ + 1);
 
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("fEventNumber", fEventNumber);
@@ -806,4 +805,3 @@ Pulses::serialize(Archive& ar, unsigned version) {
 }
 
 I3_SERIALIZABLE(Pulses, LegacyPulses);
-#endif // __CINT__

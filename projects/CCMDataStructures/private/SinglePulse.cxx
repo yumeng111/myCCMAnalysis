@@ -106,8 +106,8 @@ SinglePulse & SinglePulse::operator=(const SinglePulse & rhs)
 template <class Archive>
 void
 SinglePulse::serialize(Archive& ar, unsigned version) {
-  if (version > legacy_single_pulse_version_)
-    log_fatal("Attempting to read version %u from file but running version %u of SinglePulse class.", version, legacy_single_pulse_version_);
+  if (version > legacy_single_pulse_version_ + 1)
+    log_fatal("Attempting to read version %u from file but running version %u of SinglePulse class.", version, legacy_single_pulse_version_ + 1);
 
   ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
   ar & make_nvp("fKey", fKey);

@@ -13,10 +13,11 @@ i3_add_library(${PROJECT_NAME}
     USE_TOOLS root
     USE_PROJECTS CCMBinary CCMUtils serialization icetray
     ROOTCINT
+    ../icetray/public/icetray/I3FrameObject.h
     public/CCMAnalysis/CCMDataStructures/Pulses.h
+    private/Pulses_v1.h
     public/CCMAnalysis/CCMDataStructures/RawData.h
     private/RawData_v2.h
-    ../icetray/public/icetray/I3FrameObject.h
     public/CCMAnalysis/CCMDataStructures/SimplifiedEvent.h
     public/CCMAnalysis/CCMDataStructures/SinglePulse.h
     public/CCMAnalysis/CCMDataStructures/Events.h
