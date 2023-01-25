@@ -13,6 +13,7 @@
 #pragma link C++ class SimplifiedEvent+;
 #pragma link C++ class Events+;
 #pragma link C++ class AccumWaveform+;
+#pragma read sourceClass="AccumWaveform" versions="3" targetClass="AccumWaveform_v3" source="" target="";
 #pragma link C++ class MCTruth+;
 #pragma link C++ class I3FrameObject;
 #pragma link C++ class std::vector<SinglePulse*>+;

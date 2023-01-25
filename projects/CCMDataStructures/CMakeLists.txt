@@ -22,5 +22,6 @@ i3_add_library(${PROJECT_NAME}
     public/CCMAnalysis/CCMDataStructures/SinglePulse.h
     public/CCMAnalysis/CCMDataStructures/Events.h
     public/CCMAnalysis/CCMDataStructures/AccumWaveform.h
+    private/AccumWaveform_v3.h
     public/CCMAnalysis/CCMDataStructures/MCTruth.h
 )

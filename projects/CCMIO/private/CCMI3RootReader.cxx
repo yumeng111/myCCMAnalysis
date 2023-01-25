@@ -53,6 +53,7 @@ class CCMI3RootReader : public I3Module {
         if(frame_map.count(stream) == 0)
             frame_map[stream] = boost::shared_ptr<I3Frame>(new I3Frame(stream));
         frame_map[stream]->Put(I3DefaultName<T>::value(), ptr, stream);
+        std::cerr << "Loaded " << branch_name << std::endl;
     }
 
 public:

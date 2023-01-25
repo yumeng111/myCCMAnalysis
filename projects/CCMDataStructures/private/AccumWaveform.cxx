@@ -7,10 +7,8 @@
 
 #include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
 
-#ifndef __CINT__
 #include <icetray/I3Logging.h>
 #include <icetray/serialization.h>
-#endif // __CINT__
 
 #include <map>
 #include <cmath>
@@ -374,12 +372,11 @@ void AccumWaveform::Min(size_t & loc, float & value, size_t start, size_t end,
   return;
 }
 
-#ifndef __CINT__
 template <class Archive>
 void
 AccumWaveform::serialize(Archive& ar, unsigned version) {
-    if (version > legacy_accum_waveform_version_)
-        log_fatal("Attempting to read version %u from file but running version %u of AccumWaveform class.", version, legacy_accum_waveform_version_);
+    if (version > legacy_accum_waveform_version_ + 1)
+        log_fatal("Attempting to read version %u from file but running version %u of AccumWaveform class.", version, legacy_accum_waveform_version_ + 1);
 
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("fEventNumber", fEventNumber);
@@ -409,4 +406,3 @@ AccumWaveform::serialize(Archive& ar, unsigned version) {
 }
 
 I3_SERIALIZABLE(AccumWaveform, LegacyAccumWaveform);
-#endif // __CINT__

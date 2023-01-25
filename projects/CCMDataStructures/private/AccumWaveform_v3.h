@@ -1,42 +1,35 @@
-/*!**********************************************
- * \file AccumWaveform.h
- * \brief Header file for the #AccumWaveform class
- * \author R. T. Thornton (LANL)
- * \date February 25, 2020
- ***********************************************/
-#ifndef AccumWaveform_h
-#define AccumWaveform_h
+#ifndef AccumWaveform_v3_h
+#define AccumWaveform_v3_h
 
 #include <map>
 #include <vector>
 #include <utility>
 #include <iterator>
-#include <icetray/serialization.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3DefaultName.h>
 
 #include "CCMAnalysis/CCMUtils/Utility.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
 
+#include "CCMAnalysis/CCMDataStructures/AccumWaveform.h"
+
 #include "TObject.h"
 
-static const unsigned legacy_accum_waveform_version_ = 3;
 
 /*!**********************************************
- * \class AccumWaveform
+ * \class AccumWaveform_v3
  * \brief Container of the accumulated waveforms built for a given trigger
  *
  * Container for the accumulated waveforms built for a given trigger,
  * The class is saved in the data file.
  ***********************************************/
-class AccumWaveform : public TObject, public I3FrameObject {
+class AccumWaveform_v3 : public TObject
+{
   public:
-    AccumWaveform();
-    AccumWaveform(const AccumWaveform & p);
-    ~AccumWaveform();
+    AccumWaveform_v3();
+    AccumWaveform_v3(const AccumWaveform_v3 & p);
+    ~AccumWaveform_v3();
 
     void Reset();
-    void ClearAccumWaveform();
+    void ClearAccumWaveform_v3();
 
     /// \brief Set the event (trigger) number of the DAQ window currently looking at
     /// \param[in] value The event number
@@ -106,17 +99,14 @@ class AccumWaveform : public TObject, public I3FrameObject {
     void Min(size_t & loc, float & value, size_t start, size_t end, 
         CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
 
-    AccumWaveform & operator=(const AccumWaveform & rhs);
+    AccumWaveform_v3 & operator=(const AccumWaveform_v3 & rhs);
 
-    AccumWaveform & operator+=(const AccumWaveform & rhs);
+    AccumWaveform_v3 & operator+=(const AccumWaveform_v3 & rhs);
     void AddMaps(MapDAQWF1D & lhs, const MapDAQWF1D & rhs);
     void AddMaps(MapDAQWF2D & lhs, const MapDAQWF2D & rhs);
 
     void DumpInfo();
     void AddMethod(CCMAccumWaveformMethod_t method);
-
-    friend class icecube::serialization::access;
-    template <class Archive> void serialize(Archive & ar, unsigned version);
 
   private:
     std::array<float,Utility::fgkNumBins> * Get(CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID = 0);
@@ -150,14 +140,11 @@ class AccumWaveform : public TObject, public I3FrameObject {
 
     MapDAQWF2D fPMTWaveform;
     MapDAQWF2D fPMTWaveformCount;
-
-    ClassDef(AccumWaveform,legacy_accum_waveform_version_ + 1)
-
 };
 
 //-------------------------------------------------------------------------------------------------
 template<class T>
-void AccumWaveform::CopyVec(typename std::vector<T> & outVec, size_t start, size_t end,
+void AccumWaveform_v3::CopyVec(typename std::vector<T> & outVec, size_t start, size_t end,
     CCMAccumWaveformMethod_t method, CCMAccWaveform_t waveformType, int pmtID)
 {
   if (outVec.size() != end-start+1) {
@@ -168,9 +155,5 @@ void AccumWaveform::CopyVec(typename std::vector<T> & outVec, size_t start, size
   return;
 }
 
-I3_DEFAULT_NAME(AccumWaveform, LegacyAccumWaveform);
-I3_POINTER_TYPEDEFS(AccumWaveform);
-I3_CLASS_VERSION(AccumWaveform, legacy_accum_waveform_version_);
-
-#endif // #ifndef AccumWaveform_h
+#endif // #ifndef AccumWaveform_v3_h
 
