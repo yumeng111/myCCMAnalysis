@@ -23,7 +23,7 @@
 
 /* Simple class to hold together ATWD and FADC
  * templates along with a validity flag and waveform features */
-struct WaveformTemplate {
+struct CCMWaveformTemplate {
 
     std::vector<double> digitizer_template;
     double digitizerStart;
@@ -31,10 +31,10 @@ struct WaveformTemplate {
     bool filled;
 };
 
-class I3Wavedeform : public I3ConditionalModule {
+class CCMWavedeform : public I3ConditionalModule {
 	public:
-		I3Wavedeform(const I3Context &);
-		virtual ~I3Wavedeform();
+		CCMWavedeform(const I3Context &);
+		virtual ~CCMWavedeform();
 
 		void Configure();
 		void Calibration(I3FramePtr frame);
@@ -44,7 +44,7 @@ class I3Wavedeform : public I3ConditionalModule {
 		I3RecoPulseSeriesPtr GetPulses(
 			const I3WaveformSeries::const_iterator firstWF,
 			const I3WaveformSeries::const_iterator lastWF,
-			const WaveformTemplate& wfTemplate,
+			const CCMWaveformTemplate& wfTemplate,
 			const I3DOMCalibration& calibration,
 			const double spe_charge);
 
@@ -63,27 +63,27 @@ class I3Wavedeform : public I3ConditionalModule {
 		bool apply_spe_corr_;
 		bool reduce_;
 
-		WaveformTemplate template_;
+		CCMWaveformTemplate template_;
 
-		void FillTemplate(WaveformTemplate& wfTemplate,
+		void FillTemplate(CCMWaveformTemplate& wfTemplate,
 		    const I3DOMCalibration& calibration);
 
 		cholmod_common c;
 };
 
-I3_MODULE(I3Wavedeform);
+I3_MODULE(CCMWavedeform);
 
 // End time (ns) of pulse template
-inline double PulseWidth(int source) {
+inline double PulseWidth() {
 	return 50;
 }
 
 // Beginning time (ns) of pulse template
-inline double PulseMin(int source) {
+inline double PulseMin() {
 	return -2;
 }
 
-I3Wavedeform::I3Wavedeform(const I3Context &context) :
+CCMWavedeform::CCMWavedeform(const I3Context &context) :
     I3ConditionalModule(context)
 {
 	AddParameter("SPEsPerBin",
@@ -111,7 +111,7 @@ I3Wavedeform::I3Wavedeform(const I3Context &context) :
 }
 
 void
-I3Wavedeform::Configure()
+CCMWavedeform::Configure()
 {
 	GetParameter("Waveforms", waveforms_name_);
 	GetParameter("WaveformTimeRange", waveform_range_name_);
@@ -142,13 +142,13 @@ I3Wavedeform::Configure()
     template_.digitizer_template.resize(template_bins_);
 }
 
-I3Wavedeform::~I3Wavedeform()
+CCMWavedeform::~CCMWavedeform()
 {
 	cholmod_l_finish(&c);
 }
 
 void
-I3Wavedeform::Calibration(I3FramePtr frame) {
+CCMWavedeform::Calibration(I3FramePtr frame) {
 
 	/* Void the waveform templates since they could possibly
 	 * change frame-by-frame.
@@ -158,7 +158,7 @@ I3Wavedeform::Calibration(I3FramePtr frame) {
 }
 
 void
-I3Wavedeform::DAQ(I3FramePtr frame)
+CCMWavedeform::DAQ(I3FramePtr frame)
 {
 	if (!frame->Has(waveforms_name_)) {
 		PushFrame(frame);
@@ -226,10 +226,10 @@ I3Wavedeform::DAQ(I3FramePtr frame)
  *          amplitudes corresponding to each pulse and y is the data.
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
-I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
+I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
     const I3WaveformSeries::const_iterator firstWF,
     const I3WaveformSeries::const_iterator lastWF,
-    const WaveformTemplate& wfTemplate,
+    const CCMWaveformTemplate& wfTemplate,
     const I3DOMCalibration& calibration,
     const double spe_charge)
 {
@@ -311,8 +311,8 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 		// increase the per-bin weights so the aggregate weight
 		// is closer to what it should be
 		if (wf->GetWaveform().size() * wf->GetBinWidth() <
-		    PulseWidth(sources[j]))
-			base_weight *= PulseWidth(sources[j]) /
+		    PulseWidth())
+			base_weight *= PulseWidth() /
 			    (wf->GetWaveform().size() * wf->GetBinWidth());
 
 		// Calculate channel noise amplitude
@@ -519,8 +519,8 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 		k = 0;
 		for (std::vector<std::pair<double, double> >::const_iterator it = start_times.begin();
 		    it != start_times.end(); ++it) {
-			start = it->first + PulseMin(sources[j+k]);
-			end = it->first + PulseWidth(sources[j+k]);
+			start = it->first + PulseMin();
+			end = it->first + PulseWidth();
 
 			// Evaluate bins up until we pass the end of the current time range
 			for (; k < wf->GetWaveform().size() && redges[j+k] < end; ++k) {
@@ -571,7 +571,7 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 			first_spe = 0;
 		last_t = redges[i];
 		while (first_spe < nspes-1 && redges[i] -
-		    start_times[first_spe].first > PulseWidth(sources[i]))
+		    start_times[first_spe].first > PulseWidth()
 			first_spe++;
 		double templ_bin_spacing;
 		if (sources[i] & I3RecoPulse::ATWD)
@@ -580,7 +580,7 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 			templ_bin_spacing = fadc_templ_bin_spacing_;
 		for (int j = first_spe; j < nspes; j++) {
 			if (((redges[i] - start_times[j].first) -
-			    PulseMin(sources[i])) < -templ_bin_spacing)
+			    PulseMin()) < -templ_bin_spacing)
 				break;
 			nzmax++;
 		}
@@ -607,7 +607,7 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 		// The earliest pulse influencing this bin is PULSE_WIDTH in the past.
 		// The template is defined up to (but not including) PULSE_WIDTH.
 		while (first_spe < nspes && redges[i] -
-		    start_times[first_spe].first >= PulseWidth(sources[i]))
+		    start_times[first_spe].first >= PulseWidth())
 			first_spe++;
 		if (first_spe == nspes) {
 			continue;
@@ -629,7 +629,7 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 		// The last pulse for this bin is 2 ns in the future
 		for (int j = first_spe; j < nspes; j++) {
 			int templ_bin = int(((redges[i] - start_times[j].first) -
-			    PulseMin(sources[i]))*templ_bin_spacing_inv);
+			    PulseMin())*templ_bin_spacing_inv);
 			if (templ_bin < 0)
 				break;
 
@@ -757,7 +757,7 @@ void FillFWHM(double& start, double& stop,
 	}
 }
 
-void I3Wavedeform::FillTemplate(WaveformTemplate& wfTemplate,
+void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
     const I3DOMCalibration& calibration) {
 	for (int channel = 0; channel < 3; channel++) {
 		I3DOMCalibration::DroopedSPETemplate chan_template =
@@ -765,14 +765,14 @@ void I3Wavedeform::FillTemplate(WaveformTemplate& wfTemplate,
 		wfTemplate.atwd_template[channel].resize(atwd_templ_bins_);
 		for (int i = 0; i < atwd_templ_bins_; i++) {
 			wfTemplate.atwd_template[channel][i] =
-			    chan_template(PulseMin(I3RecoPulse::ATWD) +
+			    chan_template(PulseMin() +
 			    i*atwd_templ_bin_spacing_);
 		}
 
 		FillFWHM(wfTemplate.atwdFWHMStart[channel],
 		    wfTemplate.atwdFWHMStop[channel],
 		    wfTemplate.atwd_template[channel],
-		    atwd_templ_bin_spacing_, PulseMin(I3RecoPulse::ATWD));
+		    atwd_templ_bin_spacing_, PulseMin());
 	}
 
 	I3DOMCalibration::DroopedSPETemplate fadc_dcal_template =
@@ -780,13 +780,13 @@ void I3Wavedeform::FillTemplate(WaveformTemplate& wfTemplate,
 	wfTemplate.fadc_template.resize(fadc_templ_bins_);
 	for (int i = 0; i < fadc_templ_bins_; i++) {
 		wfTemplate.fadc_template[i] = fadc_dcal_template(
-		    PulseMin(I3RecoPulse::FADC) +
+		    PulseMin() +
 		    i*fadc_templ_bin_spacing_);
 	}
 
 	FillFWHM(wfTemplate.fadcFWHMStart, wfTemplate.fadcFWHMStop,
 	    wfTemplate.fadc_template, fadc_templ_bin_spacing_,
-	    PulseMin(I3RecoPulse::FADC));
+	    PulseMin());
 
 	wfTemplate.filled = true;
 }
