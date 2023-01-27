@@ -1,4 +1,12 @@
-
+/*!**********************************************
+ * \file RawData.cxx
+ * \brief Source code for the #RawData class
+ * \author R. T. Thornton (LANL)
+ * \date February 25, 2020
+ ***********************************************/
+#include <memory>
+#include <numeric>
+#include <algorithm>
 #include <memory>
 #include <numeric>
 #include <algorithm>
@@ -9,6 +17,8 @@
 
 #include "CCMAnalysis/CCMDataStructures/Pulses.h"
 #include "CCMAnalysis/CCMUtils/MsgLog.h"
+
+ClassImp(RawData)
 
 /*!**********************************************
  * \fn RawData::RawData()
