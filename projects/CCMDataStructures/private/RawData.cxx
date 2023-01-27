@@ -4,9 +4,7 @@
  * \author R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
-#include <memory>
-#include <numeric>
-#include <algorithm>
+
 #include <memory>
 #include <numeric>
 #include <algorithm>
