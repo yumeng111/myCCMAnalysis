@@ -25,6 +25,7 @@ i3_test_executable(test
 
 i3_add_pybindings(dataclasses
   private/pybindings/fft/*.cxx
+  private/pybindings/CCMCalibration/*.cxx
   private/pybindings/I3Calibration/*.cxx
   private/pybindings/I3ComplexVector.cxx
   private/pybindings/I3Constants.cxx
