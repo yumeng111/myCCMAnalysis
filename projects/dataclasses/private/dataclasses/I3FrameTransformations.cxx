@@ -15,9 +15,12 @@
 #include <icetray/I3Units.h>
 #include <dataclasses/I3MapOMKeyMask.h>
 #include <dataclasses/I3MapOMKeyUnion.h>
+#include <dataclasses/I3MapCCMPMTKeyMask.h>
+#include <dataclasses/I3MapCCMPMTKeyUnion.h>
 #include <dataclasses/I3RecoPulseSeriesMapApplySPECorrection.h>
 #include <dataclasses/physics/I3RecoPulseSeriesMapCombineByModule.h>
 #include <dataclasses/physics/I3RecoHit.h>
+#include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/physics/I3RecoPulse.h>
 #include <dataclasses/payload/I3SuperDST.h>
 #include <dataclasses/payload/I3SuperDSTTrigger.h>
@@ -133,4 +136,52 @@ I3Frame::Get(const std::string& name, void*, void*) const
 		return sdst->Unpack(*status);
 	
 	return triggers;
+}
+
+/*
+ * Only a little bit evil: Specialize the I3Frame::Get() to apply
+ * a mask behind the scenes. This lets client code treat masks
+ * and SuperDST payloads (and masked SuperDST payloads)
+ * just like CCMRecoPulseSeriesMaps.
+ */ 
+template <>
+CCMRecoPulseSeriesMapConstPtr
+I3Frame::Get(const std::string& name, void*, void*) const
+{
+	I3FrameObjectConstPtr focp = this->Get<I3FrameObjectConstPtr>(name);
+	
+	CCMRecoPulseSeriesMapConstPtr pulses =
+	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMap>(focp);
+	
+	if (!focp || pulses)
+		return pulses;
+	
+	CCMRecoPulseSeriesMapMaskConstPtr mask = 
+	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapMask>(focp);
+	
+	if (mask)
+		return mask->Apply(*this); 
+		
+	CCMRecoPulseSeriesMapUnionConstPtr uni = 
+	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapUnion>(focp);
+
+	if (uni)
+		return uni->Apply(*this);
+
+    // Not yet implemented: CCMRecoPulseSeriesMapApplySPECorrection, CCMRecoPulseSeriesMapCombineByModule
+    /*
+	CCMRecoPulseSeriesMapApplySPECorrectionConstPtr spe_shift = 
+	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapApplySPECorrection>(focp);
+
+	if (spe_shift)
+		return spe_shift->Apply(*this);
+	
+	{
+		CCMRecoPulseSeriesMapCombineByModuleConstPtr combined = 
+		    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapCombineByModule>(focp);
+		if (combined)
+			return combined->Apply(*this);
+	}
+    */
+    return pulses;
 }

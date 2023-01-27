@@ -50,6 +50,7 @@ i3_add_pybindings(dataclasses
   private/pybindings/I3Particle.cxx
   private/pybindings/I3Position.cxx
   private/pybindings/I3RecoHit.cxx
+  private/pybindings/CCMRecoPulse.cxx
   private/pybindings/I3RecoPulse.cxx
   private/pybindings/I3String.cxx
   private/pybindings/I3Matrix.cxx
