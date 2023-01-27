@@ -1,6 +1,6 @@
 /*!**********************************************
  * \file RawData.h
- * \brief Header file for the #RawData_v2 class
+ * \brief Header file for the #RawData class
  * \author R. T. Thornton (LANL)
  * \date February 25, 2020
  ***********************************************/
