@@ -3,12 +3,12 @@
 #include <dataclasses/I3DOMFunctions.h>
 #include <dataclasses/I3TimeWindow.h>
 #include <icetray/I3Units.h>
-#include <dataclasses/calibration/I3Calibration.h>
-#include <dataclasses/calibration/I3DOMCalibration.h>
-#include <dataclasses/physics/I3RecoPulse.h>
-#include <dataclasses/physics/I3Waveform.h>
-#include <dataclasses/status/I3DetectorStatus.h>
-#include <dataclasses/status/I3DOMStatus.h>
+#include <dataclasses/calibration/CCMCalibration.h>
+#include <dataclasses/calibration/CCMPMTCalibration.h>
+#include <dataclasses/physics/CCMRecoPulse.h>
+#include <dataclasses/physics/CCMWaveform.h>
+#include <dataclasses/status/CCMDetectorStatus.h>
+#include <dataclasses/status/CCMPMTStatus.h>
 
 #include <string>
 #include <vector>
@@ -41,11 +41,11 @@ class CCMWavedeform : public I3ConditionalModule {
 		void DAQ(I3FramePtr frame);
 	private:
 
-		I3RecoPulseSeriesPtr GetPulses(
-			const I3WaveformSeries::const_iterator firstWF,
-			const I3WaveformSeries::const_iterator lastWF,
+		CCMRecoPulseSeriesPtr GetPulses(
+			const CCMWaveformSeries::const_iterator firstWF,
+			const CCMWaveformSeries::const_iterator lastWF,
 			const CCMWaveformTemplate& wfTemplate,
-			const I3DOMCalibration& calibration,
+			const CCMPMTCalibration& calibration,
 			const double spe_charge);
 
 		std::string waveforms_name_;
@@ -66,7 +66,7 @@ class CCMWavedeform : public I3ConditionalModule {
 		CCMWaveformTemplate template_;
 
 		void FillTemplate(CCMWaveformTemplate& wfTemplate,
-		    const I3DOMCalibration& calibration);
+		    const CCMPMTCalibration& calibration);
 
 		cholmod_common c;
 };
@@ -158,26 +158,25 @@ CCMWavedeform::Calibration(I3FramePtr frame) {
 }
 
 void
-CCMWavedeform::DAQ(I3FramePtr frame)
-{
+CCMWavedeform::DAQ(I3FramePtr frame) {
 	if (!frame->Has(waveforms_name_)) {
 		PushFrame(frame);
 		return;
 	}
 
-	const I3Calibration& calibration = frame->Get<I3Calibration>();
-	const I3DetectorStatus& status = frame->Get<I3DetectorStatus>();
-	const I3WaveformSeriesMap& waveforms =
-	    frame->Get<I3WaveformSeriesMap>(waveforms_name_);
-	boost::shared_ptr<I3RecoPulseSeriesMap> output(new I3RecoPulseSeriesMap);
+	const CCMCalibration& calibration = frame->Get<CCMCalibration>();
+	const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
+	const CCMWaveformSeriesMap& waveforms =
+	    frame->Get<CCMWaveformSeriesMap>(waveforms_name_);
+	boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
 
 	// Unfold each set of waveforms into a pulse series
-	for (I3WaveformSeriesMap::const_iterator wfs = waveforms.begin();
+	for (CCMWaveformSeriesMap::const_iterator wfs = waveforms.begin();
 	     wfs != waveforms.end(); wfs++) {
-		std::map<OMKey, I3DOMCalibration>::const_iterator calib =
+		std::map<OMKey, CCMPMTCalibration>::const_iterator calib =
 		    calibration.domCal.find(wfs->first);
-		std::map<OMKey, I3DOMStatus>::const_iterator stat =
-		    status.domStatus.find(wfs->first);
+		std::map<OMKey, CCMPMTStatus>::const_iterator stat =
+		    status.pmtStatus.find(wfs->first);
 
 		// Get/create the appropriate template
 		if (!template_.filled) {
@@ -226,15 +225,15 @@ CCMWavedeform::DAQ(I3FramePtr frame)
  *          amplitudes corresponding to each pulse and y is the data.
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
-I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
-    const I3WaveformSeries::const_iterator firstWF,
-    const I3WaveformSeries::const_iterator lastWF,
+CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
+    const CCMWaveformSeries::const_iterator firstWF,
+    const CCMWaveformSeries::const_iterator lastWF,
     const CCMWaveformTemplate& wfTemplate,
-    const I3DOMCalibration& calibration,
+    const CCMPMTCalibration& calibration,
     const double spe_charge)
 {
-	boost::shared_ptr<I3RecoPulseSeries> output(new I3RecoPulseSeries);
-	I3WaveformSeries::const_iterator wf;
+	boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
+	CCMWaveformSeries::const_iterator wf;
 	cholmod_triplet *basis_trip;
 	cholmod_sparse *basis;
 	cholmod_dense *data, *unfolded;
@@ -245,7 +244,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	std::set<std::pair<double, double> > atwdStartStop;
 	for (wf = firstWF; wf != lastWF; wf++) {
 		nbins += wf->GetWaveform().size();
-		if (wf->GetDigitizer() == I3Waveform::ATWD) {
+		if (wf->GetDigitizer() == CCMWaveform::ATWD) {
 		  double st = wf->GetStartTime();
 		  double duration = wf->GetWaveform().size() * wf->GetBinWidth();
 		  atwdStartStop.insert(std::pair<double, double>(st, st + duration));
@@ -256,7 +255,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	if (nbins == 0 || !std::isfinite(spe_charge) || spe_charge == 0)
 		return output;
 
-	std::vector<int> sources(nbins); // Bitmask of I3RecoPulse::PulseFlags
+	std::vector<int> sources(nbins); // Bitmask of CCMRecoPulse::PulseFlags
 	std::vector<unsigned> channels(nbins,0.0);
 	std::vector<double> redges(nbins+1);
 	std::vector<double> weights(nbins);
@@ -267,7 +266,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	// Find and mark low-gain ATWD channels
 	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
 		for (k = 0; k < wf->GetWaveformInformation().size(); k++) {
-			const I3Waveform::StatusCompound &status =
+			const CCMWaveform::StatusCompound &status =
 			    wf->GetWaveformInformation()[k];
 			unsigned channel = status.GetChannel();
 			if (channel > 0 && channel < 3) {
@@ -282,17 +281,17 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	// Fill data vector
 	for (wf = firstWF, j = 0; wf != lastWF; wf++) {
 		// Set pulse flags to use for this bin
-		if (wf->GetDigitizer() == I3Waveform::ATWD)
-			sources[j] = I3RecoPulse::ATWD;
-		else if (wf->GetDigitizer() == I3Waveform::FADC)
-			sources[j] = I3RecoPulse::FADC;
+		if (wf->GetDigitizer() == CCMWaveform::ATWD)
+			sources[j] = CCMRecoPulse::ATWD;
+		else if (wf->GetDigitizer() == CCMWaveform::FADC)
+			sources[j] = CCMRecoPulse::FADC;
 		else {
 			log_error("Unknown waveform source (%d), assuming FADC "
 			    "pulse template", wf->GetSource());
-			sources[j] = I3RecoPulse::FADC;
+			sources[j] = CCMRecoPulse::FADC;
 		}
 		if (wf->IsHLC())
-			sources[j] |= I3RecoPulse::LC;
+			sources[j] |= CCMRecoPulse::LC;
 
 		/* Slightly increase the weight of the FADC data where we have
 		 * overlap with the ATWD.  Although the history of this is unclear,
@@ -302,7 +301,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		 * to smaller bandwidth.  This is likely the rationale.
 		 */
 		double base_weight;
-		if (sources[j] & I3RecoPulse::FADC)
+		if (sources[j] & CCMRecoPulse::FADC)
 			base_weight = 3;
 		else
 			base_weight = 1;
@@ -317,16 +316,16 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 
 		// Calculate channel noise amplitude
 		double gainFac = 0;
-		if (sources[j] & I3RecoPulse::ATWD) {
+		if (sources[j] & CCMRecoPulse::ATWD) {
 			const unsigned atwd_id = wf->GetSourceIndex() == 0 ? 0 : 1;
 			gainFac =
 			     calibration.GetATWDBinCalibSlope(atwd_id, channels[j], 0) /
 			                            calibration.GetATWDGain(channels[j]);
 
 		}
-		if (sources[j] & I3RecoPulse::FADC)
+		if (sources[j] & CCMRecoPulse::FADC)
 			gainFac = calibration.GetFADCGain();
-		if (!(sources[j] & I3RecoPulse::LC))
+		if (!(sources[j] & CCMRecoPulse::LC))
 			gainFac = 0;
 		gainFac /= I3Units::mV;
 		double noise = noise_threshold_*gainFac;
@@ -339,7 +338,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			((double *)(data->x))[j+k] = wf->GetWaveform()[k] / I3Units::mV;
 
 			weights[j+k] = base_weight;
-			if (sources[j+k] & I3RecoPulse::ATWD)
+			if (sources[j+k] & CCMRecoPulse::ATWD)
 				weights[j+k] /= (1.0 + channels[j+k]);
 
 			/*
@@ -350,7 +349,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			 * NB: The inner loop results in no significant performance decrease
 			 * when using IceCube raw data.
 			 */
-			if (deweight_fadc_ && (sources[j+k] & I3RecoPulse::FADC)) {
+			if (deweight_fadc_ && (sources[j+k] & CCMRecoPulse::FADC)) {
 			  for (auto atwdTRPtr =  atwdStartStop.begin();
 			       atwdTRPtr !=  atwdStartStop.end(); ++atwdTRPtr) {
 			    if (redges[j+k] > (atwdTRPtr->first + (2. * wf->GetBinWidth())) &&
@@ -376,7 +375,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			}
 
 			// Ignore high ATWD channels too close to baseline
-			if ((sources[j+k] & I3RecoPulse::ATWD) &&
+			if ((sources[j+k] & CCMRecoPulse::ATWD) &&
 			    channels[j+k] > 0 &&
 			    fabs(((double *)(data->x))[j+k]) < 10*noise) {
 				((double *)(data->x))[j+k] = 0;
@@ -389,9 +388,9 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	// Remove saturated bins
 	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
 		for (k = 0; k < wf->GetWaveformInformation().size(); k++) {
-			const I3Waveform::StatusCompound &status =
+			const CCMWaveform::StatusCompound &status =
 			    wf->GetWaveformInformation()[k];
-			if (status.GetStatus() & I3Waveform::SATURATED) {
+			if (status.GetStatus() & CCMWaveform::SATURATED) {
 				for (uint64_t a = status.GetInterval().first;
 				    a < status.GetInterval().second; a++)
 					weights[j+a] = 0;
@@ -434,7 +433,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		// Get the peak FWHM start, stop times for this waveform
 		double fwhmStart = wfTemplate.fadcFWHMStart;
 		double fwhmStop = wfTemplate.fadcFWHMStop;
-		if (sources[j] & I3RecoPulse::ATWD) {
+		if (sources[j] & CCMRecoPulse::ATWD) {
 			fwhmStart = wfTemplate.atwdFWHMStart[channels[j]];
 			fwhmStop = wfTemplate.atwdFWHMStop[channels[j]];
 		}
@@ -574,7 +573,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		    start_times[first_spe].first > PulseWidth()
 			first_spe++;
 		double templ_bin_spacing;
-		if (sources[i] & I3RecoPulse::ATWD)
+		if (sources[i] & CCMRecoPulse::ATWD)
 			templ_bin_spacing = atwd_templ_bin_spacing_;
 		else
 			templ_bin_spacing = fadc_templ_bin_spacing_;
@@ -621,7 +620,7 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		// Precache which pulse template we're using
 		double templ_bin_spacing_inv = 1./fadc_templ_bin_spacing_;
 		const std::vector<double>* pulse_templ = &(wfTemplate.fadc_template);
-		if (sources[i] & I3RecoPulse::ATWD) {
+		if (sources[i] & CCMRecoPulse::ATWD) {
 			templ_bin_spacing_inv = 1./atwd_templ_bin_spacing_;
 			pulse_templ = &(wfTemplate.atwd_template[channels[i]]);
 		}
@@ -698,10 +697,10 @@ I3RecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		if (((double *)(unfolded->x))[i] == 0)
 			continue;
 
-		I3RecoPulse pulse;
+		CCMRecoPulse pulse;
 
 		pulse.SetTime(start_times[i].first);
-		double speCorrection = pflags[i] & I3RecoPulse::ATWD ?
+		double speCorrection = pflags[i] & CCMRecoPulse::ATWD ?
 		    atwdSPECorrection : fadcSPECorrection;
 		pulse.SetCharge((((double *)(unfolded->x))[i]) * speCorrection);
 		pulse.SetWidth(start_times[i].second);
@@ -758,9 +757,9 @@ void FillFWHM(double& start, double& stop,
 }
 
 void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
-    const I3DOMCalibration& calibration) {
+    const CCMPMTCalibration& calibration) {
 	for (int channel = 0; channel < 3; channel++) {
-		I3DOMCalibration::DroopedSPETemplate chan_template =
+		CCMPMTCalibration::DroopedSPETemplate chan_template =
 		    calibration.ATWDPulseTemplate(channel);
 		wfTemplate.atwd_template[channel].resize(atwd_templ_bins_);
 		for (int i = 0; i < atwd_templ_bins_; i++) {
@@ -775,7 +774,7 @@ void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
 		    atwd_templ_bin_spacing_, PulseMin());
 	}
 
-	I3DOMCalibration::DroopedSPETemplate fadc_dcal_template =
+	CCMPMTCalibration::DroopedSPETemplate fadc_dcal_template =
 	    calibration.FADCPulseTemplate();
 	wfTemplate.fadc_template.resize(fadc_templ_bins_);
 	for (int i = 0; i < fadc_templ_bins_; i++) {

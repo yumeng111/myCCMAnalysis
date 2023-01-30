@@ -6,6 +6,7 @@ if(SUITESPARSE_FOUND)
 	)
 
 	i3_add_library(wavedeform
+        private/wavedeform/CCMWavedeform.cxx
 		private/wavedeform/I3Wavedeform.cxx
 		private/wavedeform/nnls.cxx
 		private/wavedeform/rnnls.cxx
