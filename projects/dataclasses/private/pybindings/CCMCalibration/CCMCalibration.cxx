@@ -39,7 +39,7 @@ void register_CCMCalibration()
 {
   class_<CCMCalibration, bases<I3FrameObject>, boost::shared_ptr<CCMCalibration> >("CCMCalibration")
     .def(copy_suite<CCMCalibration>())
-    #define I3CALPROPS (startTime)(endTime)(domCal)
+    #define I3CALPROPS (startTime)(endTime)(pmtCal)
     BOOST_PP_SEQ_FOR_EACH(WRAP_RW_RECASE, CCMCalibration, I3CALPROPS)
     #undef I3CALPROPS
     .def(dataclass_suite<CCMCalibration>())

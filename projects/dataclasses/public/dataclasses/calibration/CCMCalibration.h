@@ -15,7 +15,7 @@
 #include <map>
 
 #include "dataclasses/Utility.h"
-#include "dataclasses/calibration/I3DOMCalibration.h"
+#include "dataclasses/calibration/CCMPMTCalibration.h"
 #include "dataclasses/I3Time.h"
 #include "icetray/OMKey.h"
 #include <icetray/I3FrameObject.h>
@@ -32,13 +32,13 @@ public:
     
   ~CCMCalibration();
     
-  I3DOMCalibrationMap domCal;
+  CCMPMTCalibrationMap pmtCal;
   
   bool operator==(const CCMCalibration& rhs)
   {
     return (startTime == rhs.startTime &&
             endTime == rhs.endTime &&
-            domCal == rhs.domCal);
+            pmtCal == rhs.pmtCal);
   }
   bool operator!=(const CCMCalibration& rhs)
   {

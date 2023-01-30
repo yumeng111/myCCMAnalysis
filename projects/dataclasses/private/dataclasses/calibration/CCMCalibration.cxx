@@ -12,7 +12,7 @@ void
 CCMCalibration::save(Archive& ar, unsigned version) const
 {
   ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
-  ar & make_nvp("domcal",domCal);
+  ar & make_nvp("pmtcal",pmtCal);
   ar & make_nvp("StartTime",startTime);
   ar & make_nvp("EndTime",endTime);
 }
@@ -25,7 +25,7 @@ CCMCalibration::load(Archive& ar, unsigned version) {
               version,ccmcalibration_version_);
   
   ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
-  ar & make_nvp("domcal",domCal);
+  ar & make_nvp("pmtcal",pmtCal);
   ar & make_nvp("StartTime",startTime);
   ar & make_nvp("EndTime",endTime);
 }
