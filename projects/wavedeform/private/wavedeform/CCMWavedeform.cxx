@@ -1,6 +1,6 @@
 #include <icetray/I3ConditionalModule.h>
 
-#include <dataclasses/I3DOMFunctions.h>
+#include <dataclasses/CCMPMTFunctions.h>
 #include <dataclasses/I3TimeWindow.h>
 #include <icetray/I3Units.h>
 #include <dataclasses/calibration/CCMCalibration.h>
@@ -173,9 +173,9 @@ CCMWavedeform::DAQ(I3FramePtr frame) {
 	// Unfold each set of waveforms into a pulse series
 	for (CCMWaveformSeriesMap::const_iterator wfs = waveforms.begin();
 	     wfs != waveforms.end(); wfs++) {
-		std::map<OMKey, CCMPMTCalibration>::const_iterator calib =
-		    calibration.domCal.find(wfs->first);
-		std::map<OMKey, CCMPMTStatus>::const_iterator stat =
+		std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
+		    calibration.pmtCal.find(wfs->first);
+		std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat =
 		    status.pmtStatus.find(wfs->first);
 
 		// Get/create the appropriate template
@@ -185,8 +185,7 @@ CCMWavedeform::DAQ(I3FramePtr frame) {
 
 		(*output)[wfs->first] = *GetPulses(wfs->second.begin(),
 		    wfs->second.end(), template_, calib->second,
-		    SPEMean(stat->second, calib->second) *
-		        calib->second.GetFrontEndImpedance());
+		    SPEMean(stat->second, calib->second));
 
 	}
 
@@ -240,15 +239,9 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	unsigned j, k;
 	int nbins = 0;
 
-	// Determine the total number of WF bins and ATWD support time ranges
-	std::set<std::pair<double, double> > atwdStartStop;
+	// Determine the total number of WF bins
 	for (wf = firstWF; wf != lastWF; wf++) {
 		nbins += wf->GetWaveform().size();
-		if (wf->GetDigitizer() == CCMWaveform::ATWD) {
-		  double st = wf->GetStartTime();
-		  double duration = wf->GetWaveform().size() * wf->GetBinWidth();
-		  atwdStartStop.insert(std::pair<double, double>(st, st + duration));
-		}
 	}
 
 	// If we have no data, nothing to do
@@ -256,55 +249,24 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		return output;
 
 	std::vector<int> sources(nbins); // Bitmask of CCMRecoPulse::PulseFlags
-	std::vector<unsigned> channels(nbins,0.0);
 	std::vector<double> redges(nbins+1);
 	std::vector<double> weights(nbins);
 	std::vector<bool> passBasisThresh(nbins,false);
 	// Channel 0 unless otherwise noted
 	data = cholmod_l_zeros(nbins, 1, CHOLMOD_REAL, &c);
 
-	// Find and mark low-gain ATWD channels
-	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
-		for (k = 0; k < wf->GetWaveformInformation().size(); k++) {
-			const CCMWaveform::StatusCompound &status =
-			    wf->GetWaveformInformation()[k];
-			unsigned channel = status.GetChannel();
-			if (channel > 0 && channel < 3) {
-				for (uint64_t a = status.GetInterval().first;
-				    a < status.GetInterval().second; a++)
-					channels[j+a] = channel;
-			}
-		}
-		j += wf->GetWaveform().size();
-	}
-
 	// Fill data vector
 	for (wf = firstWF, j = 0; wf != lastWF; wf++) {
 		// Set pulse flags to use for this bin
-		if (wf->GetDigitizer() == CCMWaveform::ATWD)
-			sources[j] = CCMRecoPulse::ATWD;
-		else if (wf->GetDigitizer() == CCMWaveform::FADC)
-			sources[j] = CCMRecoPulse::FADC;
+		if (wf->GetSource() == CCMWaveform::V1730)
+			sources[j] = CCMWaveform::V1730;
 		else {
-			log_error("Unknown waveform source (%d), assuming FADC "
+			log_error("Unknown waveform source (%d), assuming V1730 "
 			    "pulse template", wf->GetSource());
-			sources[j] = CCMRecoPulse::FADC;
+			sources[j] = CCMWaveform::V1730;
 		}
-		if (wf->IsHLC())
-			sources[j] |= CCMRecoPulse::LC;
 
-		/* Slightly increase the weight of the FADC data where we have
-		 * overlap with the ATWD.  Although the history of this is unclear,
-		 * it almost certainly is well-motivated and used by the calibration
-		 * group in addition to the DeweightFADC flag.
-		 * NB: The FADC noise is approximately a factor of 3 less due
-		 * to smaller bandwidth.  This is likely the rationale.
-		 */
-		double base_weight;
-		if (sources[j] & CCMRecoPulse::FADC)
-			base_weight = 3;
-		else
-			base_weight = 1;
+		double base_weight = 1;
 
 		// If this waveform is shorter than a pulse width,
 		// increase the per-bin weights so the aggregate weight
@@ -314,22 +276,8 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			base_weight *= PulseWidth() /
 			    (wf->GetWaveform().size() * wf->GetBinWidth());
 
-		// Calculate channel noise amplitude
-		double gainFac = 0;
-		if (sources[j] & CCMRecoPulse::ATWD) {
-			const unsigned atwd_id = wf->GetSourceIndex() == 0 ? 0 : 1;
-			gainFac =
-			     calibration.GetATWDBinCalibSlope(atwd_id, channels[j], 0) /
-			                            calibration.GetATWDGain(channels[j]);
-
-		}
-		if (sources[j] & CCMRecoPulse::FADC)
-			gainFac = calibration.GetFADCGain();
-		if (!(sources[j] & CCMRecoPulse::LC))
-			gainFac = 0;
-		gainFac /= I3Units::mV;
-		double noise = noise_threshold_*gainFac;
-		double basisThreshmV = basis_threshold_*gainFac;
+		double noise = noise_threshold_;
+		double basisThreshmV = basis_threshold_;
 
 		// Read waveform
 		for (k = 0; k < wf->GetWaveform().size(); k++) {
@@ -338,27 +286,6 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			((double *)(data->x))[j+k] = wf->GetWaveform()[k] / I3Units::mV;
 
 			weights[j+k] = base_weight;
-			if (sources[j+k] & CCMRecoPulse::ATWD)
-				weights[j+k] /= (1.0 + channels[j+k]);
-
-			/*
-			 * Deweight FADC bins with concurrent support from the ATWD.
-			 * This is motivated by a study from 2014 showing the ATWD template
-			 * is generally much more accurate, and additionally using the less-
-			 * accurate FADC template often results in split pulses.
-			 * NB: The inner loop results in no significant performance decrease
-			 * when using IceCube raw data.
-			 */
-			if (deweight_fadc_ && (sources[j+k] & CCMRecoPulse::FADC)) {
-			  for (auto atwdTRPtr =  atwdStartStop.begin();
-			       atwdTRPtr !=  atwdStartStop.end(); ++atwdTRPtr) {
-			    if (redges[j+k] > (atwdTRPtr->first + (2. * wf->GetBinWidth())) &&
-			        redges[j+k] < atwdTRPtr->second) {
-			      weights[j+k] /= 20.;
-			      break;
-			    }
-			  }
-			}
 
 			// Remove waveform bins that were crazy for some reason
 			if (!std::isfinite(((double *)(data->x))[j+k])) {
@@ -372,14 +299,6 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 				weights[j+k] /= 4.;
 			} else if (fabs(((double *)(data->x))[j+k]) > basisThreshmV) {
 				passBasisThresh[j+k] = true;
-			}
-
-			// Ignore high ATWD channels too close to baseline
-			if ((sources[j+k] & CCMRecoPulse::ATWD) &&
-			    channels[j+k] > 0 &&
-			    fabs(((double *)(data->x))[j+k]) < 10*noise) {
-				((double *)(data->x))[j+k] = 0;
-				weights[j+k] = 0;
 			}
 		}
 		j += k;
@@ -415,28 +334,18 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	double min_spe_spacing = DBL_MAX;
 	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
 
-		// Start, end two bins early if not HLC
+		// Start, end two bins early
 		double present = wf->GetStartTime() - 2.*wf->GetBinWidth();
 		double max = present + wf->GetWaveform().size()*wf->GetBinWidth();
 
-		// If HLC, don't start before the wf start time.  We know we didn't
-		// pass the discriminator threshold, and basis members with poor
-		// support can have poorly constrained amplitudes.
-		if (wf->IsHLC()) {
-		  present = wf->GetStartTime();
-		}
 		double spacing = wf->GetBinWidth() / spes_per_bin_;
 		if (spacing < min_spe_spacing) {
 			min_spe_spacing = spacing;
 		}
 
 		// Get the peak FWHM start, stop times for this waveform
-		double fwhmStart = wfTemplate.fadcFWHMStart;
-		double fwhmStop = wfTemplate.fadcFWHMStop;
-		if (sources[j] & CCMRecoPulse::ATWD) {
-			fwhmStart = wfTemplate.atwdFWHMStart[channels[j]];
-			fwhmStop = wfTemplate.atwdFWHMStop[channels[j]];
-		}
+		double fwhmStart = wfTemplate.digitizerStart;
+		double fwhmStop = wfTemplate.digitizerStop;
 
 		// Generate the set of pulse start times that have reasonable
 		// non-zero data within the FWHM of the corresponding pulse
@@ -551,7 +460,6 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			weights[j] = weights[i];
 			redges[j] = redges[i];
 			sources[j] = sources[i];
-			channels[j] = channels[i];
 			((double *)(data->x))[j] = ((double *)(data->x))[i];
 			++j;
 		}
@@ -570,16 +478,11 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			first_spe = 0;
 		last_t = redges[i];
 		while (first_spe < nspes-1 && redges[i] -
-		    start_times[first_spe].first > PulseWidth()
+		    start_times[first_spe].first > PulseWidth())
 			first_spe++;
-		double templ_bin_spacing;
-		if (sources[i] & CCMRecoPulse::ATWD)
-			templ_bin_spacing = atwd_templ_bin_spacing_;
-		else
-			templ_bin_spacing = fadc_templ_bin_spacing_;
 		for (int j = first_spe; j < nspes; j++) {
 			if (((redges[i] - start_times[j].first) -
-			    PulseMin()) < -templ_bin_spacing)
+			    PulseMin()) < -template_bin_spacing_)
 				break;
 			nzmax++;
 		}
@@ -618,12 +521,8 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			continue;
 
 		// Precache which pulse template we're using
-		double templ_bin_spacing_inv = 1./fadc_templ_bin_spacing_;
-		const std::vector<double>* pulse_templ = &(wfTemplate.fadc_template);
-		if (sources[i] & CCMRecoPulse::ATWD) {
-			templ_bin_spacing_inv = 1./atwd_templ_bin_spacing_;
-			pulse_templ = &(wfTemplate.atwd_template[channels[i]]);
-		}
+		double templ_bin_spacing_inv = 1./template_bin_spacing_;
+		const std::vector<double>* pulse_templ = &(wfTemplate.digitizer_template);
 
 		// The last pulse for this bin is 2 ns in the future
 		for (int j = first_spe; j < nspes; j++) {
@@ -681,15 +580,9 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	cholmod_l_free_dense(&data, &c);
 
 	// Load the SPE corrections
-	double atwdSPECorrection = 1.;
-	double fadcSPECorrection = 1.;
+	double speCorrection = 1.;
 	if (apply_spe_corr_) {
-		if (calibration.IsMeanATWDChargeValid()) {
-			atwdSPECorrection = 1. / calibration.GetMeanATWDCharge();
-		}
-		if (calibration.IsMeanFADCChargeValid()) {
-			fadcSPECorrection = 1. / calibration.GetMeanFADCCharge();
-		}
+			speCorrection = 1. / calibration.GetMeanPMTCharge();
 	}
 
 	// Convert to pulse series
@@ -700,17 +593,15 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		CCMRecoPulse pulse;
 
 		pulse.SetTime(start_times[i].first);
-		double speCorrection = pflags[i] & CCMRecoPulse::ATWD ?
-		    atwdSPECorrection : fadcSPECorrection;
 		pulse.SetCharge((((double *)(unfolded->x))[i]) * speCorrection);
 		pulse.SetWidth(start_times[i].second);
-		pulse.SetFlags(pflags[i]);
 		output->push_back(pulse);
 	}
 	cholmod_l_free_dense(&unfolded, &c);
 	return output;
 }
 
+namespace {
 /* Simple routine to calculate FWHM start and stop given a waveform template */
 void FillFWHM(double& start, double& stop,
     const std::vector<double>& data, double spacing, double min) {
@@ -755,37 +646,23 @@ void FillFWHM(double& start, double& stop,
 		stop += spacing;
 	}
 }
+}
 
 void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
-    const CCMPMTCalibration& calibration) {
-	for (int channel = 0; channel < 3; channel++) {
-		CCMPMTCalibration::DroopedSPETemplate chan_template =
-		    calibration.ATWDPulseTemplate(channel);
-		wfTemplate.atwd_template[channel].resize(atwd_templ_bins_);
-		for (int i = 0; i < atwd_templ_bins_; i++) {
-			wfTemplate.atwd_template[channel][i] =
-			    chan_template(PulseMin() +
-			    i*atwd_templ_bin_spacing_);
-		}
+const CCMPMTCalibration& calibration) {
+    CCMPMTCalibration::DroopedSPETemplate chan_template =
+        calibration.PMTPulseTemplate();
+    wfTemplate.digitizer_template.resize(template_bins_);
+    for (int i = 0; i < template_bins_; i++) {
+        wfTemplate.digitizer_template[i] =
+            chan_template(PulseMin() +
+            i*template_bin_spacing_);
+    }
 
-		FillFWHM(wfTemplate.atwdFWHMStart[channel],
-		    wfTemplate.atwdFWHMStop[channel],
-		    wfTemplate.atwd_template[channel],
-		    atwd_templ_bin_spacing_, PulseMin());
-	}
-
-	CCMPMTCalibration::DroopedSPETemplate fadc_dcal_template =
-	    calibration.FADCPulseTemplate();
-	wfTemplate.fadc_template.resize(fadc_templ_bins_);
-	for (int i = 0; i < fadc_templ_bins_; i++) {
-		wfTemplate.fadc_template[i] = fadc_dcal_template(
-		    PulseMin() +
-		    i*fadc_templ_bin_spacing_);
-	}
-
-	FillFWHM(wfTemplate.fadcFWHMStart, wfTemplate.fadcFWHMStop,
-	    wfTemplate.fadc_template, fadc_templ_bin_spacing_,
-	    PulseMin());
+    FillFWHM(wfTemplate.digitizerStart,
+        wfTemplate.digitizerStop,
+        wfTemplate.digitizer_template,
+        template_bin_spacing_, PulseMin());
 
 	wfTemplate.filled = true;
 }
