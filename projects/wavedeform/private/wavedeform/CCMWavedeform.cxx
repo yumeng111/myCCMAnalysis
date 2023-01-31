@@ -42,8 +42,8 @@ class CCMWavedeform : public I3ConditionalModule {
 	private:
 
 		CCMRecoPulseSeriesPtr GetPulses(
-			const CCMWaveformSeries::const_iterator firstWF,
-			const CCMWaveformSeries::const_iterator lastWF,
+			const std::vector<CCMWaveformUInt16>::const_iterator firstWF,
+			const std::vector<CCMWaveformUInt16>::const_iterator lastWF,
 			const CCMWaveformTemplate& wfTemplate,
 			const CCMPMTCalibration& calibration,
 			const double spe_charge);
@@ -166,25 +166,30 @@ CCMWavedeform::DAQ(I3FramePtr frame) {
 
 	const CCMCalibration& calibration = frame->Get<CCMCalibration>();
 	const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
-	const CCMWaveformSeriesMap& waveforms =
-	    frame->Get<CCMWaveformSeriesMap>(waveforms_name_);
+	const std::vector<CCMWaveformUInt16>& waveforms =
+	    frame->Get<std::vector<CCMWaveformUInt16>>(waveforms_name_);
 	boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
 
 	// Unfold each set of waveforms into a pulse series
-	for (CCMWaveformSeriesMap::const_iterator wfs = waveforms.begin();
+    // TODO Either loop over channels and check for PMTs or find all the PMTs and then loop and grab the right channels
+	for (std::vector<CCMWaveformUInt16>::const_iterator wfs = waveforms.begin();
 	     wfs != waveforms.end(); wfs++) {
+        // TODO get the key
+        CCMPMTKey thekey;
+        // TODO get the channel
+        size_t channel;
 		std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
-		    calibration.pmtCal.find(wfs->first);
+		    calibration.pmtCal.find(thekey);
 		std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat =
-		    status.pmtStatus.find(wfs->first);
+		    status.pmtStatus.find(thekey);
 
 		// Get/create the appropriate template
 		if (!template_.filled) {
 			FillTemplate(template_, calib->second);
 		}
 
-		(*output)[wfs->first] = *GetPulses(wfs->second.begin(),
-		    wfs->second.end(), template_, calib->second,
+		(*output)[thekey] = *GetPulses(wfs,
+		    wfs + 1, template_, calib->second,
 		    SPEMean(stat->second, calib->second));
 
 	}
@@ -225,14 +230,14 @@ CCMWavedeform::DAQ(I3FramePtr frame) {
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
-    const CCMWaveformSeries::const_iterator firstWF,
-    const CCMWaveformSeries::const_iterator lastWF,
+    const std::vector<CCMWaveformUInt16>::const_iterator firstWF,
+    const std::vector<CCMWaveformUInt16>::const_iterator lastWF,
     const CCMWaveformTemplate& wfTemplate,
     const CCMPMTCalibration& calibration,
     const double spe_charge)
 {
 	boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
-	CCMWaveformSeries::const_iterator wf;
+	std::vector<CCMWaveformUInt16>::const_iterator wf;
 	cholmod_triplet *basis_trip;
 	cholmod_sparse *basis;
 	cholmod_dense *data, *unfolded;
@@ -258,12 +263,12 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	// Fill data vector
 	for (wf = firstWF, j = 0; wf != lastWF; wf++) {
 		// Set pulse flags to use for this bin
-		if (wf->GetSource() == CCMWaveform::V1730)
-			sources[j] = CCMWaveform::V1730;
+		if (wf->GetSource() == CCMSource::V1730)
+			sources[j] = CCMSource::V1730;
 		else {
 			log_error("Unknown waveform source (%d), assuming V1730 "
 			    "pulse template", wf->GetSource());
-			sources[j] = CCMWaveform::V1730;
+			sources[j] = CCMSource::V1730;
 		}
 
 		double base_weight = 1;
@@ -307,9 +312,9 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	// Remove saturated bins
 	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
 		for (k = 0; k < wf->GetWaveformInformation().size(); k++) {
-			const CCMWaveform::StatusCompound &status =
+			const CCMWaveformUInt16::StatusCompound &status =
 			    wf->GetWaveformInformation()[k];
-			if (status.GetStatus() & CCMWaveform::SATURATED) {
+			if (status.GetStatus() & CCMStatus::SATURATED) {
 				for (uint64_t a = status.GetInterval().first;
 				    a < status.GetInterval().second; a++)
 					weights[j+a] = 0;

@@ -51,7 +51,7 @@ namespace bp = boost::python;
   (I3Time)(I3Position)(I3Direction)(I3Geometry)(I3MCTree)               \
   (CCMRecoPulse)                                                        \
   (I3Particle)(I3RecoPulse)(I3LinearizedMCTree)(I3TimeWindow)           \
-  (CCMWaveform)(CCMWaveformSeries)(CCMWaveformSeriesMap)                \
+  (CCMWaveform)                                                         \
   (VectorCCMWaveformStatusCompound)                                     \
   (I3Waveform)(I3WaveformSeries)(I3WaveformSeriesMap)                   \
   (VectorI3WaveformStatusCompound)(I3DOMLaunch)(I3DOMLaunchSeries)      \
@@ -81,7 +81,7 @@ namespace bp = boost::python;
   (I3VectorFloat)(I3VectorDouble)(I3VectorDoubleDouble)                 \
   (I3VectorI3Particle)(I3VectorParticleType)(I3VectorI3Position)        \
   (I3VectorPairDoubleDouble)(I3MCTreePhysicsLibrary)(I3VectorUtils)     \
-  (I3VectorAntennaKey)(I3VectorScintKey)                                \
+  (I3VectorAntennaKey)(I3VectorScintKey)(I3VectorCCMWaveformUInt16)     \
   (SPEChargeDistribution)(I3TriggerHierarchy)(I3Trigger)(TriggerKey)    \
   (I3RecoPulseSeriesMapApplySPECorrection)(I3FlasherStatus)             \
   (I3FlasherStatusMap)(I3FlasherSubrunMap)                              \

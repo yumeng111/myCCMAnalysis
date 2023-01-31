@@ -41,7 +41,7 @@ using namespace boost::python;
 
 void register_VectorCCMWaveformStatusCompound()
 {
-  class_<std::vector<CCMWaveform::StatusCompound> >("VectorCCMWaveformStatusCompound")
-    .def(dataclass_suite<std::vector<CCMWaveform::StatusCompound> >())
+  class_<std::vector<CCMStatusCompound> >("VectorCCMStatusCompound")
+    .def(dataclass_suite<std::vector<CCMStatusCompound> >())
     ;
 }

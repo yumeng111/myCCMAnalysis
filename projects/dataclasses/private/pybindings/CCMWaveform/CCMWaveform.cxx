@@ -39,65 +39,72 @@
 
 using namespace boost::python;
 
-std::string to_str(const CCMWaveform theWaveform){
+template<typename T>
+std::string to_str(const CCMWaveform<T> theWaveform){
     std::ostringstream oss;
     oss << theWaveform << std::flush;
     return oss.str();
 }
 
-void register_CCMWaveform()
-{
-  std::vector<double>& (CCMWaveform::*get_waveform)() = &CCMWaveform::GetWaveform;
-  const std::vector<CCMWaveform::StatusCompound>& 
-    (CCMWaveform::*get_waveform_information)() const = &CCMWaveform::GetWaveformInformation;
+template<typename T>
+void register_CCMWaveform_T(std::string name) {
+  std::vector<T>& (CCMWaveform<T>::*get_waveform)() = &CCMWaveform<T>::GetWaveform;
+  const std::vector<CCMStatusCompound>& 
+    (CCMWaveform<T>::*get_waveform_information)() const = &CCMWaveform<T>::GetWaveformInformation;
   object get_waveform_func = make_function(get_waveform, return_internal_reference<1>());
   object get_waveform_information_func = make_function(get_waveform_information, return_internal_reference<1>());
-  unsigned (*get_status_static)(const std::vector<CCMWaveform::StatusCompound>&) = &CCMWaveform::GetStatus;
-  unsigned (CCMWaveform::*get_status_member)() const = &CCMWaveform::GetStatus;
+  unsigned (*get_status_static)(const std::vector<CCMStatusCompound>&) = &CCMWaveform<T>::GetStatus;
+  unsigned (CCMWaveform<T>::*get_status_member)() const = &CCMWaveform<T>::GetStatus;
+
+  std::string class_name = "CCMWaveform" + name;
 
   {
     scope waveform_scope =
-      class_<CCMWaveform, boost::shared_ptr<CCMWaveform> >("CCMWaveform")
-      .def(copy_suite<CCMWaveform>())
-      .add_property(snake_case("Source"), &CCMWaveform::GetSource)
+      class_<CCMWaveform<T>, boost::shared_ptr<CCMWaveform<T>> >(class_name.c_str())
+      .def(copy_suite<CCMWaveform<T>>())
+      .add_property(snake_case("Source"), &CCMWaveform<T>::GetSource)
       .add_property("status", get_status_member)
-      .add_property("time", &CCMWaveform::GetStartTime, &CCMWaveform::SetStartTime)
-      .add_property("binwidth", &CCMWaveform::GetBinWidth, &CCMWaveform::SetBinWidth)
-      .add_property("waveform", get_waveform_func, &CCMWaveform::SetWaveform)
-      .add_property("waveform_information", get_waveform_information_func, &CCMWaveform::SetWaveformInformation)
+      .add_property("time", &CCMWaveform<T>::GetStartTime, &CCMWaveform<T>::SetStartTime)
+      .add_property("binwidth", &CCMWaveform<T>::GetBinWidth, &CCMWaveform<T>::SetBinWidth)
+      .add_property("waveform", get_waveform_func, &CCMWaveform<T>::SetWaveform)
+      .add_property("waveform_information", get_waveform_information_func, &CCMWaveform<T>::SetWaveformInformation)
 
       // for static methods you need the both of these
       .def("get_status", get_status_static)
       .staticmethod("get_status")
       .def(self == self)
-      .def(dataclass_suite<CCMWaveform>())
-      .def("__str__", to_str)
+      .def(dataclass_suite<CCMWaveform<T>>())
+      .def("__str__", to_str<T>)
      ;
+  }
+}
+
+void register_CCMWaveform() {
 
     const std::pair<unsigned long long int, unsigned long long int>&
-      (CCMWaveform::StatusCompound::* get_interval)() const 
-      = &CCMWaveform::StatusCompound::GetInterval;
+      (CCMStatusCompound::* get_interval)() const 
+      = &CCMStatusCompound::GetInterval;
 
-    class_<CCMWaveform::StatusCompound>("StatusCompound")
+    class_<CCMStatusCompound>("CCMStatusCompound")
       #define PROPS (Status)
-      BOOST_PP_SEQ_FOR_EACH(WRAP_PROP, CCMWaveform::StatusCompound, PROPS)
+      BOOST_PP_SEQ_FOR_EACH(WRAP_PROP, CCMStatusCompound, PROPS)
       #undef PROPS
       .add_property("interval", make_function(get_interval, return_value_policy<copy_const_reference>()))
       .def( freeze() )
       ;
 
-    enum_<CCMWaveform::Source>("Source")
-      .value("V1730", CCMWaveform::V1730)
+    enum_<CCMSource>("CCMSource")
+      .value("V1730", CCMSource::V1730)
       .export_values()
       ;
 
-    enum_<CCMWaveform::Status>("Status")
-      .value("VIRGINAL", CCMWaveform::VIRGINAL)
-      .value("COMBINED", CCMWaveform::COMBINED)
-      .value("SATURATED", CCMWaveform::SATURATED)
-      .value("UNDERSHOT", CCMWaveform::UNDERSHOT)
+    enum_<CCMStatus>("CCMStatus")
+      .value("VIRGINAL", CCMStatus::VIRGINAL)
+      .value("COMBINED", CCMStatus::COMBINED)
+      .value("SATURATED", CCMStatus::SATURATED)
+      .value("UNDERSHOT", CCMStatus::UNDERSHOT)
       .export_values()
       ;
-  }
 
+    register_CCMWaveform_T<uint16_t>("UInt16");
 }

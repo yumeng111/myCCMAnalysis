@@ -22,8 +22,7 @@
  */
 static const unsigned ccmrecopulse_version_ = 1;
 
-class CCMRecoPulse 
-{
+class CCMRecoPulse {
   double time_;
   float charge_;
   float width_;
