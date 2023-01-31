@@ -92,8 +92,6 @@ class CCMPMTCalibration {
    */
   void SetTauParameters(TauParam tauparameters);
 
-
-
   /**
    * Set PMT calibration parameters. Currently the FADC
    * calibration is a work in progress and a moving target

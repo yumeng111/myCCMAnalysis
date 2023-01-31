@@ -14,7 +14,7 @@
 #include <vector>
 #include <dataclasses/I3Map.h>
 #include <dataclasses/ScintKey.h>
-#include <icetray/OMKey.h>
+#include <icetray/CCMPMTKey.h>
 
 /**
  * List the names of enumeration members defined in this file
@@ -31,7 +31,8 @@ class CCMWaveform {
 public:
 
     enum Source {
-        V1730 = 0,
+        Unknown = 0,
+        V1730 = 1,
     };
 
     /** Describes possible artifacts within the data.
@@ -96,7 +97,6 @@ public:
     static unsigned GetStatus(const std::vector<StatusCompound>& waveformInfo);
 
     unsigned GetStatus() const;
-    int GetChannel() const;
 
 private:
     double startTime_;
@@ -178,14 +178,12 @@ std::ostream& operator<<(std::ostream& oss, const CCMWaveform& wf);
 std::ostream& operator<<(std::ostream& oss, const CCMWaveform::StatusCompound& wf);
 
 typedef std::vector<CCMWaveform> CCMWaveformSeries;
-typedef I3Map<OMKey, CCMWaveformSeries> CCMWaveformSeriesMap;
-typedef I3Map<ScintKey, CCMWaveformSeries> I3ScintWaveformSeriesMap;
+typedef I3Map<CCMPMTKey, CCMWaveformSeries> CCMWaveformSeriesMap;
 
 I3_CLASS_VERSION(CCMWaveform, ccmwaveform_version_);
 I3_CLASS_VERSION(CCMWaveform::StatusCompound, ccmwaveform_version_);
 I3_POINTER_TYPEDEFS(CCMWaveform);
 I3_POINTER_TYPEDEFS(CCMWaveformSeries);
 I3_POINTER_TYPEDEFS(CCMWaveformSeriesMap);
-I3_POINTER_TYPEDEFS(I3ScintWaveformSeriesMap);
 
 #endif // CCMWAVEFORM_H_INCLUDED

@@ -69,31 +69,17 @@ void register_CCMPMTCalibration()
 
     scope outer = 
       class_<CCMPMTCalibration, boost::shared_ptr<CCMPMTCalibration> >("CCMPMTCalibration")
-      #define I3DOMCALPROPS (Temperature)(TransitTime)(HVGainFit)(FADCGain)           \
-                            (FADCBaselineFit)(FADCBeaconBaseline)(FrontEndImpedance)  \
-                            (TauParameters)(FADCGain)(FADCDeltaT)(DOMCalVersion)      \
-                            (SPEDiscCalib)      \
-                            (MPEDiscCalib)(PMTDiscCalib)(DomNoiseRate)(RelativeDomEff)\
-                            (DomNoiseThermalRate)(DomNoiseDecayRate)      \
-                            (DomNoiseScintillationMean)(DomNoiseScintillationSigma)   \
-                            (DomNoiseScintillationHits)(MeanATWDCharge)(MeanFADCCharge)
+      #define I3DOMCALPROPS (Temperature) \
+                            (RelativePMTEff)(MeanPMTCharge)(PMTGain)(PMTBaselineFit)
       BOOST_PP_SEQ_FOR_EACH(WRAP_PROP, CCMPMTCalibration, I3DOMCALPROPS)
       #undef I3DOMCALPROPS
-      #define EVIL_PROPS (ATWDBeaconBaseline)(ATWDDeltaT) \
-                         (ATWDFreqFit)(ATWDGain)(ATWDBinCalibSlope)
-      BOOST_PP_SEQ_FOR_EACH(WRAP_EVIL_PROP, CCMPMTCalibration, EVIL_PROPS)
-      #undef EVIL_PROPS
-      .add_property("toroid_type", &CCMPMTCalibration::GetToroidType)
-      .add_property("is_mean_atwd_charge_valid", &CCMPMTCalibration::IsMeanATWDChargeValid)
-      .add_property("is_mean_fadc_charge_valid", &CCMPMTCalibration::IsMeanFADCChargeValid)
+      .add_property("is_mean_pmt_charge_valid", &CCMPMTCalibration::IsMeanPMTChargeValid)
       .add_property("combined_spe_charge_distribution", 
                     make_function(&CCMPMTCalibration::GetCombinedSPEChargeDistribution, 
                                   return_internal_reference<>()),
                     &CCMPMTCalibration::SetCombinedSPEChargeDistribution
        )
-      .def("atwd_pulse_template", &CCMPMTCalibration::ATWDPulseTemplate)
-      .def("fadc_pulse_template", &CCMPMTCalibration::FADCPulseTemplate)
-      .def("discriminator_pulse_template", &CCMPMTCalibration::DiscriminatorPulseTemplate)
+      .def("pmt_pulse_template", &CCMPMTCalibration::PMTPulseTemplate)
       .def("__str__", to_str_CCMPMTCalibration)
       .def("__str__", to_str_LinearFit)
       .def("__str__", to_str_QuadraticFit)
@@ -101,12 +87,6 @@ void register_CCMPMTCalibration()
       .def("__str__", to_str_SPEChargeDistribution)
       .def("__str__", to_str_CCMPMTCalibrationMap)
       .def(dataclass_suite<CCMPMTCalibration>())
-      ;
-
-    enum_<CCMPMTCalibration::ToroidType>("ToroidType")
-      .value("OLD_TOROID", CCMPMTCalibration::OLD_TOROID)
-      .value("NEW_TOROID", CCMPMTCalibration::NEW_TOROID)
-      .export_values()
       ;
 
   }

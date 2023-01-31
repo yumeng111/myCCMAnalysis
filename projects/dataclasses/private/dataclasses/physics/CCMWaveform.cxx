@@ -125,4 +125,3 @@ std::ostream& operator<<(std::ostream& oss, const CCMWaveform::StatusCompound& s
 I3_SPLIT_SERIALIZABLE(CCMWaveform);
 
 I3_SERIALIZABLE(CCMWaveformSeriesMap);
-I3_SERIALIZABLE(I3ScintWaveformSeriesMap);
