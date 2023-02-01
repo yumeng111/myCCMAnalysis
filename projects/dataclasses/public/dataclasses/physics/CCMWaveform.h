@@ -159,6 +159,7 @@ public:
     {waveformInfo_ = info;}
 
     Source GetSource() const { return source_; }
+    void SetSource(Source source) { source_ = source; }
 
 private:
     friend class icecube::serialization::access;
