@@ -365,6 +365,58 @@ inline std::istream & read_binary(std::istream & is, CCMData & data) {
     return is;
 }
 
+inline int32_t subtract_times(uint32_t t1, uint32_t t0) {
+    // Compute the difference of two unsigned time counters with one overflow bit
+
+    // Cover the trivial case
+    if(t1 == t0) {
+        return 0;
+    }
+
+    // We know the 32nd bit is an overflow bit so we must mask it out
+    bool overflow_0 = t0 & (0x1 << 31);
+    bool overflow_1 = t1 & (0x1 << 31);
+    bool different_overflow = overflow_0 ^ overflow_1;
+    int32_t time_0 = uint32_t(t0 & 0x7FFFFFFF);
+    int32_t time_1 = uint32_t(t1 & 0x7FFFFFFF);
+
+    int32_t diff;
+    if(different_overflow) {
+        // We know which time is greater
+        // But one time has crossed the overflow boundary
+        if(overflow_0) {
+            // Convert t1 to a negative number in the frame of t0's zero then subtract
+            diff = (time_1 - 0x7FFFFFFE) - time_0;
+        } else {
+            // Convert t0 to a negative number in the frame of t1's zero then subtract
+            diff = time_1 - int32_t(int32_t(time_0) - int32_t(0x7FFFFFFE));
+        }
+    } else {
+        // We don't know which time is greater
+        // Use the difference with the smallest magnitude
+
+        // Cover the trivial case
+        int32_t diff_0 = time_1 - time_0;
+
+        // Cover the case where the difference crosses the overflow boundary
+        int32_t diff_1;
+        if(time_0 < time_1) {
+            // Convert t1 to a negative number in the frame of t0's zero then subtract
+            diff_1 = (time_1 - 0x7FFFFFFE) - time_0;
+        } else {
+            // Convert t0 to a negative number in the frame of t1's zero then subtract
+            diff_1 = time_1 - (time_0 - 0x7FFFFFFE);
+        }
+        if(std::abs(diff_0) < std::abs(diff_1)) {
+            diff = diff_0;
+        } else {
+            diff = diff_1;
+        }
+    }
+    return diff;
+}
+
+
 } // namespace Binary
 } // namespace CCMAnalsysis
 

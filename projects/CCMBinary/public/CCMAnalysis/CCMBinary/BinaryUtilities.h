@@ -144,6 +144,8 @@ inline void merge_empty_trigger(
     }
 }
 
+int32_t subtract_times(uint32_t t0, uint32_t t1);
+
 } // namespace Binary
 } // namespace CCMAnalsysis
 
