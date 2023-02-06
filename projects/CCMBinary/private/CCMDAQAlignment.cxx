@@ -424,7 +424,7 @@ class MergedSource : public I3Module {
     bool NextTrigger(size_t daq_idx, size_t board_idx);
     bool NextTriggers();
     void ClearUnusedFrames();
-    std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>> GetTriggerReadout();
+    std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>, boost::shared_ptr<I3Vector<std::pair<bool, int64_t>>>> GetTriggerReadout();
 public:
     MergedSource(const I3Context&);
     void Configure();
@@ -648,7 +648,7 @@ inline void merge_empty_trigger(
     }
 }
 
-std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>>
+std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>, boost::shared_ptr<I3Vector<std::pair<bool, int64_t>>>>
     MergedSource::GetTriggerReadout() {
     CCMAnalysis::Binary::CCMTriggerReadoutPtr readout = boost::make_shared<CCMAnalysis::Binary::CCMTriggerReadout>();
     boost::shared_ptr<I3Vector<I3Vector<uint16_t>>> output_samples = boost::make_shared<I3Vector<I3Vector<uint16_t>>>();
@@ -675,10 +675,11 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
 
     // Check if we have run out of triggers
     if(all_bad or std::isinf(min_time))
-        return {nullptr, nullptr};
+        return {nullptr, nullptr, nullptr};
 
     std::vector<std::vector<int>> state(n_daqs);
     bool is_incomplete = false;
+    boost::shared_ptr<I3Vector<std::pair<bool, int64_t>>> output_times(new I3Vector<std::pair<bool, int64_t>>());
     for(size_t daq_idx=0; daq_idx < n_daqs; ++daq_idx) {
         size_t last_idx = 0;
         for(size_t board_idx=0; board_idx < n_boards[daq_idx]; ++board_idx) {
@@ -689,19 +690,24 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
             if(empty[daq_idx][board_idx]) {
                 is_incomplete = true;
                 merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
+                output_times->emplace_back(false, 0);
                 state[daq_idx].push_back(0);
             } else if(std::isinf(times[daq_idx][board_idx])) {
                 is_incomplete = true;
                 state[daq_idx].push_back(1);
                 log_fatal("Should not see inf here!");
+                merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
+                output_times->emplace_back(false, 0);
             } else if(times[daq_idx][board_idx] - min_time > max_delta) {
                 is_incomplete = true;
                 merge_empty_trigger(output_samples, output_triggers, n_channels, fill_computer_time);
+                output_times->emplace_back(false, 0);
                 state[daq_idx].push_back(2);
             } else {
                 // Fill the trigger output from the appropriate input
                 CCMAnalysis::Binary::CCMTriggerReadoutConstPtr tr = frame_cache[daq_idx][frame_idx]->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
                 merge_triggers(output_samples, output_triggers, tr, board_idx, last_idx, next_idx, fill_computer_time);
+                output_times->emplace_back(false, times[daq_idx][board_idx]);
                 // Grab the next trigger
                 bool res = NextTrigger(daq_idx, board_idx);
                 if(not res) {
@@ -719,7 +725,7 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
         ++incomplete_counter;
     // Clear out frames that can no longer be referenced
     ClearUnusedFrames();
-    return {output_samples, output_triggers};
+    return {output_samples, output_triggers, output_times};
 }
 
 MergedSource::MergedSource(const I3Context& context) : I3Module(context) {
@@ -820,10 +826,10 @@ void MergedSource::Process() {
     I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::DAQ);
 
     // Get the readout output
-    std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>> readout = GetTriggerReadout();
+    std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>, boost::shared_ptr<I3Vector<std::pair<bool, int64_t>>>> readout = GetTriggerReadout();
 
     // Exit if we cannot create any more output
-    if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr) {
+    if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr or std::get<2>(readout)) {
         RequestSuspension();
         return;
     }
@@ -831,6 +837,7 @@ void MergedSource::Process() {
     // Put the output objects in the frame and push the frame
     frame->Put("CCMDigitalReadout", std::get<0>(readout), I3Frame::DAQ);
     frame->Put("CCMTriggers", std::get<1>(readout), I3Frame::DAQ);
+    frame->Put("TriggerTimes", std::get<2>(readout), I3Frame::DAQ);
     PushFrame(frame);
     ++counter;
 }
