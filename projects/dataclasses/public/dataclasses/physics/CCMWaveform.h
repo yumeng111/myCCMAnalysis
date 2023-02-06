@@ -183,7 +183,6 @@ I3_POINTER_TYPEDEFS(CCMWaveformUInt16);
 typedef I3Vector<CCMWaveformUInt16> CCMWaveformUInt16Series;
 I3_POINTER_TYPEDEFS(CCMWaveformUInt16Series);
 
-
 #include "CCMWaveform.tcc"
 
 #endif // CCMWAVEFORM_H_INCLUDED
