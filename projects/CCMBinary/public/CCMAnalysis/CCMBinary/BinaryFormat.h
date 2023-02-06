@@ -9,6 +9,7 @@
 #include <dataclasses/I3Vector.h>
 #include <icetray/I3FrameObject.h>
 #include <icetray/serialization.h>
+#include <icetray/I3DefaultName.h>
 
 namespace CCMAnalysis {
 namespace Binary {
@@ -170,6 +171,8 @@ std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMDAQMach
 std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMDAQConfig c);
 std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMTrigger c);
 std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMTriggerReadout c);
+
+I3_DEFAULT_NAME(CCMAnalysis::Binary::CCMDAQConfig, CCMDAQConfig);
 
 I3_CLASS_VERSION(CCMAnalysis::Binary::ChannelHeader, CCMAnalysis::Binary::channelheader_version_);
 I3_CLASS_VERSION(CCMAnalysis::Binary::DigitizerBoard, CCMAnalysis::Binary::digitizerboard_version_);
