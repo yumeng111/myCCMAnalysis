@@ -9,6 +9,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMBinaryReader.cxx
     private/CCMDAQAlignment.cxx
     private/CCMGeometryGenerator.cxx
+    private/CCMTriggerMerger.cxx
     IWYU
     USE_TOOLS boost python
     USE_PROJECTS icetray serialization dataio dataclasses

@@ -27,29 +27,44 @@
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
+#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 
 class CCMTriggerMerger : public I3Module {
+    // Names for keys in the frame
     std::string geometry_name_;
     std::string digital_readout_name_;
     std::string triggers_name_;
     std::string daq_config_name_;
     std::string waveforms_output_;
+    std::string board_time_offsets_name_;
+    std::string trigger_times_name_;
 
+    // Information to cache for each geometry frame
     boost::shared_ptr<const CCMAnalysis::Binary::CCMDAQConfig> last_daq_config_;
     boost::shared_ptr<const CCMGeometry> last_geometry_;
+    boost::shared_ptr<const I3Vector<I3Vector<uint64_t>>> last_board_time_offsets_;
+    size_t num_boards;
+    std::vector<size_t> num_boards_by_machine;
+    std::vector<size_t> num_channels_by_board;
+    std::vector<size_t> num_samples_by_board;
     std::map<size_t, size_t> board_idx_to_machine_idx;
     std::map<size_t, std::pair<size_t, size_t>> board_idx_to_channel_idxs;
+    std::vector<int64_t> offsets_;
+
+    // DAQ frames yet to be merged
     std::deque<I3FramePtr> daq_frame_cache_;
 
     size_t triggers_seen;
     size_t merged_triggers_output;
     size_t total_triggers_output;
 
-    bool TriggersOverlap(boost::shared_ptr<const std::vector<CCMTrigger>> trigger0, boost_shared_ptr<const std::vector<CCMTrigger> trigger1, size_t idx, uint32_t extra_samples = 0);
-    bool TriggersOverlap(boost::shared_ptr<const std::vector<CCMTrigger>> trigger0, boost_shared_ptr<const std::vector<CCMTrigger> trigger1);
+    bool TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1, size_t idx, uint32_t extra_samples = 0);
+    bool TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1);
     void CacheGeometryFrame(I3FramePtr frame);
     void CacheDAQFrame(I3FramePtr frame);
     void PushMergedTriggerFrames(bool last_frame = false);
+    bool ChannelsEmpty(boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>> trigger, size_t board_idx);
+    bool ChannelsEmpty(boost::shared_ptr<const std::vector<std::pair<bool, int64_t>>> trigger, size_t board_idx);
     I3FramePtr MergeTriggerFrames(std::vector<I3FramePtr> & frames);
 public:
     CCMTriggerMerger(const I3Context&);
@@ -61,28 +76,21 @@ public:
 I3_MODULE(CCMTriggerMerger);
 
 namespace detail {
-    std::string tolower(std::string const & s) {
-        std::string r(s);
-        std::transform(r.begin(), r.end(), r.begin(), [](unsigned char c){return std::tolower(c);});
-        return r;
-    }
-
-    bool ChannelEmpty(boost::shared_ptr<const std::vector<CCMTrigger>> trigger, size_t channel_idx) {
+    bool ChannelEmpty(boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>> trigger, size_t channel_idx) {
         return (*trigger)[0].channel_sizes[channel_idx] == 0 or (*trigger)[0].channel_masks[channel_idx] == 0;
     }
+}
 
-    bool ChannelsEmpty(boost::shared_ptr<const std::vector<CCMTrigger>> trigger, size_t board_idx) {
-        std::pair<size_t, size_t> channel_idxs = board_idx_to_channel_idxs[board_idx];
-        bool empty = true;
-        for(size_t channel_idx=channesl_idxs.first; channel_idx<channel_idxs.second; ++channel_idx) {
-            if(not ChannelEmpty(trigger, channel_idx)) {
-                empty = false;
-                break;
-            }
+bool CCMTriggerMerger::ChannelsEmpty(boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>> trigger, size_t board_idx) {
+    std::pair<size_t, size_t> channel_idxs = board_idx_to_channel_idxs[board_idx];
+    bool empty = true;
+    for(size_t channel_idx=channel_idxs.first; channel_idx<channel_idxs.second; ++channel_idx) {
+        if(not detail::ChannelEmpty(trigger, channel_idx)) {
+            empty = false;
+            break;
         }
-        return empty;
     }
-
+    return empty;
 }
 
 CCMTriggerMerger::CCMTriggerMerger(const I3Context& context) : I3Module(context) {
@@ -94,38 +102,42 @@ CCMTriggerMerger::CCMTriggerMerger(const I3Context& context) : I3Module(context)
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMDigitalReadoutName", "Key for vector of vector of samples that represents the digitizer readout", std::string("CCMDigitalReadout"));
     AddParameter("CCMTriggersName", "Key for vector of CCMTriggers", std::string("CCMTriggers"));
-    AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMDAQConfig>::value()));
+    AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMAnalysis::Binary::CCMDAQConfig>::value()));
+    AddParameter("BoardTimeOffsetsName", "Key for CCMBoardOffsets", std::string("BoardTimeOffsets"));
     AddParameter("CCMWaveformsOutput", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
+    AddParameter("TriggerTimesName", "Key for trigger times", std::string("TriggerTimes"));
 }
 
 void CCMTriggerMerger::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("CCMDigitalReadout", digital_readout_name_);
+    GetParameter("CCMDigitalReadoutName", digital_readout_name_);
     GetParameter("CCMTriggersName", triggers_name_);
     GetParameter("CCMDAQConfigName", daq_config_name_);
+    GetParameter("BoardTimeOffsetsName", board_time_offsets_name_);
     GetParameter("CCMWaveformsOutput", waveforms_output_);
+    GetParameter("TriggerTimesName", trigger_times_name_);
 }
 
-bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const std::vector<CCMTrigger>> trigger0, boost_shared_ptr<const std::vector<CCMTrigger> trigger1, size_t idx, uint32_t extra_samples) {
+bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1, size_t idx, uint32_t extra_samples) {
     constexpr long double ns_per_cycle = 8;
     constexpr long double ns_per_sample = 2;
-    constexpr long double samples_per_cycle = ns_per_cyle / ns_per_sample;
+    constexpr long double samples_per_cycle = ns_per_cycle / ns_per_sample;
 
-    int32_t cycle_start_diff = CCMAnalysis::Binary::subtract_times((*trigger1)[0].board_times[idx], (*trigger0)[0].board_times[idx]);
-    long double samples_start_diff = cycle_diff * samples_per_cycle;
-    long double expected_samples = board_idx_to_machine_idx[idx] + extra_samples;
+    int64_t cycle_start_diff = (*trigger_times1)[idx].second - (*trigger_times0)[idx].second;
+    long double samples_start_diff = cycle_start_diff * samples_per_cycle;
+    long double expected_samples = num_samples_by_board[idx] + extra_samples;
     return samples_start_diff < expected_samples;
 }
 
-bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const std::vector<CCMTrigger>> trigger0, boost_shared_ptr<const std::vector<CCMTrigger> trigger1) {
+bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1) {
     bool merge_needed = false;
     bool merge_possible = true;
     for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
-        bool trigger0_empty = ChannelsEmpty(trigger0, board_idx);
-        bool trigger1_empty = ChannelsEmpty(trigger1, board_idx);
+        bool trigger0_empty = (*trigger_times0)[board_idx].first;
+        bool trigger1_empty = (*trigger_times1)[board_idx].first;
         bool triggers_overlap = false;
         if((not trigger0_empty) and (not trigger1_empty))
-            triggers_overlap = TriggersOverlap(trigger0, trigger1, board_idx);
+            triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx);
         merge_needed |= triggers_overlap;
         // Exclude the case we have two full non-overlapping triggers
         merge_possible &= not (triggers_overlap or trigger0_empty or trigger1_empty);
@@ -137,11 +149,11 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const std::vector<CCMTr
         constexpr uint32_t num_extra_samples_allowed = 12;
         bool merge_allowed = true;
         for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
-            bool trigger0_empty = ChannelsEmpty(trigger0, board_idx);
-            bool trigger1_empty = ChannelsEmpty(trigger1, board_idx);
+            bool trigger0_empty = (*trigger_times0)[board_idx].first;
+            bool trigger1_empty = (*trigger_times1)[board_idx].first;
             bool triggers_overlap = false;
             if((not trigger0_empty) and (not trigger1_empty))
-                triggers_overlap = TriggersOverlap(trigger0, trigger1, board_idx, num_extra_samples_allowed);
+                triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed);
             // Exclude the case we have two full non-overlapping triggers
             merge_allowed &= not (triggers_overlap or trigger0_empty or trigger1_empty);
         }
@@ -153,11 +165,20 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const std::vector<CCMTr
 
 void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
     if(not frame->Has(daq_config_name_))
-        log_fatal("Frame does not contain daq condig" + daq_config_name_);
+        log_fatal(("Frame does not contain daq config" + daq_config_name_).c_str());
     if(not frame->Has(geometry_name_))
-        log_fatal("Frame does not contain geometry: " + geometry_name_);
+        log_fatal(("Frame does not contain geometry: " + geometry_name_).c_str());
     last_daq_config_ = frame->Get<boost::shared_ptr<const CCMAnalysis::Binary::CCMDAQConfig>>(daq_config_name_);
     last_geometry_ = frame->Get<boost::shared_ptr<const CCMGeometry>>(geometry_name_);
+    last_board_time_offsets_ = frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint64_t>>>>(board_time_offsets_name_);
+
+    offsets_.clear();
+    for(size_t board_idx=0; board_idx<last_board_time_offsets_->size(); ++board_idx) {
+        std::copy(
+                (*last_board_time_offsets_)[board_idx].begin(),
+                (*last_board_time_offsets_)[board_idx].end(),
+                std::back_inserter(offsets_));
+    }
 
     std::vector<size_t> n_boards;
     size_t total_boards = 0;
@@ -166,10 +187,16 @@ void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
     size_t channel_idx = 0;
     board_idx_to_machine_idx.clear();
     board_idx_to_channel_idxs.clear();
+    num_boards_by_machine.clear();
+    num_channels_by_board.clear();
+    num_samples_by_board.clear();
     for(size_t machine_idx=0; machine_idx<last_daq_config_->machine_configurations.size(); ++machine_idx) {
-        size_t n_boards = last_daq_config_->machine_configurations[i].num_digitizer_boards;
+        size_t n_boards = last_daq_config_->machine_configurations[machine_idx].num_digitizer_boards;
+        num_boards_by_machine.push_back(n_boards);
         for(total_boards += n_boards; board_idx<total_boards; ++board_idx) {
             size_t num_channels = last_daq_config_->digitizer_boards[board_idx].channels.size();
+            num_channels_by_board.push_back(num_channels);
+            num_samples_by_board.push_back(last_daq_config_->machine_configurations[machine_idx].num_samples);
             board_idx_to_machine_idx[board_idx] = machine_idx;
             board_idx_to_channel_idxs[board_idx] = {channel_idx, channel_idx + num_channels};
             channel_idx += num_channels;
@@ -180,9 +207,9 @@ void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
 
 void CCMTriggerMerger::CacheDAQFrame(I3FramePtr frame) {
     if(not frame->Has(digital_readout_name_))
-        log_fatal("Frame does not contain digital readout: " + digital_readout_name_);
+        log_fatal(("Frame does not contain digital readout: " + digital_readout_name_).c_str());
     if(not frame->Has(triggers_name_))
-        log_fatal("Frame does not contain triggers: " + triggers_name_);
+        log_fatal(("Frame does not contain triggers: " + triggers_name_).c_str());
     daq_frame_cache_.push_back(frame);
 }
 
@@ -191,20 +218,20 @@ void CCMTriggerMerger::PushMergedTriggerFrames(bool last_frame) {
         return;
 
     std::vector<std::vector<I3FramePtr>> grouped_frames({{daq_frame_cache_[0]}});
-    I3FramePtr last_frame = daq_frame_cache_[0];
+    I3FramePtr prev_frame = daq_frame_cache_[0];
 
     for(size_t frame_idx=1; frame_idx<daq_frame_cache_.size(); ++frame_idx) {
         I3FramePtr current_frame = daq_frame_cache_[frame_idx];
         bool triggers_overlap = TriggersOverlap(
-                last_frame->Get<boost::shared_ptr<const I3Vector<CCMTrigger>>>(triggers_name_),
-                current_frame->Get<boost::shared_ptr<const I3Vector<CCMTrigger>>>(triggers_name_));
+                prev_frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_),
+                current_frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_));
         if(triggers_overlap) {
-            grouped_frames.back().push_back(current_frame)
+            grouped_frames.back().push_back(current_frame);
         } else {
             grouped_frames.emplace_back();
             grouped_frames.back().push_back(current_frame);
         }
-        last_frame = current_frame;
+        prev_frame = current_frame;
     }
     for(size_t group_idx=0; group_idx + (1 - last_frame) < grouped_frames.size(); ++group_idx) {
         I3FramePtr frame = MergeTriggerFrames(grouped_frames[group_idx]);
@@ -220,57 +247,80 @@ void CCMTriggerMerger::PushMergedTriggerFrames(bool last_frame) {
 
 I3FramePtr CCMTriggerMerger::MergeTriggerFrames(std::vector<I3FramePtr> & frames) {
     if (frames.size() == 0) {
-        return new I3Frame(I3Frame::DAQ);
+        return boost::shared_ptr<I3Frame>(new I3Frame(I3Frame::DAQ));
     } else if(frames.size() == 1) {
         return frames[0];
     }
 
     I3FramePtr first_frame = frames[0];
     boost::shared_ptr<const std::vector<std::vector<uint16_t>>> first_readout = first_frame->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_);
-    std::vector<CCMWaveform> output_waveforms;
-    output_waveforms.reserve(first_readout->size());
-    std::vector<CCTrigger> output_triggers;
-    output_triggers.reserve(frames.size());
+    boost::shared_ptr<I3Vector<CCMWaveformUInt16>> output_waveforms(new I3Vector<CCMWaveformUInt16>());
+    output_waveforms->reserve(first_readout->size());
+    boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers(new I3Vector<CCMAnalysis::Binary::CCMTrigger>());
+    output_triggers->reserve(frames.size());
 
-    std::vector<uint32_t> ref_times;
-    std::vector<double> start_times;
-    for(size_t f_idx=0; f_idx<frames.size(); ++i) {
+    std::vector<std::pair<bool, int64_t>> start_times;
+    for(size_t f_idx=0; f_idx<frames.size(); ++f_idx) {
+        boost::shared_ptr<const std::vector<std::vector<uint16_t>>> input_waveform = frames[f_idx]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_);
+        boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> input_times = frames[f_idx]->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_);
         size_t readout_size = input_waveform->size();
+        if(start_times.size() == 0)
+            start_times = std::vector<std::pair<bool, int64_t>>(readout_size, std::pair<bool, int64_t>(false, 0));
         for(size_t i=0; i<readout_size; ++i) {
-            if(not ChannelsEmpty()
+            if(not start_times[i].first)
+               start_times[i] = (*input_times)[i]; 
         }
     }
 
+    bool found_min_start_time = false;
+    int64_t min_start_time;
+    for(size_t i=0; i<start_times.size(); ++i) {
+        if(not start_times[i].first)
+            continue;
+        if(not found_min_start_time) {
+            min_start_time = start_times[i].second;
+            found_min_start_time = true;
+            continue;
+        }
+        if(start_times[i].second < min_start_time)
+            min_start_time = start_times[i].second;
+    }
+    for(size_t i=0; i<start_times.size(); ++i)
+        if(not start_times[i].first)
+            start_times[i] = {start_times[i].first, start_times[i].second - min_start_time};
+
+    for(size_t i=0; i<frames.size(); ++i) {
+        output_triggers->emplace_back(frames[i]->Get<boost::shared_ptr<const I3Vector<CCMAnalysis::Binary::CCMTrigger>>>(triggers_name_)->operator[](0));
+    }
     for(size_t w_idx=0; w_idx<first_readout->size(); ++w_idx) {
-        output_waveforms.emplace_back();
-        CCMWaveform & w = output_waveforms.back();
+        output_waveforms->emplace_back();
+        CCMWaveformUInt16 & w = output_waveforms->back();
         size_t total_size = 0;
         for(size_t i=0; i<frames.size(); ++i) {
-            total_size += frames[i]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digitial_readout_name_)->size();
+            total_size += frames[i]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_)->size();
         }
         std::vector<uint16_t> waveform(total_size);
         size_t last_pos = 0;
-        bool recorded_start_time = false;
-        uint32_t start_time = 0;
         for(size_t i=0; i<frames.size(); ++i) {
-            boost::shared_ptr<const std::vector<std::vector<uint16_t>>> input_waveform = frames[i]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digitial_readout_name_);
+            boost::shared_ptr<const std::vector<std::vector<uint16_t>>> input_waveform = frames[i]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_);
             boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>> input_trigger = frames[i]->Get<boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>>>(triggers_name_);
-            if(input_waveform.size() > 0) {
-                if(not recorded_start_time) {
-                    start_time
-                }
-                std::copy(input_waveform.begin(), input_waveform.end(), waveform.begin() + last_pos);
-                last_pos += input_waveform.size();
+            if((*input_waveform)[w_idx].size() > 0) {
+                constexpr unsigned int ns_per_cycle = 8;
+                if(start_times[w_idx].first)
+                    w.SetStartTime(start_times[w_idx].second * ns_per_cycle);
+                else
+                    w.SetStartTime(0);
+                std::copy((*input_waveform)[w_idx].begin(), (*input_waveform)[w_idx].end(), waveform.begin() + last_pos);
+                last_pos += (*input_waveform)[w_idx].size();
             }
         }
         w.SetWaveform(waveform);
         w.SetBinWidth(2);
-        w.SetStartTime(0);
-        w.SetWaveformInformation();
+        w.SetWaveformInformation({});
         w.SetSource(CCMSource::V1730);
     }
 
-    I3FramePtr ouput_frame = new I3Frame(I3Frame::DAQ);
+    I3FramePtr output_frame(new I3Frame(I3Frame::DAQ));
     output_frame->Put(waveforms_output_, output_waveforms, I3Frame::DAQ);
     output_frame->Put(triggers_name_, output_triggers, I3Frame::DAQ);
 }
@@ -279,7 +329,7 @@ void CCMTriggerMerger::Process() {
     I3FramePtr frame = PopFrame();
 
     if(frame->GetStop() == I3Frame::Geometry) {
-        CacheGeometryFrame();
+        CacheGeometryFrame(frame);
         PushMergedTriggerFrames(true);
         PushFrame(frame);
         return;
