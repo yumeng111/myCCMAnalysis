@@ -829,7 +829,7 @@ void MergedSource::Process() {
     std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>>, boost::shared_ptr<I3Vector<std::pair<bool, int64_t>>>> readout = GetTriggerReadout();
 
     // Exit if we cannot create any more output
-    if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr or std::get<2>(readout)) {
+    if(std::get<0>(readout) == nullptr or std::get<1>(readout) == nullptr or std::get<2>(readout) == nullptr) {
         RequestSuspension();
         return;
     }
