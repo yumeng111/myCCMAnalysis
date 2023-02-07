@@ -38,3 +38,5 @@ I3_SERIALIZABLE(I3VectorI3VectorInt32);
 I3_SERIALIZABLE(I3VectorI3VectorInt64);
 I3_EXPORT_EXTRA_KEY(I3VectorI3VectorInt64, I3Vector<I3Vector<int64_t>>);
 
+I3_SERIALIZABLE(I3VectorPairBoolInt64);
+

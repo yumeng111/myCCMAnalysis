@@ -115,6 +115,8 @@ typedef I3Vector<I3Vector<int16_t>> I3VectorI3VectorInt16;
 typedef I3Vector<I3Vector<int32_t>> I3VectorI3VectorInt32;
 typedef I3Vector<I3Vector<int64_t>> I3VectorI3VectorInt64;
 
+typedef I3Vector<std::pair<bool, int64_t>> I3VectorPairBoolInt64;
+
 I3_POINTER_TYPEDEFS(I3VectorBool);
 I3_POINTER_TYPEDEFS(I3VectorUInt8);
 I3_POINTER_TYPEDEFS(I3VectorUInt16);
@@ -144,6 +146,8 @@ I3_POINTER_TYPEDEFS(I3VectorI3VectorInt8);
 I3_POINTER_TYPEDEFS(I3VectorI3VectorInt16);
 I3_POINTER_TYPEDEFS(I3VectorI3VectorInt32);
 I3_POINTER_TYPEDEFS(I3VectorI3VectorInt64);
+
+I3_POINTER_TYPEDEFS(I3VectorPairBoolInt64);
 
 #endif // I3VECTOR_H_INCLUDED
 
