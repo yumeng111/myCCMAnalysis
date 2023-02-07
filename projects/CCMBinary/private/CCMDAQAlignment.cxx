@@ -707,7 +707,7 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
                 // Fill the trigger output from the appropriate input
                 CCMAnalysis::Binary::CCMTriggerReadoutConstPtr tr = frame_cache[daq_idx][frame_idx]->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
                 merge_triggers(output_samples, output_triggers, tr, board_idx, last_idx, next_idx, fill_computer_time);
-                output_times->emplace_back(false, times[daq_idx][board_idx]);
+                output_times->emplace_back(true, times[daq_idx][board_idx]);
                 // Grab the next trigger
                 bool res = NextTrigger(daq_idx, board_idx);
                 if(not res) {
