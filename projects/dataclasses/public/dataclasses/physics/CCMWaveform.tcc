@@ -66,6 +66,7 @@ std::ostream& CCMWaveform<T>::Print(std::ostream& oss) const {
   if (GetSource() == CCMSource::V1730) srcstr.append("V1730");
   oss << "[CCMWaveform:\n"
       << "  StartTime : " << GetStartTime() << '\n'
+      << "       Size : " << waveform_.size() << '\n'
       << "     Source : " << srcstr << "\n]";
   return oss;
 }
