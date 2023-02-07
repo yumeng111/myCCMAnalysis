@@ -81,7 +81,8 @@ namespace bp = boost::python;
   (I3VectorFloat)(I3VectorDouble)(I3VectorDoubleDouble)                 \
   (I3VectorI3Particle)(I3VectorParticleType)(I3VectorI3Position)        \
   (I3VectorPairDoubleDouble)(I3MCTreePhysicsLibrary)(I3VectorUtils)     \
-  (I3VectorAntennaKey)(I3VectorScintKey)(I3VectorCCMWaveform)     \
+  (I3VectorAntennaKey)(I3VectorScintKey)(I3VectorCCMWaveform)           \
+  (I3VectorPairBoolInt64)                                               \
   (SPEChargeDistribution)(I3TriggerHierarchy)(I3Trigger)(TriggerKey)    \
   (I3RecoPulseSeriesMapApplySPECorrection)(I3FlasherStatus)             \
   (I3FlasherStatusMap)(I3FlasherSubrunMap)                              \
