@@ -42,13 +42,14 @@ class CCMTriggerMerger : public I3Module {
     // Information to cache for each geometry frame
     boost::shared_ptr<const CCMAnalysis::Binary::CCMDAQConfig> last_daq_config_;
     boost::shared_ptr<const CCMGeometry> last_geometry_;
-    boost::shared_ptr<const I3Vector<I3Vector<uint64_t>>> last_board_time_offsets_;
+    boost::shared_ptr<const I3Vector<I3Vector<int64_t>>> last_board_time_offsets_;
     size_t num_boards;
     std::vector<size_t> num_boards_by_machine;
     std::vector<size_t> num_channels_by_board;
     std::vector<size_t> num_samples_by_board;
     std::map<size_t, size_t> board_idx_to_machine_idx;
     std::map<size_t, std::pair<size_t, size_t>> board_idx_to_channel_idxs;
+    std::map<size_t, size_t> channel_idx_to_board_idx;
     std::vector<int64_t> offsets_;
 
     // DAQ frames yet to be merged
@@ -170,7 +171,7 @@ void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
         log_fatal(("Frame does not contain geometry: " + geometry_name_).c_str());
     last_daq_config_ = frame->Get<boost::shared_ptr<const CCMAnalysis::Binary::CCMDAQConfig>>(daq_config_name_);
     last_geometry_ = frame->Get<boost::shared_ptr<const CCMGeometry>>(geometry_name_);
-    last_board_time_offsets_ = frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint64_t>>>>(board_time_offsets_name_);
+    last_board_time_offsets_ = frame->Get<boost::shared_ptr<const I3Vector<I3Vector<int64_t>>>>(board_time_offsets_name_);
 
     offsets_.clear();
     for(size_t board_idx=0; board_idx<last_board_time_offsets_->size(); ++board_idx) {
@@ -190,6 +191,7 @@ void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
     num_boards_by_machine.clear();
     num_channels_by_board.clear();
     num_samples_by_board.clear();
+    channel_idx_to_board_idx.clear();
     for(size_t machine_idx=0; machine_idx<last_daq_config_->machine_configurations.size(); ++machine_idx) {
         size_t n_boards = last_daq_config_->machine_configurations[machine_idx].num_digitizer_boards;
         num_boards_by_machine.push_back(n_boards);
@@ -199,6 +201,7 @@ void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
             num_samples_by_board.push_back(last_daq_config_->machine_configurations[machine_idx].num_samples);
             board_idx_to_machine_idx[board_idx] = machine_idx;
             board_idx_to_channel_idxs[board_idx] = {channel_idx, channel_idx + num_channels};
+            channel_idx_to_board_idx[channel_idx] = board_idx;
             channel_idx += num_channels;
         }
     }
@@ -249,11 +252,54 @@ I3FramePtr CCMTriggerMerger::MergeTriggerFrames(std::vector<I3FramePtr> & frames
     if (frames.size() == 0) {
         return boost::shared_ptr<I3Frame>(new I3Frame(I3Frame::DAQ));
     } else if(frames.size() == 1) {
-        return frames[0];
+        I3FramePtr first_frame = frames[0];
+        boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> first_readout = first_frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
+        boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> input_times = first_frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_);
+        boost::shared_ptr<I3Vector<CCMWaveformUInt16>> output_waveforms(new I3Vector<CCMWaveformUInt16>(first_readout->size()));
+
+        std::vector<std::pair<bool, int64_t>> start_times = *input_times;
+
+        bool found_min_start_time = false;
+        int64_t min_start_time = 0;
+        for(size_t i=0; i<start_times.size(); ++i) {
+            if(not start_times[i].first)
+                continue;
+            if(not found_min_start_time) {
+                min_start_time = start_times[i].second;
+                found_min_start_time = true;
+                continue;
+            }
+            if(start_times[i].second < min_start_time)
+                min_start_time = start_times[i].second;
+        }
+
+        for(size_t i=0; i<start_times.size(); ++i)
+            if(start_times[i].first)
+                start_times[i] = {start_times[i].first, start_times[i].second - min_start_time};
+
+        for(size_t i=0; i<first_readout->size(); ++i) {
+            CCMWaveformUInt16 & w = (*output_waveforms)[i];
+            if((*first_readout)[i].size() > 0) {
+                constexpr unsigned int ns_per_cycle = 8;
+                size_t board_idx = channel_idx_to_board_idx[i];
+                double t = start_times[board_idx].second * ns_per_cycle;
+                if(start_times[i].first)
+                    w.SetStartTime(t);
+                else
+                    w.SetStartTime(0);
+                w.SetWaveform((*first_readout)[i]);
+            }
+            w.SetBinWidth(2);
+            w.SetWaveformInformation({});
+            w.SetSource(CCMSource::V1730);
+        }
+        first_frame->Delete(digital_readout_name_);
+        first_frame->Put(waveforms_output_, output_waveforms, I3Frame::DAQ);
+        return first_frame;
     }
 
     I3FramePtr first_frame = frames[0];
-    boost::shared_ptr<const std::vector<std::vector<uint16_t>>> first_readout = first_frame->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_);
+    boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> first_readout = first_frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
     boost::shared_ptr<I3Vector<CCMWaveformUInt16>> output_waveforms(new I3Vector<CCMWaveformUInt16>());
     output_waveforms->reserve(first_readout->size());
     boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers(new I3Vector<CCMAnalysis::Binary::CCMTrigger>());
@@ -261,7 +307,7 @@ I3FramePtr CCMTriggerMerger::MergeTriggerFrames(std::vector<I3FramePtr> & frames
 
     std::vector<std::pair<bool, int64_t>> start_times;
     for(size_t f_idx=0; f_idx<frames.size(); ++f_idx) {
-        boost::shared_ptr<const std::vector<std::vector<uint16_t>>> input_waveform = frames[f_idx]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_);
+        boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> input_waveform = frames[f_idx]->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
         boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> input_times = frames[f_idx]->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_);
         size_t readout_size = input_waveform->size();
         if(start_times.size() == 0)
@@ -273,7 +319,7 @@ I3FramePtr CCMTriggerMerger::MergeTriggerFrames(std::vector<I3FramePtr> & frames
     }
 
     bool found_min_start_time = false;
-    int64_t min_start_time;
+    int64_t min_start_time = 0;
     for(size_t i=0; i<start_times.size(); ++i) {
         if(not start_times[i].first)
             continue;
@@ -286,7 +332,7 @@ I3FramePtr CCMTriggerMerger::MergeTriggerFrames(std::vector<I3FramePtr> & frames
             min_start_time = start_times[i].second;
     }
     for(size_t i=0; i<start_times.size(); ++i)
-        if(not start_times[i].first)
+        if(start_times[i].first)
             start_times[i] = {start_times[i].first, start_times[i].second - min_start_time};
 
     for(size_t i=0; i<frames.size(); ++i) {
@@ -297,13 +343,13 @@ I3FramePtr CCMTriggerMerger::MergeTriggerFrames(std::vector<I3FramePtr> & frames
         CCMWaveformUInt16 & w = output_waveforms->back();
         size_t total_size = 0;
         for(size_t i=0; i<frames.size(); ++i) {
-            total_size += frames[i]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_)->size();
+            total_size += frames[i]->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_)->size();
         }
         std::vector<uint16_t> waveform(total_size);
         size_t last_pos = 0;
         for(size_t i=0; i<frames.size(); ++i) {
-            boost::shared_ptr<const std::vector<std::vector<uint16_t>>> input_waveform = frames[i]->Get<boost::shared_ptr<const std::vector<std::vector<uint16_t>>>>(digital_readout_name_);
-            boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>> input_trigger = frames[i]->Get<boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>>>(triggers_name_);
+            boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> input_waveform = frames[i]->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
+            boost::shared_ptr<const I3Vector<CCMAnalysis::Binary::CCMTrigger>> input_trigger = frames[i]->Get<boost::shared_ptr<const I3Vector<CCMAnalysis::Binary::CCMTrigger>>>(triggers_name_);
             if((*input_waveform)[w_idx].size() > 0) {
                 constexpr unsigned int ns_per_cycle = 8;
                 if(start_times[w_idx].first)
@@ -323,6 +369,8 @@ I3FramePtr CCMTriggerMerger::MergeTriggerFrames(std::vector<I3FramePtr> & frames
     I3FramePtr output_frame(new I3Frame(I3Frame::DAQ));
     output_frame->Put(waveforms_output_, output_waveforms, I3Frame::DAQ);
     output_frame->Put(triggers_name_, output_triggers, I3Frame::DAQ);
+
+    return output_frame;
 }
 
 void CCMTriggerMerger::Process() {
