@@ -29,6 +29,11 @@
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 
+
+// Detects adjacent DAQ frames that overlap in time
+// Merges overlapping DAQ frames into a single frame by concatenating waveforms and triggers
+// Converts vector of raw digitizer readouts into vector of CCMWaveform objects
+
 class CCMTriggerMerger : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
@@ -55,10 +60,12 @@ class CCMTriggerMerger : public I3Module {
     // DAQ frames yet to be merged
     std::deque<I3FramePtr> daq_frame_cache_;
 
+    // Counters
     size_t triggers_seen;
     size_t merged_triggers_output;
     size_t total_triggers_output;
 
+    // Convenience functions
     bool TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1, size_t idx, uint32_t extra_samples = 0);
     bool TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1);
     void CacheGeometryFrame(I3FramePtr frame);
@@ -67,7 +74,6 @@ class CCMTriggerMerger : public I3Module {
     bool ChannelsEmpty(boost::shared_ptr<const std::vector<CCMAnalysis::Binary::CCMTrigger>> trigger, size_t board_idx);
     bool ChannelsEmpty(boost::shared_ptr<const std::vector<std::pair<bool, int64_t>>> trigger, size_t board_idx);
     I3FramePtr MergeTriggerFrames(std::vector<I3FramePtr> & frames);
-
     std::vector<std::pair<bool, int64_t>> GetStartTimes(std::vector<I3FramePtr> const & frames);
     std::vector<std::pair<bool, int64_t>> ComputeRelativeStartTimes(std::vector<std::pair<bool, int64_t>> const & input_times);
     I3FramePtr TransformSingleTriggerFrame(I3FramePtr frame);
