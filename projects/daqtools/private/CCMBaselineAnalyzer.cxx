@@ -297,63 +297,6 @@ public:
     }
 };
 
-} // anonymous namespace
-
-
-// Identifies waveform regions that may correspond to regions without any activity
-// Collects statistics about these regions for analyzing the PMT baselines
-
-class CCMBaselineAnalyzer : public I3Module {
-    // Names for keys in the frame
-    std::string geometry_name_;
-    std::string daq_config_name_;
-    std::string waveforms_name_;
-
-    std::string baseline_fit_output_name_;
-
-    double initial_derivative_threshold_;
-    size_t minimum_sample_length_;
-    double baseline_minimum_window_fraction_;
-    double baseline_maximum_window_fraction_;
-    size_t baseline_sample_edge_cut_;
-    size_t num_triggers_for_threshold_;
-
-    std::map<size_t, double> curent_derivative_threshold_;
-
-public:
-    CCMBaselineAnalyzer(const I3Context&);
-    void Configure();
-    void Process();
-    void Finish();
-};
-
-I3_MODULE(CCMBaselineAnalyzer);
-
-CCMBaselineAnalyzer::CCMBaselineAnalyzer(const I3Context& context) : I3Module(context) {
-    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-    AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMAnalysis::Binary::CCMDAQConfig>::value()));
-    AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
-    AddParameter("InitialDerivativeThreshold", initial_derivative_threshold_);
-    AddParameter("MinimumSampleLength", minimum_sample_length_);
-    AddParameter("BaselineMinimumWindowFraction", baseline_minimum_window_fraction_);
-    AddParameter("BaselineMaximumWindowFraction", baseline_maximum_window_fraction_);
-    AddParameter("BaselineSampleEdgeCut", baseline_sample_edge_cut_);
-    AddParameter("NumTriggersForThreshold", num_triggers_for_threshold_);
-    AddParameter("BaselineFitOutputName", baseline_fit_output_name_;
-}
-
-void CCMBaselineAnalyzer::Configure() {
-    GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("CCMDAQConfigName", daq_config_name_);
-    GetParameter("CCMWaveformsName", waveforms_name_);
-    GetParameter("InitialDerivativeThreshold", initial_derivative_threshold_);
-    GetParameter("MinimumSampleLength", minimum_sample_length_);
-    GetParameter("BaselineMinimumWindowFraction", baseline_minimum_window_fraction_);
-    GetParameter("BaselineMaximumWindowFraction", baseline_maximum_window_fraction_);
-    GetParameter("BaselineSampleEdgeCut", baseline_sample_edge_cut_);
-    GetParameter("NumTriggersForThreshold", num_triggers_for_threshold_);
-}
-
 template<class T, class U, class K>
 struct DerivativeWindowCapture {
     Source<K> & d_buffer;
@@ -391,7 +334,7 @@ struct DerivativeWindowCapture {
         return found_region;
     }
 
-    std::tuple<std::deque<K>::const_iterator, std::deque<K>::const_iterator, size_t> GetBuffer() const {
+    std::tuple<typename std::deque<U>::const_iterator, typename std::deque<U>::const_iterator, size_t> GetBuffer() const {
         return {raw_buffer.GetBuffer().cbegin(), raw_buffer.GetBuffer().cend() - 1, raw_buffer.GetBuffer().size()};
     }
 };
@@ -443,7 +386,7 @@ struct WindowStats {
     }
 
     template<typename Iterator>
-    WindowType(Iterator begin, Iterator end) :
+    WindowStats(Iterator begin, Iterator end) :
         k_(0), M_(0), S_(0) {
         AddSamples<Iterator>(begin, end);
     }
@@ -454,6 +397,63 @@ struct WindowStats {
         AddSamples<T>(buffer);
     }
 };
+
+} // anonymous namespace
+
+
+// Identifies waveform regions that may correspond to regions without any activity
+// Collects statistics about these regions for analyzing the PMT baselines
+
+class CCMBaselineAnalyzer : public I3Module {
+    // Names for keys in the frame
+    std::string geometry_name_;
+    std::string daq_config_name_;
+    std::string waveforms_name_;
+
+    std::string baseline_fit_output_name_;
+
+    double initial_derivative_threshold_;
+    size_t minimum_sample_length_;
+    double baseline_minimum_window_fraction_;
+    double baseline_maximum_window_fraction_;
+    size_t baseline_sample_edge_cut_;
+    size_t num_triggers_for_threshold_;
+
+    std::map<size_t, double> curent_derivative_threshold_;
+
+public:
+    CCMBaselineAnalyzer(const I3Context&);
+    void Configure();
+    void Process();
+    void Finish();
+};
+
+I3_MODULE(CCMBaselineAnalyzer);
+
+CCMBaselineAnalyzer::CCMBaselineAnalyzer(const I3Context& context) : I3Module(context) {
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMAnalysis::Binary::CCMDAQConfig>::value()));
+    AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
+    AddParameter("InitialDerivativeThreshold", "The threshold first used to find regions of inactivity. This is iteratively increased until regions of inactivity represent a certain fraction of the waveform.",initial_derivative_threshold_);
+    AddParameter("MinimumSampleLength", "The smallest number of consecutive samples to use when finding regions of inactivity.", minimum_sample_length_);
+    AddParameter("BaselineMinimumWindowFraction", "The smallest allowed fraction that regions of inactivity may occupy across the sampled waveforms. This is needed to ensure we have enough samples to do the calculation.", baseline_minimum_window_fraction_);
+    AddParameter("BaselineMaximumWindowFraction", "The largest allowed fraction that regions of inactivity may occupy across the sampled waveforms. This is only present to alert us to the unlikely scenario where a PMT has too much activity to get a measurement of the baseline.", baseline_maximum_window_fraction_);
+    AddParameter("BaselineSampleEdgeCut", "The number of samples to cut from the edges of each region of inactivity. This helps us avoid contamination of the baseline measurement from the adjacent regions of activity.", baseline_sample_edge_cut_);
+    AddParameter("NumTriggersForThreshold","The number of triggers to use when tuning the derivative threshold.", num_triggers_for_threshold_);
+    AddParameter("BaselineFitOutputName", "The output key of the baseline fit.", baseline_fit_output_name_);
+}
+
+void CCMBaselineAnalyzer::Configure() {
+    GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("CCMDAQConfigName", daq_config_name_);
+    GetParameter("CCMWaveformsName", waveforms_name_);
+    GetParameter("InitialDerivativeThreshold", initial_derivative_threshold_);
+    GetParameter("MinimumSampleLength", minimum_sample_length_);
+    GetParameter("BaselineMinimumWindowFraction", baseline_minimum_window_fraction_);
+    GetParameter("BaselineMaximumWindowFraction", baseline_maximum_window_fraction_);
+    GetParameter("BaselineSampleEdgeCut", baseline_sample_edge_cut_);
+    GetParameter("NumTriggersForThreshold", num_triggers_for_threshold_);
+}
 
 void CCMBaselineAnalyzer::Process() {
     I3FramePtr frame = PopFrame();
@@ -497,7 +497,7 @@ void CCMBaselineAnalyzer::Process() {
                     if(size >= minimum_sample_length_) {
                         stats.emplace_back(begin, end);
                         total.AddSamples(begin, end);
-                        std::cout << "Window: avg(" << stats.back().mean << ") first(" << window_buffer[0] << ") len(" << window_buffer.size() << ")" << std::endl;
+                        std::cout << "Window: avg(" << stats.back().mean << ") first(" << *begin << ") len(" << size << ")" << std::endl;
                     }
                 }
             }
