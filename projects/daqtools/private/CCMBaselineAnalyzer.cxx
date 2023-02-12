@@ -309,6 +309,17 @@ class CCMBaselineAnalyzer : public I3Module {
     std::string daq_config_name_;
     std::string waveforms_name_;
 
+    std::string baseline_fit_output_name_;
+
+    double initial_derivative_threshold_;
+    size_t minimum_sample_length_;
+    double baseline_minimum_window_fraction_;
+    double baseline_maximum_window_fraction_;
+    size_t baseline_sample_edge_cut_;
+    size_t num_triggers_for_threshold_;
+
+    std::map<size_t, double> curent_derivative_threshold_;
+
 public:
     CCMBaselineAnalyzer(const I3Context&);
     void Configure();
@@ -322,12 +333,25 @@ CCMBaselineAnalyzer::CCMBaselineAnalyzer(const I3Context& context) : I3Module(co
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMAnalysis::Binary::CCMDAQConfig>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
+    AddParameter("InitialDerivativeThreshold", initial_derivative_threshold_);
+    AddParameter("MinimumSampleLength", minimum_sample_length_);
+    AddParameter("BaselineMinimumWindowFraction", baseline_minimum_window_fraction_);
+    AddParameter("BaselineMaximumWindowFraction", baseline_maximum_window_fraction_);
+    AddParameter("BaselineSampleEdgeCut", baseline_sample_edge_cut_);
+    AddParameter("NumTriggersForThreshold", num_triggers_for_threshold_);
+    AddParameter("BaselineFitOutputName", baseline_fit_output_name_;
 }
 
 void CCMBaselineAnalyzer::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMDAQConfigName", daq_config_name_);
     GetParameter("CCMWaveformsName", waveforms_name_);
+    GetParameter("InitialDerivativeThreshold", initial_derivative_threshold_);
+    GetParameter("MinimumSampleLength", minimum_sample_length_);
+    GetParameter("BaselineMinimumWindowFraction", baseline_minimum_window_fraction_);
+    GetParameter("BaselineMaximumWindowFraction", baseline_maximum_window_fraction_);
+    GetParameter("BaselineSampleEdgeCut", baseline_sample_edge_cut_);
+    GetParameter("NumTriggersForThreshold", num_triggers_for_threshold_);
 }
 
 template<class T, class U, class K>
@@ -367,9 +391,8 @@ struct DerivativeWindowCapture {
         return found_region;
     }
 
-    std::deque<K> GetBuffer() const {
-        std::deque<K> limited_buffer(raw_buffer.GetBuffer().begin(), raw_buffer.GetBuffer().end()-1);
-        return limited_buffer;
+    std::tuple<std::deque<K>::const_iterator, std::deque<K>::const_iterator, size_t> GetBuffer() const {
+        return {raw_buffer.GetBuffer().cbegin(), raw_buffer.GetBuffer().cend() - 1, raw_buffer.GetBuffer().size()};
     }
 };
 
@@ -405,14 +428,30 @@ struct WindowStats {
         Finalize();
     }
 
+    template<typename Iterator>
+    void AddSamples(Iterator begin, Iterator end) {
+        using value_type = typename std::iterator_traits<Iterator>::value_type;
+        while(begin != end) {
+            AddSample<value_type>(*begin);
+            ++begin;
+        }
+        Finalize();
+    }
+
     WindowStats() :
         k_(0), M_(0), S_(0) {
+    }
+
+    template<typename Iterator>
+    WindowType(Iterator begin, Iterator end) :
+        k_(0), M_(0), S_(0) {
+        AddSamples<Iterator>(begin, end);
     }
 
     template<typename T>
     WindowStats(std::deque<T> const & buffer) :
         k_(0), M_(0), S_(0) {
-        AddSamples(buffer);
+        AddSamples<T>(buffer);
     }
 };
 
@@ -431,7 +470,7 @@ void CCMBaselineAnalyzer::Process() {
 
     CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series>(waveforms_name_);
 
-    double max_derivative = 0.25;
+    double max_derivative = initial_derivative_threshold_;
 
     for(size_t i=0; i<waveforms.size(); ++i) {
         CCMWaveformUInt16 const & wf = waveforms[i];
@@ -451,10 +490,15 @@ void CCMBaselineAnalyzer::Process() {
             while(true) {
                 bool have_window = window.Next();
                 if(have_window) {
-                    std::deque<double> window_buffer = window.GetBuffer();
-                    stats.emplace_back(window_buffer);
-                    total.AddSamples(window_buffer);
-                    std::cout << "Window: avg(" << stats.back().mean << ") first(" << window_buffer[0] << ") len(" << window_buffer.size() << ")" << std::endl;
+                    std::tuple<std::deque<double>::const_iterator, std::deque<double>::const_iterator, size_t> window_buffer = window.GetBuffer();
+                    std::deque<double>::const_iterator begin = std::get<0>(window_buffer);
+                    std::deque<double>::const_iterator end = std::get<1>(window_buffer);
+                    size_t size = std::get<2>(window_buffer);
+                    if(size >= minimum_sample_length_) {
+                        stats.emplace_back(begin, end);
+                        total.AddSamples(begin, end);
+                        std::cout << "Window: avg(" << stats.back().mean << ") first(" << window_buffer[0] << ") len(" << window_buffer.size() << ")" << std::endl;
+                    }
                 }
             }
         } catch(SourceExhausted const & e) {
