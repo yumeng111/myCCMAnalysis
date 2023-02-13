@@ -253,6 +253,7 @@ def merge(files, output_file, geometry_output_file):
     from icecube.icetray import load
     from icecube import dataclasses
     load("CCMBinary", False)
+    load("daqtools", False)
 
     tray = I3Tray.I3Tray()
     tray.AddModule("MergedSource", "reader", FileLists=fnames, MaxTimeDiff=16)
