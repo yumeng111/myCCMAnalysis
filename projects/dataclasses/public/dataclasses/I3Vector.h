@@ -105,6 +105,8 @@ typedef I3Vector<TankKey> I3VectorTankKey;
 typedef I3Vector<StationKey> I3VectorStationKey;
 typedef I3Vector<ModuleKey> I3VectorModuleKey;
 
+typedef I3Vector<I3Vector<double>> I3VectorI3VectorDouble;
+
 typedef I3Vector<I3Vector<uint8_t>> I3VectorI3VectorUInt8;
 typedef I3Vector<I3Vector<uint16_t>> I3VectorI3VectorUInt16;
 typedef I3Vector<I3Vector<uint32_t>> I3VectorI3VectorUInt32;
@@ -136,6 +138,8 @@ I3_POINTER_TYPEDEFS(I3VectorStationKey);
 I3_POINTER_TYPEDEFS(I3VectorModuleKey);
 I3_POINTER_TYPEDEFS(I3VectorDoubleDouble);
 I3_POINTER_TYPEDEFS(I3VectorI3Position);
+
+I3_POINTER_TYPEDEFS(I3VectorI3VectorDouble);
 
 I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt8);
 I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt16);
