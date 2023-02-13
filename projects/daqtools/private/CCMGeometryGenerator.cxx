@@ -257,10 +257,10 @@ namespace detail {
                 position = get_pmt_wall_position(row, col);
                 orientation = get_pmt_wall_orientation(row, col);
                 pmt_number = col;
-                if( (row ==  2 and col % 4 == 1) or
-                    (row ==  1 and col % 4 == 3) or
-                    (row == -1 and col % 4 == 0) or
-                    (row == -2 and col % 4 == 2)) {
+                if( (row ==  1 and col % 4 == 1) or
+                    (row ==  2 and col % 4 == 3) or
+                    (row ==  4 and col % 4 == 0) or
+                    (row ==  5 and col % 4 == 2)) {
                     omtype = CCMOMGeo::OMType::CCM8inUncoated;
                 }
             }
