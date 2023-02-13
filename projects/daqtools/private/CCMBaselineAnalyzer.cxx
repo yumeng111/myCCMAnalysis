@@ -323,7 +323,6 @@ struct DerivativeWindowCapture {
         pos += 1;
         K derivative = d_buffer.output();
         bool inside = Inside(derivative);
-        // std::cout << "Currently inside (" << (state ? "True" : "False") << ") will be (" << (inside ? "True" : "False") << ") with derivative = " << derivative << std::endl;
         bool found_region = false;
         if(state == 0) { // currently outside region
             if(inside) { // moving inside region
@@ -433,9 +432,12 @@ class CCMBaselineAnalyzer : public I3Module {
     std::vector<I3FramePtr> cached_frames;
     bool thresholds_tuned_;
 
+    size_t n_daq_frames = 0;
+
     std::tuple<WindowStats, std::vector<WindowStats>, size_t> GetBaselineStats(CCMWaveformUInt16 const & wf, double derivative_threshold, size_t min_window_size);
     void FindThreshold(std::vector<I3FramePtr> const & frames, size_t wf_idx);
     void FindThresholds(std::vector<I3FramePtr> const & frames);
+    void AddBaselineStats(I3FramePtr frame);
 
 public:
     CCMBaselineAnalyzer(const I3Context&);
@@ -519,27 +521,7 @@ std::tuple<WindowStats, std::vector<WindowStats>, size_t> CCMBaselineAnalyzer::G
     } catch(SourceExhausted const & e) {
     }
 
-    std::cout << "Inactive samples (" << inactive_samples << "), all samples (" << all_samples << ")" << std::endl;
-
     return {total, stats, inactive_samples};
-
-    /*
-     * Do something with this information...
-    double max_length = 0;
-    double tot_length = 0;
-    for(size_t j=0; j<stats.size(); ++j) {
-        max_length = std::max(max_length, stats[j].k_);
-        tot_length += stats[j].k_;
-    }
-    double avg_length = tot_length / stats.size();
-
-    std::cout << "N regions found: " << stats.size() << std::endl;
-    std::cout << "Max length: " << max_length << std::endl;
-    std::cout << "Avg length: " << avg_length << std::endl;
-    std::cout << "Mean ADC: " << total.mean << std::endl;
-    std::cout << "Std dev: " << sqrt(total.variance) << std::endl;
-    std::cout << std::endl;
-     */
 }
 
 void CCMBaselineAnalyzer::FindThreshold(std::vector<I3FramePtr> const & frames, size_t wf_idx) {
@@ -553,7 +535,6 @@ void CCMBaselineAnalyzer::FindThreshold(std::vector<I3FramePtr> const & frames, 
     size_t max_last_below = 10;
 
     while(true) {
-        std::cout << "Testing threshold " << threshold << " with window size " << min_window_size << std::endl;
         size_t all_samples = 0;
         size_t inactive_samples = 0;
 
@@ -567,7 +548,6 @@ void CCMBaselineAnalyzer::FindThreshold(std::vector<I3FramePtr> const & frames, 
         }
 
         double inactive_ratio = double(inactive_samples) / double(all_samples);
-        std::cout << "Inactive ratio: " << inactive_ratio << std::endl;
         if(inactive_ratio >= baseline_minimum_window_fraction_ and inactive_ratio <= baseline_maximum_window_fraction_) {
             break;
         }
@@ -580,7 +560,6 @@ void CCMBaselineAnalyzer::FindThreshold(std::vector<I3FramePtr> const & frames, 
                 size_t reduce_by = std::max(size_t(1), size_t(min_window_size * 0.1));
                 if(min_window_size <= (std::max(baseline_sample_edge_cut_ * 2 + 1, size_t(10)) + reduce_by)) {
                     if(inactive_ratio == 0) {
-                        std::cout << "No inactive regions found" << std::endl;
                         threshold = initial_derivative_threshold_;
                         min_window_size = minimum_sample_length_;
                         break;
@@ -610,6 +589,45 @@ void CCMBaselineAnalyzer::FindThresholds(std::vector<I3FramePtr> const & frames)
     }
 }
 
+void CCMBaselineAnalyzer::AddBaselineStats(I3FramePtr frame) {
+    CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series>(waveforms_name_);
+    int64_t frame_time = frame->Get<I3PODHolder<int64_t>>(abs_time_name_).value;
+    size_t size = waveforms.size();
+    boost::shared_ptr<I3Vector<double>> total_means(new I3Vector<double>(size));
+    boost::shared_ptr<I3Vector<double>> total_variances(new I3Vector<double>(size));
+    boost::shared_ptr<I3Vector<std::vector<double>>> window_means(new I3Vector<std::vector<double>>(size));
+    boost::shared_ptr<I3Vector<std::vector<double>>> window_variances(new I3Vector<std::vector<double>>(size));
+    boost::shared_ptr<I3Vector<std::vector<int64_t>>> sample_times(new I3Vector<std::vector<int64_t>>(size));
+
+    for(size_t i=0; i<waveforms.size(); ++i) {
+        std::tuple<WindowStats, std::vector<WindowStats>, size_t> window_stats =
+            GetBaselineStats(waveforms[i], current_derivative_threshold_[i], current_window_size_[i]);
+        WindowStats const & total_stats = std::get<0>(window_stats);
+        std::vector<WindowStats> stats = std::get<1>(window_stats);
+        double total_mean = total_stats.mean;
+        double total_variance = total_stats.variance;
+        std::vector<double> window_mean;
+        std::vector<double> window_variance;
+        std::vector<int64_t> times;
+        for(size_t j=0; j<stats.size(); ++j) {
+            window_mean.push_back(stats[j].mean);
+            window_variance.push_back(stats[j].variance);
+            times.push_back(stats[j].time + frame_time);
+        }
+        total_means->operator[](i) = total_mean;
+        total_variances->operator[](i) = total_variance;
+        window_means->operator[](i) = window_mean;
+        window_variances->operator[](i) = window_variance;
+        sample_times->operator[](i) = times;
+    }
+
+    frame->Put("BaselineEstimates", total_means);
+    frame->Put("BaselineEstimateVariances", total_variances);
+    frame->Put("BaselineSamples", window_means);
+    frame->Put("BaselineSampleVariances", window_variances);
+    frame->Put("BaselineSampleTimes", sample_times);
+}
+
 void CCMBaselineAnalyzer::Process() {
     I3FramePtr frame = PopFrame();
 
@@ -623,46 +641,11 @@ void CCMBaselineAnalyzer::Process() {
         return;
     }
 
+    n_daq_frames += 1;
+
     if(thresholds_tuned_) {
-        std::cout << "Already found thresholds, processing normally" << std::endl;
-        CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series>(waveforms_name_);
-        int64_t frame_time = frame->Get<I3PODHolder<int64_t>>(abs_time_name_).value;
-        size_t size = waveforms.size();
-        boost::shared_ptr<I3Vector<double>> total_means(new I3Vector<double>(size));
-        boost::shared_ptr<I3Vector<double>> total_variances(new I3Vector<double>(size));
-        boost::shared_ptr<I3Vector<std::vector<double>>> window_means(new I3Vector<std::vector<double>>(size));
-        boost::shared_ptr<I3Vector<std::vector<double>>> window_variances(new I3Vector<std::vector<double>>(size));
-        boost::shared_ptr<I3Vector<std::vector<int64_t>>> sample_times(new I3Vector<std::vector<int64_t>>(size));
-
-        for(size_t i=0; i<waveforms.size(); ++i) {
-            std::cout << "Processing waveform " << i << "/" << waveforms.size() << std::endl;
-            std::tuple<WindowStats, std::vector<WindowStats>, size_t> window_stats =
-                GetBaselineStats(waveforms[i], current_derivative_threshold_[i], current_window_size_[i]);
-            WindowStats const & total_stats = std::get<0>(window_stats);
-            std::vector<WindowStats> stats = std::get<1>(window_stats);
-            double total_mean = total_stats.mean;
-            double total_variance = total_stats.variance;
-            std::vector<double> window_mean;
-            std::vector<double> window_variance;
-            std::vector<int64_t> times;
-            for(size_t j=0; j<stats.size(); ++j) {
-                window_mean.push_back(stats[j].mean);
-                window_variance.push_back(stats[j].variance);
-                times.push_back(stats[j].time + frame_time);
-            }
-            total_means->operator[](i) = total_mean;
-            total_variances->operator[](i) = total_variance;
-            window_means->operator[](i) = window_mean;
-            window_variances->operator[](i) = window_variance;
-            sample_times->operator[](i) = times;
-        }
-
-        frame->Put("BaselineEstimates", total_means);
-        frame->Put("BaselineEstimateVariances", total_variances);
-        frame->Put("BaselineSamples", window_means);
-        frame->Put("BaselineSampleVariances", window_variances);
-        frame->Put("BaselineSampleTimes", sample_times);
-
+        std::cout << "Computing baseline for frame " << n_daq_frames << std::endl;
+        AddBaselineStats(frame);
         PushFrame(frame);
     } else {
         if(cached_frames.size() >= num_triggers_for_threshold_ - 1) {
@@ -671,17 +654,19 @@ void CCMBaselineAnalyzer::Process() {
             std::cout << "Finding thresholds..." << std::endl;
             FindThresholds(cached_frames);
             thresholds_tuned_ = true;
-            std::cout << "Found thresholds, pushing frames..." << std::endl;
-            for(size_t i=0; i<cached_frames.size(); ++i) {
-                PushFrame(cached_frames[i]);
-            }
+            std::cout << "Found thresholds!" << std::endl;
             for(size_t i=0; i<current_window_size_.size(); ++i) {
-                std::cout << "Threshold: " << current_derivative_threshold_[i] << " Window size: " << current_window_size_[i] << std::endl;
+                std::cout << "Threshold " << i << "/" << current_window_size_.size() << ": " << current_derivative_threshold_[i] << " Window size: " << current_window_size_[i] << std::endl;
+            }
+            std::cout << "Pushing frames..." << std::endl;
+            for(size_t i=0; i<cached_frames.size(); ++i) {
+                std::cout << "Computing baseline for frame " << i + 1 << std::endl;
+                AddBaselineStats(cached_frames[i]);
+                PushFrame(cached_frames[i]);
             }
             cached_frames.clear();
         } else {
             cached_frames.push_back(frame);
-            std::cout << "Caching frame number " << cached_frames.size() << std::endl;
         }
     }
 }
