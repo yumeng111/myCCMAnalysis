@@ -595,9 +595,9 @@ void CCMBaselineAnalyzer::AddBaselineStats(I3FramePtr frame) {
     size_t size = waveforms.size();
     boost::shared_ptr<I3Vector<double>> total_means(new I3Vector<double>(size));
     boost::shared_ptr<I3Vector<double>> total_variances(new I3Vector<double>(size));
-    boost::shared_ptr<I3Vector<std::vector<double>>> window_means(new I3Vector<std::vector<double>>(size));
-    boost::shared_ptr<I3Vector<std::vector<double>>> window_variances(new I3Vector<std::vector<double>>(size));
-    boost::shared_ptr<I3Vector<std::vector<int64_t>>> sample_times(new I3Vector<std::vector<int64_t>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<double>>> window_means(new I3Vector<I3Vector<double>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<double>>> window_variances(new I3Vector<I3Vector<double>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> sample_times(new I3Vector<I3Vector<int64_t>>(size));
 
     for(size_t i=0; i<waveforms.size(); ++i) {
         std::tuple<WindowStats, std::vector<WindowStats>, size_t> window_stats =
@@ -606,9 +606,9 @@ void CCMBaselineAnalyzer::AddBaselineStats(I3FramePtr frame) {
         std::vector<WindowStats> stats = std::get<1>(window_stats);
         double total_mean = total_stats.mean;
         double total_variance = total_stats.variance;
-        std::vector<double> window_mean;
-        std::vector<double> window_variance;
-        std::vector<int64_t> times;
+        I3Vector<double> window_mean;
+        I3Vector<double> window_variance;
+        I3Vector<int64_t> times;
         for(size_t j=0; j<stats.size(); ++j) {
             window_mean.push_back(stats[j].mean);
             window_variance.push_back(stats[j].variance);
