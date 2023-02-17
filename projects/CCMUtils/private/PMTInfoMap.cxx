@@ -289,7 +289,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
       } // end switch(index)
     } // end for index < currRow->size()
     int key = CreateKey(adcBoardOrder,adcCH);
-    std::cout << "key: " << key << "\n";
+    std::cout << "key: " << key << " threshold " << adcThreshold << " adcToPE " << adcToPE <<  " adcToPEder " << adcToPEDer << "\n";
     if (fgPMTInfo.find(key) == fgPMTInfo.end()) {
       fgPMTInfo.insert(std::make_pair(key,new PMTInformation()));
       std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.find(key);
@@ -659,12 +659,13 @@ void PMTInfoMap::SetParameter(std::string /*name*/, const double /*value*/)
 }
 
 //--------------------------------------------------------------------
+//Runs PMTInfoMap setup from configFile for ./CCMAnalysis
 void PMTInfoMap::SetParameter(std::string name, std::string value)
 {
   if (name.compare("HVOffFile") == 0) {
     LoadHVOffList(value);
   } else if (name.compare("CalibrationFile") == 0) {
-    LoadCalibrationFile(value);
+    LoadCalibrationFile(value,false);
   } else if (name.compare("MappingFile") == 0) {
     ClearMap();
     if (value.compare("default") == 0) {
