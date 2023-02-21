@@ -483,7 +483,7 @@ std::vector<WindowStats> CCMPeakFinder::GetPeaks(CCMWaveformUInt16 const & wf, d
                 size_t size = std::get<2>(window_buffer);
                 if(size >= min_window_size) {
                     peaks.emplace_back(begin, end);
-                    peaks.back().time = window.pos - 1 + wf.GetStartTime();
+                    peaks.back().time = window.pos - size;// + wf.GetStartTime();
                 }
             }
         }

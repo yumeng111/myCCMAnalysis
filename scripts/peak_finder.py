@@ -17,7 +17,7 @@ def run(files, output_file):
 
     tray = I3Tray.I3Tray()
     tray.AddModule("I3Reader", "reader", FilenameList=fnames)
-    tray.AddModule("CCMPeakFinder")
+    tray.AddModule("CCMPeakFinder", InitialDerivativeThreshold=0.3)
     if "%" in output_file:
         tray.AddModule("I3MultiWriter", "writer", SizeLimit=(3*1024**3), FileName=output_file, MetadataStreams=[icetray.I3Frame.Geometry, icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus], CounterStream=icetray.I3Frame.DAQ, SizeCheckInterval=1000, NWorkers=8, Streams=[icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus, icetray.I3Frame.DAQ, icetray.I3Frame.Physics])
     else:
