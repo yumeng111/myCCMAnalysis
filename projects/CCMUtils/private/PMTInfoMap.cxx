@@ -32,7 +32,7 @@ bool PMTInfoMap::fgBadListLoaded = false;
 int PMTInfoMap::fgEJStart = 249;
 int PMTInfoMap::fgEJEnd = 254;
 size_t PMTInfoMap::fgMinKey = 0;
-size_t PMTInfoMap::fgMaxKey = 240;
+size_t PMTInfoMap::fgMaxKey = 254;
 
 /*
 detsim/libCCMDetSim.so: undefined reference to `PMTInfoMap::ConvertRowColToKey(int const&, int const&)'
