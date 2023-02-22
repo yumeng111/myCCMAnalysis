@@ -1,5 +1,5 @@
 
-def run(files, output_file):
+def run(files, output_file, sample_length):
     import glob
     print("Glob", files)
     fnames = [s for l in files for g in l for s in glob.glob(g)]
@@ -17,9 +17,18 @@ def run(files, output_file):
 
     tray = I3Tray.I3Tray()
     tray.AddModule("I3Reader", "reader", FilenameList=fnames)
-    tray.AddModule("CCMBaselineAnalyzer")
+    tray.AddModule("CCMBaselineAnalyzer", MinimumSampleLength=sample_length)
+    tray.AddModule("Keep", Keys=[
+        "BaselineEstimateVariances",
+        "BaselineEstimates",
+        "BaselineSampleTimes",
+        "BaselineSampleVariances",
+        "BaselineSamples",
+        "FirstTriggerTime",
+        "TriggerTimes",
+    ])
     if "%" in output_file:
-        tray.AddModule("I3MultiWriter", "writer", SizeLimit=(3*1024**3), FileName=output_file, MetadataStreams=[icetray.I3Frame.Geometry, icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus], CounterStream=icetray.I3Frame.DAQ, SizeCheckInterval=1000, NWorkers=8, Streams=[icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus, icetray.I3Frame.DAQ, icetray.I3Frame.Physics])
+        tray.AddModule("I3MultiWriter", "writer", SizeLimit=int(1.0*1024**3), FileName=output_file, MetadataStreams=[icetray.I3Frame.Geometry, icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus], CounterStream=icetray.I3Frame.DAQ, SizeCheckInterval=1000, NWorkers=8, Streams=[icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus, icetray.I3Frame.DAQ, icetray.I3Frame.Physics])
     else:
         tray.AddModule("I3Writer", "writer", FileName=output_file, Streams=[icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus, icetray.I3Frame.DAQ, icetray.I3Frame.Physics])
     tray.Execute()
@@ -42,8 +51,12 @@ if __name__ == "__main__":
             type=str,
             required=True,
             help="Output file name")
+    parser.add_argument("--sample-length",
+            type=int,
+            required=True,
+            help="Minimum number of samples")
 
     args = parser.parse_args()
 
-    run(args.files, args.output_file)
+    run(args.files, args.output_file, args.sample_length)
 
