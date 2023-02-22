@@ -186,6 +186,10 @@ public:
         return buffer;
     }
 
+    virtual inline std::tuple<size_t, size_t> GetWindow() const {
+        return {buffer_begin, buffer_end};
+    }
+
     virtual inline void Reset() {
         if(buffer.size() > 0) {
             buffer_begin = buffer_end - 1;
@@ -342,6 +346,10 @@ struct DerivativeWindowCapture {
     std::tuple<typename std::deque<U>::const_iterator, typename std::deque<U>::const_iterator, size_t> GetBuffer() const {
         return {raw_buffer.GetBuffer().cbegin(), raw_buffer.GetBuffer().cend() - 1, raw_buffer.GetBuffer().size()};
     }
+
+    std::tuple<size_t, size_t> GetWindow() const {
+        return raw_buffer.GetWindow();
+    }
 };
 
 struct WindowStats {
@@ -426,6 +434,7 @@ class CCMBaselineAnalyzer : public I3Module {
     double baseline_maximum_window_fraction_;
     size_t baseline_sample_edge_cut_;
     size_t num_triggers_for_threshold_;
+    size_t max_waveform_sample_;
 
     std::map<size_t, double> current_derivative_threshold_;
     std::map<size_t, size_t> current_window_size_;
@@ -453,6 +462,7 @@ CCMBaselineAnalyzer::CCMBaselineAnalyzer(const I3Context& context) : I3Module(co
     initial_derivative_threshold_(0.3), minimum_sample_length_(30),
     baseline_minimum_window_fraction_(0.005), baseline_maximum_window_fraction_(0.9),
     baseline_sample_edge_cut_(3), num_triggers_for_threshold_(100),
+    max_waveform_sample_(8000),
     current_derivative_threshold_(), current_window_size_(), cached_frames(),
     thresholds_tuned_(false) {
 
@@ -467,6 +477,7 @@ CCMBaselineAnalyzer::CCMBaselineAnalyzer(const I3Context& context) : I3Module(co
     AddParameter("NumTriggersForThreshold","The number of triggers to use when tuning the derivative threshold.", num_triggers_for_threshold_);
     AddParameter("BaselineFitOutputName", "The output key of the baseline fit.", std::string("BaselineFit"));
     AddParameter("AbsoluteTimeName", "Key for absoluting timing information of frame", std::string("FirstTriggerTime"));
+    AddParameter("MaxWaveformSample", "The maximum sample number to consider when finding baseline samples.", max_waveform_sample_);
 }
 
 void CCMBaselineAnalyzer::Configure() {
@@ -481,10 +492,17 @@ void CCMBaselineAnalyzer::Configure() {
     GetParameter("NumTriggersForThreshold", num_triggers_for_threshold_);
     GetParameter("BaselineFitOutputName", baseline_fit_output_name_);
     GetParameter("AbsoluteTimeName", abs_time_name_);
+    GetParameter("MaxWaveformSample", max_waveform_sample_);
 }
 
 
 std::tuple<WindowStats, std::vector<WindowStats>, size_t> CCMBaselineAnalyzer::GetBaselineStats(CCMWaveformUInt16 const & wf, double derivative_threshold, size_t min_window_size) {
+    std::vector<WindowStats> stats;
+    WindowStats total;
+
+    if(wf.GetWaveform().size() == 0)
+        return {total, stats, 0};
+
     WaveformSource<uint16_t> wf_source(wf);
     MultiplicativeFilter<uint16_t, double> m_filter(-1.0, &wf_source);
     BufferView<double, double> buffer_m(&m_filter);
@@ -494,17 +512,17 @@ std::tuple<WindowStats, std::vector<WindowStats>, size_t> CCMBaselineAnalyzer::G
     BackDerivativeFilter<double, double> derivative_filter(2.0, &smoothing_filter);
     DerivativeWindowCapture<double, double, double> window(derivative_filter, buffer_m, derivative_threshold);
 
-    std::vector<WindowStats> stats;
-    WindowStats total;
 
     size_t all_samples = wf_source.Size();
     size_t inactive_samples = 0;
 
     try {
+        size_t sample_number = 0;
         while(true) {
             bool have_window = window.Next();
-            if(have_window) {
+            if(have_window or (sample_number == max_waveform_sample_ and window.state == 1)) {
                 std::tuple<std::deque<double>::const_iterator, std::deque<double>::const_iterator, size_t> window_buffer = window.GetBuffer();
+                std::tuple<size_t, size_t> window_bounds = window.GetWindow();
                 std::deque<double>::const_iterator begin = std::get<0>(window_buffer);
                 std::deque<double>::const_iterator end = std::get<1>(window_buffer);
                 size_t size = std::get<2>(window_buffer);
@@ -517,6 +535,10 @@ std::tuple<WindowStats, std::vector<WindowStats>, size_t> CCMBaselineAnalyzer::G
                     inactive_samples += size;
                 }
             }
+            if(sample_number == max_waveform_sample_) {
+                break;
+            }
+            sample_number += 1;
         }
     } catch(SourceExhausted const & e) {
     }
