@@ -363,8 +363,9 @@ void CCMPMTResponse::FillSPEWeights()
     if (!fPMTSPEFile) {
       double adcToPE = pmt->GetADCToPE();
       double error = pmt->GetADCToPERMS();
+      double thresh = pmt->GetADCThreshold();
 
-      fSPEWeights.emplace(key,std::make_pair(adcToPE,error));
+      fSPEWeights.emplace(key,std::make_tuple(adcToPE,error,thresh));
       fWaveforms.emplace(key,std::vector<double>(Utility::fgkNumBins,0.0));
     } else {
       TH2D * tempHist = nullptr;
@@ -408,11 +409,15 @@ void CCMPMTResponse::GetADCValueAndLength(size_t key, double & adc, double & len
     cholDecomp[2][1] = 0;
     cholDecomp[2][2] = 0.000387;
 
-    double adcToPE = itSPEWeight->second.first;
-    double error = itSPEWeight->second.second;
+    double adcToPE = std::get<0>(itSPEWeight->second);
+    double error = std::get<1>(itSPEWeight->second);
+    double thresh = std::get<2>(itSPEWeight->second);
     std::normal_distribution<double> gaus(adcToPE,error);
 
     adc = gaus(fMT);
+    while (adc < thresh) {
+      adc = gaus(fMT);
+    }
     length = adc;
 
     std::normal_distribution<double> normal(0,1);

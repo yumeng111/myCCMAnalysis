@@ -74,7 +74,7 @@ class CCMPMTResponse : public CCMModule
     std::uniform_real_distribution<double> fUniform;
     std::shared_ptr<TRandom3> fTRandom;
 
-    std::map<int,std::pair<double,double>> fSPEWeights;
+    std::map<int,std::tuple<double,double,double>> fSPEWeights;
     std::map<int,std::shared_ptr<TH2D>> fSPEHists;
     std::map<int,std::vector<double>> fWaveforms;
     std::map<int,double> fPMTRelEff;
