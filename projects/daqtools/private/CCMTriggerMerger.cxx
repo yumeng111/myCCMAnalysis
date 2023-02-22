@@ -156,7 +156,7 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
             triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx);
         merge_needed |= triggers_overlap;
         // Exclude the case we have two full non-overlapping triggers
-        merge_possible &= not (triggers_overlap or trigger0_empty or trigger1_empty);
+        merge_possible &= triggers_overlap or trigger0_empty or trigger1_empty;
     }
 
     // Merging two full length triggers that do not overlap should not be possible...
@@ -171,10 +171,34 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
             if((not trigger0_empty) and (not trigger1_empty))
                 triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed);
             // Exclude the case we have two full non-overlapping triggers
-            merge_allowed &= not (triggers_overlap or trigger0_empty or trigger1_empty);
+            merge_allowed &= triggers_overlap or trigger0_empty or trigger1_empty;
         }
-        if(not merge_allowed)
+        if(not merge_allowed) {
+            std::cerr << "Issue merging triggers. Triggers from some boards overlap, but others do not" << std::endl;
+            std::cerr << "Trigger times:" << std::endl;
+            for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
+                bool trigger0_empty = (*trigger_times0)[board_idx].first;
+                bool trigger1_empty = (*trigger_times1)[board_idx].first;
+                int64_t trigger0_time = (*trigger_times0)[board_idx].second;
+                int64_t trigger1_time = (*trigger_times1)[board_idx].second;
+                std::cerr << "Board " << board_idx << ": (" <<
+                    (trigger0_empty ? "No trigger" : "Have trigger");
+                if(not trigger0_empty)
+                    std::cerr << " " << trigger0_time;
+                std::cerr << ") (";
+                std::cerr << (trigger1_empty ? "No trigger" : "Have trigger");
+                if(not trigger1_empty)
+                    std::cerr << " " << trigger1_time;
+                std::cerr << ")";
+                bool triggers_overlap = false;
+                if((not trigger0_empty) and (not trigger1_empty)) {
+                    triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed);
+                }
+                std::cerr << " Overlap? " << (triggers_overlap ? "Yes" : "No");
+                std::cerr << std::endl;
+            }
             log_fatal("Need to merge two triggers, but merge is not possible because triggers from some boards overlap and others do not.");
+        }
     }
     return merge_needed;
 }
