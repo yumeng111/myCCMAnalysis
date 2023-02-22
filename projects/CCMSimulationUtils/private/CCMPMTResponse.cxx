@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cctype>
+#include <boost/math/special_functions/erf.hpp>
 
 #include "CCMAnalysis/CCMSimulationUtils/CCMPMTResponse.h"
 
@@ -363,6 +364,9 @@ void CCMPMTResponse::FillSPEWeights()
     if (!fPMTSPEFile) {
       double adcToPE = pmt->GetADCToPE();
       double error = pmt->GetADCToPERMS();
+      if (error < 1.0) {
+	error = std::sqrt(adcToPE);
+      }
       double thresh = pmt->GetADCThreshold();
 
       fSPEWeights.emplace(key,std::make_tuple(adcToPE,error,thresh));
@@ -412,12 +416,40 @@ void CCMPMTResponse::GetADCValueAndLength(size_t key, double & adc, double & len
     double adcToPE = std::get<0>(itSPEWeight->second);
     double error = std::get<1>(itSPEWeight->second);
     double thresh = std::get<2>(itSPEWeight->second);
-    std::normal_distribution<double> gaus(adcToPE,error);
 
-    adc = gaus(fMT);
-    while (adc < thresh) {
-      adc = gaus(fMT);
+    if (error < 1.0) {
+      error = 1.0;
     }
+    if (adcToPE < 1.0) {
+      adc = 0.0;
+      length = 0.0;
+      return;
+    }
+    
+    //old method of pulling random adc value from gaussian fit of SPE value, long way ensuring above threshold. 
+    //std::normal_distribution<double> gaus(adcToPE,error); 
+    //adc = gaus(fMT);
+    //while (adc < thresh) {
+    // adc = gaus(fMT);
+    //}
+
+    //throw random number between 0 and 1
+    double rand = fUniform(fMT);
+    double sq2 = std::sqrt(2)*error;
+    double x = std::erf((adcToPE-thresh)/(sq2))*(1-rand)-rand;
+    float sgn = (x < 0) ? -1.0f : 1.0f;
+    x = (1.0-x)*(1.0+x);
+    float lnx = std::log(x);
+    float tt1 = 2/(3.1415926383*0.147) + 0.5f * lnx;
+    float tt2 = 1/(0.147) * lnx;
+    
+    double erfInv = sgn*std::sqrt(-tt1 + sqrtf(tt1*tt1 - tt2));
+    
+    adc = adcToPE - sq2*erfInv;
+    /*if (thresh > adcToPE) {
+      std::cout << adcToPE << '\t' << error << '\t' << thresh << '\t' << rand << '\t'  << adc << '\n';
+      }*/
+
     length = adc;
 
     std::normal_distribution<double> normal(0,1);
