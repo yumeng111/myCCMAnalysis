@@ -1,10 +1,10 @@
 
+#include <dataclasses/I3UInt64.h>
 #include <icetray/I3PODHolder.h>
 #include <icetray/python/boost_serializable_pickle_suite.hpp>
 #include <icetray/python/operator_suite.hpp>
 
 namespace bp = boost::python;
-typedef I3PODHolder<uint64_t> I3UInt64;
 
 static std::string 
 I3UInt64_prettyprint(const I3UInt64& d)

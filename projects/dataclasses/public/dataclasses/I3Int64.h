@@ -1,0 +1,12 @@
+#ifndef DATACLASSES_I3Int64_H_INCLUDED
+#define DATACLASSES_I3Int64_H_INCLUDED
+
+#include <icetray/I3DefaultName.h>
+#include <icetray/I3PODHolder.h>
+
+typedef I3PODHolder<int64_t> I3Int64;
+
+I3_POINTER_TYPEDEFS(I3Int64);
+I3_DEFAULT_NAME(I3Int64);
+
+#endif
