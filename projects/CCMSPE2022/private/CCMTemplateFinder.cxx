@@ -54,7 +54,7 @@ class CCMTemplateFinder : public I3Module {
     int min_amplitude;;
     int max_amplitude;;
     size_t n_daq_frames = 0;
-    std::vector<std::vector<double>> 
+    
 
     std::vector<WindowStats> GetPeaks(CCMWaveformUInt16 const & wf, double derivative_threshold, size_t min_window_size);
     void AddPeaks(I3FramePtr frame);
@@ -87,7 +87,10 @@ void CCMTemplateFinder::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMDAQConfigName", daq_config_name_);
     GetParameter("CCMWaveformsName", waveforms_name_);
-    GetParameter("CCMTemplateOutputName", template_output_name_);
+    GetParameter("CCMPeakAmplitudesName", peak_amplitude_name_);
+    GetParameter("CCMPeakLengthsName", peak_lengths_name_);
+    GetParameter("CCMPeakTimesName", peak_times_name_);
+    GetParameter("TemplateOutputName", template_output_name_);
     GetParameter("AbsoluteTimeName", abs_time_name_);
 }
 
@@ -124,9 +127,40 @@ std::vector<WindowStats> CCMTemplateFinder::GetPeaks(CCMWaveformUInt16 const & w
     return peaks;
 }
 
-void CCMTemplateFidner::AddTemplates() {
-  // a vector storing the template for each channel
-  boost::shared_ptr<I3Vector<SPETemplate>> channel_templates; 
+double CCMTemplateFinder::PeakLossFunction(const std::vector<double> &x,
+                                           const std::vector<double> &grad,
+                                           void * f_data) {
+}
+
+SPETemplate CCMTemplateFinder::FitPeak(int64_t const & length,
+                                       int64_t const & time,
+                                       std::vector<double> const & waveform,
+                                       int64_t pre_window = 3) {
+  
+  std::vector<double> 
+}
+
+void CCMTemplateFidner::AddTemplates(I3framePtr frame) {
+    
+    
+    // let's grab some stuff from the frame
+    CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series>(waveforms_name_);
+    size_t size = waveforms.size();
+    I3Vector<I3Vector<int>> const & window_amplitudes = frame->Get<I3Vector<I3Vector<int>>>(peak_amplitude_name_);
+    I3Vector<I3Vector<int64_t>> const & window_lengths = frame->Get<I3Vector<I3Vector<int>>>(peak_length_name_);
+    I3Vector<I3Vector<int64_t>> const & window_times = frame->Get<I3Vector<I3Vector<int>>>(peak_time_name_);
+    
+    // a vector storing the template for each channel
+    boost::shared_ptr<I3Vector<I3Vector<SPETemplate>>> channel_templates(new I3Vector<I3Vector<SPETemplate>>(size));
+     
+    for(size_t ich = 0; ich < waveforms.size(); ++ich) {
+      for(size_t ipk = 0; ipk < window_amplitudes[ich].size(); ++ipk) {
+        FitPeak(window_amplitudes[ich][ipk],
+                window_lengths[ich][ipk],
+                window_times[ich][ipk],
+      }
+      
+    }
 }
 
 void CCMTemplateFinder::AddPeaks(I3FramePtr frame) {
