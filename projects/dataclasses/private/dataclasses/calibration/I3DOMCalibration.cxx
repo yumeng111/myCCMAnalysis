@@ -526,6 +526,22 @@ TauParam::serialize(Archive& ar, unsigned version)
 
 I3_SERIALIZABLE(TauParam);
 
+template <class Archive>
+void 
+SPETemplate::serialize(Archive& ar, unsigned version)
+{
+  if (version>tauparam_version_)
+
+    log_fatal("Attempting to read version %u from file but running version %u of TuaParam class.",version,tauparam_version_);
+
+  ar & make_nvp("c",c);
+  ar & make_nvp("x0",x0);
+  ar & make_nvp("b1",b1);
+  ar & make_nvp("b2",b2);
+}
+
+I3_SERIALIZABLE(SPETemplate);
+
 
 template <class Archive>
 void 
