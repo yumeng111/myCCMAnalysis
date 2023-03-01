@@ -93,7 +93,7 @@ I3_MODULE(CCMTemplateFinder);
 
 CCMTemplateFinder::CCMTemplateFinder(const I3Context& context) : I3Module(context),
     geometry_name_(""), daq_config_name_(""), waveforms_name_(""), peak_amplitude_name_(""), peak_time_name_(""), peak_length_name_(""), baseline_estimate_name_(""), template_output_name_(""),
-    fit_length(10), pre_window(3), min_amplitude(30), max_amplitude(40) {
+    fit_length(10), pre_window(3), min_amplitude(20), max_amplitude(40) {
 
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMAnalysis::Binary::CCMDAQConfig>::value()));
@@ -246,10 +246,6 @@ SPETemplate CCMTemplateFinder::FitPeak(double const & peak_amplitude,
   }
   else xp = x; 
   
-  std::cout << "found minimum at f(";
-  for (double d: xp) std::cout << d << ", ";
-  std::cout << ") = " << std::setprecision(10) << minf << std::endl;
-  
   return SPETemplate(xp[0],xp[1],xp[2],xp[3]);
 }
 
@@ -266,9 +262,12 @@ void CCMTemplateFinder::AddTemplates(I3FramePtr frame) {
     
     // a vector storing the template for each channel
     boost::shared_ptr<I3Vector<I3Vector<SPETemplate>>> channel_templates(new I3Vector<I3Vector<SPETemplate>>(size));
+    // a vector storing the time for each template
+    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> channel_times(new I3Vector<I3Vector<int64_t>>(size));
      
     for(size_t ich = 0; ich < waveforms.size(); ++ich) {
       I3Vector<SPETemplate> templates;
+      I3Vector<int64_t> times;
       for(size_t ipk = 0; ipk < window_amplitudes[ich].size(); ++ipk) {
         double peak_amplitude = -(window_amplitudes[ich][ipk] + baseline_estimates[ich]);
         if(peak_amplitude < min_amplitude || peak_amplitude > max_amplitude) continue; 
@@ -277,10 +276,13 @@ void CCMTemplateFinder::AddTemplates(I3FramePtr frame) {
                                     window_times[ich][ipk],
                                     waveforms[ich].GetWaveform(),
                                     baseline_estimates[ich]));
+        times.push_back(window_times[ich][ipk]);
       }
       channel_templates->operator[](ich) = templates;
+      channel_times->operator[](ich) = times;
     }
     frame->Put("SPETemplates", channel_templates);
+    frame->Put("SPETemplatesTimes", channel_times);
 }
 
 

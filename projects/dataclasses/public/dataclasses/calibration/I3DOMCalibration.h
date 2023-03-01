@@ -25,6 +25,7 @@
 
 #include <icetray/I3Units.h>
 #include <dataclasses/Utility.h>
+#include <dataclasses/I3Vector.h>
 #include <icetray/OMKey.h>
 
 
@@ -329,7 +330,14 @@ struct SPETemplate {
 
 };
 
+typedef I3Vector<SPETemplate> I3VectorSPETemplate;
+typedef I3Vector<I3Vector<SPETemplate>> I3VectorI3VectorSPETemplate;
+I3_POINTER_TYPEDEFS(SPETemplate);
+I3_POINTER_TYPEDEFS(I3VectorSPETemplate);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorSPETemplate);
+
 I3_CLASS_VERSION(SPETemplate, spetemplate_version_);
+
 
 /**
  * @brief Class that stores the calibration information for a DOM

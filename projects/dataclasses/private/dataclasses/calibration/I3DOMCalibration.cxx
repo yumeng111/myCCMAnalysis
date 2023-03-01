@@ -530,9 +530,9 @@ template <class Archive>
 void 
 SPETemplate::serialize(Archive& ar, unsigned version)
 {
-  if (version>tauparam_version_)
+  if (version>spetemplate_version_)
 
-    log_fatal("Attempting to read version %u from file but running version %u of TuaParam class.",version,tauparam_version_);
+    log_fatal("Attempting to read version %u from file but running version %u of SPETemplate class.",version,spetemplate_version_);
 
   ar & make_nvp("c",c);
   ar & make_nvp("x0",x0);
@@ -541,6 +541,8 @@ SPETemplate::serialize(Archive& ar, unsigned version)
 }
 
 I3_SERIALIZABLE(SPETemplate);
+I3_SERIALIZABLE(I3VectorSPETemplate);
+I3_SERIALIZABLE(I3VectorI3VectorSPETemplate);
 
 
 template <class Archive>
