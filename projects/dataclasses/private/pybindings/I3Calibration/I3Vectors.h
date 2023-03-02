@@ -1,5 +1,5 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim  
+//   Copyright (c) 2004, 2005, 2006, 2007, 2008   Troy D. Straszheim  
 //   
 //   $Id$
 //
@@ -30,24 +30,56 @@
 //   
 //
 
-#include <dataclasses/calibration/I3DOMCalibration.h>
+#ifndef I3VECTORS_H_PYBINDINGS
+#define I3VECTORS_H_PYBINDINGS 
+
+#include <icetray/ostream_pair.hpp>
+#include <dataclasses/I3Vector.h>
+#include <dataclasses/ostream_overloads.hpp>
 #include <icetray/python/dataclass_suite.hpp>
-#include "I3Vectors.h"
+#include <vector>
+#include <sstream>
 
 using namespace boost::python;
 
-void register_SPETemplate()
+using std::vector;
+
+template <typename T>
+void 
+register_i3vector_of(const std::string& s)
 {
-  class_<SPETemplate>("SPETemplate")
-    .def_readwrite("c", &SPETemplate::c)
-    .def_readwrite("x0", &SPETemplate::x0)
-    .def_readwrite("b1", &SPETemplate::b1)
-    .def_readwrite("b2", &SPETemplate::b2)
-    .def(self == self)
-    .def(self != self)
-    .def( freeze() )
+
+  class_<std::vector<T> >((std::string("List") + s).c_str())
+    .def(dataclass_suite<std::vector<T> >())
     ;
-  
-  register_i3vector_of<SPETemplate>("I3VectorSPETemplate");
-  register_i3vector_of<I3Vector<SPETemplate>>("I3VectorI3VectorSPETemplate");
+
+  typedef I3Vector<T> vec_t;
+  class_<vec_t, bases<I3FrameObject, std::vector<T> >, boost::shared_ptr<vec_t> > 
+    ((std::string("I3Vector") + s).c_str())
+    .def(dataclass_suite<vec_t>())
+    ;
+  register_pointer_conversions<vec_t>();
 }
+
+template <typename T, typename U>
+std::pair< T, U >
+py_make_pair( T t, U u)
+{
+    return std::make_pair(t,u);
+}
+
+template <typename T, typename U>
+void
+register_std_pair(const char* s)
+{
+  typedef std::pair<T, U> type_t;
+
+  class_<type_t>(s)
+    .def_readwrite("first", &type_t::first)
+    .def_readwrite("second", &type_t::second)
+    .def(dataclass_suite<type_t>())
+    ;
+  def("make_pair", &py_make_pair<T, U>);
+}
+
+#endif //I3VECTORS_H_PYBINDINGS
