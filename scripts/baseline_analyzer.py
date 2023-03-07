@@ -21,9 +21,11 @@ def run(files, output_file, sample_length):
     tray.AddModule("Keep", Keys=[
         "BaselineEstimateVariances",
         "BaselineEstimates",
-        "BaselineSampleTimes",
         "BaselineSampleVariances",
         "BaselineSamples",
+        "BaselineSampleTimes",
+        "BaselineSampleBeginPos",
+        "BaselineSampleEndPos",
         "FirstTriggerTime",
         "TriggerTimes",
     ])
