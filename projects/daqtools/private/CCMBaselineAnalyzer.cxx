@@ -615,7 +615,7 @@ void CCMBaselineAnalyzer::FindThresholds(std::vector<I3FramePtr> const & frames)
 
 void CCMBaselineAnalyzer::AddBaselineStats(I3FramePtr frame) {
     CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series>(waveforms_name_);
-    long double frame_time = (long double)(frame->Get<I3PODHolder<int64_t>>(abs_time_name_).value) * 2.0;
+    long double frame_time = (long double)(frame->Get<I3PODHolder<int64_t>>(abs_time_name_).value) * 8.0;
     size_t size = waveforms.size();
     boost::shared_ptr<I3Vector<double>> total_means(new I3Vector<double>(size));
     boost::shared_ptr<I3Vector<double>> total_variances(new I3Vector<double>(size));
