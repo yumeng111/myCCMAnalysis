@@ -397,18 +397,18 @@ struct WindowStats {
     }
 
     WindowStats() :
-        k_(0), M_(0), S_(0) {
+        k_(0), M_(0), S_(0), mean(0), variance(0) {
     }
 
     template<typename Iterator>
     WindowStats(Iterator begin, Iterator end) :
-        k_(0), M_(0), S_(0) {
+        k_(0), M_(0), S_(0), mean(0), variance(0) {
         AddSamples<Iterator>(begin, end);
     }
 
     template<typename T>
     WindowStats(std::deque<T> const & buffer) :
-        k_(0), M_(0), S_(0) {
+        k_(0), M_(0), S_(0), mean(0), variance(0) {
         AddSamples<T>(buffer);
     }
 };
@@ -524,15 +524,15 @@ std::tuple<WindowStats, std::vector<WindowStats>, size_t, std::vector<std::tuple
             if(have_window or (sample_number == max_waveform_sample_ and window.state == 1)) {
                 std::tuple<std::deque<double>::const_iterator, std::deque<double>::const_iterator, size_t> window_buffer = window.GetBuffer();
                 std::tuple<size_t, size_t> window_bounds = window.GetWindow();
-                positions.push_back(window_bounds);
                 std::deque<double>::const_iterator begin = std::get<0>(window_buffer);
                 std::deque<double>::const_iterator end = std::get<1>(window_buffer);
                 size_t size = std::get<2>(window_buffer);
                 if(size >= min_window_size) {
                     if(2 * baseline_sample_edge_cut_ + size < min_window_size)
                         continue;
+                    positions.push_back(window_bounds);
                     stats.emplace_back(begin + baseline_sample_edge_cut_, end - baseline_sample_edge_cut_);
-                    stats.back().time = window.pos - 1 + wf.GetStartTime();
+                    stats.back().time = ((long double)(window.pos) - 1)*2.0 + wf.GetStartTime();
                     total.AddSamples(begin + baseline_sample_edge_cut_, end - baseline_sample_edge_cut_);
                     inactive_samples += size;
                 }
@@ -615,13 +615,13 @@ void CCMBaselineAnalyzer::FindThresholds(std::vector<I3FramePtr> const & frames)
 
 void CCMBaselineAnalyzer::AddBaselineStats(I3FramePtr frame) {
     CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series>(waveforms_name_);
-    int64_t frame_time = frame->Get<I3PODHolder<int64_t>>(abs_time_name_).value;
+    long double frame_time = (long double)(frame->Get<I3PODHolder<int64_t>>(abs_time_name_).value) * 2.0;
     size_t size = waveforms.size();
     boost::shared_ptr<I3Vector<double>> total_means(new I3Vector<double>(size));
     boost::shared_ptr<I3Vector<double>> total_variances(new I3Vector<double>(size));
     boost::shared_ptr<I3Vector<I3Vector<double>>> window_means(new I3Vector<I3Vector<double>>(size));
     boost::shared_ptr<I3Vector<I3Vector<double>>> window_variances(new I3Vector<I3Vector<double>>(size));
-    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> sample_times(new I3Vector<I3Vector<int64_t>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<long double>>> sample_times(new I3Vector<I3Vector<long double>>(size));
     boost::shared_ptr<I3Vector<I3Vector<size_t>>> sample_begin(new I3Vector<I3Vector<size_t>>(size));
     boost::shared_ptr<I3Vector<I3Vector<size_t>>> sample_end(new I3Vector<I3Vector<size_t>>(size));
 
@@ -637,7 +637,7 @@ void CCMBaselineAnalyzer::AddBaselineStats(I3FramePtr frame) {
         double total_variance = total_stats.variance;
         I3Vector<double> window_mean;
         I3Vector<double> window_variance;
-        I3Vector<int64_t> times;
+        I3Vector<long double> times;
         for(size_t j=0; j<stats.size(); ++j) {
             window_mean.push_back(stats[j].mean);
             window_variance.push_back(stats[j].variance);
