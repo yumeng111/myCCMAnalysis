@@ -31,7 +31,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("caen_channel_number",&CCMAnalysis::Binary::ChannelHeader::caen_channel_number);
 
   class_<std::vector<CCMAnalysis::Binary::ChannelHeader> >("vector_ChannelHeader")
-  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::ChannelHeader> >());
+  .def(dataclass_suite<std::vector<CCMAnalysis::Binary::ChannelHeader> >());
 
   scope().attr("digitizerboard_version_") = CCMAnalysis::Binary::digitizerboard_version_;
   class_<CCMAnalysis::Binary::DigitizerBoard,bases<I3FrameObject> >("DigitizerBoard",
@@ -44,7 +44,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("channels",&CCMAnalysis::Binary::DigitizerBoard::channels);
 
   class_<std::vector<CCMAnalysis::Binary::DigitizerBoard> >("vector_DigitizerBoard")
-    .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::DigitizerBoard>, true>())
+    .def(dataclass_suite<std::vector<CCMAnalysis::Binary::DigitizerBoard>>())
     ;
   from_python_sequence<std::vector<CCMAnalysis::Binary::DigitizerBoard>, variable_capacity_policy>();
 
@@ -64,7 +64,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("offset_estimate_tau",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_tau);
 
   class_<std::vector<CCMAnalysis::Binary::CCMDAQMachineConfig> >("vector_CCMDAQMachineConfig")
-  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMDAQMachineConfig> >());
+  .def(dataclass_suite<std::vector<CCMAnalysis::Binary::CCMDAQMachineConfig> >());
 
   scope().attr("ccmdaqconfig_version_") = CCMAnalysis::Binary::ccmdaqconfig_version_;
   class_<CCMAnalysis::Binary::CCMDAQConfig,bases<I3FrameObject> >("CCMDAQConfig",
@@ -74,7 +74,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("digitizer_boards",&CCMAnalysis::Binary::CCMDAQConfig::digitizer_boards);
 
   class_<std::vector<CCMAnalysis::Binary::CCMDAQConfig> >("vector_CCMDAQConfig")
-      .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMDAQConfig>, true>())
+      .def(dataclass_suite<std::vector<CCMAnalysis::Binary::CCMDAQConfig>>())
       ;
   from_python_sequence<std::vector<CCMAnalysis::Binary::CCMDAQConfig>, variable_capacity_policy>();
 
@@ -90,7 +90,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("board_computer_times",&CCMAnalysis::Binary::CCMTrigger::board_computer_times);
 
   class_<std::vector<CCMAnalysis::Binary::CCMTrigger> >("vector_CCMTrigger")
-  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMTrigger> >());
+  .def(dataclass_suite<std::vector<CCMAnalysis::Binary::CCMTrigger> >());
 
   scope().attr("ccmtriggerreadout_version_") = CCMAnalysis::Binary::ccmtriggerreadout_version_;
   class_<CCMAnalysis::Binary::CCMTriggerReadout, boost::shared_ptr<CCMAnalysis::Binary::CCMTriggerReadout>, bases<I3FrameObject> >("CCMTriggerReadout",
@@ -103,7 +103,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readonly("samples",&CCMAnalysis::Binary::CCMTriggerReadout::samples);
 
   class_<std::vector<CCMAnalysis::Binary::CCMTriggerReadout> >("vector_CCMTriggerReadout")
-  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMTriggerReadout> >());
+  .def(dataclass_suite<std::vector<CCMAnalysis::Binary::CCMTriggerReadout> >());
 
   scope().attr("ccmdata_version_") = CCMAnalysis::Binary::ccmdata_version_;
   class_<CCMAnalysis::Binary::CCMData,bases<I3FrameObject> >("CCMData",
@@ -113,17 +113,17 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readonly("trigger_readout",&CCMAnalysis::Binary::CCMData::trigger_readout);
 
   class_<std::vector<CCMAnalysis::Binary::CCMData> >("vector_CCMData")
-  .def(vector_indexing_suite<std::vector<CCMAnalysis::Binary::CCMData> >());
+  .def(dataclass_suite<std::vector<CCMAnalysis::Binary::CCMData> >());
 
   // Define vectors of types
   class_<std::vector<uint16_t> >("vector_uint16_t")
-  .def(vector_indexing_suite<std::vector<uint16_t> >());
+  .def(dataclass_suite<std::vector<uint16_t> >());
 
   class_<std::vector<std::vector<uint16_t>> >("vector_vector_uint16_t")
-  .def(vector_indexing_suite<std::vector<std::vector<uint16_t>> >());
+  .def(dataclass_suite<std::vector<std::vector<uint16_t>> >());
 
   class_<std::vector<uint32_t> >("vector_uint32_t")
-  .def(vector_indexing_suite<std::vector<uint32_t> >());
+  .def(dataclass_suite<std::vector<uint32_t> >());
 
   class_<timespec>("timespec",
     "std::timespec")
@@ -131,7 +131,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("tv_nsec",&timespec::tv_nsec);
 
   class_<std::vector<timespec> >("vector_timespec")
-    .def(vector_indexing_suite<std::vector<timespec>, true>())
+    .def(dataclass_suite<std::vector<timespec>>())
     ;
   from_python_sequence<std::vector<timespec>, variable_capacity_policy>();
     
