@@ -532,7 +532,8 @@ std::tuple<WindowStats, std::vector<WindowStats>, size_t, std::vector<std::tuple
                         continue;
                     positions.push_back(window_bounds);
                     stats.emplace_back(begin + baseline_sample_edge_cut_, end - baseline_sample_edge_cut_);
-                    stats.back().time = ((long double)(window.pos) - 1)*2.0 + wf.GetStartTime();
+                    //stats.back().time = ((long double)(window.pos) - 1)*2.0 + wf.GetStartTime();
+                    stats.back().time = (long double)(window.pos); // time is actually bin
                     total.AddSamples(begin + baseline_sample_edge_cut_, end - baseline_sample_edge_cut_);
                     inactive_samples += size;
                 }
@@ -552,7 +553,8 @@ void CCMBaselineAnalyzer::FindThreshold(std::vector<I3FramePtr> const & frames, 
     double threshold = initial_derivative_threshold_;
     size_t min_window_size = minimum_sample_length_;
 
-    double delta = threshold / 2.0;
+//    double delta = threshold / 2.0;
+    double delta = 0;
 
     double last_ratio = 0;
     size_t n_last_was_below = 0;
@@ -577,7 +579,7 @@ void CCMBaselineAnalyzer::FindThreshold(std::vector<I3FramePtr> const & frames, 
         }
         if(inactive_ratio > baseline_maximum_window_fraction_) {
             threshold -= delta;
-            delta /= 2.0;
+            delta /= 2.0;  
             n_last_was_below = 0;
         } else if(inactive_ratio < baseline_minimum_window_fraction_) {
             if(inactive_ratio == last_ratio and n_last_was_below >= max_last_below) {
@@ -591,8 +593,9 @@ void CCMBaselineAnalyzer::FindThreshold(std::vector<I3FramePtr> const & frames, 
                     throw std::runtime_error("Could not find derivative threshold that meets criteria.");
                 }
                 threshold = initial_derivative_threshold_;
-                delta = threshold / 2.0;
-                last_ratio = 0;
+                //delta = threshold / 2.0;
+                delta = 0;
+		last_ratio = 0;
                 n_last_was_below = 0;
                 min_window_size -= reduce_by;
                 continue;
@@ -641,7 +644,8 @@ void CCMBaselineAnalyzer::AddBaselineStats(I3FramePtr frame) {
         for(size_t j=0; j<stats.size(); ++j) {
             window_mean.push_back(stats[j].mean);
             window_variance.push_back(stats[j].variance);
-            times.push_back(stats[j].time + frame_time);
+            //times.push_back(stats[j].time + frame_time);
+            times.push_back(stats[j].time); //time = bin
             begins.push_back(std::get<0>(positions[j]));
             ends.push_back(std::get<1>(positions[j]));
         }

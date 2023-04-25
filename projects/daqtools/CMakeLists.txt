@@ -8,6 +8,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMTriggerMerger.cxx
     private/CCMBaselineAnalyzer.cxx
     private/CCMPeakFinder.cxx
+    private/CCMNewBaselines.cxx
     IWYU
     USE_TOOLS boost python
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary
