@@ -1,0 +1,580 @@
+#include <icetray/IcetrayFwd.h>
+
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/scoped_ptr.hpp>
+#include <boost/foreach.hpp>
+#include <boost/make_shared.hpp>
+
+#include <set>
+#include <tuple>
+#include <cctype>
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <limits>
+
+#include <icetray/open.h>
+#include <icetray/I3Frame.h>
+#include <icetray/I3TrayInfo.h>
+#include <icetray/I3Module.h>
+#include <icetray/I3Logging.h>
+#include <icetray/I3PODHolder.h>
+#include <dataclasses/I3Map.h>
+#include <dataclasses/I3Position.h>
+#include <dataclasses/I3Orientation.h>
+#include <icetray/CCMPMTKey.h>
+#include <icetray/CCMTriggerKey.h>
+#include <dataclasses/physics/CCMWaveform.h>
+#include <dataclasses/geometry/CCMGeometry.h>
+#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
+#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
+
+
+namespace {
+
+class SourceExhausted {};
+
+template<class T>
+class Source {
+public:
+    virtual T output() = 0;
+};
+
+template<class T>
+class WaveformSource : public Source<T> {
+protected:
+    std::vector<T> const & source;
+    size_t current_pos;
+public:
+    WaveformSource(CCMWaveform<T> const & source_wf) :
+        source(source_wf.GetWaveform()), current_pos(0) {}
+    inline T output() override {
+        if(current_pos < source.size()) {
+            T const & x = source[current_pos];
+            current_pos += 1;
+            return x;
+        } else {
+            throw SourceExhausted();
+            return 0;
+        }
+    }
+    size_t Size() const {
+        return source.size();
+    }
+};
+
+template<class T, class U>
+class Filter : public Source<U> {
+protected:
+    Source<T> * input;
+public:
+    Filter() {}
+    Filter(Source<T> * input) : input(input) {}
+    virtual inline U filter(T const & t) = 0;
+    inline U output() override {
+        return filter(input->output());
+    }
+};
+
+template<class T, class U>
+class ExponentialFilter : public Filter<T, U> {
+protected:
+    U tau;
+    U delta_t;
+    U y_i;
+    U alpha;
+    bool init;
+public:
+    ExponentialFilter(U tau, U delta_t, Source<T> * input) :
+        tau(tau), delta_t(delta_t), init(true), Filter<T, U>(input) {
+        alpha = exp(-delta_t / tau);
+    }
+
+    inline U filter(T const & t) override {
+        if(init) {
+            y_i = t;
+            init = false;
+        }
+        y_i += (1.0 - alpha) * (t - y_i);
+        return y_i;
+    }
+};
+
+template<class T, class U>
+class MultiplicativeFilter : public Filter<T, U> {
+protected:
+    U c;
+public:
+    MultiplicativeFilter(U c, Source<T> * input) :
+        c(c), Filter<T, U>(input) {}
+    inline U filter(T const & t) override {
+        U x = U(t)*c;
+        return x;
+    }
+};
+
+template<class T, class U>
+class Buffer : public Filter<T, U> {
+protected:
+    std::deque<T> buffer;
+    size_t max_size;
+    bool buffer_filling;
+    bool source_exhausted;
+public:
+    Buffer(std::deque<T> init_buffer, size_t max_size, Source<T> * source_input) :
+        buffer(init_buffer), max_size(max_size), buffer_filling(true), source_exhausted(false), Filter<T, U>(source_input) {
+        if(buffer.size() >= max_size)
+            buffer_filling = false;
+        size_t to_pop = buffer.size() - std::min(max_size, buffer.size());
+        for(size_t i=0; i<to_pop; ++i) {
+            buffer.pop_front();
+        }
+    }
+    inline U output() override {
+        if(buffer_filling) {
+            try {
+                T t = Filter<T, U>::input->output();
+                buffer.push_back(t);
+                if(buffer.size() == max_size)
+                    buffer_filling = false;
+            } catch(SourceExhausted const & e) {
+                buffer.pop_front();
+                if(buffer.size() == 0)
+                    throw SourceExhausted();
+            }
+        } else if(source_exhausted) {
+            buffer.pop_front();
+            if(buffer.size() == 0)
+                throw SourceExhausted();
+        } else {
+            try {
+                T t = Filter<T, U>::input->output();
+                buffer.push_back(t);
+                if(buffer.size() > max_size)
+                    buffer.pop_front();
+            } catch(SourceExhausted const & e) {
+                buffer.pop_front();
+                if(buffer.size() == 0)
+                    throw SourceExhausted();
+            }
+        }
+        return filter(buffer);
+    }
+    virtual inline U filter(std::deque<T> const & buffer) = 0;
+};
+
+template<class T, class U>
+class BufferView : public Filter<T, U> {
+protected:
+    std::deque<T> buffer;
+    size_t buffer_begin;
+    size_t buffer_end;
+public:
+    BufferView(Source<T> * input) : Filter<T, U>(input) {
+        buffer_begin = 0;
+        buffer_end = 0;
+    }
+
+    inline U filter(T const & t) override {
+        buffer.push_back(t);
+        buffer_end += 1;
+        return t;
+    }
+
+    virtual inline std::deque<T> const & GetBuffer() const {
+        return buffer;
+    }
+
+    virtual inline void Reset() {
+        if(buffer.size() > 0) {
+            buffer_begin = buffer_end - 1;
+            buffer = {buffer.back()};
+        } else {
+            buffer_begin = buffer_end;
+        }
+    }
+};
+
+template<class T, class U>
+class SmoothingFilter : public Buffer<T, U> {
+protected:
+    size_t zero_pos;
+    std::deque<U> coeff;
+    U total;
+public:
+    SmoothingFilter(size_t zero_pos, std::deque<U> coeff, Source<T> * input) :
+        zero_pos(zero_pos), coeff(coeff), total(0), Buffer<T, U>({}, coeff.size(), input) {
+        for(size_t i=0; i<coeff.size(); ++i) {
+            total += coeff[i];
+        }
+        size_t n_preload = zero_pos;
+        for(size_t i=0; i<n_preload; ++i)
+            Buffer<T, U>::buffer.push_back(input->output());
+    }
+    inline U filter(std::deque<T> const & buffer) override {
+        U x;
+        if(Buffer<T, U>::buffer_filling) {
+            size_t n_excluded = coeff.size() - buffer.size();
+            U this_total = 0;
+            U sum = 0;
+            for(size_t i=0; i<buffer.size(); ++i) {
+                size_t j = i + n_excluded;
+                this_total += coeff[j];
+                sum += coeff[j] * buffer[i];
+            }
+            if(this_total == 0)
+                x = 0;
+            else
+                x = sum / this_total;
+        } else if(Buffer<T, U>::source_exhausted) {
+            if(buffer.size() <= zero_pos)
+                throw SourceExhausted();
+            U this_total = 0;
+            U sum = 0;
+            for(size_t i=0; i<buffer.size(); ++i) {
+                this_total += coeff[i];
+                sum += coeff[i] * buffer[i];
+            }
+            if(this_total == 0)
+                x = 0;
+            else
+                x = sum / this_total;
+        } else {
+            U sum = 0;
+            for(size_t i=0; i<coeff.size(); ++i) {
+                sum += coeff[i] * buffer[i];
+            }
+            x = sum / total;
+        }
+        return x;
+    }
+    inline U filter(T const & t) override {return t;};
+};
+
+template<class T, class U>
+class BackDerivativeFilter : public Filter<T, U> {
+protected:
+    U bin_width;
+    U t_last;
+    bool init;
+public:
+    BackDerivativeFilter(U bin_width, Source<T> * input) :
+        bin_width(bin_width), init(true), Filter<T, U>(input) {}
+    inline U filter(T const & t) override {
+        U x;
+        if(init) {
+            x = 0;
+            init = false;
+        } else {
+            x = (t - t_last) / (bin_width);
+        }
+        t_last = t;
+        return x;
+    }
+};
+
+template<class T, class U>
+class FrontDerivativeFilter : public Filter<T, U> {
+protected:
+    U bin_width;
+    U t_last;
+    bool ending;
+    bool end;
+public:
+    FrontDerivativeFilter(U bin_width, Source<T> * input) :
+        bin_width(bin_width), ending(false), end(false), Filter<T, U>(input) {
+        t_last = Filter<T, U>::input->output();
+    }
+    inline U filter(T const & t) override {
+        U x;
+        if(end) {
+            throw SourceExhausted();
+        } else if(ending) {
+            x = 0;
+            end = true;
+        } else {
+            x = (t - t_last) / (bin_width);
+        }
+        t_last = t;
+        return x;
+    }
+};
+
+template<class T, class U, class K>
+struct DerivativeWindowCapture {
+    Source<K> & d_buffer;
+    BufferView<T, U> & raw_buffer;
+    K min_derivative;
+    int state;
+    size_t pos;
+    // States:
+    // 0 - outside of region with activity
+    // 1 - inside of region with activity: derivative negative
+    // 2 - inside of region with activity: derivative positive
+
+    DerivativeWindowCapture(Source<K> & d_buffer, BufferView<T, U> & raw_buffer, K min_derivative) :
+        d_buffer(d_buffer), raw_buffer(raw_buffer), min_derivative(min_derivative), state(0), pos(0) {}
+
+    void CalculateState(T const & t) {
+      if(state==0) { //outside region 
+        if(t <= -min_derivative) state=1; //entering region; derivative negative
+      }
+      else if(state==1) { //inside region; derivative negative
+        if(t > 0) state=2; //inside region; derivative positive
+      }
+      else if(state==2) { //inside region; derivative positive
+        if(t  < min_derivative) state=0; //exiting region; derivative below threshold
+      }
+    }
+
+    bool Next() {
+        pos += 1;
+        K derivative = d_buffer.output();
+        int prev_state = state;
+        CalculateState(derivative);
+        if(prev_state==0 and state==1) { //entering region
+          raw_buffer.Reset();
+        }
+        return prev_state==2 and state==0; //found end of region
+    }
+
+    std::tuple<typename std::deque<U>::const_iterator, typename std::deque<U>::const_iterator, size_t> GetBuffer() const {
+        return {raw_buffer.GetBuffer().cbegin(), raw_buffer.GetBuffer().cend() - 1, raw_buffer.GetBuffer().size()};
+    }
+};
+
+struct WindowStats {
+    
+    double len;
+    int peak;
+    long double time;
+
+    template<typename T>
+    void AddSample(T const & x) {
+        len += 1;
+        if(x<peak) peak=x;
+    }
+
+    template<typename T>
+    void AddSamples(std::deque<T> const & buffer) {
+        for(size_t i=0; i<buffer.size(); ++i) {
+            AddSample<T>(buffer[i]);
+        }
+    }
+
+    template<typename Iterator>
+    void AddSamples(Iterator begin, Iterator end) {
+        using value_type = typename std::iterator_traits<Iterator>::value_type;
+        while(begin != end) {
+            AddSample<value_type>(*begin);
+            ++begin;
+        }
+    }
+
+    WindowStats() :
+        len(0), peak(std::numeric_limits<int>::max()) {
+    }
+
+    template<typename Iterator>
+    WindowStats(Iterator begin, Iterator end) :
+        len(0), peak(std::numeric_limits<int>::max()) {
+        AddSamples<Iterator>(begin, end);
+    }
+
+    template<typename T>
+    WindowStats(std::deque<T> const & buffer) :
+        len(0), peak(std::numeric_limits<int>::max()) {
+        AddSamples<T>(buffer);
+    }
+};
+
+} // anonymous namespace
+
+
+// Identifies waveform regions that may correspond to potential peaks
+// Collects statistics about these regions
+
+class CCMPeakFinder : public I3Module {
+    // Names for keys in the frame
+    std::string geometry_name_;
+    std::string daq_config_name_;
+    std::string waveforms_name_;
+    std::string abs_time_name_;
+
+    std::string baseline_fit_output_name_;
+
+    double initial_derivative_threshold_;
+    size_t minimum_sample_length_;
+
+    std::map<size_t, double> current_derivative_threshold_;
+    std::map<size_t, size_t> current_window_size_;
+    std::vector<I3FramePtr> cached_frames;
+    bool thresholds_tuned_;
+
+    size_t n_daq_frames = 0;
+
+    std::vector<WindowStats> GetPeaks(CCMWaveformUInt16 const & wf, double derivative_threshold, size_t min_window_size);
+    void AddPeaks(I3FramePtr frame);
+
+public:
+    CCMPeakFinder(const I3Context&);
+    void Configure();
+    void Process();
+    void Finish();
+};
+
+I3_MODULE(CCMPeakFinder);
+
+CCMPeakFinder::CCMPeakFinder(const I3Context& context) : I3Module(context),
+    geometry_name_(""), daq_config_name_(""), waveforms_name_(""), abs_time_name_(""), baseline_fit_output_name_(""),
+    initial_derivative_threshold_(0.3), minimum_sample_length_(4),
+    current_derivative_threshold_(), current_window_size_(), cached_frames(),
+    thresholds_tuned_(false) {
+
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMAnalysis::Binary::CCMDAQConfig>::value()));
+    AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
+    AddParameter("InitialDerivativeThreshold", "The threshold first used to find regions of inactivity. This is iteratively increased until regions of inactivity represent a certain fraction of the waveform.",initial_derivative_threshold_);
+    AddParameter("MinimumSampleLength", "The smallest number of consecutive samples to use when finding regions of inactivity.", minimum_sample_length_);
+    //AddParameter("BaselineMinimumWindowFraction", "The smallest allowed fraction that regions of inactivity may occupy across the sampled waveforms. This is needed to ensure we have enough samples to do the calculation.", baseline_minimum_window_fraction_);
+    //AddParameter("BaselineMaximumWindowFraction", "The largest allowed fraction that regions of inactivity may occupy across the sampled waveforms. This is only present to alert us to the unlikely scenario where a PMT has too much activity to get a measurement of the baseline.", baseline_maximum_window_fraction_);
+    //AddParameter("BaselineSampleEdgeCut", "The number of samples to cut from the edges of each region of inactivity. This helps us avoid contamination of the baseline measurement from the adjacent regions of activity.", baseline_sample_edge_cut_);
+    //AddParameter("NumTriggersForThreshold","The number of triggers to use when tuning the derivative threshold.", num_triggers_for_threshold_);
+    AddParameter("BaselineFitOutputName", "The output key of the baseline fit.", std::string("BaselineFit"));
+    AddParameter("AbsoluteTimeName", "Key for absoluting timing information of frame", std::string("FirstTriggerTime"));
+}
+
+void CCMPeakFinder::Configure() {
+    GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("CCMDAQConfigName", daq_config_name_);
+    GetParameter("CCMWaveformsName", waveforms_name_);
+    GetParameter("InitialDerivativeThreshold", initial_derivative_threshold_);
+    GetParameter("MinimumSampleLength", minimum_sample_length_);
+    //GetParameter("BaselineMinimumWindowFraction", baseline_minimum_window_fraction_);
+    //GetParameter("BaselineMaximumWindowFraction", baseline_maximum_window_fraction_);
+    //GetParameter("BaselineSampleEdgeCut", baseline_sample_edge_cut_);
+    //GetParameter("NumTriggersForThreshold", num_triggers_for_threshold_);
+    GetParameter("BaselineFitOutputName", baseline_fit_output_name_);
+    GetParameter("AbsoluteTimeName", abs_time_name_);
+}
+
+
+std::vector<WindowStats> CCMPeakFinder::GetPeaks(CCMWaveformUInt16 const & wf, double derivative_threshold, size_t min_window_size) {
+    WaveformSource<uint16_t> wf_source(wf);
+    MultiplicativeFilter<uint16_t, double> m_filter(1.0, &wf_source); // don't make negative yet
+    BufferView<double, double> buffer_m(&m_filter);
+    ExponentialFilter<double, double> exp_filter(10.0, 2.0, &buffer_m);
+    std::deque<double> smoothing_kernel = {1,1,1};
+    SmoothingFilter<double, double> smoothing_filter(1, smoothing_kernel, &exp_filter);
+    BackDerivativeFilter<double, double> derivative_filter(2.0, &smoothing_filter);
+    DerivativeWindowCapture<double, double, double> window(derivative_filter, buffer_m, derivative_threshold);
+
+    std::vector<WindowStats> peaks;
+
+    try {
+        while(true) {
+            bool have_window = window.Next();
+            if(have_window) {
+                std::tuple<std::deque<double>::const_iterator, std::deque<double>::const_iterator, size_t> window_buffer = window.GetBuffer();
+                std::deque<double>::const_iterator begin = std::get<0>(window_buffer);
+                std::deque<double>::const_iterator end = std::get<1>(window_buffer);
+                size_t size = std::get<2>(window_buffer);
+                if(size >= min_window_size) {
+                    peaks.emplace_back(begin, end);
+                    peaks.back().time = window.pos - size;// + wf.GetStartTime();
+                }
+            }
+        }
+    } catch(SourceExhausted const & e) {
+    }
+
+    return peaks;
+}
+
+void CCMPeakFinder::AddPeaks(I3FramePtr frame) {
+    CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series>(waveforms_name_);
+    int64_t frame_time = frame->Get<I3PODHolder<int64_t>>(abs_time_name_).value;
+    size_t size = waveforms.size();
+    boost::shared_ptr<I3Vector<I3Vector<int>>> window_peaks(new I3Vector<I3Vector<int>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> window_times(new I3Vector<I3Vector<int64_t>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> window_lengths(new I3Vector<I3Vector<int64_t>>(size));
+
+    for(size_t i=0; i<waveforms.size(); ++i) {
+        std::vector<WindowStats> peaks =
+            GetPeaks(waveforms[i], initial_derivative_threshold_, minimum_sample_length_);
+        I3Vector<int> window_peak;
+        I3Vector<int64_t> window_time;
+        I3Vector<int64_t> window_length;
+        for(size_t j=0; j<peaks.size(); ++j) {
+            window_peak.push_back(peaks[j].peak);
+            window_time.push_back(peaks[j].time);
+            window_length.push_back(peaks[j].len);
+        }
+        window_peaks->operator[](i) = window_peak;
+        window_times->operator[](i) = window_time;
+        window_lengths->operator[](i) = window_length;
+    }
+
+    frame->Put("PeakAmplitudes", window_peaks);
+    frame->Put("PeakTimes", window_times);
+    frame->Put("PeakLengths", window_lengths);
+}
+
+void CCMPeakFinder::Process() {
+    I3FramePtr frame = PopFrame();
+
+    if(frame->GetStop() == I3Frame::Geometry) {
+        PushFrame(frame);
+        return;
+    }
+
+    if(frame->GetStop() != I3Frame::DAQ) {
+        PushFrame(frame);
+        return;
+    }
+
+    n_daq_frames += 1;
+    AddPeaks(frame);
+    PushFrame(frame);
+
+    // Look back at this block of code if we want to tune the derivative threshold
+    /*
+    if(thresholds_tuned_) {
+        std::cout << "Computing baseline for frame " << n_daq_frames << std::endl;
+    } else {
+        if(cached_frames.size() >= num_triggers_for_threshold_ - 1) {
+            cached_frames.push_back(frame);
+            std::cout << "Have " << cached_frames.size() << " frames" << std::endl;
+            std::cout << "Finding thresholds..." << std::endl;
+            FindThresholds(cached_frames);
+            thresholds_tuned_ = true;
+            std::cout << "Found thresholds!" << std::endl;
+            for(size_t i=0; i<current_window_size_.size(); ++i) {
+                std::cout << "Threshold " << i << "/" << current_window_size_.size() << ": " << current_derivative_threshold_[i] << " Window size: " << current_window_size_[i] << std::endl;
+            }
+            std::cout << "Pushing frames..." << std::endl;
+            for(size_t i=0; i<cached_frames.size(); ++i) {
+                std::cout << "Computing baseline for frame " << i + 1 << std::endl;
+                AddBaselineStats(cached_frames[i]);
+                PushFrame(cached_frames[i]);
+            }
+            cached_frames.clear();
+        } else {
+            cached_frames.push_back(frame);
+        }
+    }
+    */
+}
+
+void CCMPeakFinder::Finish() {
+    // log_notice_stream(
+    //         "Triggers seen: " << triggers_seen << "\n" <<
+    //         "Merged triggers ouput: " << merged_triggers_output << "\n" <<
+    //         "Total triggers output: " << total_triggers_output
+    // );
+    // log_notice_stream(
+    //     "Merged " << offsets.size() << " DAQ streams into " << counter << " separate triggers. Encountered "
+    //     << counter-incomplete_counter << " complete triggers and " << incomplete_counter << " incomplete triggers");
+}

@@ -22,6 +22,7 @@
 #include <dataclasses/I3Map.h>
 #include <dataclasses/I3Position.h>
 #include <dataclasses/I3Orientation.h>
+#include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
 #include <dataclasses/physics/CCMWaveform.h>
@@ -43,6 +44,7 @@ class CCMTriggerMerger : public I3Module {
     std::string waveforms_output_;
     std::string board_time_offsets_name_;
     std::string trigger_times_name_;
+    std::string first_trigger_time_output_;
 
     // Information to cache for each geometry frame
     boost::shared_ptr<const CCMAnalysis::Binary::CCMDAQConfig> last_daq_config_;
@@ -75,7 +77,7 @@ class CCMTriggerMerger : public I3Module {
     bool ChannelsEmpty(boost::shared_ptr<const std::vector<std::pair<bool, int64_t>>> trigger, size_t board_idx);
     I3FramePtr MergeTriggerFrames(std::vector<I3FramePtr> & frames);
     std::vector<std::pair<bool, int64_t>> GetStartTimes(std::vector<I3FramePtr> const & frames);
-    std::vector<std::pair<bool, int64_t>> ComputeRelativeStartTimes(std::vector<std::pair<bool, int64_t>> const & input_times);
+    std::tuple<std::vector<std::pair<bool, int64_t>>, int64_t> ComputeRelativeStartTimes(std::vector<std::pair<bool, int64_t>> const & input_times);
     I3FramePtr TransformSingleTriggerFrame(I3FramePtr frame);
     I3FramePtr TransformMultipleTriggerFrames(std::vector<I3FramePtr> const & frames);
 public:
@@ -118,6 +120,7 @@ CCMTriggerMerger::CCMTriggerMerger(const I3Context& context) : I3Module(context)
     AddParameter("BoardTimeOffsetsName", "Key for CCMBoardOffsets", std::string("BoardTimeOffsets"));
     AddParameter("CCMWaveformsOutput", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("TriggerTimesName", "Key for trigger times", std::string("TriggerTimes"));
+    AddParameter("FirstTriggerTimeOutput", "Key for time of first trigger in frame relative to run start", std::string("FirstTriggerTime"));
 }
 
 void CCMTriggerMerger::Configure() {
@@ -128,6 +131,7 @@ void CCMTriggerMerger::Configure() {
     GetParameter("BoardTimeOffsetsName", board_time_offsets_name_);
     GetParameter("CCMWaveformsOutput", waveforms_output_);
     GetParameter("TriggerTimesName", trigger_times_name_);
+    GetParameter("FirstTriggerTimeOutput", first_trigger_time_output_);
 }
 
 bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1, size_t idx, uint32_t extra_samples) {
@@ -152,7 +156,7 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
             triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx);
         merge_needed |= triggers_overlap;
         // Exclude the case we have two full non-overlapping triggers
-        merge_possible &= not (triggers_overlap or trigger0_empty or trigger1_empty);
+        merge_possible &= triggers_overlap or trigger0_empty or trigger1_empty;
     }
 
     // Merging two full length triggers that do not overlap should not be possible...
@@ -167,10 +171,34 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
             if((not trigger0_empty) and (not trigger1_empty))
                 triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed);
             // Exclude the case we have two full non-overlapping triggers
-            merge_allowed &= not (triggers_overlap or trigger0_empty or trigger1_empty);
+            merge_allowed &= triggers_overlap or trigger0_empty or trigger1_empty;
         }
-        if(not merge_allowed)
+        if(not merge_allowed) {
+            std::cerr << "Issue merging triggers. Triggers from some boards overlap, but others do not" << std::endl;
+            std::cerr << "Trigger times:" << std::endl;
+            for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
+                bool trigger0_empty = (*trigger_times0)[board_idx].first;
+                bool trigger1_empty = (*trigger_times1)[board_idx].first;
+                int64_t trigger0_time = (*trigger_times0)[board_idx].second;
+                int64_t trigger1_time = (*trigger_times1)[board_idx].second;
+                std::cerr << "Board " << board_idx << ": (" <<
+                    (trigger0_empty ? "No trigger" : "Have trigger");
+                if(not trigger0_empty)
+                    std::cerr << " " << trigger0_time;
+                std::cerr << ") (";
+                std::cerr << (trigger1_empty ? "No trigger" : "Have trigger");
+                if(not trigger1_empty)
+                    std::cerr << " " << trigger1_time;
+                std::cerr << ")";
+                bool triggers_overlap = false;
+                if((not trigger0_empty) and (not trigger1_empty)) {
+                    triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed);
+                }
+                std::cerr << " Overlap? " << (triggers_overlap ? "Yes" : "No");
+                std::cerr << std::endl;
+            }
             log_fatal("Need to merge two triggers, but merge is not possible because triggers from some boards overlap and others do not.");
+        }
     }
     return merge_needed;
 }
@@ -292,7 +320,7 @@ std::vector<std::pair<bool, int64_t>> CCMTriggerMerger::GetStartTimes(std::vecto
     return start_times;
 }
 
-std::vector<std::pair<bool, int64_t>> CCMTriggerMerger::ComputeRelativeStartTimes(std::vector<std::pair<bool, int64_t>> const & input_times) {
+std::tuple<std::vector<std::pair<bool, int64_t>>, int64_t> CCMTriggerMerger::ComputeRelativeStartTimes(std::vector<std::pair<bool, int64_t>> const & input_times) {
     // Subtract the minimum valid start_time from all valid start_times
     // Leave invalid entries in start_time alone
 
@@ -316,21 +344,24 @@ std::vector<std::pair<bool, int64_t>> CCMTriggerMerger::ComputeRelativeStartTime
         if(start_times[i].first)
             start_times[i] = {start_times[i].first, start_times[i].second - min_start_time};
 
-    return start_times;
+    return {start_times, min_start_time};
 }
 
 I3FramePtr CCMTriggerMerger::TransformSingleTriggerFrame(I3FramePtr frame) {
+    constexpr unsigned int ns_per_cycle = 8;
+
     boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> first_readout = frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
     boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> input_times = frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_);
     boost::shared_ptr<I3Vector<CCMWaveformUInt16>> output_waveforms(new I3Vector<CCMWaveformUInt16>(first_readout->size()));
 
-    std::vector<std::pair<bool, int64_t>> start_times = ComputeRelativeStartTimes(*input_times);
+    std::tuple<std::vector<std::pair<bool, int64_t>>, int64_t> relative_start_times = ComputeRelativeStartTimes(*input_times);
+    std::vector<std::pair<bool, int64_t>> start_times = std::get<0>(relative_start_times);
+    int64_t absolute_start_time = std::get<1>(relative_start_times);
 
     // Copy raw waveform data into waveform object and set metadata accordingly
     for(size_t i=0; i<first_readout->size(); ++i) {
         CCMWaveformUInt16 & w = (*output_waveforms)[i];
         if((*first_readout)[i].size() > 0) {
-            constexpr unsigned int ns_per_cycle = 8;
             size_t board_idx = channel_idx_to_board_idx[i];
             double t = start_times[board_idx].second * ns_per_cycle;
             if(start_times[i].first)
@@ -344,11 +375,14 @@ I3FramePtr CCMTriggerMerger::TransformSingleTriggerFrame(I3FramePtr frame) {
         w.SetSource(CCMSource::V1730);
     }
     frame->Delete(digital_readout_name_);
+    frame->Put(first_trigger_time_output_, boost::make_shared<I3PODHolder<int64_t>>(absolute_start_time), I3Frame::DAQ);
     frame->Put(waveforms_output_, output_waveforms, I3Frame::DAQ);
     return frame;
 }
 
 I3FramePtr CCMTriggerMerger::TransformMultipleTriggerFrames(std::vector<I3FramePtr> const & frames) {
+    constexpr unsigned int ns_per_cycle = 8;
+
     I3FramePtr first_frame = frames[0];
     boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> first_readout = first_frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
     boost::shared_ptr<I3Vector<CCMWaveformUInt16>> output_waveforms(new I3Vector<CCMWaveformUInt16>());
@@ -357,7 +391,9 @@ I3FramePtr CCMTriggerMerger::TransformMultipleTriggerFrames(std::vector<I3FrameP
     output_triggers->reserve(frames.size());
 
     std::vector<std::pair<bool, int64_t>> start_times = GetStartTimes(frames);
-    start_times = ComputeRelativeStartTimes(start_times);
+    std::tuple<std::vector<std::pair<bool, int64_t>>, int64_t> relative_start_times = ComputeRelativeStartTimes(start_times);
+    start_times = std::get<0>(relative_start_times);
+    int64_t absolute_start_time = std::get<1>(relative_start_times) * ns_per_cycle;
 
     // Concatenate the output triggers
     for(size_t i=0; i<frames.size(); ++i) {
@@ -381,7 +417,6 @@ I3FramePtr CCMTriggerMerger::TransformMultipleTriggerFrames(std::vector<I3FrameP
         for(size_t i=0; i<frames.size(); ++i) {
             I3Vector<uint16_t> const & input_waveform = frames[i]->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_)->operator[](w_idx);
             if(input_waveform.size() > 0) {
-                constexpr unsigned int ns_per_cycle = 8;
                 if(start_times[w_idx].first)
                     w.SetStartTime(start_times[w_idx].second * ns_per_cycle);
                 else
@@ -399,6 +434,7 @@ I3FramePtr CCMTriggerMerger::TransformMultipleTriggerFrames(std::vector<I3FrameP
     }
 
     I3FramePtr output_frame(new I3Frame(I3Frame::DAQ));
+    output_frame->Put(first_trigger_time_output_, boost::make_shared<I3PODHolder<int64_t>>(absolute_start_time), I3Frame::DAQ);
     output_frame->Put(waveforms_output_, output_waveforms, I3Frame::DAQ);
     output_frame->Put(triggers_name_, output_triggers, I3Frame::DAQ);
 

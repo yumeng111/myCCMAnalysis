@@ -25,6 +25,7 @@
 
 #include <icetray/I3Units.h>
 #include <dataclasses/Utility.h>
+#include <dataclasses/I3Vector.h>
 #include <icetray/OMKey.h>
 
 
@@ -32,6 +33,7 @@ static const unsigned i3domcalibration_version_ = 12;
 static const unsigned linearfit_version_ = 0;
 static const unsigned quadraticfit_version_ = 0;
 static const unsigned tauparam_version_ = 0;
+static const unsigned spetemplate_version_ = 0;
 static const unsigned SPEChargeDistribution_version_ = 2;
 
 /**
@@ -306,6 +308,10 @@ I3_CLASS_VERSION(TauParam, tauparam_version_);
 
 struct SPETemplate {
   double c, x0, b1, b2;
+  
+  template <class Archive>
+  void serialize(Archive& ar, unsigned version);
+
   SPETemplate():c(NAN), x0(NAN), b1(NAN), b2(NAN){};
     
   SPETemplate(double c, double x0, double b1, double b2):
@@ -323,6 +329,15 @@ struct SPETemplate {
   }  
 
 };
+
+typedef I3Vector<SPETemplate> I3VectorSPETemplate;
+typedef I3Vector<I3Vector<SPETemplate>> I3VectorI3VectorSPETemplate;
+I3_POINTER_TYPEDEFS(SPETemplate);
+I3_POINTER_TYPEDEFS(I3VectorSPETemplate);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorSPETemplate);
+
+I3_CLASS_VERSION(SPETemplate, spetemplate_version_);
+
 
 /**
  * @brief Class that stores the calibration information for a DOM

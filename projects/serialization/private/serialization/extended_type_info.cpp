@@ -129,9 +129,12 @@ extended_type_info::key_unregister() const {
         return;
     if(! singleton<detail::ktmap>::is_destroyed()){
         detail::ktmap & x = singleton<detail::ktmap>::get_mutable_instance();
-        for(detail::ktmap::iterator it = x.begin(); it != x.end(); ++it) {
-            if(it->second == this) {
-                x.erase(it);
+        detail::ktmap::iterator start = x.lower_bound(get_key());
+        detail::ktmap::iterator end = x.upper_bound(get_key());
+        for(;start != end; ++start) {
+            if(start->second == this) {
+                x.erase(start);
+                break;
             }
         }
     }
