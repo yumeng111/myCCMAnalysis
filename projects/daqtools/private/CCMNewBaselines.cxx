@@ -83,9 +83,9 @@ void CCMNewBaselines::DAQ(I3FramePtr frame) {
     }
     
     frame->Put("Baselines", baselines);
-    frame->Put("BaselinesTimes", baselines_times);
-    frame->Put("Derivatives", derivs);
-    frame->Put("SmoothedWaveforms", smoothed_wf);
+    //frame->Put("BaselinesTimes", baselines_times);
+    //frame->Put("Derivatives", derivs);
+    //frame->Put("SmoothedWaveforms", smoothed_wf);
     PushFrame(frame);
     std::cout << "finished saving baselines" << std::endl;
 }
@@ -288,6 +288,13 @@ void CCMNewBaselines::ProcessWaveform(CCMWaveformUInt16 const & waveform, I3Vect
     std::vector<short unsigned int> const & samples = waveform.GetWaveform();
     I3Vector<double> samples_double(samples.size());
    
+    if (samples.size() == 0) {
+    	I3Vector<double> interp_baselines_empty (8000, 0.0);
+	baselines = interp_baselines_empty;
+	std::cout << "oops! empty frame" << std::endl; 
+    	return;
+    }
+
     for (size_t i = 0; i < samples.size(); ++i) {
     samples_double[i] = static_cast<double>(samples[i]);
     } 
@@ -372,7 +379,7 @@ void CCMNewBaselines::ProcessWaveform(CCMWaveformUInt16 const & waveform, I3Vect
 
                for (size_t k = 0; k < n_to_interpolate; ++k){
 		 double new_time = current_time/2;
-                 double x = baselines_times[new_time+k];
+                 double x = current_time + 2*k; 
                  double y = y0 + (x-x0)*(y1-y0)/(x1-x0);
                  interp_baselines[new_time+k] = y;
                }
