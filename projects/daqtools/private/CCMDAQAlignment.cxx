@@ -419,6 +419,9 @@ class MergedSource : public I3Module {
     size_t counter = 0;
     size_t incomplete_counter = 0;
 
+    // Important constants
+    constexpr static long double ns_per_cycle = 8;
+
     bool PopFrame(size_t daq_idx);
     I3FramePtr GetConfigFrame();
     bool NextTrigger(size_t daq_idx, size_t board_idx);
@@ -736,7 +739,6 @@ MergedSource::MergedSource(const I3Context& context) : I3Module(context) {
     AddParameter("MaxTimeDiff",
             "Maximum time difference between associated triggers (ns)",
             16);
-
 }
 
 void MergedSource::Configure() {
@@ -745,7 +747,7 @@ void MergedSource::Configure() {
 
     double max_time_diff;
     GetParameter("MaxTimeDiff", max_time_diff);
-    max_delta = std::ceil(max_time_diff / 8.0);
+    max_delta = std::ceil(max_time_diff / ns_per_cycle);
 
     // Compute the offsets to use for trigger alignment
     offsets = compute_offsets(file_lists, max_delta);

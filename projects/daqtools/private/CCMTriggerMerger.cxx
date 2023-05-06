@@ -45,6 +45,12 @@ class CCMTriggerMerger : public I3Module {
     std::string board_time_offsets_name_;
     std::string trigger_times_name_;
     std::string first_trigger_time_output_;
+    uint32_t num_extra_samples_allowed_;
+
+    // Important constants
+    constexpr static long double ns_per_cycle = 8;
+    constexpr static long double ns_per_sample = 2;
+    constexpr static long double samples_per_cycle = ns_per_cycle / ns_per_sample;
 
     // Information to cache for each geometry frame
     boost::shared_ptr<const CCMAnalysis::Binary::CCMDAQConfig> last_daq_config_;
@@ -121,6 +127,7 @@ CCMTriggerMerger::CCMTriggerMerger(const I3Context& context) : I3Module(context)
     AddParameter("CCMWaveformsOutput", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("TriggerTimesName", "Key for trigger times", std::string("TriggerTimes"));
     AddParameter("FirstTriggerTimeOutput", "Key for time of first trigger in frame relative to run start", std::string("FirstTriggerTime"));
+    AddParameter("NumExtraSamplesForOverlap", "Number of extra samples allowed between subsequent board triggers when checking if a frame merge is allowed.", uint32_t(12));
 }
 
 void CCMTriggerMerger::Configure() {
@@ -132,13 +139,10 @@ void CCMTriggerMerger::Configure() {
     GetParameter("CCMWaveformsOutput", waveforms_output_);
     GetParameter("TriggerTimesName", trigger_times_name_);
     GetParameter("FirstTriggerTimeOutput", first_trigger_time_output_);
+    GetParameter("NumExtraSamplesForOverlap", num_extra_samples_allowed_);
 }
 
 bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times0, boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times1, size_t idx, uint32_t extra_samples) {
-    constexpr long double ns_per_cycle = 8;
-    constexpr long double ns_per_sample = 2;
-    constexpr long double samples_per_cycle = ns_per_cycle / ns_per_sample;
-
     int64_t cycle_start_diff = (*trigger_times1)[idx].second - (*trigger_times0)[idx].second;
     long double samples_start_diff = cycle_start_diff * samples_per_cycle;
     long double expected_samples = num_samples_by_board[idx] + extra_samples;
@@ -162,14 +166,13 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
     // Merging two full length triggers that do not overlap should not be possible...
     if(merge_needed and not merge_possible) {
         // Check that triggers that would exclude a merge are at least close to overlapping
-        constexpr uint32_t num_extra_samples_allowed = 12;
         bool merge_allowed = true;
         for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
             bool trigger0_empty = (*trigger_times0)[board_idx].first;
             bool trigger1_empty = (*trigger_times1)[board_idx].first;
             bool triggers_overlap = false;
             if((not trigger0_empty) and (not trigger1_empty))
-                triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed);
+                triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed_);
             // Exclude the case we have two full non-overlapping triggers
             merge_allowed &= triggers_overlap or trigger0_empty or trigger1_empty;
         }
@@ -192,7 +195,7 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
                 std::cerr << ")";
                 bool triggers_overlap = false;
                 if((not trigger0_empty) and (not trigger1_empty)) {
-                    triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed);
+                    triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed_);
                 }
                 std::cerr << " Overlap? " << (triggers_overlap ? "Yes" : "No");
                 std::cerr << std::endl;
@@ -257,8 +260,8 @@ void CCMTriggerMerger::CacheDAQFrame(I3FramePtr frame) {
 
 void CCMTriggerMerger::PushMergedTriggerFrames(bool last_frame) {
     // The last_frame parameter indicates if there are no more frames in the stream to be added
-    // Do nothing if we have no frames caches
-    // Do nother if last_frame == false and we have less than two frames cached
+    // Do nothing if we have no frames cached
+    // Do nothing if last_frame == false and we have less than two frames cached
     if(daq_frame_cache_.size() == 0 or (daq_frame_cache_.size() < 2 and not last_frame))
         return;
 
@@ -348,8 +351,6 @@ std::tuple<std::vector<std::pair<bool, int64_t>>, int64_t> CCMTriggerMerger::Com
 }
 
 I3FramePtr CCMTriggerMerger::TransformSingleTriggerFrame(I3FramePtr frame) {
-    constexpr unsigned int ns_per_cycle = 8;
-
     boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> first_readout = frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
     boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> input_times = frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_);
     boost::shared_ptr<I3Vector<CCMWaveformUInt16>> output_waveforms(new I3Vector<CCMWaveformUInt16>(first_readout->size()));
@@ -381,8 +382,6 @@ I3FramePtr CCMTriggerMerger::TransformSingleTriggerFrame(I3FramePtr frame) {
 }
 
 I3FramePtr CCMTriggerMerger::TransformMultipleTriggerFrames(std::vector<I3FramePtr> const & frames) {
-    constexpr unsigned int ns_per_cycle = 8;
-
     I3FramePtr first_frame = frames[0];
     boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>> first_readout = first_frame->Get<boost::shared_ptr<const I3Vector<I3Vector<uint16_t>>>>(digital_readout_name_);
     boost::shared_ptr<I3Vector<CCMWaveformUInt16>> output_waveforms(new I3Vector<CCMWaveformUInt16>());
