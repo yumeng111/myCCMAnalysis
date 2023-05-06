@@ -51,6 +51,8 @@ public:
         bcm_baseline_stddev(std::numeric_limits<double>::quiet_NaN())
     {}
 
+    std::ostream& Print(std::ostream&) const;
+
     bool operator==(const CCMBCMSummary& rhs) const {
         return std::tie(
                 bcm_start_time,
@@ -75,6 +77,8 @@ private:
     template<class Archive> void load(Archive& ar, unsigned version);
     I3_SERIALIZATION_SPLIT_MEMBER();
 };
+
+std::ostream& operator<<(std::ostream& oss, CCMBCMSummary const & bcm);
 
 template <class Archive>
 void CCMBCMSummary::save(Archive& ar, unsigned version) const {

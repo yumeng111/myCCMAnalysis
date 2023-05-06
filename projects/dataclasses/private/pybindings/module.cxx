@@ -51,15 +51,15 @@ namespace bp = boost::python;
   (I3Time)(I3Position)(I3Direction)(I3Geometry)(I3MCTree)               \
   (CCMRecoPulse)                                                        \
   (I3Particle)(I3RecoPulse)(I3LinearizedMCTree)(I3TimeWindow)           \
-  (CCMWaveform)                                                         \
+  (CCMWaveform)(CCMBCMSummary)                                          \
   (VectorCCMWaveformStatusCompound)                                     \
   (I3Waveform)(I3WaveformSeries)(I3WaveformSeriesMap)                   \
   (VectorI3WaveformStatusCompound)(I3DOMLaunch)(I3DOMLaunchSeries)      \
   (I3DOMLaunchSeriesMap)(I3EventHeader)                                 \
   (I3RecoHit)(I3FlasherInfo)(I3Matrix)(I3ParticleID)                    \
   (I3MCHit)(vectorI3MCHit)(mapOMKeyI3MCHit)(I3MCHitSeriesMap)           \
-  (CCMCalibration)(CCMPMTCalibration)(MapCCMPMTKeyCCMPMTCalibration)      \
-  (I3Calibration)(DroopedSPETemplate)(SPETemplate)            \
+  (CCMCalibration)(CCMPMTCalibration)(MapCCMPMTKeyCCMPMTCalibration)    \
+  (I3Calibration)(DroopedSPETemplate)(SPETemplate)                      \
   (I3DOMCalibration)(I3VEMCalibration)(LinearFit)(QuadraticFit)         \
   (TauParam)(MapOMKeyI3DOMCalibration)(MapOMKeyI3VEMCalibration)        \
   (I3DetectorStatus)(I3DOMStatus)(I3TriggerStatus)(MapOMKeyI3DOMStatus) \
