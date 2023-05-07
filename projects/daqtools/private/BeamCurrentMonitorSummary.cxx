@@ -16,6 +16,7 @@
 #include <icetray/I3Logging.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
+#include <icetray/robust_statistics.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 
@@ -66,6 +67,7 @@ class BeamCurrentMonitorSummary : public I3Module {
 
     double time_before_peak_;
     double exp_smoothing_tau_;
+    double derivative_threshold_;
 
     // Internal state
     bool geo_seen;
@@ -85,6 +87,21 @@ public:
     void GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform);
     std::vector<double> SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end);
     std::vector<double> ComputeDerviative(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end);
+    size_t FindBaselineRegionLast(
+            double baseline,
+            double peak_value,
+            size_t peak_pos,
+            double deriv_threshold,
+            std::vector<double>::const_iterator smoothed_begin, std::vector<double>::const_iterator smoothed_end,
+            std::vector<double>::const_iterator deriv_begin, std::vector<double>::const_iterator deriv_end);
+    size_t FindBCMStart(
+            double baseline,
+            double baseline_stddev,
+            double peak_value,
+            size_t peak_pos,
+            double deriv_threshold,
+            std::vector<double>::const_iterator smoothed_begin, std::vector<double>::const_iterator smoothed_end,
+            std::vector<double>::const_iterator deriv_begin, std::vector<double>::const_iterator deriv_end);
 };
 
 I3_MODULE(BeamCurrentMonitorSummary);
@@ -95,12 +112,14 @@ BeamCurrentMonitorSummary::BeamCurrentMonitorSummary(const I3Context& context) :
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("TimeBeforePeak", "Time in ns before the BCM peak to consider when computing the baseline and looking for the BCM start time", double(2.0));
     AddParameter("ExpSmoothingTau", "Time constant for exponential smoothing", double(10.0));
+    AddParameter("DerivativeThreshold", "Theshold below which derivativ is considered to be zero", double(0.3));
 }
 
 void BeamCurrentMonitorSummary::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMWaveformsName", waveforms_name_);
     GetParameter("TimeBeforePeak", time_before_peak_);
+    GetParameter("DerivativeThreshold", derivative_threshold_);
 }
 
 std::vector<double> BeamCurrentMonitorSummary::SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end) {
@@ -196,18 +215,120 @@ void BeamCurrentMonitorSummary::Geometry(I3FramePtr frame) {
     bcm_channel = geo.pmt_channel_map.at(bcm_key);
 }
 
+size_t BeamCurrentMonitorSummary::FindBCMStart(
+        double baseline,
+        double baseline_stddev,
+        double peak_value,
+        size_t peak_pos,
+        double deriv_threshold,
+        std::vector<double>::const_iterator smoothed_begin, std::vector<double>::const_iterator smoothed_end,
+        std::vector<double>::const_iterator deriv_begin, std::vector<double>::const_iterator deriv_end) {
+    std::vector<double>::const_iterator smoothed_rbegin = smoothed_end - 1;
+    std::vector<double>::const_iterator deriv_rbegin = deriv_end - 1;
+    std::vector<double>::const_iterator smoothed_rend = smoothed_begin - 1;
+    std::vector<double>::const_iterator deriv_rend = deriv_begin - 1;
+
+    double min_val = baseline + baseline_stddev;
+    double max_val_for_threshold = (peak_value - baseline) / 2.0 + baseline;
+    size_t pos = peak_pos;
+    while(smoothed_rbegin != smoothed_rend and deriv_rbegin != deriv_rend) {
+        double val = *smoothed_rbegin;
+        double deriv = *deriv_rbegin;
+
+        if(val <= min_val or (deriv <= deriv_threshold and val <= max_val_for_threshold)) {
+            return pos;
+        }
+
+        if(pos == 0)
+            break;
+        --smoothed_rbegin;
+        --deriv_rbegin;
+        --pos;
+    }
+    return 0;
+}
+
+size_t BeamCurrentMonitorSummary::FindBaselineRegionLast(
+        double baseline,
+        double peak_value,
+        size_t peak_pos,
+        double deriv_threshold,
+        std::vector<double>::const_iterator smoothed_begin, std::vector<double>::const_iterator smoothed_end,
+        std::vector<double>::const_iterator deriv_begin, std::vector<double>::const_iterator deriv_end) {
+    std::vector<double>::const_iterator smoothed_rbegin = smoothed_end - 1;
+    std::vector<double>::const_iterator deriv_rbegin = deriv_end - 1;
+    std::vector<double>::const_iterator smoothed_rend = smoothed_begin - 1;
+    std::vector<double>::const_iterator deriv_rend = deriv_begin - 1;
+
+    double max_val_for_threshold = (peak_value - baseline) / 2.0 + baseline;
+    size_t pos = peak_pos;
+    while(smoothed_rbegin != smoothed_rend and deriv_rbegin != deriv_rend) {
+        double val = *smoothed_rbegin;
+        double deriv = *deriv_rbegin;
+
+        if(deriv <= deriv_threshold and val <= max_val_for_threshold) {
+            return pos;
+        }
+
+        if(pos == 0)
+            break;
+        --smoothed_rbegin;
+        --deriv_rbegin;
+        --pos;
+    }
+    return 0;
+}
+
 void BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform) {
     std::vector<uint16_t> const & wf = bcm_waveform.GetWaveform();
     std::vector<uint16_t>::const_iterator peak_elem = std::min_element(wf.begin(), wf.end());
+
+    // Find the peak
     int peak_pos = std::distance(wf.begin(), peak_elem);
-    int search_start_idx = std::max(peak_pos - int(time_before_peak_ / ns_per_sample), 0);
-    int search_end_idx = std::min(peak_pos + 1, int(wf.size()));
+    double peak_value = wf[peak_pos];
 
-    // Smooth the waveform
-    std::vector<double> smoothed_wf = SmoothWaveform(wf.begin() + search_start_idx, wf.begin() + search_end_idx);
+    // Define the search region to start a fixed time before the peak
+    int first_search_begin_idx = std::max(peak_pos - int(time_before_peak_ / ns_per_sample), 0);
+    // Define the search region to end at the peak
+    int first_search_end_idx = std::min(peak_pos + 1, int(wf.size()));
+    int first_search_length = first_search_end_idx - first_search_begin_idx;
 
-    // Compute the derivative
+    int last_search_begin_idx = peak_pos;
+    int last_search_end_idx = int(wf.size());
+
+    // Smooth the waveform in the search region
+    // Applies box_smooth(exponential_smooth(-waveform))
+    std::vector<double> smoothed_wf = SmoothWaveform(wf.begin() + first_search_begin_idx, wf.begin() + last_search_end_idx);
+
+    // Compute the derivative in the search region
     std::vector<double> derivative = ComputeDerviative(smoothed_wf.begin(), smoothed_wf.end());
+
+    // Get an initial estimate for the baseline
+    double baseline = robust_stats::Mode(smoothed_wf.begin(), smoothed_wf.begin() + first_search_length);
+
+    // Try to get away from the region with the BCM waveform
+    size_t baseline_last_idx = BeamCurrentMonitorSummary::FindBaselineRegionLast(
+            baseline,
+            peak_value,
+            peak_pos,
+            derivative_threshold_,
+            smoothed_wf.begin(), smoothed_wf.begin() + first_search_length,
+            derivative.begin(), derivative.begin() + first_search_length);
+
+    // Re-estimate the baseline
+    baseline = robust_stats::Mode(smoothed_wf.begin(), smoothed_wf.begin() + (baseline_last_idx - first_search_begin_idx + 1));
+
+    // Estimate the stddev of the baseline
+    double baseline_stddev = robust_stats::MedianAbsoluteDeviation(smoothed_wf.begin(), smoothed_wf.begin() + (baseline_last_idx - first_search_begin_idx + 1), baseline);
+
+    size_t bcm_start_pos = FindBCMStart(
+            baseline,
+            baseline_stddev,
+            peak_value,
+            peak_pos,
+            derivative_threshold_,
+            smoothed_wf.begin(), smoothed_wf.begin() + first_search_length,
+            derivative.begin(), derivative.begin() + first_search_length);
 
 }
 
