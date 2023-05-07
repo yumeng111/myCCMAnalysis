@@ -85,17 +85,17 @@ public:
     void DAQ(I3FramePtr frame);
     void Finish();
 
-    CCMBCMSummary GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform);
+    CCMBCMSummary GetBCMSummary(CCMWaveformUInt16 const & bcm_waveform);
     std::vector<double> SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end);
     std::vector<double> ComputeDerviative(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end);
-    size_t FindBaselineRegionLast(
+    size_t FindBaselineRegionLastPos(
             double baseline,
             double peak_value,
             size_t last_pos,
             double deriv_threshold,
             std::vector<double>::const_iterator smoothed_begin, std::vector<double>::const_iterator smoothed_end,
             std::vector<double>::const_iterator deriv_begin, std::vector<double>::const_iterator deriv_end);
-    size_t FindBCMFirst(
+    size_t FindBCMFirstPos(
             double baseline,
             double baseline_stddev,
             double peak_value,
@@ -103,7 +103,7 @@ public:
             double deriv_threshold,
             std::vector<double>::const_iterator smoothed_begin, std::vector<double>::const_iterator smoothed_end,
             std::vector<double>::const_iterator deriv_begin, std::vector<double>::const_iterator deriv_end);
-    size_t FindBCMLast(
+    size_t FindBCMLastPos(
             double baseline,
             double baseline_stddev,
             size_t first_pos,
@@ -221,7 +221,7 @@ void BeamCurrentMonitorSummary::Geometry(I3FramePtr frame) {
     bcm_channel = geo.pmt_channel_map.at(bcm_key);
 }
 
-size_t BeamCurrentMonitorSummary::FindBCMFirst(
+size_t BeamCurrentMonitorSummary::FindBCMFirstPos(
         double baseline,
         double baseline_stddev,
         double peak_value,
@@ -254,7 +254,7 @@ size_t BeamCurrentMonitorSummary::FindBCMFirst(
     return 0;
 }
 
-size_t BeamCurrentMonitorSummary::FindBCMLast(
+size_t BeamCurrentMonitorSummary::FindBCMLastPos(
         double baseline,
         double baseline_stddev,
         size_t first_pos,
@@ -276,7 +276,7 @@ size_t BeamCurrentMonitorSummary::FindBCMLast(
     return 0;
 }
 
-size_t BeamCurrentMonitorSummary::FindBaselineRegionLast(
+size_t BeamCurrentMonitorSummary::FindBaselineRegionLastPos(
         double baseline,
         double peak_value,
         size_t last_pos,
@@ -307,7 +307,7 @@ size_t BeamCurrentMonitorSummary::FindBaselineRegionLast(
     return 0;
 }
 
-CCMBCMSummary BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform) {
+CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const & bcm_waveform) {
     std::vector<uint16_t> const & wf = bcm_waveform.GetWaveform();
     std::vector<uint16_t>::const_iterator peak_elem = std::min_element(wf.begin(), wf.end());
 
@@ -335,7 +335,7 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & 
     double baseline = robust_stats::Mode(smoothed_wf.begin(), smoothed_wf.begin() + first_search_length);
 
     // Try to get away from the region with the BCM waveform
-    size_t baseline_last_idx = BeamCurrentMonitorSummary::FindBaselineRegionLast(
+    size_t baseline_last_idx = FindBaselineRegionLastPos(
             baseline,
             peak_value,
             peak_pos,
@@ -349,7 +349,7 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & 
     // Estimate the stddev of the baseline
     double baseline_stddev = robust_stats::MedianAbsoluteDeviation(smoothed_wf.begin(), smoothed_wf.begin() + (baseline_last_idx - first_search_begin_idx + 1), baseline);
 
-    size_t bcm_first_pos = FindBCMFirst(
+    size_t bcm_first_pos = FindBCMFirstPos(
             baseline,
             baseline_stddev,
             peak_value,
@@ -358,7 +358,7 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & 
             smoothed_wf.begin(), smoothed_wf.begin() + first_search_length,
             derivative.begin(), derivative.begin() + first_search_length);
 
-    size_t bcm_last_pos = FindBCMLast(
+    size_t bcm_last_pos = FindBCMLastPos(
             baseline,
             baseline_stddev,
             peak_pos,
@@ -388,8 +388,9 @@ void BeamCurrentMonitorSummary::DAQ(I3FramePtr frame) {
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
     CCMWaveformUInt16 const & bcm_waveform = waveforms.at(bcm_channel);
 
-    //boost::shared_ptr<>
-    //GetBCMWindow(bcm_waveform);
+    boost::shared_ptr<CCMBCMSummary> bcm = boost::make_shared<CCMBCMSummary>(GetBCMSummary(bcm_waveform));
+
+    frame->Put("BCMSummary", bcm);
 }
 
 void BeamCurrentMonitorSummary::Finish() {
