@@ -18,6 +18,7 @@
 #include <icetray/CCMTriggerKey.h>
 #include <icetray/robust_statistics.h>
 #include <dataclasses/physics/CCMWaveform.h>
+#include <dataclasses/physics/CCMBCMSummary.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 
 
@@ -84,7 +85,7 @@ public:
     void DAQ(I3FramePtr frame);
     void Finish();
 
-    void GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform);
+    CCMBCMSummary GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform);
     std::vector<double> SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end);
     std::vector<double> ComputeDerviative(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end);
     size_t FindBaselineRegionLast(
@@ -306,7 +307,7 @@ size_t BeamCurrentMonitorSummary::FindBaselineRegionLast(
     return 0;
 }
 
-void BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform) {
+CCMBCMSummary BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & bcm_waveform) {
     std::vector<uint16_t> const & wf = bcm_waveform.GetWaveform();
     std::vector<uint16_t>::const_iterator peak_elem = std::min_element(wf.begin(), wf.end());
 
@@ -362,6 +363,22 @@ void BeamCurrentMonitorSummary::GetBCMWindow(CCMWaveformUInt16 const & bcm_wavef
             baseline_stddev,
             peak_pos,
             smoothed_wf.begin() + (last_search_begin_idx - first_search_begin_idx), smoothed_wf.begin() + (last_search_begin_idx - first_search_begin_idx) + (last_search_end_idx - last_search_begin_idx));
+
+    CCMBCMSummary bcm;
+    bcm.bcm_start_time = bcm_first_pos * ns_per_sample;
+    bcm.bcm_end_time = bcm_last_pos * ns_per_sample;
+    bcm.bcm_peak_time = peak_pos * ns_per_sample;
+    bcm.bcm_peak_value = peak_value - baseline;
+    bcm.bcm_integral = 0;
+    bcm.bcm_baseline = baseline;
+    bcm.bcm_baseline_stddev = baseline_stddev;
+
+    for(size_t pos=bcm_first_pos; pos <= bcm_last_pos; ++pos) {
+        bcm.bcm_integral += (double(wf[pos]) - baseline);
+    }
+    bcm.bcm_integral *= ns_per_sample;
+
+    return bcm;
 }
 
 void BeamCurrentMonitorSummary::DAQ(I3FramePtr frame) {
