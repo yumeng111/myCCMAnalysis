@@ -47,6 +47,29 @@ size_t MinRange(const T* const sorted, const size_t idx_begin,
     return min_idx;
 }
 
+template <class Iterator, class U = typename std::iterator_traits<Iterator>::value_type>
+size_t MinRange(Iterator begin, Iterator end, const size_t idx_begin) {
+    Iterator half_begin = end;
+    U min_range = std::numeric_limits<U>::max();
+    size_t min_idx = 0;
+    size_t idx = idx_begin;
+
+    while(begin != end) {
+        assert(*begin <= *half_begin);
+        const U range = *half_begin - *begin;
+
+        if (range < min_range) {
+            min_range = range;
+            min_idx = idx;
+        }
+        ++begin;
+        ++half_begin;
+        ++idx;
+    }
+
+    return min_idx;
+}
+
 // Returns an estimate of the mode by calling MinRange on successively
 // halved intervals. "sorted" must be in ascending order. This is the
 // Half Sample Mode estimator proposed by Bickel in "On a fast, robust
@@ -71,6 +94,28 @@ T Mode(const T* const sorted, const size_t num_values) {
 
     assert(half_count == 1);
     const T average = (x + sorted[idx_begin + 1] + 1) / 2;
+    return average;
+}
+
+template <class Iterator, class U = typename std::iterator_traits<Iterator>::value_type>
+U Mode(Iterator begin, Iterator end) {
+    size_t num_values = std::distance(begin, end);
+    size_t idx_begin = 0;
+    size_t half_count = num_values / 2;
+
+    while (half_count > 1) {
+        idx_begin = MinRange(begin + idx_begin, begin + idx_begin + half_count, idx_begin);
+        half_count >>= 1;
+    }
+
+    const U x = *(begin + idx_begin);
+
+    if (half_count == 0) {
+        return x;
+    }
+
+    assert(half_count == 1);
+    const U average = (x + *(begin + idx_begin + 1) + 1) / 2;
     return average;
 }
 
@@ -135,6 +180,21 @@ T MedianAbsoluteDeviation(const std::vector<T>& samples, const T median) {
 
     for (const T sample : samples) {
         abs_deviations.push_back(std::abs(sample - median));
+    }
+
+    return Median(&abs_deviations);
+}
+
+template <class Iterator, class U = typename std::iterator_traits<Iterator>::value_type>
+U MedianAbsoluteDeviation(Iterator begin, Iterator end, const U median) {
+    assert(begin != end);
+    size_t size = std::distance(begin, end);
+    std::vector<U> abs_deviations;
+    abs_deviations.reserve(size);
+
+    while(begin != end) {
+        abs_deviations.push_back(std::abs(*begin - median));
+        ++begin;
     }
 
     return Median(&abs_deviations);
