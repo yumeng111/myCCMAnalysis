@@ -21,50 +21,11 @@
 #include <dataclasses/physics/CCMBCMSummary.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 
-
-// Identifies waveform regions that may correspond to potential peaks
-// Collects statistics about these regions
-/*
-class BCMInfo(I3ConditionalModule):
-    def __init__(self, context):
-        I3ConditionalModule.__init__(self, context)
-
-    def Configure(self):
-        self.output = open("bcm.txt", "a")
-        pass
-
-
-    def check_beam_trigger(self,samplevec):
-         beamtrig_waveform = samplevec[self.beamtrig_channel].waveform
-         return findFirstNIMSample(beamtrig_waveform)
-
-    def DAQ(self, frame):
-        samplevec = list(frame['CCMWaveforms'])
-        t0 = self.check_beam_trigger(samplevec)
-        if t0 == -1:
-            return False
-
-        bcm_start, bcm_peak = self.get_bcm_time(frame)
-
-        frame["BCMStartTime"] = dataclasses.I3UInt64(int(bcm_start))
-        frame["BCMPeakTime"] = dataclasses.I3UInt64(int(bcm_peak))
-
-        return True
-
-	def get_bcm_window(data, der, thresh = 0.3):
-		i_max = np.argmax(data)
-		d_max = data[i_max]
-		d_mode = mode(data[i_max-1000:i_max])
-		dev = median_absolute_deviation(data[i_max-1000:i_max])
-		i_first = i_max - np.argmax((np.logical_or(data[:i_max+1] <= d_mode+dev, np.logical_and(np.abs(der[:i_max+1]) < thresh, data[:i_max+1] <= (d_max - d_mode)/2.0 + d_mode)))[::-1])
-		i_last = i_max + np.argmax(data[i_max:] <= d_mode+dev)
-		return (i_first, i_last)
-*/
-
 class BeamCurrentMonitorSummary : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
     std::string waveforms_name_;
+    std::string bcm_name_;
 
     double time_before_peak_;
     double exp_smoothing_tau_;
@@ -117,8 +78,9 @@ BeamCurrentMonitorSummary::BeamCurrentMonitorSummary(const I3Context& context) :
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("TimeBeforePeak", "Time in ns before the BCM peak to consider when computing the baseline and looking for the BCM start time", double(2000.0));
-    AddParameter("ExpSmoothingTau", "Time constant for exponential smoothing", double(10.0));
-    AddParameter("DerivativeThreshold", "Theshold below which derivativ is considered to be zero", double(0.3));
+    AddParameter("ExpSmoothingTau", "Time constant in ns for exponential smoothing", double(10.0));
+    AddParameter("DerivativeThreshold", "Theshold below which derivativ is considered to be zero in ADC/ns", double(0.3));
+    AddParameter("CCMBCMSummaryName", "Name for the output CCMBCMSummary", std::string("BCMSummary"));
 }
 
 void BeamCurrentMonitorSummary::Configure() {
@@ -127,6 +89,7 @@ void BeamCurrentMonitorSummary::Configure() {
     GetParameter("TimeBeforePeak", time_before_peak_);
     GetParameter("ExpSmoothingTau", exp_smoothing_tau_);
     GetParameter("DerivativeThreshold", derivative_threshold_);
+    GetParameter("CCMBCMSummaryName", bcm_name_);
 }
 
 std::vector<double> BeamCurrentMonitorSummary::SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end) {
@@ -393,7 +356,7 @@ void BeamCurrentMonitorSummary::DAQ(I3FramePtr frame) {
 
     boost::shared_ptr<CCMBCMSummary> bcm = boost::make_shared<CCMBCMSummary>(GetBCMSummary(bcm_waveform));
 
-    frame->Put("BCMSummary", bcm);
+    frame->Put(bcm_name_, bcm);
     PushFrame(frame);
 }
 
