@@ -52,13 +52,13 @@ public:
     void DAQ(I3FramePtr frame);
     void Finish();
     void Flush();
-    
+
     std::vector<double> SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end);
     void AddBaselineSamples(I3FramePtr frame);
     void EstimateBaselines();
     double QuickBaselineEstimate(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
     bool CheckBaselines(I3FramePtr frame);
-    NIMLogicPulseSeriesPtr GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
+    NIMLogicPulseSeries GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
     void ProcessFrame(I3FramePtr frame);
 };
 
@@ -90,9 +90,9 @@ void NIMLogicPulseFinder::Geometry(I3FramePtr frame) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-    trigger_channel_map_ - geo.trigger_channel_map;
+    trigger_channel_map_ = geo.trigger_channel_map;
     baseline_samples.clear();
-    baselines.clear()
+    baselines.clear();
     for(std::pair<CCMTriggerKey, uint32_t> const & key : trigger_channel_map_) {
         baseline_samples.insert({key.first, std::vector<uint16_t>()});
         baselines.insert({key.first, 0});
@@ -144,24 +144,24 @@ std::vector<double> NIMLogicPulseFinder::SmoothWaveform(std::vector<uint16_t>::c
     return smoothed_wf;
 }
 
-void NIM::AddBaselineSamples(I3FramePtr frame) {
+void NIMLogicPulseFinder::AddBaselineSamples(I3FramePtr frame) {
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
-    for(std::pair<CCMTriggerKey, uint32_t> const & key : trigger_channel_map_) {
+    for(std::pair<CCMTriggerKey, uint32_t> const key : trigger_channel_map_) {
         CCMTriggerKey trigger_key = key.first;
         uint32_t trigger_channel = key.second;
         std::vector<uint16_t> & samples = baseline_samples[trigger_key];
-        samples.reserve(samples.size() + waveforms[trigger_channel].size());
+        samples.reserve(samples.size() + waveforms[trigger_channel].GetWaveform().size());
         samples.insert(samples.end(), waveforms[trigger_channel].GetWaveform().begin(), waveforms[trigger_channel].GetWaveform().end());
     }
 }
 
 void NIMLogicPulseFinder::EstimateBaselines() {
-    for(std::pair<CCMTriggerKey, std::vector<double>> & key_val : baseline_samples) {
+    for(std::pair<CCMTriggerKey const, std::vector<uint16_t>> & key_val : baseline_samples) {
         CCMTriggerKey key = key_val.first;
         std::vector<uint16_t> & samples = key_val.second;
-        std::vector<double> smoothed = SmoothWaveform(samples.begin(), samples.end())
+        std::vector<double> smoothed = SmoothWaveform(samples.begin(), samples.end());
         std::sort(smoothed.begin(), smoothed.end());
-        double baseline = robust_statistics::Mode(smoothed.data(), smoothed.size());
+        double baseline = robust_stats::Mode(smoothed.data(), smoothed.size());
         baselines[key] = baseline;
         double baseline_stddev = robust_stats::MedianAbsoluteDeviation(smoothed.begin(), smoothed.end(), baseline);
         baseline_stddevs[key] = baseline_stddev;
@@ -180,13 +180,13 @@ double NIMLogicPulseFinder::QuickBaselineEstimate(CCMWaveformUInt16 const & wave
         samples.push_back(-wf[i]);
     }
     std::sort(samples.begin(), samples.end());
-    return robust_statistics::Mode(samples.data(), samples.size());
+    return robust_stats::Mode(samples.data(), samples.size());
 }
 
-NIMLogicPulseSeriesPtr NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev) {
+NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev) {
     std::vector<uint16_t> const & wf = waveform.GetWaveform();
 
-    NIMLogicPulseSeriesPtr pulse_series = boost::make_shared<NIMLogicPulseSeries>();
+    NIMLogicPulseSeries pulse_series;
 
     bool in_pulse = false;
     size_t start_search_begin_idx = 0;
@@ -225,6 +225,7 @@ NIMLogicPulseSeriesPtr NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const
                 NIMLogicPulse pulse;
                 pulse.SetNIMPulseTime(pulse_start_pos * ns_per_sample);
                 pulse.SetNIMPulseLength((int(pulse_end_pos) - int(pulse_start_pos)) * ns_per_sample);
+                pulse_series.push_back(pulse);
                 in_pulse = false;
             }
         } else {
@@ -250,8 +251,8 @@ NIMLogicPulseSeriesPtr NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const
 
 void NIMLogicPulseFinder::ProcessFrame(I3FramePtr frame) {
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
-    NIMLogicPulseSeriesMapPtr pulse_series_map = = boost::make_shared<NIMLogicPulseSeriesMap>();
-    for(std::pair<CCMTriggerKey, uint32_t> const & key : trigger_channel_map_) {
+    NIMLogicPulseSeriesMapPtr pulse_series_map = boost::make_shared<NIMLogicPulseSeriesMap>();
+    for(std::pair<CCMTriggerKey, uint32_t> const key : trigger_channel_map_) {
         CCMTriggerKey const & trigger_key = key.first;
         uint32_t const & trigger_channel = key.second;
         double baseline = baselines[trigger_key];
@@ -265,12 +266,12 @@ void NIMLogicPulseFinder::ProcessFrame(I3FramePtr frame) {
 
 bool NIMLogicPulseFinder::CheckBaselines(I3FramePtr frame) {
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
-    for(std::pair<CCMTriggerKey, uint32_t> const & key : trigger_channel_map_) {
+    for(std::pair<CCMTriggerKey, uint32_t> const key : trigger_channel_map_) {
         CCMTriggerKey const & trigger_key = key.first;
         uint32_t const & trigger_channel = key.second;
         double baseline = baselines[trigger_key];
         double baseline_stddev = baseline_stddevs[trigger_key];
-        double baseline_estimate = QuickBaselineEstimate(waveform, baseline, baseline_stddev);
+        double baseline_estimate = QuickBaselineEstimate(waveforms[trigger_channel], baseline, baseline_stddev);
         if(std::abs(baseline - baseline_estimate) > 3.0 * baseline_stddev) {
             return true;
         }
