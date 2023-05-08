@@ -116,7 +116,7 @@ BeamCurrentMonitorSummary::BeamCurrentMonitorSummary(const I3Context& context) :
     geometry_name_(""), waveforms_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
-    AddParameter("TimeBeforePeak", "Time in ns before the BCM peak to consider when computing the baseline and looking for the BCM start time", double(2.0));
+    AddParameter("TimeBeforePeak", "Time in ns before the BCM peak to consider when computing the baseline and looking for the BCM start time", double(2000.0));
     AddParameter("ExpSmoothingTau", "Time constant for exponential smoothing", double(10.0));
     AddParameter("DerivativeThreshold", "Theshold below which derivativ is considered to be zero", double(0.3));
 }
@@ -270,8 +270,8 @@ size_t BeamCurrentMonitorSummary::FindBCMLastPos(
 
         if(pos == 0)
             break;
-        --smoothed_begin;
-        --pos;
+        ++smoothed_begin;
+        ++pos;
     }
     return 0;
 }
@@ -313,7 +313,7 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
 
     // Find the peak
     int peak_pos = std::distance(wf.begin(), peak_elem);
-    double peak_value = wf[peak_pos];
+    double peak_value = -wf[peak_pos];
 
     // Define the search region to start a fixed time before the peak
     int first_search_begin_idx = std::max(peak_pos - int(time_before_peak_ / ns_per_sample), 0);
@@ -332,7 +332,10 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
     std::vector<double> derivative = ComputeDerviative(smoothed_wf.begin(), smoothed_wf.end());
 
     // Get an initial estimate for the baseline
-    double baseline = robust_stats::Mode(smoothed_wf.begin(), smoothed_wf.begin() + first_search_length);
+    std::vector<double> baseline_samples(first_search_length);
+    std::copy(smoothed_wf.begin(), smoothed_wf.begin() + first_search_length, baseline_samples.begin());
+    std::sort(baseline_samples.begin(), baseline_samples.end());
+    double baseline = robust_stats::Mode(baseline_samples.data(), baseline_samples.size());
 
     // Try to get away from the region with the BCM waveform
     size_t baseline_last_idx = FindBaselineRegionLastPos(
@@ -344,10 +347,13 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
             derivative.begin(), derivative.begin() + first_search_length);
 
     // Re-estimate the baseline
-    baseline = robust_stats::Mode(smoothed_wf.begin(), smoothed_wf.begin() + (baseline_last_idx - first_search_begin_idx + 1));
+    baseline_samples.resize((baseline_last_idx - first_search_begin_idx + 1));
+    std::copy(smoothed_wf.begin(), smoothed_wf.begin() + (baseline_last_idx - first_search_begin_idx + 1), baseline_samples.begin());
+    std::sort(baseline_samples.begin(), baseline_samples.end());
+    baseline = robust_stats::Mode(baseline_samples.data(), baseline_samples.size());
 
     // Estimate the stddev of the baseline
-    double baseline_stddev = robust_stats::MedianAbsoluteDeviation(smoothed_wf.begin(), smoothed_wf.begin() + (baseline_last_idx - first_search_begin_idx + 1), baseline);
+    double baseline_stddev = robust_stats::MedianAbsoluteDeviation(baseline_samples.begin(), baseline_samples.end(), baseline);
 
     size_t bcm_first_pos = FindBCMFirstPos(
             baseline,
@@ -374,7 +380,7 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
     bcm.bcm_baseline_stddev = baseline_stddev;
 
     for(size_t pos=bcm_first_pos; pos <= bcm_last_pos; ++pos) {
-        bcm.bcm_integral += (double(wf[pos]) - baseline);
+        bcm.bcm_integral += (-double(wf[pos]) - baseline);
     }
     bcm.bcm_integral *= ns_per_sample;
 
@@ -391,6 +397,7 @@ void BeamCurrentMonitorSummary::DAQ(I3FramePtr frame) {
     boost::shared_ptr<CCMBCMSummary> bcm = boost::make_shared<CCMBCMSummary>(GetBCMSummary(bcm_waveform));
 
     frame->Put("BCMSummary", bcm);
+    PushFrame(frame);
 }
 
 void BeamCurrentMonitorSummary::Finish() {
