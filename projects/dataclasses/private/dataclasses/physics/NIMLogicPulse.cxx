@@ -5,7 +5,8 @@
 
 NIMLogicPulse::~NIMLogicPulse() {}
 
-template <class Archive> void NIMLogicPulse::serialize(Archive& ar, unsigned version) {
+template <class Archive>
+void NIMLogicPulse::serialize(Archive& ar, unsigned version) {
     if (version>nimlogicpulse_version_)
         log_fatal("Attempting to read version %u from file but running version %u of NIMLogicPulse class.", version, nimlogicpulse_version_);
 
@@ -15,13 +16,11 @@ template <class Archive> void NIMLogicPulse::serialize(Archive& ar, unsigned ver
 
 using CompareFloatingPoint::Compare;
 
-bool 
-NIMLogicPulse::operator==(const NIMLogicPulse& rhs) const {
+bool NIMLogicPulse::operator==(const NIMLogicPulse& rhs) const {
     return Compare(time_, rhs.time_) && Compare(length_, rhs.length_);
 }
 
-bool 
-NIMLogicPulse::operator!=(const NIMLogicPulse& rhs) const {
+bool NIMLogicPulse::operator!=(const NIMLogicPulse& rhs) const {
     return !( *this == rhs );
 }
 
@@ -36,4 +35,5 @@ std::ostream& operator<<(std::ostream& oss, const NIMLogicPulse& t) {
 }
 
 I3_SERIALIZABLE(NIMLogicPulse);
-I3_SERIALIZABLE(I3VectorNIMLogicPulse);
+I3_SERIALIZABLE(NIMLogicPulseSeries);
+I3_SERIALIZABLE(NIMLogicPulseSeriesMap);

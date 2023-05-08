@@ -2,6 +2,7 @@
 #include <icetray/I3Units.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/I3Vector.h>
+#include <dataclasses/I3Map.h>
 #include <icetray/python/dataclass_suite.hpp>
 #include <dataclasses/ostream_overloads.hpp>
 
@@ -16,10 +17,17 @@ void register_NIMLogicPulse() {
     .def(bp::dataclass_suite<NIMLogicPulse>())
     ;
 
-    bp::class_<I3VectorNIMLogicPulse, bp::bases<I3FrameObject>,
-        boost::shared_ptr<I3VectorNIMLogicPulse > >("I3VectorNIMLogicPulse")
-        .def(bp::dataclass_suite<I3VectorNIMLogicPulse >())
+    bp::class_<NIMLogicPulseSeries, bp::bases<I3FrameObject>,
+        boost::shared_ptr<NIMLogicPulseSeries>>("NIMLogicPulseSeries")
+        .def(bp::dataclass_suite<NIMLogicPulseSeries>())
         ;
 
-    register_pointer_conversions<I3VectorNIMLogicPulse>();
+    register_pointer_conversions<NIMLogicPulseSeries>();
+
+    bp::class_<NIMLogicPulseSeriesMap, bp::bases<I3FrameObject>,
+        boost::shared_ptr<NIMLogicPulseSeriesMap>>("NIMLogicPulseSeriesMap")
+        .def(bp::dataclass_suite<NIMLogicPulseSeriesMap>())
+        ;
+
+    register_pointer_conversions<NIMLogicPulseSeriesMap>();
 }

@@ -3,8 +3,10 @@
 #define NIMLogicPulse_H_INCLUDED
 
 #include <icetray/I3Logging.h>
+#include <icetray/CCMTriggerKey.h>
 #include <dataclasses/Utility.h>
 #include <dataclasses/I3Vector.h>
+#include <dataclasses/I3Map.h>
 
 /**
  * @brief The basic NIM pulse class
@@ -77,8 +79,10 @@ I3_CLASS_VERSION(NIMLogicPulse, nimlogicpulse_version_);
 I3_POINTER_TYPEDEFS(NIMLogicPulse);
 
 
-typedef I3Vector<NIMLogicPulse> I3VectorNIMLogicPulse;
-I3_POINTER_TYPEDEFS(I3VectorNIMLogicPulse);
+typedef I3Vector<NIMLogicPulse> NIMLogicPulseSeries;
+typedef I3Map<CCMTriggerKey, NIMLogicPulseSeries> NIMLogicPulseSeriesMap;
+I3_POINTER_TYPEDEFS(NIMLogicPulseSeries);
+I3_POINTER_TYPEDEFS(NIMLogicPulseSeriesMap);
 
 #endif
 
