@@ -6,7 +6,7 @@
 #include <icetray/python/dataclass_suite.hpp>
 #include <dataclasses/ostream_overloads.hpp>
 
-using namespace boost::python;
+namespace bp = boost::python;
 
 std::string to_str(CCMBCMSummary const & theBCMSummary) {
     std::ostringstream oss;
@@ -14,22 +14,20 @@ std::string to_str(CCMBCMSummary const & theBCMSummary) {
     return oss.str();
 }
 
-void register_CCMSummary() {
-    {
-        scope waveform_scope =
-            class_<CCMBCMSummary, boost::shared_ptr<CCMBCMSummary> >("CCMBCMSummary")
-            .def(copy_suite<CCMBCMSummary>())
-            .add_property("start_time", &CCMBCMSummary::bcm_start_time)
-            .add_property("end_time", &CCMBCMSummary::bcm_end_time)
-            .add_property("peak_time", &CCMBCMSummary::bcm_peak_time)
-            .add_property("peak_value", &CCMBCMSummary::bcm_peak_value)
-            .add_property("integral", &CCMBCMSummary::bcm_integral)
-            .add_property("baseline", &CCMBCMSummary::bcm_baseline)
-            .add_property("baseline_stddev", &CCMBCMSummary::bcm_baseline_stddev)
+void register_CCMBCMSummary() {
 
-            .def(self == self)
-            .def(dataclass_suite<CCMBCMSummary>())
-            .def("__str__", to_str)
-            ;
-    }
+    std::string(*convert_to_str)(CCMBCMSummary const &) = to_str;
+    bp::class_<CCMBCMSummary, bp::bases<I3FrameObject>, boost::shared_ptr<CCMBCMSummary> >("CCMBCMSummary")
+
+    .def_readwrite("start_time", &CCMBCMSummary::bcm_start_time)
+    .def_readwrite("end_time", &CCMBCMSummary::bcm_end_time)
+    .def_readwrite("peak_time", &CCMBCMSummary::bcm_peak_time)
+    .def_readwrite("peak_value", &CCMBCMSummary::bcm_peak_value)
+    .def_readwrite("integral", &CCMBCMSummary::bcm_integral)
+    .def_readwrite("baseline", &CCMBCMSummary::bcm_baseline)
+    .def_readwrite("baseline_stddev", &CCMBCMSummary::bcm_baseline_stddev)
+    .def(bp::dataclass_suite<CCMBCMSummary>())
+    ;
+
+    register_pointer_conversions<CCMBCMSummary>();
 }

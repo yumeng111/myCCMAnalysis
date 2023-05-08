@@ -79,6 +79,7 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& oss, CCMBCMSummary const & bcm);
+std::ostream& operator<<(std::ostream& oss, CCMBCMSummary & bcm);
 
 template <class Archive>
 void CCMBCMSummary::save(Archive& ar, unsigned version) const {

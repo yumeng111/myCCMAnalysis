@@ -17,4 +17,8 @@ std::ostream& operator<<(std::ostream& oss, CCMBCMSummary const & bcm) {
     return(bcm.Print(oss));
 }
 
+std::ostream& operator<<(std::ostream& oss, CCMBCMSummary & bcm) {
+    return(bcm.Print(oss));
+}
+
 I3_SERIALIZABLE(CCMBCMSummary);
