@@ -132,7 +132,6 @@ void BeamCurrentMonitorSummary::Configure() {
 std::vector<double> BeamCurrentMonitorSummary::SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end) {
 
     size_t N = std::distance(begin, end);
-    std::cout << "Smoothed wf will have size: " << N << std::endl; 
 
     std::vector<double> smoothed_wf(N);
 
@@ -146,9 +145,6 @@ std::vector<double> BeamCurrentMonitorSummary::SmoothWaveform(std::vector<uint16
     exp_start /= init_avg_end_idx;
 
     double alpha = exp(-ns_per_sample / exp_smoothing_tau_);
-    std::cout << "ns_per_sample: " << ns_per_sample << std::endl;
-    std::cout << "exp_smoothing_tau_: " << exp_smoothing_tau_ << std::endl;
-    std::cout << "alpha: " << alpha << std::endl;
     double y_i = exp_start;
     x_it = begin;
     for(size_t i=0; i < smoothed_wf.size() and x_it != end; ++i, ++x_it) {
@@ -289,15 +285,11 @@ size_t BeamCurrentMonitorSummary::FindBaselineRegionLastPos(
 
     double max_val_for_threshold = (peak_value - baseline) / 2.0 + baseline;
     size_t pos = last_pos;
-    std::cout << "deriv_threshold: " << deriv_threshold << std::endl;
-    std::cout << "max_val_for_threshold: " << max_val_for_threshold << std::endl;
     while(smoothed_begin != smoothed_end and deriv_begin != deriv_end) {
         double val = *smoothed_begin;
         double deriv = *deriv_begin;
-        std::cout << "pos: " << pos << ", val: " << val << ", deriv: " << deriv << std::endl;
 
         if(deriv <= deriv_threshold and val <= max_val_for_threshold) {
-            std::cout << "Meets conditions" << std::endl;
             return pos;
         }
 
@@ -313,29 +305,19 @@ size_t BeamCurrentMonitorSummary::FindBaselineRegionLastPos(
 CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const & bcm_waveform) {
     std::vector<uint16_t> const & wf = bcm_waveform.GetWaveform();
     std::vector<uint16_t>::const_iterator peak_elem = std::min_element(wf.begin(), wf.end());
-    std::cout << "Waveform size: " << wf.size() << std::endl;
 
     // Find the peak
     int peak_pos = std::distance(wf.begin(), peak_elem);
-    std::cout << "Peak pos: " << peak_pos << std::endl;
     double peak_value = -wf[peak_pos];
-    std::cout << "Peak value: " << peak_pos << std::endl;
 
-    std::cout << "Time before peak: " << time_before_peak_ << std::endl;
-    std::cout << "Samples before peak: " << int(time_before_peak_ / ns_per_sample) << std::endl;
     // Define the search region to start a fixed time before the peak
     int first_search_begin_idx = std::max(peak_pos - int(time_before_peak_ / ns_per_sample), 0);
-    std::cout << "First search begin index: " << first_search_begin_idx << std::endl;
     // Define the search region to end at the peak
     int first_search_end_idx = std::min(peak_pos + 1, int(wf.size()));
-    std::cout << "First search end index: " << first_search_end_idx << std::endl;
     int first_search_length = first_search_end_idx - first_search_begin_idx;
-    std::cout << "First search length: " << first_search_length << std::endl;
 
     int last_search_begin_idx = peak_pos;
-    std::cout << "Last search begin index: " << last_search_begin_idx << std::endl;
     int last_search_end_idx = int(wf.size());
-    std::cout << "Last search end index: " << last_search_end_idx << std::endl;
 
     // Smooth the waveform in the search region
     // Applies box_smooth(exponential_smooth(-waveform))
@@ -350,8 +332,6 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
     std::copy(smoothed_wf.begin(), smoothed_wf.begin() + first_search_length, std::back_inserter(baseline_samples));
     std::sort(baseline_samples.begin(), baseline_samples.end());
     double baseline = robust_stats::Mode(baseline_samples.data(), baseline_samples.size());
-    std::cout << "Initial baseline estimate: " << baseline << std::endl;
-    std::cout << "Number of initial baseline samples: " << baseline_samples.size() << std::endl;
 
     // Try to get away from the region with the BCM waveform
     size_t baseline_last_idx = FindBaselineRegionLastPos(
@@ -368,8 +348,6 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
     std::copy(smoothed_wf.begin(), smoothed_wf.begin() + (baseline_last_idx - first_search_begin_idx + 1), std::back_inserter(baseline_samples));
     std::sort(baseline_samples.begin(), baseline_samples.end());
     baseline = robust_stats::Mode(baseline_samples.data(), baseline_samples.size());
-    std::cout << "Final baseline estimate: " << baseline << std::endl;
-    std::cout << "Number of final baseline samples: " << baseline_samples.size() << std::endl;
 
     // Estimate the stddev of the baseline
     double baseline_stddev = robust_stats::MedianAbsoluteDeviation(baseline_samples.begin(), baseline_samples.end(), baseline);
