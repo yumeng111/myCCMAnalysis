@@ -71,7 +71,7 @@ NIMLogicPulseFinder::NIMLogicPulseFinder(const I3Context& context) : I3Module(co
     AddParameter("SampleStep", "The number of steps between samples used for the initial baseline estimate.", size_t(50));
     AddParameter("NFramesForBaseline", "The number of frames to use for a baseline estimate", size_t(10));
     AddParameter("ConstantFraction", "The fraction of the pulse height to use for its start time", double(0.01));
-    AddParameter("MinimumPulseHeight", "The minimum pulse height to consider a NIM pulse to be present.", double(0.01));
+    AddParameter("MinimumPulseHeight", "The minimum pulse height to consider a NIM pulse to be present.", double(1000));
     AddParameter("NIMLogicPulseSeriesMapName", "Name for the output nim pulses map", std::string("NIMPulses"));
 }
 
@@ -272,7 +272,7 @@ bool NIMLogicPulseFinder::CheckBaselines(I3FramePtr frame) {
         double baseline = baselines[trigger_key];
         double baseline_stddev = baseline_stddevs[trigger_key];
         double baseline_estimate = QuickBaselineEstimate(waveforms[trigger_channel], baseline, baseline_stddev);
-        if(std::abs(baseline - baseline_estimate) > 3.0 * baseline_stddev) {
+        if(std::abs(baseline - baseline_estimate) > 10.0 * baseline_stddev) {
             return true;
         }
     }
@@ -300,6 +300,7 @@ void NIMLogicPulseFinder::DAQ(I3FramePtr frame) {
     if(CheckBaselines(frame)) {
         AddBaselineSamples(frame);
         cached_frames.push_back(frame);
+        estimate_baselines = true;
         return;
     }
     ProcessFrame(frame);
