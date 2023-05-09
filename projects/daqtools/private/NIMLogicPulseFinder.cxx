@@ -90,9 +90,14 @@ void NIMLogicPulseFinder::Geometry(I3FramePtr frame) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+    // Cache the trigger channel map
     trigger_channel_map_ = geo.trigger_channel_map;
+
+    // Clear out the stored baseline values
     baseline_samples.clear();
     baselines.clear();
+
+    // Initialize the baseline values
     for(std::pair<CCMTriggerKey, uint32_t> const & key : trigger_channel_map_) {
         baseline_samples.insert({key.first, std::vector<uint16_t>()});
         baselines.insert({key.first, 0});
@@ -102,6 +107,9 @@ void NIMLogicPulseFinder::Geometry(I3FramePtr frame) {
 }
 
 std::vector<double> NIMLogicPulseFinder::SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end) {
+    // Invert waveform
+    // Smooth with exponential filter
+    // Smooth with box filter
 
     size_t N = std::distance(begin, end);
 
@@ -146,10 +154,12 @@ std::vector<double> NIMLogicPulseFinder::SmoothWaveform(std::vector<uint16_t>::c
 
 void NIMLogicPulseFinder::AddBaselineSamples(I3FramePtr frame) {
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
+    // Iterate over trigger channels
     for(std::pair<CCMTriggerKey, uint32_t> const key : trigger_channel_map_) {
         CCMTriggerKey trigger_key = key.first;
         uint32_t trigger_channel = key.second;
         std::vector<uint16_t> & samples = baseline_samples[trigger_key];
+        // Concatenate waveforms from multiple frames
         samples.reserve(samples.size() + waveforms[trigger_channel].GetWaveform().size());
         samples.insert(samples.end(), waveforms[trigger_channel].GetWaveform().begin(), waveforms[trigger_channel].GetWaveform().end());
     }
@@ -160,17 +170,23 @@ void NIMLogicPulseFinder::EstimateBaselines() {
         CCMTriggerKey key = key_val.first;
         std::vector<uint16_t> & samples = key_val.second;
         std::vector<double> smoothed = SmoothWaveform(samples.begin(), samples.end());
-        std::sort(smoothed.begin(), smoothed.end());
+        std::sort(smoothed.begin(), smoothed.end()); // Must be sorted for Mode function
+        // Use the mode of N smoothed waveforms as a baseline estimate
         double baseline = robust_stats::Mode(smoothed.data(), smoothed.size());
         baselines[key] = baseline;
+        // Estimate the stddev of the baseline
         double baseline_stddev = robust_stats::MedianAbsoluteDeviation(smoothed.begin(), smoothed.end(), baseline);
         baseline_stddevs[key] = baseline_stddev;
     }
+
+    // Clear out the concatenated waveforms now that we don't need them
     baseline_samples.clear();
+    // Indicate that the baselines have already been estimated
     estimate_baselines = false;
 }
 
 double NIMLogicPulseFinder::QuickBaselineEstimate(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev) {
+    // Make a quick estimate of the baseline using a subset of the waveform
     std::vector<double> samples;
     std::vector<uint16_t> const & wf = waveform.GetWaveform();
     samples.reserve(wf.size() / sample_step);
@@ -184,6 +200,19 @@ double NIMLogicPulseFinder::QuickBaselineEstimate(CCMWaveformUInt16 const & wave
 }
 
 NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev) {
+    // Search for NIM pulses in the waveform
+    //
+    // First look for a sample that goes above the threshold
+    //      Mark the point just before this as the beginning of the search region for the pulse edge
+    //      Where "before" is defined as the last point where the waveform was below baseline+1sigma
+    //      Start tracking samples to look for the maxiumum value of the pulse
+    // Then look for a sample that goes below the threshold
+    //      Mark the point just after this i.e. +5 time bins
+    // From the peak, search backwards for the point where the waveform drops below the constant fraction
+    // From the peak, search forwards for the point where the waveform drops below the constant fraction
+    // These two points mark the beginning and end of the pulse
+    // Now go back to step one with the next sample
+
     std::vector<uint16_t> const & wf = waveform.GetWaveform();
 
     NIMLogicPulseSeries pulse_series;
@@ -194,13 +223,17 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
     size_t max_sample_pos = 0;
     double begin_threshold = minimum_nim_pulse_height;
     double end_threshold = std::min(baseline_stddev, minimum_nim_pulse_height);
+    // Iterate over samples
     for(size_t i=0; i<wf.size(); ++i) {
+        // Invert and subtract baseline
         double sample = -wf[i] - baseline;
         if(in_pulse) {
+            // Update maximum value in the pulse
             if(sample > max_sample) {
                 max_sample = sample;
                 max_sample_pos = i;
             }
+            // Passing below threshold means we reached the end of the pulse
             if(sample <= end_threshold) {
                 size_t start_search_end_idx = max_sample_pos;
                 size_t end_search_begin_idx = max_sample_pos;
@@ -208,6 +241,7 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                 size_t pulse_start_pos = start_search_begin_idx;
                 size_t pulse_end_pos = start_search_begin_idx;
                 double threshold = max_sample * constant_fraction;
+                // Search for the beginning of the pulse
                 for(size_t j=start_search_end_idx-1; j>=start_search_begin_idx; --j) {
                     sample = -wf[j] - baseline;
                     if(sample <= threshold) {
@@ -215,6 +249,7 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                         break;
                     }
                 }
+                // Search for the end of the pulse
                 for(size_t j=end_search_begin_idx; j<end_search_end_idx; ++j) {
                     sample = -wf[j] - baseline;
                     if(sample <= threshold) {
@@ -222,13 +257,17 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                         break;
                     }
                 }
+                // Store the pulse
                 NIMLogicPulse pulse;
                 pulse.SetNIMPulseTime(pulse_start_pos * ns_per_sample);
                 pulse.SetNIMPulseLength((int(pulse_end_pos) - int(pulse_start_pos)) * ns_per_sample);
                 pulse_series.push_back(pulse);
+
+                // We're done with the current pulse
                 in_pulse = false;
             }
         } else {
+            // Check for the beginning of the pulse
             if(sample >= minimum_nim_pulse_height) {
                 max_sample = sample;
                 max_sample_pos = i;
@@ -241,15 +280,17 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                     if(j == 0)
                         break;
                 }
+
+                // We're now dealing with a pulse
                 in_pulse = true;
             }
         }
     }
-
     return pulse_series;
 }
 
 void NIMLogicPulseFinder::ProcessFrame(I3FramePtr frame) {
+    // Find the NIM pulses for each trigger channel and store them in the frame
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
     NIMLogicPulseSeriesMapPtr pulse_series_map = boost::make_shared<NIMLogicPulseSeriesMap>();
     for(std::pair<CCMTriggerKey, uint32_t> const key : trigger_channel_map_) {
@@ -265,6 +306,7 @@ void NIMLogicPulseFinder::ProcessFrame(I3FramePtr frame) {
 }
 
 bool NIMLogicPulseFinder::CheckBaselines(I3FramePtr frame) {
+    // Check if a quick estimate of the baselines significantly deviates from the existing estimates
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
     for(std::pair<CCMTriggerKey, uint32_t> const key : trigger_channel_map_) {
         CCMTriggerKey const & trigger_key = key.first;
@@ -273,9 +315,11 @@ bool NIMLogicPulseFinder::CheckBaselines(I3FramePtr frame) {
         double baseline_stddev = baseline_stddevs[trigger_key];
         double baseline_estimate = QuickBaselineEstimate(waveforms[trigger_channel], baseline, baseline_stddev);
         if(std::abs(baseline - baseline_estimate) > 10.0 * baseline_stddev) {
+            // Report that we need a new baseline estimate
             return true;
         }
     }
+    // Report that the current baseline estimates are fine
     return false;
 }
 
@@ -283,6 +327,7 @@ void NIMLogicPulseFinder::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
+    // Check if we still need a baseline estimate
     if(estimate_baselines) {
         if(cached_frames.size() == n_frames_for_baseline) {
             EstimateBaselines();
@@ -297,6 +342,7 @@ void NIMLogicPulseFinder::DAQ(I3FramePtr frame) {
             return;
         }
     }
+    // Check if our baseline estimate is still valid
     if(CheckBaselines(frame)) {
         AddBaselineSamples(frame);
         cached_frames.push_back(frame);
@@ -308,6 +354,9 @@ void NIMLogicPulseFinder::DAQ(I3FramePtr frame) {
 }
 
 void NIMLogicPulseFinder::Flush() {
+    // If we are currently accumulating frames for a new baseline estimate
+    // then we need to finish the estimate and clear out all the frames before
+    // the tray can finish processing
     if(cached_frames.size()) {
         EstimateBaselines();
         for(size_t i=0; i<cached_frames.size(); ++i) {
