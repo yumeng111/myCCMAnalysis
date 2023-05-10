@@ -181,6 +181,7 @@ void BeamCurrentMonitorSummary::Geometry(I3FramePtr frame) {
         log_fatal("CCMGeometry does not contain a channel corresponding to a BeamCurrentMonitor");
     }
     bcm_channel = geo.pmt_channel_map.at(bcm_key);
+    PushFrame(frame);
 }
 
 size_t BeamCurrentMonitorSummary::FindBCMFirstPos(
