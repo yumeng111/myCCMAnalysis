@@ -104,6 +104,8 @@ void NIMLogicPulseFinder::Geometry(I3FramePtr frame) {
         baseline_stddevs.insert({key.first, 0});
     }
     geo_seen = true;
+
+    PushFrame(frame);
 }
 
 std::vector<double> NIMLogicPulseFinder::SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end) {
