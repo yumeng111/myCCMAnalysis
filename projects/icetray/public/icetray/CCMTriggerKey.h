@@ -1,9 +1,9 @@
 /**
  *  $Id$
- *  
+ *
  *  Copyright (C) 2003-2007
  *  The IceCube Collaboration <http://www.icecube.wisc.edu>
- *  
+ *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions
  *  are met:
@@ -12,7 +12,7 @@
  *  2. Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
- *  
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -24,9 +24,9 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *  
+ *
  *  SPDX-License-Identifier: BSD-2-Clause
- *  
+ *
  */
 
 #ifndef CCMTriggerKey_H_INCLUDED
@@ -70,7 +70,7 @@ private:
     CCMTriggerKey(TriggerType type, unsigned int number)
         : triggerType_(type), triggerNumber_(number) {}
 
-    virtual ~CCMTriggerKey(); 
+    virtual ~CCMTriggerKey();
 
     /**
      * retrieves the string number for this CCMTriggerKey
@@ -93,7 +93,7 @@ private:
     void SetNumber(unsigned int number){ triggerNumber_ = number; }
 
     /**
-     * equality operator.  
+     * equality operator.
      * @return true if the string and om numbers of the two CCMTriggerKey's match
      * @param rhs the CCMTriggerKey to compare this one to.
      */
@@ -119,7 +119,7 @@ private:
     {
         size_t operator()(const CCMTriggerKey& key) const
         {
-            return (((static_cast<size_t>(abs(static_cast<int>(key.GetType()) + 256)) * 1024) + 
+            return (((static_cast<size_t>(abs(static_cast<int>(key.GetType()) + 256)) * 1024) +
                         static_cast<size_t>(key.GetNumber())));
         }
     };

@@ -59,6 +59,7 @@ i3_add_pybindings(dataclasses
   private/pybindings/I3TimeWindow.cxx
   private/pybindings/I3Trigger.cxx
   private/pybindings/I3TriggerHierarchy.cxx
+  private/pybindings/NIMLogicPulse.cxx
   private/pybindings/CCMWaveform/*.cxx
   private/pybindings/CCMBCMSummary.cxx
   private/pybindings/I3Waveform/*.cxx
