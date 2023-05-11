@@ -355,6 +355,11 @@ void BeamCurrentMonitorSummary::DAQ(I3FramePtr frame) {
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
     CCMWaveformUInt16 const & bcm_waveform = waveforms.at(bcm_channel);
 
+    if(bcm_waveform.GetWaveform().size() == 0) {
+        PushFrame(frame);
+        return;
+    }
+
     boost::shared_ptr<CCMBCMSummary> bcm = boost::make_shared<CCMBCMSummary>(GetBCMSummary(bcm_waveform));
 
     frame->Put(bcm_name_, bcm);
