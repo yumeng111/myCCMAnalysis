@@ -32,6 +32,7 @@
 #include <icetray/CCMTriggerKey.h>
 #include <sstream>
 #include <icetray/I3FrameObject.h>
+#include <boost/preprocessor/seq/for_each.hpp>
 
 CCMTriggerKey::~CCMTriggerKey() { }
 
@@ -62,10 +63,29 @@ I3_SPLIT_SERIALIZABLE(CCMTriggerKey);
 
 using namespace std;
 
+#define DEFINE_ENUM_FORMAT(r, data, elem)             \
+        case int(CCMTriggerKey::elem):                       \
+            return BOOST_PP_STRINGIZE(elem);
+
+inline const char* format_trigger_type(CCMTriggerKey::TriggerType val) {
+    switch (int(val)) {
+        BOOST_PP_SEQ_FOR_EACH(DEFINE_ENUM_FORMAT, , CCMTriggerKey_H_CCMTriggerKey_TriggerType)
+        default:
+            return 0;
+    }
+}
+
+std::string repr(const CCMTriggerKey& key){
+  std::stringstream s;
+  s << "CCMTriggerKey(" << format_trigger_type(key.GetType()) << ", " << key.GetNumber() << ")";
+  return s.str();
+}
+
+
 ostream& operator<<(ostream& os, const CCMTriggerKey& key)
 {
-  os << "CCMTriggerKey(" << static_cast<int>(key.GetType()) << "," << key.GetNumber() << ")";
-  return os;
+    os << repr(key);
+    return os;
 }
 
 istream& operator>>(istream& is, CCMTriggerKey& key)
