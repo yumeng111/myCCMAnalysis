@@ -18,8 +18,11 @@ class PrintBCM(I3ConditionalModule):
         pass
 
     def DAQ(self, frame):
-        print("Printing frame[\"BCMSummary\"]")
-        print(frame["BCMSummary"])
+        if(frame.Has("BCMSummary")):
+            print("Printing frame[\"BCMSummary\"]")
+            print(frame["BCMSummary"])
+        else:
+            print("Frame has no \"BCMSummary\" key")
         print()
 
     def Finish(self):
