@@ -51,7 +51,6 @@ public:
     void Geometry(I3FramePtr frame);
     void DAQ(I3FramePtr frame);
     void Finish();
-    void Flush();
 
     std::vector<double> SmoothWaveform(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end);
     void AddBaselineSamples(I3FramePtr frame);
@@ -355,7 +354,7 @@ void NIMLogicPulseFinder::DAQ(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void NIMLogicPulseFinder::Flush() {
+void NIMLogicPulseFinder::Finish() {
     // If we are currently accumulating frames for a new baseline estimate
     // then we need to finish the estimate and clear out all the frames before
     // the tray can finish processing
@@ -367,7 +366,5 @@ void NIMLogicPulseFinder::Flush() {
         }
         cached_frames.clear();
     }
-}
-
-void NIMLogicPulseFinder::Finish() {
+    Flush();
 }
