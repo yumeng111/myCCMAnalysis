@@ -55,6 +55,7 @@ if __name__ == "__main__":
 
     tray = I3Tray()
     tray.Add("I3Reader", "reader", FilenameList=fnames)
+    tray.Add("Delete", Keys=["NIMPulses"]) # Remove keys that we are computing in this example
 
     # Add the module that finds NIM pulses in the trigger channels
     # All parameters are set to there defaults here, so the lines below are quivalent to:
