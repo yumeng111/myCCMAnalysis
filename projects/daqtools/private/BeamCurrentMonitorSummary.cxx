@@ -19,22 +19,26 @@
 #include <icetray/robust_statistics.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/CCMBCMSummary.h>
+#include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 
 class BeamCurrentMonitorSummary : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
     std::string waveforms_name_;
+    std::string nim_pulses_name_;
     std::string bcm_name_;
 
     double time_before_peak_;
     double exp_smoothing_tau_;
     double derivative_threshold_;
+    bool only_beam_frames_;
 
     // Internal state
     bool geo_seen;
     CCMPMTKey bcm_key;
     size_t bcm_channel;
+    CCMTriggerKey beam_trigger_key;
 
     // Constants
     constexpr static double ns_per_sample = 2.0;
@@ -69,6 +73,7 @@ public:
             double baseline_stddev,
             size_t first_pos,
             std::vector<double>::const_iterator smoothed_begin, std::vector<double>::const_iterator smoothed_end);
+    bool IsBeamFrame(I3FramePtr frame);
 };
 
 I3_MODULE(BeamCurrentMonitorSummary);
@@ -80,6 +85,8 @@ BeamCurrentMonitorSummary::BeamCurrentMonitorSummary(const I3Context& context) :
     AddParameter("TimeBeforePeak", "Time in ns before the BCM peak to consider when computing the baseline and looking for the BCM start time", double(2000.0));
     AddParameter("ExpSmoothingTau", "Time constant in ns for exponential smoothing", double(10.0));
     AddParameter("DerivativeThreshold", "Theshold below which derivativ is considered to be zero in ADC/ns", double(0.3));
+    AddParameter("OnlyBeamFrames", "Only run on frames with a beam NIM pulse?", bool(true));
+    AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("CCMBCMSummaryName", "Name for the output CCMBCMSummary", std::string("BCMSummary"));
 }
 
@@ -89,6 +96,8 @@ void BeamCurrentMonitorSummary::Configure() {
     GetParameter("TimeBeforePeak", time_before_peak_);
     GetParameter("ExpSmoothingTau", exp_smoothing_tau_);
     GetParameter("DerivativeThreshold", derivative_threshold_);
+    GetParameter("OnlyBeamFrames", only_beam_frames_);
+    GetParameter("NIMPulsesName", nim_pulses_name_);
     GetParameter("CCMBCMSummaryName", bcm_name_);
 }
 
@@ -181,6 +190,7 @@ void BeamCurrentMonitorSummary::Geometry(I3FramePtr frame) {
         log_fatal("CCMGeometry does not contain a channel corresponding to a BeamCurrentMonitor");
     }
     bcm_channel = geo.pmt_channel_map.at(bcm_key);
+    beam_trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::BeamTrigger, 1);
     PushFrame(frame);
 }
 
@@ -348,10 +358,41 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
     return bcm;
 }
 
+bool BeamCurrentMonitorSummary::IsBeamFrame(I3FramePtr frame) {
+    if(not frame->Has(nim_pulses_name_)) {
+        log_warn(("No key named " + nim_pulses_name_ + " present in frame").c_str());
+        return false;
+    }
+    boost::shared_ptr<NIMLogicPulseSeriesMap const> nim_pulses = frame->Get<boost::shared_ptr<NIMLogicPulseSeriesMap const>>(nim_pulses_name_);
+    if(not nim_pulses) {
+        log_warn(("No NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " present in frame").c_str());
+        return false;
+    }
+    NIMLogicPulseSeriesMap::const_iterator it = nim_pulses->find(beam_trigger_key);
+    if(it == nim_pulses->end()) {
+        log_warn(("NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " does not contain the BeamTrigger key").c_str());
+        return false;
+    }
+    if(it->second.size() < 1) {
+        // No NIM pulse on the beam trigger means we skip this frame
+        return false;
+    }
+
+    // We found a NIM pulse on the beam trigger,
+    // therefore this is a beam frame
+    return true;
+}
+
 void BeamCurrentMonitorSummary::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
+
+    if(only_beam_frames_ and not IsBeamFrame(frame)) {
+        PushFrame(frame);
+        return;
+    }
+
     I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
     CCMWaveformUInt16 const & bcm_waveform = waveforms.at(bcm_channel);
 
