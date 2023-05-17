@@ -70,6 +70,6 @@ if __name__ == "__main__":
     )
 
     tray.Add("Dump") # Prints out the names of the objects in every frame
-    tray.AddModule(PrintNIM, "print_nim") # Prints out the NIM pulses in each DAQ frame
+    tray.Add(PrintNIM, "print_nim") # Prints out the NIM pulses in each DAQ frame
     tray.Execute(args.num_events + 1) # Number of frames to process is num_events DAQ frames plus one Geometry frame
 
