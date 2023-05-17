@@ -56,18 +56,16 @@ if __name__ == "__main__":
     tray = I3Tray()
     tray.Add("I3Reader", "reader", FilenameList=fnames)
 
-    # Add the module that finds NIM pulses in the trigger channels
+    # Add the module that analyzes the beam current monitor waveform and produces summary information
     # All parameters are set to there defaults here, so the lines below are quivalent to:
-    #   tray.Add("NIMLogicPulseFinder", "nim_pulses")
-    tray.AddModule("BeamCurrentMonitorSummary", "bcm_summary")
-    tray.Add("NIMLogicPulseFinder", "nim_pulses",
+    #   tray.AddModule("BeamCurrentMonitorSummary", "bcm_summary")
+    tray.AddModule("BeamCurrentMonitorSummary", "bcm_summary",
         CCMGeometryName="CCMGeometry", # Frame key for CCMGeometry
         CCMWaveformsName="CCMWaveforms", # Frame key to output vector of CCMWaveforms
-        SampleStep=50, # The number of steps between samples used for the initial baseline estimate
-        NFramesForBaseline=10, # The number of frames to use for a baseline estimate
-        ConstantFraction=0.05, # The fraction of the pulse height to use for its start time
-        MinimumPulseHeight=1000, # The minimum pulse height to consider a NIM pulse to be present
-        NIMLogicPulseSeriesMapName="NIMPulses", # Name for the output nim pulses map
+        TimeBeforePeak=2000.0, # Time in ns before the BCM peak to consider when computing the baseline and looking for the BCM start time
+        ExpSmoothingTau=10.0, # Time constant in ns for exponential smoothing
+        DerivativeThreshold=0.3, # Theshold below which derivativ is considered to be zero in ADC/ns
+        CCMBCMSummaryName="BCMSummary", # Name for the output CCMBCMSummary
     )
 
     tray.Add("Dump") # Prints out the names of the objects in every frame
