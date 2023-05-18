@@ -85,6 +85,7 @@ template <class Archive>
 void CCMBCMSummary::save(Archive& ar, unsigned version) const {
     if (version>ccmbcmsummary_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMBCMSummary class.",version,ccmbcmsummary_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("bcm_start_time", bcm_start_time);
     ar & make_nvp("bcm_end_time", bcm_end_time);
     ar & make_nvp("bcm_peak_time", bcm_peak_time);
@@ -98,6 +99,7 @@ template <class Archive>
 void CCMBCMSummary::load(Archive& ar, unsigned version) {
     if (version>ccmbcmsummary_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMBCMSummary class.",version,ccmbcmsummary_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("bcm_start_time", bcm_start_time);
     ar & make_nvp("bcm_end_time", bcm_end_time);
     ar & make_nvp("bcm_peak_time", bcm_peak_time);

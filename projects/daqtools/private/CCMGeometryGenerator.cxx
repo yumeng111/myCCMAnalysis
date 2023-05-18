@@ -630,6 +630,11 @@ void CCMGeometryGenerator::Process() {
             CCMAnalysis::Binary::ChannelHeader const & channel = board.channels[channel_idx];
             std::string type = detail::tolower(channel.physical_channel_type);
             std::string id = detail::tolower(channel.physical_channel_id);
+            // Special case to handle missing trigger copy in 2022 data
+            if(board.physical_board_id == "physical_board_18" and channel_idx == 15 and id == "" and type == "") {
+                type = detail::tolower("Trigger Copy");
+                id = detail::tolower("Trigger Copy 18");
+            }
             I3Position position;
             I3Orientation orientation;
             CCMPMTKey pmt_key;
@@ -761,7 +766,7 @@ void CCMGeometryGenerator::Process() {
             } else if(type == detail::tolower("")) {
                 continue;
             } else {
-                throw std::runtime_error("Unknown channel type: \"" + channel.physical_channel_type + "\"");
+                log_fatal(("Unknown channel type: \"" + channel.physical_channel_type + "\"").c_str());
             }
 
             if(is_trigger) {
