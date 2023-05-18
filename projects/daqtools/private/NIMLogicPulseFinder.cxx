@@ -314,10 +314,12 @@ bool NIMLogicPulseFinder::CheckBaselines(I3FramePtr frame) {
         uint32_t const & trigger_channel = key.second;
         double baseline = baselines[trigger_key];
         double baseline_stddev = baseline_stddevs[trigger_key];
-        double baseline_estimate = QuickBaselineEstimate(waveforms[trigger_channel], baseline, baseline_stddev);
-        if(std::abs(baseline - baseline_estimate) > 10.0 * baseline_stddev) {
-            // Report that we need a new baseline estimate
-            return true;
+        if(waveforms[trigger_channel].GetWaveform().size() > 0) {
+            double baseline_estimate = QuickBaselineEstimate(waveforms[trigger_channel], baseline, baseline_stddev);
+            if(std::abs(baseline - baseline_estimate) > 10.0 * baseline_stddev) {
+                // Report that we need a new baseline estimate
+                return true;
+            }
         }
     }
     // Report that the current baseline estimates are fine
