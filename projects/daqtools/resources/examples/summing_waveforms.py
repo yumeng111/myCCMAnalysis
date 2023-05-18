@@ -51,7 +51,7 @@ class SumWaveforms(I3ConditionalModule):
             pmt = geo.pmt_geo[pmt_key]
             if pmt.omtype in self.pmt_types:
                 # Store PMT key, trigger key for corresponding board, and channel index
-                self.channels_to_sum.append(pmt_key, trigger_key, channel)
+                self.channels_to_sum.append((pmt_key, trigger_key, channel))
 
         # Store all the trigger keys we will need to look at to determine waveform sizing and offsets
         self.unique_trigger_keys = np.unique([trigger_key for _, trigger_key, _ in self.channels_to_sum]).tolist()
@@ -98,7 +98,7 @@ class SumWaveforms(I3ConditionalModule):
 
         # Check that the length of each waveform is the same
         # We want to skip events with missing data, and events with more than one trigger in the DAQ readout window
-        sizes = self.get_sizes(waveforms):
+        sizes = self.get_sizes(waveforms)
         if len(sizes) > 1 or sizes[0] == 0:
             print("Skipping event because waveform sizes do not match or empty waveform")
             return
@@ -214,9 +214,8 @@ if __name__ == "__main__":
     tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inUncoated, dataclasses.CCMOMGeo.CCM8inCoated], OutputKey="InnerVolumeSummedWaveform")
     tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inCoated], OutputKey="Coated8inPMTSummedWaveform")
     tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inUncoated], OutputKey="Uncoated8inPMTSummedWaveform")
-    tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inUncoated, dataclasses.CCMOMGeo.CCM8inCoated], OutputKey="VetoSummedWaveform")
+    tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM1in], OutputKey="VetoSummedWaveform")
 
     tray.Add("Dump") # Prints out the names of the objects in every frame
-    tray.AddModule(PrintBCM, "print_bcm")
     tray.Execute(args.num_events + 1) # Number of frames to process is num_events DAQ frames plus one Geometry frame
 
