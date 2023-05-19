@@ -56,24 +56,6 @@ static object ccmtriggerkey_getitem(value_type const& x, int i) {
 // __len__ = 2
 static int ccmtriggerkey_len(value_type const& x) { return 2; }
 
-#define DEFINE_ENUM_FORMAT(r, data, elem)             \
-        case CCMTriggerKey::elem:                       \
-            return BOOST_PP_STRINGIZE(elem);
-
-inline const char* format_trigger_type(CCMTriggerKey::TriggerType val) {
-    switch (val) {
-        BOOST_PP_SEQ_FOR_EACH(DEFINE_ENUM_FORMAT, , CCMTriggerKey_H_CCMTriggerKey_TriggerType)
-        default:
-            return 0;
-    }
-}
-
-std::string repr(const CCMTriggerKey& key){
-  std::stringstream s;
-  s << "CCMTriggerKey(" << format_trigger_type(key.GetType()) << "," << key.GetNumber() << ")";
-  return s.str();
-}
-
 void
 register_CCMTriggerKey()
 {
@@ -82,8 +64,6 @@ register_CCMTriggerKey()
     .def(init<CCMTriggerKey::TriggerType, unsigned int>())
     PROPERTY(CCMTriggerKey, type, Type)
     PROPERTY(CCMTriggerKey, number, Number)
-    .def("__str__", &CCMTriggerKey::str)
-    .def("__repr__", repr)
     .def("__hash__", hash_ccmtriggerkey)
     .def("__getitem__", ccmtriggerkey_getitem)
     .def("__len__", ccmtriggerkey_len)

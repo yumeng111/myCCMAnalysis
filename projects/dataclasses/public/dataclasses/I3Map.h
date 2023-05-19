@@ -28,6 +28,74 @@
 template <typename Key, typename Value>
 struct I3Map : public I3FrameObject, public std::map<Key, Value>
 { 
+  typedef std::map<Key, Value> base_t;
+  typedef typename base_t::value_type value_type;
+  typedef typename base_t::key_compare Compare;
+  typedef typename base_t::allocator_type Allocator;
+
+  I3Map() { }
+
+  explicit I3Map( const Compare& comp,
+              const Allocator& alloc = Allocator() ) :
+      base_t(comp, alloc) {}
+
+  explicit I3Map( const Allocator& alloc ) :
+      base_t(alloc) {}
+
+  template< class InputIt >
+  I3Map( InputIt first, InputIt last,
+     const Compare& comp = Compare(),
+     const Allocator& alloc = Allocator() ) :
+      base_t(first, last, comp, alloc) {}
+
+  template< class InputIt >
+  I3Map( InputIt first, InputIt last,
+     const Allocator& alloc ) :
+      base_t(first, last, alloc) {}
+
+  I3Map( const I3Map<Key, Value>& other ) :
+    base_t((base_t)other) {}
+  I3Map( const base_t& other ) :
+      base_t(other) {}
+
+  I3Map( const I3Map<Key, Value>& other, const Allocator& alloc ) :
+      base_t((base_t)other, alloc) {}
+  I3Map( const base_t& other, const Allocator& alloc ) :
+      base_t(other, alloc) {}
+
+  I3Map( I3Map&& other ) :
+      base_t((base_t)other) {}
+  I3Map( base_t&& other ) :
+      base_t(other) {}
+
+  I3Map( I3Map&& other, const Allocator& alloc ) :
+      base_t((base_t)other) {}
+  I3Map( base_t&& other, const Allocator& alloc ) :
+      base_t(other) {}
+
+  I3Map( std::initializer_list<value_type> init,
+     const Compare& comp = Compare(),
+     const Allocator& alloc = Allocator() ) :
+      base_t(init, comp, alloc) {}
+
+  I3Map( std::initializer_list<value_type> init,
+     const Allocator& alloc) :
+      base_t(init, alloc) {}
+
+  I3Map& operator=( const I3Map& other ) = default;
+  I3Map& operator=( const base_t& other ) {
+      return base_t::operator=(other);
+  }
+
+  I3Map& operator=( I3Map&& other ) = default;
+  I3Map& operator=( base_t&& other ) {
+      return base_t::operator=(other);
+  }
+
+  I3Map& operator=( std::initializer_list<value_type> ilist ) {
+      return base_t::operator=(ilist);
+  }
+
   template <class Archive>
   void serialize(Archive & ar, unsigned version)
   {
