@@ -54,15 +54,15 @@ class SumWaveforms(I3ConditionalModule):
                 self.channels_to_sum.append((pmt_key, trigger_key, channel))
 
         # Store all the trigger keys we will need to look at to determine waveform sizing and offsets
-        self.unique_trigger_keys = np.unique([trigger_key for _, trigger_key, _ in self.channels_to_sum]).tolist()
-        return True
-
+        self.unique_trigger_keys = list(sorted(set([trigger_key for _, trigger_key, _ in self.channels_to_sum])))
+        # Here we push the frame to the next module so that any subsequent modules can process it
+        self.PushFrame(frame)
 
     # Here we compute the sizes of each waveform that we intend to look at
     def get_sizes(self, waveforms):
         sizes = []
         for pmt_key, trigger_key, channel in self.channels_to_sum:
-            size = waveforms[channel].waveform.size()
+            size = len(waveforms[channel].waveform)
             sizes.append(size)
         sizes = np.unique(sizes)
         return sizes
@@ -80,12 +80,10 @@ class SumWaveforms(I3ConditionalModule):
                 continue
             offset = int(pulses[0].time / 2.0)
             offsets[trigger_key] = offset
-        offset_list = [offset for offset in offsets if offset is not None]
+        offset_list = [offset for offset in offsets.values() if offset is not None]
         min_offset = np.amin(offset_list)
         max_offset = np.amax(offset_list)
-        offsets = {trigger_key: max_offset - offset for trigger_key, offset in offsets}
-
-        bcm_summary.start_time / 2.0
+        offsets = {trigger_key: max_offset - offset for trigger_key, offset in offsets.items()}
 
         return max_offset - min_offset, offsets
 
@@ -110,10 +108,10 @@ class SumWaveforms(I3ConditionalModule):
 
         # Compute the extra size we need in the summed waveform due to differing offsets on each board
         # Also compute the offsets of each waveform relative to the larger summed waveform
-        extra_size, offsets = self.get_size_and_offsets(num_pulses)
+        extra_size, offsets = self.get_size_and_offsets(nim_pulses)
 
-        summed_wf = np.zeros(size)
-        channels_summed = np.zeros(size)
+        summed_wf = np.zeros(size + extra_size)
+        channels_summed = np.zeros(size + extra_size)
         for pmt_key, trigger_key, channel in self.channels_to_sum:
             offset = offsets[trigger_key]
             if offset is None:
@@ -131,9 +129,10 @@ class SumWaveforms(I3ConditionalModule):
             offset = offsets[trigger_key]
 
             # Add the waveform to the summed waveform
-            summed_wf[offset:offset-extra_size] += wf
+            #s = slice(offset, (offset - extra_size if offset < extra_size else None))
+            summed_wf[offset:offset+size] += wf
             # Track how many waveforms have been added to each position in the summed waveform
-            channels_summed[offset:offset-extra_size] += 1
+            channels_summed[offset:offset+size] += 1
 
         # Normalize the waveform to a single channel
         summed_wf /= channels_summed
@@ -144,7 +143,7 @@ class SumWaveforms(I3ConditionalModule):
         frame[self.output_name] = dataclasses.I3VectorDouble(summed_wf)
 
         # Here we push the frame to the next module so that any subsequent modules can process it
-        PushFrame(frame)
+        self.PushFrame(frame)
 
     # This optional method is called once by the I3Tray after all frames have been processed
     def Finish(self):
@@ -155,8 +154,8 @@ if __name__ == "__main__":
     import argparse
     # Input arguments
     parser = argparse.ArgumentParser(
-            prog = "BCM summary printer",
-            description = "Analyze beam current monitor and BCM summary",
+            prog = "Sum waveforms",
+            description = "Sum the waveforms from certain PMTs together, accounting for timing differences, and normalizing to a single channel",
             )
     parser.add_argument("--files",
             type=str,
@@ -166,7 +165,7 @@ if __name__ == "__main__":
             help="Files to Process")
     parser.add_argument("--num-events",
             type=int,
-            default=100,
+            default=0,
             help="Number of events to process")
     args = parser.parse_args()
 
@@ -180,42 +179,14 @@ if __name__ == "__main__":
 
     tray = I3Tray()
     tray.Add("I3Reader", "reader", FilenameList=fnames)
-    tray.Add("Delete", Keys=["NIMPulses", "BCMSummary"]) # Remove keys that we are computing in this example
-
-    # Add the module that finds NIM pulses in the trigger channels
-    # All parameters are set to there defaults here, so the lines below are quivalent to:
-    #   tray.Add("NIMLogicPulseFinder", "nim_pulses")
-    tray.Add("NIMLogicPulseFinder", "nim_pulses",
-        CCMGeometryName="CCMGeometry", # Frame key for CCMGeometry
-        CCMWaveformsName="CCMWaveforms", # Frame key to output vector of CCMWaveforms
-        SampleStep=50, # The number of steps between samples used for the initial baseline estimate
-        NFramesForBaseline=10, # The number of frames to use for a baseline estimate
-        ConstantFraction=0.05, # The fraction of the pulse height to use for its start time
-        MinimumPulseHeight=1000, # The minimum pulse height to consider a NIM pulse to be present
-        NIMLogicPulseSeriesMapName="NIMPulses", # Name for the output nim pulses map
-    )
-
-    # The NIM pulses are required if we want to restrict computing the BCM summary to only beam frames
-
-    # Add the module that analyzes the beam current monitor waveform and produces summary information
-    # All parameters are set to there defaults here, so the lines below are quivalent to:
-    #   tray.AddModule("BeamCurrentMonitorSummary", "bcm_summary")
-    tray.Add("BeamCurrentMonitorSummary", "bcm_summary",
-        CCMGeometryName="CCMGeometry", # Frame key for CCMGeometry
-        CCMWaveformsName="CCMWaveforms", # Frame key to output vector of CCMWaveforms
-        TimeBeforePeak=2000.0, # Time in ns before the BCM peak to consider when computing the baseline and looking for the BCM start time
-        ExpSmoothingTau=10.0, # Time constant in ns for exponential smoothing
-        DerivativeThreshold=0.3, # Theshold below which derivativ is considered to be zero in ADC/ns
-        OnlyBeamFrames=True, # Only run on frames with a beam NIM pulse?
-        NIMPulsesName="NIMPulses", # Key for NIMLogicPulseSeriesMap
-        CCMBCMSummaryName="BCMSummary", # Name for the output CCMBCMSummary
-    )
-
     tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inUncoated, dataclasses.CCMOMGeo.CCM8inCoated], OutputKey="InnerVolumeSummedWaveform")
-    tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inCoated], OutputKey="Coated8inPMTSummedWaveform")
-    tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inUncoated], OutputKey="Uncoated8inPMTSummedWaveform")
-    tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM1in], OutputKey="VetoSummedWaveform")
+    #tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inCoated], OutputKey="Coated8inPMTSummedWaveform")
+    #tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM8inUncoated], OutputKey="Uncoated8inPMTSummedWaveform")
+    #tray.Add(SumWaveforms, PMTTypes=[dataclasses.CCMOMGeo.CCM1in], OutputKey="VetoSummedWaveform")
 
     tray.Add("Dump") # Prints out the names of the objects in every frame
-    tray.Execute(args.num_events + 1) # Number of frames to process is num_events DAQ frames plus one Geometry frame
+    if args.num_events < 1:
+        tray.Execute() # Process all frames
+    else:
+        tray.Execute(args.num_events + 1) # Number of frames to process is num_events DAQ frames plus one Geometry frame
 
