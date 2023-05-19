@@ -97,7 +97,20 @@ T Mode(const T* const sorted, const size_t num_values) {
     return average;
 }
 
-template <class Iterator, class U = typename std::iterator_traits<Iterator>::value_type>
+template<typename Iterator>
+using IteratorCategoryOf =
+    typename std::iterator_traits<Iterator>::iterator_category;
+
+template<typename Iterator>
+using HaveRandomAccessIterator =
+    std::is_base_of<
+        std::random_access_iterator_tag,
+        IteratorCategoryOf<Iterator>>;
+
+template <
+    class Iterator,
+    class U = typename std::iterator_traits<Iterator>::value_type,
+    typename std::enable_if<HaveRandomAccessIterator<Iterator>::value>::type * = nullptr>
 U Mode(Iterator begin, Iterator end) {
     size_t num_values = std::distance(begin, end);
     size_t idx_begin = 0;
@@ -116,6 +129,50 @@ U Mode(Iterator begin, Iterator end) {
 
     assert(half_count == 1);
     const U average = (x + *(begin + idx_begin + 1) + 1) / 2;
+    return average;
+}
+
+template <
+    class Iterator,
+    class U = typename std::iterator_traits<Iterator>::value_type,
+    typename std::enable_if<!HaveRandomAccessIterator<Iterator>::value>::type * = nullptr>
+U Mode(Iterator begin, Iterator end) {
+    size_t num_values = std::distance(begin, end);
+    size_t idx_begin = 0;
+    size_t half_count = num_values / 2;
+
+    Iterator it0 = begin;
+    for(size_t i=0; i<idx_begin; ++i) {
+        ++it0;
+    }
+    Iterator it1 = begin;
+    for(size_t i=0; i<(idx_begin + half_count); ++i) {
+        ++it1;
+    }
+    size_t prev_idx_begin;
+    size_t prev_half_count;
+    while (half_count > 1) {
+        prev_idx_begin = idx_begin;
+        prev_half_count = half_count;
+        idx_begin = MinRange(it0, it1, idx_begin);
+        for(size_t i=0; i<(idx_begin - prev_idx_begin); ++i) {
+            ++it0;
+        }
+        half_count >>= 1;
+        for(size_t i=0; i<((idx_begin + prev_half_count) - (prev_idx_begin + prev_half_count)); ++i) {
+            ++it1;
+        }
+    }
+
+    const U x = *(it0);
+
+    if (half_count == 0) {
+        return x;
+    }
+
+    assert(half_count == 1);
+    ++it0;
+    const U average = (x + *it0 + 1) / 2;
     return average;
 }
 
