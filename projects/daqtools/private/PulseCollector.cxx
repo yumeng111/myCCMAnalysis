@@ -8,6 +8,7 @@
 #include <boost/make_shared.hpp>
 
 #include <string>
+#include <random>
 #include <iostream>
 #include <algorithm>
 
@@ -47,14 +48,22 @@ public:
     double Median() {
         const size_t N = sorted_samples.size();
         const size_t half = N / 2;
+        std::multiset<double>::iterator it = sorted_samples.begin();
+        for(size_t i=0; i<(half-1); ++i)
+            ++it;
 
         // Odd count: return middle
         if(N % 2) {
-            return sorted_samples.begin()[half];
+            ++it;
+            return *it;
         }
 
         // Even count: return average of middle two.
-        return (sorted_samples.begin()[half] + sorted_samples.begin()[half - 1]) / 2;
+        double ret = *it;
+        ++it;
+        ret += *it;
+        ret /= 2;
+        return ret;
     }
 
     double Mode() {
@@ -70,7 +79,7 @@ public:
 };
 
 template <class RandomIt, class RandomFunc, class U = typename std::iterator_traits<RandomIt>::value_type>
-std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, URBG&& g) {
+std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, RandomFunc&& g) {
     typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
     typedef std::uniform_int_distribution<diff_t> distr_t;
     typedef typename distr_t::param_type param_t;
@@ -88,9 +97,9 @@ std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, URBG&& g) {
 class WaveformSmoother {
     std::vector<uint16_t>::const_iterator begin;
     std::vector<uint16_t>::const_iterator end;
-    size_t N = wf.size();
-    std::vector<double> smoothed_wf(N);
-    std::vector<double> derivative(N);
+    size_t N;
+    std::vector<double> smoothed_wf;
+    std::vector<double> derivative;
     size_t index;
     size_t max_computed;
     double delta_t;
@@ -122,17 +131,17 @@ public:
         // Exponentially smooth the second element
         x = -double(begin[1]);
         y_i += (1.0 - alpha) * (x - y_i);
-        exp_prev = y_i
+        exp_prev = y_i;
 
         // Exponentially smooth the third element
         x = -double(begin[2]);
         y_i += (1.0 - alpha) * (x - y_i);
-        exp_current = y_i
+        exp_current = y_i;
 
         // Exponentially smooth the fourth element
         x = -double(begin[3]);
         y_i += (1.0 - alpha) * (x - y_i);
-        exp_next = y_i
+        exp_next = y_i;
 
         // Box smoothing for the first element
         smoothed_wf[0] = (exp_prevprev + exp_prev) / 2.0;
@@ -205,7 +214,7 @@ public:
             // Box smoothing for everything in between
             smoothed_wf[idx+1] = (exp_current + exp_next + exp_nextnext) / 3.0;
             exp_current = exp_next;
-            exp_next = exp_nextnext
+            exp_next = exp_nextnext;
 
             // Finite difference derivative
             derivative[idx] = (smoothed_wf[idx+1] - smoothed_wf[idx-1]) / (2.0 * delta_t);
@@ -218,35 +227,30 @@ public:
 
             // Derivative for the last element
             derivative[N-1] = (3.0 * smoothed_wf[N-1] - 4.0 * smoothed_wf[N-2] + smoothed_wf[N-3]) / (2.0 * delta_t);
-
-            for(size_t i=N-2; i<N; ++i) {
-                if(derivative[i] > deriv_threshold) {
-                    over_threshold = true;
-                    last_idx = size_t(std::max(0, ptrdiff_t(i) - 5));
-                    break;
-                }
-            }
         }
         current_value = smoothed_wf[idx];
         current_derivative = derivative[idx];
         max_computed = idx;
     }
+
+    size_t Size() {
+        return N;
+    }
 };
 
 std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetSamplesBeforeThreshold(WaveformSmoother & smoother, double deriv_threshold, size_t max_samples) {
     smoother.Reset();
-    size_t N = wf.size();
+    size_t N = smoother.Size();
     N = std::min(max_samples + 5, N);
     size_t last_index = N-1;
 
-    if(derivative[0] > deriv_threshold) {
-        over_threshold = true;
+    if(smoother.Derivative() > deriv_threshold) {
         last_index = 0;
     } else {
-        for(size_t i=1; i<; ++i) {
+        for(size_t i=1; i<N; ++i) {
             smoother.Next();
             if(smoother.Derivative() > deriv_threshold) {
-                last_index = size_t(std::max(0, ptrdiff_t(i) - 5));
+                last_index = size_t(std::max(ptrdiff_t(0), ptrdiff_t(i) - 5));
                 break;
             }
         }
@@ -256,8 +260,9 @@ std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetSampl
     return smoothed_iterators;
 }
 
-std::vector<double> GetBaselineSamples(CCMWaveform const & waveform, double deriv_threshold, double tau, double delta_t, size_t max_samples, size_t min_samples, size_t target_samples, std::mt19937 & g) {
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> pre_pulse_samples = GetSamplesBeforeThreshold(waveform, deriv_threshold, max_samples);
+std::vector<double> GetBaselineSamples(CCMWaveformUInt16 const & waveform, double deriv_threshold, double tau, double delta_t, size_t max_samples, size_t min_samples, size_t target_samples, std::mt19937 & g) {
+    WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), delta_t, tau);
+    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> pre_pulse_samples = GetSamplesBeforeThreshold(smoother, deriv_threshold, max_samples);
     size_t N = std::distance(pre_pulse_samples.first, pre_pulse_samples.second);
 
     if(N < min_samples) {
@@ -265,7 +270,7 @@ std::vector<double> GetBaselineSamples(CCMWaveform const & waveform, double deri
     } else if(N > target_samples) {
         return ChooseNRandom(target_samples, pre_pulse_samples.first, pre_pulse_samples.second, g);
     } else {
-        return pre_pulse_samples;
+        return std::vector<double>(pre_pulse_samples.first, pre_pulse_samples.second);
     }
 }
 
@@ -321,6 +326,7 @@ std::vector<double> ScaleVariance(std::pair<std::vector<double>::iterator, std::
     return estimates;
 }
 
+/*
 std::vector<double> ScaleVariance(std::pair<std::vector<double>::iterator, std::vector<double>::iterator> input, size_t scale_window) {
 	OnlineStats stats;
 	size_t N = std::distance(input.first, input.second);
@@ -339,6 +345,7 @@ std::vector<double> ScaleVariance(std::pair<std::vector<double>::iterator, std::
     }
     return estimates;
 }
+*/
 
 double BaselineVarianceResidual(std::pair<std::vector<double>::iterator, std::vector<double>::iterator> input, double mean, double variance) {
     
@@ -364,8 +371,7 @@ public:
         delta_t(delta_t),
         max_samples(max_samples),
         min_samples(min_samples),
-        target_samples(target_samples),
-        n_frames_cached(0) {
+        target_samples(target_samples) {
     }
 
     void AddBaselineSamples(std::vector<double> const & samples) {
@@ -401,6 +407,7 @@ class PulseCollector : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
     std::string waveforms_name_;
+    std::string nim_name_;
 
     size_t n_frames_for_baseline;
     size_t sample_step;
@@ -409,7 +416,7 @@ class PulseCollector : public I3Module {
 
     // Internal state
     bool geo_seen;
-    I3Map<CCMTriggerKey, uint32_t> trigger_channel_map_;
+    I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     bool baselines_initialized;
     std::deque<I3FramePtr> cached_frames;
     std::map<CCMPMTKey, std::deque<WaveformSmoother>> smooth_waveform_cache;
@@ -441,7 +448,7 @@ public:
     double QuickBaselineEstimate(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
     bool CheckBaselines(I3FramePtr frame);
     NIMLogicPulseSeries GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
-    void ProcessFrame(I3FramePtr frame);
+    //void ProcessFrame(I3FramePtr frame);
 };
 
 I3_MODULE(PulseCollector);
@@ -452,14 +459,14 @@ void PulseCollector::AddBaselineEstimator(CCMPMTKey key, size_t frame_number) {
 }
 
 void PulseCollector::ProcessWaveform(CCMPMTKey key, size_t frame_number, CCMWaveformUInt16 const & waveform) {
-    smooth_waveform_cache[key].emplace_back(waveform, delta_t, tau);
+    smooth_waveform_cache[key].emplace_back(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), delta_t, tau);
     WaveformSmoother & smoother = smooth_waveform_cache[key].back();
     std::pair<std::vector<double>::iterator, std::vector<double>::iterator> samples_before_threshold = 
         GetSamplesBeforeThreshold(smoother, deriv_threshold, max_samples);
 }
 
 PulseCollector::PulseCollector(const I3Context& context) : I3Module(context),
-    geometry_name_(""), waveforms_name_(""), nim_name_(""), geo_seen(false), estimate_baselines(true) {
+    geometry_name_(""), waveforms_name_(""), nim_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("SampleStep", "The number of steps between samples used for the initial baseline estimate.", size_t(50));
@@ -481,9 +488,9 @@ void PulseCollector::Geometry(I3FramePtr frame) {
 
 
     // Cache the trigger channel map
-    trigger_channel_map_ = geo.trigger_channel_map;
+    pmt_channel_map_ = geo.pmt_channel_map;
 
-    for(std::pair<CCMPMTKey const, size_t> p : trigger_channel_map) {
+    for(std::pair<CCMPMTKey const, uint32_t> p : pmt_channel_map_) {
         CCMPMTKey const & key = p.first;
         smooth_waveform_cache.insert({key, std::deque<WaveformSmoother>()});
         baseline_estimators.insert({key, std::deque<std::pair<size_t, BaselineEstimator>>()});
@@ -492,31 +499,11 @@ void PulseCollector::Geometry(I3FramePtr frame) {
     geo_seen = true;
 }
 
-void PulseCollector::ProcessFrame(I3FramePtr frame) {
-    // Find the NIM pulses for each trigger channel and store them in the frame
-    I3Vector<CCMWaveformUInt16> const & waveforms = frame->Get<I3Vector<CCMWaveformUInt16> const>(waveforms_name_);
-    NIMLogicPulseSeriesMapPtr pulse_series_map = boost::make_shared<NIMLogicPulseSeriesMap>();
-    for(std::pair<CCMTriggerKey, uint32_t> const key : trigger_channel_map_) {
-        CCMTriggerKey const & trigger_key = key.first;
-        uint32_t const & trigger_channel = key.second;
-        double baseline = baselines[trigger_key];
-        double baseline_stddev = baseline_stddevs[trigger_key];
-        NIMLogicPulseSeries nim_pulses = GetNIMPulses(waveforms.at(trigger_channel), baseline, baseline_stddev);
-        pulse_series_map->insert({trigger_key, nim_pulses});
-    }
-
-    frame->Put(nim_name_, pulse_series_map);
-}
-
-
 void PulseCollector::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
-    if(need_estimate) {
-
-    }
-    ProcessFrame(frame);
+    //ProcessFrame(frame);
     PushFrame(frame);
 }
 
@@ -527,7 +514,7 @@ void PulseCollector::Flush() {
     if(cached_frames.size()) {
         EstimateBaselines();
         for(size_t i=0; i<cached_frames.size(); ++i) {
-            ProcessFrame(cached_frames[i]);
+            //ProcessFrame(cached_frames[i]);
             PushFrame(cached_frames[i]);
         }
         cached_frames.clear();
