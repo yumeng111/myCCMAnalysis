@@ -165,20 +165,28 @@ public:
         index = 0;
     }
 
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetSmoothedWaveform() {
-        return {smoothed_wf.begin(), smoothed_wf.begin() + index+1};
+    void Reset(size_t reset_index) {
+        index = std::min(index, reset_index);
     }
 
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetFullSmoothedWaveform() {
-        return {smoothed_wf.begin(), smoothed_wf.end()};
+    void Reset(std::vector<double>::const_iterator end) {
+        index = std::min(ptrdiff_t(index), std::distance(smoothed_wf.cbegin(), end) - 1);
+    }
+
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetSmoothedWaveform() const {
+        return {smoothed_wf.cbegin(), smoothed_wf.cbegin() + index+1};
+    }
+
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetFullSmoothedWaveform() const {
+        return {smoothed_wf.cbegin(), smoothed_wf.cend()};
     }
     
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetDerivative() {
-        return {derivative.begin(), derivative.begin() + index+1};
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetDerivative() const {
+        return {derivative.cbegin(), derivative.cbegin() + index+1};
     }
 
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetFullDerivative() {
-        return {derivative.begin(), derivative.end()};
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetFullDerivative() const {
+        return {derivative.cbegin(), derivative.cend()};
     }
 
     int CurrentIndex() {
@@ -238,7 +246,7 @@ public:
     }
 };
 
-std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetSamplesBeforeThreshold(WaveformSmoother & smoother, double deriv_threshold, size_t max_samples) {
+std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetSamplesBeforeThreshold(WaveformSmoother & smoother, double deriv_threshold, size_t max_samples) {
     smoother.Reset();
     size_t N = smoother.Size();
     N = std::min(max_samples + 5, N);
@@ -255,14 +263,14 @@ std::pair<std::vector<double>::iterator, std::vector<double>::iterator> GetSampl
             }
         }
     }
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> smoothed_iterators = smoother.GetSmoothedWaveform();
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_iterators = smoother.GetSmoothedWaveform();
     smoothed_iterators.second = smoothed_iterators.first + last_index;
     return smoothed_iterators;
 }
 
 std::vector<double> GetBaselineSamples(CCMWaveformUInt16 const & waveform, double deriv_threshold, double tau, double delta_t, size_t max_samples, size_t min_samples, size_t target_samples, std::mt19937 & g) {
     WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), delta_t, tau);
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> pre_pulse_samples = GetSamplesBeforeThreshold(smoother, deriv_threshold, max_samples);
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> pre_pulse_samples = GetSamplesBeforeThreshold(smoother, deriv_threshold, max_samples);
     size_t N = std::distance(pre_pulse_samples.first, pre_pulse_samples.second);
 
     if(N < min_samples) {
@@ -417,10 +425,10 @@ class PulseCollector : public I3Module {
     // Internal state
     bool geo_seen;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-    bool baselines_initialized;
-    std::deque<I3FramePtr> cached_frames;
+    //bool baselines_initialized;
+    //std::deque<I3FramePtr> cached_frames;
     std::map<CCMPMTKey, std::deque<WaveformSmoother>> smooth_waveform_cache;
-    std::map<CCMPMTKey, std::deque<std::pair<size_t, BaselineEstimator>>> baseline_estimators;
+    //std::map<CCMPMTKey, std::deque<std::pair<size_t, BaselineEstimator>>> baseline_estimators;
 
     double deriv_threshold = 0.3;
     double tau = 10.0;
@@ -438,46 +446,66 @@ public:
     void Finish();
     void Flush();
 
-    void AddBaselineEstimator(CCMPMTKey key, size_t frame_number);
+    //void AddBaselineEstimator(CCMPMTKey key, size_t frame_number);
     void ProcessWaveform(CCMPMTKey key, size_t frame_number, CCMWaveformUInt16 const & waveform);
 
-    void RemoveBaselineSamples();
-    void AddBaselineSamples(I3FramePtr frame);
+    //void RemoveBaselineSamples();
+    //void AddBaselineSamples(I3FramePtr frame);
 
-    void EstimateBaselines();
-    double QuickBaselineEstimate(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
-    bool CheckBaselines(I3FramePtr frame);
-    NIMLogicPulseSeries GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
-    //void ProcessFrame(I3FramePtr frame);
+    //void EstimateBaselines();
+    //double QuickBaselineEstimate(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
+    //bool CheckBaselines(I3FramePtr frame);
+    //NIMLogicPulseSeries GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
+    void ProcessFrame(I3FramePtr frame);
 };
 
 I3_MODULE(PulseCollector);
 
-void PulseCollector::AddBaselineEstimator(CCMPMTKey key, size_t frame_number) {
-    BaselineEstimator estimator(deriv_threshold, tau, delta_t, max_samples, min_samples, target_samples);
-    baseline_estimators[key].push_back({frame_number, estimator});
-}
+//void PulseCollector::AddBaselineEstimator(CCMPMTKey key, size_t frame_number) {
+//    //BaselineEstimator estimator(deriv_threshold, tau, delta_t, max_samples, min_samples, target_samples);
+//    //baseline_estimators[key].push_back({frame_number, estimator});
+//}
 
 void PulseCollector::ProcessWaveform(CCMPMTKey key, size_t frame_number, CCMWaveformUInt16 const & waveform) {
     smooth_waveform_cache[key].emplace_back(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), delta_t, tau);
     WaveformSmoother & smoother = smooth_waveform_cache[key].back();
-    std::pair<std::vector<double>::iterator, std::vector<double>::iterator> samples_before_threshold = 
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> samples_before_threshold = 
         GetSamplesBeforeThreshold(smoother, deriv_threshold, max_samples);
+    smoother.Reset(samples_before_threshold.second);
+    for(size_t i=0; i<400; ++i) {
+        smoother.Next();
+    }
+}
+
+void PulseCollector::ProcessFrame(I3FramePtr frame) {
+    CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series const>(waveforms_name_);
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> pulse_samples = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+    for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
+        CCMPMTKey const & key = p.first;
+        uint32_t const & channel = p.second;
+        CCMWaveformUInt16 const & waveform = waveforms[channel];
+        ProcessWaveform(key, 0, waveform);
+        WaveformSmoother const & smoother = smooth_waveform_cache[key].back();
+        std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_iterators = smoother.GetSmoothedWaveform();
+        pulse_samples->emplace(std::make_pair(key, std::vector<double>(smoothed_iterators.first, smoothed_iterators.second)));
+        smooth_waveform_cache[key].clear();
+    }
+    frame->Put("PulseSamples", pulse_samples);
 }
 
 PulseCollector::PulseCollector(const I3Context& context) : I3Module(context),
     geometry_name_(""), waveforms_name_(""), nim_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
-    AddParameter("SampleStep", "The number of steps between samples used for the initial baseline estimate.", size_t(50));
-    AddParameter("NFramesForBaseline", "The number of frames to use for a baseline estimate", size_t(10));
+    //AddParameter("SampleStep", "The number of steps between samples used for the initial baseline estimate.", size_t(50));
+    //AddParameter("NFramesForBaseline", "The number of frames to use for a baseline estimate", size_t(10));
 }
 
 void PulseCollector::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMWaveformsName", waveforms_name_);
-    GetParameter("SampleStep", sample_step);
-    GetParameter("NFramesForBaseline", n_frames_for_baseline);
+    //GetParameter("SampleStep", sample_step);
+    //GetParameter("NFramesForBaseline", n_frames_for_baseline);
 }
 
 void PulseCollector::Geometry(I3FramePtr frame) {
@@ -493,33 +521,35 @@ void PulseCollector::Geometry(I3FramePtr frame) {
     for(std::pair<CCMPMTKey const, uint32_t> p : pmt_channel_map_) {
         CCMPMTKey const & key = p.first;
         smooth_waveform_cache.insert({key, std::deque<WaveformSmoother>()});
-        baseline_estimators.insert({key, std::deque<std::pair<size_t, BaselineEstimator>>()});
+    //    baseline_estimators.insert({key, std::deque<std::pair<size_t, BaselineEstimator>>()});
     }
 
     geo_seen = true;
+    PushFrame(frame);
 }
 
 void PulseCollector::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
-    //ProcessFrame(frame);
+    ProcessFrame(frame);
     PushFrame(frame);
 }
 
 void PulseCollector::Flush() {
-    // If we are currently accumulating frames for a new baseline estimate
-    // then we need to finish the estimate and clear out all the frames before
-    // the tray can finish processing
-    if(cached_frames.size()) {
-        EstimateBaselines();
-        for(size_t i=0; i<cached_frames.size(); ++i) {
-            //ProcessFrame(cached_frames[i]);
-            PushFrame(cached_frames[i]);
-        }
-        cached_frames.clear();
-    }
 }
 
 void PulseCollector::Finish() {
+    //// If we are currently accumulating frames for a new baseline estimate
+    //// then we need to finish the estimate and clear out all the frames before
+    //// the tray can finish processing
+    //if(cached_frames.size()) {
+    //    EstimateBaselines();
+    //    for(size_t i=0; i<cached_frames.size(); ++i) {
+    //        ProcessFrame(cached_frames[i]);
+    //        PushFrame(cached_frames[i]);
+    //    }
+    //    cached_frames.clear();
+    //}
+    Flush();
 }
