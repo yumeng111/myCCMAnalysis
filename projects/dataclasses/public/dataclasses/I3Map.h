@@ -18,6 +18,7 @@
 #include <icetray/I3FrameObject.h>
 #include <icetray/has_operator.h>
 #include <icetray/OMKey.h>
+#include <icetray/CCMPMTKey.h>
 #include "dataclasses/TriggerKey.h"
 #include "dataclasses/ostream_overloads.hpp"
 
@@ -181,6 +182,10 @@ typedef I3Map<OMKey, unsigned int > I3MapKeyUInt;
 typedef I3Map<TriggerKey, std::vector<unsigned int> > I3MapTriggerVectorUInt;
 typedef I3Map<TriggerKey, double > I3MapTriggerDouble;
 typedef I3Map<TriggerKey, unsigned int> I3MapTriggerUInt;
+typedef I3Map<CCMPMTKey, std::vector<double> > I3MapPMTKeyVectorDouble;
+typedef I3Map<CCMPMTKey, std::vector<int> > I3MapPMTKeyVectorInt;
+typedef I3Map<CCMPMTKey, double > I3MapPMTKeyDouble;
+typedef I3Map<CCMPMTKey, unsigned int > I3MapPMTKeyUInt;
 
 I3_POINTER_TYPEDEFS(I3MapStringDouble);
 I3_POINTER_TYPEDEFS(I3MapStringInt);
@@ -198,6 +203,10 @@ I3_POINTER_TYPEDEFS(I3MapKeyUInt);
 I3_POINTER_TYPEDEFS(I3MapTriggerVectorUInt);
 I3_POINTER_TYPEDEFS(I3MapTriggerDouble);
 I3_POINTER_TYPEDEFS(I3MapTriggerUInt);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyVectorDouble);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyVectorInt);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyDouble);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyUInt);
 
 #endif // I3MAP_H_INCLUDED
 
