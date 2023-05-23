@@ -180,7 +180,7 @@ public:
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetFullSmoothedWaveform() const {
         return {smoothed_wf.cbegin(), smoothed_wf.cend()};
     }
-    
+
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetDerivative() const {
         return {derivative.cbegin(), derivative.cbegin() + index+1};
     }
@@ -246,40 +246,77 @@ public:
     }
 };
 
-std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetSamplesBeforeThreshold(WaveformSmoother & smoother, double deriv_threshold, size_t max_samples) {
-    smoother.Reset();
+size_t CheckForPulse(WaveformSmoother & smoother, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, double baseline) {
+    smoother.Reset(start_idx);
+    // 0 before start of pulse checking [checking for positive derivative]
+    // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
+    // 2 derivative is negative (in falling edge of pulse) [checking for positive derivative]
+    // 3 derivative is positive (recovering from droop) [done]
+    int state = 1;
+    double max_value = smoother.Value() - baseline;
+    double max_abs_derivative = std::abs(smoother.Derivative());
+    double integral = 0;
+    bool found_pulse = false;
+    size_t final_idx = start_idx;
+    size_t N = std::min(smoother.Size(), start_idx + max_samples);
+    for(size_t i=start_idx; i<N; ++i) {
+        max_value = std::max(max_value, smoother.Value() - baseline);
+        max_abs_derivative = std::max(max_abs_derivative, std::abs(smoother.Derivative()));
+        integral += (smoother.Value() - baseline);
+        if(state % 2) {
+            if(smoother.Derivative() < 0)
+                state += 1;
+        } else
+            if(smoother.Derivative() > 0) {
+                state += 1;
+        }
+        if(state >= 3) {
+            found_pulse = true;
+            final_idx = i;
+            break;
+        }
+        smoother.Next();
+    }
+    smoother.Reset(start_idx);
+    if(found_pulse
+            and (max_value >= value_threshold)
+            and (max_abs_derivative >= derivative_threshold)
+            and (integral >= integral_threshold)
+            and (final_idx - start_idx >= min_length)
+            ) {
+        return final_idx;
+    } else {
+        return start_idx;
+    }
+}
+
+std::pair<size_t, size_t> GetSamplesBeforeThreshold(WaveformSmoother & smoother, double deriv_threshold, size_t max_samples) {
     size_t N = smoother.Size();
     N = std::min(max_samples + 5, N);
-    size_t last_index = N-1;
+    size_t last_index = 0;
 
-    if(smoother.Derivative() > deriv_threshold) {
-        last_index = 0;
-    } else {
-        for(size_t i=1; i<N; ++i) {
-            smoother.Next();
-            if(smoother.Derivative() > deriv_threshold) {
+    std::vector<double> baseline_samples;
+    baseline_samples.reserve(400);
+    smoother.Reset();
+    for(size_t i=0; i<N; ++i) {
+        baseline_samples.push_back(smoother.Value());
+        smoother.Next();
+    }
+    std::sort(baseline_samples.begin(), baseline_samples.end());
+    double baseline = robust_stats::Mode(baseline_samples.begin(), baseline_samples.end());
+
+    smoother.Reset();
+    for(size_t i=0; i<N; ++i) {
+        if(smoother.Derivative() > deriv_threshold) {
+            size_t pulse_last_idx = CheckForPulse(smoother, i, 100, 5, 5.0, 0.65, 25.0, baseline);
+            if(pulse_last_idx > i) {
                 last_index = size_t(std::max(ptrdiff_t(0), ptrdiff_t(i) - 5));
                 break;
             }
         }
+        smoother.Next();
     }
-    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_iterators = smoother.GetSmoothedWaveform();
-    smoothed_iterators.second = smoothed_iterators.first + last_index;
-    return smoothed_iterators;
-}
-
-std::vector<double> GetBaselineSamples(CCMWaveformUInt16 const & waveform, double deriv_threshold, double tau, double delta_t, size_t max_samples, size_t min_samples, size_t target_samples, std::mt19937 & g) {
-    WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), delta_t, tau);
-    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> pre_pulse_samples = GetSamplesBeforeThreshold(smoother, deriv_threshold, max_samples);
-    size_t N = std::distance(pre_pulse_samples.first, pre_pulse_samples.second);
-
-    if(N < min_samples) {
-        return std::vector<double>();
-    } else if(N > target_samples) {
-        return ChooseNRandom(target_samples, pre_pulse_samples.first, pre_pulse_samples.second, g);
-    } else {
-        return std::vector<double>(pre_pulse_samples.first, pre_pulse_samples.second);
-    }
+    return {0, last_index};
 }
 
 class OnlineStats {
@@ -314,50 +351,6 @@ public:
         return mean;
     }
 };
-
-std::vector<double> ScaleVariance(std::pair<std::vector<double>::iterator, std::vector<double>::iterator> input, size_t scale_window) {
-	OnlineStats stats;
-	size_t N = std::distance(input.first, input.second);
-    std::vector<double>::iterator begin = input.first;
-	size_t n_estimates = ((N < scale_window) ? 1 : ((N - scale_window) + 1));
-    std::vector<double> estimates(n_estimates);
-    size_t max_i = std::min(scale_window, N);
-    for(size_t i=0; i<max_i; ++i) {
-        stats.AddValue(begin[i]);
-    }
-    estimates[0] = stats.SampleFrequencyVariance();
-    for(size_t i=max_i; i<N; ++i) {
-        stats.RemoveValue(begin[i - scale_window]);
-        stats.AddValue(begin[i]);
-        estimates[i+1] = stats.SampleFrequencyVariance();
-    }
-    return estimates;
-}
-
-/*
-std::vector<double> ScaleVariance(std::pair<std::vector<double>::iterator, std::vector<double>::iterator> input, size_t scale_window) {
-	OnlineStats stats;
-	size_t N = std::distance(input.first, input.second);
-    std::vector<double>::iterator begin = input.first;
-	size_t n_estimates = ((N < scale_window) ? 1 : ((N - scale_window) + 1));
-    std::vector<double> estimates(n_estimates);
-    size_t max_i = std::min(scale_window, N);
-    for(size_t i=0; i<max_i; ++i) {
-        stats.AddValue(begin[i]);
-    }
-    estimates[0] = stats.SampleFrequencyVariance();
-    for(size_t i=max_i; i<N; ++i) {
-        stats.RemoveValue(begin[i - scale_window]);
-        stats.AddValue(begin[i]);
-        estimates[i+1] = stats.SampleFrequencyVariance();
-    }
-    return estimates;
-}
-*/
-
-double BaselineVarianceResidual(std::pair<std::vector<double>::iterator, std::vector<double>::iterator> input, double mean, double variance) {
-    
-}
 
 } // namespace
 
@@ -425,10 +418,7 @@ class PulseCollector : public I3Module {
     // Internal state
     bool geo_seen;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-    //bool baselines_initialized;
-    //std::deque<I3FramePtr> cached_frames;
     std::map<CCMPMTKey, std::deque<WaveformSmoother>> smooth_waveform_cache;
-    //std::map<CCMPMTKey, std::deque<std::pair<size_t, BaselineEstimator>>> baseline_estimators;
 
     double deriv_threshold = 0.3;
     double tau = 10.0;
@@ -446,35 +436,25 @@ public:
     void Finish();
     void Flush();
 
-    //void AddBaselineEstimator(CCMPMTKey key, size_t frame_number);
-    void ProcessWaveform(CCMPMTKey key, size_t frame_number, CCMWaveformUInt16 const & waveform);
+    size_t ProcessWaveform(CCMPMTKey key, size_t frame_number, CCMWaveformUInt16 const & waveform);
 
-    //void RemoveBaselineSamples();
-    //void AddBaselineSamples(I3FramePtr frame);
-
-    //void EstimateBaselines();
-    //double QuickBaselineEstimate(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
-    //bool CheckBaselines(I3FramePtr frame);
-    //NIMLogicPulseSeries GetNIMPulses(CCMWaveformUInt16 const & waveform, double baseline, double baseline_stddev);
     void ProcessFrame(I3FramePtr frame);
 };
 
 I3_MODULE(PulseCollector);
 
-//void PulseCollector::AddBaselineEstimator(CCMPMTKey key, size_t frame_number) {
-//    //BaselineEstimator estimator(deriv_threshold, tau, delta_t, max_samples, min_samples, target_samples);
-//    //baseline_estimators[key].push_back({frame_number, estimator});
-//}
-
-void PulseCollector::ProcessWaveform(CCMPMTKey key, size_t frame_number, CCMWaveformUInt16 const & waveform) {
+size_t PulseCollector::ProcessWaveform(CCMPMTKey key, size_t frame_number, CCMWaveformUInt16 const & waveform) {
     smooth_waveform_cache[key].emplace_back(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), delta_t, tau);
     WaveformSmoother & smoother = smooth_waveform_cache[key].back();
-    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> samples_before_threshold = 
+    std::pair<size_t, size_t> samples_before_threshold =
         GetSamplesBeforeThreshold(smoother, deriv_threshold, max_samples);
     smoother.Reset(samples_before_threshold.second);
-    for(size_t i=0; i<400; ++i) {
-        smoother.Next();
+    if(samples_before_threshold.second > samples_before_threshold.first) {
+        for(size_t i=0; i<3000; ++i) {
+            smoother.Next();
+        }
     }
+    return samples_before_threshold.second;
 }
 
 void PulseCollector::ProcessFrame(I3FramePtr frame) {
@@ -484,10 +464,14 @@ void PulseCollector::ProcessFrame(I3FramePtr frame) {
         CCMPMTKey const & key = p.first;
         uint32_t const & channel = p.second;
         CCMWaveformUInt16 const & waveform = waveforms[channel];
-        ProcessWaveform(key, 0, waveform);
-        WaveformSmoother const & smoother = smooth_waveform_cache[key].back();
-        std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_iterators = smoother.GetSmoothedWaveform();
-        pulse_samples->emplace(std::make_pair(key, std::vector<double>(smoothed_iterators.first, smoothed_iterators.second)));
+        if(waveform.GetWaveform().size() > 0) {
+            size_t last_pulse_sample = ProcessWaveform(key, 0, waveform);
+            if(last_pulse_sample > 0) {
+                WaveformSmoother const & smoother = smooth_waveform_cache[key].back();
+                std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_iterators = smoother.GetSmoothedWaveform();
+                pulse_samples->emplace(std::make_pair(key, std::vector<double>(smoothed_iterators.first, smoothed_iterators.second)));
+            }
+        }
         smooth_waveform_cache[key].clear();
     }
     frame->Put("PulseSamples", pulse_samples);
@@ -497,15 +481,11 @@ PulseCollector::PulseCollector(const I3Context& context) : I3Module(context),
     geometry_name_(""), waveforms_name_(""), nim_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
-    //AddParameter("SampleStep", "The number of steps between samples used for the initial baseline estimate.", size_t(50));
-    //AddParameter("NFramesForBaseline", "The number of frames to use for a baseline estimate", size_t(10));
 }
 
 void PulseCollector::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMWaveformsName", waveforms_name_);
-    //GetParameter("SampleStep", sample_step);
-    //GetParameter("NFramesForBaseline", n_frames_for_baseline);
 }
 
 void PulseCollector::Geometry(I3FramePtr frame) {
