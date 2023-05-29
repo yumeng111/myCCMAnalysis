@@ -20,7 +20,7 @@ private:
     }
     void AddElementKahan(size_t i, double val, unsigned int count) {
         double y = val - compensation[i];
-        double t = sum[i] - y;
+        double t = sum[i] + y;
         compensation[i] = (t - sum[i]) - y;
         sum[i] = t;
         counts[i] += count;
