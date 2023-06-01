@@ -9,8 +9,8 @@ Sodium: setting Sodium to true creates events with the proper Sodium-22 decay ch
 Neither: setting both to false allows the creation of other kinds of initial events, 
          such as 120 keV gammas for cobalt, or neutrons/Ar-39 decay events. 
  */
-#include "primaryGenerator.hh"
-#include "detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
@@ -60,6 +60,9 @@ primaryGenerator::~primaryGenerator()
 void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
 {
   //This function is called at the beginning of an event
+  
+  //defines a variable for rodHeight, necessary for the laser.
+  G4double rodHeight = 0;
 
   //Booleans to be flagged if running either a Sodium or Laser simulation.
   G4bool Sodium = false;
@@ -75,7 +78,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
   G4double theta = G4RandFlat::shoot(-0.0005, 3.142);
   G4double check = G4RandFlat::shoot(0.1,1.1);
   G4double radi = G4RandFlat::shoot(0.01, 0.1)*cm;
-
+  
   //Define the position based on the randoms generated above. current settings: within the laser plates.
   ypos = radi*sin(phi);
   xpos = radi*cos(phi);
@@ -87,9 +90,6 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
   momz = cos(theta);
   partEneg = fParticleGun->GetParticleEnergy()/keV;
     
-  //defines a variable for rodHeight, necessary for the laser.
-  G4double rodHeight = 0;
-
   //Obtain the rod Height from the detector to produce the photons at the right location.
   const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
   
@@ -105,6 +105,7 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     Cosmic = detector->GetfCosmic();
     alp = detector->GetALP();
     //G4cout << "Primary found sodium as " << Sodium << G4endl;
+    //    G4cout << "5Primaries found as: laser Ar39 DM sodium cosmic alp " << Laser << '\t' << Ar39 << '\t' << darkMatter << '\t' << Sodium << '\t' << Cosmic << '\t' << alp << '\t' << rodHeight << '\n';
   }
 
   //call methods to generate events of non-laser types. the order of priority is as below, so only one kind of event can be generated at a time. See below methods for details.
@@ -275,7 +276,7 @@ void primaryGenerator::shootDarkMatter(G4Event* anEvent) {
   G4double phi = G4RandFlat::shoot(-0.28, 6.002);
   ypos = radi2*sin(phi);
   xpos = radi2*cos(phi);
-  zpos = G4RandFlat::shoot(-70.79, 70.79)*cm;
+  zpos = G4RandFlat::shoot(-60.79, 60.79)*cm;
   partEneg = G4RandFlat::shoot(energy,energy2);
   fParticleGun->SetParticleEnergy(partEneg*keV);
   

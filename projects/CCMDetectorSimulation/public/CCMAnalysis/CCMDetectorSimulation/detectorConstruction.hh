@@ -74,10 +74,10 @@ class detectorConstruction : public G4VUserDetectorConstruction
   private:
 
     void DefineMaterials();
-    void placePMT( G4String , G4double , G4double , G4double , G4bool );
+    void placePMT( G4String , G4double , G4double , G4double , G4double, G4bool );
     void placeTopBot( G4String , G4double , G4double , G4double , G4bool );
     void DefineLAr(G4double , G4double , G4double , G4double , G4double );
-    void DefineTpb(G4double, G4double, G4double );
+    void DefineTpb(G4double, G4double, G4double, G4double, G4double );
   //methods to define materials and place PMTS on the sides or on the top/bottom
 
     detectorMessenger* fDetectorMessenger;
@@ -94,6 +94,8 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4Element* fN;
     G4Element* fO;
     G4Material* fGlass;
+    G4Material* fPlastic;
+    G4Material* fBlackPlastic;
     G4Material* tPBhundred;
     G4Material* lAr;
     G4Material* lAr2;
@@ -120,8 +122,10 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4LogicalVolume* fLogicFrame;
     G4Tubs* fTPBSides;
     G4LogicalVolume* fLogicTPB;
+    G4VPhysicalVolume* fPhysTPB;
     G4Tubs* fTPBBottom;
     G4LogicalVolume* fLogicTPBb;
+    G4VPhysicalVolume* fPhysTPBb;
     G4Tubs* fFiducialAr;
     G4LogicalVolume* fLogicFiduc;
     G4VPhysicalVolume* lArFiducial;

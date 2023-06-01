@@ -54,7 +54,7 @@ detectorConstruction::detectorConstruction()
   
   fH = fC = fN = fO = nullptr;
   alum = steel = fVacuum = nullptr;
-  ptfe = fGlass = tPB = tPBhundred = nullptr;
+  ptfe = fGlass = tPB = tPBhundred = fBlackPlastic = fPlastic = nullptr;
   lAr = lAr2 = nullptr;
 
   fCryoVessel = nullptr;
@@ -124,7 +124,7 @@ void detectorConstruction::DefineMaterials(){
                           density=universe_mean_density,kStateGas,0.1*kelvin,
                           1.e-19*pascal);
   //Glass: for PMTs.
-  fGlass = new G4Material("Glass", density=1.032*g/cm3,2);
+  fGlass = new G4Material("Glass", density=2.5*g/cm3,2);
   fGlass->AddElement(fC,91.533*perCent);
   fGlass->AddElement(fH,8.467*perCent);
   //TPB: TPB, wavelength shifting material (mostly defined in optical properties)
@@ -135,6 +135,16 @@ void detectorConstruction::DefineMaterials(){
   tPBhundred = new G4Material("t100", density= 1.079*g/cm3, 2);
   tPBhundred->AddElement(fC, 28);
   tPBhundred->AddElement(fH, 22);
+  //plastic for PMT frill
+  fPlastic = new G4Material("Plastic", density=1.20*g/cm3,3);
+  fPlastic->AddElement(fC,15);
+  fPlastic->AddElement(fH,16);
+  fPlastic->AddElement(fO,2);
+  //BlackPlastic for PMT frill
+  fBlackPlastic = new G4Material("BlackPlastic", density=1.20*g/cm3,3);
+  fBlackPlastic->AddElement(fC,15);
+  fBlackPlastic->AddElement(fH,16);
+  fBlackPlastic->AddElement(fO,2);
 
 
   //G4cout << "first definition of lAr below" << G4endl;
@@ -213,7 +223,7 @@ void detectorConstruction::DefineMaterials(){
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
   G4double base = 55.9506;//42.72;//Base absorption length for UV light
   G4double mult = 2800.0;//Absorption length for visible.
-  DefineLAr(base,ultra,fifth,threehun,mult);
+  DefineLAr(base,100.0,100.0,threehun,mult);//ultra is second
 
 
   //G4cout << "EdwardNote Defined Compounds" << G4endl;
@@ -231,6 +241,28 @@ void detectorConstruction::DefineMaterials(){
   glass_mt->AddProperty("ABSLENGTH",glass_Energy,glass_AbsLength,glassnum);
   glass_mt->AddProperty("RINDEX",glass_Energy,glass_RIND,glassnum);
   fGlass->SetMaterialPropertiesTable(glass_mt);
+
+
+  //Definition of MPT for Plastic frills
+  G4double plastic_Energy[] = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.0*eV };
+  //wavelengths: 1200, 1000, 500, 400, 350, 200, 120, 100
+  G4int plasticnum = sizeof(plastic_Energy) / sizeof(G4double);
+  G4double plastic_reflect[]={0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
+  assert(sizeof(plastic_RIND) == sizeof(plastic_Energy));
+  G4double plastic_AbsLength[]={ 10.0*cm, 10.0*cm, 10.0*cm, 10.0*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm};
+  G4double blackplastic_AbsLength[]={ 1e-9*cm, 1e-9*cm, 1e-9*cm, 1e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm};
+  G4double plastic_RIND[] = { 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4 };
+  assert(sizeof(plastic_AbsLength) == sizeof(plastic_Energy));
+  G4MaterialPropertiesTable *plastic_mt = new G4MaterialPropertiesTable();
+  plastic_mt->AddProperty("ABSLENGTH",plastic_Energy,plastic_AbsLength,plasticnum);
+  plastic_mt->AddProperty("REFLECTIVITY",plastic_Energy,plastic_reflect,plasticnum);
+  plastic_mt->AddProperty("RINDEX",plastic_Energy,plastic_RIND,plasticnum);
+  fPlastic->SetMaterialPropertiesTable(plastic_mt);
+  G4MaterialPropertiesTable *blackplastic_mt = new G4MaterialPropertiesTable();
+  blackplastic_mt->AddProperty("ABSLENGTH",plastic_Energy,blackplastic_AbsLength,plasticnum);
+  blackplastic_mt->AddProperty("REFLECTIVITY",plastic_Energy,plastic_reflect,plasticnum);
+  blackplastic_mt->AddProperty("RINDEX",plastic_Energy,plastic_RIND,plasticnum);
+  fBlackPlastic->SetMaterialPropertiesTable(blackplastic_mt);
 
   //Vacuum
   G4double vacuum_Energy[]={2.0*eV,7.0*eV,7.14*eV};
@@ -295,11 +327,11 @@ void detectorConstruction::DefineMaterials(){
       1.4, 1.4, 1.4, 1.4, 1.4,
       1.4, 1.4, 1.4, 1.4, 1.4,
       1.4, 1.4, 1.4, 1.4, 1.4
-    };
+    };//Claim made for 1.7 from DEAP Thesis. Maybe try varying to check?. TPB rayleigh scattering length is also listed at 3 um, maybe try throwing that component in instead of randomization in stepping action. 
 
   //defining the MPTs for the various types of TPB. This version for foils
   TPBProp = new G4MaterialPropertiesTable();
-  TPBProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
+  //TPBProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
   TPBProp->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, nTPBEntries);
   TPBProp->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
   TPBProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
@@ -308,13 +340,13 @@ void detectorConstruction::DefineMaterials(){
   
   //MPT for second kind of TPB, this version for PMTs.
   TPBsProp = new G4MaterialPropertiesTable();
-  TPBsProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
+  //TPBsProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
   TPBsProp->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, nTPBEntries);
   TPBsProp->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
   TPBsProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
   tPBhundred->SetMaterialPropertiesTable(TPBsProp);
 
-  DefineTpb(foilEff,tpbEff,tpbAbs);
+  DefineTpb(foilEff,tpbEff,tpbAbs,1.7,2.75);
 
   //Defines properties of the ptfe reflectors.
   const G4int nTefEntries = 25;
@@ -326,16 +358,16 @@ void detectorConstruction::DefineMaterials(){
      4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
      7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
   G4double TefReflect[nTefEntries] =
-    {0., 0., 0., 0., 
+    {1., 1., 1., 1., 
      1., 1., 1., 1., 
-     1., 1., 0.99, 0.99,
-     0.99, 0.99, 0.99, 0.99, .99,
-     0.99, 0.99, 0.99, 0.99, 
-     0.99, 0.99, 0.99, 0.99};
+     1., 1., 1., 1.,
+     1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 
+     1., 1., 1., 0.99};
   G4double TefRIndex[nTefEntries] =
-    {1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35,
-     1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35,
-     1.35, 1.35, 1.35, 1.35, 1.35};
+    {10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
+     10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
+     10., 10., 10., 10., 10.};
   G4MaterialPropertiesTable *TefProp = new G4MaterialPropertiesTable();
   TefProp->AddProperty("RINDEX", TefEnergy, TefRIndex, nTefEntries);
   TefProp->AddProperty("REFLECTIVITY", TefEnergy, TefReflect, nTefEntries);
@@ -384,14 +416,71 @@ void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double fiv
   const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
   assert(sizeof(lar_ABSL) == sizeof(lar_Energy_abs));
 
+  /*//Wavelength list = 700 600 500 400 300 200 180 160 140 134 128 124 120 110 100
+  G4double lar_Energy_rin[]    = { 1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV ,
+				   4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV , 
+				   8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 
+				   10.33206*eV , 11.27134*eV , 12.39847*eV }; //energies for refractive index and Rayleigh scattering lengths
+
+  
+  G4double set = rin128-1.24;
+  const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
+  G4double lar_RIND[]  = { 1.22 , 1.222 , 1.225 , 1.23 ,
+			   1.24 , set/8+1.24 , set/5.1+1.24 , set/2.9+1.24 , 
+			   set/1.57+1.24, set/1.24+1.24 , rin128 , set*1.38+1.24, 
+			   set*1.78+1.24 , set*3.22+1.24 , set*4.66+1.24 }; //index of refraction spectrum.
+  G4double lar_RSL[]  = { 327028.6808*cm, 172560.2267*cm, 80456.5339*cm, 31177.44642*cm, 
+			  8854.144327*cm, 1496.876298*cm, 906.5011168*cm, 480.2538294*cm, 
+			  205.3758714*cm, 145.6326111*cm, 100.7813004*cm, 63.2898117*cm, 
+			  40.07450411*cm, 11.43903548*cm, 3.626432195*cm }; //spectrum of rayleigh scattering lengths.
+  assert(sizeof(lar_RIND) == sizeof(lar_Energy_rin)); 
+  assert(sizeof(lar_RSL) == sizeof(lar_Energy_rin));
+
+  lAr_mt->AddProperty("RINDEX",        lar_Energy_rin,  lar_RIND,  larrin);
+  lAr_mt->AddProperty("RAYLEIGH",      lar_Energy_rin,  lar_RSL,   larrin);//*/
+  
   //Takes the defined values above and uses them to define a materials properties table.
   lAr_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar_ABSL,  larabs);
   lAr2_mt->AddProperty("ABSLENGTH",     lar_Energy_abs,  lar2_ABSL,  larabs);
   //G4cout << "second definition of lAr above" << G4endl;
 }
 
+
+/*//method for performing the Plastic material Definition
+void detectorConstruction::DefinePlastic(G4double abs, G4double refl, G4double rin) {
+  //Defaults: absl = 10.0*cm, refl = 0.10; max refl = 0.30
+  //Definition of MPT for Plastic frills
+  G4double plastic_Energy[] = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.0*eV };
+  //wavelengths: 1200, 1000, 500, 400, 350, 200, 120, 100
+  G4int plasticnum = sizeof(plastic_Energy) / sizeof(G4double);
+
+  G4double uvr = refl/10.0;
+  G4double refl2 = refl*2.5;
+  G4double refl3 = refl*3.0;
+  G4double plastic_reflect[]={refl, refl, refl2, refl3, refl, uvr, uvr, uvr};
+  assert(sizeof(plastic_RIND) == sizeof(plastic_Energy));
+
+  G4double absl = abs*cm;
+  G4double plastic_AbsLength[]={ absl, absl, absl, absl, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm};
+  G4double blackplastic_AbsLength[]={ 1e-9*cm, 1e-9*cm, 1e-9*cm, 1e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm};
+
+  G4double plastic_RIND[] = { rin, rin, rin, rin, rin, rin, rin, rin };
+  assert(sizeof(plastic_AbsLength) == sizeof(plastic_Energy));
+
+  G4MaterialPropertiesTable *plastic_mt = new G4MaterialPropertiesTable();
+  plastic_mt->AddProperty("ABSLENGTH",plastic_Energy,plastic_AbsLength,plasticnum);
+  plastic_mt->AddProperty("REFLECTIVITY",plastic_Energy,plastic_reflect,plasticnum);
+  plastic_mt->AddProperty("RINDEX",plastic_Energy,plastic_RIND,plasticnum);
+  fPlastic->SetMaterialPropertiesTable(plastic_mt);
+  G4MaterialPropertiesTable *blackplastic_mt = new G4MaterialPropertiesTable();
+  blackplastic_mt->AddProperty("ABSLENGTH",plastic_Energy,blackplastic_AbsLength,plasticnum);
+  blackplastic_mt->AddProperty("REFLECTIVITY",plastic_Energy,plastic_reflect,plasticnum);
+  blackplastic_mt->AddProperty("RINDEX",plastic_Energy,plastic_RIND,plasticnum);
+  fBlackPlastic->SetMaterialPropertiesTable(blackplastic_mt);
+  }//*/
+
 //method to more consistently perform the TPB definitions (pmt and foil)
-void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs) {
+void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs, G4double rin, G4double ray) {
   const G4int nTPBEntries = 25;
   //Redefining TPB efficiency values for both foil and PMTs
   G4double TPBEnergy[nTPBEntries] =
@@ -458,6 +547,32 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs) 
        100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m,
        100000.0*m, 100.0000*m, 100.0000*m, 100.0000*m, 100.0000*m
     };
+
+  //G4double rin = 1.7;
+  G4double rayl = ray*0.001*mm;
+  G4double TPBRIndex[nTPBEntries] =  //Refractive index of the TPB.
+    {
+      rin, rin, rin, rin, rin,
+      rin, rin, rin, rin, rin,
+      rin, rin, rin, rin, rin,
+      rin, rin, rin, rin, rin,
+      rin, rin, rin, rin, rin
+    };//Claim made for 1.7 from DEAP Thesis. Maybe try varying to check?. TPB rayleigh scattering length is also listed at 2.75 um, maybe try throwing that component in instead of randomization in stepping action.
+  
+  G4double TPBRayleigh[nTPBEntries] =  //Rayleigh Scattering length for TPB
+    {
+      rayl, rayl, rayl, rayl, rayl,
+      rayl, rayl, rayl, rayl, rayl,
+      rayl, rayl, rayl, rayl, rayl,
+      rayl, rayl, rayl, rayl, rayl,
+      rayl, rayl, rayl, rayl, rayl
+    };
+
+  
+  TPBProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
+  TPBProp->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh, nTPBEntries);
+  TPBsProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
+  TPBsProp->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh, nTPBEntries);
 
   TPBProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption, nTPBEntries);
   TPBsProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption100, nTPBEntries);
@@ -557,11 +672,11 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 		      true);
 
     //Defines the thickness and placement of the TPB foils (slightly thicker on the bottom than the top). Can change the overall thickness without altering the ratios by just adjusting the first number, basethick
-    const G4double basethick = 0.0002*cm;
-    G4double thick = basethick/1.9848;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
+    const G4double basethick = 0.00019*cm;
+    G4double thick = basethick/2.0;///fifth;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
 
-    G4double deep = thick*2.0+thick/topthick;//Defines the depth; used for making the bottom thicker
-    G4double place = (thick-thick/(topthick*2.0));//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
+    G4double deep = thick;//Defines the depth; used for making the bottom thicker
+    G4double place = thick*0.0;//(1-randwide)/(1+randwide);//(thick-thick);//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
 
     //G4cout << "EdwardNote Defined Up to foils" << G4endl;
     
@@ -573,9 +688,11 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       fTPBSides = new G4Tubs("TPBfoil", 0*cm, (96.0*cm+thick), totalH*cm, 0*deg, 360*deg);
       fLogicTPB = new G4LogicalVolume(fTPBSides,tPB,"TPBfoil");//*/
       
-      fTPBBottom = new G4Tubs("TPBfoilb", 0*cm, (96.0*cm+thick), (totalH*cm+deep), 0*deg, 360*deg);
+      fTPBBottom = new G4Tubs("TPBfoilb", 13.3*cm, (96.0*cm+thick), (totalH*cm+deep), 0*deg, 360*deg);
+      
+      G4SubtractionSolid* tpbBottom = new G4SubtractionSolid("TPBfoilsub", fTPBBottom, fTPBSides, 0, G4ThreeVector(0*cm, 0*cm, place));
       //G4cout << "TPBvolumahalfZlength = " << fTPBBottom->GetZHalfLength() << G4endl;
-      fLogicTPBb = new G4LogicalVolume(fTPBBottom,tPB,"TPBfoilb");//*/
+      fLogicTPBb = new G4LogicalVolume(tpbBottom,tPB,"TPBfoilb");//*/
     }
     
     //defines the optical surface of the TPB. Reflection, transmission, and efficiency of photons that intersect the surface.
@@ -632,8 +749,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     G4double remainder = totalH - 36.0;
     remainder = remainder/2.0;
     G4double row1place = totalH-remainder;//134 -> 52
-    fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, remainder*cm, 0*deg, 360*deg);
-    fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
+    //fFiducialAr1 = new G4Tubs("Fiducial1", innerradius, 96*cm, remainder*cm, 0*deg, 360*deg);
+    //fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
 
     //The bottom layer is different from the prior (best fit so far). It has much cloudier lAR and a much larger contaminated ring.
     fFiducialAr5 = new G4Tubs("Fiducial5", 75*cm, 96*cm, remainder*cm, 0*deg, 360*deg);
@@ -647,7 +764,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
     reflfoilOS->SetModel(glisur); //Optical model                    
     reflfoilOS->SetType(dielectric_metal);
     reflfoilOS->SetFinish(ground);
-    reflfoilOS->SetSigmaAlpha(0.01);
+    reflfoilOS->SetSigmaAlpha(1.0);
     
     G4MaterialPropertiesTable *reflfoilMPT = new G4MaterialPropertiesTable();
     G4double reflfoilOSEnergy[nAcTefEntries] =
@@ -663,10 +780,15 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
        vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, 
        vsRf, vsRf, vsRf, vsRf, uvRf, uvRf, uvRf, 
        uvRf, uvRf, uvRf, uvRf};
+    G4double reflfoilOSTransmit[nAcTefEntries] =
+      {.02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
+       .02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
+       .02, .02, .02, .02, .02}; //minimal transmittance through foil
     G4double reflfoilOSEff[nAcTefEntries] =
-      {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-       1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
-       1., 1., 1., 1., 1.};
+      {0., 0., 0., 0., 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+       0.0, 0.0, 0.0, 0.0, 0., 0., 0., 0., 0., 0.,
+       0., 0., 0., 0., 0.};
+    reflfoilMPT->AddProperty("TRANSMITTANCE", reflfoilOSEnergy, reflfoilOSTransmit, nAcTefEntries);
     reflfoilMPT->AddProperty("REFLECTIVITY", reflfoilOSEnergy, reflfoilOSReflect, nAcTefEntries);
     reflfoilMPT->AddProperty("EFFICIENCY", reflfoilOSEnergy, reflfoilOSEff, nAcTefEntries);
     reflfoilOS->SetMaterialPropertiesTable(reflfoilMPT);
@@ -689,25 +811,25 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       if (fTPBfoilOn){
 	//TPB and Fiducial for both TPB foils and Reflector On
 	
-	G4VPhysicalVolume* fPhysTPBb = new G4PVPlacement(0,
-							 G4ThreeVector(0,0,0),
-							 fLogicTPBb,
-							 "TPBfoilb",
-							 fLogicfoil,
-							 false,
-							 0,
-							 true);//*/
+	fPhysTPBb = new G4PVPlacement(0,
+				      G4ThreeVector(0,0,0),
+				      fLogicTPBb,
+				      "TPBfoilb",
+				      fLogicfoil,
+				      false,
+				      0,
+				      true);//*/
 	
 
-	G4VPhysicalVolume* fPhysTPB = new G4PVPlacement(0,
-							G4ThreeVector(0*cm,0*cm,place),
-							fLogicTPB,
-							"TPBfoil",
-							fLogicTPBb,
-							false,
-							0,
-							true);//*/
-
+	fPhysTPB = new G4PVPlacement(0,
+				     G4ThreeVector(0*cm,0*cm,place),
+				     fLogicTPB,
+				     "TPBfoil",
+				     fLogicfoil,
+				     false,
+				     0,
+				     true);//*/
+	
 	/*G4double sidedown = 10.0;
         G4double sideplace = (totalH-sidedown)*cm;
         G4double inrad = 96.0*cm+thick/4.0;
@@ -855,7 +977,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     } else if (fTPBfoilOn) {
       //Reflector Off TPB On
-      G4VPhysicalVolume* fPhysTPB = new G4PVPlacement(0, G4ThreeVector(0,0,0), fLogicTPB, "TPBfoil",fLogicFrame, false, 0, true);
+      fPhysTPB = new G4PVPlacement(0, G4ThreeVector(0,0,0), fLogicTPB, "TPBfoil",fLogicFrame, false, 0, true);
 
       lArFiducial = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fLogicFiduc, "Fiducial", fLogicTPB, false, 0, true);
 
@@ -871,6 +993,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     //places the calibration rod (with extension) if its turned on.
     if (fRodin) {
+      rodHeight = rodHeight + fifth*cm;//Shift the rod up or down.
       //G4cout << "Edwardnote Placing rod"  << G4endl;
       G4double rodLength = (totalH - 30.0*cm - rodHeight)/2.0;//remaining length of big rod in detector
       G4double mainplace = 30.0*cm+rodLength+rodHeight;//central position of big rod with respect to 0/center
@@ -891,6 +1014,19 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 			  false,
 			  0,
 			  true);
+
+	/*//Clouding around the main source rod
+	fFiducialAr1 = new G4Tubs("Fiducial1", 3*cm, 10*cm, rodLength, 0*deg, 360*deg);
+	fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
+	new G4PVPlacement(0,
+			  G4ThreeVector(0*cm, 0*cm, mainplace),//z=75*cm for extension,45 without
+			  //G4ThreeVector(0*cm, 0*cm, 90*cm),//for upper position 18" above middle
+			  fLogicFiduc1,
+			  "Fiducial1",
+			  fLogicFiduc,
+			  false,
+			  0,
+			  true);//*/
 	
 	//lAr inside the rod (it's hollow).
 	G4Tubs* hollowrod = new G4Tubs("hollowrod", 0*cm, 2.*cm, 44*cm, 0*deg, 360*deg);
@@ -941,7 +1077,20 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 			false,
 			0,
 			true);//*/
+
       //G4cout << "Edwardnote Placed rod"  << G4endl;
+      /*//Clouding around the bottom
+      fFiducialAr1 = new G4Tubs("Fiducial1", 1*cm, ultra*cm, 7.5*cm, 0*deg, 360*deg);
+      fLogicFiduc1 = new G4LogicalVolume(fFiducialAr1,lAr2,"Fiducial1");
+      new G4PVPlacement(0,
+			G4ThreeVector(0*cm, 0*cm, -47.5*cm),//z=75*cm for extension,45 without
+			//G4ThreeVector(0*cm, 0*cm, 90*cm),//for upper position 18" above middle
+			fLogicFiduc1,
+			"Fiducial1",
+			fLogicFiduc,
+			false,
+			0,
+			true);//*/
 
     } else if (fLaser) {
       //creates a cone of foil around the top of the laser rod, created by the loose foils there not being allowed to return to rest. Not significant in the source calibrations, though its inclusion won't hurt either.
@@ -955,7 +1104,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       G4Cons* foilcone = new G4Cons("ptfecone", 1.8*cm, 1.81*cm, 1.8*cm, topwide, coneheight, 0*deg, 360*deg);
       G4LogicalVolume* fFoilCone = new G4LogicalVolume(foilcone, ptfe, "ptfecone");
 
-      G4Cons* tpbcone = new G4Cons("tpbcone", 1.8*cm, (1.810*cm+(thick/topthick)), 1.8*cm, (15.200*cm+(thick/topthick)), (coneheight+(thick/topthick/2.)), 0*deg, 360*deg);
+      G4Cons* tpbcone = new G4Cons("tpbcone", 1.8*cm, (1.810*cm+(thick)), 1.8*cm, (15.200*cm+(thick)), (coneheight+(thick/2.)), 0*deg, 360*deg);
       G4LogicalVolume* fTPBCone = new G4LogicalVolume(tpbcone, tPB, "tpbcone");
 
       //place the cones of foil (ptfe) and tpb into the appropriate fiducial volume
@@ -1065,6 +1214,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     G4double itang = 360.0/24;//interval angle; angle between two consecutive pmts
     G4double radius = 96.0;//radius: outer radius of Fiducial volume
+    G4double pmtRad = 10.2;//radius of the PMT
+    radius = radius + (pmtRad-topthick);
     G4int zs = 0;//counter
 
     //G4cout << "Placing PMTs" << G4endl;
@@ -1092,7 +1243,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
       //define the pmtzz value to translate row 1 (i/24=0) to the top and row 5 (i/24=4) to the bottom
       zs = 2-(i/24);
-      pmtzz = zs*22.86;
+      pmtzz = zs*21.86+1.0;//totalH = 61.6, PMTrad = 10.2
       
       //iterate the angle according to the interval
       angle += itang;
@@ -1125,7 +1276,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
         //if coated, add coated to the name. Makes things much easier down the line.	
       }
       if (fPMTsOn){
-	placePMT(pmtnm[i],pmtxx,pmtyy,pmtzz,pmtcoat);
+	placePMT(pmtnm[i],pmtxx,pmtyy,pmtzz,phi,pmtcoat);
 	//call the placePMT method to actually place the PMT at the chosen position with the chosen name and coating.
       }
     }
@@ -1138,20 +1289,20 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       G4String pmtnam1;//new names
       G4int npmts = 20;//number of pmts in the ring
       itang = 360./npmts;//new iterating angle
-      radius = 85.5;
+      radius = 84.2;
       angle = 0;
-
+      
       for (G4int n=0; n<npmts; ++n) {
 	if (n%2 == 0) {
 	  zs = 0;
 	  pmtzz = +1.0*totalH;
 	} else { 
 	  zs = 6;
-	  pmtzz = -1.0*totalH;
+	  pmtzz = -1.0*totalH;//NEW VARIABLE: DISPLACEMENT
 	}//let 6 be bottom and 0 be top, alternating around the circle in every other position from the design of CCM220
 	
-	//Uncoated on cross1, ring 4: 5, 15, 2, 12
-	if (n==5 || n==15 || n==1 || n==11) { 
+	//Uncoated on cross1, ring 4: 5, 15, 8, 18
+	if (n==4 || n==14 || n==7 || n==17) { 
 	  pmtcoat = false;
 	} else { pmtcoat = true; }
 
@@ -1163,7 +1314,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	G4double phi = angle*CLHEP::pi/180.0;
 	pmtxx = radius*std::cos(phi);
 	pmtyy = radius*std::sin(phi);
-	pmtcoat = true;
+	//pmtcoat = true;
 	if (cylinderOn) { pmtcoat=false; }//once more, turn all coatings off if using the LBOC design
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
       }
@@ -1171,7 +1322,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       //define the second ring of pmts on top and bottom. identical to the outer row, but with a slightly smaller circle
       npmts = 15;
       itang = 360./npmts;
-      radius = 64.2;
+      radius = 62.8;
       angle = 0;
 
       for (G4int n=0; n<npmts; ++n) {
@@ -1189,8 +1340,8 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	if (cylinderOn) { pmtcoat=false; }
 
 	pmtzz = -1*totalH;
-	//ring3 uncoated: top 301, 308 bottom 306, 313.
-	if (n==5 || n==12) { pmtcoat=false;}
+	//ring3 uncoated: top 301, 308 bottom 303, 310.
+	if (n==2 || n==9) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = totalH;
 	if (n==0 || n==7) { 
@@ -1202,7 +1353,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       //third row on top and bottom. again smaller circle and npmts.
       npmts = 10;
       itang = 360./npmts;
-      radius = 42.0;
+      radius = 41.4;
       angle = 0;
 
       for (G4int n=0; n<npmts; ++n) {
@@ -1218,9 +1369,9 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	//if (n%3 == 2) { pmtcoat = false; }//every second pmt in the third row is uncoated, for another 10 total and thus all 20 uncoated on the top and bottom accounted for
 	if (cylinderOn) { pmtcoat=false; }
 
-	//ring 2 uncoated: top 208, 203, bottom 202, 207
+	//ring 2 uncoated: top 208, 203, bottom 205, 210
 	pmtzz = -1*totalH;
-	if (n==1 || n==6) { pmtcoat=false;}
+	if (n==4 || n==9) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = totalH;
 	if (n==2 || n==7) { 
@@ -1247,9 +1398,9 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	if (cylinderOn) { pmtcoat=false; }
 
-	//ring 1 uncoated: top 101, 103, bottom 103, 105
+	//ring 1 uncoated: top 101, 103, bottom 102, 104
 	pmtzz = -1*totalH;
-	if (n==2 || n==4) { pmtcoat=false;}
+	if (n==1 || n==3) { pmtcoat=false;}
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
 	pmtzz = totalH;
 	if (n==0 || n==2) { 
@@ -1272,7 +1423,15 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
 void detectorConstruction::placePMT(G4String name, 
 				    G4double pmt_x, G4double pmt_y, G4double pmt_z, 
-				    G4bool coated) {
+				    G4double phi, G4bool coated) {
+
+  //defines total detector height
+  G4double totalH = 136.0/2.0;
+  if (ccm200) { totalH = 123.2/2.0; }
+
+  G4double remainder = totalH/2.0-0.005;
+  G4double row1place = (totalH+36.0)-remainder;//134 -> 52; 123.2 -> 
+
   //reset the angles to 0 for each new PMT
   G4double init_angle = 0;
   G4double fin_angle = 0;
@@ -1287,61 +1446,97 @@ void detectorConstruction::placePMT(G4String name,
     vert_angle= 90*deg;
   }
 
-  G4double totalH = 136.0/2.0;
-  if (ccm200) { totalH = 123.2/2.0; }
-  
-  totalH = totalH - 36.0;
-  G4double remainder = totalH/2.0-0.005;
-  G4double row1place = (totalH+36.0)-remainder;//134 -> 52
-
   //set the outer radii of the glass and the thickness of the TPB.
-  G4double radout = 10.2*cm;
-  G4double tpbout = 0.00009*cm;//In the best fit, the TPB on the PMTs is slightly thinner than normal. Normal: 0.00019*cm.
-  tpbout = tpbout/0.9114;
+  G4double radout = 10.2;
+  G4double tpbout = 0.00009*cm;//In the best fit, the TPB on the PMTs is slightly thinner than normal. Normal:0.00019*cm.
+  G4double frillin = std::sqrt(radout*radout-(radout-topthick)*(radout-topthick))*cm;
+  //G4cout << "Frill inner radius in mm: " << frillin << "  details: " << radout << '\t' << topthick << '\t' << radout*radout << '\t' << (radout-topthick)*(radout*topthick) << '\t' << radout*radout-(radout-topthick)*(radout-topthick) << G4endl;
+
+  tpbout = tpbout;///randwide;
+  radout = radout*cm;
 
   //define the initial angle so the pmt is facing inwards according to the position
-  init_angle = (std::atan(pmt_y/pmt_x)*180/CLHEP::pi)+90;
+  init_angle = (std::atan(pmt_y/pmt_x)*180/CLHEP::pi);
   if (pmt_x < 0) {
     init_angle+=180;
-  } 
+  }
   init_angle = init_angle*deg;
   
   //defines the name of the PMT so it contains PMT
   G4String namePMT = "PMT_"+name;
+  G4String frilName = "frilblack_"+name;
+  G4String frillName = "frill_"+name;
   
   //defines a three vector for the position.
   G4ThreeVector trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
 
+  G4double frillx = 95.9*std::cos(phi);
+  G4double frilly = 95.9*std::sin(phi);
+  G4ThreeVector transf = G4ThreeVector(frillx*cm,frilly*cm,pmt_z*cm);
+  G4ThreeVector xfrill = G4ThreeVector(0,0,1);
+  G4ThreeVector yfrill = G4ThreeVector(0,1,0);
+  G4ThreeVector zfrill = G4ThreeVector(-1,0,0);
+  G4RotationMatrix* rotationMatrix = new G4RotationMatrix(xfrill,yfrill,zfrill);
+  rotationMatrix->rotateZ(init_angle);
+
+  init_angle = init_angle + 90*deg;
   //creates the glass sphere properly oriented for the position
   G4Sphere* pmt = new G4Sphere(namePMT, 0*cm, radout, init_angle, fin_angle, 0*deg, vert_angle);
   G4LogicalVolume* pmtLogic = new G4LogicalVolume(pmt, fGlass, namePMT);
 
-  //begin defining the values for the tpb or ice optical surface (for some reason it won't pull it from the Construct method all the time).
-  const G4int nAcTefEntries = 25;
-  G4double TPBOSEnergy[nAcTefEntries] =
-    {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV, 2.38*eV,
-     2.48*eV, 2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV, 3.124*eV, 3.457*eV, 
-     3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
-     7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
-  G4double TPBOSTransmit[nAcTefEntries] =
-    {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-     1., 1., 1., 1., 1., 1.,
-     1., 1., 1., 1., 1., 1., 1., 1.}; //set to 1 and have all absorption in bulk 
-  G4double TPBOSReflect[nAcTefEntries] =
-    {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-     0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-     0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
-  G4double TPBOSEff[nAcTefEntries] =
-    {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-     1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
-     1., 1., 1., 1., 1.};
+  //create the frill around the base of the PMT, in 2 parts: 1 wider in thin plastic, the other thin but thick black plastic.
+  G4double ft = 0.2*cm;
+  G4double ftt = 1.0*cm*conewide+ft;
+  G4double fh = 1.0*cm*conehigh;
+  G4double fhh = 0.1*cm;
+    
+  G4Tubs* fril = new G4Tubs(frilName, frillin+tpbout, frillin+ft, fh, 0*deg, 360*deg);
+  G4Tubs* frill = new G4Tubs(frillName, frillin+ft, frillin+ftt, fhh, 0*deg, 360*deg);
+  G4LogicalVolume* frilLogic = new G4LogicalVolume(fril,fBlackPlastic,frilName);//*/
+  G4LogicalVolume* frillLogic = new G4LogicalVolume(frill,fPlastic,frillName);//*/
 
+  //begin defining the values for the tpb or ice optical surface (for some reason it won't pull it from the Construct method all the time).
+  const G4int nAcTefEntries = 15;
+  G4double TPBOSEnergy[nAcTefEntries] =
+    {0.602*eV, 1.03*eV,  2.25*eV,  2.48*eV,  2.95*eV,
+     3.457*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV,
+     6.262*eV, 7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+  G4double TPBOSTransmit[nAcTefEntries] =
+    {1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1.}; //set to 1 and have all absorption in bulk 
+  G4double TPBOSReflect[nAcTefEntries] =
+    {0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0};
+  G4double ref = 0.0;
+  G4double FrillOSReflect[nAcTefEntries] =
+    {ref, ref, ref, ref, ref,
+     ref, ref, ref, ref, ref,
+     ref, ref, ref, ref, ref};//*/
+  G4double TPBOSEff[nAcTefEntries] =
+    {1.0, 1.0, 1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0, 1.0, 1.0};
+
+  G4OpticalSurface* frillCoat = new G4OpticalSurface("FRILL Coat");
+  frillCoat->SetModel(unified);
+  frillCoat->SetType(dielectric_dielectric);
+  frillCoat->SetFinish(ground);
+  frillCoat->SetSigmaAlpha(0.05);
+  
+  G4MaterialPropertiesTable *FRILLMPT = new G4MaterialPropertiesTable();
+  FRILLMPT->AddProperty("REFLECTIVITY", TPBOSEnergy, FrillOSReflect, nAcTefEntries);
+  FRILLMPT->AddProperty("TRANSMITTANCE", TPBOSEnergy, TPBOSTransmit, nAcTefEntries);
+  FRILLMPT->AddProperty("EFFICIENCY", TPBOSEnergy, TPBOSEff, nAcTefEntries);
+  frillCoat->SetMaterialPropertiesTable(FRILLMPT);//*/
 
   if (coated) {
     //rename with coated if the pmt is coated and create a larger semisphere for the TPB
     namePMT = "PMT_"+name+"_coated";
+    G4String namecoat = "tpbcoat_"+name;
     G4Sphere* tpbcoating = new G4Sphere("tpbcoat", 0*cm, (radout+tpbout), init_angle, fin_angle, 0*deg, vert_angle);//define pmttpb coating thickness
-    G4LogicalVolume* tpbLogic = new G4LogicalVolume(tpbcoating, tPBhundred, "tpbcoat");
+    G4LogicalVolume* tpbLogic = new G4LogicalVolume(tpbcoating, tPBhundred, namecoat);
 
     //define the TPB optical properties table
     G4OpticalSurface* tpbCoat = new G4OpticalSurface("TPB Coat");
@@ -1356,7 +1551,6 @@ void detectorConstruction::placePMT(G4String name,
     TPBMPT->AddProperty("EFFICIENCY", TPBOSEnergy, TPBOSEff, nAcTefEntries);
     tpbCoat->SetMaterialPropertiesTable(TPBMPT);//*/
 
-
     //if Layered detector, place the TPB spheres in the proper fiducial volume layer
     if (fLayers) {
       if (pmt_z > 40) {
@@ -1366,7 +1560,7 @@ void detectorConstruction::placePMT(G4String name,
 	G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
 							   trans,
 							   tpbLogic,
-							   "tpbcoat",
+							   namecoat,
 							   fLogicFiduc1,
 							   false,
 							   0,
@@ -1388,7 +1582,7 @@ void detectorConstruction::placePMT(G4String name,
 	G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
 							   trans,
 							   tpbLogic,
-							   "tpbcoat",
+							   namecoat,
 							   fLogicFiduc2,
 							   false,
 							   0,
@@ -1403,14 +1597,14 @@ void detectorConstruction::placePMT(G4String name,
 				   lArFiducial2,
 				   tpbCoat);
 	
-    } else if (pmt_z > -40 && pmt_z < -20) {
+      } else if (pmt_z > -40 && pmt_z < -20) {
 	pmt_z = pmt_z+24.0;
 	trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
 	
 	G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
 							   trans,
 							   tpbLogic,
-							   "tpbcoat",
+							   namecoat,
 							   fLogicFiduc4,
 							   false,
 							   0,
@@ -1429,7 +1623,7 @@ void detectorConstruction::placePMT(G4String name,
 	G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
 							   trans,
 							   tpbLogic,
-							   "tpbcoat",
+							   namecoat,
 							   fLogicFiduc3,
 							   false,
 							   0,
@@ -1451,7 +1645,7 @@ void detectorConstruction::placePMT(G4String name,
 	G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
 							   trans,
 							   tpbLogic,
-							   "tpbcoat",
+							   namecoat,
 							   fLogicFiduc5,
 							   false,
 							   0,
@@ -1469,13 +1663,13 @@ void detectorConstruction::placePMT(G4String name,
     } else {//*/
       //place the tpb half sphere and the optical surfaces with the Fiducial volume
       G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
-							 trans,
+							 trans, //G4Transform3D(*rotationMatrix,trans),
 							 tpbLogic,
-							 "tpbcoat",
+							 namecoat,
 							 fLogicFiduc,
 							 false,
 							 0,
-							 true);
+							 false);
       
       new G4LogicalBorderSurface("TPB Coat", 
 				 lArFiducial,
@@ -1494,7 +1688,31 @@ void detectorConstruction::placePMT(G4String name,
 		      tpbLogic,
 		      false,
 		      0,
-		      true);
+		      false);
+
+    G4VPhysicalVolume*  frillPhys = new G4PVPlacement(G4Transform3D(*rotationMatrix,transf),
+						      frillLogic,
+						      frillName,
+						      fLogicFiduc,
+						      false,
+						      0,
+						      false);
+		      
+    G4VPhysicalVolume*  frilPhys = new G4PVPlacement(G4Transform3D(*rotationMatrix,transf),
+						     frilLogic,
+						     frilName,
+						     fLogicFiduc,
+						     false,
+						     0,
+						     false);
+    
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", lArFiducial, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, fPhysTPB, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", fPhysTPB, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Fril Coat", frilPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Fril2 Coat", lArFiducial, frilPhys, frillCoat);
+		      
     
   } else if (!coated && fLayers) {
     //now place the uncoated PMTs with a layered detector
@@ -1564,14 +1782,37 @@ void detectorConstruction::placePMT(G4String name,
   } else if (!coated && !fLayers) {
     //place the uncoated PMT in the fiducial volume if uncoated and there are no layers
     new G4PVPlacement(0,
-		      trans,
+		      trans, //G4Transform3D(*rotationMatrix,trans),
 		      pmtLogic,
 		      namePMT,
 		      fLogicFiduc,
 		      false,
 		      0,
-		      true);
+		      false);
     
+    G4VPhysicalVolume*  frillPhys = new G4PVPlacement(G4Transform3D(*rotationMatrix,transf),
+						      frillLogic,
+						      frillName,
+						      fLogicFiduc,
+						      false,
+						      0,
+						      false);
+		      
+    G4VPhysicalVolume*  frilPhys = new G4PVPlacement(G4Transform3D(*rotationMatrix,transf),
+						     frilLogic,
+						     frilName,
+						     fLogicFiduc,
+						     false,
+						     0,
+						     false);
+    
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", lArFiducial, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, fPhysTPB, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", fPhysTPB, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Fril Coat", frilPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Fril2 Coat", lArFiducial, frilPhys, frillCoat);
+		      
   }//*/
 
   //G4cout << "PMTplacement made: " << namePMT << G4endl;
@@ -1589,7 +1830,7 @@ void detectorConstruction::placeTopBot(G4String name,
   G4double vert_angle = 0;
 
   //define the vertical angle so the PMT is facing either up or down.
-  if (pmt_z > 60) {
+  if (pmt_z > 50) {
     vert_angle = 90*deg;
   } else {
     vert_angle = 0*deg;
@@ -1600,36 +1841,76 @@ void detectorConstruction::placeTopBot(G4String name,
   fin_angle = 360*deg;//all top/bottom pmts should be full circles in the horizontal.
 
   //set the radii of the glass and the tpb thickness
-  G4double radout = 10.2*cm;
+  G4double radout = 10.2;
   G4double tpbout = 0.00009*cm;
-  tpbout = tpbout/0.9114;
+  G4double frillin = std::sqrt(radout*radout-(radout-topthick)*(radout-topthick))*cm;
+
+  tpbout = tpbout;//
+  G4double newz = pmt_z + (radout-topthick);
+  if (pmt_z < -50) {
+    newz = pmt_z - (radout-topthick);
+    tpbout = tpbout;//
+    pmt_z = pmt_z + 0.1*cm;
+  }
+  else {  pmt_z = pmt_z - 0.1*cm; }
+  radout = radout*cm;
 
   //add PMT to the name
   G4String namePMT = "PMT_"+name;
+  G4String frillName = "frill_"+name;
+  G4String frilName = "frilblack_"+name;
   
   //define the position three-vector
-  G4ThreeVector trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z);
+  G4ThreeVector transf = G4ThreeVector(pmt_x*cm,pmt_y*cm,pmt_z*cm);
+  G4ThreeVector trans = G4ThreeVector(pmt_x*cm,pmt_y*cm,newz*cm);
   //G4cout << "topbottom PMT position = " << pmt_x << '\t' << pmt_y << '\t' << pmt_z << G4endl;
 
+  //create the frill around the base of the PMT, in 2 parts: 1 wider in thin plastic, the other thin but thick black plastic.
+  G4double ft = 0.2*cm;
+  G4double ftt = 1.0*cm*conewide+ft;
+  G4double fh = 1.0*cm*conehigh;
+  G4double fhh = 0.1*cm;
+    
+  G4Tubs* fril = new G4Tubs(frilName, frillin+tpbout, frillin+ft, fh, 0*deg, 360*deg);
+  G4Tubs* frill = new G4Tubs(frillName, frillin+ft, frillin+ftt, fhh, 0*deg, 360*deg);
+  G4LogicalVolume* frilLogic = new G4LogicalVolume(fril,fBlackPlastic,frilName);//*/
+  G4LogicalVolume* frillLogic = new G4LogicalVolume(frill,fPlastic,frillName);//*/
+
   //redo the tpb optical surface properties.
-  const G4int nAcTefEntries = 25;
+  const G4int nAcTefEntries = 15;
   G4double TPBOSEnergy[nAcTefEntries] =
-    {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV, 2.38*eV,
-     2.48*eV, 2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV, 3.124*eV, 3.457*eV, 
-     3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
-     7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+    {0.602*eV, 1.03*eV,  2.25*eV,  2.48*eV,  2.95*eV,
+     3.457*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV,
+     6.262*eV, 7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
   G4double TPBOSTransmit[nAcTefEntries] =
-    {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-     1., 1., 1., 1., 1., 1.,
-     1., 1., 1., 1., 1., 1., 1., 1.}; //set to 1 and have all absorption in bulk 
+    {1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1.,
+     1., 1., 1., 1., 1.}; //set to 1 and have all absorption in bulk 
   G4double TPBOSReflect[nAcTefEntries] =
-    {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-     0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-     0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
+    {0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0,
+     0.0, 0.0, 0.0, 0.0, 0.0};
+  G4double ref = 0.0;
+  G4double FrillOSReflect[nAcTefEntries] =
+    {ref, ref, ref, ref, ref,
+     ref, ref, ref, ref, ref,
+     ref, ref, ref, ref, ref};//*/
   G4double TPBOSEff[nAcTefEntries] =
-    {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-     1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
-     1., 1., 1., 1., 1.};
+    {0.0, 0.0, 1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0, 1.0, 1.0};
+
+  G4OpticalSurface* frillCoat = new G4OpticalSurface("FRILL Coat");
+  frillCoat->SetModel(unified);
+  frillCoat->SetType(dielectric_dielectric);
+  frillCoat->SetFinish(ground);
+  frillCoat->SetSigmaAlpha(0.05);
+  
+  G4MaterialPropertiesTable *FRILLMPT = new G4MaterialPropertiesTable();
+  FRILLMPT->AddProperty("REFLECTIVITY", TPBOSEnergy, FrillOSReflect, nAcTefEntries);
+  FRILLMPT->AddProperty("TRANSMITTANCE", TPBOSEnergy, TPBOSTransmit, nAcTefEntries);
+  FRILLMPT->AddProperty("EFFICIENCY", TPBOSEnergy, TPBOSEff, nAcTefEntries);
+  frillCoat->SetMaterialPropertiesTable(FRILLMPT);//*/
 
   //create a properly oriented glass half sphere for the PMT
   G4Sphere* pmt = new G4Sphere(namePMT, 0*cm, radout, init_angle, fin_angle, vert_angle, 90*deg);
@@ -1638,8 +1919,9 @@ void detectorConstruction::placeTopBot(G4String name,
   //if coated, add the coating and place the PMT
   if (coated) {
     namePMT = "PMT_"+name+"_coated";
-    G4Sphere* tpbcoating = new G4Sphere("tpbcoat", 0*cm, (radout+tpbout), init_angle, fin_angle, vert_angle, (vert_angle+90*deg));//define pmttpb coating thickness
-    G4LogicalVolume* tpbLogic = new G4LogicalVolume(tpbcoating, tPBhundred, "tpbcoat");
+    G4String namecoat = "tpbcoat_"+name;
+    G4Sphere* tpbcoating = new G4Sphere(namecoat, 0*cm, (radout+tpbout), init_angle, fin_angle, vert_angle, (vert_angle+90*deg));//define pmttpb coating thickness
+    G4LogicalVolume* tpbLogic = new G4LogicalVolume(tpbcoating, tPBhundred, namecoat);
     G4OpticalSurface* tpbCoat = new G4OpticalSurface("TPB Coat");
     tpbCoat->SetModel(unified);
     tpbCoat->SetType(dielectric_dielectric);
@@ -1656,12 +1938,37 @@ void detectorConstruction::placeTopBot(G4String name,
     G4VPhysicalVolume*  tpbCoating = new G4PVPlacement(0,
 						       trans,
 						       tpbLogic,
-						       "tpbcoat",
+						       namecoat,
 						       fLogicFiduc,
 						       false,
 						       0,
 						       true);
 	
+    G4VPhysicalVolume*  frillPhys = new G4PVPlacement(0,
+						      transf,
+						      frillLogic,
+						      frillName,
+						      fLogicFiduc,
+						      false,
+						      0,
+						      false);
+		      
+    G4VPhysicalVolume*  frilPhys = new G4PVPlacement(0,
+						     transf,
+						     frilLogic,
+						     frilName,
+						     fLogicFiduc,
+						     false,
+						     0,
+						     false);
+
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", lArFiducial, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, fPhysTPBb, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", fPhysTPBb, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Fril Coat", frilPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Fril2 Coat", lArFiducial, frilPhys, frillCoat);      
+
     new G4PVPlacement(0,
 		      G4ThreeVector(0,0,0),
 		      pmtLogic,
@@ -1708,6 +2015,31 @@ void detectorConstruction::placeTopBot(G4String name,
 		      0,
 		      true);
     
+    G4VPhysicalVolume*  frillPhys = new G4PVPlacement(0,
+						      transf,
+						      frillLogic,
+						      frillName,
+						      fLogicFiduc,
+						      false,
+						      0,
+						      false);
+		      
+    G4VPhysicalVolume*  frilPhys = new G4PVPlacement(0,
+						     transf,
+						     frilLogic,
+						     frilName,
+						     fLogicFiduc,
+						     false,
+						     0,
+						     false);
+    
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", lArFiducial, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Frill Coat", frillPhys, fPhysTPBb, frillCoat);
+    new G4LogicalBorderSurface("Frill2 Coat", fPhysTPBb, frillPhys, frillCoat);
+    new G4LogicalBorderSurface("Fril Coat", frilPhys, lArFiducial, frillCoat);
+    new G4LogicalBorderSurface("Fril2 Coat", lArFiducial, frilPhys, frillCoat);
+		      
   }//*/
 }
 
@@ -1731,18 +2063,18 @@ void detectorConstruction::SetDefaults() {
   fCosmic=false;
   darkMatter=false;
   alp=false;
-  fLayers=false;
+  fLayers=false;//true;//better results when false according to simulation set. 
   ccm200 = false;
-  conewide = 7.555;
-  conehigh = 0.590;
+  conewide = 1.0;//7.555;
+  conehigh = 1.0;//0.590;
   ultra = 37.55;
   threehun = 1310.0;
   fifth = 12.2318;
-  tpbEff = 0.96274;
   r5radius = 31.948;
+  topthick = 2.12;
+  randwide = 0.80;//2.922;
+  tpbEff = 0.96274;
   foilEff = .45548;
-  topthick = 26.12;
-  randwide = 2.922;
   tpbAbs = 0.8735;
   randomized = false;
   rootset = false;
@@ -1753,7 +2085,9 @@ void detectorConstruction::SetDefaults() {
 
 //method to randomize all variables without correlations
 void detectorConstruction::SetRandoms() {
-  /*conewide = G4RandFlat::shoot(3.5,9.0);
+  /*
+  //CCM120 Variable Set
+  conewide = G4RandFlat::shoot(3.5,9.0);
   conehigh = G4RandFlat::shoot(0.45,0.65);
   ultra = G4RandFlat::shoot(20.0,80.0);
   threehun = G4RandFlat::shoot(1000.0,1600.);
@@ -1764,26 +2098,45 @@ void detectorConstruction::SetRandoms() {
   foilEff = G4RandFlat::shoot(0.30,0.60);*/
 
   //ccm200 variable set:
-  G4double base = G4RandFlat::shoot(20.0,70.0);//AbsLAr < 200 nm
-  ultra = G4RandFlat::shoot(20.0,200.0);// AbsLAr 200-300 nm
-  threehun = G4RandFlat::shoot(1000.0,1600.);//AbsLAr 300-400 nm
-  G4double mult = G4RandFlat::shoot(1000,4000.0);//AbsLAr 400+ nm
-  fifth = G4RandFlat::shoot(50.0,100.0);//AbsLAr modifier top row
-  
-  tpbEff = G4RandFlat::shoot(0.80,0.99);//pmt tpb eff
-  foilEff = G4RandFlat::shoot(0.70,0.99);//foil tpb eff
-  tpbAbs = G4RandFlat::shoot(0.80,0.99);//all tpb abs (visible light)
-  
- 
-  DefineLAr(base,ultra,fifth,threehun,mult);
-  DefineTpb(foilEff, tpbEff, tpbAbs);
+  G4double base = G4RandGauss::shoot(47.6,3.29);//55.0;//AbsLAr < 200 nm
+  while (base < 10.0) { G4double base = G4RandGauss::shoot(47.6,3.29); }
+  //ultra = 100.0;//G4RandFlat::shoot(20.0,200.0);// AbsLAr 200-300 nm
+  threehun = 1600.0;//G4RandFlat::shoot(1200.0,1800.);//AbsLAr 300-400 nm
+  G4double mult = 2400.0;//G4RandFlat::shoot(1500,2500.0);//AbsLAr 400+ nm
+  //fifth = 100.0;//G4RandFlat::shoot(50.0,100.0);//AbsLAr modifier top row
+
+  tpbEff = G4RandFlat::shoot(0.4,0.999);//G4RandGauss::shoot(0.454,0.114);//pmt tpb eff
+  foilEff = G4RandGauss::shoot(0.894,0.21);//foil tpb eff
+  tpbAbs = G4RandGauss::shoot(0.913,0.172);//all tpb abs (visible light)
+  while (tpbEff > 0.9999 || tpbEff < 0.1) {  tpbEff  = G4RandGauss::shoot(0.578,0.157); }
+  while (foilEff> 0.9999 || foilEff< 0.1) {  foilEff = G4RandGauss::shoot(0.872,0.100);  }
+  while (tpbAbs > 0.9999 || tpbAbs < 0.1) {  tpbAbs  = G4RandGauss::shoot(0.968,0.064); } 
+
+  fifth = G4RandGauss::shoot(-1.928,1.34);//up or down shift of the entire rod (missed the center)
+  randwide = G4RandFlat::shoot(0.4,5.0);//1.055,0.154);//probability of scattering in TPB
+  //top/bottom thickness ratio cap PMT TPB
+  //while (fifth < 0.1) { fifth = G4RandGauss::shoot(4.0,1.7); }
+  //while (randwide < 0.1) { randwide = G4RandGauss::shoot(1.52,0.687); }
+
+  conewide = G4RandGauss::shoot(0.5,0.3);
+  conehigh = G4RandGauss::shoot(0.2,0.1);
+  while (conewide < 0.01) { conewide = G4RandGauss::shoot(0.5,0.2); }
+  while (conehigh < 0.01) { conehigh = G4RandGauss::shoot(0.2,0.2); }
+
+  topthick = G4RandGauss::shoot(5.49,0.939);//pmtHeight
+  while (topthick < 1.0) { topthick = G4RandGauss::shoot(5.49,0.939); }
+
+  G4double cloud = 100.0;//G4RandFlat::shoot(10.0,100.0);
+  ultra = 40.0;//G4RandFlat::shoot(5.0,40.0);//max radius of bottom clouding
+  DefineLAr(base,100.0,cloud,threehun,mult);
+  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, randwide);
 
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
   std::ostringstream oss;
 
   //oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;
-  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t abs200s \t" << ultra  << "\t abs300s \t" << threehun << "\t abs400s \t" << mult  << "\t abs1stR \t" << fifth << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\n";
+  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t rodShift \t" << fifth << "\t tpbScatter \t" << randwide << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs  << "\t frillwide \t" << conewide << "\t frillhigh \t" << conehigh << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\n";
 
   randomized = true;
   
@@ -1861,6 +2214,7 @@ void detectorConstruction::SetALP(G4bool b) {
 void detectorConstruction::SetCCM200(G4bool b) {
   ccm200=b;
   G4RunManager::GetRunManager()->ReinitializeGeometry();
+
 }
 //turn the tpb on the foils on or off. The tpb on the pmts will remain even if this is false
 void detectorConstruction::SetTPBfoilOn(G4bool b) {
@@ -1907,7 +2261,7 @@ int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
   G4double mult = 2800.0;
 
   DefineLAr(base,ultra,fifth,threehun,mult);
-  DefineTpb(foilEff, tpbEff, tpbAbs);
+  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, 2.75);
 
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
@@ -1975,7 +2329,7 @@ void detectorConstruction::CorrelateRandom() {
   G4double mult = 2800.0;
 
   DefineLAr(base,ultra,fifth,threehun,mult);
-  DefineTpb(foilEff, tpbEff, tpbAbs);
+  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, 2.75);
 
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
@@ -1992,6 +2346,7 @@ void detectorConstruction::CorrelateRandom() {
 
 //method for randomizing one parameter at a time
 void detectorConstruction::OneRandom(G4int var) {
+  /*// ccm120 Variable set
   G4double base = 55.9506;
 
   if (var > 11) {
@@ -2018,19 +2373,57 @@ void detectorConstruction::OneRandom(G4int var) {
     foilEff = G4RandFlat::shoot(0.30,0.60);
   } else if (var == 10) {
     base = G4RandFlat::shoot(20.0,70.0);
+    }*/
+
+  //ccm200 variable set
+  G4double base = 47.6;
+  G4double mult = 2400.;
+  threehun = 1600.0;
+  fifth = -2.0;
+  randwide = 0.7;//1.5?
+  topthick = 5.5;
+  tpbAbs = 0.85;
+  conewide = 0.5;
+  conehigh = 0.2;
+  foilEff = 0.8;
+  tpbEff = 0.7;
+  if (var > 11) {
+    return;
+  } else if (var == 0) {
+    base = G4RandFlat::shoot(30.0,70.0);
+  } else if (var == 1) {
+    fifth = G4RandFlat::shoot(-5.0,2.0);//up or down shift of the entire rod (missed the center)
+  } else if (var == 2) {
+    randwide = G4RandFlat::shoot(0.3,5.0);//top/bottom thickness ratio cap PMT TPB
+  } else if (var == 3) {
+    topthick = G4RandFlat::shoot(3.0, 8.0);//pmtHeight
+  } else if (var == 4) {
+    tpbAbs = G4RandGauss::shoot(0.903,0.072);//all tpb abs (visible light)
+    while (tpbAbs > 0.9999 || tpbAbs < 0.1) { tpbAbs  = G4RandGauss::shoot(0.968,0.064); } 
+  } else if (var == 5) {
+    //mult = G4RandFlat::shoot(100.0,3200.0);
+    conewide = G4RandFlat::shoot(0.1,2.0);
+  } else if (var == 6) {
+    //threehun = G4RandFlat::shoot(100.0,2000.0);
+    conehigh = G4RandFlat::shoot(0.1,1.0);
+  } else if (var == 7) {
+    foilEff = G4RandFlat::shoot(0.30,0.999);
+  } else if (var == 8) {
+    tpbEff = G4RandFlat::shoot(0.10,0.999);
+  } else if (var == 9) {
+    ultra = G4RandFlat::shoot(5.0,200.0);//max radius of bottom clouding
+  } else if (var == 10) {
+    base = G4RandFlat::shoot(20.0,70.0);
   }
+  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, randwide);
+  DefineLAr(base,ultra,100.0,threehun,mult);
   
-  G4double mult = 2800.0;
-
-  DefineLAr(base,ultra,fifth,threehun,mult);
-  DefineTpb(foilEff, tpbEff, tpbAbs);
-
   G4RunManager::GetRunManager()->ReinitializeGeometry();
-
+  
   std::ostringstream oss;
 
-  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
-  
+  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t rodShift \t" << fifth << "\t tpbScatter \t" << randwide << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs  << "\t frillwide \t" << conewide << "\t frillhigh \t" << conehigh << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t abs200s \t" << ultra << "\n";
+
   randomized = true;
   
   variableString = oss.str();

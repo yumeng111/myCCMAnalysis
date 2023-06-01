@@ -372,9 +372,11 @@ void CCMPMTResponse::FillSPEWeights()
       fSPEWeights.emplace(key,std::make_tuple(adcToPE,error,thresh));
       fWaveforms.emplace(key,std::vector<double>(Utility::fgkNumBins,0.0));
     } else {
+      std::cout << "getting from root histogram " << key << '\n';
       TH2D * tempHist = nullptr;
-      fPMTSPEFile->GetObject(Form("subtract%zu",key),tempHist);
+      fPMTSPEFile->GetObject(Form("Subtracted_%zu",key),tempHist);
       if (!tempHist) {
+	std::cout << "no histogram retrieved " << Form("subtract%zu",key) << '\n';
         continue;
       }
       fSPEHists.emplace(key,std::make_shared<TH2D>(*tempHist));
