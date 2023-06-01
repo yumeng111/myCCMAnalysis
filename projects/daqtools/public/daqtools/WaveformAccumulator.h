@@ -41,9 +41,10 @@ public:
         sum_fixed_position(0) {}
 
     void AddWaveform(std::vector<double> const & wf, int wf_fixed_position) {
-        AddWaveform(wf, wf_fixed_position, std::vector<unsigned int>(wf.size(), 1));
+        std::vector<unsigned int> counts(wf.size(), 1);
+        AddWaveform(wf, wf_fixed_position, counts);
     }
-    void AddWaveform(std::vector<double> const & wf, int wf_fixed_position, std::vector<unsigned int> wf_counts) {
+    void AddWaveform(std::vector<double> const & wf, int wf_fixed_position, std::vector<unsigned int> const & wf_counts) {
         if(first) {
             std::copy(wf.begin(), wf.end(), std::back_inserter(sum));
             counts = std::deque<unsigned int>(sum.size(), 1);
