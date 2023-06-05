@@ -181,10 +181,13 @@ typedef I3Map<OMKey, double > I3MapKeyDouble;
 typedef I3Map<OMKey, unsigned int > I3MapKeyUInt;
 typedef I3Map<TriggerKey, std::vector<unsigned int> > I3MapTriggerVectorUInt;
 typedef I3Map<TriggerKey, double > I3MapTriggerDouble;
+typedef I3Map<TriggerKey, int> I3MapTriggerInt;
 typedef I3Map<TriggerKey, unsigned int> I3MapTriggerUInt;
 typedef I3Map<CCMPMTKey, std::vector<double> > I3MapPMTKeyVectorDouble;
 typedef I3Map<CCMPMTKey, std::vector<int> > I3MapPMTKeyVectorInt;
+typedef I3Map<CCMPMTKey, std::vector<unsigned int> > I3MapPMTKeyVectorUInt;
 typedef I3Map<CCMPMTKey, double > I3MapPMTKeyDouble;
+typedef I3Map<CCMPMTKey, int > I3MapPMTKeyInt;
 typedef I3Map<CCMPMTKey, unsigned int > I3MapPMTKeyUInt;
 
 I3_POINTER_TYPEDEFS(I3MapStringDouble);
@@ -202,10 +205,13 @@ I3_POINTER_TYPEDEFS(I3MapKeyDouble);
 I3_POINTER_TYPEDEFS(I3MapKeyUInt);
 I3_POINTER_TYPEDEFS(I3MapTriggerVectorUInt);
 I3_POINTER_TYPEDEFS(I3MapTriggerDouble);
+I3_POINTER_TYPEDEFS(I3MapTriggerInt);
 I3_POINTER_TYPEDEFS(I3MapTriggerUInt);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyVectorDouble);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyVectorInt);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyVectorUInt);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyDouble);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyInt);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyUInt);
 
 #endif // I3MAP_H_INCLUDED
