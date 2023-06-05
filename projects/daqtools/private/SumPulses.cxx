@@ -30,14 +30,14 @@ class SumPulses : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
     std::string waveforms_name_;
+    std::string pulses_name_;
+    bool already_summed_;
+    std::string counts_name_;
+    std::string peak_positions_name_;
 
     // Internal state
-    bool geo_seen;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     std::map<CCMPMTKey, WaveformAccumulator> summed_waveforms_;
-
-    bool seen_frame;
-    I3FramePtr last_frame;
 
 public:
     SumPulses(const I3Context&);
@@ -52,78 +52,90 @@ public:
 I3_MODULE(SumPulses);
 
 void SumPulses::ProcessFrame(I3FramePtr frame) {
-    I3Map<CCMPMTKey, std::vector<double>> const & pulse_samples = frame->Get<I3Map<CCMPMTKey, std::vector<double>> const>("PulseSamples");
-    for(std::pair<CCMPMTKey const, std::vector<double>> const & p : pulse_samples) {
-        CCMPMTKey pmt_key = p.first;
-        std::vector<double> const & wf = p.second;
-        int pos = std::distance(wf.begin(), std::max_element(wf.begin(), wf.end()));
-        summed_waveforms_[pmt_key].AddWaveform(wf, pos);
+    I3Map<CCMPMTKey, std::vector<double>> const & pulse_samples = frame->Get<I3Map<CCMPMTKey, std::vector<double>> const>(pulses_name_);
+    if(already_summed_) {
+        I3Map<CCMPMTKey, int> const & peak_positions = frame->Get<I3Map<CCMPMTKey, int> const>(peak_positions_name_);
+        I3Map<CCMPMTKey, std::vector<unsigned int>> const & counts = frame->Get<I3Map<CCMPMTKey, std::vector<unsigned int>> const>(counts_name_);
+        for(std::pair<CCMPMTKey const, std::vector<double>> const & p : pulse_samples) {
+            CCMPMTKey pmt_key = p.first;
+            std::vector<double> const & wf = p.second;
+            int pos = peak_positions.at(pmt_key);
+            std::vector<unsigned int> count = counts.at(pmt_key);
+            summed_waveforms_[pmt_key].AddWaveform(wf, pos, count);
+        }
+    } else {
+        for(std::pair<CCMPMTKey const, std::vector<double>> const & p : pulse_samples) {
+            CCMPMTKey pmt_key = p.first;
+            std::vector<double> const & wf = p.second;
+            int pos = std::distance(wf.begin(), std::max_element(wf.begin(), wf.end()));
+            summed_waveforms_[pmt_key].AddWaveform(wf, pos);
+        }
     }
 }
 
 SumPulses::SumPulses(const I3Context& context) : I3Module(context),
-    geometry_name_(""), waveforms_name_(""), geo_seen(false), seen_frame(false), last_frame(nullptr) {
+    geometry_name_(""), waveforms_name_("") {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
+    AddParameter("PulseSamplesName", "Key for pulse samples", std::string(""));
+    AddParameter("AlreadySummed", "Is the input pulses that have already been added together? If so, use the counts and positons stored in the frame", bool(false));
+    AddParameter("CountsName", "Key for summed pulses counts", std::string(""));
+    AddParameter("PeakPositionsName", "Key for summed pulses reference positions", std::string(""));
 }
 
 void SumPulses::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMWaveformsName", waveforms_name_);
+    GetParameter("PulseSamplesName", pulses_name_);
+    GetParameter("AlreadySummed", already_summed_);
+    if(pulses_name_ == "") {
+        if(already_summed_) {
+            pulses_name_ = "SummedPulses";
+        } else {
+            pulses_name_ = "PulseSamples";
+        }
+    }
+    GetParameter("CountsName", counts_name_);
+    if(counts_name_ == "" and already_summed_) {
+        log_warn("CountsName not specified, so assuming default.");
+        counts_name_ = pulses_name_ + "Counts";
+    }
+    GetParameter("PeakPositionsName", peak_positions_name_);
+    if(peak_positions_name_ == "" and already_summed_) {
+        log_warn("PeakPositionsName not specified, so assuming default.");
+        peak_positions_name_ = pulses_name_ + "PeakPositions";
+    }
 }
 
 void SumPulses::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
-    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-
-
-    // Cache the trigger channel map
-    pmt_channel_map_ = geo.pmt_channel_map;
-
-    for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
-        CCMPMTKey pmt_key = p.first;
-        summed_waveforms_.insert({pmt_key, WaveformAccumulator()});
-    }
-
-    geo_seen = true;
     PushFrame(frame);
 }
 
 void SumPulses::DAQ(I3FramePtr frame) {
-    if(not geo_seen) {
-        log_fatal("Geometry not seen yet!");
-    }
     ProcessFrame(frame);
-    if(seen_frame) {
-        PushFrame(last_frame);
-    }
-    last_frame = frame;
-    seen_frame = true;
 }
 
 void SumPulses::Finish() {
-    if(seen_frame) {
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> summed_waveforms = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
-        boost::shared_ptr<I3Map<CCMPMTKey, int>> waveform_peak_positions = boost::make_shared<I3Map<CCMPMTKey, int>>();
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<unsigned int>>> waveform_counts = boost::make_shared<I3Map<CCMPMTKey, std::vector<unsigned int>>>();
-        for(std::pair<CCMPMTKey const, WaveformAccumulator> const & p : summed_waveforms_) {
-            CCMPMTKey pmt_key = p.first;
-            std::deque<double> deque_wf = p.second.GetSummedWaveform();
-            std::deque<unsigned int> deque_counts = p.second.GetCounts();
-            std::vector<double> wf(deque_wf.begin(), deque_wf.end());
-            std::vector<unsigned int> counts(deque_counts.begin(), deque_counts.end());
-            summed_waveforms->insert({pmt_key, wf});
-            waveform_peak_positions->insert({pmt_key, p.second.GetFixedPosition()});
-            waveform_counts->insert({pmt_key, counts});
-        }
-        last_frame->Put("SummedPulses", summed_waveforms);
-        last_frame->Put("SummedPulsesPeakPositions", waveform_peak_positions);
-        last_frame->Put("SummedPulsesCounts", waveform_counts);
-        PushFrame(last_frame);
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> summed_waveforms = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, int>> waveform_peak_positions = boost::make_shared<I3Map<CCMPMTKey, int>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<unsigned int>>> waveform_counts = boost::make_shared<I3Map<CCMPMTKey, std::vector<unsigned int>>>();
+    for(std::pair<CCMPMTKey const, WaveformAccumulator> const & p : summed_waveforms_) {
+        CCMPMTKey pmt_key = p.first;
+        std::deque<double> deque_wf = p.second.GetSummedWaveform();
+        std::deque<unsigned int> deque_counts = p.second.GetCounts();
+        std::vector<double> wf(deque_wf.begin(), deque_wf.end());
+        std::vector<unsigned int> counts(deque_counts.begin(), deque_counts.end());
+        summed_waveforms->insert({pmt_key, wf});
+        waveform_peak_positions->insert({pmt_key, p.second.GetFixedPosition()});
+        waveform_counts->insert({pmt_key, counts});
     }
-    seen_frame = false;
-    last_frame = nullptr;
+    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::DAQ);
+    frame->Put("SummedPulses", summed_waveforms);
+    frame->Put("SummedPulsesPeakPositions", waveform_peak_positions);
+    frame->Put("SummedPulsesCounts", waveform_counts);
+    PushFrame(frame);
     Flush();
 }
