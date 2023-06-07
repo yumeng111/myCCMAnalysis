@@ -117,6 +117,8 @@ std::pair<size_t, size_t> FindFirstPulse(WaveformSmoother & smoother, double bas
             pulse_last_index = CheckForPulse(smoother, i, max_pulse_width, min_pulse_width, min_pulse_height, min_deriv_magnitude, min_integral, baseline);
             if(pulse_last_index > i) {
                 pulse_first_index = size_t(std::max(ptrdiff_t(0), ptrdiff_t(i) - 5));
+                smoother.Reset(pulse_last_index);
+                i = pulse_last_index;
                 break;
             }
         }
