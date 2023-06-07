@@ -2,9 +2,16 @@
 #define I3_WaveformSmoother_H
 
 #include <vector>
+#include <utility>
 #include <algorithm>
+#include <icetray/I3DefaultName.h>
+#include <icetray/I3FrameObject.h>
+#include <icetray/I3PointerTypedefs.h>
+#include <icetray/serialization.h>
+#include <icetray/I3Logging.h>
 
-class WaveformSmoother {
+static const unsigned waveformsmoother_version_ = 1;
+class WaveformSmoother : public I3FrameObject {
     std::vector<uint16_t>::const_iterator begin;
     std::vector<uint16_t>::const_iterator end;
     size_t N;
@@ -159,5 +166,7 @@ public:
         return N;
     }
 };
+
+I3_POINTER_TYPEDEFS(WaveformSmoother);
 
 #endif // I3_WaveformSmoother_H
