@@ -45,7 +45,7 @@ struct EstimateInfo {
 };
 
 struct BaselinePMTKeyInfo {
-    std::deque<OnlineStatsRobustBatched> baseline_estimators;
+    std::deque<OnlineRobustStatsBatched> baseline_estimators;
     std::deque<size_t> n_frames_since_last_estimator_update;
     std::deque<EstimateInfo> estimate_info;
 };
@@ -65,8 +65,8 @@ struct BaselineFrameInfo {
     std::set<CCMPMTKey> channels_pending;
     boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baseline_estimates;
     BaselineFrameInfo() :
-        channel_pending(),
-        baseline_estimates(boost::make_shared<I3Map<CCMPMTKey, double>>())
+        channels_pending(),
+        baseline_estimates(boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>())
     {}
 };
 
@@ -109,10 +109,12 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
         XT += t*x;
         ++t;
     }
-    b = X/N - (N*XT*T-X*T*T) / (N*N*T2 - N*T*T);
-    m = (N*XT - X*T) / (N*T2 - T*T);
+    double b = X/N - (N*XT*T-X*T*T) / (N*N*T2 - N*T*T);
+    double m = (N*XT - X*T) / (N*T2 - T*T);
     double sigma2 = (X2 + N*b*b + m*m*T2 - 2*b*X - 2*m*XT) / N;
-    sigma = sqrt(sigma2);
+    linear_b = b;
+    linear_m = m;
+    linear_sigma = sqrt(sigma2);
     flat_mean = X / N;
 
     flat_sigma = 0;
@@ -125,14 +127,31 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
 
 double BaselineComparisonScore(OnlineRobustStatsBatched & stats, std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end) {
     double mode = stats.Mode();
-    double stddev = stats.StdDev(mode);
+    double stddev = stats.Stddev(mode);
     size_t N = std::distance(begin, end);
     double chi2 = 0.0;
     for(; begin != end; ++begin) {
         double z = ((*begin) - mode) / stddev;
         chi2 += z;
     }
+    chi2 /= 2.0;
+    chi2 /= N;
+    chi2 += log(stddev) + log(sqrt(2.0 * M_PI));
     return chi2 /= N;
+}
+
+size_t ChooseEstimator(WFInfo const & wf_info, std::deque<OnlineRobustStatsBatched> & baseline_estimators, bool allow_new_estimator=false, double max_score=1.5) {
+    std::vector<double> comparison_scores(baseline_estimators.size());
+    for(size_t i=0; i<baseline_estimators.size(); ++i) {
+        comparison_scores[i] = BaselineComparisonScore(baseline_estimators[i], wf_info.values.cbegin(), wf_info.values.cend());
+    }
+    std::vector<double>::iterator min_score = std::min_element(comparison_scores.begin(), comparison_scores.end());
+    size_t best_idx = std::distance(comparison_scores.begin(), min_score);
+    if(allow_new_estimator and (*min_score) > max_score) {
+        return baseline_estimators.size() + 1;
+    } else {
+        return best_idx;
+    }
 }
 
 WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pulse_positions) {
@@ -141,7 +160,7 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
     std::vector<double>::const_iterator wf_end = wf_its.second;
     size_t wf_size = std::distance(wf_begin, wf_end);
     std::vector<double>::const_iterator baseline_begin = wf_begin + std::max(ptrdiff_t(std::min(ptrdiff_t(200), ptrdiff_t(wf_size)-1)), ptrdiff_t(0));
-    size_t N_baseline_samples = size_t(std::max(ptrdiff_t(0), ptrdiff_t(std::min(std::distance(baseline_begin, wf_end), pulse_positions.first)) - 5));
+    size_t N_baseline_samples = size_t(std::max(ptrdiff_t(0), ptrdiff_t(std::min(ptrdiff_t(std::distance(baseline_begin, wf_end)), ptrdiff_t(pulse_positions.first))) - 5));
     std::vector<double>::const_iterator baseline_end = baseline_begin + N_baseline_samples;
 
     WFInfo wf_info;
@@ -155,6 +174,8 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
         wf_info.suitable_for_estimate = false;
         return wf_info;
     }
+
+    std::copy(baseline_begin, baseline_end, std::back_inserter(wf_info.values));
 
     LinearFlatFit(baseline_begin, baseline_end,
             wf_info.linear_intercept, 
@@ -182,6 +203,10 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
 class BaselineEstimator : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
+    std::string input_name_;
+
+    size_t num_frames;
+    size_t num_samples;
 
     // Internal state
     bool geo_seen;
@@ -219,7 +244,7 @@ void BaselineEstimator::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("Input", input_name_);
     GetParameter("NumFrames", num_frames);
-    GetParameter("NumSamples", num_frames);
+    GetParameter("NumSamples", num_samples);
 }
 
 void BaselineEstimator::Geometry(I3FramePtr frame) {
@@ -247,7 +272,7 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
 
 void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
     I3Map<CCMPMTKey, WaveformSmoother> smoothed_wfs = frame->Get<I3Map<CCMPMTKey, WaveformSmoother>>("WaveformSmoothers");
-    I3Map<CCMPMTKey, std::pair<size_t, size_t>> pulse_positions = frame->Get<I3Map<CCMPMTKey, std::pair<size_t, size_t>>("PulsePositions");
+    I3Map<CCMPMTKey, std::pair<size_t, size_t>> pulse_positions = frame->Get<I3Map<CCMPMTKey, std::pair<size_t, size_t>>>("PulsePositions");
 
     std::set<CCMPMTKey> & channels_pending = baseline_frame_info[frame].channels_pending;
     cached_frames.push_back(frame);
@@ -256,7 +281,7 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
         CCMPMTKey pmt_key = p.first;
         WaveformSmoother & smoother = p.second;
         std::deque<EstimateInfo> & estimate_info = baseline_pmt_info[pmt_key].estimate_info;
-        std::deque<OnlineStatsRobustBatched> & baseline_estimators = baseline_pmt_info[pmt_key].baseline_estimators;
+        std::deque<OnlineRobustStatsBatched> & baseline_estimators = baseline_pmt_info[pmt_key].baseline_estimators;
         std::deque<size_t> & n_frames_since_last_estimator_update = baseline_pmt_info[pmt_key].n_frames_since_last_estimator_update;
 
         std::pair<size_t, size_t> & pos = pulse_positions.at(pmt_key);
@@ -299,7 +324,7 @@ void BaselineEstimator::UpdateEstimates() {
         CCMPMTKey pmt_key = p.first;
     BaselinePMTInfo & pmt_info = p.second;
     std::deque<EstimateInfo> & estimate_info = pmt_info.estimate_info;
-    std::deque<OnlineStatsRobustBatched> & baseline_estimators = pmt_info.baseline_estimators;
+    std::deque<OnlineRobustStatsBatched> & baseline_estimators = pmt_info.baseline_estimators;
     std::deque<size_t> & n_frames_since_last_estimator_update = pmt_info.n_frames_since_last_estimator_update;
 
     std::vector<size_t> estimates_to_remove;
@@ -311,7 +336,7 @@ void BaselineEstimator::UpdateEstimates() {
         WFInfo & wf_info = estimate.waveform_properties;
         std::set<CCMPMTKey> & channels_pending = estimate.channels_pending;
         // Choose the best estimator, requiring that an existing one be chosen
-        size_t estimator_index = ChooseEstimator(wf_info, stats, false);
+        size_t estimator_index = ChooseEstimator(wf_info, baseline_estimators, false);
         if(HasEnoughSamples(estimator)) {
             // If the estimator has enough samples then perform the estimate
             // Compute the estimator
