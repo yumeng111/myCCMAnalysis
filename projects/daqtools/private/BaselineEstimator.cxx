@@ -205,8 +205,9 @@ class BaselineEstimator : public I3Module {
     std::string geometry_name_;
     std::string input_name_;
 
-    size_t num_frames;
+    size_t num_frames_for_estimate;
     size_t num_samples;
+    size_t max_frames_waiting_for_estimate;
 
     // Internal state
     bool geo_seen;
@@ -236,15 +237,17 @@ BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(contex
     geometry_name_(""),  geo_seen(false) {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
         AddParameter("Input", "Input key prefix", std::string(""));
-        AddParameter("NumFrames", "Number of frames to use for baseline estimate", size_t(100));
-        AddParameter("NumSamples", "Number of samples from each frame to use for baseline estimate", size_t(50));
+        AddParameter("NumFramesForEstimate", "Number of frames to use for baseline estimate", size_t(100));
+        AddParameter("NumSamples", "Number of samples from each frame to use for baseline estimate", size_t(200));
+        AddParameter("MaxFramesWaitingForEstimate", "Maximum number of frames to postpone computing an estimate for frame that has an incomplete estimator", size_t(500));
     }
 
 void BaselineEstimator::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("Input", input_name_);
-    GetParameter("NumFrames", num_frames);
+    GetParameter("NumFramesForEstimate", num_frames_for_estimate);
     GetParameter("NumSamples", num_samples);
+    GetParameter("MaxFramesWaitingForEstimate", max_frames_waiting_for_estimate);
 }
 
 void BaselineEstimator::Geometry(I3FramePtr frame) {
@@ -299,8 +302,8 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
             OnlineRobustStatsBatched & estimator = baseline_estimators[estimator_index];
             // Add samples to the estimator
             estimator.AddValues(wf_info.values);
-            if(estimator.NBatches() > frames_for_baseline) {
-                estimator.RemoveValues();
+            if(estimator.NBatches() > num_frames_for_estimate) {
+                estimator.RemoveValue();
             }
             // Reset counter for current estimator
             n_frames_since_last_estimator_update[estimator_index] = 0;
@@ -314,60 +317,69 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
         estimate_info.emplace_back(frame, wf_info);
         channels_pending.insert(pmt_key);
     }
-    if(n_pending) {
-        n_channels_pending[frame] = n_pending;
-    }
 }
 
 void BaselineEstimator::UpdateEstimates() {
-    for(std::pair<CCMPMTKey const, BaselinePMTKeyInfo> p & : baseline_pmt_info)
+    for(std::pair<CCMPMTKey const, BaselinePMTKeyInfo> & p : baseline_pmt_info) {
         CCMPMTKey pmt_key = p.first;
-    BaselinePMTInfo & pmt_info = p.second;
-    std::deque<EstimateInfo> & estimate_info = pmt_info.estimate_info;
-    std::deque<OnlineRobustStatsBatched> & baseline_estimators = pmt_info.baseline_estimators;
-    std::deque<size_t> & n_frames_since_last_estimator_update = pmt_info.n_frames_since_last_estimator_update;
+        BaselinePMTKeyInfo & pmt_info = p.second;
+        std::deque<EstimateInfo> & estimate_info = pmt_info.estimate_info;
+        std::deque<OnlineRobustStatsBatched> & baseline_estimators = pmt_info.baseline_estimators;
+        std::deque<size_t> & n_frames_since_last_estimator_update = pmt_info.n_frames_since_last_estimator_update;
 
-    std::vector<size_t> estimates_to_remove;
-    size_t estimate_index = 0;
-    // Check if cached frames can have estimates added
-    for(EstimateInfo & estimate : estimate_info) {
-        I3FramePtr cached_frame = estimate.cached_frame;
-        boost::shared_ptr<I3Map<CCMPMTKey, double>> baseline_estimates = baseline_frame_info[cached_frame].baseline_estimates;
-        WFInfo & wf_info = estimate.waveform_properties;
-        std::set<CCMPMTKey> & channels_pending = estimate.channels_pending;
-        // Choose the best estimator, requiring that an existing one be chosen
-        size_t estimator_index = ChooseEstimator(wf_info, baseline_estimators, false);
-        if(HasEnoughSamples(estimator)) {
-            // If the estimator has enough samples then perform the estimate
-            // Compute the estimator
-            double baseline_estimate = estimator.Mode();
-            // Put the estimate into the map
-            baseline_estimates->insert({pmt_key, baseline_estimate});
-            channels_pending.erase(pmt_key);
-            estimates_to_remove.push_back(estimate_index);
-        } else if(estimate.frames_passed > max_frames_passed) {
-            // If too many frames have gone by without an estimate for this frame
-            // then perform an estimate anyway
-            double baseline_estimate = estimator.Mode();
-            baseline_estimates->insert({pmt_key, baseline_estimate});
-            channels_pending.erase(pmt_key);
-            estimates_to_remove.push_back(estimate_index);
-        } else {
-            // We can't produce an estimate right now
-            estimate.frames_passed += 1;
-        }
-        estimate_index += 1;
-    }
-    if(estimates_to_remove.size() > 0) {
-        // Remove estimates in reverse order
-        size_t remove_idx = estimates_to_remove.size();
-        size_t idx = estimate_info.size();
-        while(remove_idx > 0 and idx > 0) {
-            if((idx-1) == estimates_to_remove[remove_idx-1]) {
-                estimate_info.erase(estimates_to_remove[remove_idx-1]);
-                --remove_idx;
+        std::vector<size_t> estimates_to_remove;
+        size_t estimate_index = 0;
+        // Check if cached frames can have estimates added
+        for(EstimateInfo & estimate : estimate_info) {
+            I3FramePtr cached_frame = estimate.cached_frame;
+            boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baseline_estimates = baseline_frame_info[cached_frame].baseline_estimates;
+            std::set<CCMPMTKey> & channels_pending = baseline_frame_info[cached_frame].channels_pending;
+            WFInfo & wf_info = estimate.waveform_properties;
+            // Choose the best estimator, requiring that an existing one be chosen
+            size_t estimator_index = ChooseEstimator(wf_info, baseline_estimators, false);
+            OnlineRobustStatsBatched & estimator = baseline_estimators[estimator_index];
+            if(estimator.NBatches() >= num_frames_for_estimate) {
+                // If the estimator has enough samples then perform the estimate
+                // Compute the estimator
+                BaselineEstimate baseline_estimate(
+                        estimator.Mode(),
+                        estimator.Stddev(estimator.Mode()),
+                        num_frames_for_estimate,
+                        estimator.NBatches(),
+                        estimator.NSamples());
+                // Put the estimate into the map
+                baseline_estimates->insert({pmt_key, baseline_estimate});
+                channels_pending.erase(pmt_key);
+                estimates_to_remove.push_back(estimate_index);
+            } else if(estimate.frames_passed > max_frames_waiting_for_estimate) {
+                // If too many frames have gone by without an estimate for this frame
+                // then perform an estimate anyway
+                BaselineEstimate baseline_estimate(
+                        estimator.Mode(),
+                        estimator.Stddev(estimator.Mode()),
+                        num_frames_for_estimate,
+                        estimator.NBatches(),
+                        estimator.NSamples());
+                baseline_estimates->insert({pmt_key, baseline_estimate});
+                channels_pending.erase(pmt_key);
+                estimates_to_remove.push_back(estimate_index);
+            } else {
+                // We can't produce an estimate right now
+                estimate.frames_passed += 1;
             }
-            --idx;
+            estimate_index += 1;
+        }
+        if(estimates_to_remove.size() > 0) {
+            // Remove estimates in reverse order
+            size_t remove_idx = estimates_to_remove.size();
+            size_t idx = estimate_info.size();
+            while(remove_idx > 0 and idx > 0) {
+                if((idx-1) == estimates_to_remove[remove_idx-1]) {
+                    estimate_info.erase(estimate_info.begin() + estimates_to_remove[remove_idx-1]);
+                    --remove_idx;
+                }
+                --idx;
+            }
         }
     }
 }
