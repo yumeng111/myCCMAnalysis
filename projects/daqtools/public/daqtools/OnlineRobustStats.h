@@ -67,14 +67,17 @@ class OnlineRobustStatsBatched {
     bool mode_computed = false;
     bool median_computed = false;
     bool stddev_computed = false;
+    bool mean_computed = false;
     double mode;
     double median;
     double stddev;
     double stddev_cached_x;
+    double mean;
     void ResetState() {
         mode_computed = false;
         median_computed = false;
         stddev_computed = false;
+        mean_computed = false;
     }
 public:
     OnlineRobustStatsBatched() {}
@@ -154,6 +157,23 @@ public:
         stddev_computed = true;
         stddev = ret;
         stddev_cached_x = x;
+        return ret;
+    }
+
+    double Mean() {
+        if(mean_computed)
+            return mean;
+        double ret = 0.0;
+        std::multiset<double>::iterator it = sorted_samples.begin();
+        std::multiset<double>::iterator end = sorted_samples.end();
+        size_t N = sorted_samples.size();
+        while(it != end) {
+            ret += *it;
+            ++it;
+        }
+        mean_computed = true;
+        ret /= N;
+        mean = ret;
         return ret;
     }
 
