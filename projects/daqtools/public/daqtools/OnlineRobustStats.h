@@ -64,22 +64,37 @@ public:
 class OnlineRobustStatsBatched {
     std::deque<std::vector<double>> buffer;
     std::multiset<double> sorted_samples;
+    bool mode_computed = false;
+    bool median_computed = false;
+    bool stddev_computed = false;
+    double mode;
+    double median;
+    double stddev;
+    double stddev_cached_x;
+    void ResetState() {
+        mode_computed = false;
+        median_computed = false;
+        stddev_computed = false;
+    }
 public:
     OnlineRobustStatsBatched() {}
 
     void AddValue(double x) {
         buffer.push_back({x});
         sorted_samples.insert(x);
+        ResetState();
     }
 
     void AddValues(std::vector<double> const & x) {
         buffer.push_back(x);
         sorted_samples.insert(x.begin(), x.end());
+        ResetState();
     }
 
     void AddValues(I3Vector<double> const & x) {
         buffer.push_back(x);
         sorted_samples.insert(x.begin(), x.end());
+        ResetState();
     }
 
     void RemoveValue() {
@@ -92,9 +107,12 @@ public:
             }
         }
         buffer.pop_front();
+        ResetState();
     }
 
     double Median() {
+        if(median_computed)
+            return median;
         const size_t N = sorted_samples.size();
         const size_t half = N / 2;
         std::multiset<double>::iterator it = sorted_samples.begin();
@@ -112,18 +130,31 @@ public:
         ++it;
         ret += *it;
         ret /= 2;
+        median_computed = true;
+        median = median;
         return ret;
     }
 
     double Mode() {
-        return robust_stats::Mode(sorted_samples.begin(), sorted_samples.end());
+        if(mode_computed)
+            return mode;
+        double ret = robust_stats::Mode(sorted_samples.begin(), sorted_samples.end());
+        mode_computed = true;
+        mode = ret;
+        return ret;
     }
 
-    double Stddev(double median) {
-        return robust_stats::MedianAbsoluteDeviation(
+    double Stddev(double x) {
+        if(stddev_computed and x == stddev_cached_x)
+            return stddev;
+        double ret = robust_stats::MedianAbsoluteDeviation(
                 sorted_samples.begin(),
                 sorted_samples.end(),
-                median);
+                x);
+        stddev_computed = true;
+        stddev = ret;
+        stddev_cached_x = x;
+        return ret;
     }
 
     size_t NBatches() {
