@@ -42,14 +42,17 @@ struct EstimateInfo {
     I3FramePtr cached_frame;
     WFInfo waveform_properties;
     size_t frames_passed;
+    bool contributed_to_estimator;
+    size_t contributed_estimator_index;
     EstimateInfo(I3FramePtr frame, WFInfo info) :
-        cached_frame(frame), waveform_properties(info), frames_passed(0) {}
+        cached_frame(frame), waveform_properties(info), frames_passed(0), contributed_to_estimator(false) {}
 };
 
 struct BaselinePMTKeyInfo {
-    std::deque<OnlineRobustStatsBatched> baseline_estimators;
-    std::deque<size_t> n_frames_since_last_estimator_update;
+    std::map<size_t, OnlineRobustStatsBatched> baseline_estimators;
+    std::map<size_t, size_t> n_frames_since_last_estimator_update;
     std::deque<EstimateInfo> estimate_info;
+    size_t num_estimators = 0;
 };
 
 /*
@@ -143,7 +146,8 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
 }
 
 double BaselineComparisonScore(OnlineRobustStatsBatched & stats, std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end) {
-    double mode = stats.Mode();
+    //double mode = stats.Mode();
+    double mode = stats.Mean();
     double stddev = stats.Stddev(mode);
     size_t N = std::distance(begin, end);
     double chi2 = 0.0;
@@ -157,18 +161,21 @@ double BaselineComparisonScore(OnlineRobustStatsBatched & stats, std::vector<dou
     return chi2 /= N;
 }
 
-size_t ChooseEstimator(WFInfo const & wf_info, std::deque<OnlineRobustStatsBatched> & baseline_estimators, bool allow_new_estimator=false, double max_score=1.5) {
+size_t ChooseEstimator(WFInfo const & wf_info, BaselinePMTKeyInfo & pmt_key_info, bool allow_new_estimator=false, double max_score=1.5) {
+    std::map<size_t, OnlineRobustStatsBatched> & baseline_estimators = pmt_key_info.baseline_estimators;
     if(baseline_estimators.size() == 0) {
         return 0;
     }
-    std::vector<double> comparison_scores(baseline_estimators.size());
-    for(size_t i=0; i<baseline_estimators.size(); ++i) {
-        comparison_scores[i] = BaselineComparisonScore(baseline_estimators[i], wf_info.values.cbegin(), wf_info.values.cend());
+    std::map<size_t, double> comparison_scores;
+    for(std::pair<size_t const, OnlineRobustStatsBatched> & p : baseline_estimators) {
+        comparison_scores[p.first] = BaselineComparisonScore(p.second, wf_info.values.cbegin(), wf_info.values.cend());
     }
-    std::vector<double>::iterator min_score = std::min_element(comparison_scores.begin(), comparison_scores.end());
-    size_t best_idx = std::distance(comparison_scores.begin(), min_score);
-    if(allow_new_estimator and (*min_score) > max_score) {
-        return baseline_estimators.size() + 1;
+    std::map<size_t, double>::iterator min_score =
+        std::min_element(comparison_scores.begin(), comparison_scores.end(),
+                [](decltype(comparison_scores)::value_type& l, decltype(comparison_scores)::value_type& r) -> bool { return l.second < r.second; });
+    size_t best_idx = min_score->first;
+    if(allow_new_estimator and min_score->second > max_score) {
+        return pmt_key_info.num_estimators;
     } else {
         return best_idx;
     }
@@ -299,10 +306,14 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
-    std::cout << "Frame " << frames_seen << std::endl;
     UpdateEstimators(frame);
+    std::cout << "1: Updating estimators finish" << std::endl;
+    std::cout << "2: Updating estimates start" << std::endl;
     UpdateEstimates();
+    std::cout << "2: Updating estimates start finish" << std::endl;
+    std::cout << "6: Pushing frames start" << std::endl;
     UpdateAndPushCompletedFrames();
+    std::cout << "6: Pushing frames finish" << std::endl;
     frames_seen += 1;
 }
 
@@ -321,43 +332,48 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
             continue;
         }
         WaveformSmoother & smoother = p.second;
+        BaselinePMTKeyInfo & pmt_info = baseline_pmt_info[pmt_key];
         std::deque<EstimateInfo> & estimate_info = baseline_pmt_info[pmt_key].estimate_info;
-        std::deque<OnlineRobustStatsBatched> & baseline_estimators = baseline_pmt_info[pmt_key].baseline_estimators;
-        std::deque<size_t> & n_frames_since_last_estimator_update = baseline_pmt_info[pmt_key].n_frames_since_last_estimator_update;
+        std::map<size_t, OnlineRobustStatsBatched> & baseline_estimators = baseline_pmt_info[pmt_key].baseline_estimators;
+        std::map<size_t, size_t> & n_frames_since_last_estimator_update = baseline_pmt_info[pmt_key].n_frames_since_last_estimator_update;
 
         std::pair<size_t, size_t> & pos = pulse_positions.at(pmt_key);
-        WFInfo wf_info = ComputeWFInfo(smoother, pos, random, num_samples);
-        std::cout << pmt_key << " is suitable for estimate? " << (wf_info.suitable_for_estimate ? "Yes" : "No") << std::endl;
+        EstimateInfo pending_estimate(frame, ComputeWFInfo(smoother, pos, random, num_samples));
+        WFInfo & wf_info = pending_estimate.waveform_properties;
+        //std::cout << pmt_key << " is suitable for estimate? " << (wf_info.suitable_for_estimate ? "Yes" : "No") << std::endl;
         if(wf_info.suitable_for_estimate) {
             // Choose from existing estimator
             // Return the end index if an appropriate estimator does not exist
             // or if there are no estimators
-            size_t estimator_index = ChooseEstimator(wf_info, baseline_estimators, true);
-            std::cout << "\tChose estimator[" << estimator_index << "]" << std::endl;
-            if(estimator_index >= baseline_estimators.size()) {
+            size_t estimator_index = ChooseEstimator(wf_info, pmt_info, true);
+            //std::cout << "\tChose estimator[" << estimator_index << "]" << std::endl;
+            if(estimator_index >= pmt_info.num_estimators) {
                 // Instantiate a new estimator
-                baseline_estimators.emplace_back();
-                n_frames_since_last_estimator_update.push_back(0);
+                baseline_estimators[pmt_info.num_estimators];
+                n_frames_since_last_estimator_update[pmt_info.num_estimators] = 0;
+                pmt_info.num_estimators += 1;
             }
             OnlineRobustStatsBatched & estimator = baseline_estimators.at(estimator_index);
             // Add samples to the estimator
             estimator.AddValues(wf_info.values);
+            pending_estimate.contributed_to_estimator = true;
+            pending_estimate.contributed_estimator_index = estimator_index;
             if(estimator.NBatches() > num_frames_for_estimate) {
                 estimator.RemoveValue();
             }
             // Reset counter for current estimator
             n_frames_since_last_estimator_update[estimator_index] = 0;
             // Update the counter for the number of frames since the last estimator update
-            for(size_t i=0; i<baseline_estimators.size(); ++i) {
-                if(i != estimator_index) {
-                    n_frames_since_last_estimator_update[i] += 1;
+            for(std::pair<size_t const, OnlineRobustStatsBatched> & p_est : baseline_estimators) {
+                if(p_est.first != estimator_index) {
+                    n_frames_since_last_estimator_update[p_est.first] += 1;
                 }
             }
         }
-        for(size_t i=0; i<baseline_estimators.size(); ++i) {
-            std::cout << "\testimator[" << i << "]: " << baseline_estimators[i].NBatches() << " frames, " << baseline_estimators[i].NSamples() << " samples" << std::endl;
-        }
-        estimate_info.emplace_back(frame, wf_info);
+        //for(std::pair<size_t const, OnlineRobustStatsBatched> & p_est : baseline_estimators) {
+        //    std::cout << "\testimator[" << p_est.first << "]: " << p_est.second.NBatches() << " frames, " << p_est.second.NSamples() << " samples" << std::endl;
+        //}
+        estimate_info.push_back(pending_estimate);
         channels_pending.insert(pmt_key);
     }
 }
@@ -368,8 +384,7 @@ void BaselineEstimator::UpdateEstimates() {
         BaselinePMTKeyInfo & pmt_info = p.second;
         std::deque<EstimateInfo> & estimate_info = pmt_info.estimate_info;
         //std::cout << pmt_key << " has " << estimate_info.size() << " pending estimates." << std::endl;
-        std::deque<OnlineRobustStatsBatched> & baseline_estimators = pmt_info.baseline_estimators;
-        std::deque<size_t> & n_frames_since_last_estimator_update = pmt_info.n_frames_since_last_estimator_update;
+        std::map<size_t, OnlineRobustStatsBatched> & baseline_estimators = pmt_info.baseline_estimators;
 
         std::vector<size_t> estimates_to_remove;
         size_t estimate_index = 0;
@@ -395,16 +410,23 @@ void BaselineEstimator::UpdateEstimates() {
                 estimate_index += 1;
                 continue;
             }
-            // Choose the best estimator, requiring that an existing one be chosen
-            size_t estimator_index = ChooseEstimator(wf_info, baseline_estimators, false);
+            size_t estimator_index;
+            if(estimate.contributed_to_estimator) {
+                estimator_index = estimate.contributed_estimator_index;
+            } else {
+                // Choose the best estimator, requiring that an existing one be chosen
+                estimator_index = ChooseEstimator(wf_info, p.second, false);
+            }
             OnlineRobustStatsBatched & estimator = baseline_estimators.at(estimator_index);
             if(estimator.NBatches() >= num_frames_for_estimate) {
                 //std::cout << "\tAdding estimate for " << estimate_index << std::endl;
                 // If the estimator has enough samples then perform the estimate
                 // Compute the estimator
                 BaselineEstimate baseline_estimate(
-                        estimator.Mode(),
-                        estimator.Stddev(estimator.Mode()),
+                        //estimator.Mode(),
+                        //estimator.Stddev(estimator.Mode()),
+                        estimator.Mean(),
+                        estimator.Stddev(estimator.Mean()),
                         num_frames_for_estimate,
                         estimator.NBatches(),
                         estimator.NSamples());
@@ -417,8 +439,10 @@ void BaselineEstimator::UpdateEstimates() {
                 // If too many frames have gone by without an estimate for this frame
                 // then perform an estimate anyway
                 BaselineEstimate baseline_estimate(
-                        estimator.Mode(),
-                        estimator.Stddev(estimator.Mode()),
+                        //estimator.Mode(),
+                        //estimator.Stddev(estimator.Mode()),
+                        estimator.Mean(),
+                        estimator.Stddev(estimator.Mean()),
                         num_frames_for_estimate,
                         estimator.NBatches(),
                         estimator.NSamples());
