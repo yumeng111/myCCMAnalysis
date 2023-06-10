@@ -29,7 +29,7 @@ class WaveformSmoother : public I3FrameObject {
     double x;
 public:
     WaveformSmoother(std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end, double delta_t, double tau) :
-        begin(begin), end(end), N(std::distance(begin, end)), smoothed_wf(N), derivative(N), index(0), max_computed(0), delta_t(delta_t), tau(tau) {
+        begin(begin), end(end), N(std::distance(begin, end)), smoothed_wf(3), derivative(1), index(0), max_computed(0), delta_t(delta_t), tau(tau) {
         int init_avg_end_idx = std::min(3 * std::max(int(tau / delta_t), 1), int(N));
         double exp_start = 0.0;
         std::vector<uint16_t>::const_iterator x_it = begin;
@@ -141,13 +141,17 @@ public:
             exp_nextnext = y_i;
 
             // Box smoothing for everything in between
-            smoothed_wf[idx+1] = (exp_current + exp_next + exp_nextnext) / 3.0;
+            //smoothed_wf[idx+1] = (exp_current + exp_next + exp_nextnext) / 3.0;
+            smoothed_wf.push_back((exp_current + exp_next + exp_nextnext) / 3.0);
             exp_current = exp_next;
             exp_next = exp_nextnext;
 
             // Finite difference derivative
-            derivative[idx] = (smoothed_wf[idx+1] - smoothed_wf[idx-1]) / (2.0 * delta_t);
+            //derivative[idx] = (smoothed_wf[idx+1] - smoothed_wf[idx-1]) / (2.0 * delta_t);
+            derivative.push_back((smoothed_wf[idx+1] - smoothed_wf[idx-1]) / (2.0 * delta_t));
         } else if(idx == N-2) {
+            smoothed_wf.resize(N);
+            derivative.resize(N);
             // Box smoothing for the last element
             smoothed_wf[N-1] = (exp_current + exp_next) / 2.0;
 
