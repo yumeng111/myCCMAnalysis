@@ -142,8 +142,11 @@ if __name__ == "__main__":
     tray.Add("CCMTriggerMerger", "trigger_merger")
     tray.Add("NIMLogicPulseFinder", "nim_pulses")
     tray.Add("BeamCurrentMonitorSummary", "bcm_summary")
-    tray.Add("FirstPulseFinder", "pulse_finder")
-    tray.Add("BaselineEstimator", "baseline_estimator")
+    N_samples_before_baseline = 400
+    N_samples_for_baseline = 50
+    max_pulse_start_sample = N_samples_before_baseline + N_samples_before_baseline + 50
+    tray.Add("FirstPulseFinder", "pulse_finder", NumSamplesBeforePulse=N_samples_before_baseline, MaxPulseStartSample=max_pulse_start_sample)
+    tray.Add("BaselineEstimator", "baseline_estimator", NumSamples=N_samples_for_baseline, NumFramesForEstimate=25)
     tray.Add("Dump")
     tray.Add("Delete", Keys=["PulsePositions", "WaveformSmoothers"])
     #tray.Add("PulseCollector")
