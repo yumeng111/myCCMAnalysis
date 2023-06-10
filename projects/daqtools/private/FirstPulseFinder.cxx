@@ -111,16 +111,22 @@ std::pair<size_t, size_t> FindFirstPulse(WaveformSmoother & smoother, double bas
     size_t pulse_first_index = 0;
     size_t pulse_last_index = 0;
 
+    bool found_pulse = false;
     smoother.Reset();
     for(size_t i=0; i<N; ++i) {
         if(smoother.Derivative() > deriv_threshold) {
             pulse_last_index = CheckForPulse(smoother, i, max_pulse_width, min_pulse_width, min_pulse_height, min_deriv_magnitude, min_integral, baseline);
             if(pulse_last_index > i) {
                 pulse_first_index = size_t(std::max(ptrdiff_t(0), ptrdiff_t(i) - 5));
+                found_pulse = true;
                 break;
             }
         }
         smoother.Next();
+    }
+    if(not found_pulse) {
+        pulse_first_index = N;
+        pulse_last_index = N;
     }
     return {pulse_first_index, pulse_last_index};
 }
@@ -150,6 +156,8 @@ class FirstPulseFinder : public I3Module {
     double pulse_min_height;
     double pulse_min_deriv_magnitude;
     double pulse_min_integral;
+
+    bool just_save_baseline;
 
     std::mt19937 rand;
 
@@ -209,6 +217,7 @@ FirstPulseFinder::FirstPulseFinder(const I3Context& context) : I3Module(context)
     AddParameter("MinPulseHeight", "Minimum height for defining a pulse", double(5.0));
     AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.65));
     AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(25.0)); // Usual integral is between 30 and 40 with an error 10, probably good to go lower than 25, possibly 10
+    AddParameter("JustSaveBaseline", "Just save baselines instead of pulses", bool(false));
 }
 
 void FirstPulseFinder::Configure() {
@@ -224,6 +233,7 @@ void FirstPulseFinder::Configure() {
     GetParameter("MinPulseHeight", pulse_min_height);
     GetParameter("MinPulseDerivativeMagnitude", pulse_min_deriv_magnitude);
     GetParameter("MinPulseIntegral", pulse_min_integral);
+    GetParameter("JustSaveBaseline", just_save_baseline);
 }
 
 void FirstPulseFinder::Geometry(I3FramePtr frame) {
