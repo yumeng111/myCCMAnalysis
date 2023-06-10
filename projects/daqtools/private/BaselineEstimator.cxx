@@ -21,9 +21,11 @@
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
+#include "phys-services/I3RandomService.h"
 
 #include "daqtools/OnlineRobustStats.h"
 #include "daqtools/WaveformSmoother.h"
+#include "dataclasses/calibration/BaselineEstimate.h"
 
 struct WFInfo {
     std::vector<double> values;
@@ -50,6 +52,7 @@ struct BaselinePMTKeyInfo {
     std::deque<EstimateInfo> estimate_info;
 };
 
+/*
 struct BaselineEstimate {
     double baseline;
     double stddev;
@@ -60,6 +63,7 @@ struct BaselineEstimate {
     BaselineEstimate(double baseline, double stddev, size_t target_num_frames, size_t num_frames, size_t num_samples) :
         baseline(baseline), stddev(stddev), target_num_frames(target_num_frames), num_frames(num_frames), num_samples(num_samples) {}
 };
+*/
 
 struct BaselineFrameInfo {
     std::set<CCMPMTKey> channels_pending;
@@ -74,20 +78,33 @@ struct BaselineFrameInfo {
 namespace {
 
 template <class RandomIt, class RandomFunc, class U = typename std::iterator_traits<RandomIt>::value_type>
-    std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, RandomFunc&& g) {
-        typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
-        typedef std::uniform_int_distribution<diff_t> distr_t;
-        typedef typename distr_t::param_type param_t;
-        distr_t D;
-        diff_t n = std::distance(begin, end);
-        diff_t max_n = std::min(diff_t(N), n - 1);
-        std::vector<U> result(begin, end);
-        for(diff_t i=0; i<max_n; ++i) {
-            std::swap(result[i], result[D(g, param_t(i, n))]);
-        }
-        result.resize(N);
-        return result;
+std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, RandomFunc&& g) {
+    typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
+    typedef std::uniform_int_distribution<diff_t> distr_t;
+    typedef typename distr_t::param_type param_t;
+    distr_t D;
+    diff_t n = std::distance(begin, end);
+    diff_t max_n = std::min(diff_t(N), n - 1);
+    std::vector<U> result(begin, end);
+    for(diff_t i=0; i<max_n; ++i) {
+        std::swap(result[i], result[D(g, param_t(i, n))]);
     }
+    result.resize(N);
+    return result;
+}
+
+template <class RandomIt, class U = typename std::iterator_traits<RandomIt>::value_type>
+std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, I3RandomServicePtr r) {
+    typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
+    diff_t n = std::distance(begin, end);
+    diff_t max_n = std::min(diff_t(N), n - 1);
+    std::vector<U> result(begin, end);
+    for(diff_t i=0; i<max_n; ++i) {
+        std::swap(result[i], result[r->Integer(n-i) + i]);
+    }
+    result.resize(N);
+    return result;
+}
 
 } // namespace
 
@@ -120,7 +137,7 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
     flat_sigma = 0;
     it = begin;
     for(; it != end; ++it) {
-        flat_sigma += (*it) - flat_mean;
+        flat_sigma += ((*it) - flat_mean) * ((*it) - flat_mean);
     }
     flat_sigma /= N;
 }
@@ -141,6 +158,9 @@ double BaselineComparisonScore(OnlineRobustStatsBatched & stats, std::vector<dou
 }
 
 size_t ChooseEstimator(WFInfo const & wf_info, std::deque<OnlineRobustStatsBatched> & baseline_estimators, bool allow_new_estimator=false, double max_score=1.5) {
+    if(baseline_estimators.size() == 0) {
+        return 0;
+    }
     std::vector<double> comparison_scores(baseline_estimators.size());
     for(size_t i=0; i<baseline_estimators.size(); ++i) {
         comparison_scores[i] = BaselineComparisonScore(baseline_estimators[i], wf_info.values.cbegin(), wf_info.values.cend());
@@ -154,7 +174,7 @@ size_t ChooseEstimator(WFInfo const & wf_info, std::deque<OnlineRobustStatsBatch
     }
 }
 
-WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pulse_positions) {
+WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pulse_positions, I3RandomServicePtr random, size_t num_samples) {
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> wf_its = smoother.GetSmoothedWaveform();
     std::vector<double>::const_iterator wf_begin = wf_its.first;
     std::vector<double>::const_iterator wf_end = wf_its.second;
@@ -165,6 +185,7 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
 
     WFInfo wf_info;
     if(N_baseline_samples == 0) {
+        std::cout << "No baseline samples" << std::endl;
         wf_info.linear_mean = 0;
         wf_info.linear_intercept = 0;
         wf_info.linear_slope = 0;
@@ -175,7 +196,8 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
         return wf_info;
     }
 
-    std::copy(baseline_begin, baseline_end, std::back_inserter(wf_info.values));
+    wf_info.values = ChooseNRandom(num_samples, baseline_begin, baseline_end, random);
+    //std::copy(baseline_begin, baseline_end, std::back_inserter(wf_info.values));
 
     LinearFlatFit(baseline_begin, baseline_end,
             wf_info.linear_intercept, 
@@ -185,17 +207,23 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
             wf_info.flat_error);
 
     wf_info.linear_mean = wf_info.linear_intercept + wf_info.linear_slope * N_baseline_samples / 2.0;
+    wf_info.suitable_for_estimate = true;
 
     if(std::abs(wf_info.linear_mean - wf_info.flat_mean) / std::min(wf_info.linear_error, wf_info.flat_error) > 1) {
+        std::cout << "Linear mean does not match flat mean: " << wf_info.linear_mean << "+/-" << wf_info.linear_error << " vs " <<  wf_info.flat_mean << "+/-" << wf_info.flat_error << std::endl;
         wf_info.suitable_for_estimate = false;
-    } else if(wf_info.flat_error / wf_info.linear_error > 1.5) {
+    }
+    if(wf_info.flat_error / wf_info.linear_error > 1.5) {
+        std::cout << "Flat error much larger than linear error: " << wf_info.flat_error << " vs " << wf_info.linear_error << std::endl;
         wf_info.suitable_for_estimate = false;
-    } else if(std::abs(wf_info.linear_slope * N_baseline_samples) > 2.0) {
+    }
+    if(std::abs(wf_info.linear_slope * N_baseline_samples) > 2.0) {
+        std::cout << "Delta ADC is too large: " << wf_info.linear_slope * N_baseline_samples << std::endl;
         wf_info.suitable_for_estimate = false;
-    } else if(std::abs(wf_info.linear_slope) > 0.2) {
+    }
+    if(std::abs(wf_info.linear_slope) > 0.2) {
+        std::cout << "Linear slope is too large: " << wf_info.linear_slope << std::endl;
         wf_info.suitable_for_estimate = false;
-    } else {
-        wf_info.suitable_for_estimate = true;
     }
     return wf_info;
 }
@@ -209,8 +237,11 @@ class BaselineEstimator : public I3Module {
     size_t num_samples;
     size_t max_frames_waiting_for_estimate;
 
+    size_t frames_seen = 0;
+
     // Internal state
     bool geo_seen;
+    boost::shared_ptr<CCMGeometry const> geo;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
 
     std::deque<I3FramePtr> cached_frames;
@@ -254,11 +285,11 @@ void BaselineEstimator::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
-    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+    geo = frame->Get<boost::shared_ptr<CCMGeometry const>>(geometry_name_);
 
 
     // Cache the trigger channel map
-    pmt_channel_map_ = geo.pmt_channel_map;
+    pmt_channel_map_ = geo->pmt_channel_map;
 
     geo_seen = true;
     PushFrame(frame);
@@ -268,12 +299,15 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
+    std::cout << "Frame " << frames_seen << std::endl;
     UpdateEstimators(frame);
     UpdateEstimates();
     UpdateAndPushCompletedFrames();
+    frames_seen += 1;
 }
 
 void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
+    I3RandomServicePtr random = GetService<I3RandomServicePtr>("I3RandomService");
     I3Map<CCMPMTKey, WaveformSmoother> smoothed_wfs = frame->Get<I3Map<CCMPMTKey, WaveformSmoother>>("WaveformSmoothers");
     I3Map<CCMPMTKey, std::pair<size_t, size_t>> pulse_positions = frame->Get<I3Map<CCMPMTKey, std::pair<size_t, size_t>>>("PulsePositions");
 
@@ -282,24 +316,30 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
 
     for(std::pair<CCMPMTKey const, WaveformSmoother> & p : smoothed_wfs) {
         CCMPMTKey pmt_key = p.first;
+        CCMOMGeo::OMType type = geo->pmt_geo.at(pmt_key).omtype;
+        if(type == CCMOMGeo::OMType::BeamCurrentMonitor) {
+            continue;
+        }
         WaveformSmoother & smoother = p.second;
         std::deque<EstimateInfo> & estimate_info = baseline_pmt_info[pmt_key].estimate_info;
         std::deque<OnlineRobustStatsBatched> & baseline_estimators = baseline_pmt_info[pmt_key].baseline_estimators;
         std::deque<size_t> & n_frames_since_last_estimator_update = baseline_pmt_info[pmt_key].n_frames_since_last_estimator_update;
 
         std::pair<size_t, size_t> & pos = pulse_positions.at(pmt_key);
-        WFInfo wf_info = ComputeWFInfo(smoother, pos);
+        WFInfo wf_info = ComputeWFInfo(smoother, pos, random, num_samples);
+        std::cout << pmt_key << " is suitable for estimate? " << (wf_info.suitable_for_estimate ? "Yes" : "No") << std::endl;
         if(wf_info.suitable_for_estimate) {
             // Choose from existing estimator
             // Return the end index if an appropriate estimator does not exist
             // or if there are no estimators
             size_t estimator_index = ChooseEstimator(wf_info, baseline_estimators, true);
-            if(estimator_index > baseline_estimators.size()) {
+            std::cout << "\tChose estimator[" << estimator_index << "]" << std::endl;
+            if(estimator_index >= baseline_estimators.size()) {
                 // Instantiate a new estimator
                 baseline_estimators.emplace_back();
                 n_frames_since_last_estimator_update.push_back(0);
             }
-            OnlineRobustStatsBatched & estimator = baseline_estimators[estimator_index];
+            OnlineRobustStatsBatched & estimator = baseline_estimators.at(estimator_index);
             // Add samples to the estimator
             estimator.AddValues(wf_info.values);
             if(estimator.NBatches() > num_frames_for_estimate) {
@@ -314,6 +354,9 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
                 }
             }
         }
+        for(size_t i=0; i<baseline_estimators.size(); ++i) {
+            std::cout << "\testimator[" << i << "]: " << baseline_estimators[i].NBatches() << " frames, " << baseline_estimators[i].NSamples() << " samples" << std::endl;
+        }
         estimate_info.emplace_back(frame, wf_info);
         channels_pending.insert(pmt_key);
     }
@@ -324,21 +367,39 @@ void BaselineEstimator::UpdateEstimates() {
         CCMPMTKey pmt_key = p.first;
         BaselinePMTKeyInfo & pmt_info = p.second;
         std::deque<EstimateInfo> & estimate_info = pmt_info.estimate_info;
+        //std::cout << pmt_key << " has " << estimate_info.size() << " pending estimates." << std::endl;
         std::deque<OnlineRobustStatsBatched> & baseline_estimators = pmt_info.baseline_estimators;
         std::deque<size_t> & n_frames_since_last_estimator_update = pmt_info.n_frames_since_last_estimator_update;
 
         std::vector<size_t> estimates_to_remove;
         size_t estimate_index = 0;
+        bool skip = false;
         // Check if cached frames can have estimates added
         for(EstimateInfo & estimate : estimate_info) {
             I3FramePtr cached_frame = estimate.cached_frame;
             boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baseline_estimates = baseline_frame_info[cached_frame].baseline_estimates;
             std::set<CCMPMTKey> & channels_pending = baseline_frame_info[cached_frame].channels_pending;
             WFInfo & wf_info = estimate.waveform_properties;
+            if(baseline_estimators.size() == 0) {
+                // We can't produce an estimate right now
+                //std::cout << "\tNo estimators for " << estimate_index << std::endl;
+                estimate.frames_passed += 1;
+                estimate_index += 1;
+                skip = true;
+                continue;
+            }
+            if(skip and estimate.frames_passed <= max_frames_waiting_for_estimate) {
+                // A previous estimate failed and this estimate is not old enough to force an estimate
+                // We will assume that this estimate cannot be computed until the previous one succeeds
+                estimate.frames_passed += 1;
+                estimate_index += 1;
+                continue;
+            }
             // Choose the best estimator, requiring that an existing one be chosen
             size_t estimator_index = ChooseEstimator(wf_info, baseline_estimators, false);
-            OnlineRobustStatsBatched & estimator = baseline_estimators[estimator_index];
+            OnlineRobustStatsBatched & estimator = baseline_estimators.at(estimator_index);
             if(estimator.NBatches() >= num_frames_for_estimate) {
+                //std::cout << "\tAdding estimate for " << estimate_index << std::endl;
                 // If the estimator has enough samples then perform the estimate
                 // Compute the estimator
                 BaselineEstimate baseline_estimate(
@@ -352,6 +413,7 @@ void BaselineEstimator::UpdateEstimates() {
                 channels_pending.erase(pmt_key);
                 estimates_to_remove.push_back(estimate_index);
             } else if(estimate.frames_passed > max_frames_waiting_for_estimate) {
+                //std::cout << "\tAdding estimate for " << estimate_index << std::endl;
                 // If too many frames have gone by without an estimate for this frame
                 // then perform an estimate anyway
                 BaselineEstimate baseline_estimate(
@@ -364,11 +426,14 @@ void BaselineEstimator::UpdateEstimates() {
                 channels_pending.erase(pmt_key);
                 estimates_to_remove.push_back(estimate_index);
             } else {
+                //std::cout << "\tNot enough frames for estimate " << estimate_index << std::endl;
                 // We can't produce an estimate right now
                 estimate.frames_passed += 1;
+                skip = true;
             }
             estimate_index += 1;
         }
+        //std::cout << "Finished " << estimates_to_remove.size()  << " estimates" << std::endl;
         if(estimates_to_remove.size() > 0) {
             // Remove estimates in reverse order
             size_t remove_idx = estimates_to_remove.size();
@@ -400,7 +465,7 @@ void BaselineEstimator::UpdateAndPushCompletedFrames() {
             baseline_frame_info.erase(frame);
             cached_frames.pop_front();
         } else {
-            continue;
+            break;
         }
     }
 }
