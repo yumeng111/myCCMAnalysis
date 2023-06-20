@@ -17,6 +17,8 @@ i3_add_library(${PROJECT_NAME}
     private/NIMLogicPulseFinder.cxx
     private/PulseCollector.cxx
     private/SumPulses.cxx
+    private/FirstPulseFinder.cxx
+    private/BaselineEstimator.cxx
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary

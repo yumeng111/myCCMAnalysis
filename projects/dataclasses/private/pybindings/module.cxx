@@ -59,6 +59,7 @@ namespace bp = boost::python;
   (I3RecoHit)(I3FlasherInfo)(I3Matrix)(I3ParticleID)                    \
   (I3MCHit)(vectorI3MCHit)(mapOMKeyI3MCHit)(I3MCHitSeriesMap)           \
   (CCMCalibration)(CCMPMTCalibration)(MapCCMPMTKeyCCMPMTCalibration)    \
+  (BaselineEstimate)                                                    \
   (I3Calibration)(DroopedSPETemplate)(SPETemplate)                      \
   (I3DOMCalibration)(I3VEMCalibration)(LinearFit)(QuadraticFit)         \
   (TauParam)(MapOMKeyI3DOMCalibration)(MapOMKeyI3VEMCalibration)        \

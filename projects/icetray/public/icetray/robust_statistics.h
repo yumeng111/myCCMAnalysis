@@ -48,26 +48,31 @@ size_t MinRange(const T* const sorted, const size_t idx_begin,
 }
 
 template <class Iterator, class U = typename std::iterator_traits<Iterator>::value_type>
-size_t MinRange(Iterator begin, Iterator end, const size_t idx_begin) {
-    Iterator half_begin = end;
+std::pair<Iterator, Iterator> MinRange(Iterator begin, Iterator end, const size_t half_count) {
+    Iterator half_begin = begin;
+    Iterator half_end = begin;
+    for(size_t i=0; i<half_count; ++i)
+        ++half_end;
+    Iterator idx_begin = half_begin;
+    Iterator idx_end = half_end;
+
     U min_range = std::numeric_limits<U>::max();
     size_t min_idx = 0;
-    size_t idx = idx_begin;
+    std::pair<Iterator, Iterator> min_its;
 
-    while(begin != end) {
-        assert(*begin <= *half_begin);
-        const U range = *half_begin - *begin;
+    while(idx_begin != half_end) {
+        assert(*idx_begin <= *idx_end);
+        const U range = *idx_end - *idx_begin;
 
         if (range < min_range) {
             min_range = range;
-            min_idx = idx;
+            min_its = {idx_begin, idx_end};
         }
-        ++begin;
-        ++half_begin;
-        ++idx;
+        ++idx_begin;
+        ++idx_end;
     }
 
-    return min_idx;
+    return min_its;
 }
 
 // Returns an estimate of the mode by calling MinRange on successively
@@ -75,7 +80,6 @@ size_t MinRange(Iterator begin, Iterator end, const size_t idx_begin) {
 // Half Sample Mode estimator proposed by Bickel in "On a fast, robust
 // estimator of the mode", with complexity O(N log N). The mode is less
 // affected by outliers in highly-skewed distributions than the median.
-// The averaging operation below assumes "T" is an unsigned integer type.
 template <typename T>
 T Mode(const T* const sorted, const size_t num_values) {
     size_t idx_begin = 0;
@@ -93,7 +97,7 @@ T Mode(const T* const sorted, const size_t num_values) {
     }
 
     assert(half_count == 1);
-    const T average = (x + sorted[idx_begin + 1] + 1) / 2;
+    const T average = (x + sorted[idx_begin + 1]) / 2;
     return average;
 }
 
@@ -113,22 +117,22 @@ template <
     typename std::enable_if<HaveRandomAccessIterator<Iterator>::value>::type * = nullptr>
 U Mode(Iterator begin, Iterator end) {
     size_t num_values = std::distance(begin, end);
-    size_t idx_begin = 0;
+    std::pair<Iterator, Iterator> idx_its = {begin, end};
     size_t half_count = num_values / 2;
 
     while (half_count > 1) {
-        idx_begin = MinRange(begin + idx_begin, begin + idx_begin + half_count, idx_begin);
+        idx_its = MinRange(idx_its.first, idx_its.second, half_count);
         half_count >>= 1;
     }
 
-    const U x = *(begin + idx_begin);
+    const U x = *(idx_its.first);
 
     if (half_count == 0) {
         return x;
     }
 
     assert(half_count == 1);
-    const U average = (x + *(begin + idx_begin + 1) + 1) / 2;
+    const U average = (x + *(idx_its.second)) / 2;
     return average;
 }
 
@@ -138,41 +142,22 @@ template <
     typename std::enable_if<!HaveRandomAccessIterator<Iterator>::value>::type * = nullptr>
 U Mode(Iterator begin, Iterator end) {
     size_t num_values = std::distance(begin, end);
-    size_t idx_begin = 0;
+    std::pair<Iterator, Iterator> idx_its = {begin, end};
     size_t half_count = num_values / 2;
 
-    Iterator it0 = begin;
-    for(size_t i=0; i<idx_begin; ++i) {
-        ++it0;
-    }
-    Iterator it1 = begin;
-    for(size_t i=0; i<(idx_begin + half_count); ++i) {
-        ++it1;
-    }
-    size_t prev_idx_begin;
-    size_t prev_half_count;
     while (half_count > 1) {
-        prev_idx_begin = idx_begin;
-        prev_half_count = half_count;
-        idx_begin = MinRange(it0, it1, idx_begin);
-        for(size_t i=0; i<(idx_begin - prev_idx_begin); ++i) {
-            ++it0;
-        }
+        idx_its = MinRange(idx_its.first, idx_its.second, half_count);
         half_count >>= 1;
-        for(size_t i=0; i<((idx_begin + prev_half_count) - (prev_idx_begin + prev_half_count)); ++i) {
-            ++it1;
-        }
     }
 
-    const U x = *(it0);
+    const U x = *(idx_its.first);
 
     if (half_count == 0) {
         return x;
     }
 
     assert(half_count == 1);
-    ++it0;
-    const U average = (x + *it0 + 1) / 2;
+    const U average = (x + *(idx_its.second)) / 2;
     return average;
 }
 
