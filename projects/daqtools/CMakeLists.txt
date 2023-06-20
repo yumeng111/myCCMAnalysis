@@ -9,6 +9,10 @@ i3_add_library(${PROJECT_NAME}
     private/CCMBaselineAnalyzer.cxx
     private/CCMPeakFinder.cxx
     private/CCMNewBaselines.cxx
+    private/CCMAverageBaselines.cxx
+    private/CCMIDSPERegions.cxx
+    private/CCMMichelElectrons.cxx
+    private/CountCosmicFrames.cxx
     private/BeamCurrentMonitorSummary.cxx
     private/NIMLogicPulseFinder.cxx
     private/PulseCollector.cxx
@@ -16,6 +20,6 @@ i3_add_library(${PROJECT_NAME}
     private/FirstPulseFinder.cxx
     private/BaselineEstimator.cxx
     IWYU
-    USE_TOOLS boost python
+    USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary
 )
