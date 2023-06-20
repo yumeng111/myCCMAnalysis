@@ -84,8 +84,8 @@ void CCMNewBaselines::DAQ(I3FramePtr frame) {
     
     frame->Put("Baselines", baselines);
     //frame->Put("BaselinesTimes", baselines_times);
-    //frame->Put("Derivatives", derivs);
-    //frame->Put("SmoothedWaveforms", smoothed_wf);
+    frame->Put("Derivatives", derivs);
+    frame->Put("SmoothedWaveforms", smoothed_wf);
     PushFrame(frame);
     std::cout << "finished saving baselines" << std::endl;
 }

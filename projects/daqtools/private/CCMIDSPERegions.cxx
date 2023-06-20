@@ -1,0 +1,550 @@
+// this module identifies regions where we want to look for SPEs 
+// then fits those regions using Nick's code
+
+#include <icetray/IcetrayFwd.h>
+
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/scoped_ptr.hpp>
+#include <boost/foreach.hpp>
+#include <boost/make_shared.hpp>
+
+#include <nlopt.h>
+#include <nlopt.hpp>
+
+#include <set>
+#include <tuple>
+#include <cctype>
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <limits>
+
+#include <icetray/open.h>
+#include <icetray/I3Frame.h>
+#include <icetray/I3TrayInfo.h>
+#include <icetray/I3Module.h>
+#include <icetray/I3Logging.h>
+#include <icetray/I3PODHolder.h>
+#include <icetray/CCMPMTKey.h>
+#include <icetray/CCMTriggerKey.h>
+#include <dataclasses/physics/CCMWaveform.h>
+#include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/calibration/CCMPMTCalibration.h>
+#include <dataclasses/calibration/I3DOMCalibration.h>
+#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
+#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
+#include "icetray/robust_statistics.h"
+#include "daqtools/WaveformSmoother.h"
+
+// struct to hold peak data when fitting 
+typedef struct {
+  std::vector<short unsigned int>::const_iterator v_start;
+  std::vector<short unsigned int>::const_iterator v_end;
+  int64_t t0;
+  const double* baseline;
+  int64_t peak_tmax;
+  int64_t peak_amplitude;
+} fit_data;
+
+class CCMIDSPERegions: public I3Module {
+    bool geo_seen;
+    std::string geometry_name_;
+    I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
+    void Geometry(I3FramePtr frame);
+    std::tuple<size_t, double, double> CheckForPulse(WaveformSmoother & smoother, double const & mode, size_t start_idx);
+    void ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit);
+    void FindRegions(WaveformSmoother & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit);
+    void GetPeakInfo(I3Vector<short unsigned int> & SPE_wf_to_fit, I3Vector<int> & window_amplitude, I3Vector<int64_t>& window_length, I3Vector<int64_t> &window_time);
+    SPETemplate FitPeak(double const & peak_amplitude,
+                        int64_t const & length,
+                        int64_t const & time,
+                        std::vector<short unsigned int> const & waveform,
+                        double const & baseline);
+
+    int64_t fit_length;
+    int64_t pre_window;
+    int min_amplitude;
+    int max_amplitude;
+    size_t n_daq_frames = 0;
+    static const int num_params = 2;
+
+    double smoother_tau = 10.0 ;
+    double smoother_delta_t = 2.0;
+    
+
+    double AmplitudeConstraint(const std::vector<double> &x,
+                               std::vector<double> &grad,
+                               void * data);
+
+    static double PeakLossFunction(const std::vector<double> &x,
+                                   std::vector<double> &grad,
+                                   void * f_data);
+    void AddTemplates(I3FramePtr frame);
+	
+public:
+    CCMIDSPERegions(const I3Context&);
+    void Configure();
+    void DAQ(I3FramePtr frame);
+    void Finish();
+};
+
+I3_MODULE(CCMIDSPERegions);
+
+CCMIDSPERegions::CCMIDSPERegions(const I3Context& context) : I3Module(context), 
+    geometry_name_(""), geo_seen(false) {
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+}
+
+
+void CCMIDSPERegions::Configure() {
+    GetParameter("CCMGeometryName", geometry_name_);
+}
+
+
+void CCMIDSPERegions::Geometry(I3FramePtr frame) {
+    if(not frame->Has(geometry_name_)) {
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+    }
+    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+    pmt_channel_map_ = geo.pmt_channel_map;
+    geo_seen = true;
+    PushFrame(frame);
+}
+
+void CCMIDSPERegions::DAQ(I3FramePtr frame) {
+    if(not frame->Has("CCMWaveforms")) {
+        throw std::runtime_error("No waveforms!");
+    }
+
+    // ptr to vector of all waveforms, derivs, and baselines (one for each channel)
+    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
+    I3Vector<I3Vector<double>> const & derivs = frame->Get<I3Vector<I3Vector<double>> const>("Derivatives");
+    I3Map<CCMPMTKey, double> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, double> const>("BaselineMode");
+    
+    size_t size = waveforms->size();
+    
+    // a vector storing the SPE template and time for each channel
+    boost::shared_ptr<I3Vector<I3Vector<SPETemplate>>> channel_templates(new I3Vector<I3Vector<SPETemplate>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> channel_times(new I3Vector<I3Vector<int64_t>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<short unsigned int>>> all_SPE_regions(new I3Vector<I3Vector<short unsigned int>>(size));
+    
+    // loop over each pmt 
+    for(std::pair<CCMPMTKey const, double> const & it : baseline_mode){
+       CCMPMTKey key = it.first;
+       double mode = it.second * -1; //need to invert mode since the wf is unsmoothed!!!
+       uint32_t channel = pmt_channel_map_[key];
+    
+       CCMWaveformUInt16 const & waveform = waveforms->at(channel);
+       I3Vector<double> const & deriv = derivs[channel];
+       I3Vector<SPETemplate> template_per_channel; 
+       I3Vector<int64_t> time_per_channel;
+       I3Vector<short unsigned int> SPE_wf_to_fit(deriv.size(), 0);
+       WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
+        
+       ProcessWaveform(smoother, waveform, mode, template_per_channel, time_per_channel, SPE_wf_to_fit);
+       channel_templates->operator[](channel) = template_per_channel;
+       channel_times->operator[](channel) = time_per_channel;
+       all_SPE_regions->operator[](channel) = SPE_wf_to_fit;
+    }
+    
+    frame->Put("SPETemplates", channel_templates);
+    frame->Put("SPETemplatesTimes", channel_times);
+    frame->Put("SPEPeakRegions", all_SPE_regions);
+    std::cout << "finished fitting SPEs!" << std::endl;
+    PushFrame(frame);
+}
+
+std::tuple<size_t, double, double> CCMIDSPERegions::CheckForPulse(WaveformSmoother & smoother, double const & mode, size_t start_idx){
+    // 0 before start of pulse checking [checking for positive derivative]
+    // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
+    // 2 derivative is negative (in falling edge of pulse) [checking for positive derivative]
+    // 3 derivative is positive (recovering from droop) [done]
+ 
+    int state = 1;
+    double max_abs_derivative = std::abs(smoother.Derivative());
+    double integral = 0;
+    bool found_pulse = false;
+    size_t final_idx = start_idx;
+    size_t max_samples = 300;
+    size_t N = std::min(smoother.Size(), start_idx + max_samples);
+    double min_val_threshold = 20;
+    double max_val_threshold = 40;
+    double val_at_peak;
+    bool at_turning_point = false;
+    size_t turning_point_idx;
+    double integral_threshold = 10.0;
+    size_t min_length = 3;
+    double inv_mode = -1*mode; //invert mode since smoother.Value() is negative
+    double max_value = smoother.Value() - inv_mode;
+    double max_unsmoothed_value = mode - smoother.RawValue();
+
+    for(size_t i=start_idx; i<N; ++i) {
+        max_value = std::max(max_value, smoother.Value() - inv_mode);
+        max_unsmoothed_value = std::max(max_unsmoothed_value, mode - smoother.RawValue());
+        max_abs_derivative = std::max(max_abs_derivative, std::abs(smoother.Derivative()));
+        integral += (smoother.Value() - inv_mode);
+        if(state % 2) {
+            if(smoother.Derivative() < 0)
+                state += 1;
+        } else
+            if(smoother.Derivative() > 0) {
+                state += 1;
+        }
+        if(state >= 3) {
+            found_pulse = true;
+            final_idx = i;
+            break;
+        }
+        smoother.Next();
+    }
+    smoother.Reset(start_idx);
+
+    if(found_pulse
+           // and (max_unsmoothed_value >= min_val_threshold)
+	   // and (max_unsmoothed_value <= max_val_threshold)
+           // and (integral >= integral_threshold)
+           // and (final_idx - start_idx >= min_length)
+            ) {
+        return std::make_tuple(final_idx, max_unsmoothed_value, integral);
+    } else {
+        return std::make_tuple(start_idx, max_unsmoothed_value, integral);
+    }
+}
+
+
+void CCMIDSPERegions::FindRegions(WaveformSmoother & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit){
+     // let's loop over derivs to find regions that might have SPEs
+     // also good time to implement some cuts
+     // cut on ADC counts above the baseline
+     
+     size_t N = smoother.Size(); 
+     double deriv_threshold = 0.3;
+     size_t pulse_first_index = 0;
+     size_t pulse_last_index = 0;
+     std::vector<size_t> pulse_tracker;
+     double max_unsmoothed_value = 0;
+     double integral = 0;
+     double min_val_threshold = 20;
+     double max_val_threshold = 40;
+     double integral_threshold = 10.0;
+     
+     smoother.Reset();
+     for(size_t i = 0; i < N; ++i){
+        // looping over waveform 
+        // need to look for peaks based on deriv > 0 then deriv < 0
+        
+        if(smoother.Derivative() > deriv_threshold){
+          // derive is positive
+	  // let's call our check for pulse function
+          std::tie(pulse_last_index, max_unsmoothed_value, integral) = CheckForPulse(smoother, mode, i);
+	  
+	  if(pulse_last_index > i) {
+            pulse_first_index = size_t(std::max(ptrdiff_t(0), ptrdiff_t(i)));
+	    
+	    if(std::find(pulse_tracker.begin(), pulse_tracker.end(), pulse_last_index) != pulse_tracker.end()){
+                // we've already seen this pulse;
+	      }
+	    
+	    else{
+                // first time seeing this pulse!
+		pulse_tracker.push_back(pulse_last_index);
+		if((max_unsmoothed_value >= min_val_threshold) and (max_unsmoothed_value <= max_val_threshold) and (integral >= integral_threshold)){
+	          // made it past our cuts!
+	          // let's save waveform to SPE_wf_to_fit
+		  // std::cout << "found a good peak! starting bin = " << pulse_first_index << " , ending bin = " << pulse_last_index << std::endl;
+		  for(size_t pulse_it = pulse_first_index; pulse_it <= pulse_last_index; ++pulse_it){
+	     	     //std::cout << "wf in this peak = " << samples[pulse_it] << std::endl;
+		     SPE_wf_to_fit[pulse_it] = samples[pulse_it];
+	          }	      
+		}
+	     }
+	    
+	    }
+	 
+       }
+	smoother.Next();
+     }
+}
+
+
+void CCMIDSPERegions::GetPeakInfo(I3Vector<short unsigned int>  & SPE_wf_to_fit, I3Vector<int>& window_amplitude, I3Vector<int64_t> &window_length, I3Vector<int64_t>& window_time){
+    // need to fill in some vectors with peak info
+    // looping over SPE_wf_to_fit that contains the wf in regions of interest
+
+    bool in_peak_region = false;
+    bool first_bin_of_peak = false;
+    std::vector<short unsigned int> each_peak_wf;
+    int64_t start_time;
+    int64_t end_time;
+    
+    for(size_t i = 0; i < SPE_wf_to_fit.size(); ++i){
+       
+       if(SPE_wf_to_fit[i] != 0 and first_bin_of_peak == false){
+         first_bin_of_peak = true;
+	 start_time = i*2; //start time in nsec
+       }
+
+       if(SPE_wf_to_fit[i] != 0){
+	 in_peak_region = true;
+         each_peak_wf.push_back(SPE_wf_to_fit[i]);
+       }
+
+       if(in_peak_region == true and SPE_wf_to_fit[i] == 0){
+         // at the end of peak region
+	 end_time = i*2; //end time in nsec
+
+         // now let's loop over each_peak_wf and fill in some values
+         int amp = each_peak_wf[0];
+         int64_t length = each_peak_wf.size();
+	 //int64_t time = end_time - start_time; 
+	 int64_t time = start_time/2; 
+
+	 for(size_t j = 0; j < each_peak_wf.size(); ++j){
+            if(each_peak_wf[j] < amp){
+	       amp = each_peak_wf[j];
+	    } 
+	 }
+         window_amplitude.push_back(amp);
+         window_length.push_back(length);
+         window_time.push_back(time);
+	 // clear vector that saves peak and reset variables 
+	 each_peak_wf.clear();
+	 in_peak_region = false;
+	 first_bin_of_peak = false;
+       }
+    }
+    
+}
+
+double CCMIDSPERegions::PeakLossFunction(const std::vector<double> & xin, std::vector<double> &grad, void * f_data) {
+
+  // typecast to the our struct
+  fit_data* d = (fit_data*) f_data;
+
+ // std::cout << "amp to fit = " << d->peak_amplitude << std::endl;
+ // std::cout << "peak tmax to fit = " << d->peak_tmax << std::endl;
+ // for(std::vector<short unsigned int>::const_iterator it = d->v_start; it <= d->v_end; ++it){  
+ //    std::cout << "wf to fit = " << double(*it) << std::endl;
+ //    std::cout << "subtracted off wf to fit = " << -(*(d->baseline) + double(*it)) << std::endl;
+ // }
+ // std::cout << "done printing wf to fit!" << std::endl;
+
+  // figure out input based on constraint
+  std::vector<double> x(4);
+  if (num_params==2) {
+    x[2] = xin[0];
+    x[3] = xin[1];
+    x[1] = d->peak_tmax + x[2]*x[3] / (x[2] + x[3]) * std::log(x[2]/x[3]);
+    x[0] = d->peak_amplitude * std::pow(std::pow(x[2]/x[3],x[3]/(x[2]+x[3]))
+                                     +std::pow(x[3]/x[2],x[2]/(x[2]+x[3])),8);
+  }
+  else x = xin;
+  
+  // Get the SPE template for these parameters
+  SPETemplate pulse(x[0],x[1],x[2],x[3]);
+  CCMPMTCalibration::DroopedSPETemplate fit_func(pulse);
+  
+  // initialize summation parameters
+  double squared_residuals = 0;
+  double pred, data;
+  if (!grad.empty()) {
+    for(int i = 0; i < grad.size(); ++i) grad[i] = 0; 
+  }
+  int t = d->t0;
+  
+  //std::cout << "peak amplitude = " << d->peak_amplitude << std::endl;  
+  // loop over each time bin, add to square residuals
+  for(std::vector<short unsigned int>::const_iterator it = d->v_start; it != d->v_end; ++it, ++t) {
+    //pred = fit_func(t); <- this doesnt work,,,not sure why
+    // LETS CONVERT UNITS!!!
+    double c = x[0];
+    double t0 = x[1];
+    double b1 = x[2];
+    double b2 = x[3];
+    double amp = d->peak_amplitude;
+    double tmax = d->peak_tmax;
+    
+    double t0_nsec = (tmax * 2) - (((b1*b2)/(b1+b2)) * std::log(b2/b1));
+    double t_nsec = 2*t;
+
+    double first_exp = std::exp(-(t_nsec - t0_nsec)/b1);
+    double second_exp = std::exp((t_nsec - t0_nsec)/b2);
+
+    double denom = std::pow(first_exp + second_exp , 8);
+    
+    pred = c/denom;
+    data = -(*(d->baseline) + double(*it));
+    
+    squared_residuals += std::pow(data - pred, 2);
+    // gradient calculated using SPE template function in I3DOMCalibration
+    if (!grad.empty()) {
+      double prefactor = -2 * (data - pred) * pred;
+      double prefactor2 = -8 * prefactor / (std::exp(-(t - x[1])/x[2]) + 
+                                            std::exp( (t - x[1])/x[3]));
+      if (num_params==4) {
+        grad[0] += prefactor / x[0];
+        grad[1] += prefactor2 * (std::exp(-(t - x[1])/x[2])/x[2] - 
+                                 std::exp( (t - x[1])/x[3])/x[3]);
+        grad[2] += prefactor2 *  (t - x[1])/std::pow(x[2],2) * std::exp(-(t - x[1])/x[2]);
+        grad[3] += prefactor2 * -(t - x[1])/std::pow(x[3],2) * std::exp( (t - x[1])/x[3]);
+      }
+      else if (num_params==2) {
+	 double c = x[0];
+	 double t0 = x[1];
+	 double b1 = x[2];
+	 double b2 = x[3]; 
+         double amp = d->peak_amplitude;
+	 double tmax = d->peak_tmax;
+
+	 double dwdb1 = - (8 * c * std::exp(-(t - t0)/b1) * (t - t0)) * (std::pow(b1,-2) * std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2), -9));
+	 double dwdc = (std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2), -8));
+	 double dcdb1 = ((8 * amp)/(b1 * std::pow((b1+b2), 2))) * std::pow( std::pow(b1/b2 , b2/(b1+b2)) + std::pow(b2/b1 , b1/(b1+b2)) , 7) * 
+		        (std::pow(b1/b2 , b2/(b1+b2)) * b2 * (b1 + b2 - b1 * std::log(b1/b2)) - b1 * std::pow(b2/b1 , b1/(b1+b2))*(b1 + b2 - b2*std::log(b2/b1))); 
+	 double dwdt0 = -8 * c * ((std::exp(-(t - t0)/b1))/b1 - (std::exp((t - t0)/b2))/b2) * std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2) , -9);
+	 double dt0db1 = ((b2)/(b1+b2)) + ((b1 * b2 * std::log(b2/b1) )/(std::pow((b1 + b2), 2))) - ((b2 * std::log(b2/b1))/(b1+b2));
+         
+	 double dwdb2 = (8 * c * std::exp((t - t0)/b2) * (t - t0)) * (std::pow(b2, -2) * std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2), -9));
+	 double dcdb2 = ((8 * amp)/(b2 * std::pow((b1+b2), 2))) * std::pow( std::pow(b1/b2 , b2/(b1+b2)) + std::pow(b2/b1 , b1/(b1+b2)) , 7) * 
+		        (-std::pow(b1/b2 , b2/(b1+b2)) * b2 * (b1 + b2 - b1 * std::log(b1/b2)) + b1 * std::pow(b2/b1 , b1/(b1+b2))*(b1 + b2 - b2*std::log(b2/b1))); 
+	 double dt0db2 = ((-b1)/(b1+b2)) + ((b1 * b2 * std::log(b2/b1))/(std::pow((b1 + b2),2))) - ((b1 * std::log(b2/b1))/(b1+b2));
+	 
+	 double DwDb1 = dwdb1 + dwdc*dcdb1 + dwdt0*dt0db1;
+	 double DwDb2 = dwdb2 + dwdc*dcdb2 + dwdt0*dt0db2;
+
+	 grad[0] += -2 * (data - pred) * DwDb1;
+	 grad[1] += -2 * (data - pred) * DwDb2;
+
+	//grad[0] += prefactor2 *  (t - x[1])/std::pow(x[2],2) * std::exp(-(t - x[1])/x[2]);
+        //grad[1] += prefactor2 * -(t - x[1])/std::pow(x[3],2) * std::exp( (t - x[1])/x[3]);
+      }
+    }
+  }
+
+  return squared_residuals;
+}
+
+
+double CCMIDSPERegions::AmplitudeConstraint(const std::vector<double> &x, std::vector<double> &grad, void * data) {
+  double* peak_max = (double*) data;
+  if (!grad.empty()) {
+    grad[0] = 1;
+    grad[1] = 0;
+  }
+
+}
+
+SPETemplate CCMIDSPERegions::FitPeak(double const & peak_amplitude, int64_t const & length, int64_t const & time, std::vector<short unsigned int> const & waveform,double const & baseline) {
+  
+  //nlopt::opt opt(nlopt::LD_LBFGS, num_params);
+  nlopt::opt opt(nlopt::LN_BOBYQA, num_params);
+  fit_data f_data;
+  //f_data.t0 = std::max(long(0),time-pre_window);
+  f_data.t0 = time;
+  f_data.baseline = &baseline;
+  f_data.v_start = waveform.begin() + f_data.t0;
+  //f_data.v_end = waveform.begin() + time + std::min(fit_length,length);
+  f_data.v_end = waveform.begin() - 1 + time + std::min(fit_length,length);
+  int64_t peak_tmax = f_data.t0 + std::distance(f_data.v_start, std::min_element(f_data.v_start,f_data.v_end));
+  f_data.peak_tmax = peak_tmax;
+  f_data.peak_amplitude = peak_amplitude;
+ 
+  opt.set_min_objective(CCMIDSPERegions::PeakLossFunction, &f_data);
+  
+  // Initial guesses, x[0] and x[1] come from minimization of least squares 
+  std::vector<double> x(4);
+  x[2] = double(time + std::min(fit_length,length) - f_data.t0)/2;
+  x[3] = x[2];
+  x[1] = peak_tmax - ((x[2]*x[3]/(x[2] + x[3])) * std::log(x[3]/x[2]));
+  x[0] = peak_amplitude * std::pow(std::pow(x[2]/x[3],x[3]/(x[2]+x[3]))
+                                  +std::pow(x[3]/x[2],x[2]/(x[2]+x[3])),8);
+  
+  
+ // guess some lower and upper bounds on each parameter
+  std::vector<double> lb(4);
+  std::vector<double> ub(4);
+  lb[0] = 0.01*x[0]; ub[0] = 10*x[0];
+  lb[1] = f_data.t0; ub[1] = f_data.t0 + std::distance(f_data.v_start,f_data.v_end);
+  lb[2] = 0.01*x[2]; ub[2] = 10*x[2];
+  lb[3] = 0.01*x[3]; ub[3] = 10*x[3];
+  
+  if(num_params==2) {
+    x = std::vector<double>(x.begin() + 2, x.end());
+    lb = std::vector<double>(lb.begin() + 2, lb.end());
+    ub = std::vector<double>(ub.begin() + 2, ub.end());
+  }
+  
+  opt.set_lower_bounds(lb);
+  opt.set_upper_bounds(ub);
+
+  // now perform the minimization
+  double minf;
+  try{
+    opt.set_xtol_rel(1e-8);
+    opt.set_ftol_rel(1e-8);
+    //opt.set_xtol_rel(1e-20);
+    //opt.set_xtol_abs(-1);
+    //opt.set_ftol_rel(1e-20);
+    opt.set_stopval(-HUGE_VAL);
+    //opt.set_vector_storage(1e6);
+    nlopt::result result = opt.optimize(x, minf);
+//    std::cout << "result = " << result << std::endl;
+//    std::cout << "b1 = " << x[0] << " , b2 = " << x[1] << std::endl;
+  }
+  catch(std::exception &e) {
+//    std::cout << "nlopt failed: " << e.what() << std::endl;
+  }
+  std::vector<double> xp(4);
+  if(num_params==2) {
+    xp[2] = x[0];
+    xp[3] = x[1];
+    xp[1] = peak_tmax + xp[2]*xp[3] / (xp[2] + xp[3]) * std::log(xp[2]/xp[3]);
+    xp[0] = peak_amplitude * std::pow(std::pow(xp[2]/xp[3],xp[3]/(xp[2]+xp[3]))
+                                     +std::pow(xp[3]/xp[2],xp[2]/(xp[2]+xp[3])),8);
+  }
+  else xp = x; 
+//  std::cout << "b1, b2 = " << xp[2] << ", " << xp[3] << std::endl;
+  return SPETemplate(xp[0],xp[1],xp[2],xp[3]);
+}
+
+void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit){
+    
+
+    
+    // get the vector of samples from the CCMWaveform object;
+    std::vector<short unsigned int> const & samples = waveform.GetWaveform();
+   
+    if (samples.size() == 0) {
+    	return;
+    }
+
+   // so now let's call a function to find regions of SPE
+   // then we'll fit those regions
+    
+    FindRegions(smoother, samples, mode, SPE_wf_to_fit);
+
+    // now let's define a few more quantities and fill using SPE_wf_to_fit
+    I3Vector<int> window_amplitude;
+    I3Vector<int64_t> window_length;
+    I3Vector<int64_t> window_time;
+
+    GetPeakInfo(SPE_wf_to_fit, window_amplitude, window_length, window_time);
+    //std::cout << "number of peaks to fit = " << window_amplitude.size() << std::endl;
+    for(size_t ipk = 0; ipk < window_amplitude.size(); ++ipk){
+       double peak_amplitude = -(window_amplitude[ipk] - mode);
+       //std::cout << "peak amp = " << peak_amplitude << std::endl;
+       //std::cout << "window length = " << window_length[ipk] << std::endl;
+       //std::cout << "window time = " << window_time[ipk] << std::endl;
+       double inv_baseline = -1*mode;
+       template_per_channel.push_back(FitPeak(peak_amplitude, window_length[ipk], window_time[ipk], samples, inv_baseline));
+       time_per_channel.push_back(window_time[ipk]);
+    }
+
+}
+
+void CCMIDSPERegions::Finish() {
+}
+
+
+
