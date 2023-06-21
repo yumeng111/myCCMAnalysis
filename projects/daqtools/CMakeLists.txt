@@ -21,5 +21,5 @@ i3_add_library(${PROJECT_NAME}
     private/BaselineEstimator.cxx
     IWYU
     USE_TOOLS boost python nlopt
-    USE_PROJECTS icetray serialization dataio dataclasses CCMBinary
+    USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services
 )
