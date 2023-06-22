@@ -31,15 +31,15 @@ args = parser.parse_args()
 if args.machine=="m": 
     filelist_file = "millstester_filelist.txt"
     source = "/data/2022_run/binary_files/"
-    comp_destination = "/data/2022_run/compressed_unmerged_files/"
+    comp_destination = "/data/2023/compressed_unmerged_files/millstester"
 elif args.machine=="w": 
     filelist_file = "willstester_filelist.txt"
     source = "/data/2022_run_m2/binary_files/"
-    comp_destination = "/data/2022_run_m2/compressed_unmerged_files/"
+    comp_destination = "/data/2023/compressed_unmerged_files/willstester"
 elif args.machine=="t": 
     filelist_file = "test_filelist.txt"
-    source = "/home/daquser/CCMCode/daq_machine_software/sources/CCMIC/scripts/test_source/"
-    comp_destination = "/home/daquser/CCMCode/daq_machine_software/sources/CCMIC/scripts/test_destination/"
+    source = "/data/test_source/"
+    comp_destination = "/data/test_destination/"
 else:
     print("Give a valid machine!")
     exit(0)
