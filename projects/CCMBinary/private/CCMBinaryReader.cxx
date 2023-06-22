@@ -66,8 +66,8 @@ class CCMBinaryReader : public I3Module {
     std::ifstream file_stream_;
 
     boost::shared_ptr<CCMAnalysis::Binary::CCMDAQConfig> last_config_;
-    size_t num_triggers_in_file_;
-    bool config_read_;
+    size_t num_frames_in_file_;
+    bool new_config_;
     boost::shared_ptr<CCMAnalysis::Binary::CCMTriggerReadout> readout_;
 
     std::vector<std::string>::iterator filenames_iter_;
@@ -92,7 +92,7 @@ namespace dataio = I3::dataio;
 I3_MODULE(CCMBinaryReader);
 
 CCMBinaryReader::CCMBinaryReader(const I3Context& context) : I3Module(context),
-    nframes_(0), config_read_(false) {
+    nframes_(0), num_frames_in_file_(0), new_config_(false) {
     std::string fname;
 
     AddParameter("Filename",
@@ -143,7 +143,7 @@ CCMBinaryReader::Configure() {
 
     void
 CCMBinaryReader::Process() {
-    while(file_stream_.peek() == EOF or (num_triggers_in_file_ > 0 and num_triggers_in_file_ == nframes_ + 1)) {
+    while(file_stream_.peek() == EOF or num_frames_in_file_ == nframes_) {
         if(filenames_iter_ == filenames_.end()) {
             RequestSuspension();
             current_filename_.reset();
@@ -156,18 +156,10 @@ CCMBinaryReader::Process() {
     I3FramePtr frame(new I3Frame);
     try {
         nframes_++;
-        if(not config_read_) {
-            boost::shared_ptr<CCMAnalysis::Binary::CCMDAQConfig> config = boost::make_shared<CCMAnalysis::Binary::CCMDAQConfig>();
-            CCMAnalysis::Binary::read_config(file_stream_, *config);
-            CCMAnalysis::Binary::read_size(file_stream_, num_triggers_in_file_);
-            config_read_ = true;
-            if(drop_duplicate_configs_ and *config == *last_config_) {
-                return;
-            } else {
-                frame->SetStop(I3Frame::Geometry);
-                frame->Put("CCMDAQConfig", config);
-                last_config_ = config;
-            }
+        if(new_config_) {
+            frame->SetStop(I3Frame::Geometry);
+            frame->Put("CCMDAQConfig", last_config_);
+            new_config_ = false;
         } else {
             CCMAnalysis::Binary::read_binary(file_stream_, *readout_);
             frame->SetStop(I3Frame::DAQ);
@@ -184,10 +176,11 @@ CCMBinaryReader::Process() {
 
     void
 CCMBinaryReader::OpenNextFile() {
-    config_read_ = false;
     current_filename_.reset();
     current_filename_ = file_stager_->GetReadablePath(*filenames_iter_);
     nframes_ = 0;
+    num_frames_in_file_ = 0;
+    new_config_ = false;
     filenames_iter_++;
 
     I3::dataio::open(ifs_, *current_filename_);
@@ -196,6 +189,16 @@ CCMBinaryReader::OpenNextFile() {
             current_filename_->c_str());
 
     log_info("Opened file %s", current_filename_->c_str());
+    boost::shared_ptr<CCMAnalysis::Binary::CCMDAQConfig> config = boost::make_shared<CCMAnalysis::Binary::CCMDAQConfig>();
+    CCMAnalysis::Binary::read_config(file_stream_, *config);
+    CCMAnalysis::Binary::read_size(file_stream_, num_frames_in_file_);
+    if(drop_duplicate_configs_ and *config == *last_config_) {
+        new_config_ = false;
+        return;
+    } else {
+        num_frames_in_file_ += 1;
+        new_config_ = true;
+    }
 }
 
 CCMBinaryReader::~CCMBinaryReader() {
