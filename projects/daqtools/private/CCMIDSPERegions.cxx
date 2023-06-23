@@ -37,6 +37,7 @@
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 #include "icetray/robust_statistics.h"
 #include "daqtools/WaveformSmoother.h"
+#include <dataclasses/calibration/BaselineEstimate.h>
 
 // struct to hold peak data when fitting 
 typedef struct {
@@ -120,8 +121,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
 
     // ptr to vector of all waveforms, derivs, and baselines (one for each channel)
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
-    I3Vector<I3Vector<double>> const & derivs = frame->Get<I3Vector<I3Vector<double>> const>("Derivatives");
-    I3Map<CCMPMTKey, double> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, double> const>("BaselineMode");
+    I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
     
     size_t size = waveforms->size();
     
@@ -131,16 +131,16 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
     boost::shared_ptr<I3Vector<I3Vector<short unsigned int>>> all_SPE_regions(new I3Vector<I3Vector<short unsigned int>>(size));
     
     // loop over each pmt 
-    for(std::pair<CCMPMTKey const, double> const & it : baseline_mode){
-       CCMPMTKey key = it.first;
-       double mode = it.second * -1; //need to invert mode since the wf is unsmoothed!!!
-       uint32_t channel = pmt_channel_map_[key];
+    for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baseline_mode){
+        CCMPMTKey key = it.first;
+        BaselineEstimate value = it.second; 
+        double mode = value.baseline * -1; //baseline mode is negative!!!
+        uint32_t channel = pmt_channel_map_[key];
     
        CCMWaveformUInt16 const & waveform = waveforms->at(channel);
-       I3Vector<double> const & deriv = derivs[channel];
        I3Vector<SPETemplate> template_per_channel; 
        I3Vector<int64_t> time_per_channel;
-       I3Vector<short unsigned int> SPE_wf_to_fit(deriv.size(), 0);
+       I3Vector<short unsigned int> SPE_wf_to_fit(waveform.GetWaveform().size(), 0);
        WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
         
        ProcessWaveform(smoother, waveform, mode, template_per_channel, time_per_channel, SPE_wf_to_fit);
