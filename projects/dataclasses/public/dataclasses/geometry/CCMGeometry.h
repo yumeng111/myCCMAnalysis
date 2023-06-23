@@ -23,6 +23,7 @@ public:
   I3Map<CCMPMTKey, uint32_t> pmt_channel_map;
   I3Map<CCMTriggerKey, uint32_t> trigger_channel_map;
   I3Map<CCMPMTKey, CCMTriggerKey> trigger_copy_map;
+  I3Map<CCMTriggerKey, CCMTriggerKey> trigger_to_trigger_copy_map;
 
   I3Time startTime;
   I3Time endTime;
@@ -60,5 +61,8 @@ I3_POINTER_TYPEDEFS(CCMTriggerChannelMap);
 
 typedef I3Map<CCMPMTKey, CCMTriggerKey> CCMTriggerCopyMap;
 I3_POINTER_TYPEDEFS(CCMTriggerCopyMap);
+
+typedef I3Map<CCMTriggerKey, CCMTriggerKey> CCMTriggerToTriggerCopyMap;
+I3_POINTER_TYPEDEFS(CCMTriggerToTriggerCopyMap);
 
 #endif // CCMGEOMETRY_H_INCLUDED
