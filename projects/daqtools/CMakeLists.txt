@@ -13,6 +13,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMIDSPERegions.cxx
     private/CCMMichelElectrons.cxx
     private/CountCosmicFrames.cxx
+    private/TestWaveformAccum.cxx
     private/BeamCurrentMonitorSummary.cxx
     private/NIMLogicPulseFinder.cxx
     private/PulseCollector.cxx

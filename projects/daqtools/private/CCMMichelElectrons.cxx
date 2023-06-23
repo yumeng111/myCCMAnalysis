@@ -42,22 +42,21 @@
 #include <dataclasses/physics/CCMBCMSummary.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/calibration/BaselineEstimate.h>
 //#include "daqtools/VertexReconstruction.h"
 
 class CCMMichelElectrons: public I3Module {
     bool geo_seen;
+    WaveformAccumulator summed_waveforms_;
     std::string geometry_name_;
     std::string nim_pulses_name_;
     CCMPMTKey bcm_key;
     size_t bcm_channel;
     CCMTriggerKey cosmic_trigger_key;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-    WaveformAccumulator summed_waveforms_;
-    double smoother_tau = 10.0 ;
-    double smoother_delta_t = 2.0;
     void Geometry(I3FramePtr frame);
     bool IsCosmicFrame(I3FramePtr frame);
-    std::deque<double> SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, double> const & baseline_mode);
+    std::deque<double> SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position);
     void FindMicheleRegion(std::deque<double> const & summed_wf, size_t & michel_start_index, size_t & michel_end_index);
     void ProcessWaveform(CCMWaveformUInt16 const & waveform, double const & mode, size_t const & michel_start_index, size_t const & michel_end_index, double & total_charge);
 public:
@@ -129,12 +128,16 @@ bool CCMMichelElectrons::IsCosmicFrame(I3FramePtr frame) {
     return true;
 }
 
-std::deque<double> CCMMichelElectrons::SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, double> const & baseline_mode){
+std::deque<double> CCMMichelElectrons::SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position){
+    
+    //reset summed_waveforms_ !!!
+    WaveformAccumulator summed_waveforms_;
 
-    for(std::pair<CCMPMTKey const, double> const & it : baseline_mode){
+    for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baseline_mode){
         CCMPMTKey key = it.first;
-        double mode = it.second; //baseline mode is negative!!!
-        uint32_t channel = pmt_channel_map_[key];
+        BaselineEstimate value = it.second; 
+        double mode = value.baseline; //baseline mode is negative!!!
+	uint32_t channel = pmt_channel_map_[key];
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
         std::vector<short unsigned int> const & samples = waveform.GetWaveform();
         std::vector<double> wf_minus_baseline(samples.size());
@@ -143,11 +146,22 @@ std::deque<double> CCMMichelElectrons::SumWaveforms(I3FramePtr frame, boost::sha
             wf_minus_baseline[i] = samples[i] + mode;
         }
 	CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-        double pos = frame->Get<NIMLogicPulseSeriesMap>("NimPulses").at(geo.trigger_copy_map.at(key)).at(0).GetNIMPulseTime() / 2.0 ;
+
+	for(std::pair<CCMPMTKey const, CCMTriggerKey> const & it : geo.trigger_copy_map){
+           CCMPMTKey key = it.first;
+           CCMTriggerKey value = it.second;
+	   std::cout << "key = " << key << std::endl;
+	   std::cout << "trigger value = " << value << std::endl;
+
+	}
+
+        double pos = frame->Get<NIMLogicPulseSeriesMap>("NIMPulses").at(geo.trigger_copy_map.at(key)).at(0).GetNIMPulseTime() / 2.0 ;
         summed_waveforms_.AddWaveform(wf_minus_baseline, pos);
     }
 
     std::deque<double> summed_wf = summed_waveforms_.GetSummedWaveform();
+    fixed_position = summed_waveforms_.GetFixedPosition();
+    std::cout << "fixed position = " << summed_waveforms_.GetFixedPosition() << std::endl;
     return summed_wf;
 
 }
@@ -198,7 +212,7 @@ void CCMMichelElectrons::FindMicheleRegion(std::deque<double> const & summed_wf,
           }
           // now let's loop over the wf after michel_peak_value_position and define the
           // end of the peak as where the wf drops off less steeply
-          for(size_t michel_it = michel_peak_value_position; michel_it < michel_peak_value_position + 150; ++michel_it){
+          for(size_t michel_it = michel_peak_value_position; michel_it < std::min(michel_peak_value_position + 150, summed_wf.size()-1); ++michel_it){
               double diff_between_bins = summed_wf[michel_it] - summed_wf[michel_it+1];
               if(diff_between_bins < diff_between_bins_threshold and diff_between_bins > (-1*diff_between_bins_threshold)){
                 // now we should be within the triplet light region
@@ -231,28 +245,33 @@ void CCMMichelElectrons::DAQ(I3FramePtr frame) {
 
     // ptr to vector of all waveforms and baselines (one for each channel)
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
-    I3Map<CCMPMTKey, double> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, double> const>("BaselineMode");
+    I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
     std::cout << "wf size = " << waveforms->size() << std::endl;
 
     // a shared pointer to store the total charge per pmt for each event
     boost::shared_ptr<I3Map<CCMPMTKey, CCMWaveformUInt16>> total_charge_per_pmt = boost::make_shared<I3Map<CCMPMTKey, CCMWaveformUInt16>>();
-    boost::shared_ptr<I3Vector<double>> summed_wf_per_frame(new I3Vector<double>(8000)); //hard coding in 8000 samples...need to fix at some point
+    //boost::shared_ptr<I3Vector<double>> summed_wf_per_frame(new I3Vector<double>(8000)); //hard coding in 8000 samples...need to fix at some point
     boost::shared_ptr<I3Vector<size_t>> michel_start_index_per_frame(new I3Vector<size_t>(1));
     boost::shared_ptr<I3Vector<size_t>> michel_end_index_per_frame(new I3Vector<size_t>(1));
+    boost::shared_ptr<I3Vector<int>> summed_wf_reference_time(new I3Vector<int>(1));
 
     // let's add up all the charge in the detector
-    std::deque<double> summed_wf = SumWaveforms(frame, waveforms, baseline_mode);
+    int fixed_position;
+    std::deque<double> summed_wf = SumWaveforms(frame, waveforms, baseline_mode, fixed_position);
+    boost::shared_ptr<I3Vector<double>> summed_wf_per_frame = boost::make_shared<I3Vector<double>>(summed_wf.begin(), summed_wf.end());
     
     for(size_t wf_it = 0; wf_it < summed_wf.size(); ++wf_it){
        summed_wf_per_frame->operator[](wf_it) = summed_wf[wf_it];
     }
     
+    summed_wf_reference_time->operator[](0) = fixed_position;
+    
     // now let's see if we have a michele candidate 2 microseconds from the trigger
     size_t michel_start_index = 0;
     size_t michel_end_index = 0;
     FindMicheleRegion(summed_wf, michel_start_index, michel_end_index);
-    michel_start_index_per_frame->operator[](1) = michel_start_index;
-    michel_end_index_per_frame->operator[](1) = michel_end_index;
+    michel_start_index_per_frame->operator[](0) = michel_start_index;
+    michel_end_index_per_frame->operator[](0) = michel_end_index;
 
     if(michel_start_index != 0 and michel_end_index!= 0 ){
       // that means we've identified a michel > 2 microseconds after the muon peak!
@@ -284,6 +303,7 @@ void CCMMichelElectrons::DAQ(I3FramePtr frame) {
     frame->Put("SummedWaveform", summed_wf_per_frame);
     frame->Put("MichelStartIndex", michel_start_index_per_frame);
     frame->Put("MichelEndIndex", michel_end_index_per_frame);
+    frame->Put("SummedWaveformFixedPosition", summed_wf_reference_time);
     std::cout << "finished finding Michele electrons!" << std::endl;
     PushFrame(frame);
     }
