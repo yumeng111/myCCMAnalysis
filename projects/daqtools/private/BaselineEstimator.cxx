@@ -243,6 +243,7 @@ class BaselineEstimator : public I3Module {
     size_t num_frames_for_estimate;
     size_t num_samples;
     size_t max_frames_waiting_for_estimate;
+    size_t max_estimator_lifetime;
 
     size_t frames_seen = 0;
 
@@ -261,7 +262,6 @@ class BaselineEstimator : public I3Module {
     void Geometry(I3FramePtr frame);
     void DAQ(I3FramePtr frame);
     void Finish();
-    void Flush();
 
     void UpdateEstimators(I3FramePtr frame);
     void UpdateEstimates();
@@ -278,6 +278,7 @@ BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(contex
         AddParameter("NumFramesForEstimate", "Number of frames to use for baseline estimate", size_t(100));
         AddParameter("NumSamples", "Number of samples from each frame to use for baseline estimate", size_t(200));
         AddParameter("MaxFramesWaitingForEstimate", "Maximum number of frames to postpone computing an estimate for frame that has an incomplete estimator", size_t(500));
+        AddParameter("MaxEstimatorLifetime", "Maximum number of frames since receiving an estimate that we should keep an estimator", size_t(1000));
     }
 
 void BaselineEstimator::Configure() {
@@ -286,6 +287,7 @@ void BaselineEstimator::Configure() {
     GetParameter("NumFramesForEstimate", num_frames_for_estimate);
     GetParameter("NumSamples", num_samples);
     GetParameter("MaxFramesWaitingForEstimate", max_frames_waiting_for_estimate);
+    GetParameter("MaxEstimatorLifetime", max_estimator_lifetime);
 }
 
 void BaselineEstimator::Geometry(I3FramePtr frame) {
@@ -375,6 +377,22 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
         //}
         estimate_info.push_back(pending_estimate);
         channels_pending.insert(pmt_key);
+    }
+}
+
+void BaselineEstimator::RemoveOldEstimators() {
+    for(std::pair<CCMPMTKey const, BaselinePMTKeyInfo> & p : baseline_pmt_info) {
+        std::map<size_t, OnlineRobustStatsBatched> & baseline_estimators = p.second.baseline_estimators;
+        std::map<size_t, size_t> & n_frames_since_last_estimator_update = p.second.n_frames_since_last_estimator_update;
+        std::vector<size_t> estimators_to_remove;
+        for(std::pair<size_t const, size_t> & it : n_frames_since_last_estimator_update) {
+            if(it.second >= max_estimator_lifetime) {
+                estimators_to_remove.push_back(it.first);
+            }
+        }
+        for(size_t const & est_idx : estimators_to_remove) {
+            baseline_estimators.erase(est_idx);
+        }
     }
 }
 
@@ -492,9 +510,6 @@ void BaselineEstimator::UpdateAndPushCompletedFrames() {
             break;
         }
     }
-}
-
-void BaselineEstimator::Flush() {
 }
 
 void BaselineEstimator::Finish() {
