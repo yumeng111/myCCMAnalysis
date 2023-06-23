@@ -51,7 +51,7 @@ void register_CCMGeometry()
     #define GEOMPROPS (startTime)(endTime)
     BOOST_PP_SEQ_FOR_EACH(WRAP_RW_RECASE, CCMGeometry, GEOMPROPS )
     #undef GEOMPROPS
-    #define GEOMPROPS (pmt_geo)(pmt_channel_map)(trigger_channel_map)(trigger_copy_map)
+    #define GEOMPROPS (pmt_geo)(pmt_channel_map)(trigger_channel_map)(trigger_copy_map)(trigger_to_trigger_copy_map)
     BOOST_PP_SEQ_FOR_EACH(WRAP_RW, CCMGeometry, GEOMPROPS )
     #undef GEOMPROPS
     .def(bp::dataclass_suite<CCMGeometry>())
@@ -67,5 +67,8 @@ void register_CCMGeometry()
     ;
     bp::class_<CCMTriggerCopyMap, bp::bases<I3FrameObject>, CCMTriggerCopyMapPtr>("CCMTriggerCopyMap")
     .def(bp::dataclass_suite<CCMTriggerCopyMap>())
+    ;
+    bp::class_<CCMTriggerToTriggerCopyMap, bp::bases<I3FrameObject>, CCMTriggerToTriggerCopyMapPtr>("CCMTriggerToTriggerCopyMap")
+    .def(bp::dataclass_suite<CCMTriggerToTriggerCopyMap>())
     ;
 }
