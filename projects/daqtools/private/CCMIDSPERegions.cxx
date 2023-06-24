@@ -61,14 +61,17 @@ class CCMIDSPERegions: public I3Module {
                         int64_t const & length,
                         int64_t const & time,
                         std::vector<short unsigned int> const & waveform,
-                        double const & baseline);
+                        double const & baseline,
+			int num_params, 
+			SPETemplate & two_param_fit_vals);
 
     int64_t fit_length;
     int64_t pre_window;
     int min_amplitude;
     int max_amplitude;
     size_t n_daq_frames = 0;
-    static const int num_params = 2;
+    // int num_params;
+    //static const int num_params = 2;
 
     double smoother_tau = 10.0 ;
     double smoother_delta_t = 2.0;
@@ -322,15 +325,15 @@ double CCMIDSPERegions::PeakLossFunction(const std::vector<double> & xin, std::v
 
   // typecast to the our struct
   fit_data* d = (fit_data*) f_data;
+  int num_params;
 
- // std::cout << "amp to fit = " << d->peak_amplitude << std::endl;
- // std::cout << "peak tmax to fit = " << d->peak_tmax << std::endl;
- // for(std::vector<short unsigned int>::const_iterator it = d->v_start; it <= d->v_end; ++it){  
- //    std::cout << "wf to fit = " << double(*it) << std::endl;
- //    std::cout << "subtracted off wf to fit = " << -(*(d->baseline) + double(*it)) << std::endl;
- // }
- // std::cout << "done printing wf to fit!" << std::endl;
+  if (xin.size() == 2){
+     num_params = 2;
+  }
 
+  if (xin.size() == 4){
+     num_params = 4;
+  }
   // figure out input based on constraint
   std::vector<double> x(4);
   if (num_params==2) {
@@ -343,8 +346,8 @@ double CCMIDSPERegions::PeakLossFunction(const std::vector<double> & xin, std::v
   else x = xin;
   
   // Get the SPE template for these parameters
-  SPETemplate pulse(x[0],x[1],x[2],x[3]);
-  CCMPMTCalibration::DroopedSPETemplate fit_func(pulse);
+  // SPETemplate pulse(x[0],x[1],x[2],x[3]);
+  // CCMPMTCalibration::DroopedSPETemplate fit_func(pulse);
   
   // initialize summation parameters
   double squared_residuals = 0;
@@ -354,7 +357,6 @@ double CCMIDSPERegions::PeakLossFunction(const std::vector<double> & xin, std::v
   }
   int t = d->t0;
   
-  //std::cout << "peak amplitude = " << d->peak_amplitude << std::endl;  
   // loop over each time bin, add to square residuals
   for(std::vector<short unsigned int>::const_iterator it = d->v_start; it != d->v_end; ++it, ++t) {
     //pred = fit_func(t); <- this doesnt work,,,not sure why
@@ -365,16 +367,28 @@ double CCMIDSPERegions::PeakLossFunction(const std::vector<double> & xin, std::v
     double b2 = x[3];
     double amp = d->peak_amplitude;
     double tmax = d->peak_tmax;
-    
+
     double t0_nsec = (tmax * 2) - (((b1*b2)/(b1+b2)) * std::log(b2/b1));
     double t_nsec = 2*t;
 
+    if (num_params == 2){
+
     double first_exp = std::exp(-(t_nsec - t0_nsec)/b1);
     double second_exp = std::exp((t_nsec - t0_nsec)/b2);
-
     double denom = std::pow(first_exp + second_exp , 8);
-    
     pred = c/denom;
+
+    }
+
+    if (num_params == 4){
+
+    double first_exp = std::exp(-(t_nsec - t0)/b1);
+    double second_exp = std::exp((t_nsec - t0)/b2);
+    double denom = std::pow(first_exp + second_exp , 8);
+    pred = c/denom;
+    
+    }
+
     data = -(*(d->baseline) + double(*it));
     
     squared_residuals += std::pow(data - pred, 2);
@@ -435,8 +449,9 @@ double CCMIDSPERegions::AmplitudeConstraint(const std::vector<double> &x, std::v
 
 }
 
-SPETemplate CCMIDSPERegions::FitPeak(double const & peak_amplitude, int64_t const & length, int64_t const & time, std::vector<short unsigned int> const & waveform,double const & baseline) {
+SPETemplate CCMIDSPERegions::FitPeak(double const & peak_amplitude, int64_t const & length, int64_t const & time, std::vector<short unsigned int> const & waveform,double const & baseline, int num_params, SPETemplate & two_param_fit_vals) {
   
+  std::cout << "num params = " << num_params << std::endl;
   //nlopt::opt opt(nlopt::LD_LBFGS, num_params);
   nlopt::opt opt(nlopt::LN_BOBYQA, num_params);
   fit_data f_data;
@@ -454,13 +469,24 @@ SPETemplate CCMIDSPERegions::FitPeak(double const & peak_amplitude, int64_t cons
   
   // Initial guesses, x[0] and x[1] come from minimization of least squares 
   std::vector<double> x(4);
-  x[2] = double(time + std::min(fit_length,length) - f_data.t0)/2;
-  x[3] = x[2];
-  x[1] = peak_tmax - ((x[2]*x[3]/(x[2] + x[3])) * std::log(x[3]/x[2]));
-  x[0] = peak_amplitude * std::pow(std::pow(x[2]/x[3],x[3]/(x[2]+x[3]))
+  
+  if(num_params == 2){  
+  
+    x[2] = double(time + std::min(fit_length,length) - f_data.t0)/2;
+    x[3] = x[2];
+    x[1] = peak_tmax - ((x[2]*x[3]/(x[2] + x[3])) * std::log(x[3]/x[2]));
+    x[0] = peak_amplitude * std::pow(std::pow(x[2]/x[3],x[3]/(x[2]+x[3]))
                                   +std::pow(x[3]/x[2],x[2]/(x[2]+x[3])),8);
+  }
+
+  if (num_params == 4){
+    x[0] = two_param_fit_vals.c;
+    x[1] = two_param_fit_vals.x0;
+    x[2] = two_param_fit_vals.b1;
+    x[3] = two_param_fit_vals.b2;
   
-  
+  }
+
  // guess some lower and upper bounds on each parameter
   std::vector<double> lb(4);
   std::vector<double> ub(4);
@@ -504,7 +530,6 @@ SPETemplate CCMIDSPERegions::FitPeak(double const & peak_amplitude, int64_t cons
                                      +std::pow(xp[3]/xp[2],xp[2]/(xp[2]+xp[3])),8);
   }
   else xp = x; 
-//  std::cout << "b1, b2 = " << xp[2] << ", " << xp[3] << std::endl;
   return SPETemplate(xp[0],xp[1],xp[2],xp[3]);
 }
 
@@ -528,16 +553,15 @@ void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformU
     I3Vector<int> window_amplitude;
     I3Vector<int64_t> window_length;
     I3Vector<int64_t> window_time;
+    int num_params;
 
     GetPeakInfo(SPE_wf_to_fit, window_amplitude, window_length, window_time);
-    //std::cout << "number of peaks to fit = " << window_amplitude.size() << std::endl;
     for(size_t ipk = 0; ipk < window_amplitude.size(); ++ipk){
        double peak_amplitude = -(window_amplitude[ipk] - mode);
-       //std::cout << "peak amp = " << peak_amplitude << std::endl;
-       //std::cout << "window length = " << window_length[ipk] << std::endl;
-       //std::cout << "window time = " << window_time[ipk] << std::endl;
        double inv_baseline = -1*mode;
-       template_per_channel.push_back(FitPeak(peak_amplitude, window_length[ipk], window_time[ipk], samples, inv_baseline));
+       SPETemplate two_param_fit_template;
+       SPETemplate two_param_fit_vals = FitPeak(peak_amplitude, window_length[ipk], window_time[ipk], samples, inv_baseline, num_params = 2, two_param_fit_template);
+       template_per_channel.push_back(FitPeak(peak_amplitude, window_length[ipk], window_time[ipk], samples, inv_baseline, num_params = 4, two_param_fit_vals));
        time_per_channel.push_back(window_time[ipk]);
     }
 
