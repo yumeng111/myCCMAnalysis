@@ -55,7 +55,7 @@ class CCMIDSPERegions: public I3Module {
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     void Geometry(I3FramePtr frame);
     std::tuple<size_t, double, double> CheckForPulse(WaveformSmoother & smoother, double const & mode, size_t start_idx);
-    void ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit);
+    void ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit);
     void FindRegions(WaveformSmoother & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit);
     void GetPeakInfo(I3Vector<short unsigned int> & SPE_wf_to_fit, I3Vector<int> & window_amplitude, I3Vector<int64_t>& window_length, I3Vector<int64_t> &window_time);
     SPETemplate FitPeak(double peak_amplitude,
@@ -131,6 +131,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
     // a vector storing the SPE template and time for each channel
     boost::shared_ptr<I3Vector<I3Vector<SPETemplate>>> channel_templates(new I3Vector<I3Vector<SPETemplate>>(size));
     boost::shared_ptr<I3Vector<I3Vector<int64_t>>> channel_times(new I3Vector<I3Vector<int64_t>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<int64_t>>> channel_length(new I3Vector<I3Vector<int64_t>>(size));
     boost::shared_ptr<I3Vector<I3Vector<short unsigned int>>> all_SPE_regions(new I3Vector<I3Vector<short unsigned int>>(size));
 
     // loop over each pmt 
@@ -143,17 +144,20 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
         I3Vector<SPETemplate> template_per_channel; 
         I3Vector<int64_t> time_per_channel;
+        I3Vector<int64_t> length_per_channel;
         I3Vector<short unsigned int> SPE_wf_to_fit(waveform.GetWaveform().size(), 0);
         WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
 
-        ProcessWaveform(smoother, waveform, mode, template_per_channel, time_per_channel, SPE_wf_to_fit);
+        ProcessWaveform(smoother, waveform, mode, template_per_channel, time_per_channel, length_per_channel, SPE_wf_to_fit);
         channel_templates->operator[](channel) = template_per_channel;
         channel_times->operator[](channel) = time_per_channel;
+        channel_length->operator[](channel) = length_per_channel;
         all_SPE_regions->operator[](channel) = SPE_wf_to_fit;
     }
 
     frame->Put("SPETemplates", channel_templates);
     frame->Put("SPETemplatesTimes", channel_times);
+    frame->Put("SPETemplatesLength", channel_length);
     frame->Put("SPEPeakRegions", all_SPE_regions);
     std::cout << "finished fitting SPEs!" << std::endl;
     PushFrame(frame);
@@ -476,7 +480,7 @@ SPETemplate CCMIDSPERegions::FitPeak(double peak_amplitude, int64_t length, int6
     try {
         opt.set_xtol_rel(1e-8);
         opt.set_ftol_rel(1e-8);
-        opt.set_stopval(-HUGE_VAL);
+        //opt.set_stopval(-HUGE_VAL);
         nlopt::result result = opt.optimize(x, minf);
     } catch(std::exception &e) {
     }
@@ -501,7 +505,7 @@ SPETemplate CCMIDSPERegions::FitPeak(double peak_amplitude, int64_t length, int6
     return SPETemplate(c, t0, b1, b2);
 }
 
-void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit){
+void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit){
 
 
 
@@ -529,6 +533,7 @@ void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformU
         SPETemplate two_param_fit_vals = FitPeak(peak_amplitude, window_length[ipk], window_time[ipk], samples, inv_baseline, 2);
         template_per_channel.push_back(FitPeak(peak_amplitude, window_length[ipk], window_time[ipk], samples, inv_baseline, 4, two_param_fit_vals));
         time_per_channel.push_back(window_time[ipk]);
+        length_per_channel.push_back(window_length[ipk]);
     }
 }
 
