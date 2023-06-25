@@ -57,7 +57,7 @@ class CCMMichelElectrons: public I3Module {
     double smoother_delta_t = 2.0;
     void Geometry(I3FramePtr frame);
     bool IsCosmicFrame(I3FramePtr frame);
-    std::deque<double> SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, double> const & baseline_mode);
+    std::deque<double> SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode);
     void FindMicheleRegion(std::deque<double> const & summed_wf, size_t & michel_start_index, size_t & michel_end_index);
     void ProcessWaveform(CCMWaveformUInt16 const & waveform, double const & mode, size_t const & michel_start_index, size_t const & michel_end_index, double & total_charge);
 public:
@@ -231,7 +231,7 @@ void CCMMichelElectrons::DAQ(I3FramePtr frame) {
 
     // ptr to vector of all waveforms and baselines (one for each channel)
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
-    I3Map<CCMPMTKey, double> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, double> const>("BaselineMode");
+    I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, double> const>("BaselineEstimates");
     std::cout << "wf size = " << waveforms->size() << std::endl;
 
     // a shared pointer to store the total charge per pmt for each event
