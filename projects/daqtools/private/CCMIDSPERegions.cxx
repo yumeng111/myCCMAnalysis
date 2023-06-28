@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <algorithm>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -138,7 +139,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
     for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baseline_mode){
         CCMPMTKey key = it.first;
         BaselineEstimate value = it.second;
-        double mode = value.baseline * -1; //baseline mode is negative!!!
+        double mode = value.baseline * -1; //baseline mode is positive!!!
         uint32_t channel = pmt_channel_map_[key];
 
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
@@ -158,7 +159,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
     frame->Put("SPETemplates", channel_templates);
     frame->Put("SPETemplatesTimes", channel_times);
     frame->Put("SPETemplatesLength", channel_length);
-    frame->Put("SPEPeakRegions", all_SPE_regions);
+   // frame->Put("SPEPeakRegions", all_SPE_regions);
     std::cout << "finished fitting SPEs!" << std::endl;
     PushFrame(frame);
 }
@@ -257,14 +258,34 @@ void CCMIDSPERegions::FindRegions(WaveformSmoother & smoother, std::vector<short
                 else{
                     // first time seeing this pulse!
                     pulse_tracker.push_back(pulse_last_index);
-                    if((max_unsmoothed_value >= min_val_threshold) and (max_unsmoothed_value <= max_val_threshold) and (integral >= integral_threshold)){
-                        // made it past our cuts!
-                        // let's save waveform to SPE_wf_to_fit
-                        // std::cout << "found a good peak! starting bin = " << pulse_first_index << " , ending bin = " << pulse_last_index << std::endl;
-                        for(size_t pulse_it = pulse_first_index; pulse_it <= pulse_last_index; ++pulse_it){
-                            //std::cout << "wf in this peak = " << samples[pulse_it] << std::endl;
-                            SPE_wf_to_fit[pulse_it] = samples[pulse_it];
-                        }	      
+                    // let's add a cut here that continues if 100 bins before the start of our pulse and 100 bins after the end of our pulse are low charged
+                    size_t min = 0;
+                    size_t pre_pulse_window = std::max(pulse_first_index - 100, min);
+                    double max_val_pre_pulse = samples[pulse_first_index] - mode;
+                    for (size_t pre_pulse_it = 0; pre_pulse_it < pre_pulse_window; ++pre_pulse_it){
+                        max_val_pre_pulse = std::min(max_val_pre_pulse, samples[pre_pulse_it] - mode);
+                    }
+
+                    size_t post_pulse_window = std::min(pulse_last_index + 100, samples.size());
+                    double max_val_post_pulse = samples[pulse_last_index] - mode;
+                    for (size_t post_pulse_it = 0; post_pulse_it < post_pulse_window; ++post_pulse_it){
+                        max_val_post_pulse = std::min(max_val_post_pulse, samples[post_pulse_it] - mode);
+                    }
+
+                    double surrounding_wf_threshold = 10; // counts above or below the baseline that we consider noise
+
+                    if (max_val_pre_pulse < surrounding_wf_threshold and max_val_pre_pulse > -1*surrounding_wf_threshold
+                        and max_val_post_pulse < surrounding_wf_threshold and max_val_post_pulse > -1*surrounding_wf_threshold) {
+
+                        if((max_unsmoothed_value >= min_val_threshold) and (max_unsmoothed_value <= max_val_threshold) and (integral >= integral_threshold)){
+                            // made it past our cuts on adc counts!
+                            // let's save waveform to SPE_wf_to_fit
+                            // std::cout << "found a good peak! starting bin = " << pulse_first_index << " , ending bin = " << pulse_last_index << std::endl;
+                            for(size_t pulse_it = pulse_first_index; pulse_it <= pulse_last_index; ++pulse_it){
+                                //std::cout << "wf in this peak = " << samples[pulse_it] << std::endl;
+                                SPE_wf_to_fit[pulse_it] = samples[pulse_it];
+                            }
+                        }
                     }
                 }
 
