@@ -259,14 +259,29 @@ void CCMIDSPERegions::FindRegions(WaveformSmoother & smoother, std::vector<short
                     // first time seeing this pulse!
                     pulse_tracker.push_back(pulse_last_index);
                     // let's add a cut here that continues if 100 bins before the start of our pulse and 100 bins after the end of our pulse are low charged
-                    size_t min = 0;
-                    size_t pre_pulse_window = std::max(pulse_first_index - 100, min);
+                    size_t pre_pulse_window;
+                    size_t post_pulse_window;
+
+                    // first checking the pre pulse window for activity
+                    if (pulse_first_index < 100){
+                        pre_pulse_window = pulse_first_index;
+                    }
+                    else{
+                        pre_pulse_window = 100;
+                    }
+
                     double max_val_pre_pulse = samples[pulse_first_index] - mode;
                     for (size_t pre_pulse_it = 0; pre_pulse_it < pre_pulse_window; ++pre_pulse_it){
                         max_val_pre_pulse = std::min(max_val_pre_pulse, samples[pre_pulse_it] - mode);
                     }
 
-                    size_t post_pulse_window = std::min(pulse_last_index + 100, samples.size());
+                    // now checking the post pulse window for activity
+                    if (pulse_last_index > (samples.size() - 100)){
+                        post_pulse_window = samples.size() - pulse_last_index;
+                    }
+                    else{
+                        post_pulse_window = 100;
+                    }
                     double max_val_post_pulse = samples[pulse_last_index] - mode;
                     for (size_t post_pulse_it = 0; post_pulse_it < post_pulse_window; ++post_pulse_it){
                         max_val_post_pulse = std::min(max_val_post_pulse, samples[post_pulse_it] - mode);
