@@ -50,15 +50,27 @@ typedef struct {
     int64_t peak_amplitude;
 } fit_data;
 
+// struct to hold gradient vector values from 4 param fit 
+struct FourParamGrad {
+    double grad0;
+    double grad1;
+    double grad2;
+    double grad3;
+} ;
+
+
 class CCMIDSPERegions: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     void Geometry(I3FramePtr frame);
     std::tuple<size_t, double, double> CheckForPulse(WaveformSmoother & smoother, double const & mode, size_t start_idx);
-    void ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit);
+    void ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<double> & amp_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit);
     void FindRegions(WaveformSmoother & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit);
     void GetPeakInfo(I3Vector<short unsigned int> & SPE_wf_to_fit, I3Vector<int> & window_amplitude, I3Vector<int64_t>& window_length, I3Vector<int64_t> &window_time);
+    static double GetPred(double & c, double & t0, double & b1, double & b2, double &t);
+    static std::pair<double, double> GetGradTwoParams(double & amp, double & data, double & pred, double & c, double & t0, double & b1, double & b2, double &t);
+    static FourParamGrad GetGradFourParams(double data, double pred, double & c, double & t0, double & b1, double & b2, double &t);
     SPETemplate FitPeak(double peak_amplitude,
             int64_t length,
             int64_t time,
@@ -133,6 +145,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
     boost::shared_ptr<I3Vector<I3Vector<SPETemplate>>> channel_templates(new I3Vector<I3Vector<SPETemplate>>(size));
     boost::shared_ptr<I3Vector<I3Vector<int64_t>>> channel_times(new I3Vector<I3Vector<int64_t>>(size));
     boost::shared_ptr<I3Vector<I3Vector<int64_t>>> channel_length(new I3Vector<I3Vector<int64_t>>(size));
+    boost::shared_ptr<I3Vector<I3Vector<double>>> peak_amplitude(new I3Vector<I3Vector<double>>(size));
     boost::shared_ptr<I3Vector<I3Vector<short unsigned int>>> all_SPE_regions(new I3Vector<I3Vector<short unsigned int>>(size));
 
     // loop over each pmt 
@@ -146,10 +159,11 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
         I3Vector<SPETemplate> template_per_channel; 
         I3Vector<int64_t> time_per_channel;
         I3Vector<int64_t> length_per_channel;
+        I3Vector<double> amp_per_channel;
         I3Vector<short unsigned int> SPE_wf_to_fit(waveform.GetWaveform().size(), 0);
         WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
 
-        ProcessWaveform(smoother, waveform, mode, template_per_channel, time_per_channel, length_per_channel, SPE_wf_to_fit);
+        ProcessWaveform(smoother, waveform, mode, template_per_channel, time_per_channel, length_per_channel, amp_per_channel, SPE_wf_to_fit);
         channel_templates->operator[](channel) = template_per_channel;
         channel_times->operator[](channel) = time_per_channel;
         channel_length->operator[](channel) = length_per_channel;
@@ -159,6 +173,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
     frame->Put("SPETemplates", channel_templates);
     frame->Put("SPETemplatesTimes", channel_times);
     frame->Put("SPETemplatesLength", channel_length);
+    frame->Put("SPEDataAmplitudes", peak_amplitude);
    // frame->Put("SPEPeakRegions", all_SPE_regions);
     std::cout << "finished fitting SPEs!" << std::endl;
     PushFrame(frame);
@@ -261,37 +276,35 @@ void CCMIDSPERegions::FindRegions(WaveformSmoother & smoother, std::vector<short
                     // let's add a cut here that continues if 100 bins before the start of our pulse and 100 bins after the end of our pulse are low charged
                     size_t pre_pulse_window;
                     size_t post_pulse_window;
+                    size_t nearby_charge_window = 150;
 
                     // first checking the pre pulse window for activity
-                    if (pulse_first_index < 100){
+                    if (pulse_first_index < nearby_charge_window){
                         pre_pulse_window = pulse_first_index;
                     }
                     else{
-                        pre_pulse_window = 100;
+                        pre_pulse_window = nearby_charge_window;
                     }
-
                     double max_val_pre_pulse = samples[pulse_first_index] - mode;
-                    for (size_t pre_pulse_it = 0; pre_pulse_it < pre_pulse_window; ++pre_pulse_it){
+                    for (size_t pre_pulse_it = pulse_first_index - pre_pulse_window; pre_pulse_it < pulse_first_index; ++pre_pulse_it){
                         max_val_pre_pulse = std::min(max_val_pre_pulse, samples[pre_pulse_it] - mode);
                     }
 
                     // now checking the post pulse window for activity
-                    if (pulse_last_index > (samples.size() - 100)){
+                    if (pulse_last_index > (samples.size() - nearby_charge_window)){
                         post_pulse_window = samples.size() - pulse_last_index;
                     }
                     else{
-                        post_pulse_window = 100;
+                        post_pulse_window = nearby_charge_window;
                     }
                     double max_val_post_pulse = samples[pulse_last_index] - mode;
-                    for (size_t post_pulse_it = 0; post_pulse_it < post_pulse_window; ++post_pulse_it){
+                    for (size_t post_pulse_it = pulse_last_index; post_pulse_it < pulse_last_index + post_pulse_window; ++post_pulse_it){
                         max_val_post_pulse = std::min(max_val_post_pulse, samples[post_pulse_it] - mode);
                     }
-
-                    double surrounding_wf_threshold = 10; // counts above or below the baseline that we consider noise
+                    double surrounding_wf_threshold = 7; // counts above or below the baseline that we consider noise
 
                     if (max_val_pre_pulse < surrounding_wf_threshold and max_val_pre_pulse > -1*surrounding_wf_threshold
                         and max_val_post_pulse < surrounding_wf_threshold and max_val_post_pulse > -1*surrounding_wf_threshold) {
-
                         if((max_unsmoothed_value >= min_val_threshold) and (max_unsmoothed_value <= max_val_threshold) and (integral >= integral_threshold)){
                             // made it past our cuts on adc counts!
                             // let's save waveform to SPE_wf_to_fit
@@ -361,6 +374,82 @@ void CCMIDSPERegions::GetPeakInfo(I3Vector<short unsigned int>  & SPE_wf_to_fit,
 
 }
 
+double CCMIDSPERegions::GetPred(double & c, double & t0, double & b1, double & b2, double &t){
+    // we want to calculate the prediction value for a few values within this bin and return the average
+    double total_pred;
+    size_t n_samples_per_bin = 40;
+
+    for(size_t idx = 0; idx<n_samples_per_bin; ++idx){
+        double t_it = idx * 2.0 / double(n_samples_per_bin) + t;
+        double first_exp = std::exp(-(t_it- t0) / b1);
+        double second_exp = std::exp((t_it - t0) / b2);
+        double denom = std::pow(first_exp + second_exp , 8);
+        double pred = c / denom;
+        total_pred += pred;
+    }
+
+    return total_pred/double(n_samples_per_bin);
+
+}
+
+std::pair<double, double> CCMIDSPERegions::GetGradTwoParams(double & amp, double & data, double & pred, double & c, double & t0, double & b1, double & b2, double &t){
+
+    double total_grad0;
+    double total_grad1;
+    size_t n_samples_per_bin = 40;
+
+    for(size_t idx = 0; idx<n_samples_per_bin; ++idx){
+        double t_it = idx * 2.0 / double(n_samples_per_bin) + t;
+        double dwdb1 = - (8 * c * std::exp(-(t_it - t0)/b1) * (t_it - t0)) * (std::pow(b1,-2) * std::pow(std::exp(-(t_it - t0)/b1) + std::exp((t_it - t0)/b2), -9));
+        double dwdc = (std::pow(std::exp(-(t_it - t0)/b1) + std::exp((t_it - t0)/b2), -8));
+        double dcdb1 = ((8 * amp)/(b1 * std::pow((b1+b2), 2))) * std::pow( std::pow(b1/b2 , b2/(b1+b2)) + std::pow(b2/b1 , b1/(b1+b2)) , 7) * 
+                        (std::pow(b1/b2 , b2/(b1+b2)) * b2 * (b1 + b2 - b1 * std::log(b1/b2)) - b1 * std::pow(b2/b1 , b1/(b1+b2))*(b1 + b2 - b2*std::log(b2/b1))); 
+        double dwdt0 = -8 * c * ((std::exp(-(t_it - t0)/b1))/b1 - (std::exp((t_it - t0)/b2))/b2) * std::pow(std::exp(-(t_it - t0)/b1) + std::exp((t_it - t0)/b2) , -9);
+        double dt0db1 = ((b2)/(b1+b2)) + ((b1 * b2 * std::log(b2/b1) )/(std::pow((b1 + b2), 2))) - ((b2 * std::log(b2/b1))/(b1+b2));
+
+        double dwdb2 = (8 * c * std::exp((t_it - t0)/b2) * (t_it - t0)) * (std::pow(b2, -2) * std::pow(std::exp(-(t_it - t0)/b1) + std::exp((t_it - t0)/b2), -9));
+        double dcdb2 = ((8 * amp)/(b2 * std::pow((b1+b2), 2))) * std::pow( std::pow(b1/b2 , b2/(b1+b2)) + std::pow(b2/b1 , b1/(b1+b2)) , 7) * 
+                        (-std::pow(b1/b2 , b2/(b1+b2)) * b2 * (b1 + b2 - b1 * std::log(b1/b2)) + b1 * std::pow(b2/b1 , b1/(b1+b2))*(b1 + b2 - b2*std::log(b2/b1))); 
+        double dt0db2 = ((-b1)/(b1+b2)) + ((b1 * b2 * std::log(b2/b1))/(std::pow((b1 + b2),2))) - ((b1 * std::log(b2/b1))/(b1+b2));
+
+        double DwDb1 = dwdb1 + dwdc*dcdb1 + dwdt0*dt0db1;
+        double DwDb2 = dwdb2 + dwdc*dcdb2 + dwdt0*dt0db2;
+
+        total_grad0 += -2 * (data - pred) * DwDb1;
+        total_grad1 += -2 * (data - pred) * DwDb2;
+    }
+
+    return std::make_pair(total_grad0/double(n_samples_per_bin) , total_grad1/double(n_samples_per_bin));
+}
+
+FourParamGrad CCMIDSPERegions::GetGradFourParams(double data, double pred, double & c, double & t0, double & b1, double & b2, double &t){
+    FourParamGrad s;
+    double total_grad0;
+    double total_grad1;
+    double total_grad2;
+    double total_grad3;
+
+    size_t n_samples_per_bin = 40;
+
+    for(size_t idx = 0; idx<n_samples_per_bin; ++idx){
+        double t_it = idx * 2.0 / double(n_samples_per_bin) + t;
+        double prefactor = -2 * (data - pred) * pred;
+        double prefactor2 = -8 * prefactor / (std::exp(-(t_it - t0)/b1) + std::exp( (t_it - t0)/b2));
+
+        total_grad0 += prefactor / c;
+        total_grad1 += prefactor2 * (std::exp(-(t_it - t0)/b1)/b1 - std::exp( (t_it - t0)/b2)/b2);
+        total_grad2 += prefactor2 *  (t_it - t0)/std::pow(b1,2) * std::exp(-(t_it - t0)/b1);
+        total_grad3 += prefactor2 * -(t_it - t0)/std::pow(b2,2) * std::exp( (t_it - t0)/b2);
+
+    }
+    s.grad0 = total_grad0/double(n_samples_per_bin);
+    s.grad1 = total_grad1/double(n_samples_per_bin);
+    s.grad2 = total_grad2/double(n_samples_per_bin);
+    s.grad3 = total_grad3/double(n_samples_per_bin);
+
+    return s;
+}
+
 double CCMIDSPERegions::PeakLossFunction(const std::vector<double> & xin, std::vector<double> &grad, void * f_data) {
 
     // typecast to the our struct
@@ -405,44 +494,23 @@ double CCMIDSPERegions::PeakLossFunction(const std::vector<double> & xin, std::v
     // loop over each time bin, add to square residuals
     double t = d->t0;
     for(std::vector<short unsigned int>::const_iterator it = d->v_start; it != d->v_end; ++it, t += 2) {
-        double first_exp = std::exp(-(t - t0) / b1);
-        double second_exp = std::exp((t - t0) / b2);
-        double denom = std::pow(first_exp + second_exp , 8);
-        pred = c / denom;
-
+        pred = CCMIDSPERegions::GetPred(c, t0, b1, b2, t);
         data = -(*(d->baseline) + double(*it));
 
         squared_residuals += std::pow(data - pred, 2);
         // gradient calculated using SPE template function in I3DOMCalibration
         if(!grad.empty()) {
-            double prefactor = -2 * (data - pred) * pred;
-            double prefactor2 = -8 * prefactor / (std::exp(-(t - t0)/b1) + 
-                    std::exp( (t - t0)/b2));
             if(num_params == 4) {
-                grad[0] += prefactor / c;
-                grad[1] += prefactor2 * (std::exp(-(t - t0)/b1)/b1 - 
-                        std::exp( (t - t0)/b2)/b2);
-                grad[2] += prefactor2 *  (t - t0)/std::pow(b1,2) * std::exp(-(t - t0)/b1);
-                grad[3] += prefactor2 * -(t - t0)/std::pow(b2,2) * std::exp( (t - t0)/b2);
+                FourParamGrad s = GetGradFourParams(data, pred, c, t0, b1, b2, t);
+                grad[0] += s.grad0;
+                grad[1] += s.grad1;
+                grad[2] += s.grad2;
+                grad[3] += s.grad0;
             }
             else if(num_params == 2) {
-                double dwdb1 = - (8 * c * std::exp(-(t - t0)/b1) * (t - t0)) * (std::pow(b1,-2) * std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2), -9));
-                double dwdc = (std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2), -8));
-                double dcdb1 = ((8 * amp)/(b1 * std::pow((b1+b2), 2))) * std::pow( std::pow(b1/b2 , b2/(b1+b2)) + std::pow(b2/b1 , b1/(b1+b2)) , 7) * 
-                    (std::pow(b1/b2 , b2/(b1+b2)) * b2 * (b1 + b2 - b1 * std::log(b1/b2)) - b1 * std::pow(b2/b1 , b1/(b1+b2))*(b1 + b2 - b2*std::log(b2/b1))); 
-                double dwdt0 = -8 * c * ((std::exp(-(t - t0)/b1))/b1 - (std::exp((t - t0)/b2))/b2) * std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2) , -9);
-                double dt0db1 = ((b2)/(b1+b2)) + ((b1 * b2 * std::log(b2/b1) )/(std::pow((b1 + b2), 2))) - ((b2 * std::log(b2/b1))/(b1+b2));
-
-                double dwdb2 = (8 * c * std::exp((t - t0)/b2) * (t - t0)) * (std::pow(b2, -2) * std::pow(std::exp(-(t - t0)/b1) + std::exp((t - t0)/b2), -9));
-                double dcdb2 = ((8 * amp)/(b2 * std::pow((b1+b2), 2))) * std::pow( std::pow(b1/b2 , b2/(b1+b2)) + std::pow(b2/b1 , b1/(b1+b2)) , 7) * 
-                    (-std::pow(b1/b2 , b2/(b1+b2)) * b2 * (b1 + b2 - b1 * std::log(b1/b2)) + b1 * std::pow(b2/b1 , b1/(b1+b2))*(b1 + b2 - b2*std::log(b2/b1))); 
-                double dt0db2 = ((-b1)/(b1+b2)) + ((b1 * b2 * std::log(b2/b1))/(std::pow((b1 + b2),2))) - ((b1 * std::log(b2/b1))/(b1+b2));
-
-                double DwDb1 = dwdb1 + dwdc*dcdb1 + dwdt0*dt0db1;
-                double DwDb2 = dwdb2 + dwdc*dcdb2 + dwdt0*dt0db2;
-
-                grad[0] += -2 * (data - pred) * DwDb1;
-                grad[1] += -2 * (data - pred) * DwDb2;
+                std::pair<double, double> two_param_grad = GetGradTwoParams(amp, data, pred, c, t0, b1, b2, t);
+                grad[0] += two_param_grad.first;
+                grad[1] += two_param_grad.second;
             }
         }
     }
@@ -511,16 +579,18 @@ SPETemplate CCMIDSPERegions::FitPeak(double peak_amplitude, int64_t length, int6
     opt.set_lower_bounds(lb);
     opt.set_upper_bounds(ub);
 
+    nlopt::result result;
     // now perform the minimization
     double minf;
     try {
-        opt.set_xtol_rel(1e-8);
-        opt.set_ftol_rel(1e-8);
+        opt.set_xtol_rel(1e-12);
+        opt.set_ftol_rel(1e-20);
+        opt.set_maxtime(100);
         //opt.set_stopval(-HUGE_VAL);
-        nlopt::result result = opt.optimize(x, minf);
+        result = opt.optimize(x, minf);
     } catch(std::exception &e) {
     }
-
+    //std::cout << "nlopt result = " << result << std::endl;
     double c;
     double t0;
     double b1;
@@ -541,7 +611,7 @@ SPETemplate CCMIDSPERegions::FitPeak(double peak_amplitude, int64_t length, int6
     return SPETemplate(c, t0, b1, b2);
 }
 
-void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit){
+void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<double> & amp_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit){
 
 
 
@@ -570,6 +640,7 @@ void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformU
         template_per_channel.push_back(FitPeak(peak_amplitude, window_length[ipk], window_time[ipk], samples, inv_baseline, 4, two_param_fit_vals));
         time_per_channel.push_back(window_time[ipk]);
         length_per_channel.push_back(window_length[ipk]);
+        amp_per_channel.push_back(peak_amplitude);
     }
 }
 
