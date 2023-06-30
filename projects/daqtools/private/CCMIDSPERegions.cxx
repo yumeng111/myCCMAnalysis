@@ -585,7 +585,7 @@ SPETemplate CCMIDSPERegions::FitPeak(double peak_amplitude, int64_t length, int6
     try {
         opt.set_xtol_rel(1e-12);
         opt.set_ftol_rel(1e-20);
-        opt.set_maxtime(100);
+        opt.set_maxtime(400);
         //opt.set_stopval(-HUGE_VAL);
         result = opt.optimize(x, minf);
     } catch(std::exception &e) {
