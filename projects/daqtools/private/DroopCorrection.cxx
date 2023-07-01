@@ -51,8 +51,8 @@ class DroopCorrection: public I3Module {
     double tau = 4774.0;
     double delta_t = 2.0;
     void Geometry(I3FramePtr frame);
-    void CorrectDroop(std::vector<double> const & samples, double const & mode, I3Vector<double> & droop_corrected_wf_per_channel);
-    void ProcessWaveform(CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<double> & droop_corrected_wf_per_channel);
+    void CorrectDroop(std::vector<double> const & samples, double const & mode, CCMWaveformDouble & droop_corrected_wf_per_channel);
+    void ProcessWaveform(CCMWaveformUInt16 const & waveform, double const & mode, CCMWaveformDouble & droop_corrected_wf_per_channel);
 public:
     DroopCorrection(const I3Context&);
     void Configure();
@@ -97,20 +97,22 @@ void DroopCorrection::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void DroopCorrection::CorrectDroop(std::vector<double> const & samples, double const & mode, I3Vector<double> & droop_corrected_wf_per_channel){
+void DroopCorrection::CorrectDroop(std::vector<double> const & samples, double const & mode, CCMWaveformDouble &  droop_corrected_wf_per_channel){
 
+    std::vector<double> & droop_samples = droop_corrected_wf_per_channel.GetWaveform();
+    droop_samples.resize(samples.size());
     // this module takes our wf, called samples, and droop corrects and updates droop_corrected_wf_per_channel
     double C = std::exp(-delta_t/tau);
     double B = (1.0 - C);
     double A = tau / delta_t * B;
     double S = 0.0;
     double X = double(samples[0]) / A + B * S;
-    droop_corrected_wf_per_channel[0] = X;
+    droop_samples[0] = X;
 
     for (size_t i = 1; i < samples.size(); ++i){
         S = X + C * S;
         X = samples[i] / A + B * S;
-        droop_corrected_wf_per_channel[i] = X;
+        droop_samples[i] = X;
     }
 }
 
@@ -127,7 +129,7 @@ void DroopCorrection::DAQ(I3FramePtr frame) {
     size_t size = waveforms->size();
 
     // a vector storing the droop-corrected wfs for each channel
-    boost::shared_ptr<I3Vector<I3Vector<double>>> droop_correced_wf(new I3Vector<I3Vector<double>>(size));
+    boost::shared_ptr<CCMWaveformDoubleSeries> droop_correced_wf = boost::make_shared<CCMWaveformDoubleSeries>(size);
 
     // loop over each pmt
     for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baseline_mode){
@@ -138,7 +140,7 @@ void DroopCorrection::DAQ(I3FramePtr frame) {
 
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
 
-        I3Vector<double> droop_corrected_wf_per_channel(waveform.GetWaveform().size());
+        CCMWaveformDouble & droop_corrected_wf_per_channel = droop_correced_wf->at(channel);
 
         ProcessWaveform(waveform, mode, droop_corrected_wf_per_channel);
         droop_correced_wf->operator[](channel) = droop_corrected_wf_per_channel;
@@ -149,7 +151,7 @@ void DroopCorrection::DAQ(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void DroopCorrection::ProcessWaveform(CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<double> & droop_corrected_wf_per_channel){
+void DroopCorrection::ProcessWaveform(CCMWaveformUInt16 const & waveform, double const & mode, CCMWaveformDouble & droop_corrected_wf_per_channel){
 
     // get the vector of samples from the CCMWaveform object;
     std::vector<short unsigned int> const & samples = waveform.GetWaveform();
