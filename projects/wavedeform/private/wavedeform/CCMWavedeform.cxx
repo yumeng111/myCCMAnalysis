@@ -1,62 +1,32 @@
-#include <icetray/I3ConditionalModule.h>
-#include <icetray/IcetrayFwd.h>
-
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/foreach.hpp>
-#include <boost/make_shared.hpp>
-
-#include <set>
-#include <tuple>
 #include <cctype>
 #include <string>
-#include <fstream>
-#include <iostream>
-#include <limits>
+#include <vector>
+#include <float.h>
+#include <utility>
+#include <cholmod.h>
 
-#include <icetray/open.h>
+#include <boost/make_shared.hpp>
+
 #include <icetray/I3Frame.h>
-#include <icetray/I3TrayInfo.h>
+#include <icetray/I3Units.h>
 #include <icetray/I3Module.h>
 #include <icetray/I3Logging.h>
-#include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
+#include <icetray/I3ConditionalModule.h>
+
 #include <dataclasses/physics/CCMWaveform.h>
-#include <dataclasses/geometry/CCMGeometry.h>
-#include <dataclasses/calibration/CCMPMTCalibration.h>
-#include <dataclasses/calibration/I3DOMCalibration.h>
-#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
-#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
-#include "icetray/robust_statistics.h"
-#include "daqtools/WaveformSmoother.h"
-#include "daqtools/WaveformAccumulator.h"
-#include <dataclasses/physics/CCMWaveform.h>
-#include <dataclasses/physics/CCMBCMSummary.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 
-
 #include <dataclasses/CCMPMTFunctions.h>
 #include <dataclasses/I3TimeWindow.h>
-#include <icetray/I3Units.h>
 #include <dataclasses/calibration/CCMCalibration.h>
 #include <dataclasses/calibration/CCMPMTCalibration.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
-#include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/status/CCMDetectorStatus.h>
 #include <dataclasses/status/CCMPMTStatus.h>
-
-#include <string>
-#include <vector>
-#include <utility>
-#include <set>
-#include <float.h>
-
-#include <cholmod.h>
 
 #include "nnls.h"
 #include "rnnls.h"
@@ -76,9 +46,6 @@ class CCMWavedeform : public I3ConditionalModule {
         bool geo_seen;
         std::string geometry_name_;
         std::string nim_pulses_name_;
-        CCMPMTKey bcm_key;
-        size_t bcm_channel;
-        CCMTriggerKey cosmic_trigger_key;
         I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
 		CCMWavedeform(const I3Context &);
 		virtual ~CCMWavedeform();
@@ -204,18 +171,6 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
     geo_seen = true;
-    bool found_bcm_key = false;
-    for(auto const & key_om : geo.pmt_geo) {
-        if(key_om.second.omtype == CCMOMGeo::OMType::BeamCurrentMonitor) {
-            bcm_key = key_om.first;
-            found_bcm_key = true;
-        }
-    }
-    if(not found_bcm_key) {
-        log_fatal("CCMGeometry does not contain a channel corresponding to a BeamCurrentMonitor");
-    }
-    bcm_channel = geo.pmt_channel_map.at(bcm_key);
-    cosmic_trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, 1);
     PushFrame(frame);
 }
 
