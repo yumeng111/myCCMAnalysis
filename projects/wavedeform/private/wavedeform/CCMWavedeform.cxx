@@ -319,8 +319,10 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
 	if (nbins == 0 || !std::isfinite(spe_charge) || spe_charge == 0)
 		return output;
 
-    // sources used to be a vector but I made it an int since we only have one digitizer fyi
-	int sources; // Bitmask of CCMRecoPulse::PulseFlags
+    // Original code defined `std::vector<int> sources;` to specify a different source per bin
+    // Each of our sensors should only have a single digitizer associated with it,
+    //  so every bin will have the same source
+    int source; // Bitmask of CCMRecoPulse::PulseFlags
 	std::vector<double> redges(nbins+1);
 	std::vector<double> weights(nbins);
 	std::vector<bool> passBasisThresh(nbins,false);
@@ -328,13 +330,13 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
 	data = cholmod_l_zeros(nbins, 1, CHOLMOD_REAL, &c);
 
 	// Fill data vector
-	// Set pulse flags to use for this bin
+	// Set pulse flags to use for this waveform
 	if (wf.GetSource() == CCMSource::V1730) 
-        sources = CCMSource::V1730;
+        source = CCMSource::V1730;
 	else {
 		log_error("Unknown waveform source (%d), assuming V1730 " 
         "pulse template", wf.GetSource());
-		sources = CCMSource::V1730;
+		source = CCMSource::V1730;
 	}
 
 	double base_weight = 1;
@@ -591,7 +593,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
 			((double *)(basis_trip->x))[basis_trip->nnz] =
 			    (*pulse_templ)[templ_bin] * weighted_charge;
 			//pflags[j] |= sources[i];
-			pflags[j] |= sources;
+			pflags[j] |= source;
 
 			basis_trip->nnz++;
 			assert(basis_trip->nnz <= basis_trip->nzmax);
