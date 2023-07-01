@@ -107,4 +107,5 @@ void register_CCMWaveform() {
       ;
 
     register_CCMWaveform_T<uint16_t>("UInt16");
+    register_CCMWaveform_T<double>("Double");
 }

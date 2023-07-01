@@ -175,13 +175,18 @@ std::ostream& operator<<(std::ostream& oss, CCMWaveform<T> const & wf);
 std::ostream& operator<<(std::ostream& oss, CCMStatusCompound const & wf);
 
 typedef CCMWaveform<uint16_t> CCMWaveformUInt16;
+typedef CCMWaveform<double> CCMWaveformDouble;
 
 I3_CLASS_VERSION(CCMStatusCompound, 1);
 I3_CLASS_VERSION(CCMWaveformUInt16, ccmwaveform_version_);
+I3_CLASS_VERSION(CCMWaveformDouble, ccmwaveform_version_);
 I3_POINTER_TYPEDEFS(CCMWaveformUInt16);
+I3_POINTER_TYPEDEFS(CCMWaveformDouble);
 
 typedef I3Vector<CCMWaveformUInt16> CCMWaveformUInt16Series;
+typedef I3Vector<CCMWaveformDouble> CCMWaveformDoubleSeries;
 I3_POINTER_TYPEDEFS(CCMWaveformUInt16Series);
+I3_POINTER_TYPEDEFS(CCMWaveformDoubleSeries);
 
 #include "CCMWaveform.tcc"
 
