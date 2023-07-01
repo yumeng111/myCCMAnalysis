@@ -12,13 +12,16 @@ i3_add_library(${PROJECT_NAME}
     private/CCMAverageBaselines.cxx
     private/CCMIDSPERegions.cxx
     private/CCMMichelElectrons.cxx
+    private/DroopCorrection.cxx
     private/CountCosmicFrames.cxx
     private/TestWaveformAccum.cxx
     private/CosmicTriggerSumWaveforms.cxx
     private/BeamCurrentMonitorSummary.cxx
     private/NIMLogicPulseFinder.cxx
     private/PulseCollector.cxx
+    private/DroopyPulseCollector.cxx
     private/SumPulses.cxx
+    private/DroopySumPulses.cxx
     private/FirstPulseFinder.cxx
     private/BaselineEstimator.cxx
     IWYU

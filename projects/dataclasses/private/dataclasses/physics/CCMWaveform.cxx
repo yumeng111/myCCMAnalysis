@@ -42,4 +42,6 @@ std::ostream& CCMStatusCompound::Print(std::ostream& oss) const {
 
 I3_SPLIT_SERIALIZABLE(CCMStatusCompound);
 I3_SPLIT_SERIALIZABLE(CCMWaveformUInt16);
+I3_SPLIT_SERIALIZABLE(CCMWaveformDouble);
 I3_SERIALIZABLE(CCMWaveformUInt16Series);
+I3_SERIALIZABLE(CCMWaveformDoubleSeries);
