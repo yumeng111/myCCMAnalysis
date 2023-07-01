@@ -1,4 +1,44 @@
 #include <icetray/I3ConditionalModule.h>
+#include <icetray/IcetrayFwd.h>
+
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/scoped_ptr.hpp>
+#include <boost/foreach.hpp>
+#include <boost/make_shared.hpp>
+
+#include <set>
+#include <tuple>
+#include <cctype>
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <limits>
+
+#include <icetray/open.h>
+#include <icetray/I3Frame.h>
+#include <icetray/I3TrayInfo.h>
+#include <icetray/I3Module.h>
+#include <icetray/I3Logging.h>
+#include <icetray/I3PODHolder.h>
+#include <icetray/CCMPMTKey.h>
+#include <icetray/CCMTriggerKey.h>
+#include <dataclasses/physics/CCMWaveform.h>
+#include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/calibration/CCMPMTCalibration.h>
+#include <dataclasses/calibration/I3DOMCalibration.h>
+#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
+#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
+#include "icetray/robust_statistics.h"
+#include "daqtools/WaveformSmoother.h"
+#include "daqtools/WaveformAccumulator.h"
+#include <dataclasses/physics/CCMWaveform.h>
+#include <dataclasses/physics/CCMBCMSummary.h>
+#include <dataclasses/physics/NIMLogicPulse.h>
+#include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/calibration/BaselineEstimate.h>
+
 
 #include <dataclasses/CCMPMTFunctions.h>
 #include <dataclasses/I3TimeWindow.h>
@@ -33,17 +73,24 @@ struct CCMWaveformTemplate {
 
 class CCMWavedeform : public I3ConditionalModule {
 	public:
+        bool geo_seen;
+        std::string geometry_name_;
+        std::string nim_pulses_name_;
+        CCMPMTKey bcm_key;
+        size_t bcm_channel;
+        CCMTriggerKey cosmic_trigger_key;
+        I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
 		CCMWavedeform(const I3Context &);
 		virtual ~CCMWavedeform();
 
+        void Geometry(I3FramePtr frame);
 		void Configure();
 		void Calibration(I3FramePtr frame);
 		void DAQ(I3FramePtr frame);
 	private:
 
 		CCMRecoPulseSeriesPtr GetPulses(
-			const std::vector<CCMWaveformUInt16>::const_iterator firstWF,
-			const std::vector<CCMWaveformUInt16>::const_iterator lastWF,
+			CCMWaveformDouble const & wf,
 			const CCMWaveformTemplate& wfTemplate,
 			const CCMPMTCalibration& calibration,
 			const double spe_charge);
@@ -83,9 +130,10 @@ inline double PulseMin() {
 	return -2;
 }
 
-CCMWavedeform::CCMWavedeform(const I3Context &context) :
-    I3ConditionalModule(context)
-{
+CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(context),
+    geometry_name_(""), geo_seen(false) {
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
 	AddParameter("SPEsPerBin",
 	    "Number of basis functions to unfold per waveform bin", 4.);
 	AddParameter("Tolerance",
@@ -113,6 +161,8 @@ CCMWavedeform::CCMWavedeform(const I3Context &context) :
 void
 CCMWavedeform::Configure()
 {
+    GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("NIMPulsesName", nim_pulses_name_);
 	GetParameter("Waveforms", waveforms_name_);
 	GetParameter("WaveformTimeRange", waveform_range_name_);
 	GetParameter("Output", output_name_);
@@ -147,6 +197,28 @@ CCMWavedeform::~CCMWavedeform()
 	cholmod_l_finish(&c);
 }
 
+void CCMWavedeform::Geometry(I3FramePtr frame) {
+    if(not frame->Has(geometry_name_)) {
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+    }
+    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+    pmt_channel_map_ = geo.pmt_channel_map;
+    geo_seen = true;
+    bool found_bcm_key = false;
+    for(auto const & key_om : geo.pmt_geo) {
+        if(key_om.second.omtype == CCMOMGeo::OMType::BeamCurrentMonitor) {
+            bcm_key = key_om.first;
+            found_bcm_key = true;
+        }
+    }
+    if(not found_bcm_key) {
+        log_fatal("CCMGeometry does not contain a channel corresponding to a BeamCurrentMonitor");
+    }
+    bcm_channel = geo.pmt_channel_map.at(bcm_key);
+    cosmic_trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, 1);
+    PushFrame(frame);
+}
+
 void
 CCMWavedeform::Calibration(I3FramePtr frame) {
 
@@ -166,39 +238,41 @@ CCMWavedeform::DAQ(I3FramePtr frame) {
 
 	const CCMCalibration& calibration = frame->Get<CCMCalibration>();
 	const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
-	const std::vector<CCMWaveformUInt16>& waveforms =
-	    frame->Get<std::vector<CCMWaveformUInt16>>(waveforms_name_);
+    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
+    boost::shared_ptr<const CCMWaveformDoubleSeries> droopy_waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>("DroopCorrectedWf");
+	//const std::vector<CCMWaveformUInt16> & waveforms = frame->Get<std::vector<CCMWaveformUInt16>>(waveforms_name_);
+    I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 	boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
 
 	// Unfold each set of waveforms into a pulse series
     // TODO Either loop over channels and check for PMTs or find all the PMTs and then loop and grab the right channels
-	for (std::vector<CCMWaveformUInt16>::const_iterator wfs = waveforms.begin();
-	     wfs != waveforms.end(); wfs++) {
-        // TODO get the key
-        CCMPMTKey thekey;
-        // TODO get the channel
-        size_t channel;
-		std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
-		    calibration.pmtCal.find(thekey);
-		std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat =
-		    status.pmtStatus.find(thekey);
+    // loop over each pmt
+    for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baselines){
+        CCMPMTKey key = it.first;
+        BaselineEstimate value = it.second;
+        double baseline = value.baseline; 
+        uint32_t channel = pmt_channel_map_[key];
+
+        CCMWaveformUInt16 const & waveform = waveforms->at(channel);
+        CCMWaveformDouble const & droopy_waveform = droopy_waveforms->at(channel);
+
+		std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(key);
+		std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat = status.pmtStatus.find(key);
 
 		// Get/create the appropriate template
 		if (!template_.filled) {
 			FillTemplate(template_, calib->second);
 		}
 
-		(*output)[thekey] = *GetPulses(wfs,
-		    wfs + 1, template_, calib->second,
-		    SPEMean(stat->second, calib->second));
+		(*output)[key] = *GetPulses(droopy_waveform, template_, calib->second, SPEMean(stat->second, calib->second));
 
-	}
+    }
+
 
 	frame->Put(output_name_, output);
 
 	// Add a time window for the earliest possible pulse in the event
-	I3TimeWindowConstPtr waveform_range =
-	    frame->Get<I3TimeWindowConstPtr>(waveform_range_name_);
+	I3TimeWindowConstPtr waveform_range = frame->Get<I3TimeWindowConstPtr>(waveform_range_name_);
 	if (!waveform_range)
 		log_fatal("Waveform time range \"%s\" not found in frame",
 		    waveform_range_name_.c_str());
@@ -229,15 +303,9 @@ CCMWavedeform::DAQ(I3FramePtr frame) {
  *          amplitudes corresponding to each pulse and y is the data.
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
-CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
-    const std::vector<CCMWaveformUInt16>::const_iterator firstWF,
-    const std::vector<CCMWaveformUInt16>::const_iterator lastWF,
-    const CCMWaveformTemplate& wfTemplate,
-    const CCMPMTCalibration& calibration,
-    const double spe_charge)
-{
+CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  const CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, const double spe_charge) {
+
 	boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
-	std::vector<CCMWaveformUInt16>::const_iterator wf;
 	cholmod_triplet *basis_trip;
 	cholmod_sparse *basis;
 	cholmod_dense *data, *unfolded;
@@ -245,15 +313,14 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	int nbins = 0;
 
 	// Determine the total number of WF bins
-	for (wf = firstWF; wf != lastWF; wf++) {
-		nbins += wf->GetWaveform().size();
-	}
+	nbins = wf.GetWaveform().size();
 
 	// If we have no data, nothing to do
 	if (nbins == 0 || !std::isfinite(spe_charge) || spe_charge == 0)
 		return output;
 
-	std::vector<int> sources(nbins); // Bitmask of CCMRecoPulse::PulseFlags
+    // sources used to be a vector but I made it an int since we only have one digitizer fyi
+	int sources; // Bitmask of CCMRecoPulse::PulseFlags
 	std::vector<double> redges(nbins+1);
 	std::vector<double> weights(nbins);
 	std::vector<bool> passBasisThresh(nbins,false);
@@ -261,67 +328,60 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	data = cholmod_l_zeros(nbins, 1, CHOLMOD_REAL, &c);
 
 	// Fill data vector
-	for (wf = firstWF, j = 0; wf != lastWF; wf++) {
-		// Set pulse flags to use for this bin
-		if (wf->GetSource() == CCMSource::V1730)
-			sources[j] = CCMSource::V1730;
-		else {
-			log_error("Unknown waveform source (%d), assuming V1730 "
-			    "pulse template", wf->GetSource());
-			sources[j] = CCMSource::V1730;
+	// Set pulse flags to use for this bin
+	if (wf.GetSource() == CCMSource::V1730) 
+        sources = CCMSource::V1730;
+	else {
+		log_error("Unknown waveform source (%d), assuming V1730 " 
+        "pulse template", wf.GetSource());
+		sources = CCMSource::V1730;
+	}
+
+	double base_weight = 1;
+
+	// If the waveform is shorter than a pulse width,
+	// increase the per-bin weights so the aggregate weight
+	// is closer to what it should be
+	if (wf.GetWaveform().size() * wf.GetBinWidth() < PulseWidth()){
+		base_weight *= PulseWidth() / (wf.GetWaveform().size() * wf.GetBinWidth());
+    }
+
+    double noise = noise_threshold_;
+	double basisThreshmV = basis_threshold_;
+
+	// Read waveform
+	for (k = 0; k < wf.GetWaveform().size(); k++) {
+		redges[k] = wf.GetStartTime() + (1. + k) * wf.GetBinWidth();
+		((double *)(data->x))[k] = wf.GetWaveform()[k] / I3Units::mV;
+
+		weights[k] = base_weight;
+
+		// Remove waveform bins that were crazy for some reason
+		if (!std::isfinite(((double *)(data->x))[k])) {
+			((double *)(data->x))[k] = 0;
+			weights[k] = 0;
 		}
 
-		double base_weight = 1;
-
-		// If this waveform is shorter than a pulse width,
-		// increase the per-bin weights so the aggregate weight
-		// is closer to what it should be
-		if (wf->GetWaveform().size() * wf->GetBinWidth() <
-		    PulseWidth())
-			base_weight *= PulseWidth() /
-			    (wf->GetWaveform().size() * wf->GetBinWidth());
-
-		double noise = noise_threshold_;
-		double basisThreshmV = basis_threshold_;
-
-		// Read waveform
-		for (k = 0; k < wf->GetWaveform().size(); k++) {
-			redges[j+k] = wf->GetStartTime() + (1. + k) * wf->GetBinWidth();
-			sources[j+k] = sources[j];
-			((double *)(data->x))[j+k] = wf->GetWaveform()[k] / I3Units::mV;
-
-			weights[j+k] = base_weight;
-
-			// Remove waveform bins that were crazy for some reason
-			if (!std::isfinite(((double *)(data->x))[j+k])) {
-				((double *)(data->x))[j+k] = 0;
-				weights[j+k] = 0;
-			}
-
-			// Deweight and zero below noise-floor bins
-			if (fabs(((double *)(data->x))[j+k]) < noise) {
-				((double *)(data->x))[j+k] = 0;
-				weights[j+k] /= 4.;
-			} else if (fabs(((double *)(data->x))[j+k]) > basisThreshmV) {
-				passBasisThresh[j+k] = true;
-			}
+		// Deweight and zero below noise-floor bins
+		if (fabs(((double *)(data->x))[k]) < noise) {
+			((double *)(data->x))[k] = 0;
+			weights[k] /= 4.;
+		} else if (fabs(((double *)(data->x))[k]) > basisThreshmV) {
+			passBasisThresh[k] = true;
 		}
-		j += k;
 	}
 
 	// Remove saturated bins
-	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
-		for (k = 0; k < wf->GetWaveformInformation().size(); k++) {
-			const CCMWaveformUInt16::StatusCompound &status =
-			    wf->GetWaveformInformation()[k];
-			if (status.GetStatus() & CCMStatus::SATURATED) {
-				for (uint64_t a = status.GetInterval().first;
-				    a < status.GetInterval().second; a++)
-					weights[j+a] = 0;
-			}
+	for (k = 0; k < wf.GetWaveformInformation().size(); k++) {
+		const CCMWaveformDouble::StatusCompound &status = wf.GetWaveformInformation()[k];
+
+        if (status.GetStatus() & CCMStatus::SATURATED) {
+			for (uint64_t a = status.GetInterval().first; a < status.GetInterval().second; ++a){
+				weights[a] = 0;
+            }
 		}
-		j += wf->GetWaveform().size();
 	}
+
 
 	// Apply weights
 	for (int i = 0; i < nbins; i++) {
@@ -329,51 +389,43 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	}
 
 	// Precalculate the max number of basis functions to avoid reallocation
-	int maxspes = 0;
-	for (wf = firstWF; wf != lastWF; wf++) {
-		maxspes += int(spes_per_bin_*(wf->GetWaveform().size()));
-	}
+	int maxspes = int(spes_per_bin_*(wf.GetWaveform().size()));
 
 	std::vector<std::pair<double, double> > start_times;
 	start_times.reserve(maxspes);
 	double min_spe_spacing = DBL_MAX;
-	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
 
-		// Start, end two bins early
-		double present = wf->GetStartTime() - 2.*wf->GetBinWidth();
-		double max = present + wf->GetWaveform().size()*wf->GetBinWidth();
+	// Start, end two bins early
+	double present = wf.GetStartTime() - 2.*wf.GetBinWidth();
+	double max = present + wf.GetWaveform().size()*wf.GetBinWidth();
 
-		double spacing = wf->GetBinWidth() / spes_per_bin_;
-		if (spacing < min_spe_spacing) {
-			min_spe_spacing = spacing;
-		}
+	double spacing = wf.GetBinWidth() / spes_per_bin_;
+	if (spacing < min_spe_spacing) {
+		min_spe_spacing = spacing;
+	}
 
-		// Get the peak FWHM start, stop times for this waveform
-		double fwhmStart = wfTemplate.digitizerStart;
-		double fwhmStop = wfTemplate.digitizerStop;
+	// Get the peak FWHM start, stop times for this waveform
+	double fwhmStart = wfTemplate.digitizerStart;
+	double fwhmStop = wfTemplate.digitizerStop;
 
-		// Generate the set of pulse start times that have reasonable
-		// non-zero data within the FWHM of the corresponding pulse
-		for (k = 0; k < wf->GetWaveform().size(); ++k) {
-			if (((double *)(data->x))[j+k] != 0. && passBasisThresh[j+k]) {
+	// Generate the set of pulse start times that have reasonable
+	// non-zero data within the FWHM of the corresponding pulse
+	for (k = 0; k < wf.GetWaveform().size(); ++k) {
+		if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
 
-				// Move the present time forward if necessary
-				double binTime = redges[j+k];
-				// Don't jump if we're moving less than the basis spacing
-				if (present < (binTime - fwhmStop - spacing)) {
-					present = binTime - fwhmStop;
-				}
+		    // Move the present time forward if necessary
+			double binTime = redges[k];
+			// Don't jump if we're moving less than the basis spacing
+			if (present < (binTime - fwhmStop - spacing)) {
+				present = binTime - fwhmStop;
+			}
 
-				// Add start times to the set
-				while (present < (binTime - fwhmStart) && present < max) {
-					start_times.push_back(
-					        std::pair<double, double>(present, spacing));
-					present += spacing;
-				}
+			// Add start times to the set
+			while (present < (binTime - fwhmStart) && present < max) {
+				start_times.push_back(std::pair<double, double>(present, spacing));
+				present += spacing;
 			}
 		}
-
-		j += wf->GetWaveform().size();
 	}
 
 	int nspes = start_times.size();
@@ -421,41 +473,39 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 	}
 
 	// Don't use data bins that are not in the support of any basis function
-	for (j = 0, wf = firstWF; wf != lastWF; wf++) {
-		double start = DBL_MIN;
-		double end = DBL_MIN;
+	double start = DBL_MIN;
+	double end = DBL_MIN;
 
-		if (wf->GetWaveform().size() == 0) {
-			continue;
-		}
+    // commented out this check since we're no longer looping over the different wfs the continue statement doesnt make sense
+	//if (wf.GetWaveform().size() == 0) {
+	//	continue;
+	//}
 
-		k = 0;
-		for (std::vector<std::pair<double, double> >::const_iterator it = start_times.begin();
-		    it != start_times.end(); ++it) {
-			start = it->first + PulseMin();
-			end = it->first + PulseWidth();
+	k = 0;
+	for (std::vector<std::pair<double, double> >::const_iterator it = start_times.begin();
+		it != start_times.end(); ++it) {
+		start = it->first + PulseMin();
+		end = it->first + PulseWidth();
 
-			// Evaluate bins up until we pass the end of the current time range
-			for (; k < wf->GetWaveform().size() && redges[j+k] < end; ++k) {
-				// Check if bin time is inside the max of
-				// the last range and the min of the current range
-				if (redges[j+k] < start) {
-					weights[j+k] = 0.;
-				}
-			}
-
-			if (k == wf->GetWaveform().size()) {
-				break;
+		// Evaluate bins up until we pass the end of the current time range
+		for (; k < wf.GetWaveform().size() && redges[k] < end; ++k) {
+			// Check if bin time is inside the max of
+			// the last range and the min of the current range
+			if (redges[k] < start) {
+				weights[k] = 0.;
 			}
 		}
 
-		while (k < wf->GetWaveform().size()) {
-			// Get rid of bins with times later than the end of the support of the
-			// last basis function
-			weights[j+k] = 0.;
-			++k;
+		if (k == wf.GetWaveform().size()) {
+			break;
 		}
-		j += wf->GetWaveform().size();
+	}
+
+	while (k < wf.GetWaveform().size()) {
+		// Get rid of bins with times later than the end of the support of the
+		// last basis function
+		weights[k] = 0.;
+		++k;
 	}
 
 	// Chop out the data bins that we don't use since we don't fit them
@@ -464,7 +514,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 		if (weights[i] > 0.) {
 			weights[j] = weights[i];
 			redges[j] = redges[i];
-			sources[j] = sources[i];
+			//sources[j] = sources[i];
 			((double *)(data->x))[j] = ((double *)(data->x))[i];
 			++j;
 		}
@@ -540,7 +590,8 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(
 			((long *)(basis_trip->j))[basis_trip->nnz] = j;
 			((double *)(basis_trip->x))[basis_trip->nnz] =
 			    (*pulse_templ)[templ_bin] * weighted_charge;
-			pflags[j] |= sources[i];
+			//pflags[j] |= sources[i];
+			pflags[j] |= sources;
 
 			basis_trip->nnz++;
 			assert(basis_trip->nnz <= basis_trip->nzmax);
