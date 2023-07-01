@@ -624,6 +624,8 @@ void CCMGeometryGenerator::Process() {
         size_t n_channels = board.channels.size();
         std::vector<CCMPMTKey> board_pmt_keys;
         board_pmt_keys.reserve(n_channels);
+        std::vector<CCMTriggerKey> board_trigger_keys;
+        board_trigger_keys.reserve(n_channels);
         CCMTriggerKey board_trigger_copy;
         bool board_has_trigger_copy = false;
         for(size_t channel_idx = 0; channel_idx < n_channels; ++channel_idx, ++absolute_idx) {
@@ -771,6 +773,7 @@ void CCMGeometryGenerator::Process() {
 
             if(is_trigger) {
                 geometry->trigger_channel_map.insert({trigger_key, absolute_idx});
+                board_trigger_keys.push_back(trigger_key);
             } else if(is_sensor) {
                 geometry->pmt_channel_map.insert({pmt_key, absolute_idx});
                 CCMOMGeo om;
@@ -787,6 +790,9 @@ void CCMGeometryGenerator::Process() {
         if(board_has_trigger_copy) {
             for(CCMPMTKey const & k : board_pmt_keys) {
                 geometry->trigger_copy_map.insert({k, board_trigger_copy});
+            }
+            for(CCMTriggerKey const & k : board_trigger_keys) {
+                geometry->trigger_to_trigger_copy_map.insert({k, board_trigger_copy});
             }
         } else {
             log_fatal(("Board " + board.physical_board_id + " does not have a trigger copy!").c_str());

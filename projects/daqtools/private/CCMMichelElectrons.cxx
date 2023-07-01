@@ -137,7 +137,7 @@ std::deque<double> CCMMichelElectrons::SumWaveforms(I3FramePtr frame, boost::sha
         CCMPMTKey key = it.first;
         BaselineEstimate value = it.second; 
         double mode = value.baseline; //baseline mode is negative!!!
-	    uint32_t channel = pmt_channel_map_[key];
+	      uint32_t channel = pmt_channel_map_[key];
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
         std::vector<short unsigned int> const & samples = waveform.GetWaveform();
         std::vector<double> wf_minus_baseline(samples.size());

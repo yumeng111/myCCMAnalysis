@@ -168,6 +168,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
         channel_times->operator[](channel) = time_per_channel;
         channel_length->operator[](channel) = length_per_channel;
         all_SPE_regions->operator[](channel) = SPE_wf_to_fit;
+
     }
 
     frame->Put("SPETemplates", channel_templates);

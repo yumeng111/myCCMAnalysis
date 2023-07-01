@@ -14,6 +14,7 @@ CCMGeometry::serialize(Archive& ar, unsigned version) {
   ar & make_nvp("PMTChannelFormat", pmt_channel_map);
   ar & make_nvp("TriggerChannelMap", trigger_channel_map);
   ar & make_nvp("TriggerCopyMap", trigger_copy_map);
+  ar & make_nvp("TriggerToTriggerCopyMap", trigger_to_trigger_copy_map);
   ar & make_nvp("StartTime", startTime);
   ar & make_nvp("EndTime", endTime);
 }
