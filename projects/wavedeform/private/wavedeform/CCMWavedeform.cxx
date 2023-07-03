@@ -103,14 +103,22 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("SPEsPerBin",
             "Number of basis functions to unfold per waveform bin", 4.);
+    //AddParameter("Tolerance",
+    //        "Stopping tolerance, in units of bin mV^2/PE", 9.);
     AddParameter("Tolerance",
-            "Stopping tolerance, in units of bin mV^2/PE", 9.);
+            "Stopping tolerance, in units of bin ADC^2/PE", 5.);
+    //AddParameter("NoiseThreshold",
+    //        "Consider bins with amplitude below this number of counts as noise", 2.);
     AddParameter("NoiseThreshold",
-            "Consider bins with amplitude below this number of counts as noise", 2.);
+            "Consider bins with amplitude below this number of counts as noise", 4.);
+    //AddParameter("BasisThreshold",
+    //        "Require a bin with amplitude at least this number of counts "
+    //        "within the FWHM of the template waveform in order to include "
+    //        "a given start time in the basis set", 3.);
     AddParameter("BasisThreshold",
             "Require a bin with amplitude at least this number of counts "
             "within the FWHM of the template waveform in order to include "
-            "a given start time in the basis set", 3.);
+            "a given start time in the basis set", 5.);
     AddParameter("Waveforms", "Name of input waveforms",
             "CalibratedWaveforms");
     AddParameter("WaveformTimeRange", "Name of maximum time range of "
@@ -200,7 +208,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baselines){
         CCMPMTKey key = it.first;
         BaselineEstimate value = it.second;
-        double baseline = value.baseline; 
+        double baseline = value.baseline;
         uint32_t channel = pmt_channel_map_[key];
 
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
@@ -304,7 +312,8 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     // Read waveform
     for (k = 0; k < wf.GetWaveform().size(); k++) {
         redges[k] = wf.GetStartTime() + (1. + k) * wf.GetBinWidth();
-        ((double *)(data->x))[k] = wf.GetWaveform()[k] / I3Units::mV;
+        //((double *)(data->x))[k] = wf.GetWaveform()[k] / I3Units::mV;
+        ((double *)(data->x))[k] = wf.GetWaveform()[k];
 
         weights[k] = base_weight;
 
@@ -523,7 +532,8 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
         }
 
         // Precompute the multiplicative term in the basis
-        double weighted_charge = (spe_charge/I3Units::mV) * weights[i];
+        //double weighted_charge = (spe_charge/I3Units::mV) * weights[i];
+        double weighted_charge = spe_charge * weights[i];
         if (weighted_charge == 0) // Removed from fit, so ignore
             continue;
 
