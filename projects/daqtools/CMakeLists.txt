@@ -16,6 +16,7 @@ i3_add_library(${PROJECT_NAME}
     private/CountCosmicFrames.cxx
     private/TestWaveformAccum.cxx
     private/CosmicTriggerSumWaveforms.cxx
+    private/FitSummedPulses.cxx
     private/BeamCurrentMonitorSummary.cxx
     private/NIMLogicPulseFinder.cxx
     private/PulseCollector.cxx
