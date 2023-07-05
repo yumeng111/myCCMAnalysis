@@ -74,16 +74,21 @@ void DroopySumPulses::ProcessFrame(I3FramePtr frame) {
             droop_summed_waveforms_[pmt_key].AddWaveform(wf_droop_corrected, pos, count);
         }
     } else {
+        I3Map<CCMPMTKey, int> positions;
+
         for(std::pair<CCMPMTKey const, std::vector<double>> const & p : pulse_samples) {
             CCMPMTKey pmt_key = p.first;
             std::vector<double> const & wf = p.second;
             int pos = std::distance(wf.begin(), std::max_element(wf.begin(), wf.end()));
+            positions.insert(std::make_pair(pmt_key, pos));
             summed_waveforms_[pmt_key].AddWaveform(wf, pos);
         }
         for(std::pair<CCMPMTKey const, std::vector<double>> const & p : pulse_samples_droop_corrected) {
             CCMPMTKey pmt_key = p.first;
             std::vector<double> const & wf_droop_corrected = p.second;
-            int pos = std::distance(wf_droop_corrected.begin(), std::max_element(wf_droop_corrected.begin(), wf_droop_corrected.end()));
+            int pos = positions[pmt_key];
+            // pos should be defined in for loop just above this one
+            //int pos = std::distance(wf_droop_corrected.begin(), std::max_element(wf_droop_corrected.begin(), wf_droop_corrected.end()));
             droop_summed_waveforms_[pmt_key].AddWaveform(wf_droop_corrected, pos);
         }
     }

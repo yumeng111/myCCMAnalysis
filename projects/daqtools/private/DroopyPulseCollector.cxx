@@ -248,16 +248,15 @@ std::vector<double> DroopyPulseCollector::DroopCorrection(std::vector<uint16_t>:
     double S = 0.0;
     double X = ((-double(*raw_it)) - baseline) / A + B * S;
     droop_corrected_raw_wf.push_back(X);
+    ++raw_it;
 
     while(raw_it != cend) {
         double raw_value = (-double(*raw_it)) - baseline;
 
         // now droop correction!
-        if (raw_it > cbegin){
-            S = X + C * S;
-            X = raw_value / A + B * S;
-            droop_corrected_raw_wf.push_back(X);
-        }
+        S = X + C * S;
+        X = raw_value / A + B * S;
+        droop_corrected_raw_wf.push_back(X);
         ++raw_it;
     }
     return droop_corrected_raw_wf;
@@ -287,6 +286,7 @@ void DroopyPulseCollector::ProcessFrame(I3FramePtr frame) {
                     result.push_back(value);
                     ++it;
                 }
+                assert(result.size() == result_droop_corrected.size());
                 pulse_samples_droop_corrected->insert(std::make_pair(key, result_droop_corrected));
                 pulse_samples->insert(std::make_pair(key, result));
             }
