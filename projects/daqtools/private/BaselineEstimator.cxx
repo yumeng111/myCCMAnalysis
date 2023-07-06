@@ -28,6 +28,7 @@
 #include "dataclasses/calibration/BaselineEstimate.h"
 
 struct WFInfo {
+    WaveformSmoother & smoother;
     std::vector<double> values;
     double linear_mean;
     double linear_intercept;
@@ -35,16 +36,21 @@ struct WFInfo {
     double linear_error;
     double flat_mean;
     double flat_error;
+    double exp_mean;
+    double exp_input;
+    double exp_sigma;
     bool suitable_for_estimate;
+    WFInfo(WFInfo & wfinfo) : smoother(wfinfo.smoother) {}
+    WFInfo(WaveformSmoother & s) : smoother(s) {}
 };
 
 struct EstimateInfo {
     I3FramePtr cached_frame;
-    WFInfo waveform_properties;
+    WFInfo & waveform_properties;
     size_t frames_passed;
     bool contributed_to_estimator;
     size_t contributed_estimator_index;
-    EstimateInfo(I3FramePtr frame, WFInfo info) :
+    EstimateInfo(I3FramePtr frame, WFInfo & info) :
         cached_frame(frame), waveform_properties(info), frames_passed(0), contributed_to_estimator(false) {}
 };
 
@@ -111,13 +117,88 @@ std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, I3RandomSer
 
 } // namespace
 
-void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end, double & linear_b, double & linear_m, double & linear_sigma, double & flat_mean, double & flat_sigma) {
+
+
+void SingleWFBaselineEstimate(WFInfo & wf_info, double derivative_threshold, size_t target_size, size_t min_size) {
+    WaveformSmoother & smoother = wf_info.smoother;
+    smoother.Reset();
+    size_t largest_region_size = 0;
+    int largest_region_idx = -1;
+    std::vector<std::pair<size_t, size_t>> region_idxs;
+    while(true) {
+        bool in_region = false;
+        size_t first_idx = 0;
+        size_t end_idx = 0;
+        for(size_t i=0; i<smoother.Size(); ++i) {
+            double deriv_value = smoother.Derivative();
+            bool within_thresh = std::abs(deriv_value) <= derivative_threshold;
+            if(within_thresh) {
+                if(in_region) {
+                    end_idx += 1;
+                } else {
+                    first_idx = i;
+                }
+                in_region = true;
+            } else {
+                if(in_region) {
+                    end_idx = i;
+                    region_idxs.emplace_back({first_idx, end_idx});
+                    size_t size = end_idx - first_idx;
+                    if(size > largest_region_size) {
+                        largest_region_size = size;
+                        largest_region_idx = region_idxs.size() - 1;
+                    }
+                    if(size > target_size)
+                        break;
+                }
+                in_region = false;
+            }
+            smoother.Next();
+        }
+        if(largest_region_size < min_size) {
+            derivative_threshold *= 1.2;
+            largest_region_size = 0;
+            largest_region_idx = -1;
+            region_idxs.clear();
+            continue;
+        } else {
+            break;
+        }
+    }
+    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> wf_its = smoother.GetSmoothedWaveform();
+    std::vector<double>::const_iterator baseline_begin = wf_its.first + region_idxs[largest_region_idx].first;
+    std::vector<double>::const_iterator baseline_end = wf_its.first + region_idxs[largest_region_idx].second;
+
+    double tau = 1.5e3;
+    LinearFlatFit(baseline_begin, baseline_end,
+            wf_info.linear_intercept, 
+            wf_info.linear_slope,
+            wf_info.linear_error, 
+            wf_info.flat_mean,
+            wf_info.flat_error,
+            wf_info.exp_mean,
+            wf_info.exp_input,
+            wf_info.exp_sigma,
+            tau);
+
+    wf_info.values = std::vector<double>(baseline_begin, baseline_end);
+    for(size_t i=0; i<wf_info.size(); ++i) {
+        wf_info.values[i] -= wf_info.exp_input * exp(-double(i)/tau);
+    }
+}
+
+void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end, double & linear_b, double & linear_m, double & linear_sigma, double & flat_mean, double & flat_sigma , double & exp_mean, double & exp_input, double & exp_sigma, double tau) {
     double N = std::distance(begin, end);
     double X = 0.0;
     double X2 = 0.0;
     double T = 0.0;
     double T2 = 0.0;
     double XT = 0.0;
+
+    double E = 0.0;
+    double E2 = 0.0;
+    double XE = 0.0;
+
     size_t t = 0;
     std::vector<double>::const_iterator it = begin;
     for(; it != end; ++it) {
@@ -127,6 +208,12 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
         T += t;
         T2 += t*t;
         XT += t*x;
+
+        double e = exp(-double(t)/(tau));
+        E += e;
+        E2 += e*e;
+        XE += x * e;
+
         ++t;
     }
     double b = X/N - (N*XT*T-X*T*T) / (N*N*T2 - N*T*T);
@@ -143,6 +230,13 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
         flat_sigma += ((*it) - flat_mean) * ((*it) - flat_mean);
     }
     flat_sigma /= N;
+
+    exp_mean = (-E2 * X + E * XE) / (E*E - E2 * N);
+    exp_input = (E * X - N * XE) / (E*E - E2 * N);
+    exp_sigma = sqrt(
+            (-2.0 * E2 * X + E2 * X * X - E * E * X2 + E2 * N * X2 + 2 * E * XE - 4.0 * E * X * XE + 3 * N * XE * XE) /
+            (- E * E * N + E2 * N * N)
+            );
 }
 
 double BaselineComparisonScore(OnlineRobustStatsBatched & stats, std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end) {
@@ -190,7 +284,7 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
     size_t N_baseline_samples = size_t(std::max(ptrdiff_t(0), ptrdiff_t(std::min(ptrdiff_t(std::distance(baseline_begin, wf_end)), ptrdiff_t(pulse_positions.first))) - 5));
     std::vector<double>::const_iterator baseline_end = baseline_begin + N_baseline_samples;
 
-    WFInfo wf_info;
+    WFInfo wf_info(smoother);
     if(N_baseline_samples == 0) {
         std::cout << "No baseline samples" << std::endl;
         wf_info.linear_mean = 0;
@@ -203,15 +297,28 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
         return wf_info;
     }
 
-    wf_info.values = ChooseNRandom(num_samples, baseline_begin, baseline_end, random);
+`   //wf_info.values = ChooseNRandom(num_samples, baseline_begin, baseline_end, random);
     //std::copy(baseline_begin, baseline_end, std::back_inserter(wf_info.values));
+
+    double tau = 1.5e3;
 
     LinearFlatFit(baseline_begin, baseline_end,
             wf_info.linear_intercept, 
             wf_info.linear_slope,
             wf_info.linear_error, 
             wf_info.flat_mean,
-            wf_info.flat_error);
+            wf_info.flat_error,
+            wf_info.exp_mean,
+            wf_info.exp_input,
+            wf_info.exp_sigma,
+            tau);
+
+    wf_info.values = std::vector<double>(baseline_begin, baseline_end);
+    for(size_t i=0; i<wf_info.size(); ++i) {
+        wf_info.values[i] -= wf_info.exp_input * exp(-double(i)/tau);
+    }
+
+    wf_info.values = ChooseNRandom(num_samples, baseline_begin, baseline_end, random);
 
     wf_info.linear_mean = wf_info.linear_intercept + wf_info.linear_slope * N_baseline_samples / 2.0;
     wf_info.suitable_for_estimate = true;
