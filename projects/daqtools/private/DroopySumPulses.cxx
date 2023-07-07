@@ -74,6 +74,7 @@ void DroopySumPulses::ProcessFrame(I3FramePtr frame) {
             droop_summed_waveforms_[pmt_key].AddWaveform(wf_droop_corrected, pos, count);
         }
     } else {
+
         I3Map<CCMPMTKey, int> positions;
 
         for(std::pair<CCMPMTKey const, std::vector<double>> const & p : pulse_samples) {
