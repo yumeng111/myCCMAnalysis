@@ -197,7 +197,7 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
             );
 }
 
-double SingleWFBaselineEstimate(WFInfo & wf_info, double derivative_threshold, size_t target_size, size_t min_size, double tau) {
+double SingleWFBaselineEstimate(WFInfo & wf_info, double derivative_threshold, size_t target_size, size_t min_size, double tau, bool use_exp_fit) {
     WaveformSmoother & smoother = wf_info.smoother;
     smoother.Reset();
     size_t largest_region_size = 0;
@@ -259,8 +259,10 @@ double SingleWFBaselineEstimate(WFInfo & wf_info, double derivative_threshold, s
             tau);
 
     wf_info.values = std::vector<double>(baseline_begin, baseline_end);
-    for(size_t i=0; i<wf_info.values.size(); ++i) {
-        wf_info.values[i] -= wf_info.exp_input * exp(-double(i)/tau);
+    if(use_exp_fit) {
+        for(size_t i=0; i<wf_info.values.size(); ++i) {
+            wf_info.values[i] -= wf_info.exp_input * exp(-double(i)/tau);
+        }
     }
     std::sort(wf_info.values.begin(), wf_info.values.end());
     double mode = robust_stats::Mode(wf_info.values.begin(), wf_info.values.end());
@@ -304,7 +306,7 @@ size_t ChooseEstimator(WFInfo const & wf_info, BaselinePMTKeyInfo & pmt_key_info
     }
 }
 
-WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pulse_positions, I3RandomServicePtr random, size_t num_samples, double tau) {
+WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pulse_positions, I3RandomServicePtr random, size_t num_samples, double tau, bool use_exp_fit) {
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> wf_its = smoother.GetSmoothedWaveform();
     std::vector<double>::const_iterator wf_begin = wf_its.first;
     std::vector<double>::const_iterator wf_end = wf_its.second;
@@ -341,8 +343,10 @@ WFInfo ComputeWFInfo(WaveformSmoother & smoother, std::pair<size_t, size_t> & pu
             tau);
 
     wf_info.values = std::vector<double>(baseline_begin, baseline_end);
-    for(size_t i=0; i<wf_info.values.size(); ++i) {
-        wf_info.values[i] -= wf_info.exp_input * exp(-double(i)/tau);
+    if(use_exp_fit) {
+        for(size_t i=0; i<wf_info.values.size(); ++i) {
+            wf_info.values[i] -= wf_info.exp_input * exp(-double(i)/tau);
+        }
     }
 
     wf_info.values = ChooseNRandom(num_samples, baseline_begin, baseline_end, random);
@@ -373,6 +377,7 @@ class BaselineEstimator : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
     std::string input_name_;
+    std::string output_name_;
 
     size_t num_frames_for_estimate;
     size_t num_samples;
@@ -380,6 +385,7 @@ class BaselineEstimator : public I3Module {
     size_t max_estimator_lifetime;
 
     double droop_tau;
+    bool use_exp_fit;
 
     size_t frames_seen = 0;
 
@@ -409,23 +415,27 @@ I3_MODULE(BaselineEstimator);
 
 BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(context),
     geometry_name_(""),  geo_seen(false) {
-        AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-        AddParameter("Input", "Input key prefix", std::string(""));
-        AddParameter("NumFramesForEstimate", "Number of frames to use for baseline estimate", size_t(100));
-        AddParameter("NumSamples", "Number of samples from each frame to use for baseline estimate", size_t(200));
-        AddParameter("MaxFramesWaitingForEstimate", "Maximum number of frames to postpone computing an estimate for frame that has an incomplete estimator", size_t(500));
-        AddParameter("MaxEstimatorLifetime", "Maximum number of frames since receiving an estimate that we should keep an estimator", size_t(1000));
-        AddParameter("DroopTau", "Time constant for droop correction", double(3e3));
-    }
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("Output", "Ouput key prefix", std::string(""));
+    AddParameter("Input", "Input key prefix", std::string(""));
+    AddParameter("NumFramesForEstimate", "Number of frames to use for baseline estimate", size_t(100));
+    AddParameter("NumSamples", "Number of samples from each frame to use for baseline estimate", size_t(200));
+    AddParameter("MaxFramesWaitingForEstimate", "Maximum number of frames to postpone computing an estimate for frame that has an incomplete estimator", size_t(500));
+    AddParameter("MaxEstimatorLifetime", "Maximum number of frames since receiving an estimate that we should keep an estimator", size_t(1000));
+    AddParameter("DroopTau", "Time constant for droop correction", double(3e3));
+    AddParameter("UseExpFit", "Use the exponential fit to correct for droop effects", bool(false));
+}
 
 void BaselineEstimator::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("Output", output_name_);
     GetParameter("Input", input_name_);
     GetParameter("NumFramesForEstimate", num_frames_for_estimate);
     GetParameter("NumSamples", num_samples);
     GetParameter("MaxFramesWaitingForEstimate", max_frames_waiting_for_estimate);
     GetParameter("MaxEstimatorLifetime", max_estimator_lifetime);
     GetParameter("DroopTau", droop_tau);
+    GetParameter("UseExpFit", use_exp_fit);
 }
 
 void BaselineEstimator::Geometry(I3FramePtr frame) {
@@ -478,7 +488,7 @@ void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
         std::map<size_t, size_t> & n_frames_since_last_estimator_update = baseline_pmt_info[pmt_key].n_frames_since_last_estimator_update;
 
         std::pair<size_t, size_t> & pos = pulse_positions.at(pmt_key);
-        EstimateInfo pending_estimate(frame, ComputeWFInfo(smoother, pos, random, num_samples, droop_tau / 2.0));
+        EstimateInfo pending_estimate(frame, ComputeWFInfo(smoother, pos, random, num_samples, droop_tau / 2.0, use_exp_fit));
         WFInfo & wf_info = pending_estimate.waveform_properties;
         //std::cout << pmt_key << " is suitable for estimate? " << (wf_info.suitable_for_estimate ? "Yes" : "No") << std::endl;
         if(wf_info.suitable_for_estimate) {
@@ -524,7 +534,7 @@ void BaselineEstimator::RemoveOldEstimators() {
         std::map<size_t, size_t> & n_frames_since_last_estimator_update = p.second.n_frames_since_last_estimator_update;
         std::vector<size_t> estimators_to_remove;
         for(std::pair<size_t const, size_t> & it : n_frames_since_last_estimator_update) {
-            if(it.second >= max_estimator_lifetime) {
+            if(it.second > max_estimator_lifetime) {
                 estimators_to_remove.push_back(it.first);
             }
         }
@@ -637,7 +647,7 @@ void BaselineEstimator::UpdateAndPushCompletedFrames() {
             BaselineFrameInfo & frame_info = baseline_frame_info[frame];
             frame_complete = (frame_info.channels_pending.size() == 0);
             if(frame_complete) {
-                frame->Put("BaselineEstimates", frame_info.baseline_estimates);
+                frame->Put((output_name_ + "BaselineEstimates").c_str(), frame_info.baseline_estimates);
                 PushFrame(frame);
             }
         }
