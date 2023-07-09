@@ -197,7 +197,7 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
             );
 }
 
-double SingleWFBaselineEstimate(WFInfo & wf_info, double derivative_threshold, size_t target_size, size_t min_size, double tau, bool use_exp_fit) {
+BaselineEstimate SingleWFBaselineEstimate(WFInfo & wf_info, double derivative_threshold, size_t target_size, size_t min_size, double tau, bool use_exp_fit) {
     WaveformSmoother & smoother = wf_info.smoother;
     smoother.Reset();
     size_t largest_region_size = 0;
@@ -267,7 +267,13 @@ double SingleWFBaselineEstimate(WFInfo & wf_info, double derivative_threshold, s
     std::sort(wf_info.values.begin(), wf_info.values.end());
     double mode = robust_stats::Mode(wf_info.values.begin(), wf_info.values.end());
 
-    return mode;
+    BaselineEstimate baseline_estimate(
+            mode,
+            robust_stats::MedianAbsoluteDeviation(wf_info.values.begin(), wf_info.values.end(), mode),
+            0,
+            1,
+            wf_info.values.size());
+    return baseline_estimate;
 }
 
 double BaselineComparisonScore(OnlineRobustStatsBatched & stats, std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end) {
@@ -577,49 +583,98 @@ void BaselineEstimator::UpdateEstimates() {
                 continue;
             }
             size_t estimator_index;
+            bool have_estimator;
             if(estimate.contributed_to_estimator) {
                 estimator_index = estimate.contributed_estimator_index;
+                have_estimator = true;
             } else {
                 // Choose the best estimator, requiring that an existing one be chosen
                 estimator_index = ChooseEstimator(wf_info, p.second, false);
+                have_estimator = estimator_index < pmt_info.num_estimators;
             }
-            OnlineRobustStatsBatched & estimator = baseline_estimators.at(estimator_index);
-            if(estimator.NBatches() >= num_frames_for_estimate) {
-                //std::cout << "\tAdding estimate for " << estimate_index << std::endl;
-                // If the estimator has enough samples then perform the estimate
-                // Compute the estimator
-                BaselineEstimate baseline_estimate(
-                        //estimator.Mode(),
-                        //estimator.Stddev(estimator.Mode()),
-                        estimator.Mean(),
-                        estimator.Stddev(estimator.Mean()),
-                        num_frames_for_estimate,
-                        estimator.NBatches(),
-                        estimator.NSamples());
-                // Put the estimate into the map
-                baseline_estimates->insert({pmt_key, baseline_estimate});
-                channels_pending.erase(pmt_key);
-                estimates_to_remove.push_back(estimate_index);
-            } else if(estimate.frames_passed > max_frames_waiting_for_estimate) {
-                //std::cout << "\tAdding estimate for " << estimate_index << std::endl;
-                // If too many frames have gone by without an estimate for this frame
-                // then perform an estimate anyway
-                BaselineEstimate baseline_estimate(
-                        //estimator.Mode(),
-                        //estimator.Stddev(estimator.Mode()),
-                        estimator.Mean(),
-                        estimator.Stddev(estimator.Mean()),
-                        num_frames_for_estimate,
-                        estimator.NBatches(),
-                        estimator.NSamples());
-                baseline_estimates->insert({pmt_key, baseline_estimate});
-                channels_pending.erase(pmt_key);
-                estimates_to_remove.push_back(estimate_index);
+            if(have_estimator) {
+                OnlineRobustStatsBatched & estimator = baseline_estimators.at(estimator_index);
+                if(estimator.NBatches() >= num_frames_for_estimate) {
+                    //std::cout << "\tAdding estimate for " << estimate_index << std::endl;
+                    // If the estimator has enough samples then perform the estimate
+                    // Compute the estimator
+                    double current_baseline_estimate = estimator.Mode();
+                    std::vector<double> baseline_samples;
+                    baseline_samples.reserve(wf_info.values.size());
+                    for(size_t i=0; i<wf_info.values.size(); ++i) {
+                        double delta = (wf_info.values[i] - current_baseline_estimate);
+                        double e = std::abs(delta) / 10.0;
+                        if(i > 0) {
+                            e += std::abs(wf_info.values[i] - wf_info.values[i-1]);
+                        }
+                        if(i + 1 < wf_info.values.size()) {
+                            e += std::abs(wf_info.values[i] - wf_info.values[i+1]);
+                        }
+                        delta = delta * exp(-e);
+                        current_baseline_estimate += delta;
+                        baseline_samples.push_back(current_baseline_estimate);
+                    }
+                    std::sort(baseline_samples.begin(), baseline_samples.end());
+                    double mode = robust_stats::Mode(baseline_samples.begin(), baseline_samples.end());
+                    double stddev = robust_stats::MedianAbsoluteDeviation(baseline_samples.begin(), baseline_samples.end(), mode);
+                    BaselineEstimate baseline_estimate(
+                            mode,
+                            stddev,
+                            //estimator.Mode(),
+                            //estimator.Stddev(estimator.Mode()),
+                            //estimator.Mean(),
+                            //estimator.Stddev(estimator.Mean()),
+                            num_frames_for_estimate,
+                            estimator.NBatches(),
+                            estimator.NSamples());
+                    // Put the estimate into the map
+                    baseline_estimates->insert({pmt_key, baseline_estimate});
+                    channels_pending.erase(pmt_key);
+                    estimates_to_remove.push_back(estimate_index);
+                } else if(estimate.frames_passed > max_frames_waiting_for_estimate) {
+                    //std::cout << "\tAdding estimate for " << estimate_index << std::endl;
+                    // If too many frames have gone by without an estimate for this frame
+                    // then perform an estimate anyway
+                    double current_baseline_estimate = estimator.Mode();
+                    std::vector<double> baseline_samples;
+                    baseline_samples.reserve(wf_info.values.size());
+                    for(size_t i=0; i<wf_info.values.size(); ++i) {
+                        double delta = (wf_info.values[i] - current_baseline_estimate);
+                        double e = std::abs(delta) / 10.0;
+                        if(i > 0) {
+                            e += std::abs(wf_info.values[i] - wf_info.values[i-1]);
+                        }
+                        if(i + 1 < wf_info.values.size()) {
+                            e += std::abs(wf_info.values[i] - wf_info.values[i+1]);
+                        }
+                        delta = delta * exp(-e);
+                        current_baseline_estimate += delta;
+                    }
+                    std::sort(baseline_samples.begin(), baseline_samples.end());
+                    double mode = robust_stats::Mode(baseline_samples.begin(), baseline_samples.end());
+                    double stddev = robust_stats::MedianAbsoluteDeviation(baseline_samples.begin(), baseline_samples.end(), mode);
+                    BaselineEstimate baseline_estimate(
+                            estimator.Mode(),
+                            estimator.Stddev(estimator.Mode()),
+                            //estimator.Mean(),
+                            //estimator.Stddev(estimator.Mean()),
+                            num_frames_for_estimate,
+                            estimator.NBatches(),
+                            estimator.NSamples());
+                    baseline_estimates->insert({pmt_key, baseline_estimate});
+                    channels_pending.erase(pmt_key);
+                    estimates_to_remove.push_back(estimate_index);
+                } else {
+                    //std::cout << "\tNot enough frames for estimate " << estimate_index << std::endl;
+                    // We can't produce an estimate right now
+                    estimate.frames_passed += 1;
+                    skip = true;
+                }
             } else {
-                //std::cout << "\tNot enough frames for estimate " << estimate_index << std::endl;
-                // We can't produce an estimate right now
-                estimate.frames_passed += 1;
-                skip = true;
+                BaselineEstimate baseline_estimate = SingleWFBaselineEstimate(wf_info, 0.3, num_samples * num_frames_for_estimate, 400, droop_tau, use_exp_fit);
+                baseline_estimates->insert({pmt_key, baseline_estimate});
+                channels_pending.erase(pmt_key);
+                estimates_to_remove.push_back(estimate_index);
             }
             estimate_index += 1;
         }
