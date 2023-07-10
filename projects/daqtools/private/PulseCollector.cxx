@@ -192,9 +192,21 @@ std::pair<size_t, double> PulseCollector::ProcessWaveform(CCMPMTKey key, CCMWave
         return {0, baseline};
 
     std::vector<double> baseline_samples;
-    baseline_samples.reserve(pulse_positions.second);
+    //baseline_samples.reserve(pulse_positions.second);
+    //smoother.Reset();
+    //for(size_t i=0; i<pulse_positions.second; ++i) {
+    //    baseline_samples.push_back(smoother.Value());
+    //    smoother.Next();
+    //}
+    //std::sort(baseline_samples.begin(), baseline_samples.end());
+    //baseline = robust_stats::Mode(baseline_samples.begin(), baseline_samples.end());
+    
+    // let's try finding the baseline from going 1,000 bins in from the start of the waveform
+    // until just before we reach our pulse
+    size_t baseline_samples_size = pulse_positions.first - 1000;
+    baseline_samples.reserve(baseline_samples_size);
     smoother.Reset();
-    for(size_t i=0; i<pulse_positions.second; ++i) {
+    for(size_t i = 1000; i < baseline_samples_size; ++i) {
         baseline_samples.push_back(smoother.Value());
         smoother.Next();
     }
@@ -270,17 +282,17 @@ PulseCollector::PulseCollector(const I3Context& context) : I3Module(context),
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("NumSamplesForBaseline", "Number of samples to use for initial baseline estimate", size_t(400));
-    AddParameter("SmoothingTau", "Time constant for waveform smoothing in ns", double(10.0));
+    AddParameter("SmoothingTau", "Time constant for waveform smoothing in ns", double(12.0));
     AddParameter("SmoothingDeltaT", "Bin width in ns for smoothing", double(2.0));
     AddParameter("InitialDerivativeThreshold", "Initial positive derivative threshold for a pulse", double(0.3));
-    AddParameter("NumSamplesBeforePulse", "Number of samples required before a pulse", size_t(200));
+    AddParameter("NumSamplesBeforePulse", "Number of samples required before a pulse", size_t(3000));
     AddParameter("MaxPulseStartSample", "Maximum sample from which to start a pulse search", size_t(4400));
     AddParameter("MinPulseWidth", "Minimum width for defining a pulse", size_t(5));
-    AddParameter("MaxPulseWidth", "Maxiumum width for defining a pulse", size_t(100));
+    AddParameter("MaxPulseWidth", "Maxiumum width for defining a pulse", size_t(80));
     AddParameter("MinPulseHeight", "Minimum height for defining a pulse", double(5.0));
     AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.65));
     AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(25.0));
-    AddParameter("NumSamplesAfterPulse", "Number of samples to save after pulse", size_t(3000));
+    AddParameter("NumSamplesAfterPulse", "Number of samples to save after pulse", size_t(1000));
     AddParameter("PulseActivityThreshold", "Threshold in ADC counts to indicate downstream", double(20.0));
     AddParameter("MaxRisingEdges", "Maximum number of allowed pulse rising edges within window", size_t(1));
     AddParameter("MaxFallingEdges", "Maximum number of allowed pulse falling edges within window", size_t(1));
