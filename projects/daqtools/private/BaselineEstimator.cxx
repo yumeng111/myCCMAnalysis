@@ -1,16 +1,21 @@
 #include <icetray/IcetrayFwd.h>
 
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/foreach.hpp>
-#include <boost/make_shared.hpp>
-
-#include <string>
-#include <random>
 #include <iostream>
+#include <vector>
+#include <deque>
+#include <map>
+#include <set>
+#include <random>
 #include <algorithm>
+#include <cmath>
+#include <memory>
+#include <iterator>
+#include <utility>
+#include <numeric>
+#include <functional>
+
+#include <boost/scoped_ptr.hpp>
+#include <boost/make_shared.hpp>
 
 #include <icetray/I3Frame.h>
 #include <icetray/I3Module.h>
@@ -21,7 +26,7 @@
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
-#include "phys-services/I3RandomService.h"
+#include <phys-services/I3RandomService.h>
 
 #include "daqtools/OnlineRobustStats.h"
 #include "daqtools/WaveformSmoother.h"
@@ -67,17 +72,23 @@ struct EstimateInfo {
     bool contributed_to_estimator;
     size_t contributed_estimator_index;
     EstimateInfo(I3FramePtr frame, WFInfo && info) :
-        cached_frame(frame), waveform_properties(info), frames_passed(0), contributed_to_estimator(false) {}
+        cached_frame(frame),
+        waveform_properties(std::move(info)),
+        frames_passed(0),
+        contributed_to_estimator(false),
+        contributed_estimator_index(0) {}
     EstimateInfo(EstimateInfo && o) :
-        cached_frame(std::move(o.cached_frame)), waveform_properties(o.waveform_properties),
-        frames_passed(std::move(o.frames_passed)), contributed_to_estimator(std::move(o.contributed_to_estimator)),
+        cached_frame(std::move(o.cached_frame)),
+        waveform_properties(o.waveform_properties),
+        frames_passed(std::move(o.frames_passed)),
+        contributed_to_estimator(std::move(o.contributed_to_estimator)),
         contributed_estimator_index(std::move(o.contributed_estimator_index)) {};
     EstimateInfo& operator=(EstimateInfo && o) {
         cached_frame = std::move(o.cached_frame);
         waveform_properties = std::move(o.waveform_properties);
-        frames_passed = std::move(o.frames_passed);
-        contributed_to_estimator = std::move(o.contributed_to_estimator);
-        contributed_estimator_index = std::move(o.contributed_estimator_index);
+        frames_passed = o.frames_passed;
+        contributed_to_estimator = o.contributed_to_estimator;
+        contributed_estimator_index = o.contributed_estimator_index;
         return *this;
     }
 };
@@ -88,19 +99,6 @@ struct BaselinePMTKeyInfo {
     std::deque<EstimateInfo> estimate_info;
     size_t num_estimators = 0;
 };
-
-/*
-struct BaselineEstimate {
-    double baseline;
-    double stddev;
-    size_t target_num_frames;
-    size_t num_frames;
-    size_t num_samples;
-    BaselineEstimate() {}
-    BaselineEstimate(double baseline, double stddev, size_t target_num_frames, size_t num_frames, size_t num_samples) :
-        baseline(baseline), stddev(stddev), target_num_frames(target_num_frames), num_frames(num_frames), num_samples(num_samples) {}
-};
-*/
 
 struct BaselineFrameInfo {
     std::set<CCMPMTKey> channels_pending;
@@ -448,13 +446,12 @@ void BaselineEstimator::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
+    geo_seen = true;
     geo = frame->Get<boost::shared_ptr<CCMGeometry const>>(geometry_name_);
 
 
     // Cache the trigger channel map
     pmt_channel_map_ = geo->pmt_channel_map;
-
-    geo_seen = true;
     PushFrame(frame);
 }
 
@@ -462,15 +459,11 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
+    ++frames_seen;
     UpdateEstimators(frame);
-    std::cout << "1: Updating estimators finish" << std::endl;
-    std::cout << "2: Updating estimates start" << std::endl;
     UpdateEstimates();
-    std::cout << "2: Updating estimates start finish" << std::endl;
-    std::cout << "6: Pushing frames start" << std::endl;
     UpdateAndPushCompletedFrames();
-    std::cout << "6: Pushing frames finish" << std::endl;
-    frames_seen += 1;
+    RemoveOldEstimators();
 }
 
 void BaselineEstimator::UpdateEstimators(I3FramePtr frame) {
