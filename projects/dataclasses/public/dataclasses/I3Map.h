@@ -189,6 +189,8 @@ typedef I3Map<CCMPMTKey, std::vector<unsigned int> > I3MapPMTKeyVectorUInt;
 typedef I3Map<CCMPMTKey, double > I3MapPMTKeyDouble;
 typedef I3Map<CCMPMTKey, int > I3MapPMTKeyInt;
 typedef I3Map<CCMPMTKey, unsigned int > I3MapPMTKeyUInt;
+typedef I3Map<CCMPMTKey, std::pair<uint32_t, uint32_t> > I3MapPMTKeyPairUInt32UInt32;
+typedef I3Map<CCMPMTKey, std::pair<uint64_t, uint64_t> > I3MapPMTKeyPairUInt64UInt64;
 
 I3_POINTER_TYPEDEFS(I3MapStringDouble);
 I3_POINTER_TYPEDEFS(I3MapStringInt);
@@ -213,6 +215,8 @@ I3_POINTER_TYPEDEFS(I3MapPMTKeyVectorUInt);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyDouble);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyInt);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyUInt);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyPairUInt32UInt32);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyPairUInt64UInt64);
 
 #endif // I3MAP_H_INCLUDED
 
