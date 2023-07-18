@@ -200,13 +200,14 @@ std::pair<size_t, double> PulseCollector::ProcessWaveform(CCMPMTKey key, CCMWave
     //}
     //std::sort(baseline_samples.begin(), baseline_samples.end());
     //baseline = robust_stats::Mode(baseline_samples.begin(), baseline_samples.end());
-    
+
     // let's try finding the baseline from going 1,000 bins in from the start of the waveform
     // until just before we reach our pulse
-    size_t baseline_samples_size = pulse_positions.first - 1000;
+    size_t n_baseline_samples = 1000;
+    size_t baseline_samples_size = std::min(n_baseline_samples, pulse_positions.first);
     baseline_samples.reserve(baseline_samples_size);
     smoother.Reset();
-    for(size_t i = 1000; i < baseline_samples_size; ++i) {
+    for(size_t i = pulse_positions.first - baseline_samples_size; i < pulse_positions.first; ++i) {
         baseline_samples.push_back(smoother.Value());
         smoother.Next();
     }
@@ -288,11 +289,11 @@ PulseCollector::PulseCollector(const I3Context& context) : I3Module(context),
     AddParameter("NumSamplesBeforePulse", "Number of samples required before a pulse", size_t(3000));
     AddParameter("MaxPulseStartSample", "Maximum sample from which to start a pulse search", size_t(4400));
     AddParameter("MinPulseWidth", "Minimum width for defining a pulse", size_t(5));
-    AddParameter("MaxPulseWidth", "Maxiumum width for defining a pulse", size_t(80));
+    AddParameter("MaxPulseWidth", "Maxiumum width for defining a pulse", size_t(100));
     AddParameter("MinPulseHeight", "Minimum height for defining a pulse", double(5.0));
     AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.65));
     AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(25.0));
-    AddParameter("NumSamplesAfterPulse", "Number of samples to save after pulse", size_t(1000));
+    AddParameter("NumSamplesAfterPulse", "Number of samples to save after pulse", size_t(3000));
     AddParameter("PulseActivityThreshold", "Threshold in ADC counts to indicate downstream", double(20.0));
     AddParameter("MaxRisingEdges", "Maximum number of allowed pulse rising edges within window", size_t(1));
     AddParameter("MaxFallingEdges", "Maximum number of allowed pulse falling edges within window", size_t(1));
