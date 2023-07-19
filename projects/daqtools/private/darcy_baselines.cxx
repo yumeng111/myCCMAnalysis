@@ -222,18 +222,31 @@ void darcy_baselines::ProcessWaveform(std::vector<short unsigned int> const & sa
     }
 
     // now let's get the mode of this!
-    std::sort(exp_result.begin(), exp_result.end());
-    double baseline_mode_val = robust_stats::Mode(exp_result.begin(), exp_result.end());
-    double baseline_std = robust_stats::MedianAbsoluteDeviation(exp_result.begin(), exp_result.end(), baseline_mode_val);
-
-    // now let's save it to our BaselineEstimate object baseline
-    baseline.baseline = baseline_mode_val;
-    baseline.stddev = baseline_std;
-    baseline.target_num_frames = 0;
-    baseline.num_frames = 0;
-    baseline.num_samples = 0;
+    if (exp_result.size() > 0){
+        try{
+            std::sort(exp_result.begin(), exp_result.end());
+            double baseline_mode_val = robust_stats::Mode(exp_result.begin(), exp_result.end());
+            double baseline_std = robust_stats::MedianAbsoluteDeviation(exp_result.begin(), exp_result.end(), baseline_mode_val);
+            // now let's save it to our BaselineEstimate object baseline
+            baseline.baseline = baseline_mode_val;
+            baseline.stddev = baseline_std;
+            baseline.target_num_frames = 0;
+            baseline.num_frames = 0;
+            baseline.num_samples = 0;
+        }
+        catch(std::exception &e) {
+            std::cout << "oops! cannot robust stats: " << e.what() << std::endl;
+            double baseline_mode_val = 0.0;
+            double baseline_std = 0.0;
+            // now let's save it to our BaselineEstimate object baseline
+            baseline.baseline = baseline_mode_val;
+            baseline.stddev = baseline_std;
+            baseline.target_num_frames = 0;
+            baseline.num_frames = 0;
+            baseline.num_samples = 0;
+        }
+    }
 }
-
 
 void darcy_baselines::DAQ(I3FramePtr frame) {
 
