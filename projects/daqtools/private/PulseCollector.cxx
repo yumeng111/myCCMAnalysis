@@ -103,17 +103,23 @@ double EstimateBaseline(WaveformSmoother & smoother, size_t samples_for_baseline
     return baseline;
 }
 
-std::pair<size_t, size_t> FindFirstPulse(WaveformSmoother & smoother, double baseline, size_t pulse_max_start_sample, double deriv_threshold, size_t max_pulse_width, size_t min_pulse_width, double min_pulse_height, double min_deriv_magnitude, double min_integral) {
+std::vector<std::pair<size_t, size_t>> FindPulses(WaveformSmoother & smoother, double baseline, size_t pulse_max_start_sample, double deriv_threshold, size_t max_pulse_width, size_t min_pulse_width, double min_pulse_height, double min_deriv_magnitude, double min_integral) {
+    // Determine the maximum starting sample for a pulse
+    // We need at least 5 samples after the starting pulse
     size_t N = smoother.Size();
     N = std::min(N, pulse_max_start_sample);
     if(N > 5)
         N -= 5;
     size_t pulse_first_index = 0;
     size_t pulse_last_index = 0;
+    std::vector<std::pair<size_t, size_t>> pulses;
 
+    // Reset the smoother position to the start of the waveform
     smoother.Reset();
     for(size_t i=0; i<N; ++i) {
+        // Check the condition for the beginning of a pulse
         if(smoother.Derivative() > deriv_threshold) {
+            // Get the last index of the found pulse, 0 if no pulse is found
             pulse_last_index = CheckForPulse(smoother, i, max_pulse_width, min_pulse_width, min_pulse_height, min_deriv_magnitude, min_integral, baseline);
             if(pulse_last_index > i) {
                 pulse_first_index = size_t(std::max(ptrdiff_t(0), ptrdiff_t(i) - 5));
@@ -180,11 +186,16 @@ public:
 I3_MODULE(PulseCollector);
 
 std::pair<size_t, double> PulseCollector::ProcessWaveform(CCMPMTKey key, CCMWaveformUInt16 const & waveform) {
+    // Initialize the waveform smoother
     smooth_waveform_cache[key].emplace_back(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
     WaveformSmoother & smoother = smooth_waveform_cache[key].back();
+
+    // Get an initial baseline estimate
     double baseline = EstimateBaseline(smoother, samples_for_baseline);
-    std::pair<size_t, size_t> pulse_positions =
-        FindFirstPulse(smoother, baseline, pulse_max_start_sample, pulse_initial_deriv_threshold, pulse_max_width, pulse_min_width, pulse_min_height, pulse_min_deriv_magnitude, pulse_min_integral);
+
+    // Compute the positions of the pulses
+    std::vector<std::pair<size_t, size_t>> pulse_positions =
+        FindPulses(smoother, baseline, pulse_max_start_sample, pulse_initial_deriv_threshold, pulse_max_width, pulse_min_width, pulse_min_height, pulse_min_deriv_magnitude, pulse_min_integral);
     bool found_pulse = pulse_positions.second > pulse_positions.first;
     if(not found_pulse)
         return {0, baseline};

@@ -68,9 +68,12 @@ namespace bp = boost::python;
   (I3DOMFunctions)(I3MapUnsignedUnsigned)(I3MapUShortUShort)            \
   (I3MapIntVectorInt)(I3MapKeyVectorDouble)(I3MapKeyDouble)             \
   (I3MapKeyUInt)(I3MapKeyVectorInt)(I3MapTriggerDouble)                 \
-  (I3MapPMTKeyVectorDouble)(I3MapPMTKeyDouble)                          \
-  (I3MapPMTKeyInt)(I3MapPMTKeyUInt)(I3MapPMTKeyVectorInt)               \
-  (I3MapPMTKeyVectorUInt)(I3MapPMTKeyPairUInt32UInt32)                  \
+  (I3MapPMTKeyVectorVectorDouble)(I3MapPMTKeyVectorDouble)              \
+  (I3MapPMTKeyDouble)                                                   \
+  (I3MapPMTKeyInt)(I3MapPMTKeyUInt)(I3MapPMTKeyVectorVectorInt)         \
+  (I3MapPMTKeyVectorInt)                                                \
+  (I3MapPMTKeyVectorVectorUInt)(I3MapPMTKeyVectorUInt)                  \
+  (I3MapPMTKeyPairUInt32UInt32)                                         \
   (I3MapPMTKeyPairUInt64UInt64)                                         \
   (I3MapTriggerVectorUInt)(I3MapStringDouble)(I3MapStringInt)           \
   (I3MapStringBool)(I3MapStringVectorDouble)(I3MapStringStringDouble)   \
