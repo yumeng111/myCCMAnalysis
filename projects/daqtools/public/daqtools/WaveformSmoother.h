@@ -83,7 +83,15 @@ public:
     }
 
     void Reset(size_t reset_index) {
-        index = std::min(index, reset_index);
+        if(reset_index > max_computed) {
+            Reset(max_computed);
+            while(max_computed < reset_index) {
+                Next();
+                if(max_computed == N-1)
+                    break;
+            }
+        }
+        index = std::min(reset_index, max_computed);
     }
 
     void Reset(std::vector<double>::const_iterator end) {
