@@ -199,6 +199,10 @@ void darcy_baselines::FitExponential(std::vector<double> & y, double & a, double
 
 void darcy_baselines::ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEstimate & baseline){
 
+    if (samples.size() == 0) {
+        return;
+    }
+
     // vector to store results of outlier filter
     std::vector<double> outlier_filter_results(samples.size());
     OutlierFilter(samples, outlier_filter_results);
