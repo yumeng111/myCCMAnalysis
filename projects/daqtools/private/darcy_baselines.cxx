@@ -81,17 +81,18 @@ void darcy_baselines::OutlierFilter(std::vector<short unsigned int> const & samp
     double prev_tau = 2.0;
     double next_tau = 2.0;
     double starting_val = 0;
+    double counter = 0;
 
     for (size_t it = 0; it < 10; ++it){
         starting_val += samples[it];
+        counter += 1;
     }
 
-    double starting_value = starting_val/10;
-    double value;
+    double value = starting_val/counter;
 
     // now let's loop over the waveform
     for (size_t wf_it = 0; wf_it < samples.size(); ++wf_it){
-        double delta = samples[wf_it] - starting_value;
+        double delta = samples[wf_it] - value;
         double e = std::fabs(delta) / delta_tau;
 
         if (wf_it > 0){
@@ -224,6 +225,9 @@ void darcy_baselines::ProcessWaveform(std::vector<short unsigned int> const & sa
     // now let's save it to our BaselineEstimate object baseline
     baseline.baseline = baseline_mode_val;
     baseline.stddev = baseline_std;
+    baseline.target_num_frames = 0;
+    baseline.num_frames = 0;
+    baseline.num_samples = 0;
 }
 
 
