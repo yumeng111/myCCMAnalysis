@@ -303,6 +303,7 @@ void PulseCollector::ProcessFrame(I3FramePtr frame) {
                 double baseline = std::get<2>(wf_result[wf_it]);
                 if(last_pulse_sample > 0) {
                     // Loop over the pulses in the waveform
+                    std::cout << "found a pulse between " << first_pulse_sample << " and " << last_pulse_sample << std::endl;
                     std::vector<double> result;
                     result.reserve(last_pulse_sample - first_pulse_sample + 1);
                     std::vector<uint16_t>::const_iterator wf_it = iterators.first + first_pulse_sample;
