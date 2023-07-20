@@ -208,43 +208,42 @@ void darcy_baselines::ProcessWaveform(std::vector<short unsigned int> const & sa
     OutlierFilter(samples, outlier_filter_results);
 
     // now let's put the result through the exponential fitter
-    double a;
-    double b;
-    double c;
+    double a = 0;
+    double b = 0;
+    double c = 0;
     FitExponential(outlier_filter_results, a, b, c);
 
-    // now let's get the mode of our exponential fit!!
-    std::vector<double> exp_result(samples.size());
-    double current_time;
-    for (size_t exp_it = 0; exp_it < samples.size(); ++exp_it){
-        current_time = exp_it * 2;
-        exp_result[exp_it] = a + b * std::exp(c * current_time);
+    if (a == 0 or b == 0 or c == 0){
+        // oops! exponential fit didnt go right
+        // let's just use the mode of the outlier filter for the baselines
+        std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
+        double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
+        double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
+        // now let's save it to our BaselineEstimate object baseline
+        baseline.baseline = baseline_mode_val;
+        baseline.stddev = baseline_std;
+        baseline.target_num_frames = 0;
+        baseline.num_frames = 0;
+        baseline.num_samples = 0;
     }
 
-    // now let's get the mode of this!
-    if (exp_result.size() > 0){
-        try{
-            std::sort(exp_result.begin(), exp_result.end());
-            double baseline_mode_val = robust_stats::Mode(exp_result.begin(), exp_result.end());
-            double baseline_std = robust_stats::MedianAbsoluteDeviation(exp_result.begin(), exp_result.end(), baseline_mode_val);
-            // now let's save it to our BaselineEstimate object baseline
-            baseline.baseline = baseline_mode_val;
-            baseline.stddev = baseline_std;
-            baseline.target_num_frames = 0;
-            baseline.num_frames = 0;
-            baseline.num_samples = 0;
+    else{
+        // now let's get the mode of our exponential fit!!
+        std::vector<double> exp_result(samples.size());
+        double current_time;
+        for (size_t exp_it = 0; exp_it < samples.size(); ++exp_it){
+            current_time = exp_it * 2;
+            exp_result[exp_it] = a + b * std::exp(c * current_time);
         }
-        catch(std::exception &e) {
-            std::cout << "oops! cannot robust stats: " << e.what() << std::endl;
-            double baseline_mode_val = 0.0;
-            double baseline_std = 0.0;
-            // now let's save it to our BaselineEstimate object baseline
-            baseline.baseline = baseline_mode_val;
-            baseline.stddev = baseline_std;
-            baseline.target_num_frames = 0;
-            baseline.num_frames = 0;
-            baseline.num_samples = 0;
-        }
+        std::sort(exp_result.begin(), exp_result.end());
+        double baseline_mode_val = robust_stats::Mode(exp_result.begin(), exp_result.end());
+        double baseline_std = robust_stats::MedianAbsoluteDeviation(exp_result.begin(), exp_result.end(), baseline_mode_val);
+        // now let's save it to our BaselineEstimate object baseline
+        baseline.baseline = baseline_mode_val;
+        baseline.stddev = baseline_std;
+        baseline.target_num_frames = 0;
+        baseline.num_frames = 0;
+        baseline.num_samples = 0;
     }
 }
 
