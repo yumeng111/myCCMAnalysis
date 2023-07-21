@@ -19,6 +19,7 @@
 #include <limits>
 #include <algorithm>
 #include <thread>
+#include <cmath>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -121,29 +122,6 @@ class darcy_baselines: public I3Module {
     void DAQ(I3FramePtr frame);
 };
 
-I3_MODULE(darcy_baselines);
-
-darcy_baselines::darcy_baselines(const I3Context& context) : I3Module(context), 
-    geometry_name_(""), geo_seen(false) {
-        AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-    }
-
-
-void darcy_baselines::Configure() {
-    GetParameter("CCMGeometryName", geometry_name_);
-}
-
-
-void darcy_baselines::Geometry(I3FramePtr frame) {
-    if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
-    }
-    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-    pmt_channel_map_ = geo.pmt_channel_map;
-    geo_seen = true;
-    PushFrame(frame);
-}
-
 void OutlierFilter(std::vector<short unsigned int> const & samples, std::vector<double> & outlier_filter_results){
 
     // first let's find the average of the first 10 bins of our wf as the starting value
@@ -233,7 +211,7 @@ void FitExponential(std::vector<double> const & y, double & a, double & b, doubl
     mult_0 = m_inv00 * v0 + m_inv01 * v1;
     mult_1 = m_inv01 * v0 + m_inv11 * v1;
 
-    c = mult_1; // one of the parameters we're solving for!!!
+    c = double(mult_1); // one of the parameters we're solving for!!!
 
     // let's now do it again!
     m00 = 0;
@@ -261,10 +239,9 @@ void FitExponential(std::vector<double> const & y, double & a, double & b, doubl
     m_inv10 = prefactor * -1 * m10;
     m_inv11 = prefactor * m00;
 
-    a = m_inv00 * v0 + m_inv01 * v1;
-    b = m_inv01 * v0 + m_inv11 * v1;
+    a = double(m_inv00 * v0 + m_inv01 * v1);
+    b = double(m_inv01 * v0 + m_inv11 * v1);
 }
-
 
 void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEstimate & baseline){
 
@@ -284,37 +261,11 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
     LinearFlatFit(outlier_filter_results.begin(), outlier_filter_results.end(), linear_intercept, linear_slope, linear_sigma, flat_mean, flat_sigma);
 
     double flat_chi2_per_dof_threshold = 1.0;
-    double flat_sigma_threshold = 30.0;
+    double flat_sigma_threshold = 35.0;
     double flat_chi2_per_dof = FlatChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), flat_mean, flat_sigma);
-    if(flat_chi2_per_dof < flat_chi2_per_dof_threshold and flat_sigma < flat_sigma_threshold) {
-        // a flat fit is good enough
-        // Let's use the mode of the outlier filter as the baseline estimate
-    
-        return;
-    }
 
-    double linear_chi2_per_dof_threshold = 1.0;
-    double linear_sigma_threshold = 10.0;
-    double linear_slope_threshold = 1.0;
-    double linear_chi2_per_dof = LinearChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), linear_intercept, linear_slope, linear_sigma);
-    if(linear_chi2_per_dof < linear_chi2_per_dof_threshold and linear_sigma < linear_sigma_threshold and linear_slope < linear_slope_threshold) {
-        // a linear fit is good enough
-        // Let's subtract off the linear component and use the mode of result as the baseline
-
-        return;
-    }
-
-    // Flat and linear are not good enough, let's try an exponential
-
-    // now let's put the result through the exponential fitter
-    double a = 0;
-    double b = 0;
-    double c = 0;
-    FitExponential(outlier_filter_results, a, b, c);
-
-    if (a == 0 or b == 0 or c == 0) {
-        // oops! exponential fit didnt go right
-        // let's just use the mode of the outlier filter for the baselines
+    // checking for nans
+    if (isnan(linear_slope) or isnan(linear_sigma) or isnan(linear_intercept)){
         std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
         double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
         double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
@@ -324,29 +275,146 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         baseline.target_num_frames = 0;
         baseline.num_frames = 0;
         baseline.num_samples = 0;
-    } else {
-        // now let's get the mode of our exponential fit!!
-        std::vector<double> exp_result(samples.size());
-        double current_time;
-        for (size_t exp_it = 0; exp_it < samples.size(); ++exp_it){
-            current_time = exp_it * 2;
-            exp_result[exp_it] = a + b * std::exp(c * current_time);
-        }
-        std::sort(exp_result.begin(), exp_result.end());
-        double baseline_mode_val = robust_stats::Mode(exp_result.begin(), exp_result.end());
-        double baseline_std = robust_stats::MedianAbsoluteDeviation(exp_result.begin(), exp_result.end(), baseline_mode_val);
+
+        return;
+    }
+
+    if(flat_chi2_per_dof < flat_chi2_per_dof_threshold and flat_sigma < flat_sigma_threshold) {
+        // a flat fit is good enough
+        // Let's use the mode of the outlier filter as the baseline estimate
+        std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
+        double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
+        double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
         // now let's save it to our BaselineEstimate object baseline
         baseline.baseline = baseline_mode_val;
         baseline.stddev = baseline_std;
         baseline.target_num_frames = 0;
         baseline.num_frames = 0;
         baseline.num_samples = 0;
+
+        return;
     }
+
+    double linear_chi2_per_dof_threshold = 1.0;
+    double linear_sigma_threshold = 35.0;
+    double linear_slope_threshold = 1.0;
+    double linear_chi2_per_dof = LinearChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), linear_intercept, linear_slope, linear_sigma);
+
+    // checking for nans
+    if (isnan(linear_slope) or isnan(linear_sigma) or isnan(linear_intercept)){
+        std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
+        double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
+        double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
+        // now let's save it to our BaselineEstimate object baseline
+        baseline.baseline = baseline_mode_val;
+        baseline.stddev = baseline_std;
+        baseline.target_num_frames = 0;
+        baseline.num_frames = 0;
+        baseline.num_samples = 0;
+
+        return;
+    }
+
+    if(linear_chi2_per_dof < linear_chi2_per_dof_threshold and linear_sigma < linear_sigma_threshold and linear_slope < linear_slope_threshold) {
+        // a linear fit is good enough
+        // Let's subtract off the linear component and use the mode of result as the baseline
+        // actually using the mode of the linear fit as the baseline and we'll see how it looks
+        std::vector<double> linear_result(samples.size());
+        double current_time;
+        for (size_t linear_it = 0; linear_it < samples.size(); ++linear_it){
+            current_time = linear_it * 2;
+            linear_result[linear_it] = current_time * linear_slope + linear_intercept;
+        }
+
+        std::sort(linear_result.begin(), linear_result.end());
+        double baseline_mode_val = robust_stats::Mode(linear_result.begin(), linear_result.end());
+        double baseline_std = robust_stats::MedianAbsoluteDeviation(linear_result.begin(), linear_result.end(), baseline_mode_val);
+        // now let's save it to our BaselineEstimate object baseline
+        baseline.baseline = baseline_mode_val;
+        baseline.stddev = baseline_std;
+        baseline.target_num_frames = 0;
+        baseline.num_frames = 0;
+        baseline.num_samples = 0;
+
+        return;
+    }
+
+    // Flat and linear are not good enough, let's try an exponential
+
+    // initializing the exponential fit params
+    double a;
+    double b;
+    double c;
+    FitExponential(outlier_filter_results, a, b, c);
+
+    // check if a, b, or c are nans!
+    if (isnan(a) or isnan(b) or isnan(c)){
+        // oops! exp fit didnt work, let's use linear fit
+        std::vector<double> linear_result(samples.size());
+        double current_time;
+        for (size_t linear_it = 0; linear_it < samples.size(); ++linear_it){
+            current_time = linear_it * 2;
+            linear_result[linear_it] = current_time * linear_slope + linear_intercept;
+        }
+
+        std::sort(linear_result.begin(), linear_result.end());
+        double baseline_mode_val = robust_stats::Mode(linear_result.begin(), linear_result.end());
+        double baseline_std = robust_stats::MedianAbsoluteDeviation(linear_result.begin(), linear_result.end(), baseline_mode_val);
+        // now let's save it to our BaselineEstimate object baseline
+        baseline.baseline = baseline_mode_val;
+        baseline.stddev = baseline_std;
+        baseline.target_num_frames = 0;
+        baseline.num_frames = 0;
+        baseline.num_samples = 0;
+
+        return;
+    }
+
+    // now let's get the mode of our exponential fit!!
+    std::vector<double> exp_result(samples.size());
+    double current_time;
+    for (size_t exp_it = 0; exp_it < samples.size(); ++exp_it){
+        current_time = exp_it * 2;
+        exp_result[exp_it] = double(a) + double(b) * std::exp(double(c) * current_time);
+    }
+    std::sort(exp_result.begin(), exp_result.end());
+    double baseline_mode_val = robust_stats::Mode(exp_result.begin(), exp_result.end());
+    double baseline_std = robust_stats::MedianAbsoluteDeviation(exp_result.begin(), exp_result.end(), baseline_mode_val);
+    // now let's save it to our BaselineEstimate object baseline
+    baseline.baseline = baseline_mode_val;
+    baseline.stddev = baseline_std;
+    baseline.target_num_frames = 0;
+    baseline.num_frames = 0;
+    baseline.num_samples = 0;
+}
+
+I3_MODULE(darcy_baselines);
+
+darcy_baselines::darcy_baselines(const I3Context& context) : I3Module(context), 
+    geometry_name_(""), geo_seen(false) {
+        AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    }
+
+
+void darcy_baselines::Configure() {
+    GetParameter("CCMGeometryName", geometry_name_);
+}
+
+
+void darcy_baselines::Geometry(I3FramePtr frame) {
+    if(not frame->Has(geometry_name_)) {
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+    }
+    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+    pmt_channel_map_ = geo.pmt_channel_map;
+    geo_seen = true;
+    PushFrame(frame);
 }
 
 void darcy_baselines::DAQ(I3FramePtr frame) {
 
     if(not frame->Has("CCMWaveforms")) {
+    // checking for nans
         throw std::runtime_error("No waveforms!");
     }
 
@@ -381,8 +449,9 @@ void darcy_baselines::DAQ(I3FramePtr frame) {
 
     // I3Map to store pmt key and baselines
     boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> Baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
-    for(size_t i=0; i<num_threads; ++i) {
+    for(size_t i = 0; i < num_threads; ++i) {
         my_threads[i].join();
+        std::cout << "joined thread " << i << std::endl;
         Baselines->insert({pmt_keys[i], baseline_estimates[i]});
     }
 
