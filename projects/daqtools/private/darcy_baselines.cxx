@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <thread>
 #include <cmath>
+#include <functional>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -434,16 +435,12 @@ void darcy_baselines::DAQ(I3FramePtr frame) {
     // loop over each channel in waveforms
     for(size_t i=0; i<num_threads; ++i) {
         // let's get our baseline
+        CCMPMTKey key = pmt_keys[i];
+        uint32_t channel = pmt_channel_map_[key];
         my_threads.emplace_back(
-            [&]() {
-                CCMPMTKey key = pmt_keys[i];
-                uint32_t channel = pmt_channel_map_[key];
-                // let's initalize our baseline object
-                BaselineEstimate & baseline = baseline_estimates[i];
-                CCMWaveformUInt16 const & waveform = waveforms->at(channel);
-                std::vector<short unsigned int> const & samples = waveform.GetWaveform();
-                ProcessWaveform(samples, baseline);
-            }
+            ProcessWaveform,
+            std::cref(waveforms->at(channel).GetWaveform()),
+            std::ref(baseline_estimates[i])
         );
     }
 
