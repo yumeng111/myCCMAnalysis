@@ -88,7 +88,7 @@ std::pair<Iterator, Iterator> MinRange(Iterator begin, Iterator end, const size_
 
 template <
     class Iterator,
-    class U = typename std::iterator_traits<Iterator>::value_type>,
+    class U = typename std::iterator_traits<Iterator>::value_type,
     typename std::enable_if<!HaveRandomAccessIterator<Iterator>::value>::type * = nullptr>
 std::pair<Iterator, Iterator> MinRange(Iterator begin, Iterator end, const size_t half_count) {
     Iterator half_begin = begin;
