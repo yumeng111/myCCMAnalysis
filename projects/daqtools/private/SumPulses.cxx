@@ -57,8 +57,8 @@ public:
 I3_MODULE(SumPulses);
 
 void SumPulses::ProcessFrame(I3FramePtr frame) {
-    I3Map<CCMPMTKey, std::vector<std::vector<double>>> const & pulse_samples = frame->Get<I3Map<CCMPMTKey, std::vector<std::vector<double>>> const>(pulses_name_);
     if(already_summed_) {
+        I3Map<CCMPMTKey, std::vector<double>> const & pulse_samples = frame->Get<I3Map<CCMPMTKey, std::vector<double>> const>(pulses_name_);
         I3Map<CCMPMTKey, std::vector<double>> const & summed_pulse_samples = frame->Get<I3Map<CCMPMTKey, std::vector<double>> const>(pulses_name_);
         I3Map<CCMPMTKey, int> const & peak_positions = frame->Get<I3Map<CCMPMTKey, int> const>(peak_positions_name_);
         I3Map<CCMPMTKey, std::vector<unsigned int>> const & counts = frame->Get<I3Map<CCMPMTKey, std::vector<unsigned int>> const>(counts_name_);
@@ -70,6 +70,7 @@ void SumPulses::ProcessFrame(I3FramePtr frame) {
             summed_waveforms_[pmt_key].AddWaveform(wf, pos, count);
         }
     } else {
+        I3Map<CCMPMTKey, std::vector<std::vector<double>>> const & pulse_samples = frame->Get<I3Map<CCMPMTKey, std::vector<std::vector<double>>> const>(pulses_name_);
         for(std::pair<CCMPMTKey const, std::vector<std::vector<double>>> const & p : pulse_samples) {
             CCMPMTKey pmt_key = p.first;
             std::vector<std::vector<double>> const & vector_of_wfs = p.second;
