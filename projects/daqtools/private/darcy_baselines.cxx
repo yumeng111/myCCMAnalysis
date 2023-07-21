@@ -448,7 +448,6 @@ void darcy_baselines::DAQ(I3FramePtr frame) {
     boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> Baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
     for(size_t i = 0; i < num_threads; ++i) {
         my_threads[i].join();
-        std::cout << "joined thread " << i << std::endl;
         Baselines->insert({pmt_keys[i], baseline_estimates[i]});
     }
 
