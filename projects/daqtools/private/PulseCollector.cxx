@@ -130,24 +130,27 @@ std::vector<std::pair<size_t, size_t>> FindPulses(WaveformSmoother & smoother, d
                 // we found a pulse! now let's do a quick check on charge within the nearby_charge_window
                 if (pulse_first_index > nearby_charge_window and pulse_last_index < (N - nearby_charge_window)) {
                     // we are within 300 bins of the edges of our wf
-                    uint16_t max_pre_pulse = 1;
-                    uint16_t max_post_pulse = 1;
+                    double max_pre_pulse = 1;
+                    double max_post_pulse = 1;
+                    double baseline_subtracted_off;
 
                     smoother.Reset(pulse_first_index - nearby_charge_window);
                     for (size_t pre_pulse_it = (pulse_first_index - nearby_charge_window); pre_pulse_it < pulse_first_index; ++pre_pulse_it) {
-                        max_pre_pulse = std::min(max_pre_pulse, smoother.RawValue());
+                        baseline_subtracted_off = smoother.RawValue() + baseline;
+                        max_pre_pulse = std::min(max_pre_pulse, baseline_subtracted_off); // baseline is negative and RawValue are positive!
                         smoother.Next();
                     }
 
                     smoother.Reset(pulse_last_index);
                     for (size_t post_pulse_it = pulse_last_index; post_pulse_it < (pulse_last_index + nearby_charge_window); ++post_pulse_it) {
-                        max_post_pulse = std::min(max_post_pulse, smoother.RawValue());
+                        baseline_subtracted_off = smoother.RawValue() + baseline;
+                        max_post_pulse = std::min(max_post_pulse, baseline_subtracted_off);
                         smoother.Next();
                     }
-
-                    if ((max_pre_pulse - baseline) < 10 and (max_pre_pulse - baseline) > -10 and (max_post_pulse - baseline) < 10 and (max_post_pulse - baseline) > -10) {
+                    if (max_pre_pulse < 10 and max_pre_pulse > -10 and max_post_pulse < 10 and max_post_pulse > -10) {
                         // ok! no more than 7 counts above the baseline within our nearby_charge_window
                         // now let's save this pulse!
+                        //std::cout << "saving pulse from " << pulse_first_index << " until " << pulse_last_index << std::endl;
                         pulses.push_back({pulse_first_index , pulse_last_index});
                     }
 
@@ -219,7 +222,7 @@ I3_MODULE(PulseCollector);
 std::vector<std::tuple<size_t, size_t, double>> PulseCollector::ProcessWaveform(CCMPMTKey key, CCMWaveformUInt16 const & waveform) {
     // vector we will be returning
     std::vector<std::tuple<size_t, size_t, double>> pulse_results;
-    size_t nearby_charge_window = 300;  
+    size_t nearby_charge_window = 300;
     // Initialize the waveform smoother
     smooth_waveform_cache[key].emplace_back(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
     WaveformSmoother & smoother = smooth_waveform_cache[key].back();
@@ -230,13 +233,18 @@ std::vector<std::tuple<size_t, size_t, double>> PulseCollector::ProcessWaveform(
     // Compute the positions of the pulses
     std::vector<std::pair<size_t, size_t>> pulse_positions =
         FindPulses(smoother, baseline, pulse_max_start_sample, pulse_initial_deriv_threshold, pulse_max_width, pulse_min_width, pulse_min_height, pulse_min_deriv_magnitude, pulse_min_integral);
-    
+
+    if (pulse_positions.size() == 0){
+        // oops! no pulses
+        pulse_results.emplace_back(0, 0, baseline);
+    }
+
     for (size_t pulse_it = 0; pulse_it < pulse_positions.size(); ++pulse_it){
-        bool found_pulse = (pulse_positions[pulse_it].second > pulse_positions[pulse_it].first) and
-            (pulse_positions[pulse_it].first < (pulse_samples_before - 1));
-        if(not found_pulse)
-            continue;
-        
+        //bool found_pulse = (pulse_positions[pulse_it].second > pulse_positions[pulse_it].first) and
+        //    (pulse_positions[pulse_it].first < (pulse_samples_before - 1));
+        //if(not found_pulse)
+        //    continue;
+
         std::vector<double> baseline_samples;
         baseline_samples.reserve(pulse_positions[pulse_it].second);
         smoother.Reset();
@@ -293,6 +301,7 @@ void PulseCollector::ProcessFrame(I3FramePtr frame) {
         CCMWaveformUInt16 const & waveform = waveforms[channel];
         if(waveform.GetWaveform().size() > 0) {
             std::vector<std::tuple<size_t, size_t, double>> wf_result = ProcessWaveform(key, waveform);
+            // std::cout << "length of pulses = " << wf_result.size() << std::endl;
             // now looping over this vector of pulse information
             std::vector<std::vector<double>> vector_of_results;
             WaveformSmoother const & smoother = smooth_waveform_cache[key].back();
@@ -303,7 +312,6 @@ void PulseCollector::ProcessFrame(I3FramePtr frame) {
                 double baseline = std::get<2>(wf_result[wf_it]);
                 if(last_pulse_sample > 0) {
                     // Loop over the pulses in the waveform
-                    std::cout << "found a pulse between " << first_pulse_sample << " and " << last_pulse_sample << std::endl;
                     std::vector<double> result;
                     result.reserve(last_pulse_sample - first_pulse_sample + 1);
                     std::vector<uint16_t>::const_iterator wf_it = iterators.first + first_pulse_sample;
@@ -339,7 +347,7 @@ PulseCollector::PulseCollector(const I3Context& context) : I3Module(context),
     AddParameter("MaxPulseWidth", "Maxiumum width for defining a pulse", size_t(100));
     AddParameter("MinPulseHeight", "Minimum height for defining a pulse", double(5.0));
     AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.65));
-    AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(10000.0));
+    AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(25.0));
     AddParameter("NumSamplesAfterPulse", "Number of samples to save after pulse", size_t(300));
     AddParameter("PulseActivityThreshold", "Threshold in ADC counts to indicate downstream", double(20.0));
     AddParameter("MaxRisingEdges", "Maximum number of allowed pulse rising edges within window", size_t(1));
@@ -356,6 +364,7 @@ void PulseCollector::Configure() {
     GetParameter("NumSamplesBeforePulse", pulse_samples_before);
     GetParameter("MaxPulseStartSample", pulse_max_start_sample);
     GetParameter("MinPulseWidth", pulse_min_width);
+    GetParameter("MaxPulseWidth", pulse_max_width);
     GetParameter("MinPulseHeight", pulse_min_height);
     GetParameter("MinPulseDerivativeMagnitude", pulse_min_deriv_magnitude);
     GetParameter("MinPulseIntegral", pulse_min_integral);

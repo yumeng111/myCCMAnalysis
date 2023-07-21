@@ -79,11 +79,11 @@ void SumPulses::ProcessFrame(I3FramePtr frame) {
                 std::vector<double> current_wf = vector_of_wfs[wfs_it];
                 double max_adc_counts = 0;
                 for (size_t wf_it = 0; wf_it < current_wf.size(); ++wf_it){
-                    max_adc_counts = std::min(max_adc_counts, current_wf[wf_it]);
+                    max_adc_counts = std::max(max_adc_counts, current_wf[wf_it]);
                 }
                 // now let's check if we're within the desired range
                 if (max_adc_counts < max_counts_ and max_adc_counts > min_counts_){
-                    // so we're within our desired range! yay!
+                    // so we're within our desired range! yay
                     int pos = std::distance(current_wf.begin(), std::max_element(current_wf.begin(), current_wf.end()));
                     summed_waveforms_[pmt_key].AddWaveform(current_wf, pos);
                 }
