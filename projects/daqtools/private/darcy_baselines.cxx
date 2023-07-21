@@ -18,6 +18,7 @@
 #include <iostream>
 #include <limits>
 #include <algorithm>
+#include <thread>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -75,7 +76,7 @@ void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double
 
 double FlatChi2PerDOF(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end, double flat_mean, double flat_sigma) {
     size_t N = std::distance(begin, end);
-    size_t DOF = std::max(N, 3) - 2;
+    size_t DOF = std::max(N, size_t(3)) - 2;
     double stddev = flat_sigma;
     double pred = flat_mean;
     double chi2 = 0.0;
@@ -95,7 +96,7 @@ double LinearChi2PerDOF(
         double linear_slope,
         double linear_sigma) {
     size_t N = std::distance(begin, end);
-    size_t DOF = std::max(N, 4) - 3;
+    size_t DOF = std::max(N, size_t(4)) - 3;
     double stddev = linear_sigma;
     double chi2 = 0.0;
     size_t t = 0;
@@ -114,9 +115,6 @@ class darcy_baselines: public I3Module {
     std::string geometry_name_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     void Geometry(I3FramePtr frame);
-    void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEstimate & baseline);
-    void FitExponential(std::vector<double> const & y, double & a, double & b, double & c);
-    void OutlierFilter(std::vector<short unsigned int> const & samples, std::vector<double> & outlier_filter_results);
     public:
     darcy_baselines(const I3Context&);
     void Configure();
@@ -146,7 +144,7 @@ void darcy_baselines::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void darcy_baselines::OutlierFilter(std::vector<short unsigned int> const & samples, std::vector<double> & outlier_filter_results){
+void OutlierFilter(std::vector<short unsigned int> const & samples, std::vector<double> & outlier_filter_results){
 
     // first let's find the average of the first 10 bins of our wf as the starting value
     double delta_tau = 20;
@@ -181,7 +179,7 @@ void darcy_baselines::OutlierFilter(std::vector<short unsigned int> const & samp
 
 }
 
-void darcy_baselines::FitExponential(std::vector<double> const & y, double & a, double & b, double & c){
+void FitExponential(std::vector<double> const & y, double & a, double & b, double & c){
 
     std::vector<double> x (y.size());
     // let's fill our x vals (aka time)
@@ -268,7 +266,7 @@ void darcy_baselines::FitExponential(std::vector<double> const & y, double & a, 
 }
 
 
-void darcy_baselines::ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEstimate & baseline){
+void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEstimate & baseline){
 
     if (samples.size() == 0) {
         return;
@@ -355,24 +353,37 @@ void darcy_baselines::DAQ(I3FramePtr frame) {
     // let's read in our waveform
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
 
-    // I3Map to store pmt key and baselines
-    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> Baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
+    std::vector<CCMPMTKey> pmt_keys;
+    pmt_keys.reserve(pmt_channel_map_.size());
+    for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
+        pmt_keys.push_back(p.first);
+    }
+    size_t num_threads = pmt_keys.size();
+    std::vector<std::thread> my_threads;
+    my_threads.reserve(num_threads);
+    std::vector<BaselineEstimate> baseline_estimates(num_threads);
 
     // loop over each channel in waveforms
-    for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
-        CCMPMTKey key = p.first;
-        uint32_t channel = p.second;
-        CCMWaveformUInt16 const & waveform = waveforms->at(channel);
-        std::vector<short unsigned int> const & samples = waveform.GetWaveform();
-
-        // let's initalize our baseline object
-        BaselineEstimate baseline;
-
+    for(size_t i=0; i<num_threads; ++i) {
         // let's get our baseline
-        ProcessWaveform(samples, baseline);
+        my_threads.emplace_back(
+            [&]() {
+                CCMPMTKey key = pmt_keys[i];
+                uint32_t channel = pmt_channel_map_[key];
+                // let's initalize our baseline object
+                BaselineEstimate & baseline = baseline_estimates[i];
+                CCMWaveformUInt16 const & waveform = waveforms->at(channel);
+                std::vector<short unsigned int> const & samples = waveform.GetWaveform();
+                ProcessWaveform(samples, baseline);
+            }
+        );
+    }
 
-        // let's save our baseline
-        Baselines->insert({key, baseline});
+    // I3Map to store pmt key and baselines
+    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> Baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
+    for(size_t i=0; i<num_threads; ++i) {
+        my_threads[i].join();
+        Baselines->insert({pmt_keys[i], baseline_estimates[i]});
     }
 
     frame->Put("BaselineEstimates", Baselines);
