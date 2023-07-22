@@ -393,14 +393,14 @@ namespace detail {
         {3,  8, 0},
         {4,  5, 0},
         {4, 15, 0},
-        {1,  3, 6},
-        {1,  5, 6},
-        {2,  2, 6},
-        {2,  7, 6},
-        {3,  6, 6},
-        {3, 13, 6},
-        {4,  2, 6},
-        {4, 12, 6},
+        {1,  2, 6},
+        {1,  4, 6},
+        {2,  5, 6},
+        {2, 10, 6},
+        {3,  3, 6},
+        {3, 10, 6},
+        {4,  8, 6},
+        {4, 18, 6}
     };
 
     I3Position get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
@@ -659,40 +659,60 @@ void CCMGeometryGenerator::Process() {
 
             if(type == detail::tolower("PMT 1in")) {
                 is_sensor = true;
+                std::string position_string;
                 if(pmt_positions_by_id.count(id) == 0) {
                     if(id == "") {
                         log_warn("PMT ID is empty but channel type indicates this is a 1in PMT!");
                         continue;
                     } else {
                         std::stringstream ss;
-                        ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map";
-                        throw std::runtime_error(ss.str());
+                        ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map, assuming the PMT ID is the position";
+                        log_warn(ss.str().c_str());
+                        //throw std::runtime_error(ss.str());
+                        position_string = id;
                     }
+                } else {
+                    position_string = pmt_positions_by_id[id];
                 }
-                std::string position_string = pmt_positions_by_id[id];
                 std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT1inPosition(position_string);
                 position = std::get<0>(p);
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
                 omtype = std::get<3>(p);
-            } else if(type == detail::tolower("PMT 8in")) {
+            } else if(type == detail::tolower("PMT 8in") or type == detail::tolower("PMT 8in coated") or type == detail::tolower("PMT 8in uncoated")) {
                 is_sensor = true;
+                bool expect_coated = type == detail::tolower("PMT 8in coated");
+                bool expect_uncoated = type == detail::tolower("PMT 8in uncoated");
+                std::string position_string;
                 if(pmt_positions_by_id.count(id) == 0) {
                     if(id == "") {
                         log_warn("PMT ID is empty but channel type indicates this is an 8in PMT!");
                         continue;
                     } else {
                         std::stringstream ss;
-                        ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map";
-                        throw std::runtime_error(ss.str());
+                        ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map, assuming the PMT ID is the position";
+                        log_warn(ss.str().c_str());
+                        position_string = id;
+                        //throw std::runtime_error(ss.str());
                     }
+                } else {
+                    position_string = pmt_positions_by_id[id];
                 }
-                std::string position_string = pmt_positions_by_id[id];
                 std::tuple<I3Position, I3Orientation, CCMPMTKey, CCMOMGeo::OMType> p = detail::ParsePMT8inPosition(position_string);
                 position = std::get<0>(p);
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
                 omtype = std::get<3>(p);
+                if(expect_coated and (omtype != CCMOMGeo::OMType::CCM8inCoated)) {
+                    std::stringstream ss;
+                    ss << "PMT ID \"" << id << "\": Mapping file indicates this is a coated PMT, but the position parsing indicates it should not be";
+                    log_warn(ss.str().c_str());
+                }
+                if(expect_uncoated and (omtype != CCMOMGeo::OMType::CCM8inUncoated)) {
+                    std::stringstream ss;
+                    ss << "PMT ID \"" << id << "\": Mapping file indicates this is a uncoated PMT, but the position parsing indicates it should not be";
+                    log_warn(ss.str().c_str());
+                }
             } else if(type == detail::tolower("EJ")
                    or type == detail::tolower("EJ301")) {
                 is_sensor = true;
