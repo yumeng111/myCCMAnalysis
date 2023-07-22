@@ -393,14 +393,14 @@ namespace detail {
         {3,  8, 0},
         {4,  5, 0},
         {4, 15, 0},
-        {1,  3, 6},
-        {1,  5, 6},
-        {2,  2, 6},
-        {2,  7, 6},
-        {3,  6, 6},
-        {3, 13, 6},
-        {4,  2, 6},
-        {4, 12, 6},
+        {1,  2, 6},
+        {1,  4, 6},
+        {2,  5, 6},
+        {2, 10, 6},
+        {3,  3, 6},
+        {3, 10, 6},
+        {4,  8, 6},
+        {4, 18, 6}
     };
 
     I3Position get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {

@@ -1,6 +1,9 @@
 set(PROJECT_NAME daqtools)
 
-i3_project(${PROJECT_NAME})
+i3_project(${PROJECT_NAME}
+    PYTHON_DIR python
+    PYTHON_DEST icecube/${PROJECT_NAME}
+)
 
 i3_add_library(${PROJECT_NAME}
     private/CCMDAQAlignment.cxx
