@@ -1,6 +1,9 @@
 set(PROJECT_NAME daqtools)
 
-i3_project(${PROJECT_NAME})
+i3_project(${PROJECT_NAME}
+    PYTHON_DIR python
+    PYTHON_DEST icecube/${PROJECT_NAME}
+)
 
 i3_add_library(${PROJECT_NAME}
     private/CCMDAQAlignment.cxx
@@ -16,12 +19,12 @@ i3_add_library(${PROJECT_NAME}
     private/CountCosmicFrames.cxx
     private/TestWaveformAccum.cxx
     private/CosmicTriggerSumWaveforms.cxx
+    private/FitSummedPulses.cxx
+    private/darcy_baselines.cxx
     private/BeamCurrentMonitorSummary.cxx
     private/NIMLogicPulseFinder.cxx
     private/PulseCollector.cxx
-    private/DroopyPulseCollector.cxx
     private/SumPulses.cxx
-    private/DroopySumPulses.cxx
     private/FirstPulseFinder.cxx
     private/BaselineEstimator.cxx
     IWYU

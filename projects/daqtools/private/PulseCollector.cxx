@@ -338,7 +338,7 @@ PulseCollector::PulseCollector(const I3Context& context) : I3Module(context),
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("NumSamplesForBaseline", "Number of samples to use for initial baseline estimate", size_t(400));
-    AddParameter("SmoothingTau", "Time constant for waveform smoothing in ns", double(10.0));
+    AddParameter("SmoothingTau", "Time constant for waveform smoothing in ns", double(12.0));
     AddParameter("SmoothingDeltaT", "Bin width in ns for smoothing", double(2.0));
     AddParameter("InitialDerivativeThreshold", "Initial positive derivative threshold for a pulse", double(0.3));
     AddParameter("NumSamplesBeforePulse", "Number of samples required before a pulse", size_t(300));

@@ -26,6 +26,16 @@
 
 namespace robust_stats {
 
+template<typename Iterator>
+using IteratorCategoryOf =
+    typename std::iterator_traits<Iterator>::iterator_category;
+
+template<typename Iterator>
+using HaveRandomAccessIterator =
+    std::is_base_of<
+        std::random_access_iterator_tag,
+        IteratorCategoryOf<Iterator>>;
+
 // @return i in [idx_begin, idx_begin + half_count) that minimizes
 // sorted[i + half_count] - sorted[i].
 template <typename T>
@@ -47,7 +57,39 @@ size_t MinRange(const T* const sorted, const size_t idx_begin,
     return min_idx;
 }
 
-template <class Iterator, class U = typename std::iterator_traits<Iterator>::value_type>
+template <
+    class Iterator,
+    class U = typename std::iterator_traits<Iterator>::value_type,
+    typename std::enable_if<HaveRandomAccessIterator<Iterator>::value>::type * = nullptr>
+std::pair<Iterator, Iterator> MinRange(Iterator begin, Iterator end, const size_t half_count) {
+    Iterator half_begin = begin;
+    Iterator half_end = begin + half_count;
+    Iterator idx_begin = half_begin;
+    Iterator idx_end = half_end;
+
+    U min_range = std::numeric_limits<U>::max();
+    std::pair<Iterator, Iterator> min_its;
+
+    // while(idx_begin != half_end and idx_end != end) {
+    while(idx_begin != half_end) {
+        assert(*idx_begin <= *idx_end);
+        const U range = *idx_end - *idx_begin;
+
+        if (range < min_range) {
+            min_range = range;
+            min_its = {idx_begin, idx_end};
+        }
+        ++idx_begin;
+        ++idx_end;
+    }
+
+    return min_its;
+}
+
+template <
+    class Iterator,
+    class U = typename std::iterator_traits<Iterator>::value_type,
+    typename std::enable_if<!HaveRandomAccessIterator<Iterator>::value>::type * = nullptr>
 std::pair<Iterator, Iterator> MinRange(Iterator begin, Iterator end, const size_t half_count) {
     Iterator half_begin = begin;
     Iterator half_end = begin;
@@ -57,10 +99,9 @@ std::pair<Iterator, Iterator> MinRange(Iterator begin, Iterator end, const size_
     Iterator idx_end = half_end;
 
     U min_range = std::numeric_limits<U>::max();
-    size_t min_idx = 0;
     std::pair<Iterator, Iterator> min_its;
 
-    while(idx_begin != half_end) {
+    while(idx_begin != half_end and idx_end != end) {
         assert(*idx_begin <= *idx_end);
         const U range = *idx_end - *idx_begin;
 
@@ -100,16 +141,6 @@ T Mode(const T* const sorted, const size_t num_values) {
     const T average = (x + sorted[idx_begin + 1]) / 2;
     return average;
 }
-
-template<typename Iterator>
-using IteratorCategoryOf =
-    typename std::iterator_traits<Iterator>::iterator_category;
-
-template<typename Iterator>
-using HaveRandomAccessIterator =
-    std::is_base_of<
-        std::random_access_iterator_tag,
-        IteratorCategoryOf<Iterator>>;
 
 template <
     class Iterator,
