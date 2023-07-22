@@ -271,7 +271,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
         double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
         // now let's save it to our BaselineEstimate object baseline
-        baseline.baseline = baseline_mode_val;
+        baseline.baseline = -1 * baseline_mode_val;
         baseline.stddev = baseline_std;
         baseline.target_num_frames = 0;
         baseline.num_frames = 0;
@@ -287,7 +287,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
         double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
         // now let's save it to our BaselineEstimate object baseline
-        baseline.baseline = baseline_mode_val;
+        baseline.baseline = -1 * baseline_mode_val;
         baseline.stddev = baseline_std;
         baseline.target_num_frames = 0;
         baseline.num_frames = 0;
@@ -296,51 +296,51 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         return;
     }
 
-    double linear_chi2_per_dof_threshold = 1.0;
-    double linear_sigma_threshold = 35.0;
-    double linear_slope_threshold = 1.0;
-    double linear_chi2_per_dof = LinearChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), linear_intercept, linear_slope, linear_sigma);
+    //double linear_chi2_per_dof_threshold = 1.0;
+    //double linear_sigma_threshold = 35.0;
+    //double linear_slope_threshold = 1.0;
+    //double linear_chi2_per_dof = LinearChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), linear_intercept, linear_slope, linear_sigma);
 
-    // checking for nans
-    if (isnan(linear_slope) or isnan(linear_sigma) or isnan(linear_intercept)){
-        std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
-        double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
-        double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
-        // now let's save it to our BaselineEstimate object baseline
-        baseline.baseline = baseline_mode_val;
-        baseline.stddev = baseline_std;
-        baseline.target_num_frames = 0;
-        baseline.num_frames = 0;
-        baseline.num_samples = 0;
+    //// checking for nans
+    //if (isnan(linear_slope) or isnan(linear_sigma) or isnan(linear_intercept)){
+    //    std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
+    //    double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
+    //    double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
+    //    // now let's save it to our BaselineEstimate object baseline
+    //    baseline.baseline = -1 * baseline_mode_val;
+    //    baseline.stddev = baseline_std;
+    //    baseline.target_num_frames = 0;
+    //    baseline.num_frames = 0;
+    //    baseline.num_samples = 0;
 
-        return;
-    }
+    //    return;
+    //}
 
-    if(linear_chi2_per_dof < linear_chi2_per_dof_threshold and linear_sigma < linear_sigma_threshold and linear_slope < linear_slope_threshold) {
-        // a linear fit is good enough
-        // Let's subtract off the linear component and use the mode of result as the baseline
-        // actually using the mode of the linear fit as the baseline and we'll see how it looks
-        std::vector<double> linear_result(samples.size());
-        double current_time;
-        for (size_t linear_it = 0; linear_it < samples.size(); ++linear_it){
-            current_time = linear_it * 2;
-            linear_result[linear_it] = current_time * linear_slope + linear_intercept;
-        }
+    //if(linear_chi2_per_dof < linear_chi2_per_dof_threshold and linear_sigma < linear_sigma_threshold and linear_slope < linear_slope_threshold) {
+    //    // a linear fit is good enough
+    //    // Let's subtract off the linear component and use the mode of result as the baseline
+    //    // actually using the mode of the linear fit as the baseline and we'll see how it looks
+    //    std::vector<double> linear_result(samples.size());
+    //    double current_time;
+    //    for (size_t linear_it = 0; linear_it < samples.size(); ++linear_it){
+    //        current_time = linear_it * 2;
+    //        linear_result[linear_it] = current_time * linear_slope + linear_intercept;
+    //    }
 
-        std::sort(linear_result.begin(), linear_result.end());
-        double baseline_mode_val = robust_stats::Mode(linear_result.begin(), linear_result.end());
-        double baseline_std = robust_stats::MedianAbsoluteDeviation(linear_result.begin(), linear_result.end(), baseline_mode_val);
-        // now let's save it to our BaselineEstimate object baseline
-        baseline.baseline = baseline_mode_val;
-        baseline.stddev = baseline_std;
-        baseline.target_num_frames = 0;
-        baseline.num_frames = 0;
-        baseline.num_samples = 0;
+    //    std::sort(linear_result.begin(), linear_result.end());
+    //    double baseline_mode_val = robust_stats::Mode(linear_result.begin(), linear_result.end());
+    //    double baseline_std = robust_stats::MedianAbsoluteDeviation(linear_result.begin(), linear_result.end(), baseline_mode_val);
+    //    // now let's save it to our BaselineEstimate object baseline
+    //    baseline.baseline = -1 * baseline_mode_val;
+    //    baseline.stddev = baseline_std;
+    //    baseline.target_num_frames = 0;
+    //    baseline.num_frames = 0;
+    //    baseline.num_samples = 0;
 
-        return;
-    }
+    //    return;
+    //}
 
-    // Flat and linear are not good enough, let's try an exponential
+    // Flat fit is not good enough, let's try an exponential
 
     // initializing the exponential fit params
     double a;
@@ -362,7 +362,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         double baseline_mode_val = robust_stats::Mode(linear_result.begin(), linear_result.end());
         double baseline_std = robust_stats::MedianAbsoluteDeviation(linear_result.begin(), linear_result.end(), baseline_mode_val);
         // now let's save it to our BaselineEstimate object baseline
-        baseline.baseline = baseline_mode_val;
+        baseline.baseline = -1 * baseline_mode_val;
         baseline.stddev = baseline_std;
         baseline.target_num_frames = 0;
         baseline.num_frames = 0;
@@ -382,7 +382,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
     double baseline_mode_val = robust_stats::Mode(exp_result.begin(), exp_result.end());
     double baseline_std = robust_stats::MedianAbsoluteDeviation(exp_result.begin(), exp_result.end(), baseline_mode_val);
     // now let's save it to our BaselineEstimate object baseline
-    baseline.baseline = baseline_mode_val;
+    baseline.baseline = -1 * baseline_mode_val;
     baseline.stddev = baseline_std;
     baseline.target_num_frames = 0;
     baseline.num_frames = 0;
