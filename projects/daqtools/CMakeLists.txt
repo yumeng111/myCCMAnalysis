@@ -21,13 +21,10 @@ i3_add_library(${PROJECT_NAME}
     private/CosmicTriggerSumWaveforms.cxx
     private/FitSummedPulses.cxx
     private/darcy_baselines.cxx
-    private/FindBigPulseForDroop.cxx
     private/BeamCurrentMonitorSummary.cxx
     private/NIMLogicPulseFinder.cxx
     private/PulseCollector.cxx
-    private/DroopyPulseCollector.cxx
     private/SumPulses.cxx
-    private/DroopySumPulses.cxx
     private/FirstPulseFinder.cxx
     private/BaselineEstimator.cxx
     IWYU
