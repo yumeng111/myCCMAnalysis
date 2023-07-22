@@ -675,8 +675,10 @@ void CCMGeometryGenerator::Process() {
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
                 omtype = std::get<3>(p);
-            } else if(type == detail::tolower("PMT 8in")) {
+            } else if(type == detail::tolower("PMT 8in") or type == detail::tolower("PMT 8in coated") or type == detail::tolower("PMT 8in uncoated")) {
                 is_sensor = true;
+                bool expect_coated = type == detail::tolower("PMT 8in coated");
+                bool expect_uncoated = type == detail::tolower("PMT 8in uncoated");
                 if(pmt_positions_by_id.count(id) == 0) {
                     if(id == "") {
                         log_warn("PMT ID is empty but channel type indicates this is an 8in PMT!");
@@ -693,6 +695,12 @@ void CCMGeometryGenerator::Process() {
                 orientation = std::get<1>(p);
                 pmt_key = std::get<2>(p);
                 omtype = std::get<3>(p);
+                if(expect_coated and omtype != CCMOMGeo::OMType::CCM8inCoated) {
+                    log_warn("Mapping file indicates this is a coated PMT, but the position parsing indicates it should not be");
+                }
+                if(expect_coated and omtype != CCMOMGeo::OMType::CCM8inUncoated) {
+                    log_warn("Mapping file indicates this is an uncoated PMT, but the position parsing indicates it should not be");
+                }
             } else if(type == detail::tolower("EJ")
                    or type == detail::tolower("EJ301")) {
                 is_sensor = true;
