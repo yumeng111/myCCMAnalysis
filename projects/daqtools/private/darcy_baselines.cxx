@@ -22,6 +22,7 @@
 #include <cmath>
 #include <functional>
 
+#include <icetray/ctpl.h>
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
 #include <icetray/I3TrayInfo.h>
@@ -116,11 +117,13 @@ class darcy_baselines: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-    void Geometry(I3FramePtr frame);
-    public:
+    ctpl::thread_pool pool;
+    size_t num_threads;
+public:
     darcy_baselines(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
+    void Geometry(I3FramePtr frame);
 };
 
 void OutlierFilter(std::vector<short unsigned int> const & samples, std::vector<double> & outlier_filter_results){
@@ -244,10 +247,11 @@ void FitExponential(std::vector<double> const & y, double & a, double & b, doubl
     b = double(m_inv01 * v0 + m_inv11 * v1);
 }
 
-void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEstimate & baseline){
+BaselineEstimate ProcessWaveform(int thread_id, std::vector<short unsigned int> const & samples){
 
+    BaselineEstimate baseline;
     if (samples.size() == 0) {
-        return;
+        return baseline;
     }
 
     // vector to store results of outlier filter
@@ -266,7 +270,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
     double flat_chi2_per_dof = FlatChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), flat_mean, flat_sigma);
 
     // checking for nans
-    if (isnan(linear_slope) or isnan(linear_sigma) or isnan(linear_intercept)){
+    if(isnan(linear_slope) or isnan(linear_sigma) or isnan(linear_intercept)) {
         std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
         double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
         double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
@@ -277,7 +281,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         baseline.num_frames = 0;
         baseline.num_samples = 0;
 
-        return;
+        return baseline;
     }
 
     if(flat_chi2_per_dof < flat_chi2_per_dof_threshold and flat_sigma < flat_sigma_threshold) {
@@ -293,7 +297,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         baseline.num_frames = 0;
         baseline.num_samples = 0;
 
-        return;
+        return baseline;
     }
 
     //double linear_chi2_per_dof_threshold = 1.0;
@@ -368,7 +372,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
         baseline.num_frames = 0;
         baseline.num_samples = 0;
 
-        return;
+        return baseline;
     }
 
     // now let's get the mode of our exponential fit!!
@@ -387,6 +391,7 @@ void ProcessWaveform(std::vector<short unsigned int> const & samples, BaselineEs
     baseline.target_num_frames = 0;
     baseline.num_frames = 0;
     baseline.num_samples = 0;
+    return baseline;
 }
 
 I3_MODULE(darcy_baselines);
@@ -394,11 +399,20 @@ I3_MODULE(darcy_baselines);
 darcy_baselines::darcy_baselines(const I3Context& context) : I3Module(context), 
     geometry_name_(""), geo_seen(false) {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-    }
+        AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(1));
+}
 
 
 void darcy_baselines::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("NumThreads", num_threads);
+    if(num_threads == 0) {
+        size_t const processor_count = std::thread::hardware_concurrency();
+        num_threads = processor_count;
+    }
+    if(num_threads > 0) {
+        pool.resize(num_threads);
+    }
 }
 
 
@@ -427,28 +441,31 @@ void darcy_baselines::DAQ(I3FramePtr frame) {
     for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
         pmt_keys.push_back(p.first);
     }
-    size_t num_threads = pmt_keys.size();
-    std::vector<std::thread> my_threads;
-    my_threads.reserve(num_threads);
-    std::vector<BaselineEstimate> baseline_estimates(num_threads);
+    size_t num_baselines = pmt_keys.size();
+    std::vector<std::future<BaselineEstimate>> baseline_estimates;
+    baseline_estimates.reserve(num_baselines);
+
+    if(num_threads == 0) {
+        pool.resize(pmt_keys.size());
+        num_threads = pmt_keys.size();
+    }
 
     // loop over each channel in waveforms
-    for(size_t i=0; i<num_threads; ++i) {
+    for(size_t i=0; i<num_baselines; ++i) {
         // let's get our baseline
         CCMPMTKey key = pmt_keys[i];
         uint32_t channel = pmt_channel_map_[key];
-        my_threads.emplace_back(
+        baseline_estimates.emplace_back(pool.push(
             ProcessWaveform,
-            std::cref(waveforms->at(channel).GetWaveform()),
-            std::ref(baseline_estimates[i])
-        );
+            std::cref(waveforms->at(channel).GetWaveform())
+        ));
     }
 
     // I3Map to store pmt key and baselines
     boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> Baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
-    for(size_t i = 0; i < num_threads; ++i) {
-        my_threads[i].join();
-        Baselines->insert({pmt_keys[i], baseline_estimates[i]});
+    for(size_t i = 0; i < num_baselines; ++i) {
+        baseline_estimates[i].wait();
+        Baselines->emplace(pmt_keys[i], baseline_estimates[i].get());
     }
 
     frame->Put("BaselineEstimates", Baselines);
