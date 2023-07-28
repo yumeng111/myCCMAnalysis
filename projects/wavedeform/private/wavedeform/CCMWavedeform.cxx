@@ -71,7 +71,7 @@ class CCMWavedeform : public I3ConditionalModule {
         double noise_threshold_;
         double basis_threshold_;
 
-        int template_bins_;
+        std::map<CCMPMTKey, int> template_bins_;
         double template_bin_spacing_;
 
         bool apply_spe_corr_;
@@ -86,16 +86,6 @@ class CCMWavedeform : public I3ConditionalModule {
 };
 
 I3_MODULE(CCMWavedeform);
-
-// End time (ns) of pulse template
-inline double PulseWidth() {
-    return 50;
-}
-
-// Beginning time (ns) of pulse template
-inline double PulseMin() {
-    return -2;
-}
 
 CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(context),
     geometry_name_(""), geo_seen(false) {
@@ -668,12 +658,11 @@ void FillFWHM(double& start, double& stop,
 
 void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
         const CCMPMTCalibration& calibration) {
-    CCMPMTCalibration::DroopedSPETemplate chan_template =
-        calibration.PMTPulseTemplate();
+    CCMSPETemplate channel_template = calibration.GetSPETemplate();
     wfTemplate.digitizer_template.resize(template_bins_);
     for (int i = 0; i < template_bins_; i++) {
         wfTemplate.digitizer_template[i] =
-            chan_template(PulseMin() +
+            channel_template.Evaluate(PulseMin() +
                     i*template_bin_spacing_);
     }
 
