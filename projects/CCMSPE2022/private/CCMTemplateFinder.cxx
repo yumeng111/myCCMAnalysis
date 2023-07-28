@@ -137,7 +137,7 @@ double CCMTemplateFinder::PeakLossFunction(const std::vector<double> &xin,
   
   // Get the SPE template for these parameters
   SPETemplate pulse(x[0],x[1],x[2],x[3]);
-  CCMPMTCalibration::DroopedSPETemplate fit_func(pulse);
+  //CCMPMTCalibration::DroopedSPETemplate fit_func(pulse);
   
   // initialize summation parameters
   double squared_residuals = 0;
