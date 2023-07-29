@@ -38,6 +38,8 @@ struct CCMSinglePulseParameters {
     void serialize(Archive& ar, unsigned version);
 };
 
+std::ostream& operator<<(std::ostream& oss, const CCMSinglePulseParameters& c);
+
 class CCMSPETemplate {
 private:
     std::vector<CCMSinglePulseParameters> pulse_parameters_;
@@ -52,6 +54,8 @@ public:
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
 };
+
+std::ostream& operator<<(std::ostream& oss, const CCMSPETemplate& c);
 
 class CCMPMTCalibration {
 public:
@@ -106,7 +110,14 @@ public:
     void serialize(Archive& ar, unsigned version);
 };
 
+std::ostream& operator<<(std::ostream& oss, const CCMPMTCalibration& c);
+
 typedef std::map<CCMPMTKey, CCMPMTCalibration> CCMPMTCalibrationMap;
 I3_POINTER_TYPEDEFS(CCMPMTCalibrationMap);
+
+typedef std::vector<CCMSinglePulseParameters> CCMSinglePulseParametersSeries;
+I3_POINTER_TYPEDEFS(CCMSinglePulseParametersSeries);
+
+std::ostream& operator<<(std::ostream& oss, const CCMPMTCalibrationMap& m);
 
 #endif // CCMPMTCalibration_H_INCLUDED
