@@ -223,7 +223,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             FillTemplate(template_, calib->second, start_bin, end_bin, template_bins);
         }
 
-        (*output)[key] = *GetPulses(droopy_waveform, template_, calib->second, SPEMean(stat->second, calib->second));
+        (*output)[key] = *GetPulses(droopy_waveform, template_, calib->second, SPEMean(stat->second, calib->second), start_bin, end_bin);
 
     }
 
