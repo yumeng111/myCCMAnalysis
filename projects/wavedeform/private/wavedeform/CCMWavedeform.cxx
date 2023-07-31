@@ -61,8 +61,8 @@ class CCMWavedeform : public I3ConditionalModule {
                 const CCMWaveformTemplate& wfTemplate,
                 const CCMPMTCalibration& calibration,
                 const double spe_charge, 
-                size_t const & start_time, 
-                size_t const & pulse_width);
+                double const & start_time, 
+                double const & pulse_width);
 
         std::string waveforms_name_;
         std::string waveform_range_name_;
@@ -83,7 +83,7 @@ class CCMWavedeform : public I3ConditionalModule {
         CCMWaveformTemplate template_;
 
         void FillTemplate(CCMWaveformTemplate& wfTemplate,
-                const CCMPMTCalibration& calibration, size_t const & start_time, size_t const & pulse_width, int const & template_bins);
+                const CCMPMTCalibration& calibration, double const & start_time, double const & pulse_width, int const & template_bins);
 
         cholmod_common c;
 };
@@ -200,9 +200,9 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         */
         // CCM has a bin width of 2ns
         double range;
-        size_t start_time = 2 * start_bins_[key];
-        size_t end_time = 2 * end_bins_[key];
-        size_t pulse_width = end_time - start_time;
+        double start_time = 2 * start_bins_[key];
+        double end_time = 2 * end_bins_[key];
+        double pulse_width = end_time - start_time;
 
         template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
         range = end_time - start_time;
@@ -258,7 +258,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
  *          amplitudes corresponding to each pulse and y is the data.
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
-CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  const CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, const double spe_charge, size_t const & start_time, size_t const & pulse_width) {
+CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  const CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, const double spe_charge, double const & start_time, double const & pulse_width) {
 
     boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
     cholmod_triplet *basis_trip;
@@ -664,7 +664,7 @@ void FillFWHM(double& start, double& stop,
 } // namespace
 
 void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
-        const CCMPMTCalibration& calibration, size_t const & start_time, size_t const & pulse_width, int const & template_bins) {
+        const CCMPMTCalibration& calibration, double const & start_time, double const & pulse_width, int const & template_bins) {
     CCMSPETemplate channel_template = calibration.GetSPETemplate();
     wfTemplate.digitizer_template.resize(template_bins);
     for (int i = 0; i < template_bins; i++) {
