@@ -61,8 +61,8 @@ class CCMWavedeform : public I3ConditionalModule {
                 const CCMWaveformTemplate& wfTemplate,
                 const CCMPMTCalibration& calibration,
                 const double spe_charge, 
-                size_t const & start_bin, 
-                size_t const & end_bin);
+                size_t const & start_time, 
+                size_t const & pulse_width);
 
         std::string waveforms_name_;
         std::string waveform_range_name_;
@@ -73,7 +73,6 @@ class CCMWavedeform : public I3ConditionalModule {
         double noise_threshold_;
         double basis_threshold_;
 
-        std::map<CCMPMTKey, int> template_bins_;
         std::map<CCMPMTKey, int> start_bins_;
         std::map<CCMPMTKey, int> end_bins_;
         double template_bin_spacing_;
@@ -84,7 +83,7 @@ class CCMWavedeform : public I3ConditionalModule {
         CCMWaveformTemplate template_;
 
         void FillTemplate(CCMWaveformTemplate& wfTemplate,
-                const CCMPMTCalibration& calibration, size_t const & start_bin, size_t const & pulse_width, int const & template_bins);
+                const CCMPMTCalibration& calibration, size_t const & start_time, size_t const & pulse_width, int const & template_bins);
 
         cholmod_common c;
 };
@@ -201,30 +200,26 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         */
         // CCM has a bin width of 2ns
         double range;
-        size_t start_bin = start_bins_[key];
-        size_t end_bin = end_bins_[key];
-        size_t pulse_width = end_bin - start_bin;
+        size_t start_time = 2 * start_bins_[key];
+        size_t end_time = 2 * end_bins_[key];
+        size_t pulse_width = end_time - start_time;
 
         template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
-        range = end_bin - start_bin;
-
-        //template_bins_ = (int)ceil(range / template_bin_spacing_);
-
-        template_.filled = false;
-        template_.digitizer_template.resize(template_bins_[key]);
-        int template_bins = template_bins_[key];
-
-        // now back to pulse finding
+        range = end_time - start_time;
 
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(key);
-        std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat = status.pmtStatus.find(key);
 
         // Get/create the appropriate template
         if (!template_.filled) {
-            FillTemplate(template_, calib->second, start_bin, pulse_width, template_bins);
+            int template_bins = (int)ceil(range / template_bin_spacing_);
+            template_.digitizer_template.resize(template_bins);
+            FillTemplate(template_, calib->second, start_time, pulse_width, template_bins);
         }
 
-        (*output)[key] = *GetPulses(droopy_waveform, template_, calib->second, SPEMean(stat->second, calib->second), start_bin, pulse_width);
+        // now back to pulse finding
+        std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat = status.pmtStatus.find(key);
+
+        (*output)[key] = *GetPulses(droopy_waveform, template_, calib->second, SPEMean(stat->second, calib->second), start_time, pulse_width);
 
     }
 
@@ -263,7 +258,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
  *          amplitudes corresponding to each pulse and y is the data.
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
-CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  const CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, const double spe_charge, size_t const & start_bin, size_t const & pulse_width) {
+CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  const CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, const double spe_charge, size_t const & start_time, size_t const & pulse_width) {
 
     boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
     cholmod_triplet *basis_trip;
@@ -447,7 +442,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     k = 0;
     for (std::vector<std::pair<double, double> >::const_iterator it = start_times.begin();
             it != start_times.end(); ++it) {
-        start = it->first + start_bin;
+        start = it->first + start_time;
         end = it->first + pulse_width;
 
         // Evaluate bins up until we pass the end of the current time range
@@ -500,7 +495,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
             first_spe++;
         for (int j = first_spe; j < nspes; j++) {
             if (((redges[i] - start_times[j].first) -
-                        start_bin) < -template_bin_spacing_)
+                        start_time) < -template_bin_spacing_)
                 break;
             nzmax++;
         }
@@ -546,7 +541,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
         // The last pulse for this bin is 2 ns in the future
         for (int j = first_spe; j < nspes; j++) {
             int templ_bin = int(((redges[i] - start_times[j].first) -
-                        start_bin)*templ_bin_spacing_inv);
+                        start_time)*templ_bin_spacing_inv);
             if (templ_bin < 0)
                 break;
 
@@ -669,19 +664,19 @@ void FillFWHM(double& start, double& stop,
 } // namespace
 
 void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
-        const CCMPMTCalibration& calibration, size_t const & start_bin, size_t const & pulse_width, int const & template_bins) {
+        const CCMPMTCalibration& calibration, size_t const & start_time, size_t const & pulse_width, int const & template_bins) {
     CCMSPETemplate channel_template = calibration.GetSPETemplate();
     wfTemplate.digitizer_template.resize(template_bins);
     for (int i = 0; i < template_bins; i++) {
         wfTemplate.digitizer_template[i] =
-            channel_template.Evaluate(start_bin +
+            channel_template.Evaluate(start_time +
                     i*template_bin_spacing_);
     }
 
     FillFWHM(wfTemplate.digitizerStart,
             wfTemplate.digitizerStop,
             wfTemplate.digitizer_template,
-            template_bin_spacing_, start_bin);
+            template_bin_spacing_, start_time);
 
     wfTemplate.filled = true;
 }
