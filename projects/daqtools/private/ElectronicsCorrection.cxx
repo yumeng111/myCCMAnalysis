@@ -172,7 +172,6 @@ void ElectronicsCorrection::BoxFilter(std::vector<double> const & samples, std::
 
 void ElectronicsCorrection::ECorrection(std::vector<short unsigned int> const & samples, double const & mode, double const & tau,  CCMWaveformDouble & electronics_corrected_wf_per_channel){
 
-    // first we are correcting for the droop!
     std::vector<double> & electronics_correction_samples = electronics_corrected_wf_per_channel.GetWaveform();
     electronics_correction_samples.resize(samples.size());
 
