@@ -24,7 +24,8 @@
 #include <icetray/CCMPMTKey.h>
 
 
-static const unsigned ccmpmtcalibration_version_ = 0;
+
+static const unsigned ccmsinglepulseparameters_version_ = 0;
 
 struct CCMSinglePulseParameters {
     double peak_height;
@@ -38,7 +39,11 @@ struct CCMSinglePulseParameters {
     void serialize(Archive& ar, unsigned version);
 };
 
+I3_CLASS_VERSION(CCMSinglePulseParameters, ccmsinglepulseparameters_version_);
+
 std::ostream& operator<<(std::ostream& oss, const CCMSinglePulseParameters& c);
+
+static const unsigned ccmspetemplate_version_ = 0;
 
 class CCMSPETemplate {
 private:
@@ -55,7 +60,11 @@ public:
     void serialize(Archive& ar, unsigned version);
 };
 
+I3_CLASS_VERSION(CCMSPETemplate, ccmspetemplate_version_);
+
 std::ostream& operator<<(std::ostream& oss, const CCMSPETemplate& c);
+
+static const unsigned ccmpmtcalibration_version_ = 0;
 
 class CCMPMTCalibration {
 public:
@@ -109,6 +118,8 @@ public:
     template <class Archive>
     void serialize(Archive& ar, unsigned version);
 };
+
+I3_CLASS_VERSION(CCMPMTCalibration, ccmpmtcalibration_version_);
 
 std::ostream& operator<<(std::ostream& oss, const CCMPMTCalibration& c);
 

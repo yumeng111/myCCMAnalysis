@@ -233,6 +233,9 @@ namespace GSL{
 
 template <class Archive>
 void CCMSPETemplate::serialize(Archive& ar, unsigned version) {
+    if (version > ccmspetemplate_version_) {
+        log_fatal("Attempting to read version %u from file but running version %u of CCMSPETemplate class.", version, ccmspetemplate_version_);
+    }
     ar & make_nvp("pulseParameters", pulse_parameters_);
 }
 
@@ -247,6 +250,9 @@ I3_SERIALIZABLE(CCMSPETemplate);
     
 template <class Archive>
 void CCMSinglePulseParameters::serialize(Archive& ar, unsigned version) {
+    if (version > ccmsinglepulseparameters_version_) {
+        log_fatal("Attempting to read version %u from file but running version %u of ccmsinglepulseparameters class.", version, ccmsinglepulseparameters_version_);
+    }
     ar & make_nvp("peakHeight", peak_height);
     ar & make_nvp("peakTime", relative_peak_time);
     ar & make_nvp("riseTime", rise_time);
@@ -279,6 +285,9 @@ I3_SERIALIZABLE(CCMSinglePulseParameters);
 
 template <class Archive>
 void CCMPMTCalibration::serialize(Archive& ar, unsigned version) {
+    if (version > ccmpmtcalibration_version_) {
+        log_fatal("Attempting to read version %u from file but running version %u of ccmpmtcalibration class.", version, ccmpmtcalibration_version_);
+    }
     ar & make_nvp("droopTimeConstant", droopTimeConstant_);
     ar & make_nvp("pmtGain",pmtGain_);
     ar & make_nvp("pmtDeltaT", pmtDeltaT_);
