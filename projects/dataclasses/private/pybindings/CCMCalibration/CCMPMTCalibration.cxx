@@ -46,53 +46,56 @@ std::string to_str(const theType& theStr){
     return oss.str();
 }
 
-std::string to_str_CCMPMTCalibration(const CCMPMTCalibration& self){
-  return to_str<CCMPMTCalibration>(self); };
+std::string to_str_CCMSPETemplate(const CCMSPETemplate& self){
+    return to_str<CCMSPETemplate>(self); };
 std::string to_str_CCMPMTCalibrationMap(const CCMPMTCalibrationMap& self){
-  return to_str<CCMPMTCalibrationMap>(self); };
+    return to_str<CCMPMTCalibrationMap>(self); };
 
 namespace {
-std::string to_str_LinearFit(const LinearFit& self){
-  return to_str<LinearFit>(self); };
-std::string to_str_QuadraticFit(const QuadraticFit& self){
-  return to_str<QuadraticFit>(self); };
-std::string to_str_TauParam(const TauParam& self){
-  return to_str<TauParam>(self); };
-std::string to_str_SPEChargeDistribution(const SPEChargeDistribution& self){
-  return to_str<SPEChargeDistribution>(self); };
+    std::string to_str_SPEChargeDistribution(const SPEChargeDistribution& self){
+        return to_str<SPEChargeDistribution>(self); };
 };
 
-void register_CCMPMTCalibration()
+void register_CCMPMTCalibration() {
 {
+    class_<CCMSinglePulseParameters, boost::shared_ptr<CCMSinglePulseParameters>>("CCMSinglePulseParameters")
+        .def_readwrite("peak_height", &CCMSinglePulseParameters::peak_height)
+        .def_readwrite("relative_peak_time", &CCMSinglePulseParameters::relative_peak_time)
+        .def_readwrite("rise_time", &CCMSinglePulseParameters::rise_time)
+        .def_readwrite("duration", &CCMSinglePulseParameters::duration)
+        .def(dataclass_suite<CCMSinglePulseParameters>());
 
-  {
+    class_<CCMSinglePulseParametersSeries, 
+        CCMSinglePulseParametersSeriesPtr>("CCMSinglePulseParametersSeries")
+            .def(dataclass_suite<CCMSinglePulseParametersSeries>())
+            ;
+
+    class_<CCMSPETemplate, boost::shared_ptr<CCMSPETemplate>>("CCMSPETemplate")
+#define CCMSPETemplatePROPS (PulseParameters)
+        BOOST_PP_SEQ_FOR_EACH(WRAP_PROP_INTERNAL_REFERENCE, CCMSPETemplate, CCMSPETemplatePROPS)
+#undef CCMSPETemplatePROPS
+        .def("EvaluateSinglePulse", &CCMSPETemplate::EvaluateSinglePulse)
+        .staticmethod("EvaluateSinglePulse")
+        .def("Evaluate", &CCMSPETemplate::Evaluate)
+        .def(dataclass_suite<CCMSPETemplate>());
 
     scope outer = 
-      class_<CCMPMTCalibration, boost::shared_ptr<CCMPMTCalibration> >("CCMPMTCalibration")
-      #define I3DOMCALPROPS (Temperature) \
-                            (RelativePMTEff)(MeanPMTCharge)(PMTGain)(PMTBaselineFit)
-      BOOST_PP_SEQ_FOR_EACH(WRAP_PROP, CCMPMTCalibration, I3DOMCALPROPS)
-      #undef I3DOMCALPROPS
-      .add_property("is_mean_pmt_charge_valid", &CCMPMTCalibration::IsMeanPMTChargeValid)
-      .add_property("combined_spe_charge_distribution", 
-                    make_function(&CCMPMTCalibration::GetCombinedSPEChargeDistribution, 
-                                  return_internal_reference<>()),
-                    &CCMPMTCalibration::SetCombinedSPEChargeDistribution
-       )
-      .def("pmt_pulse_template", &CCMPMTCalibration::PMTPulseTemplate)
-      .def("__str__", to_str_CCMPMTCalibration)
-      .def("__str__", to_str_LinearFit)
-      .def("__str__", to_str_QuadraticFit)
-      .def("__str__", to_str_TauParam)
-      .def("__str__", to_str_SPEChargeDistribution)
-      .def("__str__", to_str_CCMPMTCalibrationMap)
-      .def(dataclass_suite<CCMPMTCalibration>())
-      ;
+        class_<CCMPMTCalibration, boost::shared_ptr<CCMPMTCalibration> >("CCMPMTCalibration")
+#define I3DOMCALPROPS (PulseStartTime)(PulseEndTime)(DroopTimeConstant)(PMTGain)(PMTDeltaT)(PMTRelEff)(MeanPMTCharge)(PMTMeanCharge)
+        BOOST_PP_SEQ_FOR_EACH(WRAP_PROP, CCMPMTCalibration, I3DOMCALPROPS)
+#undef I3DOMCALPROPS
+#define I3DOMCALPROPS (SPEChargeDistribution)(SPETemplate)
+        BOOST_PP_SEQ_FOR_EACH(WRAP_PROP_INTERNAL_REFERENCE, CCMPMTCalibration, I3DOMCALPROPS)
+#undef I3DOMCALPROPS
+        .def("__str__", to_str_CCMSPETemplate)
+        .def("__str__", to_str_SPEChargeDistribution)
+        .def("__str__", to_str_CCMPMTCalibrationMap)
+        .def(dataclass_suite<CCMPMTCalibration>())
+        ;
 
-  }
-
-  class_<CCMPMTCalibrationMap, 
-         CCMPMTCalibrationMapPtr>("CCMPMTCalibrationMap")
-    .def(dataclass_suite<CCMPMTCalibrationMap>())
-    ;
+    class_<CCMPMTCalibrationMap, 
+        CCMPMTCalibrationMapPtr>("CCMPMTCalibrationMap")
+            .def(dataclass_suite<CCMPMTCalibrationMap>())
+            ;
+}
 }

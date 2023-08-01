@@ -137,7 +137,7 @@ double CCMTemplateFinder::PeakLossFunction(const std::vector<double> &xin,
   
   // Get the SPE template for these parameters
   SPETemplate pulse(x[0],x[1],x[2],x[3]);
-  CCMPMTCalibration::DroopedSPETemplate fit_func(pulse);
+  //CCMPMTCalibration::DroopedSPETemplate fit_func(pulse);
   
   // initialize summation parameters
   double squared_residuals = 0;
@@ -149,7 +149,8 @@ double CCMTemplateFinder::PeakLossFunction(const std::vector<double> &xin,
   
   // loop over each time bin, add to square residuals
   for(std::vector<short unsigned int>::const_iterator it = d->v_start; it != d->v_end; ++it, ++t) {
-    pred = fit_func(t);
+    //pred = fit_func(t);
+    pred = 0; // PLACE HOLDER
     data = -(*(d->baseline) + double(*it));
     squared_residuals += std::pow(data - pred, 2);
     // gradient calculated using SPE template function in I3DOMCalibration
