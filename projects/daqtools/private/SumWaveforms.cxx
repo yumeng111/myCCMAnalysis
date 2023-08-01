@@ -18,6 +18,8 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <algorithm>
+#include <iterator>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -42,45 +44,51 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 
-class CosmicTriggerSumWaveforms: public I3Module {
+class SumWaveforms: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     std::string nim_pulses_name_;
     CCMPMTKey bcm_key;
     size_t bcm_channel;
-    CCMTriggerKey cosmic_trigger_key;
+    std::set<CCMTriggerKey> allowed_trigger_keys;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
+    I3Map<CCMPMTKey, CCMOMGeo> pmt_geo_;
     void Geometry(I3FramePtr frame);
-    bool IsCosmicFrame(I3FramePtr frame);
-    std::deque<double> SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position);
+    bool IsCorrectTrigger(I3FramePtr frame);
+    std::tuple<std::deque<double>, std::deque<unsigned int>> ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position);
 public:
-    CosmicTriggerSumWaveforms(const I3Context&);
+    SumWaveforms(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
     void Finish();
 };
 
-I3_MODULE(CosmicTriggerSumWaveforms);
+I3_MODULE(SumWaveforms);
 
-CosmicTriggerSumWaveforms::CosmicTriggerSumWaveforms(const I3Context& context) : I3Module(context),
+SumWaveforms::SumWaveforms(const I3Context& context) : I3Module(context),
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
+    AddParameter("AllowedTriggerKeys", "Trigger keys to sum", std::vector<CCMTriggerKey>());
 }
 
 
-void CosmicTriggerSumWaveforms::Configure() {
+void SumWaveforms::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("NIMPulsesName", nim_pulses_name_);
+    std::vector<CCMTriggerKey> keys;
+    GetParameter("AllowedTriggerKeys", keys);
+    std::copy(keys.begin(), keys.end(), std::inserter(allowed_trigger_keys, allowed_trigger_keys.end()));
 }
 
 
-void CosmicTriggerSumWaveforms::Geometry(I3FramePtr frame) {
+void SumWaveforms::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
+    pmt_geo_ = geo.pmt_geo;
     geo_seen = true;
     bool found_bcm_key = false;
     for(auto const & key_om : geo.pmt_geo) {
@@ -93,11 +101,12 @@ void CosmicTriggerSumWaveforms::Geometry(I3FramePtr frame) {
         log_fatal("CCMGeometry does not contain a channel corresponding to a BeamCurrentMonitor");
     }
     bcm_channel = geo.pmt_channel_map.at(bcm_key);
-    cosmic_trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, 1);
     PushFrame(frame);
 }
 
-bool CosmicTriggerSumWaveforms::IsCosmicFrame(I3FramePtr frame) {
+bool SumWaveforms::IsCorrectTrigger(I3FramePtr frame) {
+    if(allowed_trigger_keys.size() == 0)
+        return true;
     if(not frame->Has(nim_pulses_name_)) {
         log_warn(("No key named " + nim_pulses_name_ + " present in frame").c_str());
         return false;
@@ -107,30 +116,33 @@ bool CosmicTriggerSumWaveforms::IsCosmicFrame(I3FramePtr frame) {
         log_warn(("No NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " present in frame").c_str());
         return false;
     }
-    NIMLogicPulseSeriesMap::const_iterator it = nim_pulses->find(cosmic_trigger_key);
-    if(it == nim_pulses->end()) {
-        log_warn(("NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " does not contain the CosmicTrigger key").c_str());
-        return false;
+    bool found_allowed_trigger = false;
+    for(auto trigger_key : allowed_trigger_keys) {
+        NIMLogicPulseSeriesMap::const_iterator it = nim_pulses->find(trigger_key);
+        if(it != nim_pulses->end()) {
+            if(it->second.size() >= 0) {
+                found_allowed_trigger = true;
+                break;
+            }
+        }
     }
-    if(it->second.size() < 1) {
-        // No NIM pulse on the cosmic trigger means we skip this frame
-        return false;
-    }
-
     // We found a NIM pulse on the cosmic trigger,
     // therefore this is a cosmic frame
-    return true;
+    return found_allowed_trigger;
 }
 
 
-std::deque<double> CosmicTriggerSumWaveforms::SumWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position){
-    
+std::tuple<std::deque<double>, std::deque<unsigned int>> SumWaveforms::ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position){
+
     //reset summed_waveforms_ !!!
     WaveformAccumulator summed_waveforms_;
 
     for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baseline_mode){
         CCMPMTKey key = it.first;
-        BaselineEstimate value = it.second; 
+        CCMOMGeo::OMType const & omtype = pmt_geo_[key].omtype;
+        if(omtype != CCMOMGeo::OMType::CCM8inUncoated and omtype != CCMOMGeo::OMType::CCM8inCoated)
+            continue;
+        BaselineEstimate value = it.second;
         double mode = value.baseline; //baseline mode is negative!!!
 	uint32_t channel = pmt_channel_map_[key];
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
@@ -146,18 +158,18 @@ std::deque<double> CosmicTriggerSumWaveforms::SumWaveforms(I3FramePtr frame, boo
     }
 
     std::deque<double> summed_wf = summed_waveforms_.GetSummedWaveform();
+    std::deque<unsigned int> summed_wf_counts = summed_waveforms_.GetCounts();
     fixed_position = summed_waveforms_.GetFixedPosition();
-    return summed_wf;
-
+    return {summed_wf, summed_wf_counts};
 }
 
 
-void CosmicTriggerSumWaveforms::DAQ(I3FramePtr frame) {
+void SumWaveforms::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
     }
 
-    if(not IsCosmicFrame(frame)) {
+    if(not IsCorrectTrigger(frame)) {
         PushFrame(frame);
         return;
     }
@@ -165,8 +177,6 @@ void CosmicTriggerSumWaveforms::DAQ(I3FramePtr frame) {
     if(not frame->Has("CCMWaveforms")) {
         throw std::runtime_error("No waveforms!");
     }
-
-    if(IsCosmicFrame(frame)) {
 
     // ptr to vector of all waveforms and baselines (one for each channel)
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
@@ -177,22 +187,18 @@ void CosmicTriggerSumWaveforms::DAQ(I3FramePtr frame) {
 
     // let's add up all the charge in the detector
     int fixed_position;
-    std::deque<double> summed_wf = SumWaveforms(frame, waveforms, baseline_mode, fixed_position);
-    boost::shared_ptr<I3Vector<double>> summed_wf_per_frame = boost::make_shared<I3Vector<double>>(summed_wf.begin(), summed_wf.end());
-    
-    for(size_t wf_it = 0; wf_it < summed_wf.size(); ++wf_it){
-       summed_wf_per_frame->operator[](wf_it) = summed_wf[wf_it];
-    }
-    
+    std::tuple<std::deque<double>, std::deque<unsigned int>> summed_wf = ComputeSummedWaveforms(frame, waveforms, baseline_mode, fixed_position);
+    boost::shared_ptr<I3Vector<double>> summed_wf_per_frame = boost::make_shared<I3Vector<double>>(std::get<0>(summed_wf).begin(), std::get<0>(summed_wf).end());
+    boost::shared_ptr<I3Vector<unsigned int>> summed_wf_counts_per_frame = boost::make_shared<I3Vector<unsigned int>>(std::get<1>(summed_wf).begin(), std::get<1>(summed_wf).end());
+
     summed_wf_reference_time->operator[](0) = fixed_position;
-    
-    
+
     frame->Put("SummedWaveform", summed_wf_per_frame);
+    frame->Put("SummedWaveformCounts", summed_wf_counts_per_frame);
     frame->Put("SummedWaveformFixedPosition", summed_wf_reference_time);
     PushFrame(frame);
-    }
 }
 
-void CosmicTriggerSumWaveforms::Finish() {
+void SumWaveforms::Finish() {
 }
 
