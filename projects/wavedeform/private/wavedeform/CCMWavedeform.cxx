@@ -443,7 +443,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     for (std::vector<std::pair<double, double> >::const_iterator it = start_times.begin();
             it != start_times.end(); ++it) {
         start = it->first + start_time;
-        end = it->first + pulse_width;
+        end = it->first + start_time + pulse_width;
 
         // Evaluate bins up until we pass the end of the current time range
         for (; k < wf.GetWaveform().size() && redges[k] < end; ++k) {
