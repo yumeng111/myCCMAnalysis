@@ -36,4 +36,5 @@
 void register_I3VectorCCMWaveform()
 {
 	register_i3vector_of<CCMWaveformUInt16>("CCMWaveformUInt16");
+	register_i3vector_of<CCMWaveformDouble>("CCMWaveformDouble");
 }
