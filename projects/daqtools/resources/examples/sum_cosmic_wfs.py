@@ -24,7 +24,6 @@ def get_filename(output_dir, prefix=None):
         fname = args.output_dir + prefix + '_' + fname
     return fname
 
-
 class FilterSumPulses(I3ConditionalModule):
     def __init__(self, context):
         I3ConditionalModule.__init__(self, context)
@@ -88,6 +87,7 @@ if __name__ == "__main__":
             help="Files to Process")
     parser.add_argument("--output-dir",
             type=str,
+            default="",
             help="Output directory")
     parser.add_argument("--daq-directories",
             type=str,
@@ -108,6 +108,10 @@ if __name__ == "__main__":
             type=int,
             default=0,
             help="Number of events to process")
+    parser.add_argument("--merged",
+            default=False,
+            action="store_true",
+            )
     args = parser.parse_args()
 
     if len(args.daq_directories) == 0:
@@ -116,10 +120,16 @@ if __name__ == "__main__":
         args.daq_directories = [y for x in args.daq_directories for y in x]
 
     if args.input_directory is None:
-        args.input_directory = "/lustre/scratch4/turquoise/aschneider/data/2022/separate_daqs"
+        if args.merged:
+#            args.input_directory = "/lustre/scratch4/turquoise/aschneider/data/2022/merged"
+            args.input_directory = "/lustre/scratch4/turquoise/marisolc/data/2022/merged_data"
+        else:
+#            args.input_directory = "/lustre/scratch4/turquoise/aschneider/data/2022/separate_daqs"
+            args.input_directory = "/lustre/scratch4/turquoise/marisolc/data/2022/separate_daqs"
 
     if args.run is None:
-        args.run = 12569
+        #args.run = 12569
+        args.run = 12486
 
     if args.output_file is None and args.run is not None:
         run_prefix = "run%06d" % args.run
@@ -129,23 +139,33 @@ if __name__ == "__main__":
 
     if len(args.files) == 0:
         run_prefix = "run%06d" % args.run
-        args.files = [[args.input_directory + "/" + s + "/" + run_prefix + "/*.i3.zst"] for s in args.daq_directories]
+        if args.merged:
+            args.files = [[args.input_directory + "/" + run_prefix + "/*.i3.zst"]]
+        else:
+            args.files = [[args.input_directory + "/" + s + "/" + run_prefix + "/*.i3.zst"] for s in args.daq_directories]
 
     import glob
     print("Glob:", args.files)
-    fnames = [[s for g in l for s in sorted(glob.glob(g))] for l in args.files]
+    if args.merged:
+        fnames = [s for l in args.files for g in l for s in sorted(glob.glob(g))]
+    else:
+        fnames = [[s for g in l for s in sorted(glob.glob(g))] for l in args.files]
     print("Found these files:", fnames)
 
     tray = I3Tray()
     tray.context["I3RandomService"] = phys_services.I3GSLRandomService(42)
-    tray.Add("MergedSource", "reader", FileLists=fnames, MaxTimeDiff=32)
-    tray.Add("Delete", Keys=["CCMGeometry"]) # Remove keys that we are computing in this example
-    # Generate the CCMGeometry object based on the CCMDAQConfig and the (PMT name --> position) mapping
-    # SquashDuplicateConfigs=True prevents us from writing duplicate Geometry frames
-    tray.Add("CCMGeometryGenerator", "geometry_generator", SquashDuplicateConfigs=True)
-    tray.Add("CCMTriggerMerger", "trigger_merger")
-    tray.Add("NIMLogicPulseFinder", "nim_pulses")
-    tray.Add("BeamCurrentMonitorSummary", "bcm_summary")
+    if args.merged:
+        tray.Add("I3Reader", "reader", FilenameList=fnames)
+        tray.Add(daqtools.GeometryReplacer.GeometryReplacer, GeometryFile="/usr/projects/w20_ccm_lanl/geometry/2022/replacements/2022_geometry_replacement_run012298-run012756_2023-07-22.i3.zst")
+    else:
+        tray.Add("MergedSource", "reader", FileLists=fnames, MaxTimeDiff=32)
+        tray.Add("Delete", Keys=["CCMGeometry"]) # Remove keys that we are computing in this example
+        # Generate the CCMGeometry object based on the CCMDAQConfig and the (PMT name --> position) mapping
+        # SquashDuplicateConfigs=True prevents us from writing duplicate Geometry frames
+        tray.Add(daqtools.GeometryReplacer.GeometryReplacer, GeometryFile="/usr/projects/w20_ccm_lanl/geometry/2022/replacements/2022_geometry_replacement_run012298-run012756_2023-07-22.i3.zst")
+        tray.Add("CCMTriggerMerger", "trigger_merger")
+        tray.Add("NIMLogicPulseFinder", "nim_pulses")
+        tray.Add("BeamCurrentMonitorSummary", "bcm_summary")
     N_samples_before_baseline = 400
     N_samples_for_baseline = 50
     max_pulse_start_sample = N_samples_before_baseline + N_samples_before_baseline + 50
@@ -153,7 +173,7 @@ if __name__ == "__main__":
     tray.Add("BaselineEstimator", "baseline_estimator", NumSamples=N_samples_for_baseline, NumFramesForEstimate=25)
     tray.Add("Dump")
     tray.Add("Delete", Keys=["PulsePositions", "WaveformSmoothers"])
-    tray.Add("CosmicTriggerSumWaveforms")
+    tray.Add("SumWaveforms", AllowedTriggerKeys=[CCMTriggerKey(CCMTriggerKey.StrobeTrigger, 1)])
     tray.Add("I3Writer", "writer", FileName=args.output_file, Streams=[icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus, icetray.I3Frame.DAQ, icetray.I3Frame.Physics])
     #tray.Add("Dump") # Prints out the names of the objects in every frame
     if args.num_events < 1:
