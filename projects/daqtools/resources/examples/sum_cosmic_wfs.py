@@ -6,7 +6,7 @@
 import numpy as np
 from icecube.icetray import load
 from I3Tray import I3Tray
-from icecube import CCMBinary, icetray, dataio, dataclasses, phys_services
+from icecube import CCMBinary, icetray, dataio, dataclasses, phys_services, daqtools
 from icecube.icetray import I3Frame, I3Module, I3ConditionalModule
 from icecube.dataclasses import CCMOMGeo
 from icecube.icetray import CCMTriggerKey, CCMPMTKey
@@ -69,6 +69,39 @@ class FilterSumPulses(I3ConditionalModule):
     def Finish(self):
         #for pmt, file in self.output_files.items():
         #    file.close()
+        pass
+
+class FindDesiredFrames(I3ConditionalModule):
+    def __init__(self, context):
+        I3ConditionalModule.__init__(self, context)
+        self.AddParameter("DesiredTriggerType", "Trigger type you want to select for and continue processing data", "")
+        self.AddParameter("FrameTypesToFilter", "The frame types to filter on", [I3Frame.DAQ, I3Frame.Physics])
+        self.n_frames = 0
+
+    def Configure(self):
+        self.desired_trigger_type = self.GetParameter("DesiredTriggerType")
+        self.frame_types = self.GetParameter("FrameTypesToFilter")
+
+    def IsCorrectTriggerType(self, frame):
+        ### let's get the nim pulse
+        nim_pulses = frame["NIMPulses"]
+        trigger_key = CCMTriggerKey(self.desired_trigger_type, 1)
+        if trigger_key in nim_pulses and len(nim_pulses[trigger_key]) > 0:
+            print('found correct trigger!')
+            return True
+        return False
+
+    def Process(self):
+        frame = self.PopFrame()
+        if frame.Stop in self.frame_types:
+            if self.IsCorrectTriggerType(frame):
+                self.PushFrame(frame)
+            else:
+                return
+        else:
+            self.PushFrame(frame)
+
+    def Finish(self):
         pass
 
 if __name__ == "__main__":
@@ -165,15 +198,17 @@ if __name__ == "__main__":
         tray.Add(daqtools.GeometryReplacer.GeometryReplacer, GeometryFile="/usr/projects/w20_ccm_lanl/geometry/2022/replacements/2022_geometry_replacement_run012298-run012756_2023-07-22.i3.zst")
         tray.Add("CCMTriggerMerger", "trigger_merger")
         tray.Add("NIMLogicPulseFinder", "nim_pulses")
+        tray.Add(FindDesiredFrames, DesiredTriggerType = CCMTriggerKey.TriggerType.StrobeTrigger)
         tray.Add("BeamCurrentMonitorSummary", "bcm_summary")
-    N_samples_before_baseline = 400
-    N_samples_for_baseline = 50
-    max_pulse_start_sample = N_samples_before_baseline + N_samples_before_baseline + 50
-    tray.Add("FirstPulseFinder", "pulse_finder", NumSamplesBeforePulse=N_samples_before_baseline, MaxPulseStartSample=max_pulse_start_sample)
-    tray.Add("BaselineEstimator", "baseline_estimator", NumSamples=N_samples_for_baseline, NumFramesForEstimate=25)
-    tray.Add("Dump")
+    #N_samples_before_baseline = 400
+    #N_samples_for_baseline = 50
+    #max_pulse_start_sample = N_samples_before_baseline + N_samples_before_baseline + 50
+    #tray.Add("FirstPulseFinder", "pulse_finder", NumSamplesBeforePulse=N_samples_before_baseline, MaxPulseStartSample=max_pulse_start_sample)
+    #tray.Add("BaselineEstimator", "baseline_estimator", NumSamples=N_samples_for_baseline, NumFramesForEstimate=25)
+    tray.Add("darcy_baselines")
     tray.Add("Delete", Keys=["PulsePositions", "WaveformSmoothers"])
     tray.Add("SumWaveforms", AllowedTriggerKeys=[CCMTriggerKey(CCMTriggerKey.StrobeTrigger, 1)])
+    tray.Add("Dump")
     tray.Add("I3Writer", "writer", FileName=args.output_file, Streams=[icetray.I3Frame.Calibration, icetray.I3Frame.DetectorStatus, icetray.I3Frame.DAQ, icetray.I3Frame.Physics])
     #tray.Add("Dump") # Prints out the names of the objects in every frame
     if args.num_events < 1:
