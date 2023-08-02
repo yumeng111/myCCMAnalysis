@@ -7,6 +7,7 @@ i3_project(wavereform
 
 i3_add_library(wavereform
 	private/wavereform/I3Wavereform.cxx
+    private/wavereform/CCMWavereform.cxx
 	private/wavereform/I3WavereformFunctions.cxx
 	private/wavereform/I3LaunchSelector.cxx
 	USE_PROJECTS serialization icetray dataclasses recclasses
