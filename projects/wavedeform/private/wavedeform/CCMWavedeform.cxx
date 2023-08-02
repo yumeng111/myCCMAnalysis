@@ -96,7 +96,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 4.);
     AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 5.);
-    AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 10.);
+    AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 7.0);
     //AddParameter("BasisThreshold",
     //        "Require a bin with amplitude at least this number of counts "
     //        "within the FWHM of the template waveform in order to include "
