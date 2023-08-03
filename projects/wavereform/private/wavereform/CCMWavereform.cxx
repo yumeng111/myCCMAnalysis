@@ -52,8 +52,6 @@ CCMWavereform::CCMWavereform(const I3Context &ctx) : I3ConditionalModule(ctx)
 
     geometry_name_ = "CCMGeometry";
     AddParameter("CCMGeometryName", "Key for CCMGeometry", geometry_name_);
-
-	AddOutBox("OutBox");
 }
 
 
@@ -80,6 +78,7 @@ void CCMWavereform::Geometry(I3FramePtr frame) {
 }
 
 void CCMWavereform::GetChi(double & chi, std::vector<double> const & refolded_wf, std::vector<double> const & samples){
+    chi = 0;
     // loop over each bin and compare refolded_wf to wf
     for(size_t wf_it = 0; wf_it < samples.size(); ++wf_it){
         chi += std::pow(samples[wf_it] - refolded_wf[wf_it], 2);
@@ -99,14 +98,14 @@ void CCMWavereform::GetRefoldedWf(std::vector<double> & refolded_wf, std::vector
 
         // now let's figure out how many ADC counts this pulse is
         CCMSPETemplate channel_template = calib.GetSPETemplate();
-        double end_bin = std::min(refolded_wf.size() , (size_t)(pulse_time + 120)/2);
-        double end_time = end_bin * 2.0;
+        size_t start_bin = std::max((size_t)0, (size_t)(pulse_time - 20)/2);
+        size_t end_bin = std::min(refolded_wf.size(), (size_t)(pulse_time + 120)/2);
 
-        // let's loop over all the times in this pulse
-        for(size_t time_it = pulse_time; time_it < end_time; ++time_it){
-            double wf_value = pulse_charge * (channel_template.Evaluate(time_it));
-            size_t closest_wf_bin = size_t((int)round(time_it)/2);
-            refolded_wf[closest_wf_bin] += wf_value;
+        // let's loop over all the bins in this pulse
+        for(size_t bin_it = start_bin; bin_it < end_bin; ++bin_it){
+            size_t time = bin_it * 2; // fitting to the left edge of the data
+            double wf_value = pulse_charge * (channel_template.Evaluate(time));
+            refolded_wf[bin_it] += wf_value;
         }
 
     }
@@ -119,6 +118,7 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
     I3Map<CCMPMTKey, BaselineEstimate> const & baselines= frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 	CCMRecoPulseSeriesMapConstPtr pulse_map = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulse_name_);
     boost::shared_ptr<const CCMWaveformUInt16Series> waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(waveform_name_);
+    boost::shared_ptr<const CCMWaveformDoubleSeries> corrected_waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>("ElectronicsCorrection");
 
     // let's make places to store our chis, refolded wfs, and our bad pmts
     boost::shared_ptr<I3Map<CCMPMTKey, double>> chi_map = boost::make_shared<I3Map<CCMPMTKey, double>>();
@@ -147,6 +147,9 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
         CCMWaveformUInt16 const & waveform = waveform_map->at(channel);
         std::vector<short unsigned int> const & samples = waveform.GetWaveform();
 
+        CCMWaveformDouble const & electronics_corrected_wf = corrected_waveform_map->at(channel);
+        std::vector<double> corrected_wf = electronics_corrected_wf.GetWaveform();
+
         // let's invert and subtract the baseline off our wf
         std::vector<double> inv_wf_minus_baseline(samples.size());
         for(size_t i = 0; i < samples.size(); ++i){
@@ -164,7 +167,9 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
 		bool borked = false;
 
 
-        GetChi(chi, refolded_wf, inv_wf_minus_baseline);
+        GetChi(chi, refolded_wf, corrected_wf);
+        std::cout << "for " << key << " chi/dof = " << chi/8000 << std::endl;
+        //GetChi(chi, refolded_wf, inv_wf_minus_baseline);
         // let's see if this is a big chi^2
         if (chi > chi_threshold_){
             borked = true;

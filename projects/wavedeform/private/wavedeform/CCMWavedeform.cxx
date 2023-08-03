@@ -95,7 +95,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 4.);
-    AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 5.);
+    AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 2.);
     AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 7.0);
     //AddParameter("BasisThreshold",
     //        "Require a bin with amplitude at least this number of counts "
@@ -104,7 +104,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("BasisThreshold",
             "Require a bin with amplitude at least this number of counts "
             "within the FWHM of the template waveform in order to include "
-            "a given start time in the basis set", 5.);
+            "a given start time in the basis set", 15.);
     AddParameter("Waveforms", "Name of input waveforms",
             "CCMWaveforms");
     AddParameter("WaveformTimeRange", "Name of maximum time range of "
@@ -371,8 +371,8 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     // Generate the set of pulse start times that have reasonable
     // non-zero data within the FWHM of the corresponding pulse
     for (k = 0; k < wf.GetWaveform().size(); ++k) {
-        //if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
-        if (((double *)(data->x))[k] > noise_threshold_) {
+        if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
+        //if (((double *)(data->x))[k] > noise_threshold_) {
             // Move the present time forward if necessary
             double binTime = redges[k];
             // Don't jump if we're moving less than the basis spacing
@@ -672,8 +672,8 @@ void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCa
     wfTemplate.digitizer_template.resize(template_bins);
     for (int i = 0; i < template_bins; i++) {
         wfTemplate.digitizer_template[i] =
-            channel_template.Evaluate(start_time +
-                    i*template_bin_spacing_);
+            channel_template.Evaluate(start_time + i*template_bin_spacing_ - 2); //SPE templates derived fitting to the left edge of bins while 
+                                                                                 //this code is using the right side of bins so subtract off 2 nsec = 1 bin
     }
 
     FillFWHM(wfTemplate.digitizerStart,
