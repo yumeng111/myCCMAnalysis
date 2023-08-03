@@ -199,6 +199,24 @@ double CCMSPETemplate::Evaluate(double time) const {
     return total;
 }
 
+double CCMSPETemplate::GetTemplatePeak() const {
+    // let's evaluate our pulse template over let's say -10 to 60 bins to find the peak value
+    double peak = 0;
+    
+    for (size_t bin_it = -10; bin_it < 60; ++bin_it){
+        // let's loop over each bin 40 times
+        for (size_t i = 0; i < 40; ++i){
+            double current_time = (bin_it + (i/40))*2;
+            double current_template_val = Evaluate(current_time);
+            if (current_template_val > peak){
+                peak = current_template_val;
+            }
+        }
+    
+    }
+    return peak;
+}
+
 
 namespace GSL{
 

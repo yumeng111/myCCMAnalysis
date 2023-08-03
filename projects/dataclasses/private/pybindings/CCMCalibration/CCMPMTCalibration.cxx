@@ -77,6 +77,7 @@ void register_CCMPMTCalibration() {
         .def("EvaluateSinglePulse", &CCMSPETemplate::EvaluateSinglePulse)
         .staticmethod("EvaluateSinglePulse")
         .def("Evaluate", &CCMSPETemplate::Evaluate)
+        .def("GetTemplatePeak", &CCMSPETemplate::GetTemplatePeak)
         .def(dataclass_suite<CCMSPETemplate>());
 
     scope outer = 

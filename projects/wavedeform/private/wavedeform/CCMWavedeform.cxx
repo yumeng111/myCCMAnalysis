@@ -94,16 +94,9 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
-    AddParameter("SPEsPerBin",
-            "Number of basis functions to unfold per waveform bin", 4.);
-    //AddParameter("Tolerance",
-    //        "Stopping tolerance, in units of bin mV^2/PE", 9.);
-    AddParameter("Tolerance",
-            "Stopping tolerance, in units of bin ADC^2/PE", 5.);
-    //AddParameter("NoiseThreshold",
-    //        "Consider bins with amplitude below this number of counts as noise", 2.);
-    AddParameter("NoiseThreshold",
-            "Consider bins with amplitude below this number of counts as noise", 4.);
+    AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 4.);
+    AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 2.);
+    AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 7.0);
     //AddParameter("BasisThreshold",
     //        "Require a bin with amplitude at least this number of counts "
     //        "within the FWHM of the template waveform in order to include "
@@ -111,15 +104,15 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("BasisThreshold",
             "Require a bin with amplitude at least this number of counts "
             "within the FWHM of the template waveform in order to include "
-            "a given start time in the basis set", 5.);
+            "a given start time in the basis set", 15.);
     AddParameter("Waveforms", "Name of input waveforms",
-            "CalibratedWaveforms");
+            "CCMWaveforms");
     AddParameter("WaveformTimeRange", "Name of maximum time range of "
             "calibrated waveforms for this event", "CalibratedWaveformRange");
     AddParameter("Output", "Name of output pulse series",
             "WavedeformPulses");
     AddParameter("ApplySPECorrections", "Whether to apply DOM-by-DOM"
-            " corrections to the pulse charge scaling if available", true);
+            " corrections to the pulse charge scaling if available", false);
     AddParameter("Reduce", "Find the optimal NNLS solution, then eliminate"
             " basis members until tolerance is reached", true);
 
@@ -170,11 +163,10 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         return;
     }
 
-    const CCMCalibration& calibration = frame->Get<CCMCalibration>();
-    const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
+    const CCMCalibration& calibration = frame->Get<CCMCalibration>("CCMPMTCalibration");
+    //const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
-    boost::shared_ptr<const CCMWaveformDoubleSeries> droopy_waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>("DroopCorrectedWf");
-    //const std::vector<CCMWaveformUInt16> & waveforms = frame->Get<std::vector<CCMWaveformUInt16>>(waveforms_name_);
+    boost::shared_ptr<const CCMWaveformDoubleSeries> electronics_corrected_wfs = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>("ElectronicsCorrection");
     I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
     boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
 
@@ -188,7 +180,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         uint32_t channel = pmt_channel_map_[key];
 
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
-        CCMWaveformDouble const & droopy_waveform = droopy_waveforms->at(channel);
+        CCMWaveformDouble const & electronics_corrected_wf = electronics_corrected_wfs->at(channel);
 
         // let's set the fitting range for each pmt
         /* Determine the number of bins and the bin resolution when creating
@@ -200,8 +192,8 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         */
         // CCM has a bin width of 2ns
         double range;
-        double start_time = 2 * start_bins_[key];
-        double end_time = 2 * end_bins_[key];
+        double start_time = 2 * -10;
+        double end_time = 2 * 60;
         double pulse_width = end_time - start_time;
 
         template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
@@ -217,9 +209,11 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         }
 
         // now back to pulse finding
-        std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat = status.pmtStatus.find(key);
+        //std::map<CCMPMTKey, CCMPMTStatus>::const_iterator stat = status.pmtStatus.find(key);
+        double placeholder = 1.0;
 
-        (*output)[key] = *GetPulses(droopy_waveform, template_, calib->second, SPEMean(stat->second, calib->second), start_time, pulse_width);
+        (*output)[key] = *GetPulses(electronics_corrected_wf, template_, calib->second, placeholder, start_time, pulse_width);
+        //(*output)[key] = *GetPulses(droopy_waveform, template_, calib->second, SPEMean(stat->second, calib->second), start_time, pulse_width);
 
     }
 
@@ -227,17 +221,22 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     frame->Put(output_name_, output);
 
     // Add a time window for the earliest possible pulse in the event
+    
+    /*
     I3TimeWindowConstPtr waveform_range = frame->Get<I3TimeWindowConstPtr>(waveform_range_name_);
     if (!waveform_range)
         log_fatal("Waveform time range \"%s\" not found in frame",
                 waveform_range_name_.c_str());
+    
 
     // XXX: Assume FADC has the widest binning
     I3TimeWindowPtr pulse_range(new I3TimeWindow(
                 waveform_range->GetStart() - 2.0*I3Units::ns,
                 waveform_range->GetStop()
                 ));
+    
     frame->Put(output_name_ + "TimeRange", pulse_range);
+    */
 
     PushFrame(frame, "OutBox");
 }
@@ -260,6 +259,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
  */
 CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  const CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, const double spe_charge, double const & start_time, double const & pulse_width) {
 
+
     boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
@@ -269,7 +269,6 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
 
     // Determine the total number of WF bins
     nbins = wf.GetWaveform().size();
-
     // If we have no data, nothing to do
     if (nbins == 0 || !std::isfinite(spe_charge) || spe_charge == 0)
         return output;
@@ -295,12 +294,14 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     }
 
     double base_weight = 1;
+    // HARDCODING WF BIN WIDTH TO AVOID NANS
+    double wf_bin_width = 2; // 2 nsec
 
     // If the waveform is shorter than a pulse width,
     // increase the per-bin weights so the aggregate weight
     // is closer to what it should be
-    if (wf.GetWaveform().size() * wf.GetBinWidth() < pulse_width){
-        base_weight *= pulse_width / (wf.GetWaveform().size() * wf.GetBinWidth());
+    if (wf.GetWaveform().size() * wf_bin_width < pulse_width){
+        base_weight *= pulse_width / (wf.GetWaveform().size() * wf_bin_width);
     }
 
     double noise = noise_threshold_;
@@ -308,12 +309,12 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
 
     // Read waveform
     for (k = 0; k < wf.GetWaveform().size(); k++) {
-        redges[k] = wf.GetStartTime() + (1. + k) * wf.GetBinWidth();
-        //((double *)(data->x))[k] = wf.GetWaveform()[k] / I3Units::mV;
+        redges[k] = wf.GetStartTime() + (1. + k) * wf_bin_width;
         ((double *)(data->x))[k] = wf.GetWaveform()[k];
 
         weights[k] = base_weight;
 
+        
         // Remove waveform bins that were crazy for some reason
         if (!std::isfinite(((double *)(data->x))[k])) {
             ((double *)(data->x))[k] = 0;
@@ -327,18 +328,19 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
         } else if (fabs(((double *)(data->x))[k]) > basisThreshmV) {
             passBasisThresh[k] = true;
         }
+
     }
 
     // Remove saturated bins
-    for (k = 0; k < wf.GetWaveformInformation().size(); k++) {
-        const CCMWaveformDouble::StatusCompound &status = wf.GetWaveformInformation()[k];
+    //for (k = 0; k < wf.GetWaveformInformation().size(); k++) {
+        //const CCMWaveformDouble::StatusCompound &status = wf.GetWaveformInformation()[k];
 
-        if (status.GetStatus() & CCMStatus::SATURATED) {
-            for (uint64_t a = status.GetInterval().first; a < status.GetInterval().second; ++a){
-                weights[a] = 0;
-            }
-        }
-    }
+        //if (status.GetStatus() & CCMStatus::SATURATED) {
+        //    for (uint64_t a = status.GetInterval().first; a < status.GetInterval().second; ++a){
+        //        weights[a] = 0;
+        //    }
+    //    }
+    //}
 
 
     // Apply weights
@@ -354,10 +356,10 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     double min_spe_spacing = DBL_MAX;
 
     // Start, end two bins early
-    double present = wf.GetStartTime() - 2.*wf.GetBinWidth();
-    double max = present + wf.GetWaveform().size()*wf.GetBinWidth();
+    double present = wf.GetStartTime() - 2. * wf_bin_width;
+    double max = present + wf.GetWaveform().size() * wf_bin_width;
 
-    double spacing = wf.GetBinWidth() / spes_per_bin_;
+    double spacing = wf_bin_width / spes_per_bin_;
     if (spacing < min_spe_spacing) {
         min_spe_spacing = spacing;
     }
@@ -370,7 +372,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     // non-zero data within the FWHM of the corresponding pulse
     for (k = 0; k < wf.GetWaveform().size(); ++k) {
         if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
-
+        //if (((double *)(data->x))[k] > noise_threshold_) {
             // Move the present time forward if necessary
             double binTime = redges[k];
             // Don't jump if we're moving less than the basis spacing
@@ -385,6 +387,7 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
             }
         }
     }
+
 
     int nspes = start_times.size();
     if (nspes == 0) {
@@ -597,7 +600,8 @@ CCMRecoPulseSeriesPtr CCMWavedeform::GetPulses(CCMWaveformDouble const & wf,  co
     // Load the SPE corrections
     double speCorrection = 1.;
     if (apply_spe_corr_) {
-        speCorrection = 1. / calibration.GetMeanPMTCharge();
+        //speCorrection = 1. / calibration.GetMeanPMTCharge();
+        speCorrection = 1.;
     }
 
     // Convert to pulse series
@@ -663,14 +667,13 @@ void FillFWHM(double& start, double& stop,
 }
 } // namespace
 
-void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate,
-        const CCMPMTCalibration& calibration, double const & start_time, double const & pulse_width, int const & template_bins) {
+void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, double const & start_time, double const & pulse_width, int const & template_bins) {
     CCMSPETemplate channel_template = calibration.GetSPETemplate();
     wfTemplate.digitizer_template.resize(template_bins);
     for (int i = 0; i < template_bins; i++) {
         wfTemplate.digitizer_template[i] =
-            channel_template.Evaluate(start_time +
-                    i*template_bin_spacing_);
+            channel_template.Evaluate(start_time + i*template_bin_spacing_ - 2); //SPE templates derived fitting to the left edge of bins while 
+                                                                                 //this code is using the right side of bins so subtract off 2 nsec = 1 bin
     }
 
     FillFWHM(wfTemplate.digitizerStart,

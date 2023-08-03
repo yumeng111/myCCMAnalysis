@@ -53,6 +53,7 @@ public:
     std::vector<CCMSinglePulseParameters> const & GetPulseParameters() const;
     void SetPulseParameters(std::vector<CCMSinglePulseParameters> const & params);
     double Evaluate(double time) const;
+    double GetTemplatePeak() const;
 
     bool operator==(CCMSPETemplate const & other) const;
 
