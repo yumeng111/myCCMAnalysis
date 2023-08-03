@@ -69,14 +69,14 @@ SumWaveforms::SumWaveforms(const I3Context& context) : I3Module(context),
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
-    AddParameter("AllowedTriggerKeys", "Trigger keys to sum", std::vector<CCMTriggerKey>());
+    AddParameter("AllowedTriggerKeys", "Trigger keys to sum", I3Vector<CCMTriggerKey>());
 }
 
 
 void SumWaveforms::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("NIMPulsesName", nim_pulses_name_);
-    std::vector<CCMTriggerKey> keys;
+    I3Vector<CCMTriggerKey> keys;
     GetParameter("AllowedTriggerKeys", keys);
     std::copy(keys.begin(), keys.end(), std::inserter(allowed_trigger_keys, allowed_trigger_keys.end()));
 }

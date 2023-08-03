@@ -18,7 +18,6 @@ i3_add_library(${PROJECT_NAME}
     private/ElectronicsCorrection.cxx
     private/CountCosmicFrames.cxx
     private/TestWaveformAccum.cxx
-    private/CosmicTriggerSumWaveforms.cxx
     private/FitSummedPulses.cxx
     private/darcy_baselines.cxx
     private/SumWaveforms.cxx
