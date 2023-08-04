@@ -165,7 +165,7 @@ double CCMPMTCalibration::GetPMTMeanCharge() const {
  *
  */
 
-double CCMSPETemplate::EvaluateSinglePulse(CCMSinglePulseParameters const & single_pulse_params, double const & time){
+double CCMSPETemplate::EvaluateSinglePulse(CCMSinglePulseParameters const & single_pulse_params, double const & time, bool const & first_t0){
     // let's evaluate a single pulse
     double peak_height = single_pulse_params.peak_height; 
     double relative_peak_time = single_pulse_params.relative_peak_time;
@@ -175,7 +175,13 @@ double CCMSPETemplate::EvaluateSinglePulse(CCMSinglePulseParameters const & sing
     // now we need to convert between these parameters and the c, t0, b1, and b2 parameters use for pulse shape
     double b2 = duration;
     double b1 = rise_time;
-    double t0 = double(time) + relative_peak_time + (b1 * b2) * (std::log(b1) - std::log(b2)) / (b1 + b2);
+    double t0;
+    if (first_t0 == true){
+        t0 = (b1 * b2) * (std::log(b1) - std::log(b2)) / (b1 + b2);
+    }
+    else{
+        t0 = relative_peak_time + (b1 * b2) * (std::log(b1) - std::log(b2)) / (b1 + b2);
+    }
     double c = peak_height / ( std::pow(b1, 8*b1/(b1+b2) ) * std::pow(b2, 8*b2/(b1+b2) ) / std::pow((b1+b2), 8) );
 
     // now let's evaluate the pulse in our time bin
@@ -184,7 +190,7 @@ double CCMSPETemplate::EvaluateSinglePulse(CCMSinglePulseParameters const & sing
 }
 
 std::vector<CCMSinglePulseParameters> const & CCMSPETemplate::GetPulseParameters() const {
-    return pulse_parameters_; 
+    return pulse_parameters_;
 }
 
 void CCMSPETemplate::SetPulseParameters(std::vector<CCMSinglePulseParameters> const & params) {
@@ -193,8 +199,15 @@ void CCMSPETemplate::SetPulseParameters(std::vector<CCMSinglePulseParameters> co
 
 double CCMSPETemplate::Evaluate(double time) const {
     double total = 0;
-    for(size_t i =0; i<pulse_parameters_.size(); ++i) {
-        total += EvaluateSinglePulse(pulse_parameters_[i], time);
+    bool first_t0;
+    for(size_t i = 0; i<pulse_parameters_.size(); ++i) {
+        if (i == 0){
+            first_t0 = true;
+        }
+        if (i > 0){
+            first_t0 = false;
+        }
+        total += EvaluateSinglePulse(pulse_parameters_[i], time, first_t0);
     }
     return total;
 }
@@ -202,7 +215,7 @@ double CCMSPETemplate::Evaluate(double time) const {
 double CCMSPETemplate::GetTemplatePeak() const {
     // let's evaluate our pulse template over let's say -10 to 60 bins to find the peak value
     double peak = 0;
-    
+
     for (size_t bin_it = -10; bin_it < 60; ++bin_it){
         // let's loop over each bin 40 times
         for (size_t i = 0; i < 40; ++i){
@@ -212,7 +225,6 @@ double CCMSPETemplate::GetTemplatePeak() const {
                 peak = current_template_val;
             }
         }
-    
     }
     return peak;
 }

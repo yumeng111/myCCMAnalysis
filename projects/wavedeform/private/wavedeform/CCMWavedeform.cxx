@@ -75,7 +75,7 @@ class CCMWavedeform : public I3ConditionalModule {
 
         std::map<CCMPMTKey, int> start_bins_;
         std::map<CCMPMTKey, int> end_bins_;
-        double template_bin_spacing_;
+        double template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
 
         bool apply_spe_corr_;
         bool reduce_;
@@ -191,19 +191,15 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         * sampling it.
         */
         // CCM has a bin width of 2ns
-        double range;
         double start_time = 2 * -10;
         double end_time = 2 * 60;
         double pulse_width = end_time - start_time;
-
-        template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
-        range = end_time - start_time;
+        int template_bins = 50;
 
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(key);
 
         // Get/create the appropriate template
         if (!template_.filled) {
-            int template_bins = (int)ceil(range / template_bin_spacing_);
             template_.digitizer_template.resize(template_bins);
             FillTemplate(template_, calib->second, start_time, pulse_width, template_bins);
         }
@@ -672,8 +668,7 @@ void CCMWavedeform::FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCa
     wfTemplate.digitizer_template.resize(template_bins);
     for (int i = 0; i < template_bins; i++) {
         wfTemplate.digitizer_template[i] =
-            channel_template.Evaluate(start_time + i*template_bin_spacing_ - 2); //SPE templates derived fitting to the left edge of bins while 
-                                                                                 //this code is using the right side of bins so subtract off 2 nsec = 1 bin
+            channel_template.Evaluate(start_time + i * 2.857); // hard coding bin spacing...use calib one day 
     }
 
     FillFWHM(wfTemplate.digitizerStart,
