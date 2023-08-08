@@ -49,7 +49,7 @@ class CCMSPETemplate {
 private:
     std::vector<CCMSinglePulseParameters> pulse_parameters_;
 public:
-    static double EvaluateSinglePulse(CCMSinglePulseParameters const & single_pulse_params, double const & time, bool const & first_t0);
+    static double EvaluateSinglePulse(CCMSinglePulseParameters const & single_pulse_params, double const & time);
     std::vector<CCMSinglePulseParameters> const & GetPulseParameters() const;
     void SetPulseParameters(std::vector<CCMSinglePulseParameters> const & params);
     double Evaluate(double time) const;

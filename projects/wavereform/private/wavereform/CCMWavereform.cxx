@@ -77,11 +77,18 @@ void CCMWavereform::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void CCMWavereform::GetChi(double & chi, std::vector<double> const & refolded_wf, std::vector<double> const & samples){
+void CCMWavereform::GetChi(double & chi, double & dof, std::vector<double> const & refolded_wf, std::vector<double> const & samples){
     chi = 0;
+    dof = 0;
     // loop over each bin and compare refolded_wf to wf
     for(size_t wf_it = 0; wf_it < samples.size(); ++wf_it){
-        chi += std::pow(samples[wf_it] - refolded_wf[wf_it], 2);
+        if (samples[wf_it] < 7){
+            chi += 0.0;
+        }
+        else {
+            chi += (std::pow(samples[wf_it] - refolded_wf[wf_it], 2));
+            dof += 1;
+        }
     }
 }
 
@@ -95,17 +102,29 @@ void CCMWavereform::GetRefoldedWf(std::vector<double> & refolded_wf, std::vector
     for (size_t pulse_it = 0; pulse_it < pulses.size(); ++pulse_it){
         pulse_time = pulses[pulse_it].GetTime();
         pulse_charge = pulses[pulse_it].GetCharge();
-
         // now let's figure out how many ADC counts this pulse is
         CCMSPETemplate channel_template = calib.GetSPETemplate();
-        size_t start_bin = std::max((size_t)0, (size_t)(pulse_time - 20)/2);
-        size_t end_bin = std::min(refolded_wf.size(), (size_t)(pulse_time + 120)/2);
+        int start_bin;
+        int end_bin;
+        if (pulse_time < 20.0){
+            start_bin = (int) (-1 *(pulse_time/2));
+        }
+        if (pulse_time > 20.0){
+            start_bin = (int) -10;
+        }
+        if (pulse_time > (2 * refolded_wf.size() - 120)){
+            end_bin = (2 * refolded_wf.size() - (int)pulse_time)/2;
+        }
+        if (pulse_time < (2 * refolded_wf.size() - 120)){
+            end_bin = 60;
+        }
 
         // let's loop over all the bins in this pulse
-        for(size_t bin_it = start_bin; bin_it < end_bin; ++bin_it){
-            size_t time = bin_it * 2; // fitting to the left edge of the data
+        for(int bin_it = start_bin; bin_it < end_bin; ++bin_it){
+            double time = bin_it * 2; // fitting to the left edge of the data
+            size_t wf_bin = (size_t)(pulse_time/2 + bin_it);
             double wf_value = pulse_charge * (channel_template.Evaluate(time));
-            refolded_wf[bin_it] += wf_value;
+            refolded_wf[wf_bin] += wf_value;
         }
 
     }
@@ -122,6 +141,7 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
 
     // let's make places to store our chis, refolded wfs, and our bad pmts
     boost::shared_ptr<I3Map<CCMPMTKey, double>> chi_map = boost::make_shared<I3Map<CCMPMTKey, double>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, double>> dof_map = boost::make_shared<I3Map<CCMPMTKey, double>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> refolded_wf_map = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, double>> screwy_pmts = boost::make_shared<I3Map<CCMPMTKey, double>>();
 
@@ -164,11 +184,12 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
 
         // now let's get our chi^2
         double chi = 0;
+        double dof = 0;
 		bool borked = false;
 
 
-        GetChi(chi, refolded_wf, corrected_wf);
-        std::cout << "for " << key << " chi/dof = " << chi/8000 << std::endl;
+        GetChi(chi, dof, refolded_wf, corrected_wf);
+        // std::cout << "for " << key << " chi/dof = " << chi/dof << std::endl;
         //GetChi(chi, refolded_wf, inv_wf_minus_baseline);
         // let's see if this is a big chi^2
         if (chi > chi_threshold_){
@@ -177,11 +198,13 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
 
         // now let's save everything
         chi_map->emplace(key, chi);
+        dof_map->emplace(key, dof);
 
         refolded_wf_map->emplace(key, refolded_wf);
     }
 
 	frame->Put(chi_name_, chi_map);
+	frame->Put("DegreesofFreedom", dof_map);
 	frame->Put("RefoldedWaveforms", refolded_wf_map);
 
 	PushFrame(frame);
