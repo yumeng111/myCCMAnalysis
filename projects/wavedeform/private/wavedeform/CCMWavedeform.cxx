@@ -102,7 +102,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-CCMRecoPulseSeriesPtr GetPulses(const CCMWaveformDouble & wf,  const CCMWaveformTemplate & wfTemplate, const CCMPMTCalibration & calibration, double & spe_charge, double & start_time, double & pulse_width, double & template_bin_spacing_, double & noise_threshold_, double & basis_threshold_, double & spes_per_bin_, bool & reduce_, double & tolerance_, bool & apply_spe_corr_, cholmod_common & c) {
+CCMRecoPulseSeriesPtr GetPulses(int thread_id, const CCMWaveformDouble & wf,  const CCMWaveformTemplate & wfTemplate, const CCMPMTCalibration & calibration, double & spe_charge, double & start_time, double & pulse_width, double & template_bin_spacing_, double & noise_threshold_, double & basis_threshold_, double & spes_per_bin_, bool & reduce_, double & tolerance_, bool & apply_spe_corr_, cholmod_common & c) {
 
 
     boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
@@ -623,7 +623,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         pmt_keys.push_back(p.first);
     }
     size_t num_pulse_series = pmt_keys.size();
-    std::vector<std::future<CCMRecoPulse>> pulse_estimates;
+    std::vector<std::future<CCMRecoPulseSeriesPtr>> pulse_estimates;
     pulse_estimates.reserve(num_pulse_series);
 
     if(num_threads == 0) {
@@ -662,13 +662,14 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
 
     // place to store pulses 
     boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
+    //boost::shared_ptr<I3Map<CCMPMTKey, CCMRecoPulseSeriesPtr>> output = boost::make_shared<I3Map<CCMPMTKey, CCMRecoPulseSeriesPtr>>();
     for(size_t i = 0; i < num_pulse_series; ++i) {
         pulse_estimates[i].wait();
-        (*output)[pmt_keys[i]] = pulse_estimates[i].get();
+        //output->emplace(pmt_keys[i], pulse_estimates[i].get());
+        (*output)[pmt_keys[i]] = *pulse_estimates[i].get(); 
     }
 
     /*
-    
     // Unfold each set of waveforms into a pulse series
     // TODO Either loop over channels and check for PMTs or find all the PMTs and then loop and grab the right channels
     // loop over each pmt
