@@ -534,7 +534,7 @@ class CCMWavedeform : public I3ConditionalModule {
         bool apply_spe_corr_;
         bool reduce_;
 
-        CCMWaveformTemplate template_;
+        I3Map<CCMPMTKey, CCMWaveformTemplate> template_;
 
         std::vector<cholmod_common> c;
 };
@@ -607,6 +607,11 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
     geo_seen = true;
+    template_.clear();
+    for(auto pmt_channel_pair : pmt_channel_map_) {
+        template_[pmt_channel_pair.first] = CCMWaveformTemplate();
+        template_[pmt_channel_pair.first].filled = false;
+    }
     PushFrame(frame);
 }
 
@@ -615,7 +620,9 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
     /* Void the waveform templates since they could possibly
      * change frame-by-frame.
      */
-    template_.filled = false;
+    for(auto & pmt_template_pair : template_) {
+        pmt_template_pair.second.filled = false;
+    }
     PushFrame(frame, "OutBox");
 }
 
@@ -669,13 +676,13 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(key);
         double placeholder = 1.0;
 
-        if (!template_.filled) {
+        if(not template_.at(key).filled) {
             int template_bins = (int)ceil(range / template_bin_spacing_);
-            template_.digitizer_template.resize(template_bins);
-            FillTemplate(template_, calib->second, start_time, pulse_width, template_bins, template_bin_spacing_);
+            template_.at(key).digitizer_template.resize(template_bins);
+            FillTemplate(template_.at(key), calib->second, start_time, pulse_width, template_bins, template_bin_spacing_);
         }
 
-        pulse_estimates.emplace_back(pool.push(GetPulses, std::cref(electronics_corrected_wf), std::cref(template_), std::cref(calib->second), std::ref(placeholder), std::ref(start_time), std::ref(pulse_width), std::ref(template_bin_spacing_), std::ref(noise_threshold_), std::ref(basis_threshold_), std::ref(spes_per_bin_), std::ref(reduce_), std::ref(tolerance_), std::ref(apply_spe_corr_), std::ref(c), std::ref(basis_i[i]), std::ref(basis_j[i]), std::ref(basis_x[i]), std::ref(data_vec[i]) ));
+        pulse_estimates.emplace_back(pool.push(GetPulses, std::cref(electronics_corrected_wf), std::cref(template_.at(key)), std::cref(calib->second), std::ref(placeholder), std::ref(start_time), std::ref(pulse_width), std::ref(template_bin_spacing_), std::ref(noise_threshold_), std::ref(basis_threshold_), std::ref(spes_per_bin_), std::ref(reduce_), std::ref(tolerance_), std::ref(apply_spe_corr_), std::ref(c), std::ref(basis_i[i]), std::ref(basis_j[i]), std::ref(basis_x[i]), std::ref(data_vec[i]) ));
 
     }
 
