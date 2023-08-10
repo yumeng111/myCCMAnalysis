@@ -401,9 +401,9 @@ CCMRecoPulseSeriesPtr GetPulses(int thread_id, const CCMWaveformDouble & wf,  co
                 break;
 
             ((long *)(basis_trip->i))[basis_trip->nnz] = i;
-            basis_i.push_back(i);
+            //basis_i.push_back(i);
             ((long *)(basis_trip->j))[basis_trip->nnz] = j;
-            basis_j.push_back(j);
+            //basis_j.push_back(j);
             ((double *)(basis_trip->x))[basis_trip->nnz] =
                 (*pulse_templ)[templ_bin] * weighted_charge;
             //basis_x.push_back(weighted_charge);
@@ -445,11 +445,12 @@ CCMRecoPulseSeriesPtr GetPulses(int thread_id, const CCMWaveformDouble & wf,  co
     }
     cholmod_l_free_triplet(&basis_trip, &c);
 
-
+    /*
     // let's save our data really quick
     for (size_t j = 0; j < wf.GetWaveform().size(); ++j) {
         data_vec.push_back(((double *)(data->x))[j]);
     }
+    */
 
     // Solve for SPE heights
     if (reduce_) {
@@ -688,26 +689,28 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
 
     // place to store pulses
     boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
+    /*
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> basis_i_map = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> basis_j_map = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> basis_x_map = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> data_map = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+    */
     for(size_t i = 0; i < num_pulse_series; ++i) {
         pulse_estimates[i].wait();
         (*output)[pmt_keys[i]] = *pulse_estimates[i].get();
 
-        basis_i_map->emplace(pmt_keys[i], basis_i[i]);
-        basis_j_map->emplace(pmt_keys[i], basis_j[i]);
+        //basis_i_map->emplace(pmt_keys[i], basis_i[i]);
+        //basis_j_map->emplace(pmt_keys[i], basis_j[i]);
         //basis_x_map->emplace(pmt_keys[i], basis_x[i]);
-        data_map->emplace(pmt_keys[i], data_vec[i]);
+        //data_map->emplace(pmt_keys[i], data_vec[i]);
     }
 
 
     frame->Put(output_name_, output);
-    frame->Put("Basis_i", basis_i_map);
-    frame->Put("Basis_j", basis_j_map);
+    //frame->Put("Basis_i", basis_i_map);
+    //frame->Put("Basis_j", basis_j_map);
     //frame->Put("WeightedCharge", basis_x_map);
-    frame->Put("Data", data_map);
+    //frame->Put("Data", data_map);
 
     // Add a time window for the earliest possible pulse in the event
     /*
