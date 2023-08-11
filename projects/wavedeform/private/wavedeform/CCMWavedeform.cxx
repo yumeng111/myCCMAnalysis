@@ -103,8 +103,9 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-CCMRecoPulseSeriesPtr GetPulses(int thread_id, const CCMWaveformDouble & wf,  const CCMWaveformTemplate & wfTemplate, const CCMPMTCalibration & calibration, double & spe_charge, double & start_time, double & pulse_width, double & template_bin_spacing_, double & noise_threshold_, double & basis_threshold_, double & spes_per_bin_, bool & reduce_, double & tolerance_, bool & apply_spe_corr_, std::vector<cholmod_common> & c_vector, std::vector<double> & basis_i, std::vector<double> & basis_j, std::vector<double> & basis_x, std::vector<double> & data_vec) {
+CCMRecoPulseSeriesPtr GetPulses(int thread_id, const CCMWaveformDouble & wf, CCMWaveformTemplate & wfTemplate, const CCMPMTCalibration & calibration, double & spe_charge, double & start_time, double & pulse_width, double & template_bin_spacing_, double & noise_threshold_, double & basis_threshold_, double & spes_per_bin_, bool & reduce_, double & tolerance_, bool & apply_spe_corr_, std::vector<cholmod_common> & c_vector) {
 
+//CCMRecoPulseSeriesPtr GetPulses(int thread_id, const CCMWaveformDouble & wf,  const CCMWaveformTemplate & wfTemplate, const CCMPMTCalibration & calibration, double & spe_charge, double & start_time, double & pulse_width, double & template_bin_spacing_, double & noise_threshold_, double & basis_threshold_, double & spes_per_bin_, bool & reduce_, double & tolerance_, bool & apply_spe_corr_, std::vector<cholmod_common> & c_vector, std::vector<double> & basis_i, std::vector<double> & basis_j, std::vector<double> & basis_x, std::vector<double> & data_vec) {
     cholmod_common& c = c_vector[thread_id];
 
     boost::shared_ptr<CCMRecoPulseSeries> output(new CCMRecoPulseSeries);
@@ -621,9 +622,6 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
     /* Void the waveform templates since they could possibly
      * change frame-by-frame.
      */
-    for(auto & pmt_template_pair : template_) {
-        pmt_template_pair.second.filled = false;
-    }
     PushFrame(frame, "OutBox");
 }
 
@@ -649,10 +647,12 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     std::vector<std::future<CCMRecoPulseSeriesPtr>> pulse_estimates;
     pulse_estimates.reserve(num_pulse_series);
 
+    /*
     std::vector<std::vector<double>> basis_i(num_pulse_series);
     std::vector<std::vector<double>> basis_j(num_pulse_series);
     std::vector<std::vector<double>> basis_x(num_pulse_series);
     std::vector<std::vector<double>> data_vec(num_pulse_series);
+    */
 
     if(num_threads == 0) {
         pool.resize(pmt_keys.size());
@@ -666,6 +666,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         uint32_t channel = pmt_channel_map_[key];
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
         CCMWaveformDouble const & electronics_corrected_wf = electronics_corrected_wfs->at(channel);
+
         double range;
         double start_time = 2 * -10;
         double end_time = 2 * 60;
@@ -683,7 +684,10 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             FillTemplate(template_.at(key), calib->second, start_time, pulse_width, template_bins, template_bin_spacing_);
         }
 
-        pulse_estimates.emplace_back(pool.push(GetPulses, std::cref(electronics_corrected_wf), std::cref(template_.at(key)), std::cref(calib->second), std::ref(placeholder), std::ref(start_time), std::ref(pulse_width), std::ref(template_bin_spacing_), std::ref(noise_threshold_), std::ref(basis_threshold_), std::ref(spes_per_bin_), std::ref(reduce_), std::ref(tolerance_), std::ref(apply_spe_corr_), std::ref(c), std::ref(basis_i[i]), std::ref(basis_j[i]), std::ref(basis_x[i]), std::ref(data_vec[i]) ));
+
+        pulse_estimates.emplace_back(pool.push(GetPulses, std::cref(electronics_corrected_wf), std::ref(template_.at(key)), std::cref(calib->second), std::ref(placeholder), std::ref(start_time), std::ref(pulse_width), std::ref(template_bin_spacing_), std::ref(noise_threshold_), std::ref(basis_threshold_), std::ref(spes_per_bin_), std::ref(reduce_), std::ref(tolerance_), std::ref(apply_spe_corr_), std::ref(c) ));
+
+        //pulse_estimates.emplace_back(pool.push(GetPulses, std::cref(electronics_corrected_wf), std::cref(template_.at(key)), std::cref(calib->second), std::ref(placeholder), std::ref(start_time), std::ref(pulse_width), std::ref(template_bin_spacing_), std::ref(noise_threshold_), std::ref(basis_threshold_), std::ref(spes_per_bin_), std::ref(reduce_), std::ref(tolerance_), std::ref(apply_spe_corr_), std::ref(c), std::ref(basis_i[i]), std::ref(basis_j[i]), std::ref(basis_x[i]), std::ref(data_vec[i]) ));
 
     }
 
@@ -698,7 +702,6 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     for(size_t i = 0; i < num_pulse_series; ++i) {
         pulse_estimates[i].wait();
         (*output)[pmt_keys[i]] = *pulse_estimates[i].get();
-
         //basis_i_map->emplace(pmt_keys[i], basis_i[i]);
         //basis_j_map->emplace(pmt_keys[i], basis_j[i]);
         //basis_x_map->emplace(pmt_keys[i], basis_x[i]);
