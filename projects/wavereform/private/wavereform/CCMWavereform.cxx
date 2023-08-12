@@ -147,6 +147,16 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
 
     for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
         CCMPMTKey key = p.first;
+
+        if(calibration_.pmtCal.count(key) == 0){
+            std::cout << "oops! no calibration for " << key << std::endl;
+            continue;
+        }
+        if(pulse_map->count(key) == 0){
+            std::cout << "oops! no pulses for " << key << std::endl;
+            continue;
+        }
+
         uint32_t channel = p.second;
         std::vector<CCMRecoPulse> pulse_series = pulse_map->at(key);
 
@@ -175,6 +185,7 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
         for(size_t i = 0; i < samples.size(); ++i){
             inv_wf_minus_baseline[i] = -1 * ((double)samples[i] + baseline);
         }
+
 
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration_.pmtCal.find(key);
 

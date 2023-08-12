@@ -20,6 +20,7 @@
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/geometry/CCMOMGeo.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 
 #include <dataclasses/CCMPMTFunctions.h>
@@ -537,7 +538,7 @@ class CCMWavedeform : public I3ConditionalModule {
         bool reduce_;
 
         I3Map<CCMPMTKey, CCMWaveformTemplate> template_;
-
+        std::vector<CCMPMTKey> pmt_keys_;
         std::vector<cholmod_common> c;
 };
 
@@ -545,7 +546,8 @@ I3_MODULE(CCMWavedeform);
 
 CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(context),
     geometry_name_(""), geo_seen(false) {
-    AddParameter("NumThreads", "Number of worker threads to use for pulse fitting", (size_t)(0));
+    AddParameter("NumThreads", "Number of worker threads to use for pulse fitting", (size_t)(1));
+    //AddParameter("NumThreads", "Number of worker threads to use for pulse fitting", (size_t)(0));
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 4.);
@@ -614,6 +616,14 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
         template_[pmt_channel_pair.first] = CCMWaveformTemplate();
         template_[pmt_channel_pair.first].filled = false;
     }
+
+    I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo_ = geo.pmt_geo;
+    for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : pmt_geo_) {
+        if(p.second.omtype == CCMOMGeo::OMType::CCM8inCoated or p.second.omtype == CCMOMGeo::OMType::CCM8inUncoated or p.second.omtype == CCMOMGeo::OMType::CCM1in) {
+            pmt_keys_.push_back(p.first);
+            }
+    }
+
     PushFrame(frame);
 }
 
@@ -638,12 +648,13 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 
     // multi threading!
-    std::vector<CCMPMTKey> pmt_keys;
-    pmt_keys.reserve(pmt_channel_map_.size());
-    for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
-        pmt_keys.push_back(p.first);
-    }
-    size_t num_pulse_series = pmt_keys.size();
+    //std::vector<CCMPMTKey> pmt_keys;
+    //pmt_keys.reserve(pmt_channel_map_.size());
+    //for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
+    //    pmt_keys.push_back(p.first);
+    //}
+
+    size_t num_pulse_series = pmt_keys_.size();
     std::vector<std::future<CCMRecoPulseSeriesPtr>> pulse_estimates;
     pulse_estimates.reserve(num_pulse_series);
 
@@ -655,14 +666,14 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     */
 
     if(num_threads == 0) {
-        pool.resize(pmt_keys.size());
-        num_threads = pmt_keys.size();
+        pool.resize(pmt_keys_.size());
+        num_threads = pmt_keys_.size();
     }
 
     // loop over each channel in waveforms
     for(size_t i=0; i<num_pulse_series; ++i) {
         // let's get our wf and what not
-        CCMPMTKey key = pmt_keys[i];
+        CCMPMTKey key = pmt_keys_[i];
         uint32_t channel = pmt_channel_map_[key];
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
         CCMWaveformDouble const & electronics_corrected_wf = electronics_corrected_wfs->at(channel);
@@ -675,7 +686,13 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
         range = end_time - start_time;
 
+        if(calibration.pmtCal.count(key) == 0){
+            std::cout << "oops! no calibration for " << key << std::endl;
+            continue;
+        }
+
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(key);
+
         double placeholder = 1.0;
 
         if(not template_.at(key).filled) {
@@ -683,7 +700,6 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             template_.at(key).digitizer_template.resize(template_bins);
             FillTemplate(template_.at(key), calib->second, start_time, pulse_width, template_bins, template_bin_spacing_);
         }
-
 
         pulse_estimates.emplace_back(pool.push(GetPulses, std::cref(electronics_corrected_wf), std::ref(template_.at(key)), std::cref(calib->second), std::ref(placeholder), std::ref(start_time), std::ref(pulse_width), std::ref(template_bin_spacing_), std::ref(noise_threshold_), std::ref(basis_threshold_), std::ref(spes_per_bin_), std::ref(reduce_), std::ref(tolerance_), std::ref(apply_spe_corr_), std::ref(c) ));
 
@@ -699,9 +715,9 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> basis_x_map = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> data_map = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     */
-    for(size_t i = 0; i < num_pulse_series; ++i) {
+    for(size_t i = 0; i < pulse_estimates.size(); ++i) {
         pulse_estimates[i].wait();
-        (*output)[pmt_keys[i]] = *pulse_estimates[i].get();
+        (*output)[pmt_keys_[i]] = *pulse_estimates[i].get();
         //basis_i_map->emplace(pmt_keys[i], basis_i[i]);
         //basis_j_map->emplace(pmt_keys[i], basis_j[i]);
         //basis_x_map->emplace(pmt_keys[i], basis_x[i]);
