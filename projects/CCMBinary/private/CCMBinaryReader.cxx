@@ -198,6 +198,7 @@ CCMBinaryReader::OpenNextFile() {
     } else {
         num_frames_in_file_ += 1;
         new_config_ = true;
+        last_config_ = config;
     }
 }
 
