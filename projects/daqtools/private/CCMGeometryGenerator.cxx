@@ -779,8 +779,23 @@ void CCMGeometryGenerator::Process() {
                 trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::LEDBottomTrigger, led_bottom_trigger_count);
             } else if(type == detail::tolower("Cosmic Watch Trigger")) {
                 is_trigger = true;
-                cosmic_trigger_count += 1;
-                trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, cosmic_trigger_count);
+                if(id.rfind(detail::tolower("Copy")) != std::string::npos) {
+                    cosmic_trigger_count += 1;
+                    trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, cosmic_trigger_count);
+                } else {
+                    std::string prefix = detail::tolower("Cosmic Watch Pair ");
+                    std::string suffix = detail::tolower(" Trigger");
+                    std::string::size_type prefix_pos = id.rfind(prefix);
+                    std::string::size_type suffix_pos = id.rfind(suffix);
+                    if(prefix_pos != 0) {
+                        log_warn("Channel labeled \"Cosmic Watch Trigger\" does not match the pattern: Cosmic Watch Pair \\d* Trigger");
+                    } else if(suffix_pos != id.size() - prefix.size()) {
+                        log_warn("Channel labeled \"Cosmic Watch Trigger\" does not match the pattern: Cosmic Watch Pair \\d* Trigger");
+                    }
+                    std::string str_trigger_num = id.substr(prefix.size(), id.size() - (prefix.size() + suffix.size()));
+                    int cosmic_pair_number = std::atoi(str_trigger_num.c_str());
+                    trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, cosmic_pair_number);
+                }
             } else if(type == detail::tolower("LASER Trigger")) {
                 is_trigger = true;
                 laser_trigger_count += 1;
