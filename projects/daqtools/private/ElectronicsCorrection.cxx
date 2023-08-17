@@ -34,19 +34,21 @@
 #include "daqtools/WaveformSmoother.h"
 #include "daqtools/WaveformAccumulator.h"
 #include <dataclasses/physics/CCMWaveform.h>
-#include <dataclasses/physics/CCMBCMSummary.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 
 class  ElectronicsCorrection: public I3Module {
     bool geo_seen;
+    bool calib_seen;
     std::string geometry_name_;
-    std::string nim_pulses_name_;
-    CCMPMTKey bcm_key;
-    size_t bcm_channel;
-    CCMTriggerKey cosmic_trigger_key;
+    std::string ccm_calibration_name_;
+    std::string ccm_waveforms_name_;
+    std::string baseline_estimates_name_;
+    double default_droop_tau_;
+    CCMPMTCalibration default_calib_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
+    CCMCalibration ccm_calibration_;
 
     // initialize droop correction time constant map
     double delta_t = 2.0;
@@ -54,7 +56,7 @@ class  ElectronicsCorrection: public I3Module {
     void Calibration(I3FramePtr frame);
     void BoxFilter(std::vector<double> const & samples, std::vector<double> & box_filter_results);
     void OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results);
-    void ECorrection(std::vector<short unsigned int> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples);
+    void ECorrection(std::vector<uint16_t> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples);
 public:
      ElectronicsCorrection(const I3Context&);
     void Configure();
@@ -65,15 +67,22 @@ public:
 I3_MODULE( ElectronicsCorrection);
 
  ElectronicsCorrection:: ElectronicsCorrection(const I3Context& context) : I3Module(context),
-    geometry_name_(""), geo_seen(false) {
+    geometry_name_(""), geo_seen(false), calib_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-    AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
+    AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string("CCMCalibration"));
+    AddParameter("CCMWaveformsName", "Key for input CCMWaveforms", std::string("CCMWaveforms"));
+    AddParameter("BaselineEstimatesName", "Key for input BaselineEstimates", std::string("BaselineEstimates"));
+    AddParameter("DefaultDroopTau", "The default droop time constant (in ns) to use if there is no entry in the calibratioin", double(5000));
 }
 
 
 void  ElectronicsCorrection::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("NIMPulsesName", nim_pulses_name_);
+    GetParameter("CCMCalibrationName", ccm_calibration_name_);
+    GetParameter("CCMWaveformsName", ccm_waveforms_name_);
+    GetParameter("BaselineEstimatesName", baseline_estimates_name_);
+    GetParameter("DefaultDroopTau", default_droop_tau_);
+    default_calib_.SetDroopTimeConstant(default_droop_tau_);
 }
 
 
@@ -84,23 +93,16 @@ void  ElectronicsCorrection::Geometry(I3FramePtr frame) {
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
     geo_seen = true;
-    bool found_bcm_key = false;
-    for(auto const & key_om : geo.pmt_geo) {
-        if(key_om.second.omtype == CCMOMGeo::OMType::BeamCurrentMonitor) {
-            bcm_key = key_om.first;
-            found_bcm_key = true;
-        }
-    }
-    if(not found_bcm_key) {
-        log_fatal("CCMGeometry does not contain a channel corresponding to a BeamCurrentMonitor");
-    }
-    bcm_channel = geo.pmt_channel_map.at(bcm_key);
-    cosmic_trigger_key = CCMTriggerKey(CCMTriggerKey::TriggerType::CosmicTrigger, 1);
     PushFrame(frame);
 }
 
 void ElectronicsCorrection::Calibration(I3FramePtr frame){
-    PushFrame(frame, "OutBox");
+    if(not frame->Has(ccm_calibration_name_)) {
+        log_fatal("Could not find CCMCalibration object with the key named \"%s\" in the Calibration frame.", ccm_calibration_name_);
+    }
+    ccm_calibration_ = frame->Get<CCMCalibration>(ccm_calibration_name_);
+    calib_seen = true;
+    PushFrame(frame);
 }
 
 void ElectronicsCorrection::OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results){
@@ -142,7 +144,7 @@ void ElectronicsCorrection::BoxFilter(std::vector<double> const & samples, std::
 
     for(size_t i = 0; i < samples.size(); ++i){
 
-    if(i == 0){
+    if(i == 0) {
         // special logic for first element
         box_filter_results[i] = (samples[i] + samples[i+1] + samples[i+2])/3;
     }
@@ -160,7 +162,7 @@ void ElectronicsCorrection::BoxFilter(std::vector<double> const & samples, std::
 
 }
 
-void ElectronicsCorrection::ECorrection(std::vector<short unsigned int> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples){
+void ElectronicsCorrection::ECorrection(std::vector<uint16_t> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples){
 
     // let's start off by inverting samples and subtracting off the baseline
     std::vector<double> inv_wf_min_baseline(samples.size());
@@ -175,6 +177,9 @@ void ElectronicsCorrection::ECorrection(std::vector<short unsigned int> const & 
 
     // now droop correction time
     double tau = calibration.GetDroopTimeConstant();
+    if(std::isnan(tau)) {
+        tau = default_droop_tau_;
+    }
     double C = std::exp(-delta_t/tau);
     double B = (1.0 - C);
     double A = tau / delta_t * B;
@@ -197,19 +202,28 @@ void ElectronicsCorrection::ECorrection(std::vector<short unsigned int> const & 
     for(size_t it = 0; it < samples.size(); ++it){
         electronics_correction_samples[it] -= outlier_filter_results[it];
     }
-
 }
 
 
 void  ElectronicsCorrection::DAQ(I3FramePtr frame) {
-    if(not frame->Has("CCMWaveforms")) {
-        throw std::runtime_error("No waveforms!");
+    if(not geo_seen) {
+        log_fatal("No Geometry frame seen before DAQ frame! Did you forget to include a geometry file?");
+    }
+    if(not calib_seen) {
+        log_fatal("No Calibration frame seen before DAQ frame! Did you forget to inlcude a calibration file?");
     }
 
     // ptr to vector of all waveforms, derivs, and baselines (one for each channel)
-    const CCMCalibration& calibration = frame->Get<CCMCalibration>("CCMPMTCalibration");
-    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
-    I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
+    CCMCalibration const & calibration = ccm_calibration_;
+
+    boost::shared_ptr<CCMWaveformUInt16Series const> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_name_);
+    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const> baseline_mode = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const>>(baseline_estimates_name_);
+    if(waveforms == nullptr) {
+        log_fatal("No CCMWaveformUInt16Series under key name \"%s\"", ccm_waveforms_name_);
+    }
+    if(baseline_mode == nullptr) {
+        log_fatal("No I3Map<CCMPMTKey, BaselineEstimate> under key name \"%s\"", baseline_estimates_name_);
+    }
 
     size_t size = waveforms->size();
 
@@ -217,19 +231,22 @@ void  ElectronicsCorrection::DAQ(I3FramePtr frame) {
     boost::shared_ptr<CCMWaveformDoubleSeries> electronics_corrected_wf = boost::make_shared<CCMWaveformDoubleSeries>(size);
 
     // loop over each pmt
-    for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baseline_mode){
+    // We loop over pmt keys in baseline_estimates because a baseline estimate is required for the electronics correction
+    // and the baseline_estimates object should have its pmt keys derived from the same geometry
+    for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : *baseline_mode) {
         CCMPMTKey key = it.first;
         BaselineEstimate value = it.second;
         double mode = value.baseline; // baseline mode is negative fyi
-        uint32_t channel = pmt_channel_map_[key];
+        uint32_t channel = pmt_channel_map_.at(key);
 
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(key);
 
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
 
         // get the vector of samples from the CCMWaveform object;
-        std::vector<short unsigned int> const & samples = waveform.GetWaveform();
+        std::vector<uint16_t> const & samples = waveform.GetWaveform();
 
+        // no work to be done if there is not waveform available
         if (samples.size() == 0) {
 	        return;
         }
@@ -241,7 +258,11 @@ void  ElectronicsCorrection::DAQ(I3FramePtr frame) {
         // let's pass it to electronics correction module
         // this module first droop corrects
         // then substracts off the outlier filter
-        ECorrection(samples, mode, calib->second, electronics_correction_samples);
+        if(calib == calibration.pmtCal.cend()) {
+            ECorrection(samples, mode, default_calib_, electronics_correction_samples);
+        } else {
+            ECorrection(samples, mode, calib->second, electronics_correction_samples);
+        }
     }
 
     frame->Put("ElectronicsCorrection", electronics_corrected_wf);
