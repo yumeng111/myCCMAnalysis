@@ -9,10 +9,7 @@ i3_add_library(${PROJECT_NAME}
     private/CCMDAQAlignment.cxx
     private/CCMGeometryGenerator.cxx
     private/CCMTriggerMerger.cxx
-    private/CCMBaselineAnalyzer.cxx
     private/CCMPeakFinder.cxx
-    private/CCMNewBaselines.cxx
-    private/CCMAverageBaselines.cxx
     private/CCMIDSPERegions.cxx
     private/CCMMichelElectrons.cxx
     private/ElectronicsCorrection.cxx
@@ -26,7 +23,7 @@ i3_add_library(${PROJECT_NAME}
     private/PulseCollector.cxx
     private/SumPulses.cxx
     private/FirstPulseFinder.cxx
-    private/BaselineEstimator.cxx
+    private/CCMDerivativePulseFinder.cxx
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services
