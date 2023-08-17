@@ -45,6 +45,7 @@ class  ElectronicsCorrection: public I3Module {
     std::string ccm_calibration_name_;
     std::string ccm_waveforms_name_;
     std::string baseline_estimates_name_;
+    std::string output_name_;
     double default_droop_tau_;
     CCMPMTCalibration default_calib_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
@@ -73,6 +74,7 @@ I3_MODULE( ElectronicsCorrection);
     AddParameter("CCMWaveformsName", "Key for input CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("BaselineEstimatesName", "Key for input BaselineEstimates", std::string("BaselineEstimates"));
     AddParameter("DefaultDroopTau", "The default droop time constant (in ns) to use if there is no entry in the calibratioin", double(5000));
+    AddParameter("OutputName", "Key to save output CCMWaveformDoubleSeries to", std::string("CCMCalibratedWaveforms"));
 }
 
 
@@ -82,6 +84,7 @@ void  ElectronicsCorrection::Configure() {
     GetParameter("CCMWaveformsName", ccm_waveforms_name_);
     GetParameter("BaselineEstimatesName", baseline_estimates_name_);
     GetParameter("DefaultDroopTau", default_droop_tau_);
+    GetParameter("OutputName", output_name_);
     default_calib_.SetDroopTimeConstant(default_droop_tau_);
 }
 
@@ -96,7 +99,7 @@ void  ElectronicsCorrection::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void ElectronicsCorrection::Calibration(I3FramePtr frame){
+void ElectronicsCorrection::Calibration(I3FramePtr frame) {
     if(not frame->Has(ccm_calibration_name_)) {
         log_fatal("Could not find CCMCalibration object with the key named \"%s\" in the Calibration frame.", ccm_calibration_name_);
     }
@@ -105,7 +108,7 @@ void ElectronicsCorrection::Calibration(I3FramePtr frame){
     PushFrame(frame);
 }
 
-void ElectronicsCorrection::OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results){
+void ElectronicsCorrection::OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results) {
 
     // first let's find the average of the first 10 bins of our wf as the starting value
     double delta_tau = 20;
@@ -140,34 +143,26 @@ void ElectronicsCorrection::OutlierFilter(std::vector<double> const & samples, s
 
 }
 
-void ElectronicsCorrection::BoxFilter(std::vector<double> const & samples, std::vector<double> & box_filter_results){
-
-    for(size_t i = 0; i < samples.size(); ++i){
-
-    if(i == 0) {
-        // special logic for first element
-        box_filter_results[i] = (samples[i] + samples[i+1] + samples[i+2])/3;
-    }
-
-    if (i == samples.size() - 1){
-        // special logic for last element
-        box_filter_results[i] = (samples[i] + samples[i-1] + samples[i-2])/3;
-    }
-
-    else{
-        box_filter_results[i] = (samples[i-1] + samples[i] + samples[i+1])/3;
-    }
-
+void ElectronicsCorrection::BoxFilter(std::vector<double> const & samples, std::vector<double> & box_filter_results) {
+    for(size_t i = 0; i < samples.size(); ++i) {
+            // special logic for first element
+        if(i == 0)
+            box_filter_results[i] = (samples[i] + samples[i+1] + samples[i+2])/3;
+        else if (i == samples.size() - 1)
+            // special logic for last element
+            box_filter_results[i] = (samples[i] + samples[i-1] + samples[i-2])/3;
+        else
+            box_filter_results[i] = (samples[i-1] + samples[i] + samples[i+1])/3;
     }
 
 }
 
-void ElectronicsCorrection::ECorrection(std::vector<uint16_t> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples){
+void ElectronicsCorrection::ECorrection(std::vector<uint16_t> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples) {
 
     // let's start off by inverting samples and subtracting off the baseline
     std::vector<double> inv_wf_min_baseline(samples.size());
 
-    for (size_t wf_it = 0; wf_it < samples.size(); ++wf_it){
+    for (size_t wf_it = 0; wf_it < samples.size(); ++wf_it) {
         inv_wf_min_baseline[wf_it] = -1 * (double(samples[wf_it]) + mode); // mode is negative and samples is positive!
     }
 
@@ -187,7 +182,7 @@ void ElectronicsCorrection::ECorrection(std::vector<uint16_t> const & samples, d
     double X = double(box_filter_results[0]) / A + B * S;
     electronics_correction_samples.push_back(X);
 
-    for (size_t i = 1; i < box_filter_results.size(); ++i){
+    for (size_t i = 1; i < box_filter_results.size(); ++i) {
         S = X + C * S;
         X = box_filter_results[i] / A + B * S;
         electronics_correction_samples.push_back(X);
@@ -199,7 +194,7 @@ void ElectronicsCorrection::ECorrection(std::vector<uint16_t> const & samples, d
     OutlierFilter(electronics_correction_samples, outlier_filter_results);
 
     // now let's subtract off
-    for(size_t it = 0; it < samples.size(); ++it){
+    for(size_t it = 0; it < samples.size(); ++it) {
         electronics_correction_samples[it] -= outlier_filter_results[it];
     }
 }
@@ -265,8 +260,7 @@ void  ElectronicsCorrection::DAQ(I3FramePtr frame) {
         }
     }
 
-    frame->Put("ElectronicsCorrection", electronics_corrected_wf);
-    std::cout << "finished electronics corrections!" << std::endl;
+    frame->Put(output_name_, electronics_corrected_wf);
     PushFrame(frame);
 }
 
