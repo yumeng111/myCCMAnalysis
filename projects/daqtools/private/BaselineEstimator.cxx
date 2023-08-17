@@ -113,16 +113,18 @@ double LinearChi2PerDOF(
     return chi2 /= DOF;
 }
 
-class darcy_baselines: public I3Module {
+class BaselineEstiator: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
+    std::string ccm_waveforms_name_;
+    std::string output_name_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     ctpl::thread_pool pool;
     size_t num_threads;
     size_t num_samples;
     size_t num_exp_samples;
 public:
-    darcy_baselines(const I3Context&);
+    BaselineEstiator(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
@@ -330,18 +332,21 @@ BaselineEstimate ProcessWaveform(int thread_id, std::vector<short unsigned int> 
     return baseline;
 }
 
-I3_MODULE(darcy_baselines);
+I3_MODULE(BaselineEstiator);
 
-darcy_baselines::darcy_baselines(const I3Context& context) : I3Module(context), 
+BaselineEstiator::BaselineEstiator(const I3Context& context) : I3Module(context), 
     geometry_name_(""), geo_seen(false) {
-        AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-        AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(1));
-        AddParameter("NumSamples", "Number of samples to use for the baseline estimation", (size_t)(800));
-        AddParameter("NumExpSamples", "Number of samples to use for the exponential fit", (size_t)(4000));
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("CCMWaveformsName", "Key for CCMWaveforms object", std::string("CCMWaveforms"));
+    AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(1));
+    AddParameter("NumSamples", "Number of samples to use for the baseline estimation", (size_t)(800));
+    AddParameter("NumExpSamples", "Number of samples to use for the exponential fit", (size_t)(4000));
+    AddParameter("OutputName", "Key to save output I3Vector<BaselineEstimate> to", std::string("BaselineEstimates"));
 }
 
-void darcy_baselines::Configure() {
+void BaselineEstiator::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("CCMWaveformsName", ccm_waveforms_name_);
     GetParameter("NumThreads", num_threads);
     if(num_threads == 0) {
         size_t const processor_count = std::thread::hardware_concurrency();
@@ -352,10 +357,11 @@ void darcy_baselines::Configure() {
     }
     GetParameter("NumSamples", num_samples);
     GetParameter("NumExpSamples", num_exp_samples);
+    GetParameter("OutputName", output_name_);
 }
 
 
-void darcy_baselines::Geometry(I3FramePtr frame) {
+void BaselineEstiator::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
@@ -365,14 +371,12 @@ void darcy_baselines::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void darcy_baselines::DAQ(I3FramePtr frame) {
-
-    if(not frame->Has("CCMWaveforms")) {
-        throw std::runtime_error("No waveforms!");
-    }
-
+void BaselineEstiator::DAQ(I3FramePtr frame) {
     // let's read in our waveform
-    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
+    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_name_);
+    if(waveforms == nullptr) {
+        log_fatal("No CCMWaveformUInt16Series under key name \"%s\"", ccm_waveforms_name_);
+    }
 
     std::vector<CCMPMTKey> pmt_keys;
     pmt_keys.reserve(pmt_channel_map_.size());
@@ -402,13 +406,13 @@ void darcy_baselines::DAQ(I3FramePtr frame) {
     }
 
     // I3Map to store pmt key and baselines
-    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> Baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
     for(size_t i = 0; i < num_baselines; ++i) {
         baseline_estimates[i].wait();
-        Baselines->emplace(pmt_keys[i], baseline_estimates[i].get());
+        baselines->emplace(pmt_keys[i], baseline_estimates[i].get());
     }
 
-    frame->Put("BaselineEstimates", Baselines);
+    frame->Put(output_name_, baselines);
     PushFrame(frame);
 }
 
