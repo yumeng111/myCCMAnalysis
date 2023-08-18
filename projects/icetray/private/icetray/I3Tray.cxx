@@ -525,7 +525,7 @@ I3Tray::Execute(bool executeForever, unsigned maxCount)
 
 	log_notice("I3Tray finishing...");
 
-	driving_module->Do(&I3Module::Finish);
+	driving_module->Do(&I3Module::Finish_);
 
 	BOOST_FOREACH(const std::string& factname, factories_in_order) {
 #ifdef MEMORY_TRACKING

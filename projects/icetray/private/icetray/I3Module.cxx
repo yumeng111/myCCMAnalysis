@@ -54,7 +54,7 @@
 #include "icetray/memory.h"
 #endif
 
-const double I3Module::min_report_time_ = 10;
+const double I3Module::min_report_time_ = 0;
 
 class ModuleTimer
 {
@@ -90,22 +90,6 @@ I3Module::I3Module(const I3Context& context)
 
 I3Module::~I3Module()
 {
-  // only print if more than 10 seconds used.  This is kind of an
-  // arbitrary number.
-  if (usertime_ + systime_ > min_report_time_){
-    if(nphyscall_ && ndaqcall_)
-      log_info("%40s: %9.2fs user %9.2fs system (%u calls to physics, %u calls to DAQ)",
-        GetName().c_str(), usertime_, systime_, nphyscall_, ndaqcall_);
-    else if(nphyscall_ && !ndaqcall_)
-      log_info("%40s: %9.2fs user %9.2fs system (%u calls to physics)",
-        GetName().c_str(), usertime_, systime_, nphyscall_);
-    else if(!nphyscall_ && ndaqcall_)
-      log_info("%40s: %9.2fs user %9.2fs system (%u calls to DAQ)",
-	    GetName().c_str(), usertime_, systime_, ndaqcall_);
-    else
-      log_info("%40s: %9.2fs user %9.2fs system",
-	    GetName().c_str(), usertime_, systime_);
-  }
 }
 
 void
@@ -158,7 +142,7 @@ I3Module::Do(void (I3Module::*f)())
 	      while (fifo->size())
 		nextmodule->Do(f);
 	    }
-	  else if (f == &I3Module::Finish)
+	  else if (f == &I3Module::Finish_)
 	    {
 	      while (fifo->size())
 		nextmodule->Do(&I3Module::Process_);
@@ -338,6 +322,29 @@ I3Module::PushFrame(I3FramePtr frameptr)
         log_trace_stream(GetName() << " pushed frame onto fifo \"" << iter->first << '"');
       }
     }
+}
+
+void
+I3Module::Finish_()
+{
+  i3_log("%s", __PRETTY_FUNCTION__);
+  this->Finish();
+  // only print if more than 10 seconds used.  This is kind of an
+  // arbitrary number.
+  if (usertime_ + systime_ > min_report_time_){
+    if(nphyscall_ && ndaqcall_)
+      log_info("%40s: %9.2fs user %9.2fs system (%u calls to physics, %u calls to DAQ)",
+        GetName().c_str(), usertime_, systime_, nphyscall_, ndaqcall_);
+    else if(nphyscall_ && !ndaqcall_)
+      log_info("%40s: %9.2fs user %9.2fs system (%u calls to physics)",
+        GetName().c_str(), usertime_, systime_, nphyscall_);
+    else if(!nphyscall_ && ndaqcall_)
+      log_info("%40s: %9.2fs user %9.2fs system (%u calls to DAQ)",
+	    GetName().c_str(), usertime_, systime_, ndaqcall_);
+    else
+      log_info("%40s: %9.2fs user %9.2fs system",
+	    GetName().c_str(), usertime_, systime_);
+  }
 }
 
 void
