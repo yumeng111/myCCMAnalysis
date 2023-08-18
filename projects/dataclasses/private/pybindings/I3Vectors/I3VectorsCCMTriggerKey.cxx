@@ -35,6 +35,5 @@
 
 void register_I3VectorCCMTriggerKey()
 {
-	register_i3vector_of<CCMTriggerKeyUInt16>("CCMTriggerKeyUInt16");
-	register_i3vector_of<CCMTriggerKeyDouble>("CCMTriggerKeyDouble");
+	register_i3vector_of<CCMTriggerKey>("CCMTriggerKey");
 }
