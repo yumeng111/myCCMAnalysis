@@ -113,7 +113,7 @@ double LinearChi2PerDOF(
     return chi2 /= DOF;
 }
 
-class BaselineEstiator: public I3Module {
+class BaselineEstimator: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     std::string ccm_waveforms_name_;
@@ -124,7 +124,7 @@ class BaselineEstiator: public I3Module {
     size_t num_samples;
     size_t num_exp_samples;
 public:
-    BaselineEstiator(const I3Context&);
+    BaselineEstimator(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
@@ -332,9 +332,9 @@ BaselineEstimate ProcessWaveform(int thread_id, std::vector<short unsigned int> 
     return baseline;
 }
 
-I3_MODULE(BaselineEstiator);
+I3_MODULE(BaselineEstimator);
 
-BaselineEstiator::BaselineEstiator(const I3Context& context) : I3Module(context), 
+BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(context), 
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key for CCMWaveforms object", std::string("CCMWaveforms"));
@@ -344,7 +344,7 @@ BaselineEstiator::BaselineEstiator(const I3Context& context) : I3Module(context)
     AddParameter("OutputName", "Key to save output I3Vector<BaselineEstimate> to", std::string("BaselineEstimates"));
 }
 
-void BaselineEstiator::Configure() {
+void BaselineEstimator::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMWaveformsName", ccm_waveforms_name_);
     GetParameter("NumThreads", num_threads);
@@ -361,7 +361,7 @@ void BaselineEstiator::Configure() {
 }
 
 
-void BaselineEstiator::Geometry(I3FramePtr frame) {
+void BaselineEstimator::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
@@ -371,7 +371,7 @@ void BaselineEstiator::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void BaselineEstiator::DAQ(I3FramePtr frame) {
+void BaselineEstimator::DAQ(I3FramePtr frame) {
     // let's read in our waveform
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_name_);
     if(waveforms == nullptr) {
