@@ -155,7 +155,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--run", type=int, help="The run number")
     parser.add_argument(
-        "--output-prefix", type=str, default="%04d", help="Output file name"
+        "--output-prefix", type=str, default="test%04d", help="Output file name"
     )
     parser.add_argument(
         "--num-events", type=int, default=0, help="Number of events to process"
@@ -178,8 +178,8 @@ if __name__ == "__main__":
     if len(args.files) > 0:
         output_dir = args.output_dir
         os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, f"{run_prefix}_{output_prefix}.i3.zst")
-        geo_output_file = args.output_dir + f"GCD_{run_prefix}_{output_prefix}.i3.zst"
+        output_file = os.path.join(output_dir, f"{output_prefix}.i3.zst")
+        geo_output_file = output_dir + f"GCD_{output_prefix}.i3.zst"
     elif args.run is not None:
         run_prefix = "run%06d" % args.run
         if args.in_run_folders:
@@ -194,8 +194,9 @@ if __name__ == "__main__":
             ]
         output_dir = os.path.join(args.output_dir, run_prefix)
         os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, f"{output_prefix}.i3.zst")
-        geo_output_file = args.output_dir + f"GCD_{output_prefix}.i3.zst"
+        stripped_output_prefix = output_prefix[:output_prefix.find("%")]
+        output_file = os.path.join(output_dir, f"{run_prefix}_{stripped_output_prefix}.i3.zst")
+        geo_output_file = os.path.join(output_dir, f"GCD_{run_prefix}_{output_prefix}.i3.zst")
 
     import glob
 
@@ -231,6 +232,8 @@ if __name__ == "__main__":
     tray.Add("Rename", Keys=["CCMPMTCalibration", "CCMCalibration"])
     tray.Add("ElectronicsCorrection")
     tray.Add("CCMDerivativePulseFinder")
+    tray.Add("Delete", Keys=["CCMCalibratedWaveforms"])
+    #tray.Add("Delete", Keys=["CCMWaveforms"])
     # Write the GCD frames to a separate file
     tray.AddModule(
         "I3Writer",
