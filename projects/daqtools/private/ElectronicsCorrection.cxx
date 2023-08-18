@@ -101,7 +101,7 @@ void  ElectronicsCorrection::Geometry(I3FramePtr frame) {
 
 void ElectronicsCorrection::Calibration(I3FramePtr frame) {
     if(not frame->Has(ccm_calibration_name_)) {
-        log_fatal("Could not find CCMCalibration object with the key named \"%s\" in the Calibration frame.", ccm_calibration_name_);
+        log_fatal("Could not find CCMCalibration object with the key named \"%s\" in the Calibration frame.", ccm_calibration_name_.c_str());
     }
     ccm_calibration_ = frame->Get<CCMCalibration>(ccm_calibration_name_);
     calib_seen = true;
