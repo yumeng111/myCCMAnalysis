@@ -146,6 +146,15 @@ inline void merge_empty_trigger(
 
 int32_t subtract_times(uint32_t t0, uint32_t t1);
 
+inline bool operator <(timespec const & lhs, timespec const & rhs) {
+    if (lhs.tv_sec == rhs.tv_sec)
+        return lhs.tv_nsec < rhs.tv_nsec;
+    else
+        return lhs.tv_sec < rhs.tv_sec;
+}
+
+
+
 } // namespace Binary
 } // namespace CCMAnalsysis
 

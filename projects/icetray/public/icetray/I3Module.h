@@ -111,6 +111,9 @@ public:
   
   virtual void Process();
 
+  // thunks to Finish() and prints report
+  void Finish_();
+
   /**
    * The purpose of this transition is to give this object the opportunity to
    * wind up gracefully. For example a module can use this transition to

@@ -64,9 +64,10 @@ size_t CheckForPulse(WaveformSmoother & smoother, size_t start_idx, size_t max_s
         if(state % 2) {
             if(smoother.Derivative() < 0)
                 state += 1;
-        } else
+        } else {
             if(smoother.Derivative() > 0) {
                 state += 1;
+            }
         }
         if(state >= 3) {
             found_pulse = true;
