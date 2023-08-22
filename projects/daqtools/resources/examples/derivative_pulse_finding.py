@@ -11,7 +11,7 @@ import time
 import uuid
 import os
 
-icetray.set_log_level('INFO')
+icetray.set_log_level("INFO")
 icetray.logging.set_level("INFO")
 
 load("CCMBinary", False)
@@ -23,8 +23,8 @@ class FindDesiredFrames(I3ConditionalModule):
     def __init__(self, context):
         I3ConditionalModule.__init__(self, context)
         self.AddParameter(
-            "DesiredTriggerType",
-            "Trigger type you want to select for and continue processing data",
+            "DesiredTriggerTypes",
+            "Trigger types you want to select for and continue processing data",
             "",
         )
         self.AddParameter(
@@ -35,15 +35,16 @@ class FindDesiredFrames(I3ConditionalModule):
         self.n_frames = 0
 
     def Configure(self):
-        self.desired_trigger_type = self.GetParameter("DesiredTriggerType")
+        self.desired_trigger_types = self.GetParameter("DesiredTriggerTypes")
         self.frame_types = self.GetParameter("FrameTypesToFilter")
 
     def IsCorrectTriggerType(self, frame):
         ### let's get the nim pulse
         nim_pulses = frame["NIMPulses"]
-        trigger_key = CCMTriggerKey(self.desired_trigger_type, 1)
-        if trigger_key in nim_pulses and len(nim_pulses[trigger_key]) > 0:
-            return True
+        for trigger_type in self.desired_trigger_types:
+            trigger_key = CCMTriggerKey(trigger_type, 1)
+            if trigger_key in nim_pulses and len(nim_pulses[trigger_key]) > 0:
+                return True
         return False
 
     def Process(self):
@@ -179,7 +180,7 @@ if __name__ == "__main__":
         output_dir = args.output_dir
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, f"{output_prefix}.i3.zst")
-        geo_output_file = output_dir + f"GCD_{output_prefix}.i3.zst"
+        geo_output_file = os.path.join(output_dir, f"GCD_{output_prefix}.i3.zst")
     elif args.run is not None:
         run_prefix = "run%06d" % args.run
         if args.in_run_folders:
@@ -194,9 +195,13 @@ if __name__ == "__main__":
             ]
         output_dir = os.path.join(args.output_dir, run_prefix)
         os.makedirs(output_dir, exist_ok=True)
-        stripped_output_prefix = output_prefix[:output_prefix.find("%")]
-        output_file = os.path.join(output_dir, f"{run_prefix}_{stripped_output_prefix}.i3.zst")
-        geo_output_file = os.path.join(output_dir, f"GCD_{run_prefix}_{output_prefix}.i3.zst")
+        stripped_output_prefix = output_prefix[: output_prefix.find("%")]
+        output_file = os.path.join(
+            output_dir, f"{run_prefix}_{stripped_output_prefix}.i3.zst"
+        )
+        geo_output_file = os.path.join(
+            output_dir, f"GCD_{run_prefix}_{output_prefix}.i3.zst"
+        )
 
     import glob
 
@@ -211,10 +216,10 @@ if __name__ == "__main__":
     # This also produces a geometry object from the CCMDAQConfig contained in the files
     tray.Add("MergedSource", "reader", FileLists=fnames, MaxTimeDiff=32)
     # Replace the geometry and CCMDAQConfig with the patched version
-    #tray.Add(
+    # tray.Add(
     #    daqtools.GeometryReplacer.GeometryReplacer,
     #    GeometryFile=args.geometry_file,
-    #)
+    # )
     # Merge triggers that are overlapping
     tray.Add("CCMGeometryGenerator")
     tray.Add("CCMTriggerMerger", "trigger_merger")
@@ -226,14 +231,18 @@ if __name__ == "__main__":
     tray.Add("BeamCurrentMonitorSummary", "bcm_summary")
     # Filter out DAQ frames for certain triggers
     tray.Add(
-        FindDesiredFrames, DesiredTriggerType=CCMTriggerKey.TriggerType.CosmicTrigger
+        FindDesiredFrames,
+        DesiredTriggerTypes=[
+            CCMTriggerKey.TriggerType.LEDTopTrigger,
+            CCMTriggerKey.TriggerType.LEDBottomTrigger,
+        ],
     )
     tray.Add("BaselineEstimator")
     tray.Add("Rename", Keys=["CCMPMTCalibration", "CCMCalibration"])
     tray.Add("ElectronicsCorrection")
     tray.Add("CCMDerivativePulseFinder")
     tray.Add("Delete", Keys=["CCMCalibratedWaveforms"])
-    #tray.Add("Delete", Keys=["CCMWaveforms"])
+    # tray.Add("Delete", Keys=["CCMWaveforms"])
     # Write the GCD frames to a separate file
     tray.AddModule(
         "I3Writer",
