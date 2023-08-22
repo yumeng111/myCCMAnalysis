@@ -32,12 +32,17 @@
 #include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/calibration/CCMPMTCalibration.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
+#include <dataclasses/physics/NIMLogicPulse.h>
 #include <daqtools/WaveformDerivative.h>
+
+#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
 class CCMDerivativePulseFinder: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     std::string ccm_waveform_name_;
+    std::string ccm_trigger_name_;
+    std::string nim_pulses_name_;
     bool throw_without_input_;
     std::string output_name_;
 
@@ -48,6 +53,7 @@ class CCMDerivativePulseFinder: public I3Module {
     double pulse_min_deriv_magnitude;
     double pulse_min_integral;
 
+    CCMGeometry geo;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
 public:
     CCMDerivativePulseFinder(const I3Context&);
@@ -64,6 +70,7 @@ public:
         double min_pulse_height,
         double min_deriv_magnitude,
         double min_integral);
+    static void ApplyTimeOffset(CCMRecoPulseSeries & output, double offset);
 };
 
 I3_MODULE(CCMDerivativePulseFinder);
@@ -71,6 +78,7 @@ I3_MODULE(CCMDerivativePulseFinder);
 CCMDerivativePulseFinder::CCMDerivativePulseFinder(const I3Context& context) : I3Module(context), 
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("NIMPulsesName", "Key for NIMPulses", std::string("NIMPulses"));
     AddParameter("CCMCalibratedWaveformsName", "Key for the input CCMWaveformDoubleSeries", std::string("CCMCalibratedWaveforms"));
     AddParameter("ThrowWithoutInput", "Whether to throw an error when there is no input", false);
 
@@ -85,6 +93,7 @@ CCMDerivativePulseFinder::CCMDerivativePulseFinder(const I3Context& context) : I
 
 void CCMDerivativePulseFinder::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("NIMPulsesName", nim_pulses_name_);
     GetParameter("CCMCalibratedWaveformsName", ccm_waveform_name_);
     GetParameter("ThrowWithoutInput", throw_without_input_);
     GetParameter("InitialDerivativeThreshold", pulse_initial_deriv_threshold);
@@ -101,7 +110,7 @@ void CCMDerivativePulseFinder::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
-    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+    geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
     geo_seen = true;
     PushFrame(frame);
@@ -117,9 +126,18 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
         }
         return;
     }
+    if(not frame->Has(nim_pulses_name_)) {
+        if(throw_without_input_) {
+            log_fatal("Input NIMPulses name %s not present", nim_pulses_name_.c_str());
+        } else {
+            log_warn("Input NIMPulses named %s not present", nim_pulses_name_.c_str());
+        }
+        return;
+    }
 
     // let's read in our waveform
     boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(ccm_waveform_name_);
+    boost::shared_ptr<I3Map<CCMTriggerKey, NIMLogicPulse> const> nim_pulses = frame->Get<boost::shared_ptr<I3Map<CCMTriggerKey, NIMLogicPulse> const>>(nim_pulses_name_);
 
     std::vector<CCMPMTKey> pmt_keys;
     pmt_keys.reserve(pmt_channel_map_.size());
@@ -132,7 +150,9 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
     // loop over each channel in waveforms
     for(size_t i=0; i<pmt_keys.size(); ++i) {
         CCMPMTKey key = pmt_keys[i];
-        uint32_t channel = pmt_channel_map_[key];
+        uint32_t channel = pmt_channel_map_.at(key);
+        CCMTriggerKey trigger_key =  geo.trigger_copy_map.at(key);
+        double nim_pulse_time = nim_pulses->at(trigger_key).GetNIMPulseTime();
         WaveformDerivative deriv(waveforms->at(channel).GetWaveform().begin(), waveforms->at(channel).GetWaveform().end(), 2.0);
         FindPulses(output->operator[](key),
                 deriv,
@@ -142,6 +162,7 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
                 pulse_min_height,
                 pulse_min_deriv_magnitude,
                 pulse_min_integral);
+        ApplyTimeOffset(output->operator[](key), -nim_pulse_time);
     }
 
     frame->Put(output_name_, output);
@@ -179,8 +200,8 @@ void CCMDerivativePulseFinder::FindPulses(
                 pulse_first_index = pulses[j].GetTime() / 2;
                 pulse_last_index = pulse_first_index + pulses[j].GetWidth() / 2;
                 i = pulse_last_index;
+                deriv.Reset(pulse_last_index);
             }
-            deriv.Reset(pulse_last_index);
         }
         deriv.Next();
     }
@@ -198,6 +219,7 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
     double integral = 0;
     bool found_pulse = false;
     size_t final_idx = start_idx;
+    bool state_2_reached_zero = false;
     size_t N = std::min(deriv.Size(), start_idx + max_samples);
     for(size_t i=start_idx; i<N; ++i) {
         max_value = std::max(max_value, deriv.Value());
@@ -208,6 +230,12 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
                 state += 1;
             }
         } else {
+            if(state == 2) {
+                if(deriv.Value() <= 0.1)
+                    state_2_reached_zero = true;
+                if(not state_2_reached_zero)
+                    continue;
+            }
             if(deriv.Derivative() > 0) {
                 state += 1;
             }
@@ -233,5 +261,11 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
     } else {
         deriv.Reset(start_idx);
         return {};
+    }
+}
+
+void CCMDerivativePulseFinder::ApplyTimeOffset(CCMRecoPulseSeries & output, double offset) {
+    for(CCMRecoPulse & pulse : output) {
+        pulse.SetTime(pulse.GetTime() + offset);
     }
 }
