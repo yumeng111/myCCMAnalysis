@@ -115,7 +115,7 @@ CCMDerivativePulseFinderRootOutput::CCMDerivativePulseFinderRootOutput(const I3C
 
 void CCMDerivativePulseFinderRootOutput::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("CCMTriggerName", ccm_trigger_name_);
+    GetParameter("CCMTriggersName", ccm_trigger_name_);
     GetParameter("NIMPulsesName", nim_pulses_name_);
     GetParameter("CCMCalibratedWaveformsName", ccm_waveform_name_);
     GetParameter("ThrowWithoutInput", throw_without_input_);
