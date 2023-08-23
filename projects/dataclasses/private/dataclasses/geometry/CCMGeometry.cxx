@@ -21,6 +21,10 @@ CCMGeometry::serialize(Archive& ar, unsigned version) {
 
 const CCMGeometry& CCMGeometry::operator=(const CCMGeometry& geometry) {
   pmt_geo = geometry.pmt_geo;
+  pmt_channel_map = geometry.pmt_channel_map;
+  trigger_channel_map = geometry.trigger_channel_map;
+  trigger_copy_map = geometry.trigger_copy_map;
+  trigger_to_trigger_copy_map = geometry.trigger_to_trigger_copy_map;
   startTime = geometry.startTime;
   endTime = geometry.endTime;
 
