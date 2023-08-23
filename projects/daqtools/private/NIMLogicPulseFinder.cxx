@@ -7,6 +7,8 @@
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
 
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <string>
 #include <iostream>
 #include <algorithm>
@@ -161,8 +163,11 @@ void NIMLogicPulseFinder::AddBaselineSamples(I3FramePtr frame) {
         uint32_t trigger_channel = key.second;
         std::vector<uint16_t> & samples = baseline_samples[trigger_key];
         // Concatenate waveforms from multiple frames
-        samples.reserve(samples.size() + waveforms[trigger_channel].GetWaveform().size());
-        samples.insert(samples.end(), waveforms[trigger_channel].GetWaveform().begin(), waveforms[trigger_channel].GetWaveform().end());
+        samples.reserve(samples.size() + waveforms[trigger_channel].GetWaveform().size() / sample_step);
+        // samples.insert(samples.end(), waveforms[trigger_channel].GetWaveform().begin(), waveforms[trigger_channel].GetWaveform().end());
+        for(size_t i=0; i<waveforms[trigger_channel].GetWaveform().size(); i += sample_step) {
+            samples.push_back(waveforms[trigger_channel].GetWaveform()[i]);
+        }
     }
 }
 
