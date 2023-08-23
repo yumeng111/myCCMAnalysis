@@ -60,7 +60,7 @@ public:
     void Configure();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
-    static std::vector<CCMRecoPulse> CheckForPulse(WaveformDerivative & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold);
+    static std::vector<CCMRecoPulse> CheckForPulse(WaveformDerivative & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason);
     static void FindPulses(
         CCMRecoPulseSeries & output,
         WaveformDerivative & deriv,
@@ -80,14 +80,14 @@ CCMDerivativePulseFinder::CCMDerivativePulseFinder(const I3Context& context) : I
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMPulses", std::string("NIMPulses"));
     AddParameter("CCMCalibratedWaveformsName", "Key for the input CCMWaveformDoubleSeries", std::string("CCMCalibratedWaveforms"));
-    AddParameter("ThrowWithoutInput", "Whether to throw an error when there is no input", false);
+    AddParameter("ThrowWithoutInput", "Whether to throw an error when there is no input", true);
 
     AddParameter("InitialDerivativeThreshold", "Initial positive derivative threshold for a pulse", double(0.3));
     AddParameter("MinPulseWidth", "Minimum width for defining a pulse", size_t(5));
     AddParameter("MaxPulseWidth", "Maxiumum width for defining a pulse", size_t(100));
     AddParameter("MinPulseHeight", "Minimum height for defining a pulse", double(5.0));
-    AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.65));
-    AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(25.0));
+    AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.325));
+    AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(10.0));
     AddParameter("OutputName", "Key for output CCMRecoPulseSeriesMap", std::string("DerivativePulses"));
 }
 
@@ -107,22 +107,29 @@ void CCMDerivativePulseFinder::Configure() {
 
 
 void CCMDerivativePulseFinder::Geometry(I3FramePtr frame) {
+    // std::cout << "CCMDerivativePulseFinder::Geometry" << std::endl;
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
     geo = frame->Get<CCMGeometry const>(geometry_name_);
+    // std::cout << "geo.pmt_channel_map.size() == " << geo.pmt_channel_map.size() << std::endl;
     pmt_channel_map_ = geo.pmt_channel_map;
+    // std::cout << "pmt_channel_map_.size() == " << pmt_channel_map_.size() << std::endl;
     geo_seen = true;
     PushFrame(frame);
 }
 
 void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
+    // std::cout << "CCMDerivativePulseFinder::DAQ" << std::endl;
+    if(not geo_seen) {
+        log_fatal("No Geometry frame seen befor DAQ frame!");
+    }
 
     if(not frame->Has(ccm_waveform_name_)) {
         if(throw_without_input_) {
-            log_fatal("Input waveform name %s not present", ccm_waveform_name_);
+            log_fatal("Input waveform name %s not present", ccm_waveform_name_.c_str());
         } else {
-            log_warn("Input waveform name %s not present", ccm_waveform_name_);
+            log_warn("Input waveform name %s not present", ccm_waveform_name_.c_str());
         }
         return;
     }
@@ -137,22 +144,35 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
 
     // let's read in our waveform
     boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(ccm_waveform_name_);
-    boost::shared_ptr<I3Map<CCMTriggerKey, NIMLogicPulse> const> nim_pulses = frame->Get<boost::shared_ptr<I3Map<CCMTriggerKey, NIMLogicPulse> const>>(nim_pulses_name_);
+    if(waveforms == nullptr) {
+        log_fatal("I3FrameObject of type \"CCMWaveformDoubleSeries\" does not exist under key \"%s\"", ccm_waveform_name_.c_str());
+    }
+    boost::shared_ptr<I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>> const> nim_pulses = frame->Get<boost::shared_ptr<I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>> const>>(nim_pulses_name_);
+    if(waveforms == nullptr) {
+        log_fatal("I3FrameObject of type \"I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>>\" does not exist under key \"%s\"", nim_pulses_name_.c_str());
+    }
 
     std::vector<CCMPMTKey> pmt_keys;
+    // std::cout << "pmt_channel_map_.size() == " << pmt_channel_map_.size() << std::endl;
     pmt_keys.reserve(pmt_channel_map_.size());
     for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
         pmt_keys.push_back(p.first);
     }
+    // std::cout << "Have " << pmt_keys.size() << " pmt keys" << std::endl;
 
     boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
 
     // loop over each channel in waveforms
     for(size_t i=0; i<pmt_keys.size(); ++i) {
         CCMPMTKey key = pmt_keys[i];
+        // std::cout << "Looking at " << key << std::endl;
         uint32_t channel = pmt_channel_map_.at(key);
         CCMTriggerKey trigger_key =  geo.trigger_copy_map.at(key);
-        double nim_pulse_time = nim_pulses->at(trigger_key).GetNIMPulseTime();
+        I3Vector<NIMLogicPulse> const & trigger_nim_pulses = nim_pulses->at(trigger_key);
+        if(trigger_nim_pulses.size() == 0) {
+            log_fatal("No board timing information available!");
+        }
+        double nim_pulse_time = trigger_nim_pulses[0].GetNIMPulseTime();
         WaveformDerivative deriv(waveforms->at(channel).GetWaveform().begin(), waveforms->at(channel).GetWaveform().end(), 2.0);
         FindPulses(output->operator[](key),
                 deriv,
@@ -162,6 +182,7 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
                 pulse_min_height,
                 pulse_min_deriv_magnitude,
                 pulse_min_integral);
+        std::cout << key << " has " << output->operator[](key).size() << " pulses" << std::endl;
         ApplyTimeOffset(output->operator[](key), -nim_pulse_time);
     }
 
@@ -188,13 +209,22 @@ void CCMDerivativePulseFinder::FindPulses(
     size_t pulse_first_index = 0;
     size_t pulse_last_index = 0;
 
+    std::map<uint16_t, size_t> failure_counts;
     // Reset the smoother position to the start of the waveform
     deriv.Reset();
     for(size_t i=0; i<N; ++i) {
+        uint16_t failure_reason = 0;
         // Check the condition for the beginning of a pulse
         if(deriv.Derivative() > deriv_threshold) {
+            // std::cout << "Derivative above threshold" << std::endl;
             // Get the last index of the found pulse, 0 if no pulse is found
-            std::vector<CCMRecoPulse> pulses = CheckForPulse(deriv, i, max_pulse_width, min_pulse_width, min_pulse_height, min_deriv_magnitude, min_integral);
+            std::vector<CCMRecoPulse> pulses = CheckForPulse(deriv, i, max_pulse_width, min_pulse_width, min_pulse_height, min_deriv_magnitude, min_integral, failure_reason);
+            if(pulses.size() == 0) {
+                if(failure_counts.find(failure_reason) == failure_counts.end()) {
+                    failure_counts[failure_reason] = 0;
+                }
+                failure_counts[failure_reason] += 1;
+            }
             for(size_t j=0; j<pulses.size(); ++j) {
                 output.push_back(pulses[j]);
                 pulse_first_index = pulses[j].GetTime() / 2;
@@ -205,9 +235,20 @@ void CCMDerivativePulseFinder::FindPulses(
         }
         deriv.Next();
     }
+    for(std::pair<uint16_t const, size_t> failure : failure_counts) {
+        std::cout << "Failure mode: b";
+        for(size_t i=0; i<5; ++i) {
+            if(failure.first & (0x1 <<i)) {
+                std::cout << "1";
+            } else {
+                std::cout << "0";
+            }
+        }
+        std::cout << " appeared " << failure.second << " times" << std::endl;
+    }
 }
 
-std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDerivative & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold) {
+std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDerivative & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason) {
     deriv.Reset(start_idx);
     // 0 before start of pulse checking [checking for positive derivative]
     // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
@@ -221,6 +262,7 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
     size_t final_idx = start_idx;
     bool state_2_reached_zero = false;
     size_t N = std::min(deriv.Size(), start_idx + max_samples);
+    // std::cout << "state = 0" << std::endl;
     for(size_t i=start_idx; i<N; ++i) {
         max_value = std::max(max_value, deriv.Value());
         max_abs_derivative = std::max(max_abs_derivative, std::abs(deriv.Derivative()));
@@ -228,24 +270,62 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
         if(state % 2) {
             if(deriv.Derivative() < 0) {
                 state += 1;
+                // std::cout << "state = " << state << std::endl;
             }
         } else {
             if(state == 2) {
-                if(deriv.Value() <= 0.1)
+                // std::cout << "Deriv == " << deriv.Value() << std::endl;
+                if(deriv.Value() <= 0.1) {
                     state_2_reached_zero = true;
-                if(not state_2_reached_zero)
+                    // std::cout << "Reached zero!" << std::endl;
+                }
+                if(not state_2_reached_zero) {
+                    deriv.Next();
                     continue;
+                }
             }
             if(deriv.Derivative() > 0) {
                 state += 1;
+                // std::cout << "state = " << state << std::endl;
             }
         }
         if(state >= 3) {
+            // std::cout << "Found pulse" << std::endl;
             found_pulse = true;
             final_idx = i;
             break;
         }
         deriv.Next();
+    }
+    if(found_pulse) {
+        // std::cout << "Found a pulse" << std::endl;
+        if(max_value >= value_threshold) {
+            // std::cout  << "Max value  : passed" << std::endl;
+        } else {
+            // std::cout  << "Max value  : failed" << std::endl;
+            failure_reason |= (0x1 << 1);
+        }
+        if(max_abs_derivative >= derivative_threshold) {
+            // std::cout  << "Max abs der: passed" << std::endl;
+        } else {
+            // std::cout  << "Max abs der: failed" << std::endl;
+            failure_reason |= (0x1 << 2);
+        }
+        if(integral >= integral_threshold) {
+            // std::cout  << "Integral   : passed" << std::endl;
+        } else {
+            // std::cout  << "Integral   : failed" << std::endl;
+            failure_reason |= (0x1 << 3);
+        }
+        if(final_idx - start_idx >= min_length) {
+            // std::cout  << "Min Length : passed" << std::endl;
+        } else {
+            // std::cout  << "Min Length : failed" << std::endl;
+            failure_reason |= (0x1 << 4);
+        }
+    } else {
+        // std::cout << "No pulse found" << std::endl;
+        failure_reason |= 0x1;
     }
     if(found_pulse
             and (max_value >= value_threshold)
