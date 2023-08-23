@@ -293,7 +293,6 @@ if __name__ == "__main__":
     tray.Add("Rename", Keys=["CCMPMTCalibration", "CCMCalibration"])
     tray.Add("ElectronicsCorrection")
     tray.Add("CCMDerivativePulseFinder")
-    tray.Add("Delete", Keys=["CCMCalibratedWaveforms"])
     tray.Add(HistogramPulses, OutputFile=json_output_file)
     # tray.Add("Delete", Keys=["CCMWaveforms"])
     # Write the GCD frames to a separate file
@@ -307,6 +306,7 @@ if __name__ == "__main__":
             icetray.I3Frame.DetectorStatus,
         ],
     )
+    tray.Add("Keep", Keys=["DerivativePulses", "NIMPulses"])
     # Write all the DAQ frames to their own set of files
     if "%" in output_file:
         # Split the output into files of a desired size
