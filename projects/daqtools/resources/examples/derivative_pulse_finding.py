@@ -10,6 +10,8 @@ from icecube import wavedeform, wavereform
 import time
 import uuid
 import os
+import collections
+import json
 
 icetray.set_log_level("INFO")
 icetray.logging.set_level("INFO")
@@ -17,6 +19,16 @@ icetray.logging.set_level("INFO")
 load("CCMBinary", False)
 load("daqtools", False)
 load("dataclasses", False)
+
+class NpEncoder(json.JSONEncoder):
+	def default(self, obj):
+		if isinstance(obj, np.integer):
+			return int(obj)
+		if isinstance(obj, np.floating):
+			return float(obj)
+		if isinstance(obj, np.ndarray):
+			return obj.tolist()
+		return super(NpEncoder, self).default(obj)
 
 
 class FindDesiredFrames(I3ConditionalModule):
@@ -118,6 +130,44 @@ class InjectCalibrationFrame(I3Module):
             self.PushFrame(frame)
             self.cached_frames = []
 
+class HistogramPulses(I3Module):
+    def __init__(self, context):
+        I3Module.__init__(self, context)
+        self.AddParameter("PulsesName", "Key for the pulse series", "DerivativePulses")
+        self.AddParameter("TimeBinWidth", "Bin edges for the time dimension of the histogram", 2.0)
+        self.AddParameter("ChargeBinWidth", "Bin edges for the charge dimension of the histogram", 0.5)
+        self.AddParameter("LengthBinWidth", "Bin edges for the length dimension of the histogram", 2.0)
+        self.AddParameter("OutputFile", "Output file name", "test.npz")
+
+    def Configure(self):
+        self.pulses_name = self.GetParameter("PulsesName")
+        self.time_width = self.GetParameter("TimeBinWidth")
+        self.charge_width = self.GetParameter("ChargeBinWidth")
+        self.length_width = self.GetParameter("LengthBinWidth")
+        self.output_file = self.GetParameter("OutputFile")
+        self.divisor = np.array([self.time_width, self.charge_width, self.length_width])[None, :]
+        self.charge_histogram = collections.defaultdict(lambda:collections.defaultdict(int))
+
+    def DAQ(self, frame):
+        pulses = frame[self.pulses_name]
+        for pmt_key, pmt_pulses in pulses.items():
+            if len(pmt_pulses) == 0:
+                continue
+            bin_dict = self.charge_histogram[pmt_key]
+            data = np.array([(pulse.time, pulse.charge, pulse.width) for pulse in pmt_pulses])
+            idxs = np.floor_divide(data, self.divisor).astype(int)
+            for idx in idxs:
+                key = tuple(idx)
+                bin_dict[key] += 1
+        self.PushFrame(frame)
+
+    def Finish(self):
+        entries = []
+        for pmt_key, bin_dict in self.charge_histogram.items():
+            key = list(pmt_key)
+            for idx, count in bin_dict.items():
+                entries.append([key, idx, count])
+        json.dump(entries, open(self.output_file, "w"), cls=NpEncoder)
 
 if __name__ == "__main__":
     import argparse
@@ -181,6 +231,7 @@ if __name__ == "__main__":
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, f"{output_prefix}.i3.zst")
         geo_output_file = os.path.join(output_dir, f"GCD_{output_prefix}.i3.zst")
+        json_output_file = os.path.join(output_dir, f"{output_prefix}.json")
     elif args.run is not None:
         run_prefix = "run%06d" % args.run
         if args.in_run_folders:
@@ -202,6 +253,7 @@ if __name__ == "__main__":
         geo_output_file = os.path.join(
             output_dir, f"GCD_{run_prefix}_{stripped_output_prefix}.i3.zst"
         )
+        json_output_file = os.path.join(output_dir, f"{run_prefix}_{stripped_output_prefix}.json")
 
     import glob
 
@@ -242,6 +294,7 @@ if __name__ == "__main__":
     tray.Add("ElectronicsCorrection")
     tray.Add("CCMDerivativePulseFinder")
     tray.Add("Delete", Keys=["CCMCalibratedWaveforms"])
+    tray.Add(HistogramPulses, OutputFile=json_output_file)
     # tray.Add("Delete", Keys=["CCMWaveforms"])
     # Write the GCD frames to a separate file
     tray.AddModule(
