@@ -182,7 +182,7 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
                 pulse_min_height,
                 pulse_min_deriv_magnitude,
                 pulse_min_integral);
-        std::cout << key << " has " << output->operator[](key).size() << " pulses" << std::endl;
+        // std::cout << key << " has " << output->operator[](key).size() << " pulses" << std::endl;
         ApplyTimeOffset(output->operator[](key), -nim_pulse_time);
     }
 
@@ -235,6 +235,7 @@ void CCMDerivativePulseFinder::FindPulses(
         }
         deriv.Next();
     }
+    /*
     for(std::pair<uint16_t const, size_t> failure : failure_counts) {
         std::cout << "Failure mode: b";
         for(size_t i=0; i<5; ++i) {
@@ -246,6 +247,7 @@ void CCMDerivativePulseFinder::FindPulses(
         }
         std::cout << " appeared " << failure.second << " times" << std::endl;
     }
+    */
 }
 
 std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDerivative & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason) {
