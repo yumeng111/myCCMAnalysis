@@ -197,10 +197,10 @@ if __name__ == "__main__":
         os.makedirs(output_dir, exist_ok=True)
         stripped_output_prefix = output_prefix[: output_prefix.find("%")]
         output_file = os.path.join(
-            output_dir, f"{run_prefix}_{stripped_output_prefix}.i3.zst"
+            output_dir, f"{run_prefix}_{output_prefix}.i3.zst"
         )
         geo_output_file = os.path.join(
-            output_dir, f"GCD_{run_prefix}_{output_prefix}.i3.zst"
+            output_dir, f"GCD_{run_prefix}_{stripped_output_prefix}.i3.zst"
         )
 
     import glob
@@ -271,7 +271,6 @@ if __name__ == "__main__":
             SizeCheckInterval=1000,
             NWorkers=8,
             Streams=[
-                icetray.I3Frame.DetectorStatus,
                 icetray.I3Frame.DAQ,
                 icetray.I3Frame.Physics,
             ],
@@ -283,8 +282,6 @@ if __name__ == "__main__":
             "writer",
             FileName=output_file,
             Streams=[
-                icetray.I3Frame.Calibration,
-                icetray.I3Frame.DetectorStatus,
                 icetray.I3Frame.DAQ,
                 icetray.I3Frame.Physics,
             ],
