@@ -5,6 +5,7 @@
 #include <math.h>
 #include <time.h>
 #include <float.h>
+#include <iostream>
 
 #include <cholmod.h>
 
@@ -83,10 +84,10 @@ rnnls_allocate_context(cholmod_sparse *A,
   return cxt;
 }
 
-
 void
 rnnls_free_context(rnnls_context *cxt) {
 
+  std::cout << "going to start constraining pulses" << std::endl;
   free(cxt->Z);
   free(cxt->P);
   cholmod_l_free_factor(&(cxt->L), cxt->c);
@@ -111,7 +112,6 @@ rnnls_next_free(double tolerance,
   // At(y - Ax) -> cxt->rowwork
   cholmod_l_sdmult(cxt->A, 1, SD_ONE, SD_ZERO,
                    cxt->colwork, cxt->rowwork, cxt->c);
-
   /* Find the index of the member in passive set with largest
    * negative gradient
    */
@@ -198,6 +198,7 @@ rnnls_set_passive(long zidx,
   /* Now calculate AtA for column k */
   // AtA_k --> cxt->rowwork
   cholmod_l_sdmult(A, 1, SD_ONE, SD_ZERO, cxt->colwork, cxt->rowwork, cxt->c);
+
 
   /* Insert the entries of AtA for the passive set into the update matrix
    * NB: Reuse update matrix since allocation of cholmod_sparse is slow
@@ -419,7 +420,10 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
   rnnls_context *cxt = rnnls_allocate_context(A, y, c);
 
   // Find the optimal NNLS solution
+  size_t n_iterations = 0;
   for (unsigned n = 0; n < max_iterations || max_iterations == 0; ++n) {
+      n_iterations = n;
+      //std::cout << "RNNLS iteration " << n << std::endl;
 
     // Machine precision limits our ability find the optimal solution.
     // Use a stopping tolerance suggested by Adlers
@@ -434,6 +438,7 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
       break;
     }
   }
+    std::cout << "RNNLS iterations: " << n_iterations << std::endl;
 
   // We've found the optimal solution.  Now remove passive members in order
   // of increasing amplitude.  Put them back if we cannot stay under tolerance
@@ -445,7 +450,9 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
   // Track members we haven't checked.  Positions of members in P may change.
   std::set<long> Pset(cxt->P, cxt->P + cxt->nP);
   rnnls_sort_P_by_amplitude(cxt);
+  size_t rnnls_member_iteration = 0;
   for (;;) {
+      //std::cout << "RNNLS member iteration " << rnnls_member_iteration << std::endl;
 
     // Find next member to test.
     long next_active = -1;
@@ -487,7 +494,9 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
       cxt->last_free = -1;
       cholmod_l_copy_dense2(ret, cxt->x, c);
     }
+    ++rnnls_member_iteration;
   }
+    std::cout << "RNNLS member iterations: " << rnnls_member_iteration << std::endl;
 
   rnnls_free_context(cxt);
   return ret;

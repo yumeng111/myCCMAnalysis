@@ -84,6 +84,7 @@ namespace bp = boost::python;
   (I3RecoPulseSeriesMapUnion)(I3SuperDST)(TankKey)(I3Orientation)       \
   (ModuleKey)(I3ModuleGeo)(I3OMGeo)(I3TankGeo)(I3FilterResult)          \
   (I3MapI3ParticleID)(I3VectorString)(I3VectorBool)                     \
+  (I3VectorCCMPMTKey)                                                   \
   (I3VectorOMKey)(I3VectorModuleKey)(I3VectorTankKey)                   \
   (I3VectorUInt8)(I3VectorUInt16)(I3VectorUInt32)(I3VectorUInt64)       \
   (I3VectorInt8)(I3VectorInt16)(I3VectorInt32)(I3VectorInt64)           \

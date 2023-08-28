@@ -106,7 +106,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  */
 
 void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double start_time, double pulse_width, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, I3FramePtr frame) {
-    std::cout << "GetPulses()" << std::endl;
+    //std::cout << "GetPulses()" << std::endl;
     output.clear();
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
@@ -117,7 +117,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // Determine the total number of WF bins
     nbins = wf.GetWaveform().size();
     boost::shared_ptr<I3Vector<double>> wf_copy = boost::make_shared<I3Vector<double>>(wf.GetWaveform().begin(), wf.GetWaveform().end());
-    frame->Put("OriginalWaveform", wf_copy);
+    //frame->Put("OriginalWaveform", wf_copy);
     // If we have no data, nothing to do
     if (nbins == 0 || !std::isfinite(spe_charge) || spe_charge == 0)
         return;
@@ -156,7 +156,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     double noise = noise_threshold_;
     double basisThreshmV = basis_threshold_;
 
-    std::cout << "Reading in the waveform" << std::endl;
+    //std::cout << "Reading in the waveform" << std::endl;
     // Read waveform
     for (k = 0; k < wf.GetWaveform().size(); k++) {
         redges[k] = (1. + k) * wf_bin_width;
@@ -172,7 +172,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
         // Deweight and zero below noise-floor bins
         if (((double *)(data->x))[k] < noise) {
-            //std::cout << "data set to 0 is " << ((double *)(data->x))[k] << std::endl;
+            ////std::cout << "data set to 0 is " << ((double *)(data->x))[k] << std::endl;
             ((double *)(data->x))[k] = 0;
             weights[k] /= 4.;
         } else if (fabs(((double *)(data->x))[k]) > basisThreshmV) {
@@ -183,15 +183,15 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     for(size_t i=0; i<nbins; ++i) {
         data_copy->operator[](i) = ((double *)(data->x))[i];
     }
-    frame->Put("OriginalData", data_copy);
+    //frame->Put("OriginalData", data_copy);
     boost::shared_ptr<I3Vector<double>> redges_copy = boost::make_shared<I3Vector<double>>(redges.begin(), redges.end());
-    frame->Put("OriginalREdges", redges_copy);
+    //frame->Put("OriginalREdges", redges_copy);
     boost::shared_ptr<I3Vector<double>> weights_copy = boost::make_shared<I3Vector<double>>(weights.begin(), weights.end());
-    frame->Put("OriginalWeights", weights_copy);
+    //frame->Put("OriginalWeights", weights_copy);
     boost::shared_ptr<I3Vector<bool>> passBasisThresh_copy = boost::make_shared<I3Vector<bool>>(passBasisThresh.begin(), passBasisThresh.end());
-    frame->Put("OriginalPassBasisThresh", passBasisThresh_copy);
+    //frame->Put("OriginalPassBasisThresh", passBasisThresh_copy);
 
-    std::cout << "Applying weights" << std::endl;
+    //std::cout << "Applying weights" << std::endl;
     // Apply weights
     for (int i = 0; i < nbins; i++) {
         ((double *)(data->x))[i] *= weights[i];
@@ -201,7 +201,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     for(size_t i=0; i<nbins; ++i) {
         data_weighted_copy->operator[](i) = ((double *)(data->x))[i];
     }
-    frame->Put("WeightedData", data_weighted_copy);
+    //frame->Put("WeightedData", data_weighted_copy);
 
     // Precalculate the max number of basis functions to avoid reallocation
     int maxspes = int(spes_per_bin_*(wf.GetWaveform().size()));
@@ -222,8 +222,8 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // Get the peak FWHM start, stop times for this waveform
     double fwhmStart = wfTemplate.digitizerStart;
     double fwhmStop = wfTemplate.digitizerStop;
-    //std::cout << "fwhm = " << fwhmStart << " to " << fwhmStop << std::endl;
-    std::cout << "about to find start times" << std::endl;
+    ////std::cout << "fwhm = " << fwhmStart << " to " << fwhmStop << std::endl;
+    //std::cout << "about to find start times" << std::endl;
     // Generate the set of pulse start times that have reasonable
     // non-zero data within the FWHM of the corresponding pulse
     for (k = 0; k < wf.GetWaveform().size(); ++k) {
@@ -241,12 +241,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             }
         }
     }
-    std::cout << "found start times" << std::endl;
+    //std::cout << "found start times" << std::endl;
     boost::shared_ptr<I3Vector<double>> start_times_copy = boost::make_shared<I3Vector<double>>();
     for(std::pair<double, double> const & s : start_times) {
         start_times_copy->push_back(s.first);
     }
-    frame->Put("OriginalStartTimes", start_times_copy);
+    //frame->Put("OriginalStartTimes", start_times_copy);
 
     int nspes = start_times.size();
     if (nspes == 0) {
@@ -254,7 +254,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         return;
     }
     std::sort(start_times.begin(), start_times.end());
-    std::cout << "Original start times size: " << start_times.size() << std::endl;
+    //std::cout << "Original start times size: " << start_times.size() << std::endl;
 
     // Deduplicate SPE start times to improve basis matrix conditioning.
     // Due to the superposition of multiple basis function rows, multiple
@@ -274,8 +274,8 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         nspes = j+1;
     }
     start_times.resize(nspes);
-    std::cout << "De-duplicated start times size: " << start_times.size() << std::endl;
-    std::cout << "de-duplicating start times" << std::endl;
+    //std::cout << "De-duplicated start times size: " << start_times.size() << std::endl;
+    //std::cout << "de-duplicating start times" << std::endl;
     // Recompute spacings based on deduplicated basis
     if (nspes > 1) {
         int i;
@@ -298,7 +298,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     for(std::pair<double, double> const & s : start_times) {
         start_times_dedup_copy->push_back(s.first);
     }
-    frame->Put("DeduplicatedStartTimes", start_times_dedup_copy);
+    //frame->Put("DeduplicatedStartTimes", start_times_dedup_copy);
 
     // Don't use data bins that are not in the support of any basis function
     double start = DBL_MIN;
@@ -330,9 +330,9 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         weights[k] = 0.;
         ++k;
     }
-    std::cout << "set some weights to 0" << std::endl;
+    //std::cout << "set some weights to 0" << std::endl;
     boost::shared_ptr<I3Vector<double>> weights_zeroed_copy = boost::make_shared<I3Vector<double>>(weights.begin(), weights.end());
-    frame->Put("ZeroedWeights", weights_zeroed_copy);
+    //frame->Put("ZeroedWeights", weights_zeroed_copy);
 
     // Chop out the data bins that we don't use since we don't fit them
     j = 0;
@@ -351,15 +351,15 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     boost::shared_ptr<I3Vector<double>> data_shifted_copy = boost::make_shared<I3Vector<double>>(nbins, 0);
     boost::shared_ptr<I3Vector<double>> weights_shifted_copy = boost::make_shared<I3Vector<double>>(weights.begin(), weights.begin() + nbins);
     boost::shared_ptr<I3Vector<double>> redges_shifted_copy = boost::make_shared<I3Vector<double>>(redges.begin(), redges.begin() + nbins);
-    std::cout << "data going into pulse fitting:" << std::endl;
+    //std::cout << "data going into pulse fitting:" << std::endl;
     for(size_t i=0; i<nbins; ++i) {
-        std::cout << "\t" << ((double *)(data->x))[i] << std::endl;
+        //std::cout << "\t" << ((double *)(data->x))[i] << std::endl;
         data_shifted_copy->operator[](i) = ((double *)(data->x))[i];
     }
-    frame->Put("ShiftedData", data_shifted_copy);
-    frame->Put("ShiftedWeights", weights_shifted_copy);
-    frame->Put("ShiftedREdges", redges_shifted_copy);
-    std::cout << "shifted data etc" << std::endl;
+    //frame->Put("ShiftedData", data_shifted_copy);
+    //frame->Put("ShiftedWeights", weights_shifted_copy);
+    //frame->Put("ShiftedREdges", redges_shifted_copy);
+    //std::cout << "shifted data etc" << std::endl;
 
     // Compute a reasonable upper bound on the number of non-zero matrix
     // elements.
@@ -441,7 +441,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             col_counts[j]++;
         }
     }
-    std::cout << "set basis cholmod" << std::endl;
+    //std::cout << "set basis cholmod" << std::endl;
 
     boost::shared_ptr<I3Vector<long int>> basis_trip_i = boost::make_shared<I3Vector<long int>>();
     boost::shared_ptr<I3Vector<long int>> basis_trip_j = boost::make_shared<I3Vector<long int>>();
@@ -454,9 +454,9 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         basis_trip_x->push_back(((double *)(basis_trip->x))[basis_trip->nnz]);
     }
     basis_trip->nnz = basis_trip_nnz;
-    frame->Put("BasisTripI", basis_trip_i);
-    frame->Put("BasisTripJ", basis_trip_j);
-    frame->Put("BasisTripX", basis_trip_x);
+    //frame->Put("BasisTripI", basis_trip_i);
+    //frame->Put("BasisTripJ", basis_trip_j);
+    //frame->Put("BasisTripX", basis_trip_x);
 
     //  Convert to column-ordered sparse matrix
     //  Note: This is handrolled instead of using
@@ -482,12 +482,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         ((double *)(basis->x))[index] = ((double *)(basis_trip->x))[i];
     }
     cholmod_l_free_triplet(&basis_trip, &chol_common);
-    std::cout << "did some cholmod sparse stuff" << std::endl;
+    //std::cout << "did some cholmod sparse stuff" << std::endl;
     // Solve for SPE heights
     if (reduce_) {
-        std::cout << "about to unfold" << std::endl;
-        unfolded = rnnls(basis, data, tolerance_, 1000, 0, &chol_common);
-        std::cout << "unfolded the pulses!" << std::endl;
+        //std::cout << "about to unfold" << std::endl;
+        unfolded = rnnls(basis, data, tolerance_, 2000, 0, &chol_common);
+        //std::cout << "unfolded the pulses!" << std::endl;
     } else {
         unfolded = nnls_lawson_hanson(basis, data, tolerance_,
                 0, 1000, nspes, 0, 1, 0, &chol_common);
@@ -546,7 +546,7 @@ void RunPulsesThread(
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(pmt_key);
 
         if(calib == calibration.pmtCal.cend()) {
-            std::cout << "oops! no calibration for " << pmt_key << std::endl;
+            //std::cout << "oops! no calibration for " << pmt_key << std::endl;
             continue;
         }
 
@@ -669,7 +669,8 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
             " corrections to the pulse charge scaling if available", false);
     AddParameter("Reduce", "Find the optimal NNLS solution, then eliminate"
             " basis members until tolerance is reached", true);
-    AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>({CCMPMTKey(3,8,0)}));
+    AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
+    //AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>({CCMPMTKey(3,8,0)}));
 
 }
 
@@ -761,7 +762,7 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
         uint32_t channel = pmt_channel_map_[key];
 
         if(calibration.pmtCal.count(key) == 0) {
-            std::cout << "oops! no calibration for " << key << std::endl;
+            //std::cout << "oops! no calibration for " << key << std::endl;
             continue;
         }
 
