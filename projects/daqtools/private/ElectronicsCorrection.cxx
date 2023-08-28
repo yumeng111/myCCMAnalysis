@@ -70,7 +70,7 @@ I3_MODULE( ElectronicsCorrection);
  ElectronicsCorrection:: ElectronicsCorrection(const I3Context& context) : I3Module(context),
     geometry_name_(""), geo_seen(false), calib_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-    AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string("CCMCalibration"));
+    AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string("CCMPMTCalibration"));
     AddParameter("CCMWaveformsName", "Key for input CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("BaselineEstimatesName", "Key for input BaselineEstimates", std::string("BaselineEstimates"));
     AddParameter("DefaultDroopTau", "The default droop time constant (in ns) to use if there is no entry in the calibratioin", double(5000));

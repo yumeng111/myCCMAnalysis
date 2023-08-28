@@ -422,6 +422,8 @@ if (CMAKE_COMPILER_IS_CLANG)
   set(CMAKE_CXX_FLAGS "-ftemplate-depth-256 -fcolor-diagnostics ${CMAKE_CXX_FLAGS}")
 endif (CMAKE_COMPILER_IS_CLANG)
 
+#set(CMAKE_CXX_FLAGS "-fsanitize=thread -fsanitize=undefined -fno-sanitize-recover=all -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow -fno-sanitize=null -fno-sanitize=alignment -ftls-model=local-dynamic -mcmodel=large ${CMAKE_CXX_FLAGS}")
+
 #
 # The following is needed on OSX to enable "system includes" in tools.cmake
 if (CMAKE_COMPILER_IS_CLANG)
@@ -476,8 +478,8 @@ message(STATUS "Setting default compiler flags and build type.")
 #
 if(DEFINED COVERAGE)
   message(STATUS "This is a COVERAGE build.")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 --coverage")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 --coverage")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 --coverage")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O2 --coverage")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g -O0 --coverage")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -g -O0 --coverage")
   set(CMAKE_BUILD_TYPE "Debug")

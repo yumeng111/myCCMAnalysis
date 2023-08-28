@@ -365,7 +365,7 @@ I3FramePtr CCMTriggerMerger::TransformSingleTriggerFrame(I3FramePtr frame) {
         if((*first_readout)[i].size() > 0) {
             size_t board_idx = channel_idx_to_board_idx[i];
             double t = start_times[board_idx].second * ns_per_cycle;
-            if(start_times[i].first)
+            if(start_times[board_idx].first)
                 w.SetStartTime(t);
             else
                 w.SetStartTime(0);
