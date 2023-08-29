@@ -87,7 +87,6 @@ rnnls_allocate_context(cholmod_sparse *A,
 void
 rnnls_free_context(rnnls_context *cxt) {
 
-  std::cout << "going to start constraining pulses" << std::endl;
   free(cxt->Z);
   free(cxt->P);
   cholmod_l_free_factor(&(cxt->L), cxt->c);
@@ -423,7 +422,6 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
   size_t n_iterations = 0;
   for (unsigned n = 0; n < max_iterations || max_iterations == 0; ++n) {
       n_iterations = n;
-      //std::cout << "RNNLS iteration " << n << std::endl;
 
     // Machine precision limits our ability find the optimal solution.
     // Use a stopping tolerance suggested by Adlers
@@ -438,7 +436,7 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
       break;
     }
   }
-    std::cout << "RNNLS iterations: " << n_iterations << std::endl;
+    //std::cout << "RNNLS iterations: " << n_iterations << std::endl;
 
   // We've found the optimal solution.  Now remove passive members in order
   // of increasing amplitude.  Put them back if we cannot stay under tolerance
@@ -452,7 +450,6 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
   rnnls_sort_P_by_amplitude(cxt);
   size_t rnnls_member_iteration = 0;
   for (;;) {
-      //std::cout << "RNNLS member iteration " << rnnls_member_iteration << std::endl;
 
     // Find next member to test.
     long next_active = -1;
@@ -496,7 +493,7 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
     }
     ++rnnls_member_iteration;
   }
-    std::cout << "RNNLS member iterations: " << rnnls_member_iteration << std::endl;
+    //std::cout << "RNNLS member iterations: " << rnnls_member_iteration << std::endl;
 
   rnnls_free_context(cxt);
   return ret;
