@@ -10,9 +10,11 @@
 #include <icetray/serialization.h>
 #include <icetray/I3Logging.h>
 
-class WaveformDerivative : public I3FrameObject {
-    std::vector<double>::const_iterator begin;
-    std::vector<double>::const_iterator end;
+template<typename T>
+class WaveformDerivative {
+    typename std::vector<T>::const_iterator begin;
+    typename std::vector<T>::const_iterator end;
+    typedef std::pair<typename std::vector<T>::const_iterator, typename std::vector<T>::const_iterator> PairResult;
     size_t N;
     std::vector<double> derivative;
     size_t index;
@@ -22,7 +24,8 @@ class WaveformDerivative : public I3FrameObject {
     double current_derivative;
     double x;
 public:
-    WaveformDerivative(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end, double delta_t) :
+    template<typename Iter>
+    WaveformDerivative(Iter begin, Iter end, double delta_t) :
         begin(begin), end(end), N(std::distance(begin, end)), derivative(1), index(0), max_computed(0), delta_t(delta_t) {
 
         // Derivative for the first element
@@ -50,15 +53,15 @@ public:
         index = std::min(reset_index, max_computed);
     }
 
-    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetRawWaveform() const {
+    PairResult GetRawWaveform() const {
         return {begin, begin + index+1};
     }
 
-    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetDerivative() const {
+    PairResult GetDerivative() const {
         return {derivative.cbegin(), derivative.cbegin() + index+1};
     }
 
-    std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> GetFullDerivative() const {
+    PairResult GetFullDerivative() const {
         return {derivative.cbegin(), derivative.cend()};
     }
 
@@ -98,7 +101,5 @@ public:
         return N;
     }
 };
-
-I3_POINTER_TYPEDEFS(WaveformDerivative);
 
 #endif // I3_WaveformDerivative_H
