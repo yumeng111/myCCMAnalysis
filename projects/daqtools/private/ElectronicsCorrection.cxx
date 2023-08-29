@@ -46,7 +46,7 @@ class  ElectronicsCorrection: public I3Module {
     std::string ccm_waveforms_name_;
     std::string baseline_estimates_name_;
     std::string output_name_;
-    double default_droop_tau_;
+    std::vector<double> default_droop_tau_;
     CCMPMTCalibration default_calib_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     CCMCalibration ccm_calibration_;
@@ -70,10 +70,10 @@ I3_MODULE( ElectronicsCorrection);
  ElectronicsCorrection:: ElectronicsCorrection(const I3Context& context) : I3Module(context),
     geometry_name_(""), geo_seen(false), calib_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-    AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string("CCMPMTCalibration"));
+    AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string("CCMCalibration"));
     AddParameter("CCMWaveformsName", "Key for input CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("BaselineEstimatesName", "Key for input BaselineEstimates", std::string("BaselineEstimates"));
-    AddParameter("DefaultDroopTau", "The default droop time constant (in ns) to use if there is no entry in the calibratioin", double(5000));
+    AddParameter("DefaultDroopTau", "The default droop time constant (in ns) to use if there is no entry in the calibratioin", std::vector((double)1200, (double)5000));
     AddParameter("OutputName", "Key to save output CCMWaveformDoubleSeries to", std::string("CCMCalibratedWaveforms"));
 }
 
@@ -171,21 +171,53 @@ void ElectronicsCorrection::ECorrection(std::vector<uint16_t> const & samples, d
     BoxFilter(inv_wf_min_baseline, box_filter_results);
 
     // now droop correction time
-    double tau = calibration.GetDroopTimeConstant();
-    if(std::isnan(tau)) {
+    std::vector<double> tau = calibration.GetDroopTimeConstant();
+    if(std::isnan(tau.at(0))) {
         tau = default_droop_tau_;
     }
-    double C = std::exp(-delta_t/tau);
-    double B = (1.0 - C);
-    double A = tau / delta_t * B;
-    double S = 0.0;
-    double X = double(box_filter_results[0]) / A + B * S;
-    electronics_correction_samples.push_back(X);
 
-    for (size_t i = 1; i < box_filter_results.size(); ++i) {
-        S = X + C * S;
-        X = box_filter_results[i] / A + B * S;
-        electronics_correction_samples.push_back(X);
+    // now loop over tau
+    
+    double C;
+    double B;
+    double A;
+    double S;
+    double X;
+
+    // place to store our results from droop correcting once
+    std::vector<double> first_droop_correction_results(box_filter_results.size());
+
+    for (size_t tau_it = 0; tau_it < 2; ++tau_it){
+    
+        // define our numbers on the first iteration
+        C = std::exp(-delta_t/tau.at(tau_it));
+        B = (1.0 - C);
+        A = tau.at(tau_it) / delta_t * B;
+        S = 0.0;
+
+        if (tau_it == 0){
+            X = double(box_filter_results[0]) / A + B * S;
+            first_droop_correction_results[0] = X;
+            
+            for (size_t i = 1; i < box_filter_results.size(); ++i) {
+                S = X + C * S;
+                X = box_filter_results[i] / A + B * S;
+                first_droop_correction_results[i] = X;
+            }
+        }
+        
+        if (tau_it == 1){
+            X = double(first_droop_correction_results[0]) / A + B * S;
+            electronics_correction_samples.push_back(X);
+            
+            for (size_t i = 1; i < box_filter_results.size(); ++i) {
+                S = X + C * S;
+                X = first_droop_correction_results[i] / A + B * S;
+                electronics_correction_samples.push_back(X);
+            }
+        }
+
+    
     }
 
     // now let's subtract off our outlier filter

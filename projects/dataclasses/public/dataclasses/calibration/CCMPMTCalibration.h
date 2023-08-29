@@ -74,7 +74,7 @@ public:
 
 private:
     // parameters useful for calibration
-    double droopTimeConstant_;
+    std::vector<double> droopTimeConstant_;
     double pmtGain_;
     double pmtDeltaT_;
     double relativePMTEff_;
@@ -92,8 +92,8 @@ public:
     void SetPulseEndTime(double end_time);
     double GetPulseEndTime() const;
     
-    void SetDroopTimeConstant(double tau);
-    double GetDroopTimeConstant() const;
+    void SetDroopTimeConstant(std::vector<double> tau);
+    std::vector<double> GetDroopTimeConstant() const;
 
     void SetPMTGain(double gain);
     double GetPMTGain() const;

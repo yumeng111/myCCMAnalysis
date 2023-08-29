@@ -35,6 +35,10 @@
 #include "nnls.h"
 #include "rnnls.h"
 
+#include <eigen3/Eigen/Sparse>
+#include "fnnls.h"
+
+#include "timer.h"
 
 /* Simple class to hold together ATWD and FADC
  * templates along with a validity flag and waveform features */
@@ -106,12 +110,22 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  */
 
 void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double start_time, double pulse_width, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, I3FramePtr frame) {
+    double GetPulsesInternal_s = 0.0;
+    double GetPulsesInternal_u = 0.0;
+    NNLSTimer GetPulsesInternal_timer("GetPulsesInternal", GetPulsesInternal_s, GetPulsesInternal_u, true);
     output.clear();
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
     cholmod_dense *data, *unfolded;
     unsigned j, k;
     int nbins = 0;
+
+    double dummy_s = 0.0;
+    double dummy_u = 0.0;
+    //double eigen_s = 0.0;
+    //double eigen_u = 0.0;
+    //NNLSTimer eigen_timer("Eigen", eigen_s, eigen_u, false);
+    NNLSTimer pre_compute("Pre compute total", dummy_s, dummy_u, true);
 
     // Determine the total number of WF bins
     nbins = wf.GetWaveform().size();
@@ -316,11 +330,10 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             first_spe = 0;
         last_t = redges[i];
         while (first_spe < nspes-1 && redges[i] -
-                start_times[first_spe].first > pulse_width)
+                start_times[first_spe].first - start_time > pulse_width)
             first_spe++;
         for (int j = first_spe; j < nspes; j++) {
-            if (((redges[i] - start_times[j].first) -
-                        start_time) < -template_bin_spacing_)
+            if (((redges[i] - start_times[j].first) - start_time) < -template_bin_spacing_)
                 break;
             nzmax++;
         }
@@ -389,14 +402,25 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     //  run in less than one third the time of cholmod_l_triplet_to_sparse.
     basis = cholmod_l_allocate_sparse(basis_trip->nrow, basis_trip->ncol,
             basis_trip->nnz, true, true, 0, CHOLMOD_REAL, &chol_common);
+    //eigen_timer.start();
+    //Eigen::SparseMatrix<double> eigen_basis(basis_trip->nrow, basis_trip->ncol);
+    //eigen_basis.reserve(basis_trip->nnz);
+    //eigen_timer.end();
     int accum = 0;
     for (int i = 0; i < nspes; i++) {
         ((long *)(basis->p))[i] = accum;
+        //eigen_timer.start();
+        //eigen_basis.outerIndexPtr()[i] = accum;
+        //eigen_timer.end();
         accum += col_counts[i];
+        //eigen_basis.innerNonZeroPtr()[i] = accum; // the matrix is in the compressed format so we do not need this
     }
     // Need to set data end pointer for the last column.  Otherwise
     // SuiteSparse will ignore the last column.
     ((long *)(basis->p))[nspes] = accum;
+    //eigen_timer.start();
+    //eigen_basis.outerIndexPtr()[nspes] = accum;
+    //eigen_timer.end();
     std::vector<long> col_indices(nspes,0);
 
     for (unsigned i = 0; i < basis_trip->nnz; i++) {
@@ -404,15 +428,41 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         long index = ((long *)(basis->p))[col] + col_indices[col]++;
         ((long *)(basis->i))[index] = ((long *)(basis_trip->i))[i];
         ((double *)(basis->x))[index] = ((double *)(basis_trip->x))[i];
+        //eigen_timer.start();
+        //eigen_basis.innerIndexPtr()[index] = ((long *)(basis_trip->i))[i];
+        //eigen_basis.valuePtr()[index] = ((double *)(basis_trip->x))[i];
+        //eigen_timer.end();
     }
     cholmod_l_free_triplet(&basis_trip, &chol_common);
+    //eigen_timer.start();
+    //Eigen::Map<fnnls::VectorX_<double>> data_view(((double *)(data->x)), data->nrow);
+    //eigen_timer.end();
+    pre_compute.end();
+    //eigen_timer.print();
+
     // Solve for SPE heights
     if (reduce_) {
+        {
+            double s = 0.0;
+            double u = 0.0;
+            std::string name = "RNNLS";
+            NNLSTimer nnls_timer(name, s, u, true);
         unfolded = rnnls(basis, data, tolerance_, 2000, 0, &chol_common);
+        }
+        /*{
+            double s = 0.0;
+            double u = 0.0;
+            std::string name = "FNNLS";
+            NNLSTimer nnls_timer(name, s, u, true);
+            fnnls::fnnls_solver(eigen_basis, data_view, 2000, tolerance_);
+        }*/
     } else {
         unfolded = nnls_lawson_hanson(basis, data, tolerance_,
-                0, 1000, nspes, 0, 1, 0, &chol_common);
+            0, 2000, nspes, 0, 1, 0, &chol_common);
     }
+    double PostNNLS_s = 0.0;
+    double PostNNLS_u = 0.0;
+    NNLSTimer PostNNLS_timer("PostNNLS", PostNNLS_s, PostNNLS_u, true);
 
     cholmod_l_free_sparse(&basis, &chol_common);
     cholmod_l_free_dense(&data, &chol_common);
@@ -459,6 +509,9 @@ void RunPulsesThread(
         bool apply_spe_corr_,
         I3FramePtr frame
         ) {
+    double RunPulsesThread_s = 0.0;
+    double RunPulsesThread_u = 0.0;
+    NNLSTimer RunPulsesThread_timer("RunPulsesThread", RunPulsesThread_s, RunPulsesThread_u, true);
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
         size_t channel = pmt_channel_map.at(pmt_key);
@@ -475,11 +528,15 @@ void RunPulsesThread(
         double end_time = 2 * 60;
         double pulse_width = end_time - start_time;
 
-        double template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
+        double template_bin_spacing_ = 2.0 / spes_per_bin_ * 2;
         double range = end_time - start_time;
 
         double placeholder = 1.0;
 
+        double GetPulses_s = 0.0;
+        double GetPulses_u = 0.0;
+        NNLSTimer GetPulses_timer("GetPulses", GetPulses_s, GetPulses_u, true);
+        GetPulses_timer.start();
         GetPulses(
                 waveform,
                 templates.at(pmt_key),
@@ -498,18 +555,25 @@ void RunPulsesThread(
                 output_pulses_references[i].get(),
                 frame
                 );
-
-
+        GetPulses_timer.end();
     }
 }
 
-void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, double const & start_time, double const & pulse_width, int const & template_bins, double const & template_bin_spacing_) {
+void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, double const & start_time, double const & pulse_width, int const & template_bins, double const & template_bin_spacing_, I3FramePtr frame) {
     CCMSPETemplate channel_template = calibration.GetSPETemplate();
     wfTemplate.digitizer_template.resize(template_bins);
     for (int i = 0; i < template_bins; i++) {
         wfTemplate.digitizer_template[i] =
-            channel_template.Evaluate(start_time + i*template_bin_spacing_ ); // hard coding bin spacing...use calib one day 
+            channel_template.Evaluate(start_time + i*template_bin_spacing_ + 2); // hard coding bin spacing...use calib one day 
     }
+
+    boost::shared_ptr<I3Vector<double>> wf_template_copy = boost::make_shared<I3Vector<double>>();
+    for (int i = 0; i < wfTemplate.digitizer_template.size(); ++i){
+        wf_template_copy->push_back(wfTemplate.digitizer_template.at(i));
+    }
+
+    frame->Put("WaveformTemplate", wf_template_copy);
+    
 
     CCMFillFWHM(wfTemplate.digitizerStart,
             wfTemplate.digitizerStop,
@@ -529,6 +593,11 @@ class CCMWavedeform : public I3ConditionalModule {
         I3Vector<CCMPMTKey> allowed_pmt_keys_;
         I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
         CCMWavedeform(const I3Context &);
+
+        double rnnls_u = 0.0;
+        double rnnls_s = 0.0;
+        double fnnls_u = 0.0;
+        double fnnls_s = 0.0;
 
         std::vector<std::tuple<size_t, size_t>> thread_ranges_;
         CCMCalibration calibration;
@@ -668,13 +737,13 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
 }
 
 void CCMWavedeform::Calibration(I3FramePtr frame) {
-    calibration = frame->Get<CCMCalibration>("CCMPMTCalibration");
+    calibration = frame->Get<CCMCalibration>("CCMCalibration");
 
     start_time = 2 * -10;
     end_time = 2 * 60;
     pulse_width = end_time - start_time;
 
-    template_bin_spacing_ = 2.0 / spes_per_bin_ / 10;
+    template_bin_spacing_ = 2.0 / spes_per_bin_ * 2;
     range = end_time - start_time;
 
     for(size_t i=0; i<pmt_keys_.size(); ++i) {
@@ -694,7 +763,7 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
         if(not template_.at(key).filled) {
             int template_bins = (int)ceil(range / template_bin_spacing_);
             template_.at(key).digitizer_template.resize(template_bins);
-            FillTemplate(template_.at(key), calib->second, start_time, pulse_width, template_bins, template_bin_spacing_);
+            FillTemplate(template_.at(key), calib->second, start_time, pulse_width, template_bins, template_bin_spacing_, frame);
         }
     }
 
@@ -706,6 +775,9 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         PushFrame(frame);
         return;
     }
+    double DAQ_s = 0.0;
+    double DAQ_u = 0.0;
+    NNLSTimer DAQ_timer("DAQ", DAQ_s, DAQ_u, true);
 
     //const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
     boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);

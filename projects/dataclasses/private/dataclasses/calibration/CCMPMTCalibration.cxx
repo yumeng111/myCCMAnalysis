@@ -57,7 +57,7 @@ bool CCMPMTCalibration::operator==(CCMPMTCalibration const & other) const {
 }
 
 CCMPMTCalibration::CCMPMTCalibration() :
-    droopTimeConstant_(std::numeric_limits<double>::quiet_NaN()),
+    droopTimeConstant_(std::numeric_limits<std::vector<double>>::quiet_NaN()),
     pmtGain_(std::numeric_limits<double>::quiet_NaN()),
     pmtDeltaT_(std::numeric_limits<double>::quiet_NaN()),
     relativePMTEff_(std::numeric_limits<double>::quiet_NaN()),
@@ -112,12 +112,12 @@ double CCMPMTCalibration::GetPulseEndTime() const {
     return pulse_end_time_;
 }
 // set droop time constant
-void CCMPMTCalibration::SetDroopTimeConstant(double tau) {
+void CCMPMTCalibration::SetDroopTimeConstant(std::vector<double> tau) {
     droopTimeConstant_ = tau;
 }
 
 // get droop time constant
-double CCMPMTCalibration::GetDroopTimeConstant() const {
+std::vector<double> CCMPMTCalibration::GetDroopTimeConstant() const {
     return droopTimeConstant_;
 }
 

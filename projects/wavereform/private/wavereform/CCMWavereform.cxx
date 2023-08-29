@@ -104,36 +104,24 @@ void CCMWavereform::GetRefoldedWf(std::vector<double> & refolded_wf, std::vector
         pulse_charge = pulses[pulse_it].GetCharge();
         // now let's figure out how many ADC counts this pulse is
         CCMSPETemplate channel_template = calib.GetSPETemplate();
-        int start_bin;
-        int end_bin;
-        if (pulse_time < 20.0){
-            start_bin = (int) (-1 *(pulse_time/2));
-        }
-        if (pulse_time > 20.0){
-            start_bin = (int) -10;
-        }
-        if (pulse_time > (2 * refolded_wf.size() - 120)){
-            end_bin = (2 * refolded_wf.size() - (int)pulse_time)/2;
-        }
-        if (pulse_time < (2 * refolded_wf.size() - 120)){
-            end_bin = 60;
-        }
+        int start_bin = int((pulse_time - 20.0) / 2.0);
+        int end_bin = int((pulse_time + 120.0) / 2.0);
+        start_bin = std::max(int(0), start_bin);
+        end_bin = std::min(int(refolded_wf.size()) - 1, end_bin+1);
 
         // let's loop over all the bins in this pulse
-        for(int bin_it = start_bin; bin_it < end_bin; ++bin_it){
-            double time = bin_it * 2; // fitting to the left edge of the data
-            size_t wf_bin = (size_t)(pulse_time/2 + bin_it);
+        int i = 0;
+        for(int bin_it = start_bin; bin_it < end_bin; ++bin_it, ++i){
+            double time = i * 2 - 20 + 2; // fitting to the left edge of the data
             double wf_value = pulse_charge * (channel_template.Evaluate(time));
-            refolded_wf[wf_bin] += wf_value;
+            refolded_wf[bin_it] += wf_value;
         }
-
     }
-
 }
 
 
 void CCMWavereform::DAQ(I3FramePtr frame) {
-    const CCMCalibration& calibration_ = frame->Get<CCMCalibration>("CCMPMTCalibration");
+    const CCMCalibration& calibration_ = frame->Get<CCMCalibration>("CCMCalibration");
     I3Map<CCMPMTKey, BaselineEstimate> const & baselines= frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 	CCMRecoPulseSeriesMapConstPtr pulse_map = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulse_name_);
     boost::shared_ptr<const CCMWaveformUInt16Series> waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(waveform_name_);
