@@ -137,7 +137,7 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
     I3Map<CCMPMTKey, BaselineEstimate> const & baselines= frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 	CCMRecoPulseSeriesMapConstPtr pulse_map = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulse_name_);
     boost::shared_ptr<const CCMWaveformUInt16Series> waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(waveform_name_);
-    boost::shared_ptr<const CCMWaveformDoubleSeries> corrected_waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>("ElectronicsCorrection");
+    boost::shared_ptr<const CCMWaveformDoubleSeries> corrected_waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>("CCMCalibratedWaveforms");
 
     // let's make places to store our chis, refolded wfs, and our bad pmts
     boost::shared_ptr<I3Map<CCMPMTKey, double>> chi_map = boost::make_shared<I3Map<CCMPMTKey, double>>();
