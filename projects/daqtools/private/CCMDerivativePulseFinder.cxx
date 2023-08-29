@@ -319,8 +319,9 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
     // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
     // 2 derivative is negative (in falling edge of pulse) [checking for positive derivative]
     // 3 derivative is positive (recovering from droop) [done]
+    double baseline = deriv.Baseline();
     int state = 1;
-    double max_value = deriv.Value();
+    double max_value = deriv.Value() - baseline;
     double max_abs_derivative = deriv.Derivative();
     double integral = 0;
     bool found_pulse = false;
@@ -329,9 +330,9 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
     size_t N = std::min(deriv.Size(), start_idx + max_samples);
     // std::cout << "state = 0" << std::endl;
     for(size_t i=start_idx; i<N; ++i) {
-        max_value = std::max(max_value, deriv.Value());
+        max_value = std::max(max_value, deriv.Value() - baseline);
         max_abs_derivative = std::max(max_abs_derivative, std::abs(deriv.Derivative()));
-        integral += deriv.Value();
+        integral += deriv.Value() - baseline;
         if(state % 2) {
             if(deriv.Derivative() < 0) {
                 state += 1;
@@ -340,7 +341,7 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
         } else {
             if(state == 2) {
                 // std::cout << "Deriv == " << deriv.Value() << std::endl;
-                if(deriv.Value() <= 0.1) {
+                if(deriv.Value() - baseline <= 0.1) {
                     state_2_reached_zero = true;
                     // std::cout << "Reached zero!" << std::endl;
                 }
