@@ -33,7 +33,7 @@
 #include <dataclasses/calibration/CCMPMTCalibration.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
-#include <daqtools/WaveformDerivative.h>
+#include "daqtools/WaveformDerivative.h"
 
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
@@ -53,6 +53,8 @@ class CCMDerivativePulseFinder: public I3Module {
     double pulse_min_deriv_magnitude;
     double pulse_min_integral;
 
+    bool use_raw_waveforms_;
+
     CCMGeometry geo;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
 public:
@@ -60,16 +62,19 @@ public:
     void Configure();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
-    static std::vector<CCMRecoPulse> CheckForPulse(WaveformDerivative & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason);
+    template<typename T>
+    static std::vector<CCMRecoPulse> CheckForPulse(WaveformDerivative<T> & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason);
+    template<typename T>
     static void FindPulses(
         CCMRecoPulseSeries & output,
-        WaveformDerivative & deriv,
+        WaveformDerivative<T> & deriv,
         double deriv_threshold,
         size_t max_pulse_width,
         size_t min_pulse_width,
         double min_pulse_height,
         double min_deriv_magnitude,
-        double min_integral);
+        double min_integral,
+        double nim_pulse_time);
     static void ApplyTimeOffset(CCMRecoPulseSeries & output, double offset);
 };
 
@@ -79,8 +84,8 @@ CCMDerivativePulseFinder::CCMDerivativePulseFinder(const I3Context& context) : I
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMPulses", std::string("NIMPulses"));
-    AddParameter("CCMCalibratedWaveformsName", "Key for the input CCMWaveformDoubleSeries", std::string("CCMCalibratedWaveforms"));
-    AddParameter("ThrowWithoutInput", "Whether to throw an error when there is no input", true);
+    AddParameter("CCMWaveformsName", "Key for the input CCMWaveformDoubleSeries or CCMWaveformUInt16Series", std::string("CCMCalibratedWaveforms"));
+    AddParameter("ThrowWithoutInput", "Whether to throw an error when there is no input", false);
 
     AddParameter("InitialDerivativeThreshold", "Initial positive derivative threshold for a pulse", double(0.3));
     AddParameter("MinPulseWidth", "Minimum width for defining a pulse", size_t(5));
@@ -88,13 +93,14 @@ CCMDerivativePulseFinder::CCMDerivativePulseFinder(const I3Context& context) : I
     AddParameter("MinPulseHeight", "Minimum height for defining a pulse", double(5.0));
     AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.325));
     AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(10.0));
+    AddParameter("ExpectRawWaveforms", "Whether the input is the raw waveforms (CCMWaveformUInt16Series), or the calibrated waveforms (CCMWaveformDoubleSeries", bool(false));
     AddParameter("OutputName", "Key for output CCMRecoPulseSeriesMap", std::string("DerivativePulses"));
 }
 
 void CCMDerivativePulseFinder::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("NIMPulsesName", nim_pulses_name_);
-    GetParameter("CCMCalibratedWaveformsName", ccm_waveform_name_);
+    GetParameter("CCMWaveformsName", ccm_waveform_name_);
     GetParameter("ThrowWithoutInput", throw_without_input_);
     GetParameter("InitialDerivativeThreshold", pulse_initial_deriv_threshold);
     GetParameter("MinPulseWidth", pulse_min_width);
@@ -102,6 +108,7 @@ void CCMDerivativePulseFinder::Configure() {
     GetParameter("MinPulseHeight", pulse_min_height);
     GetParameter("MinPulseDerivativeMagnitude", pulse_min_deriv_magnitude);
     GetParameter("MinPulseIntegral", pulse_min_integral);
+    GetParameter("ExpectRawWaveforms", use_raw_waveforms_);
     GetParameter("OutputName", output_name_);
 }
 
@@ -131,6 +138,7 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
         } else {
             log_warn("Input waveform name %s not present", ccm_waveform_name_.c_str());
         }
+        PushFrame(frame);
         return;
     }
     if(not frame->Has(nim_pulses_name_)) {
@@ -139,17 +147,45 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
         } else {
             log_warn("Input NIMPulses named %s not present", nim_pulses_name_.c_str());
         }
+        PushFrame(frame);
         return;
     }
 
     // let's read in our waveform
-    boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(ccm_waveform_name_);
-    if(waveforms == nullptr) {
-        log_fatal("I3FrameObject of type \"CCMWaveformDoubleSeries\" does not exist under key \"%s\"", ccm_waveform_name_.c_str());
+    boost::shared_ptr<const CCMWaveformDoubleSeries> cal_waveforms;
+    boost::shared_ptr<const CCMWaveformUInt16Series> raw_waveforms;
+    if(use_raw_waveforms_) {
+        raw_waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveform_name_);
+        if(raw_waveforms == nullptr) {
+            if(throw_without_input_) {
+                log_fatal("I3FrameObject of type \"CCMWaveformUInt16Series\" does not exist under key \"%s\"", ccm_waveform_name_.c_str());
+            } else {
+                log_warn("I3FrameObject of type \"CCMWaveformUInt16Series\" does not exist under key \"%s\"", ccm_waveform_name_.c_str());
+            }
+            PushFrame(frame);
+            return;
+        }
+    } else {
+        cal_waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(ccm_waveform_name_);
+        if(cal_waveforms == nullptr) {
+            if(throw_without_input_) {
+                log_fatal("I3FrameObject of type \"CCMWaveformDoubleSeries\" does not exist under key \"%s\"", ccm_waveform_name_.c_str());
+            } else {
+                log_warn("I3FrameObject of type \"CCMWaveformDoubleSeries\" does not exist under key \"%s\"", ccm_waveform_name_.c_str());
+            }
+            PushFrame(frame);
+            return;
+        }
     }
     boost::shared_ptr<I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>> const> nim_pulses = frame->Get<boost::shared_ptr<I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>> const>>(nim_pulses_name_);
-    if(waveforms == nullptr) {
-        log_fatal("I3FrameObject of type \"I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>>\" does not exist under key \"%s\"", nim_pulses_name_.c_str());
+    if(nim_pulses == nullptr) {
+        if(throw_without_input_) {
+            log_fatal("I3FrameObject of type \"I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>>\" does not exist under key \"%s\"", nim_pulses_name_.c_str());
+        } else {
+            log_warn("I3FrameObject of type \"I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>>\" does not exist under key \"%s\"", nim_pulses_name_.c_str());
+        }
+        PushFrame(frame);
+        return;
     }
 
     std::vector<CCMPMTKey> pmt_keys;
@@ -170,19 +206,39 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
         CCMTriggerKey trigger_key =  geo.trigger_copy_map.at(key);
         I3Vector<NIMLogicPulse> const & trigger_nim_pulses = nim_pulses->at(trigger_key);
         if(trigger_nim_pulses.size() == 0) {
-            log_fatal("No board timing information available!");
+            if(throw_without_input_) {
+                log_fatal("No board timing information available!");
+            } else {
+                log_warn("No board timing information available!");
+            }
+            PushFrame(frame);
+            return;
         }
         double nim_pulse_time = trigger_nim_pulses[0].GetNIMPulseTime();
-        WaveformDerivative deriv(waveforms->at(channel).GetWaveform().begin(), waveforms->at(channel).GetWaveform().end(), 2.0);
-        FindPulses(output->operator[](key),
-                deriv,
-                pulse_initial_deriv_threshold,
-                pulse_max_width,
-                pulse_min_width,
-                pulse_min_height,
-                pulse_min_deriv_magnitude,
-                pulse_min_integral);
-        // std::cout << key << " has " << output->operator[](key).size() << " pulses" << std::endl;
+        if(use_raw_waveforms_) {
+            WaveformDerivative<uint16_t> deriv = WaveformDerivative<uint16_t>(raw_waveforms->at(channel).GetWaveform().begin(), raw_waveforms->at(channel).GetWaveform().end(), 2.0);
+            FindPulses<uint16_t>(output->operator[](key),
+                    deriv,
+                    pulse_initial_deriv_threshold,
+                    pulse_max_width,
+                    pulse_min_width,
+                    pulse_min_height,
+                    pulse_min_deriv_magnitude,
+                    pulse_min_integral,
+                    nim_pulse_time);
+        } else {
+            WaveformDerivative<double> deriv = WaveformDerivative<double>(cal_waveforms->at(channel).GetWaveform().begin(), cal_waveforms->at(channel).GetWaveform().end(), 2.0);
+            FindPulses<double>(output->operator[](key),
+                    deriv,
+                    pulse_initial_deriv_threshold,
+                    pulse_max_width,
+                    pulse_min_width,
+                    pulse_min_height,
+                    pulse_min_deriv_magnitude,
+                    pulse_min_integral,
+                    nim_pulse_time);
+        }
+        // std::cout << key << " has " << output->operator[](keys).size() << " pulses" << std::endl;
         ApplyTimeOffset(output->operator[](key), -nim_pulse_time);
     }
 
@@ -190,15 +246,17 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
     PushFrame(frame);
 }
 
+template<typename T>
 void CCMDerivativePulseFinder::FindPulses(
         CCMRecoPulseSeries & output,
-        WaveformDerivative & deriv,
+        WaveformDerivative<T> & deriv,
         double deriv_threshold,
         size_t max_pulse_width,
         size_t min_pulse_width,
         double min_pulse_height,
         double min_deriv_magnitude,
-        double min_integral) {
+        double min_integral,
+        double nim_pulse_time) {
     // Determine the maximum starting sample for a pulse
     // We need at least 5 samples after the starting pulse
     size_t N = deriv.Size();
@@ -212,7 +270,11 @@ void CCMDerivativePulseFinder::FindPulses(
     std::map<uint16_t, size_t> failure_counts;
     // Reset the smoother position to the start of the waveform
     deriv.Reset();
-    for(size_t i=0; i<N; ++i) {
+    // nim_pulse_time is in ns, so divide by 2 to get bins and subtract 250 to get -500. Add 250 to get +500.
+    size_t startIndex = size_t(nim_pulse_time / 2.0) - 250;
+    size_t endIndex = std::min(startIndex + 500 + 1, N) - 1;
+    if (N < endIndex) { endIndex = N; }//Abbreviated the end if file ends before that.
+    for(size_t i=startIndex; i<endIndex; ++i) {//Loop from start to end of the time region desired.
         uint16_t failure_reason = 0;
         // Check the condition for the beginning of a pulse
         if(deriv.Derivative() > deriv_threshold) {
@@ -250,7 +312,8 @@ void CCMDerivativePulseFinder::FindPulses(
     */
 }
 
-std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDerivative & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason) {
+template<typename T>
+std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDerivative<T> & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason) {
     deriv.Reset(start_idx);
     // 0 before start of pulse checking [checking for positive derivative]
     // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
