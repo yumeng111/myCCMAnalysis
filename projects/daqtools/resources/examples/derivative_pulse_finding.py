@@ -137,6 +137,8 @@ class HistogramPulses(I3Module):
         self.AddParameter("TimeBinWidth", "Bin edges for the time dimension of the histogram", 2.0)
         self.AddParameter("ChargeBinWidth", "Bin edges for the charge dimension of the histogram", 0.5)
         self.AddParameter("LengthBinWidth", "Bin edges for the length dimension of the histogram", 2.0)
+        self.AddParameter("MinTime", "Minimum time to save", -np.inf)
+        self.AddParameter("MaxTime", "Maximum time to save", np.inf)
         self.AddParameter("OutputFile", "Output file name", "test.npz")
 
     def Configure(self):
@@ -145,16 +147,23 @@ class HistogramPulses(I3Module):
         self.charge_width = self.GetParameter("ChargeBinWidth")
         self.length_width = self.GetParameter("LengthBinWidth")
         self.output_file = self.GetParameter("OutputFile")
+        self.min_time = self.GetParameter("MinTime")
+        self.max_time = self.GetParameter("MaxTime")
         self.divisor = np.array([self.time_width, self.charge_width, self.length_width])[None, :]
         self.charge_histogram = collections.defaultdict(lambda:collections.defaultdict(int))
 
     def DAQ(self, frame):
+        if not frame.Has(self.pulses_name):
+            self.PushFrame(frame)
+            return
         pulses = frame[self.pulses_name]
         for pmt_key, pmt_pulses in pulses.items():
             if len(pmt_pulses) == 0:
                 continue
             bin_dict = self.charge_histogram[pmt_key]
-            data = np.array([(pulse.time, pulse.charge, pulse.width) for pulse in pmt_pulses])
+            data = np.array([(pulse.time, pulse.charge, pulse.width) for pulse in pmt_pulses if (pulse.time > self.min_time and pulse.time < self.max_time)])
+            if len(data) == 0:
+                continue
             idxs = np.floor_divide(data, self.divisor).astype(int)
             for idx in idxs:
                 key = tuple(idx)
@@ -241,7 +250,7 @@ if __name__ == "__main__":
             ]
         else:
             args.files = [
-                [args.input_directory + "/" + s + "/*.i3.zst"]
+                [args.input_directory + "/" + s + "/*" + run_prefix + "*.i3.zst"]
                 for s in args.daq_directories
             ]
         output_dir = os.path.join(args.output_dir, run_prefix)
@@ -289,11 +298,11 @@ if __name__ == "__main__":
             CCMTriggerKey.TriggerType.LEDBottomTrigger,
         ],
     )
-    tray.Add("BaselineEstimator")
+    #tray.Add("BaselineEstimator")
     tray.Add("Rename", Keys=["CCMPMTCalibration", "CCMCalibration"])
-    tray.Add("ElectronicsCorrection")
-    tray.Add("CCMDerivativePulseFinder")
-    tray.Add(HistogramPulses, OutputFile=json_output_file)
+    #tray.Add("ElectronicsCorrection")
+    tray.Add("CCMDerivativePulseFinder", MinPulseIntegral=2, CCMWaveformsName="CCMWaveforms", ExpectRawWaveforms=True)
+    tray.Add(HistogramPulses, OutputFile=json_output_file, MinTime=-500, MaxTime=500)
     # tray.Add("Delete", Keys=["CCMWaveforms"])
     # Write the GCD frames to a separate file
     tray.AddModule(
