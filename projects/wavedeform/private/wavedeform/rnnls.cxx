@@ -46,20 +46,20 @@ typedef struct {
   cholmod_dense *y;
   cholmod_common *c;
 
-  double rnnls_allocate_context_u = 0.0;
-  double rnnls_allocate_context_s = 0.0;
-  double rnnls_next_free_u = 0.0;
-  double rnnls_next_free_s = 0.0;
-  double rnnls_set_passive_u = 0.0;
-  double rnnls_set_passive_s = 0.0;
-  double rnnls_set_active_u = 0.0;
-  double rnnls_set_active_s = 0.0;
-  double rnnls_solve_u = 0.0;
-  double rnnls_solve_s = 0.0;
-  double rnnls_sort_P_by_amplitude_u = 0.0;
-  double rnnls_sort_P_by_amplitude_s = 0.0;
-  double rnnls_iterate_u = 0.0;
-  double rnnls_iterate_s = 0.0;
+  //double rnnls_allocate_context_u = 0.0;
+  //double rnnls_allocate_context_s = 0.0;
+  //double rnnls_next_free_u = 0.0;
+  //double rnnls_next_free_s = 0.0;
+  //double rnnls_set_passive_u = 0.0;
+  //double rnnls_set_passive_s = 0.0;
+  //double rnnls_set_active_u = 0.0;
+  //double rnnls_set_active_s = 0.0;
+  //double rnnls_solve_u = 0.0;
+  //double rnnls_solve_s = 0.0;
+  //double rnnls_sort_P_by_amplitude_u = 0.0;
+  //double rnnls_sort_P_by_amplitude_s = 0.0;
+  //double rnnls_iterate_u = 0.0;
+  //double rnnls_iterate_s = 0.0;
 } rnnls_context;
 
 
@@ -68,21 +68,21 @@ rnnls_allocate_context(cholmod_sparse *A,
                        cholmod_dense *y,
                        cholmod_common *c) {
   rnnls_context *cxt = (rnnls_context*)malloc(sizeof(rnnls_context));
-  cxt->rnnls_allocate_context_u = 0.0;
-  cxt->rnnls_allocate_context_s = 0.0;
-  cxt->rnnls_next_free_u = 0.0;
-  cxt->rnnls_next_free_s = 0.0;
-  cxt->rnnls_set_passive_u = 0.0;
-  cxt->rnnls_set_passive_s = 0.0;
-  cxt->rnnls_set_active_u = 0.0;
-  cxt->rnnls_set_active_s = 0.0;
-  cxt->rnnls_solve_u = 0.0;
-  cxt->rnnls_solve_s = 0.0;
-  cxt->rnnls_sort_P_by_amplitude_u = 0.0;
-  cxt->rnnls_sort_P_by_amplitude_s = 0.0;
-  cxt->rnnls_iterate_u = 0.0;
-  cxt->rnnls_iterate_s = 0.0;
-  NNLSTimer timer("RNNLSAllocateContext", cxt->rnnls_allocate_context_u, cxt->rnnls_allocate_context_s, false, false);
+  //cxt->rnnls_allocate_context_u = 0.0;
+  //cxt->rnnls_allocate_context_s = 0.0;
+  //cxt->rnnls_next_free_u = 0.0;
+  //cxt->rnnls_next_free_s = 0.0;
+  //cxt->rnnls_set_passive_u = 0.0;
+  //cxt->rnnls_set_passive_s = 0.0;
+  //cxt->rnnls_set_active_u = 0.0;
+  //cxt->rnnls_set_active_s = 0.0;
+  //cxt->rnnls_solve_u = 0.0;
+  //cxt->rnnls_solve_s = 0.0;
+  //cxt->rnnls_sort_P_by_amplitude_u = 0.0;
+  //cxt->rnnls_sort_P_by_amplitude_s = 0.0;
+  //cxt->rnnls_iterate_u = 0.0;
+  //cxt->rnnls_iterate_s = 0.0;
+  //NNLSTimer timer("RNNLSAllocateContext", cxt->rnnls_allocate_context_u, cxt->rnnls_allocate_context_s, false, false);
   cxt->x = cholmod_l_zeros(A->ncol, 1, CHOLMOD_REAL, c);
 
   /* Precompute Aty: This is the RHS if the system we're solving */
@@ -118,7 +118,7 @@ void
 rnnls_free_context(rnnls_context *cxt) {
   double rnnls_free_context_u = 0.0;
   double rnnls_free_context_s = 0.0;
-  NNLSTimer timer("RNNLSFreeContext", rnnls_free_context_u, rnnls_free_context_s, false, true);
+  //NNLSTimer timer("RNNLSFreeContext", rnnls_free_context_u, rnnls_free_context_s, false, true);
 
   free(cxt->Z);
   free(cxt->P);
@@ -135,7 +135,7 @@ rnnls_free_context(rnnls_context *cxt) {
 long
 rnnls_next_free(double tolerance,
                 rnnls_context *cxt) {
-  NNLSTimer timer("RNNLSNextFree", cxt->rnnls_next_free_u, cxt->rnnls_next_free_s, false, false);
+  //NNLSTimer timer("RNNLSNextFree", cxt->rnnls_next_free_u, cxt->rnnls_next_free_s, false, false);
 
   /* Calculate negative gradient */
   cholmod_l_copy_dense2(cxt->y, cxt->colwork, cxt->c);
@@ -200,7 +200,7 @@ rnnls_next_free(double tolerance,
 void
 rnnls_set_passive(long zidx,
                   rnnls_context *cxt) {
-  NNLSTimer timer("RNNLSSetPassive", cxt->rnnls_set_passive_u, cxt->rnnls_set_passive_s, false, false);
+  //NNLSTimer timer("RNNLSSetPassive", cxt->rnnls_set_passive_u, cxt->rnnls_set_passive_s, false, false);
 
   cholmod_sparse *A = cxt->A;
   cholmod_sparse *update = cxt->update;
@@ -251,7 +251,7 @@ rnnls_set_passive(long zidx,
 void
 rnnls_set_active(long pidx,
                  rnnls_context *cxt) {
-  NNLSTimer timer("RNNLSSetActive", cxt->rnnls_set_active_u, cxt->rnnls_set_active_s, false, false);
+  //NNLSTimer timer("RNNLSSetActive", cxt->rnnls_set_active_u, cxt->rnnls_set_active_s, false, false);
 
   long *P = cxt->P;
   long *Z = cxt->Z;
@@ -269,7 +269,7 @@ rnnls_set_active(long pidx,
 
 int
 rnnls_solve(rnnls_context *cxt) {
-  NNLSTimer timer("RNNLSSolve", cxt->rnnls_solve_u, cxt->rnnls_solve_s, false, false);
+  //NNLSTimer timer("RNNLSSolve", cxt->rnnls_solve_u, cxt->rnnls_solve_s, false, false);
 
   cholmod_dense *x = cxt->x;
   double *xx = (double *)(x->x);
@@ -390,7 +390,7 @@ rnnls_solve(rnnls_context *cxt) {
  */
 void
 rnnls_sort_P_by_amplitude(rnnls_context *cxt) {
-  NNLSTimer timer("RNNLSSortPByAmplitude", cxt->rnnls_sort_P_by_amplitude_u, cxt->rnnls_sort_P_by_amplitude_s, false, false);
+  //NNLSTimer timer("RNNLSSortPByAmplitude", cxt->rnnls_sort_P_by_amplitude_u, cxt->rnnls_sort_P_by_amplitude_s, false, false);
   std::vector<std::pair<double, long> > pNew;
   double *xx = (double *)((cxt->x)->x);
   long *P = cxt->P;
@@ -426,7 +426,7 @@ rnnls_find_in_Z(long idx,
 int
 rnnls_iterate(double tolerance,
               rnnls_context *cxt) {
-  NNLSTimer timer("RNNLSIterate", cxt->rnnls_iterate_u, cxt->rnnls_iterate_s, false, false);
+  //NNLSTimer timer("RNNLSIterate", cxt->rnnls_iterate_u, cxt->rnnls_iterate_s, false, false);
 
   // Find the member of the active set to free next
   long next_free = rnnls_next_free(tolerance, cxt);
@@ -456,7 +456,7 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
       unsigned max_iterations, int verbose, cholmod_common *c) {
   double rnnls_u = 0.0;
   double rnnls_s = 0.0;
-  NNLSTimer timer("RNNLSInternal", rnnls_u, rnnls_s, false, true);
+  //NNLSTimer timer("RNNLSInternal", rnnls_u, rnnls_s, false, true);
 
   rnnls_context *cxt = rnnls_allocate_context(A, y, c);
 
@@ -537,13 +537,13 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
   }
     //std::cout << "RNNLS member iterations: " << rnnls_member_iteration << std::endl;
 
-  NNLSTimer("RNNLSAllocateContext", cxt->rnnls_allocate_context_u, cxt->rnnls_allocate_context_s, false, false).print();
-  NNLSTimer("RNNLSNextFree", cxt->rnnls_next_free_u, cxt->rnnls_next_free_s, false, false).print();
-  NNLSTimer("RNNLSSetPassive", cxt->rnnls_set_passive_u, cxt->rnnls_set_passive_s, false, false).print();
-  NNLSTimer("RNNLSSetActive", cxt->rnnls_set_active_u, cxt->rnnls_set_active_s, false, false).print();
-  NNLSTimer("RNNLSSolve", cxt->rnnls_solve_u, cxt->rnnls_solve_s, false, false).print();
-  NNLSTimer("RNNLSSortPByAmplitude", cxt->rnnls_sort_P_by_amplitude_u, cxt->rnnls_sort_P_by_amplitude_s, false, false).print();
-  NNLSTimer("RNNLSIterate", cxt->rnnls_iterate_u, cxt->rnnls_iterate_s, false, false).print();
+  //NNLSTimer("RNNLSAllocateContext", cxt->rnnls_allocate_context_u, cxt->rnnls_allocate_context_s, false, false).print();
+  //NNLSTimer("RNNLSNextFree", cxt->rnnls_next_free_u, cxt->rnnls_next_free_s, false, false).print();
+  //NNLSTimer("RNNLSSetPassive", cxt->rnnls_set_passive_u, cxt->rnnls_set_passive_s, false, false).print();
+  //NNLSTimer("RNNLSSetActive", cxt->rnnls_set_active_u, cxt->rnnls_set_active_s, false, false).print();
+  //NNLSTimer("RNNLSSolve", cxt->rnnls_solve_u, cxt->rnnls_solve_s, false, false).print();
+  //NNLSTimer("RNNLSSortPByAmplitude", cxt->rnnls_sort_P_by_amplitude_u, cxt->rnnls_sort_P_by_amplitude_s, false, false).print();
+  //NNLSTimer("RNNLSIterate", cxt->rnnls_iterate_u, cxt->rnnls_iterate_s, false, false).print();
   rnnls_free_context(cxt);
   return ret;
 }
