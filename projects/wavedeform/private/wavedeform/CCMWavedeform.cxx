@@ -298,6 +298,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         }
     }
 
+    /*
     // now let's save the start times after de-duplication
     boost::shared_ptr<I3Vector<double>> start_times_copy = boost::make_shared<I3Vector<double>>();
 
@@ -306,7 +307,9 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
     frame->Put("StartTimes" , start_times_copy);
 
-    // Don't use data bins that are not in the support of any basis function
+    */
+
+    //Don't use data bins that are not in the support of any basis function
     double start = DBL_MIN;
     double end = DBL_MIN;
 
@@ -353,8 +356,10 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     data->nrow = nbins;
     data_times.resize(nbins);
 
+    /*
     boost::shared_ptr<I3Vector<double>> data_times_copy = boost::make_shared<I3Vector<double>>(data_times.begin(), data_times.end());
     frame->Put("DataTimes", data_times_copy);
+    */
 
     // Compute a reasonable upper bound on the number of non-zero matrix
     // elements.
@@ -433,6 +438,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         }
     }
 
+    /*
     // let's save our basis trip vector
     boost::shared_ptr<I3Vector<long int>> basis_trip_i_copy = boost::make_shared<I3Vector<long int>>();
     boost::shared_ptr<I3Vector<long int>> basis_trip_j_copy = boost::make_shared<I3Vector<long int>>();
@@ -447,6 +453,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     frame->Put("BasisTripI", basis_trip_i_copy);
     frame->Put("BasisTripJ", basis_trip_j_copy);
     frame->Put("BasisTripX", basis_trip_x_copy);
+    */
 
     //  Convert to column-ordered sparse matrix
     //  Note: This is handrolled instead of using
@@ -658,13 +665,14 @@ void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& cali
 
     wfTemplate.pulse_width = wfTemplate.end_time - wfTemplate.start_time;
 
+    /*
     boost::shared_ptr<I3Vector<double>> wf_template_copy = boost::make_shared<I3Vector<double>>();
     for (int i = 0; i < wfTemplate.digitizer_template.size(); ++i){
         wf_template_copy->push_back(wfTemplate.digitizer_template.at(i));
     }
 
     frame->Put("WaveformTemplate", wf_template_copy);
-
+    */
 
     CCMFillFWHM(wfTemplate.digitizerStart,
             wfTemplate.digitizerStop,
