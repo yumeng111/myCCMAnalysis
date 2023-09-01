@@ -205,7 +205,7 @@ if __name__ == "__main__":
     #max_pulse_start_sample = N_samples_before_baseline + N_samples_before_baseline + 50
     #tray.Add("FirstPulseFinder", "pulse_finder", NumSamplesBeforePulse=N_samples_before_baseline, MaxPulseStartSample=max_pulse_start_sample)
     #tray.Add("BaselineEstimator", "baseline_estimator", NumSamples=N_samples_for_baseline, NumFramesForEstimate=25)
-    tray.Add("darcy_baselines")
+    tray.Add("BaselineEstimator")
     tray.Add("Delete", Keys=["PulsePositions", "WaveformSmoothers"])
     tray.Add("SumWaveforms", AllowedTriggerKeys=[CCMTriggerKey(CCMTriggerKey.StrobeTrigger, 1)])
     tray.Add("Dump")
