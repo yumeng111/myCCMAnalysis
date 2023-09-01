@@ -17,12 +17,14 @@ class WaveformSmoother : public I3FrameObject {
     size_t N;
     std::vector<double> smoothed_wf;
     std::vector<double> derivative;
+    std::vector<double> baselines;
     size_t index;
     size_t max_computed;
     double delta_t;
     double tau;
     double current_value;
     double current_derivative;
+    double current_baseline;
     double alpha;
     double y_i;
     double exp_prevprev, exp_prev, exp_current, exp_next, exp_nextnext;
@@ -72,10 +74,17 @@ public:
         // Derivative for the first element
         derivative[0] = (-3.0 * smoothed_wf[0] + 4.0 * smoothed_wf[1] - smoothed_wf[2]) / (2.0 * delta_t);
 
+        baselines.push_back(0.0);
+        for(size_t i=0; i<3; ++i) {
+            baselines[0] += smoothed_wf[i];
+        }
+        baselines[0] /= 3;
+
         index = 0;
 
         current_value = smoothed_wf[index];
         current_derivative = derivative[index];
+        current_baseline = baselines[index];
     }
 
     void Reset() {
@@ -130,6 +139,10 @@ public:
         return smoothed_wf[index];
     }
 
+    double Baseline() const {
+        return baselines[index];
+    }
+
     double Derivative() const {
         return derivative[index];
     }
@@ -154,6 +167,19 @@ public:
             exp_current = exp_next;
             exp_next = exp_nextnext;
 
+
+            if(idx < 5) {
+                if(idx == 3) {
+                    current_baseline = ((current_baseline * 3) + smoothed_wf[idx]) / 4.0;
+                } else if (idx == 4) {
+                    current_baseline = ((current_baseline * 4) + smoothed_wf[idx]) / 5.0;
+                }
+            } else {
+                current_baseline -= smoothed_wf[idx-1] / 5.0;
+                current_baseline += smoothed_wf[idx] / 5.0;
+            }
+            baselines.push_back(current_baseline);
+
             // Finite difference derivative
             //derivative[idx] = (smoothed_wf[idx+1] - smoothed_wf[idx-1]) / (2.0 * delta_t);
             derivative.push_back((smoothed_wf[idx+1] - smoothed_wf[idx-1]) / (2.0 * delta_t));
@@ -162,6 +188,13 @@ public:
             derivative.resize(N);
             // Box smoothing for the last element
             smoothed_wf[N-1] = (exp_current + exp_next) / 2.0;
+
+            current_baseline -= smoothed_wf[N-3] / 5.0;
+            current_baseline += smoothed_wf[N-2] / 5.0;
+            baselines.push_back(current_baseline);
+            current_baseline -= smoothed_wf[N-2] / 5.0;
+            current_baseline += smoothed_wf[N-1] / 5.0;
+            baselines.push_back(current_baseline);
 
             // Derivative for the second to last element
             derivative[N-2] = (smoothed_wf[N-1] - smoothed_wf[N-3]) / (2.0 * delta_t);
