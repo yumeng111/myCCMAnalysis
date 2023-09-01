@@ -301,7 +301,7 @@ if __name__ == "__main__":
     #tray.Add("BaselineEstimator")
     tray.Add("Rename", Keys=["CCMPMTCalibration", "CCMCalibration"])
     #tray.Add("ElectronicsCorrection")
-    tray.Add("CCMDerivativePulseFinder", MinPulseIntegral=2, CCMWaveformsName="CCMWaveforms", ExpectRawWaveforms=True)
+    tray.Add("CCMDerivativePulseFinder", MinPulseIntegral=2, CCMWaveformsName="CCMWaveforms", ExpectRawWaveforms=True, NumThreads=16)
     tray.Add(HistogramPulses, OutputFile=json_output_file, MinTime=-500, MaxTime=500)
     # tray.Add("Delete", Keys=["CCMWaveforms"])
     # Write the GCD frames to a separate file
