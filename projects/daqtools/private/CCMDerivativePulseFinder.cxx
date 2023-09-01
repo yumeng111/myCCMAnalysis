@@ -34,6 +34,7 @@
 #include <dataclasses/calibration/BaselineEstimate.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include "daqtools/WaveformDerivative.h"
+#include "daqtools/WaveformSmoother.h"
 
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
@@ -45,6 +46,11 @@ class CCMDerivativePulseFinder: public I3Module {
     std::string nim_pulses_name_;
     bool throw_without_input_;
     std::string output_name_;
+
+    size_t num_threads;
+    std::vector<std::tuple<size_t, size_t>> thread_ranges_;
+    I3Vector<CCMPMTKey> allowed_pmt_keys_;
+    std::vector<CCMPMTKey> pmt_keys_;
 
     double pulse_initial_deriv_threshold;
     size_t pulse_max_width;
@@ -62,12 +68,12 @@ public:
     void Configure();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
-    template<typename T>
-    static std::vector<CCMRecoPulse> CheckForPulse(WaveformDerivative<T> & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason);
-    template<typename T>
+    template<typename Waveform>
+    static std::vector<CCMRecoPulse> CheckForPulse(Waveform & deriv, size_t & start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason);
+    template<typename Waveform>
     static void FindPulses(
         CCMRecoPulseSeries & output,
-        WaveformDerivative<T> & deriv,
+        Waveform & deriv,
         double deriv_threshold,
         size_t max_pulse_width,
         size_t min_pulse_width,
@@ -76,6 +82,23 @@ public:
         double min_integral,
         double nim_pulse_time);
     static void ApplyTimeOffset(CCMRecoPulseSeries & output, double offset);
+    static void FindPulsesThread(
+        std::tuple<size_t, size_t> thread_range,
+        std::vector<CCMPMTKey> const & pmt_keys,
+        I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map,
+        CCMGeometry const & geo,
+        I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>> const & nim_pulses,
+        boost::shared_ptr<CCMWaveformDoubleSeries const> const & cal_waveforms,
+        boost::shared_ptr<CCMWaveformUInt16Series const> const & raw_waveforms,
+        bool use_raw_waveforms,
+        std::vector<std::reference_wrapper<CCMRecoPulseSeries>> & output_pulses_references,
+        double pulse_initial_deriv_threshold,
+        size_t pulse_max_width,
+        size_t pulse_min_width,
+        double pulse_min_height,
+        double pulse_min_deriv_magnitude,
+        double pulse_min_integral
+	); 
 };
 
 I3_MODULE(CCMDerivativePulseFinder);
@@ -83,6 +106,7 @@ I3_MODULE(CCMDerivativePulseFinder);
 CCMDerivativePulseFinder::CCMDerivativePulseFinder(const I3Context& context) : I3Module(context), 
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("NumThreads", "Number of worker threads to use for pulse fitting", (size_t)(0));
     AddParameter("NIMPulsesName", "Key for NIMPulses", std::string("NIMPulses"));
     AddParameter("CCMWaveformsName", "Key for the input CCMWaveformDoubleSeries or CCMWaveformUInt16Series", std::string("CCMCalibratedWaveforms"));
     AddParameter("ThrowWithoutInput", "Whether to throw an error when there is no input", false);
@@ -94,11 +118,17 @@ CCMDerivativePulseFinder::CCMDerivativePulseFinder(const I3Context& context) : I
     AddParameter("MinPulseDerivativeMagnitude", "Minimum derivative magnitude for defining a pulse", double(0.325));
     AddParameter("MinPulseIntegral", "Minimum integral for defining a pulse", double(10.0));
     AddParameter("ExpectRawWaveforms", "Whether the input is the raw waveforms (CCMWaveformUInt16Series), or the calibrated waveforms (CCMWaveformDoubleSeries", bool(false));
+	AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
     AddParameter("OutputName", "Key for output CCMRecoPulseSeriesMap", std::string("DerivativePulses"));
 }
 
 void CCMDerivativePulseFinder::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("NumThreads", num_threads);
+    if(num_threads == 0) {
+        size_t const processor_count = std::thread::hardware_concurrency();
+        num_threads = processor_count;
+    }
     GetParameter("NIMPulsesName", nim_pulses_name_);
     GetParameter("CCMWaveformsName", ccm_waveform_name_);
     GetParameter("ThrowWithoutInput", throw_without_input_);
@@ -109,6 +139,7 @@ void CCMDerivativePulseFinder::Configure() {
     GetParameter("MinPulseDerivativeMagnitude", pulse_min_deriv_magnitude);
     GetParameter("MinPulseIntegral", pulse_min_integral);
     GetParameter("ExpectRawWaveforms", use_raw_waveforms_);
+	GetParameter("PMTKeys", allowed_pmt_keys_);
     GetParameter("OutputName", output_name_);
 }
 
@@ -122,6 +153,29 @@ void CCMDerivativePulseFinder::Geometry(I3FramePtr frame) {
     // std::cout << "geo.pmt_channel_map.size() == " << geo.pmt_channel_map.size() << std::endl;
     pmt_channel_map_ = geo.pmt_channel_map;
     // std::cout << "pmt_channel_map_.size() == " << pmt_channel_map_.size() << std::endl;
+    I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo_ = geo.pmt_geo;
+    std::set<CCMPMTKey> allowed_pmt_keys(allowed_pmt_keys_.begin(), allowed_pmt_keys_.end());
+    bool filter_pmts = allowed_pmt_keys.size() > 0;
+    for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : pmt_geo_) {
+        if(filter_pmts and allowed_pmt_keys.find(p.first) == allowed_pmt_keys.end()) {
+            continue;
+        }
+        if(p.second.omtype == CCMOMGeo::OMType::CCM8inCoated or p.second.omtype == CCMOMGeo::OMType::CCM8inUncoated or p.second.omtype == CCMOMGeo::OMType::CCM1in) {
+            pmt_keys_.push_back(p.first);
+        }
+    }
+    size_t min_channels_per_thread = pmt_keys_.size() / num_threads;
+    size_t max_channels_per_thread = min_channels_per_thread + 1;
+    size_t num_threads_with_max = pmt_keys_.size() - num_threads * min_channels_per_thread;
+    size_t channel_start = 0;
+    for(size_t i=0; i<num_threads; ++i) {
+        size_t n_channels = min_channels_per_thread;
+        if(i < num_threads_with_max) {
+            n_channels = max_channels_per_thread;
+        }
+        thread_ranges_.emplace_back(channel_start, channel_start + n_channels);
+        channel_start += n_channels;
+    }
     geo_seen = true;
     PushFrame(frame);
 }
@@ -188,37 +242,85 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
         return;
     }
 
-    std::vector<CCMPMTKey> pmt_keys;
-    // std::cout << "pmt_channel_map_.size() == " << pmt_channel_map_.size() << std::endl;
-    pmt_keys.reserve(pmt_channel_map_.size());
-    for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
-        pmt_keys.push_back(p.first);
+    if(num_threads == 0) {
+        num_threads = pmt_keys_.size();
     }
-    // std::cout << "Have " << pmt_keys.size() << " pmt keys" << std::endl;
+
+    std::vector<std::thread> threads;
+    threads.reserve(thread_ranges_.size());
 
     boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
+    for(size_t i = 0; i < pmt_keys_.size(); ++i) {
+        output->operator[](pmt_keys_[i]) = CCMRecoPulseSeries();
+    }
+
+    std::vector<std::reference_wrapper<CCMRecoPulseSeries>> output_pulses_references;
+    output_pulses_references.reserve(pmt_keys_.size());
+    for(size_t i = 0; i < pmt_keys_.size(); ++i) {
+        output_pulses_references.emplace_back(output->at(pmt_keys_[i]));
+    }
 
     // loop over each channel in waveforms
-    for(size_t i=0; i<pmt_keys.size(); ++i) {
+    for(size_t i=0; i<num_threads; ++i) {
+        threads.emplace_back(
+            FindPulsesThread,
+            thread_ranges_[i],
+            std::cref(pmt_keys_),
+            std::cref(pmt_channel_map_),
+            std::cref(geo),
+            std::cref(*nim_pulses),
+            std::cref(cal_waveforms),
+            std::cref(raw_waveforms),
+            use_raw_waveforms_,
+            std::ref(output_pulses_references),
+            pulse_initial_deriv_threshold,
+            pulse_max_width,
+            pulse_min_width,
+            pulse_min_height,
+            pulse_min_deriv_magnitude,
+            pulse_min_integral
+        );
+    }
+
+    for(size_t i=0; i<num_threads; ++i) {
+        threads[i].join();
+    }
+
+    frame->Put(output_name_, output);
+    PushFrame(frame);
+}
+
+void CCMDerivativePulseFinder::FindPulsesThread(
+	std::tuple<size_t, size_t> thread_range,
+	std::vector<CCMPMTKey> const & pmt_keys,
+	I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map,
+    CCMGeometry const & geo,
+    I3Map<CCMTriggerKey, I3Vector<NIMLogicPulse>> const & nim_pulses,
+	boost::shared_ptr<CCMWaveformDoubleSeries const> const & cal_waveforms,
+	boost::shared_ptr<CCMWaveformUInt16Series const> const & raw_waveforms,
+    bool use_raw_waveforms,
+    std::vector<std::reference_wrapper<CCMRecoPulseSeries>> & output_pulses_references,
+    double pulse_initial_deriv_threshold,
+    size_t pulse_max_width,
+    size_t pulse_min_width,
+    double pulse_min_height,
+    double pulse_min_deriv_magnitude,
+    double pulse_min_integral
+	) { 
+    for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey key = pmt_keys[i];
-        // std::cout << "Looking at " << key << std::endl;
-        uint32_t channel = pmt_channel_map_.at(key);
+        uint32_t channel = pmt_channel_map.at(key);
         CCMTriggerKey trigger_key =  geo.trigger_copy_map.at(key);
-        I3Vector<NIMLogicPulse> const & trigger_nim_pulses = nim_pulses->at(trigger_key);
+        I3Vector<NIMLogicPulse> const & trigger_nim_pulses = nim_pulses.at(trigger_key);
         if(trigger_nim_pulses.size() == 0) {
-            if(throw_without_input_) {
-                log_fatal("No board timing information available!");
-            } else {
-                log_warn("No board timing information available!");
-            }
-            PushFrame(frame);
-            return;
+            log_warn("No board timing information available!");
+            continue;
         }
         double nim_pulse_time = trigger_nim_pulses[0].GetNIMPulseTime();
-        if(use_raw_waveforms_) {
-            WaveformDerivative<uint16_t> deriv = WaveformDerivative<uint16_t>(raw_waveforms->at(channel).GetWaveform().begin(), raw_waveforms->at(channel).GetWaveform().end(), 2.0);
-            FindPulses<uint16_t>(output->operator[](key),
-                    deriv,
+        if(use_raw_waveforms) {
+            WaveformSmoother smoother = WaveformSmoother(raw_waveforms->at(channel).GetWaveform().begin(), raw_waveforms->at(channel).GetWaveform().end(), 2.0, 12.0);
+            CCMDerivativePulseFinder::FindPulses<WaveformSmoother>(output_pulses_references.at(i),
+                    smoother,
                     pulse_initial_deriv_threshold,
                     pulse_max_width,
                     pulse_min_width,
@@ -228,7 +330,7 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
                     nim_pulse_time);
         } else {
             WaveformDerivative<double> deriv = WaveformDerivative<double>(cal_waveforms->at(channel).GetWaveform().begin(), cal_waveforms->at(channel).GetWaveform().end(), 2.0);
-            FindPulses<double>(output->operator[](key),
+            CCMDerivativePulseFinder::FindPulses<WaveformDerivative<double>>(output_pulses_references.at(i),
                     deriv,
                     pulse_initial_deriv_threshold,
                     pulse_max_width,
@@ -238,18 +340,14 @@ void CCMDerivativePulseFinder::DAQ(I3FramePtr frame) {
                     pulse_min_integral,
                     nim_pulse_time);
         }
-        // std::cout << key << " has " << output->operator[](keys).size() << " pulses" << std::endl;
-        ApplyTimeOffset(output->operator[](key), -nim_pulse_time);
+        ApplyTimeOffset(output_pulses_references.at(i), -nim_pulse_time);
     }
-
-    frame->Put(output_name_, output);
-    PushFrame(frame);
 }
 
-template<typename T>
+template<typename Waveform>
 void CCMDerivativePulseFinder::FindPulses(
         CCMRecoPulseSeries & output,
-        WaveformDerivative<T> & deriv,
+        Waveform & deriv,
         double deriv_threshold,
         size_t max_pulse_width,
         size_t min_pulse_width,
@@ -313,8 +411,8 @@ void CCMDerivativePulseFinder::FindPulses(
     */
 }
 
-template<typename T>
-std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDerivative<T> & deriv, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason) {
+template<typename Waveform>
+std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(Waveform & deriv, size_t & start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, uint16_t & failure_reason) {
     deriv.Reset(start_idx);
     // 0 before start of pulse checking [checking for positive derivative]
     // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
@@ -406,7 +504,11 @@ std::vector<CCMRecoPulse> CCMDerivativePulseFinder::CheckForPulse(WaveformDeriva
         pulse.SetWidth((double(final_idx) - double(start_idx)) * 2.0);
         return {pulse};
     } else {
-        deriv.Reset(start_idx);
+        if(not found_pulse) {
+            deriv.Reset(start_idx);
+        } else {
+            start_idx = final_idx;
+        }
         return {};
     }
 }
