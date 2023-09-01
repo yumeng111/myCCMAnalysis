@@ -5,6 +5,7 @@
 #include <utility>
 #include <thread>
 #include <mutex>
+#include <stack>
 #include <cholmod.h>
 
 #include <boost/make_shared.hpp>
@@ -35,9 +36,6 @@
 #include "nnls.h"
 #include "rnnls.h"
 
-#include <eigen3/Eigen/Sparse>
-#include "fnnls.h"
-
 #include "timer.h"
 
 /* Simple class to hold together ATWD and FADC
@@ -52,6 +50,52 @@ struct CCMWaveformTemplate {
     double pulse_width;
     bool filled;
 };
+
+void rebin_bayesian_blocks(std::vector<double> const & raw_bins,
+    std::vector<double> const & raw_charges, std::vector<size_t> & bin_indices,
+    double ncp_prior, double poisson_scale_factor) {
+    size_t N_raw = raw_bins.size();
+    std::vector<double> best(N_raw, -std::numeric_limits<double>::infinity());
+    std::vector<int> last(N_raw, 0);
+    
+    // sum of raw_charges[:k+1]
+    double total = 0;
+    for(int k = 0; k < N_raw; k++) {
+        total += raw_charges[k] * poisson_scale_factor;
+        // sum of raw_charges[:j]
+        double subtotal = 0.;
+        for(int j = 0; j < k+1; j++) {
+            // sum of raw_charges[j:k+1] (contents of proposedblock)
+            double counts = total - subtotal;
+            // width of proposed block
+            double width = raw_bins[k+1]-raw_bins[j];
+            // the fitness of the block is a saturated Poisson
+            // likelihood, penalized by a constant factor for each
+            // extra block
+            double fitness = (counts > 0 ? counts*(std::log(counts) - std::log(width)) : 0) + (j > 0 ? best[j-1] : 0) - ncp_prior;
+            if (fitness > best[k]) {
+                best[k] = fitness;
+                last[k] = j;
+            }
+            subtotal += raw_charges[j] * poisson_scale_factor;
+        }
+    }
+    
+    // Recover changepoints by iteratively peeling off the last block
+    std::stack<int> change_points;
+    for(int i = N_raw; i > 0; i = last[i-1])
+        change_points.push(i);
+    
+    // Fill contents of blocks into output
+    int p;
+    for(p = 0; p < N_raw; change_points.pop()) {
+        assert(!change_points.empty());
+        bin_indices.push_back(p);
+        while (p < change_points.top())
+            p++;
+    }
+    bin_indices.push_back(p);
+}
 
 void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, double spacing, double min) {
 
@@ -382,6 +426,28 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
     nzmax = (int(wfTemplate.digitizer_template.size() / spes_per_bin_) + 1) * nspes;
 
+    //std::vector<double> SBB_seed_vector;
+    size_t data_idx = 0;
+    double template_avg = 0.0;
+    for(size_t i=0; i<wfTemplate.digitizer_template.size(); ++i) {
+        template_avg += wfTemplate.digitizer_template[i];
+    }
+    template_avg /= wfTemplate.digitizer_template.size();
+    for(size_t i=0; i<start_times.size(); ++i) {
+        double start_time = start_times[i].first;
+        double spacing = start_times[i].second;
+        while(data_idx < data_times.size() - 1 and data_times[data_idx] <= start_time) {
+            data_idx += 1;
+        }
+        if(data_idx > 0 and std::abs(data_times[data_idx - 1] - start_time) < std::abs(data_times[data_idx] - start_time)) {
+            data_idx -= 1;
+        }
+        double seed_value = ((double *)data->x)[data_idx] / (template_avg * (spes_per_bin_ * template_bin_spacing_) * spacing);
+        //SBB_seed_vector.push_back(seed_value);
+    }
+    //nsNNLS::vector SBB_seed(SBB_seed_vector.size(), SBB_seed_vector.data());
+
+
     // Create model matrix
     basis_trip = cholmod_l_allocate_triplet(nbins, nspes, nzmax, 0,
             CHOLMOD_REAL, &chol_common);
@@ -462,6 +528,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     //  run in less than one third the time of cholmod_l_triplet_to_sparse.
     basis = cholmod_l_allocate_sparse(basis_trip->nrow, basis_trip->ncol,
             basis_trip->nnz, true, true, 0, CHOLMOD_REAL, &chol_common);
+
+
+    //std::vector<size_t> SBB_ridx(basis_trip->nnz);
+    //std::vector<size_t> SBB_cptr(basis_trip->ncol + 1);
+    //std::vector<double> SBB_val(basis_trip->nnz);
+    //nsNNLS::sparseMatrix SBB_basis(basis_trip->nrow, basis_trip->ncol, basis_trip->nnz, SBB_ridx.data(), SBB_cptr.data(), SBB_val.data());
     //eigen_timer.start();
     //Eigen::SparseMatrix<double> eigen_basis(basis_trip->nrow, basis_trip->ncol);
     //eigen_basis.reserve(basis_trip->nnz);
@@ -472,12 +544,14 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         //eigen_timer.start();
         //eigen_basis.outerIndexPtr()[i] = accum;
         //eigen_timer.end();
+        //SBB_cptr[i] = accum;
         accum += col_counts[i];
         //eigen_basis.innerNonZeroPtr()[i] = accum; // the matrix is in the compressed format so we do not need this
     }
     // Need to set data end pointer for the last column.  Otherwise
     // SuiteSparse will ignore the last column.
     ((long *)(basis->p))[nspes] = accum;
+    //SBB_cptr[nspes] = accum;
     //eigen_timer.start();
     //eigen_basis.outerIndexPtr()[nspes] = accum;
     //eigen_timer.end();
@@ -489,6 +563,8 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         long index = ((long *)(basis->p))[col] + col_indices[col]++;
         ((long *)(basis->i))[index] = ((long *)(basis_trip->i))[i];
         ((double *)(basis->x))[index] = ((double *)(basis_trip->x))[i];
+        //SBB_ridx[i] = ((long *)(basis_trip->i))[i];
+        //SBB_val[i] = ((double *)(basis_trip->x))[i];
         //eigen_timer.start();
         //eigen_basis.innerIndexPtr()[index] = ((long *)(basis_trip->i))[i];
         //eigen_basis.valuePtr()[index] = ((double *)(basis_trip->x))[i];
@@ -498,6 +574,8 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     //eigen_timer.start();
     //Eigen::Map<fnnls::VectorX_<double>> data_view(((double *)(data->x)), data->nrow);
     //eigen_timer.end();
+    //std::vector<double> SBB_data_vector(((double *)data->x), ((double *)data->x) + data->nrow);
+    //nsNNLS::vector SBB_data(SBB_data_vector.size(), SBB_data_vector.data());
     pre_compute.end();
     //eigen_timer.print();
 
@@ -509,7 +587,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             double u = 0.0;
             std::string name = "RNNLS";
             NNLSTimer nnls_timer(name, s, u, true);
-        unfolded = rnnls(basis, data, tolerance_, 2000, 0, &chol_common);
+            unfolded = rnnls(basis, data, tolerance_, 2000, 0, &chol_common);
         }
         /*{
             double s = 0.0;
@@ -517,7 +595,19 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             std::string name = "FNNLS";
             NNLSTimer nnls_timer(name, s, u, true);
             fnnls::fnnls_solver(eigen_basis, data_view, 2000, tolerance_);
-        }*/
+        }
+        nsNNLS::vector* result;
+        {
+            double s = 0.0;
+            double u = 0.0;
+            std::string name = "SBB_NNLS";
+            NNLSTimer nnls_timer(name, s, u, true);
+            
+            nsNNLS::nnls solver(&SBB_basis, &SBB_data, &SBB_seed, 2000);
+            solver.optimize();
+            result = solver.getSolution();
+        }
+        delete result; */
     } else {
         unfolded = nnls_lawson_hanson(basis, data, tolerance_,
             0, 2000, nspes, 0, 1, 0, &chol_common);
