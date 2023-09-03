@@ -48,13 +48,14 @@ struct CCMWaveformTemplate {
     double start_time;
     double end_time;
     double pulse_width;
+    double total_mass;
     bool filled;
 };
 
 void rebin_bayesian_blocks(std::vector<double> const & raw_bins,
-    std::vector<double> const & raw_charges, std::vector<size_t> & bin_indices,
+    double const * raw_charges, std::vector<std::vector<size_t>> & bin_indices,
     double ncp_prior, double poisson_scale_factor) {
-    size_t N_raw = raw_charges.size();
+    size_t N_raw = raw_bins.size() - 1;
     std::vector<double> best(N_raw, -std::numeric_limits<double>::infinity());
     std::vector<int> last(N_raw, 0);
     
@@ -89,12 +90,15 @@ void rebin_bayesian_blocks(std::vector<double> const & raw_bins,
     // Fill contents of blocks into output
     int p;
     for(p = 0; p < N_raw; change_points.pop()) {
+        bin_indices.emplace_back();
         assert(!change_points.empty());
-        bin_indices.push_back(p);
-        while (p < change_points.top())
+        while(p < change_points.top()) {
+            bin_indices.back().push_back(p);
             p++;
+        }
     }
-    bin_indices.push_back(p);
+    // Don't include the last bin edge index because the output is for specifying which bins to merge
+    // bin_indices.back().push_back(p);
 }
 
 void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, double spacing, double min) {
@@ -157,7 +161,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, I3FramePtr frame) {
+void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
     double GetPulsesInternal_s = 0.0;
     double GetPulsesInternal_u = 0.0;
     NNLSTimer GetPulsesInternal_timer("GetPulsesInternal", GetPulsesInternal_s, GetPulsesInternal_u, true);
@@ -399,11 +403,22 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     nbins = j;
     data->nrow = nbins;
     data_times.resize(nbins);
+    data_times.push_back(data_times.back() + 2.0);
 
-    /*
-    boost::shared_ptr<I3Vector<double>> data_times_copy = boost::make_shared<I3Vector<double>>(data_times.begin(), data_times.end());
-    frame->Put("DataTimes", data_times_copy);
-    */
+    output_data_times = data_times;
+    std::vector<std::vector<size_t>> rebin_ranges;
+    double ncp_prior = 4.0;
+    rebin_bayesian_blocks(data_times, ((double *)(data->x)), rebin_ranges, ncp_prior, wfTemplate.total_mass);
+    output_rebin_data_times.clear();
+    for(size_t i=0; i<rebin_ranges.size(); ++i) {
+        output_rebin_data_times.push_back(rebin_ranges[i][0]);
+    }
+    output_rebin_data_times.push_back(rebin_ranges.back().back());
+
+    std::cout << "Original data bins: " << data_times.size() - 1 << std::endl;
+    std::cout << "Rebinned data bins: " << output_rebin_data_times.size() - 1 << std::endl;
+    std::cout << "Rebinned last index: " << rebin_ranges.back().back() << std::endl;
+    std::cout << std::endl;
 
     // Compute a reasonable upper bound on the number of non-zero matrix
     // elements.
@@ -654,6 +669,8 @@ void RunPulsesThread(
         std::vector<cholmod_common> & cholmod_common_vec,
         bool reduce,
         std::vector<std::reference_wrapper<CCMRecoPulseSeries>> & output_pulses_references,
+        std::vector<std::reference_wrapper<std::vector<double>>> & output_data_times_references,
+        std::vector<std::reference_wrapper<std::vector<double>>> & output_rebin_data_times_references,
         double template_bin_spacing_,
         double noise_threshold_,
         double basis_threshold_,
@@ -699,6 +716,8 @@ void RunPulsesThread(
                 apply_spe_corr_,
                 cholmod_common_vec.at(i),
                 output_pulses_references[i].get(),
+                output_data_times_references[i].get(),
+                output_rebin_data_times_references[i].get(),
                 frame
                 );
         GetPulses_timer.end();
@@ -757,6 +776,13 @@ void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& cali
     wfTemplate.end_time = wfTemplate.start_time + wfTemplate.digitizer_template.size() * template_bin_spacing_;
 
     wfTemplate.pulse_width = wfTemplate.end_time - wfTemplate.start_time;
+
+    total = 0.0;
+    for(size_t i=0; i<wfTemplate.digitizer_template.size(); ++i) {
+        total += wfTemplate.digitizer_template[i];
+    }
+
+    wfTemplate.total_mass = total;
 
     /*
     boost::shared_ptr<I3Vector<double>> wf_template_copy = boost::make_shared<I3Vector<double>>();
@@ -981,14 +1007,22 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
 
     // place to store pulses
     boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_rebin_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
     for(size_t i = 0; i < pmt_keys_.size(); ++i) {
         output->operator[](pmt_keys_[i]) = CCMRecoPulseSeries();
+        output_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
+        output_rebin_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
     }
 
     std::vector<std::reference_wrapper<CCMRecoPulseSeries>> output_pulses_references;
+    std::vector<std::reference_wrapper<std::vector<double>>> output_data_times_references;
+    std::vector<std::reference_wrapper<std::vector<double>>> output_rebin_data_times_references;
     output_pulses_references.reserve(pmt_keys_.size());
     for(size_t i = 0; i < pmt_keys_.size(); ++i) {
         output_pulses_references.emplace_back(output->at(pmt_keys_[i]));
+        output_data_times_references.emplace_back(output_data_times->at(pmt_keys_[i]));
+        output_rebin_data_times_references.emplace_back(output_rebin_data_times->at(pmt_keys_[i]));
     }
 
     // loop over each channel in waveforms
@@ -1004,6 +1038,8 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             std::ref(cholmod_common_vec_),
             reduce_,
             std::ref(output_pulses_references),
+            std::ref(output_data_times_references),
+            std::ref(output_rebin_data_times_references),
             template_bin_spacing_,
             noise_threshold_,
             basis_threshold_,
@@ -1018,6 +1054,8 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         threads[i].join();
     }
 
+    frame->Put("OriginalDataBins", output_data_times);
+    frame->Put("RebinnedDataBins", output_rebin_data_times);
     frame->Put(output_name_, output);
 
     PushFrame(frame, "OutBox");
