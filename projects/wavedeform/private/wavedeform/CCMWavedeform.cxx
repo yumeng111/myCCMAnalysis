@@ -407,11 +407,16 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
     output_data_times = data_times;
     std::vector<std::vector<size_t>> rebin_ranges;
+    std::vector<double> rebinned_data;
     double ncp_prior = 4.0;
     rebin_bayesian_blocks(data_times, ((double *)(data->x)), rebin_ranges, ncp_prior, wfTemplate.total_mass);
     output_rebin_data_times.clear();
     for(size_t i=0; i<rebin_ranges.size(); ++i) {
         output_rebin_data_times.push_back(rebin_ranges[i][0]);
+        rebinned_data.emplace_back(0);
+        for(size_t rebin_idx : rebin_ranges[i]) {
+            rebinned_data.back() += ((double *)(data->x))[rebin_idx];
+        }
     }
     output_rebin_data_times.push_back(rebin_ranges.back().back());
 
@@ -557,12 +562,49 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
 
     std::vector<double> new_spe_start_times;
+    // Store representative SPE index, and a vector of combined SPE times and ratios
     std::vector<std::tuple<size_t, std::vector<std::tuple<double, double>>>> merged_spes;
+
     // Determine if any SPEs have the same support for the rebinned data and merge them accordingly
     // We want to leave the leading edge SPEs alone
     // Only merge if we have 3 or more SPEs in a row with the same support, and merge all SPEs except the first one
     // We must choose a relative magnitude for the merged SPEs when combining them and when uncombining after fitting,
     //   we can use the dot product of the SPE row with the data to determine this relative magnitude
+    size_t num_same_support = 1;
+    size_t matching_support_idx = 0;
+    for(size_t spe_idx=1; spe_idx<=spe_bb_support.size(); ++spe_idx) {
+        if(spe_idx<spe_bb_support.size() and spe_bb_support[spe_idx] == spe_bb_support[matching_support_idx]) {
+            num_same_support += 1;
+        } else {
+            // The support has now changed
+            // Store the first spe
+            merged_spes.emplace_back(new_spe_start_times.size(), std::vector<std::tuple<double, double>>(1, {start_times[matching_support_idx].first, 1.0}));
+            new_spe_start_times.emplace_back(start_times[matching_support_idx].first);
+            // Check for how many identical supports we had in a row
+            if(num_same_support >= 3) {
+                // Merge all but the first SPE with matching support
+                double total_dot_product = 0.0;
+                std::vector<double> dot_products;
+                dot_products.reserve(num_same_support-1);
+                for(size_t j=spe_idx-num_same_support+1; j<spe_idx; ++j) {
+                    double dot_product = 0.0;
+                    for(size_t i_sub=0; i_sub<spe_original_support[matching_support_idx].size(); ++i_sub) {
+                        size_t i = i_sub + spe_original_support[matching_support_idx][0];
+                        dot_product += rebinned_entries[j][i_sub] * ((double *)(data->x))[i];
+                    }
+                    dot_products.emplace_back(dot_product);
+                    total_dot_product += dot_product;
+                }
+                size_t j_sub = 0;
+                std::vector<std::tuple<double, double>> degenerate_spes;
+                for(size_t j=spe_idx-num_same_support+1; j<spe_idx; ++j, ++j_sub) {
+                    degenerate_spes.emplace_back(start_times[j].first, dot_products[j_sub] / total_dot_product);
+                }
+            }
+            num_same_support = 1;
+            matching_support_idx = spe_idx;
+        }
+    }
     }
 
     /*
