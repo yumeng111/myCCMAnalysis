@@ -519,6 +519,52 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         }
     }
 
+    {
+    int k = 0;
+    double data_running_total = 0.0;
+    std::vector<std::vector<size_t>> spe_original_support;
+    std::vector<std::vector<size_t>> spe_bb_support;
+    std::vector<double> rebinned_data;
+    std::vector<size_t> first_spe_idxs;
+    std::vector<std::vector<double>> rebinned_entries;
+    // Merge entries in the matrix according to the data rebinning
+    for(size_t bb_idx=0; bb_idx<rebin_ranges.size(); ++bb_idx) {
+        rebinned_entries.emplace_back();
+        for(size_t data_idx : rebin_ranges[bb_idx]) {
+            while(((long *)(basis_trip->i))[k] < data_idx) {
+                ++k;
+            }
+            assert(((long *)(basis_trip->i))[k] == data_idx);
+            size_t spe_idx = ((long *)(basis_trip->j))[k];
+            first_spe_idxs.push_back(spe_idx);
+            while(((long *)(basis_trip->i))[k] == data_idx) {
+                while(rebinned_entries.back().size() < spe_idx - first_spe_idxs.back() + 1) {
+                    rebinned_entries.back().emplace_back(0);
+                }
+                while(spe_original_support.size() < spe_idx + 1) {
+                    spe_original_support.emplace_back();
+                    spe_bb_support.emplace_back();
+                }
+                spe_original_support[spe_idx].push_back(data_idx);
+                if(spe_bb_support[spe_idx].size() > 0 and spe_bb_support[spe_idx].back() != bb_idx) {
+                    spe_bb_support[spe_idx].push_back(bb_idx);
+                }
+                rebinned_entries.back()[spe_idx - first_spe_idxs.back()] += ((double *)(basis_trip->x))[k];
+                ++k;
+                spe_idx = ((long *)(basis_trip->j))[k];
+            }
+        }
+    }
+
+    std::vector<double> new_spe_start_times;
+    std::vector<std::tuple<size_t, std::vector<std::tuple<double, double>>>> merged_spes;
+    // Determine if any SPEs have the same support for the rebinned data and merge them accordingly
+    // We want to leave the leading edge SPEs alone
+    // Only merge if we have 3 or more SPEs in a row with the same support, and merge all SPEs except the first one
+    // We must choose a relative magnitude for the merged SPEs when combining them and when uncombining after fitting,
+    //   we can use the dot product of the SPE row with the data to determine this relative magnitude
+    }
+
     /*
     // let's save our basis trip vector
     boost::shared_ptr<I3Vector<long int>> basis_trip_i_copy = boost::make_shared<I3Vector<long int>>();
