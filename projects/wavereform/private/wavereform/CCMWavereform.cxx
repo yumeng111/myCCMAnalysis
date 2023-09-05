@@ -97,10 +97,11 @@ void CCMWavereform::GetRefoldedWf(std::vector<double> & refolded_wf, std::vector
     // should replace with paramters from calibration one day
     double pulse_time;
     double pulse_charge;
+    double electron_time = calib.GetPMTDeltaT();
 
     // now let's loop over pulses
     for (size_t pulse_it = 0; pulse_it < pulses.size(); ++pulse_it){
-        pulse_time = pulses[pulse_it].GetTime();
+        pulse_time = pulses[pulse_it].GetTime() + electron_time;
         pulse_charge = pulses[pulse_it].GetCharge();
         // now let's figure out how many ADC counts this pulse is
         CCMSPETemplate channel_template = calib.GetSPETemplate();

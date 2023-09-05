@@ -54,7 +54,7 @@ struct CCMWaveformTemplate {
 void rebin_bayesian_blocks(std::vector<double> const & raw_bins,
     std::vector<double> const & raw_charges, std::vector<size_t> & bin_indices,
     double ncp_prior, double poisson_scale_factor) {
-    size_t N_raw = raw_bins.size();
+    size_t N_raw = raw_charges.size();
     std::vector<double> best(N_raw, -std::numeric_limits<double>::infinity());
     std::vector<int> last(N_raw, 0);
     
@@ -626,6 +626,9 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         speCorrection = 1.;
     }
 
+    // let's account for the electron transit time!!
+    double electron_time = calibration.GetPMTDeltaT();
+
     // Convert to pulse series
     for (int i = 0; i < nspes; i++) {
         if (((double *)(unfolded->x))[i] == 0)
@@ -633,7 +636,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
         CCMRecoPulse pulse;
 
-        pulse.SetTime(start_times[i].first);
+        pulse.SetTime(start_times[i].first - electron_time);
         pulse.SetCharge((((double *)(unfolded->x))[i]) * speCorrection);
         pulse.SetWidth(start_times[i].second);
         output.push_back(pulse);
