@@ -603,7 +603,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                     spe_bb_support[spe_idx].push_back(bb_idx);
                     spe_bb_entries[spe_idx].push_back(x);
                 } else {
-                    spe_bb_entries[spe_idx] += x;
+                    spe_bb_entries[spe_idx].back() += x;
                 }
                 ++k;
             }
@@ -637,6 +637,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             // Check for how many identical supports we had in a row
             if(num_same_support >= 3) {
                 // Merge all but the first SPE with matching support
+                // Use the dot product with the data to set the relative magnitudes
                 double total_dot_product = 0.0;
                 std::vector<double> dot_products;
                 dot_products.reserve(num_same_support-1);
@@ -651,10 +652,31 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                     dot_products.emplace_back(dot_product);
                     total_dot_product += dot_product;
                 }
+                double average_start_time = 0.0;
                 std::vector<std::tuple<double, double>> degenerate_spes;
                 for(size_t jj=1; jj<num_same_support; ++jj) {
                     size_t j = matching_support_idx + jj;
                     degenerate_spes.emplace_back(start_times[j].first, dot_products[jj-1] / total_dot_product);
+                    average_start_time += start_times[matching_support_idx].first * dot_products[jj-1];
+                    for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
+                        size_t data_idx = spe_bb_support[j][ii];
+                        if(jj == 1)
+                            entries[data_idx].push_back(0.0);
+                        entries[data_idx].back() += spe_bb_entries[j][ii] * dot_products[jj-1] / total_dot_product;
+                    }
+                }
+                average_start_time /= total_dot_product;
+                merged_spes.emplace_back(new_spe_start_times.size(), degenerate_spes);
+                new_spe_start_times.emplace_back(average_start_time);
+            } else {
+                // Put the unmerged SPEs into the final basis
+                for(size_t jj=1; jj<num_same_support; ++jj) {
+                    size_t j = matching_support_idx + jj;
+                    merged_spes.emplace_back(new_spe_start_times.size(), std::vector<std::tuple<double, double>>(1, {start_times[j].first, 1.0}));
+                    new_spe_start_times.emplace_back(start_times[j].first);
+                    for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
+                        entries[data_idx].push_back(spe_bb_entries[j][ii]);
+                    }
                 }
             }
             num_same_support = 1;
