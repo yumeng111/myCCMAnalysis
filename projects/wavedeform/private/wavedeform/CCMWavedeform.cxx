@@ -501,6 +501,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     nzmax = (int(wfTemplate.digitizer_template.size() / spes_per_bin_) + 1) * nspes;
 
     //std::vector<double> SBB_seed_vector;
+    /*
     size_t data_idx = 0;
     double template_avg = 0.0;
     for(size_t i=0; i<wfTemplate.digitizer_template.size(); ++i) {
@@ -519,6 +520,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         double seed_value = ((double *)data->x)[data_idx] / (template_avg * (spes_per_bin_ * template_bin_spacing_) * spacing);
         //SBB_seed_vector.push_back(seed_value);
     }
+    */
     //nsNNLS::vector SBB_seed(SBB_seed_vector.size(), SBB_seed_vector.data());
 
 
@@ -578,12 +580,11 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         }
     }
 
-    {
     int k = 0;
     double data_running_total = 0.0;
-    std::vector<std::vector<size_t>> spe_original_support;
+    std::vector<std::vector<size_t>> spe_original_support(nspes);
     std::vector<std::vector<double>> spe_original_entries(nspes);
-    std::vector<std::vector<size_t>> spe_bb_support;
+    std::vector<std::vector<size_t>> spe_bb_support(nspes);
     std::vector<std::vector<double>> spe_bb_entries(nspes);
     std::vector<double> rebinned_data(rebin_ranges.size(), 0.0);
     // Merge entries in the matrix according to the data rebinning
@@ -610,6 +611,8 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         }
     }
 
+    size_t reduced_nnz = 0;
+    std::vector<size_t> first_spe_idx(rebin_ranges.size());
     std::vector<std::vector<double>> entries(rebin_ranges.size());
     std::vector<std::tuple<size_t, std::vector<std::tuple<double, double>>>> merged_spes;
     std::vector<double> new_spe_start_times;
@@ -632,7 +635,10 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             new_spe_start_times.emplace_back(start_times[matching_support_idx].first);
             for(size_t ii = 0; ii<spe_bb_support[matching_support_idx].size(); ++ii) {
                 size_t data_idx = spe_bb_support[matching_support_idx][ii];
+                if(entries[data_idx].size() == 0)
+                    first_spe_idx[data_idx] = matching_support_idx;
                 entries[data_idx].push_back(spe_bb_entries[matching_support_idx][ii]);
+                reduced_nnz += 1;
             }
             // Check for how many identical supports we had in a row
             if(num_same_support >= 3) {
@@ -660,8 +666,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                     average_start_time += start_times[matching_support_idx].first * dot_products[jj-1];
                     for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
                         size_t data_idx = spe_bb_support[j][ii];
-                        if(jj == 1)
+                        if(jj == 1) {
+                            if(entries[data_idx].size() == 0)
+                                first_spe_idx[data_idx] = j;
                             entries[data_idx].push_back(0.0);
+                            reduced_nnz += 1;
+                        }
                         entries[data_idx].back() += spe_bb_entries[j][ii] * dot_products[jj-1] / total_dot_product;
                     }
                 }
@@ -675,14 +685,17 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                     merged_spes.emplace_back(new_spe_start_times.size(), std::vector<std::tuple<double, double>>(1, {start_times[j].first, 1.0}));
                     new_spe_start_times.emplace_back(start_times[j].first);
                     for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
+                        size_t data_idx = spe_bb_support[j][ii];
+                        if(entries[data_idx].size() == 0)
+                            first_spe_idx[data_idx] = j;
                         entries[data_idx].push_back(spe_bb_entries[j][ii]);
+                        reduced_nnz += 1;
                     }
                 }
             }
             num_same_support = 1;
             matching_support_idx = spe_idx;
         }
-    }
     }
 
     /*
@@ -707,18 +720,10 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     //  cholmod_l_triplet_to_sparse() in order to exploit some of the
     //  structure of our specific triplet matrix, which lets this
     //  run in less than one third the time of cholmod_l_triplet_to_sparse.
+    /*
     basis = cholmod_l_allocate_sparse(basis_trip->nrow, basis_trip->ncol,
             basis_trip->nnz, true, true, 0, CHOLMOD_REAL, &chol_common);
 
-
-    //std::vector<size_t> SBB_ridx(basis_trip->nnz);
-    //std::vector<size_t> SBB_cptr(basis_trip->ncol + 1);
-    //std::vector<double> SBB_val(basis_trip->nnz);
-    //nsNNLS::sparseMatrix SBB_basis(basis_trip->nrow, basis_trip->ncol, basis_trip->nnz, SBB_ridx.data(), SBB_cptr.data(), SBB_val.data());
-    //eigen_timer.start();
-    //Eigen::SparseMatrix<double> eigen_basis(basis_trip->nrow, basis_trip->ncol);
-    //eigen_basis.reserve(basis_trip->nnz);
-    //eigen_timer.end();
     int accum = 0;
     for (int i = 0; i < nspes; i++) {
         ((long *)(basis->p))[i] = accum;
@@ -751,6 +756,35 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         //eigen_basis.valuePtr()[index] = ((double *)(basis_trip->x))[i];
         //eigen_timer.end();
     }
+    */
+
+    int accum = 0;
+    for (int i = 0; i < nspes; i++) {
+        ((long *)(basis->p))[i] = accum;
+        //eigen_timer.start();
+        //eigen_basis.outerIndexPtr()[i] = accum;
+        //eigen_timer.end();
+        //SBB_cptr[i] = accum;
+        accum += col_counts[i];
+        //eigen_basis.innerNonZeroPtr()[i] = accum; // the matrix is in the compressed format so we do not need this
+    }
+    basis = cholmod_l_allocate_sparse(entries.size(), merged_spes.size(),
+            reduced_nnz, true, true, 0, CHOLMOD_REAL, &chol_common);
+
+    for(size_t data_idx=0; data_idx<entries.size(); ++data_idx) {
+        long col = ((long *)(basis_trip->j))[i];
+        long index = ((long *)(basis->p))[col] + col_indices[col]++;
+        ((long *)(basis->i))[index] = ((long *)(basis_trip->i))[i];
+        ((double *)(basis->x))[index] = ((double *)(basis_trip->x))[i];
+        //SBB_ridx[i] = ((long *)(basis_trip->i))[i];
+        //SBB_val[i] = ((double *)(basis_trip->x))[i];
+        //eigen_timer.start();
+        //eigen_basis.innerIndexPtr()[index] = ((long *)(basis_trip->i))[i];
+        //eigen_basis.valuePtr()[index] = ((double *)(basis_trip->x))[i];
+        //eigen_timer.end();
+    }
+
+
     cholmod_l_free_triplet(&basis_trip, &chol_common);
     //eigen_timer.start();
     //Eigen::Map<fnnls::VectorX_<double>> data_view(((double *)(data->x)), data->nrow);
