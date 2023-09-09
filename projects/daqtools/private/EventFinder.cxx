@@ -52,6 +52,9 @@ class EventFinder: public I3Module {
     double event_charge_threshold_;
     std::string pulses_;
 
+    I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
+    std::set<CCMPMTKey> pmt_keys;
+
     public:
     void Geometry(I3FramePtr frame);
     EventFinder(const I3Context&);
@@ -70,6 +73,7 @@ EventFinder::EventFinder(const I3Context& context) : I3Module(context),
                 2 * I3Units::ns);
         AddParameter("EventChargeThreshold", "Charge threshold in window to define an event", double(5.0));
         AddParameter("Pulses", "Name of pulse series to use", "OfflinePulses");
+        AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
     }
 
 
@@ -79,6 +83,7 @@ void EventFinder::Configure() {
     GetParameter("TimeWindow", timeWindow_);
     GetParameter("EventChargeThreshold", event_charge_threshold_);
     GetParameter("Pulses", pulses_);
+    GetParameter("PMTTypes", pmt_types);
 }
 
 
@@ -87,7 +92,16 @@ void EventFinder::Geometry(I3FramePtr frame) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
     }
     geo = frame->Get<CCMGeometryConstPtr>(geometry_name_);
-    geo_seen = true;
+    geo_seen = bool(geo);
+    pmt_keys.clear();
+    if(geo_seen) {
+        std::set<CCMOMGeo::OMType> allowed_pmt_types(pmt_types.begin(), pmt_types.end());
+        for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
+            if(allowed_pmt_types.count(p.second.omtype) == 0)
+                continue;
+            pmt_keys.insert(p.first);
+        }
+    }
     PushFrame(frame);
 }
 
@@ -109,6 +123,8 @@ void EventFinder::DAQ(I3FramePtr frame) {
 
     for (CCMRecoPulseSeriesMap::const_iterator i = pulses->begin();
             i != pulses->end(); i++) {
+        if(pmt_keys.count(i->first) == 0)
+            continue;
         double nim_pulse_time = nim_pulses->at(geo->trigger_copy_map.at(i->first)).at(0).GetNIMPulseTime();
         for(CCMRecoPulse const & pulse: i->second) {
             pulse_list.push_back(PMTKeyPulsePair(i->first, pulse));
