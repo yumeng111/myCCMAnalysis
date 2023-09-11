@@ -105,6 +105,8 @@ typedef I3Vector<TankKey> I3VectorTankKey;
 typedef I3Vector<StationKey> I3VectorStationKey;
 typedef I3Vector<ModuleKey> I3VectorModuleKey;
 typedef I3Vector<CCMPMTKey> I3VectorCCMPMTKey;
+enum CCMPMTType : unsigned int;
+typedef I3Vector<CCMPMTType> I3VectorCCMPMTType;
 
 
 typedef I3Vector<I3Vector<double>> I3VectorI3VectorDouble;
@@ -140,6 +142,7 @@ I3_POINTER_TYPEDEFS(I3VectorTankKey);
 I3_POINTER_TYPEDEFS(I3VectorStationKey);
 I3_POINTER_TYPEDEFS(I3VectorModuleKey);
 I3_POINTER_TYPEDEFS(I3VectorCCMPMTKey);
+I3_POINTER_TYPEDEFS(I3VectorCCMPMTType);
 I3_POINTER_TYPEDEFS(I3VectorDoubleDouble);
 I3_POINTER_TYPEDEFS(I3VectorI3Position);
 

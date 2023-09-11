@@ -30,10 +30,13 @@ static const unsigned ccmomgeo_version_ = 0;
 //Simple struct to contain all pertinent OM info.
 //See CCMGeometry.h for more info
 
+enum CCMPMTType : unsigned int {UnknownType = 0, CCM8inCoated = 10, CCM8inUncoated = 20, CCM1in = 30, EJ301 = 40, BeamCurrentMonitor = 50, CsISinglePMT = 60};
+
 class CCMOMGeo
 {
 public:
-    enum OMType {UnknownType = 0, CCM8inCoated = 10, CCM8inUncoated = 20, CCM1in = 30, EJ301 = 40, BeamCurrentMonitor = 50, CsISinglePMT = 60};
+
+    typedef CCMPMTType OMType;
 
     CCMOMGeo():omtype(UnknownType){}
 
