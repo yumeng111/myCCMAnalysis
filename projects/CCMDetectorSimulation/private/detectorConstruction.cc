@@ -53,7 +53,7 @@ detectorConstruction::detectorConstruction()
   wPhys = nullptr;
   
   fH = fC = fN = fO = nullptr;
-  alum = steel = fVacuum = nullptr;
+  alum = steel = fVacuum = fEj335 = nullptr;
   ptfe = fGlass = tPB = tPBhundred = fBlackPlastic = fPlastic = nullptr;
   lAr = lAr2 = nullptr;
 
@@ -110,6 +110,7 @@ void detectorConstruction::DefineMaterials(){
   fC = new G4Element("C", "C", z=6., a=12.01*g/mole);
   fN = new G4Element("N", "N", z=7., a= 14.01*g/mole);
   fO = new G4Element("O", "O", z=8., a= 16.00*g/mole);
+  //G4Element* fGd = new G4Element("Gd", "Gd", z=64., a=155.0*g/mole);
   
   //Aluminum: for the frame
   alum = new G4Material("Al",z=13.,a=26.98*g/mole,density=2.7*g/cm3);
@@ -119,6 +120,7 @@ void detectorConstruction::DefineMaterials(){
   steel = manager->FindOrBuildMaterial("G4_STAINLESS-STEEL");
   //ptfe: for the reflector foils.
   ptfe = manager->FindOrBuildMaterial("G4_TEFLON");
+  G4Element* fGd = manager->FindOrBuildElement(64);
   //Vacuum: for vacuum. 
   fVacuum = new G4Material("Vacuum",z=1.,a=1.01*g/mole,
                           density=universe_mean_density,kStateGas,0.1*kelvin,
@@ -146,7 +148,54 @@ void detectorConstruction::DefineMaterials(){
   fBlackPlastic->AddElement(fH,16);
   fBlackPlastic->AddElement(fO,2);
 
+  //MARK FOR REACTOR
+  //EJ-335 for liquid scintillator detector  
+  fEj335 = new G4Material("ej-335",density=0.89*g/cm3,3);
+  fEj335->AddElement(fH, 11.55*perCent);
+  fEj335->AddElement(fC, 88.20*perCent);
+  fEj335->AddElement(fGd, 0.25*perCent);
 
+  //ej_wavelengths = {300, 380, 400, 420, 424, 436, 440, 446, 460, 480, 500, 520, 540, 600}
+  G4double ej_energy[] =  {4.133*eV, 3.263*eV, 3.099*eV, 2.952*eV, 2.924*eV,
+			   2.844*eV, 2.818*eV, 2.780*eV, 2.695*eV, 2.583*eV,
+			   2.480*eV, 2.384*eV, 2.296*eV, 2.066*eV};
+  G4double ej_scint_amp[] =  {0.0,  0.0,  0.0, 0.88, 1.0,
+			      0.9,  0.75, 0.6, 0.44, 0.18,
+			      0.06, 0.0,  0.0, 0.0};
+  assert(sizeof(ej_energy) == sizeof(ej_scint_amp));
+  G4double ej_rayleigh[] = {42.3*cm,  42.3*cm,  56.4*cm,  59.2*cm, 59.8*cm,
+			    61.5*cm,  62.02*cm, 62.9*cm,  74.4*cm, 90.9*cm,
+			    107.4*cm, 123.9*cm, 141.0*cm, 141.0*cm};
+  assert(sizeof(ej_energy) == sizeof(ej_rayleigh));
+  G4double ej_opAbsorb[] = {4.5*m, 4.5*m, 4.5*m, 4.5*m, 4.5*m,
+			    4.5*m, 4.5*m, 4.5*m, 4.5*m, 4.5*m,
+			    4.5*m, 4.5*m, 4.5*m, 4.5*m};
+  assert(sizeof(ej_energy) == sizeof(ej_opAbsorb));
+  G4double ej_rindex[] =  {1.49, 1.49, 1.49, 1.49, 1.49,
+			   1.49, 1.49, 1.49, 1.49, 1.49,
+			   1.49, 1.49, 1.49, 1.49};
+  assert(sizeof(ej_energy) == sizeof(ej_rindex));
+
+  const G4int ejnum = sizeof(ej_energy)/sizeof(G4double);
+
+  G4MaterialPropertiesTable *ej335_mt = new G4MaterialPropertiesTable();
+  ej335_mt->AddProperty("ABSLENGTH",ej_energy,ej_opAbsorb,ejnum);
+  ej335_mt->AddProperty("RINDEX",ej_energy,ej_rindex,ejnum);
+  ej335_mt->AddProperty("RAYLEIGH",ej_energy,ej_rayleigh,ejnum);
+  ej335_mt->AddProperty("FASTCOMPONENT", ej_energy, ej_scint_amp, ejnum);
+  G4double ej_scint_yeild=9.57/(1.0*keV); //scintillation yeild: 9.57/keV
+  ej335_mt->AddConstProperty("SCINTILLATIONYIELD",ej_scint_yeild);
+  ej335_mt->AddConstProperty("RESOLUTIONSCALE",0.11);
+  ej335_mt->AddConstProperty("FASTTIMECONSTANT",3.8*ns);
+  ej335_mt->AddConstProperty("YIELDRATIO",1.0);
+  fEj335->SetMaterialPropertiesTable(ej335_mt);
+  fEj335->GetIonisation()->SetBirksConstant(0.016*cm/MeV);
+  //scintillation:
+  /*light yeild = 55% anthracene
+    anthracene = 17400 photons/MeV
+    yield = 9.57/keV
+    lifetime = 3.8 ns (singlet only)
+  toFind = Rayleigh, Resolution Scale = 0.11, Birks Constant/ionization = 0.016cm/MeV*/
   //G4cout << "first definition of lAr below" << G4endl;
 
   //Define the Materials from liquid Argon to tpb.
@@ -223,7 +272,7 @@ void detectorConstruction::DefineMaterials(){
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
   G4double base = 55.9506;//42.72;//Base absorption length for UV light
   G4double mult = 2800.0;//Absorption length for visible.
-  DefineLAr(base,100.0,100.0,threehun,mult);//ultra is second
+  DefineLAr(base,100.0,threehun,mult,1.358,1,100.7813004,1);//ultra is second
 
 
   //G4cout << "EdwardNote Defined Compounds" << G4endl;
@@ -346,7 +395,7 @@ void detectorConstruction::DefineMaterials(){
   TPBsProp->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
   tPBhundred->SetMaterialPropertiesTable(TPBsProp);
 
-  DefineTpb(foilEff,tpbEff,tpbAbs,1.7,2.75);
+  DefineTpb(foilEff,tpbEff,tpbAbs,1.7,2.75,2.75);
 
   //Defines properties of the ptfe reflectors.
   const G4int nTefEntries = 25;
@@ -377,9 +426,9 @@ void detectorConstruction::DefineMaterials(){
 }
 
 //method for more consistently performing the LAr Definition
-void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double five, G4double three, G4double mult) {
+void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double three, G4double mult, G4double rindex, G4double scaler, G4double ray128, G4double scalerray) {
   //the following section defines the absorption lengths for the various kinds of liquid Argon.
-  G4double time5 = five/100.;
+  G4double time5 = 1.0;//five/100.;
   G4double row5 = time5*base;
   G4double uvlas5 = time5*uvlas;
   G4double three5 = three;
@@ -416,23 +465,41 @@ void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double fiv
   const G4int larabs =  sizeof(lar_Energy_abs)/sizeof(G4double);
   assert(sizeof(lar_ABSL) == sizeof(lar_Energy_abs));
 
-  /*//Wavelength list = 700 600 500 400 300 200 180 160 140 134 128 124 120 110 100
+  //Wavelength list = 700 600 500 400 300 200 180 160 140 134 128 124 120 110 100
   G4double lar_Energy_rin[]    = { 1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV ,
 				   4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV , 
 				   8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 
 				   10.33206*eV , 11.27134*eV , 12.39847*eV }; //energies for refractive index and Rayleigh scattering lengths
 
   
-  G4double set = rin128-1.24;
+  G4double set = rindex-1.24;
+  //G4double scaler = 1.0;
+  G4double scale[] = { 0.125, 0.196, 0.345, 0.637, 0.8065, 1.38, 1.78, 3.22, 4.66 };
+  for (int i = 0; i < 9; ++i) {
+    scale[i] = std::pow(scale[i],scaler)*set+1.24;
+  }//*/
+  G4double rayleigh = ray128*cm;//100.7813004*cm;
+  G4double lar_RSL[] = { 3244.9341, 1712.2246, 798.328,   309.35745,
+			 87.855032, 14.852719, 8.9947353, 4.7653069, 
+			 2.0378371, 1.445036,  1,         0.6279916, 
+			 0.3976383, 0.1135036, 0.035983 };
+  for (int i = 0; i < 15; ++i) {
+    /*if (lar_RSL[i] == 1) { lar_RSL[i] = lar_RSL[i]*rayleigh; }
+    else if (lar_RSL[i] < 1) { lar_RSL[i] = lar_RSL[i]/scalerray*rayleigh; }
+    else if (lar_RSL[i] > 1) { lar_RSL[i] = lar_RSL[i]*scalerray*rayleigh; }*/
+    lar_RSL[i] = std::pow(lar_RSL[i],scalerray)*rayleigh;
+  }//*/
+    
+    
   const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
-  G4double lar_RIND[]  = { 1.22 , 1.222 , 1.225 , 1.23 ,
-			   1.24 , set/8+1.24 , set/5.1+1.24 , set/2.9+1.24 , 
-			   set/1.57+1.24, set/1.24+1.24 , rin128 , set*1.38+1.24, 
-			   set*1.78+1.24 , set*3.22+1.24 , set*4.66+1.24 }; //index of refraction spectrum.
-  G4double lar_RSL[]  = { 327028.6808*cm, 172560.2267*cm, 80456.5339*cm, 31177.44642*cm, 
+  G4double lar_RIND[]  = { 1.22 ,     1.222 ,    1.225 ,    1.23 ,
+			   1.24 ,     scale[0] , scale[1] , scale[2] , 
+			   scale[3] , scale[4] , rindex ,   scale[5], 
+			   scale[6] , scale[7] , scale[8] }; //index of refraction spectrum.
+  /*G4double lar_RSL[]  = { 327028.6808*cm, 172560.2267*cm, 80456.5339*cm, 31177.44642*cm, 
 			  8854.144327*cm, 1496.876298*cm, 906.5011168*cm, 480.2538294*cm, 
 			  205.3758714*cm, 145.6326111*cm, 100.7813004*cm, 63.2898117*cm, 
-			  40.07450411*cm, 11.43903548*cm, 3.626432195*cm }; //spectrum of rayleigh scattering lengths.
+			  40.07450411*cm, 11.43903548*cm, 3.626432195*cm }; //spectrum of rayleigh scattering lengths.*/
   assert(sizeof(lar_RIND) == sizeof(lar_Energy_rin)); 
   assert(sizeof(lar_RSL) == sizeof(lar_Energy_rin));
 
@@ -446,7 +513,7 @@ void detectorConstruction::DefineLAr(G4double base, G4double uvlas, G4double fiv
 }
 
 
-/*//method for performing the Plastic material Definition
+//method for performing the Plastic material Definition
 void detectorConstruction::DefinePlastic(G4double abs, G4double refl, G4double rin) {
   //Defaults: absl = 10.0*cm, refl = 0.10; max refl = 0.30
   //Definition of MPT for Plastic frills
@@ -477,10 +544,10 @@ void detectorConstruction::DefinePlastic(G4double abs, G4double refl, G4double r
   blackplastic_mt->AddProperty("REFLECTIVITY",plastic_Energy,plastic_reflect,plasticnum);
   blackplastic_mt->AddProperty("RINDEX",plastic_Energy,plastic_RIND,plasticnum);
   fBlackPlastic->SetMaterialPropertiesTable(blackplastic_mt);
-  }//*/
+}//*/
 
 //method to more consistently perform the TPB definitions (pmt and foil)
-void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs, G4double rin, G4double ray) {
+void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs, G4double rin, G4double ral, G4double ray) {
   const G4int nTPBEntries = 25;
   //Redefining TPB efficiency values for both foil and PMTs
   G4double TPBEnergy[nTPBEntries] =
@@ -550,6 +617,7 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs, 
 
   //G4double rin = 1.7;
   G4double rayl = ray*0.001*mm;
+  G4double rayl2 = ral*0.001*mm;
   G4double TPBRIndex[nTPBEntries] =  //Refractive index of the TPB.
     {
       rin, rin, rin, rin, rin,
@@ -568,15 +636,26 @@ void detectorConstruction::DefineTpb(G4double foil, G4double pmt, G4double abs, 
       rayl, rayl, rayl, rayl, rayl
     };
 
-  
+  G4double TPBRayleigh2[nTPBEntries] =  //Rayleigh Scattering length for TPB
+    {
+      rayl2, rayl2, rayl2, rayl2, rayl2,
+      rayl2, rayl2, rayl2, rayl2, rayl2,
+      rayl2, rayl2, rayl2, rayl2, rayl2,
+      rayl2, rayl2, rayl2, rayl2, rayl2,
+      rayl2, rayl2, rayl2, rayl2, rayl2
+    };
+
+  //foil TPB properties
+  //Split the rayleigh scattering lengths into 2 different variables: one for PMTs, one for Foils (foils look more scattered than PMTs). 
   TPBProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
-  TPBProp->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh, nTPBEntries);
+  TPBProp->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh2, nTPBEntries);
+  TPBProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption, nTPBEntries);
+  TPBProp->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption, nTPBEntries);
+
+  //PMT TPB properties
   TPBsProp->AddProperty("RINDEX", TPBEnergy, TPBRIndex, nTPBEntries);
   TPBsProp->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh, nTPBEntries);
-
-  TPBProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption, nTPBEntries);
   TPBsProp->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption100, nTPBEntries);
-  TPBProp->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption, nTPBEntries);
   TPBsProp->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption, nTPBEntries);
 
 }
@@ -673,7 +752,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     //Defines the thickness and placement of the TPB foils (slightly thicker on the bottom than the top). Can change the overall thickness without altering the ratios by just adjusting the first number, basethick
     const G4double basethick = 0.00019*cm;
-    G4double thick = basethick/2.0;///fifth;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
+    G4double thick = basethick*conewide;///fifth;//Define proportional foil thickness here: prel200. the best fit is half the normal thickness
 
     G4double deep = thick;//Defines the depth; used for making the bottom thicker
     G4double place = thick*0.0;//(1-randwide)/(1+randwide);//(thick-thick);//Defines the place; if the bottom is thicker the TPB cylinder needs to move slightly.
@@ -730,7 +809,11 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     //define the fiducal volumes of liquid Argon.
     fFiducialAr = new G4Tubs("Fiducial", 0*cm, 96*cm, totalH*cm, 0*deg, 360*deg);
-    fLogicFiduc = new G4LogicalVolume(fFiducialAr,lAr,"Fiducial");
+    if (fInvBeta) {
+      fLogicFiduc = new G4LogicalVolume(fFiducialAr,fEj335,"Fiducial");
+    } else {
+      fLogicFiduc = new G4LogicalVolume(fFiducialAr,lAr,"Fiducial");
+    }
     //G4cout << "FiducialhalfZlength = " << fFiducialAr->GetZHalfLength() << G4endl;
     
     //defines layers for the lAr volumes, rather than having constant properties across all depths. 
@@ -1268,7 +1351,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
       }
       //for universal, uncomment this and make all pmts whatever you want.
       //pmtcoat=false;
-      if (cylinderOn){//old flag for turning all pmts to uncoated for the LBOC design
+      if (cylinderOn || fInvBeta){//old flag for turning all pmts to uncoated for the LBOC design
 	pmtcoat=false;
       }
       if (pmtcoat) {
@@ -1315,7 +1398,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtxx = radius*std::cos(phi);
 	pmtyy = radius*std::sin(phi);
 	//pmtcoat = true;
-	if (cylinderOn) { pmtcoat=false; }//once more, turn all coatings off if using the LBOC design
+	if (cylinderOn || fInvBeta) { pmtcoat=false; }//once more, turn all coatings off if using the LBOC design
 	placeTopBot(pmtnam,pmtxx,pmtyy,pmtzz,pmtcoat);
       }
 
@@ -1337,7 +1420,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtcoat = true;
 	
 	//if (n%3 == 0) { pmtcoat = false; }//every third pmt in the second row is uncoated. 10 total
-	if (cylinderOn) { pmtcoat=false; }
+	if (cylinderOn || fInvBeta) { pmtcoat=false; }
 
 	pmtzz = -1*totalH;
 	//ring3 uncoated: top 301, 308 bottom 303, 310.
@@ -1367,7 +1450,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtyy = radius*std::sin(phi);
 	pmtcoat = true;
 	//if (n%3 == 2) { pmtcoat = false; }//every second pmt in the third row is uncoated, for another 10 total and thus all 20 uncoated on the top and bottom accounted for
-	if (cylinderOn) { pmtcoat=false; }
+	if (cylinderOn || fInvBeta) { pmtcoat=false; }
 
 	//ring 2 uncoated: top 208, 203, bottom 205, 210
 	pmtzz = -1*totalH;
@@ -1396,7 +1479,7 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 	pmtxx = radius*std::cos(phi);
 	pmtyy = radius*std::sin(phi);
 	pmtcoat = true;
-	if (cylinderOn) { pmtcoat=false; }
+	if (cylinderOn || fInvBeta) { pmtcoat=false; }
 
 	//ring 1 uncoated: top 101, 103, bottom 102, 104
 	pmtzz = -1*totalH;
@@ -1452,7 +1535,7 @@ void detectorConstruction::placePMT(G4String name,
   G4double frillin = std::sqrt(radout*radout-(radout-topthick)*(radout-topthick))*cm;
   //G4cout << "Frill inner radius in mm: " << frillin << "  details: " << radout << '\t' << topthick << '\t' << radout*radout << '\t' << (radout-topthick)*(radout*topthick) << '\t' << radout*radout-(radout-topthick)*(radout-topthick) << G4endl;
 
-  tpbout = tpbout;///randwide;
+  tpbout = tpbout*conehigh;///randwide;
   radout = radout*cm;
 
   //define the initial angle so the pmt is facing inwards according to the position
@@ -1486,8 +1569,8 @@ void detectorConstruction::placePMT(G4String name,
 
   //create the frill around the base of the PMT, in 2 parts: 1 wider in thin plastic, the other thin but thick black plastic.
   G4double ft = 0.2*cm;
-  G4double ftt = 1.0*cm*conewide+ft;
-  G4double fh = 1.0*cm*conehigh;
+  G4double ftt = 1.0*cm*1.0+ft;
+  G4double fh = 1.0*cm*0.2;
   G4double fhh = 0.1*cm;
     
   G4Tubs* fril = new G4Tubs(frilName, frillin+tpbout, frillin+ft, fh, 0*deg, 360*deg);
@@ -1509,7 +1592,7 @@ void detectorConstruction::placePMT(G4String name,
     {0.0, 0.0, 0.0, 0.0, 0.0,
      0.0, 0.0, 0.0, 0.0, 0.0,
      0.0, 0.0, 0.0, 0.0, 0.0};
-  G4double ref = 0.0;
+  G4double ref = 0.1;//conehigh;
   G4double FrillOSReflect[nAcTefEntries] =
     {ref, ref, ref, ref, ref,
      ref, ref, ref, ref, ref,
@@ -1845,7 +1928,7 @@ void detectorConstruction::placeTopBot(G4String name,
   G4double tpbout = 0.00009*cm;
   G4double frillin = std::sqrt(radout*radout-(radout-topthick)*(radout-topthick))*cm;
 
-  tpbout = tpbout;//
+  tpbout = tpbout*conehigh;//
   G4double newz = pmt_z + (radout-topthick);
   if (pmt_z < -50) {
     newz = pmt_z - (radout-topthick);
@@ -1867,8 +1950,8 @@ void detectorConstruction::placeTopBot(G4String name,
 
   //create the frill around the base of the PMT, in 2 parts: 1 wider in thin plastic, the other thin but thick black plastic.
   G4double ft = 0.2*cm;
-  G4double ftt = 1.0*cm*conewide+ft;
-  G4double fh = 1.0*cm*conehigh;
+  G4double ftt = 1.0*cm*1.0+ft;
+  G4double fh = 1.0*cm*0.2;
   G4double fhh = 0.1*cm;
     
   G4Tubs* fril = new G4Tubs(frilName, frillin+tpbout, frillin+ft, fh, 0*deg, 360*deg);
@@ -1890,7 +1973,7 @@ void detectorConstruction::placeTopBot(G4String name,
     {0.0, 0.0, 0.0, 0.0, 0.0,
      0.0, 0.0, 0.0, 0.0, 0.0,
      0.0, 0.0, 0.0, 0.0, 0.0};
-  G4double ref = 0.0;
+  G4double ref = 0.1;//conehigh;
   G4double FrillOSReflect[nAcTefEntries] =
     {ref, ref, ref, ref, ref,
      ref, ref, ref, ref, ref,
@@ -2061,6 +2144,7 @@ void detectorConstruction::SetDefaults() {
   fSodium=false;
   fAr39=false;
   fCosmic=false;
+  fInvBeta=false;
   darkMatter=false;
   alp=false;
   fLayers=false;//true;//better results when false according to simulation set. 
@@ -2097,46 +2181,84 @@ void detectorConstruction::SetRandoms() {
   r5radius = G4RandFlat::shoot(20.0,60.0);
   foilEff = G4RandFlat::shoot(0.30,0.60);*/
 
+  /*
+    CCM200 Simulation Notes as of 0608:
+    LAr Variables: Abs length = 46.5 - 100 - 1600 - 2400
+        Rindex = 1.358 + steepness = 1
+	Rayleigh = 100.58 @ 128 + steepness = 1
+
+    PMT Variables: Height = 5.5-6.0
+        Frill: Absl = 0.5, refl = 0.17, wide = 0.6, high = 0.27
+	RodShift = -1.7 or -2.0
+	foilRefl = 0.9 vis, 0.1 uv
+
+    TPB Variables: 
+        foil: Eff = 0.76, scatter = <1.0, thick = 0.7 => Set scatter to 0.3, thick to 0.7
+	PMT: Eff = 0.95, scatter = 2.5-3.0, thick = 3.5
+	Other: Abs = 0.90, rin = 1.67
+
+   */
+  
   //ccm200 variable set:
-  G4double base = G4RandGauss::shoot(47.6,3.29);//55.0;//AbsLAr < 200 nm
-  while (base < 10.0) { G4double base = G4RandGauss::shoot(47.6,3.29); }
-  //ultra = 100.0;//G4RandFlat::shoot(20.0,200.0);// AbsLAr 200-300 nm
-  threehun = 1600.0;//G4RandFlat::shoot(1200.0,1800.);//AbsLAr 300-400 nm
-  G4double mult = 2400.0;//G4RandFlat::shoot(1500,2500.0);//AbsLAr 400+ nm
-  //fifth = 100.0;//G4RandFlat::shoot(50.0,100.0);//AbsLAr modifier top row
+  
+  //ccm200 variable set
 
-  tpbEff = G4RandFlat::shoot(0.4,0.999);//G4RandGauss::shoot(0.454,0.114);//pmt tpb eff
-  foilEff = G4RandGauss::shoot(0.894,0.21);//foil tpb eff
-  tpbAbs = G4RandGauss::shoot(0.913,0.172);//all tpb abs (visible light)
-  while (tpbEff > 0.9999 || tpbEff < 0.1) {  tpbEff  = G4RandGauss::shoot(0.578,0.157); }
-  while (foilEff> 0.9999 || foilEff< 0.1) {  foilEff = G4RandGauss::shoot(0.872,0.100);  }
-  while (tpbAbs > 0.9999 || tpbAbs < 0.1) {  tpbAbs  = G4RandGauss::shoot(0.968,0.064); } 
+  //LiquidArgon Variables:
+  G4double base = G4RandGauss::shoot(38.5,2.29);//AbsLAr < 200 nm
+  while (base < 10) {  base = G4RandGauss::shoot(38.5,2.29); }
+  ultra = 100.0;//G4RandFlat::shoot(50.0,200.0);//67.7;//G4RandFlat::shoot(20.0,200.0);//AbsLAr 200-300 nm
+  threehun = 1400.;//G4RandFlat::shoot(1000.0,1800.);//AbsLAr 300-400 nm
+  G4double mult = 2400.0;//G4RandFlat::shoot(500,3000.0);//AbsLAr 400+ nm
+  G4double larRin = 1.69;//G4RandGauss::shoot(1.69,0.3);//1.69;//LAr rindex @ 128
+  G4double scaleRin = 1.0;//G4RandFlat::shoot(0.5,2.0);//1.24;//scaling slope of rindex
+  G4double ray128 = G4RandGauss::shoot(99.49,6.0);//100.7813004;//LAr rayleigh length @128
+  while (ray128 < 10) {  ray128 = G4RandGauss::shoot(94.49,11.0); }
+  G4double scaleRay = G4RandGauss::shoot(1.90,0.2);//1.31;//scaling slope of rayleigh
+  while (scaleRay < 1.0) {  scaleRay = G4RandGauss::shoot(1.77,0.2); }
 
-  fifth = G4RandGauss::shoot(-1.928,1.34);//up or down shift of the entire rod (missed the center)
-  randwide = G4RandFlat::shoot(0.4,5.0);//1.055,0.154);//probability of scattering in TPB
-  //top/bottom thickness ratio cap PMT TPB
-  //while (fifth < 0.1) { fifth = G4RandGauss::shoot(4.0,1.7); }
-  //while (randwide < 0.1) { randwide = G4RandGauss::shoot(1.52,0.687); }
-
-  conewide = G4RandGauss::shoot(0.5,0.3);
-  conehigh = G4RandGauss::shoot(0.2,0.1);
-  while (conewide < 0.01) { conewide = G4RandGauss::shoot(0.5,0.2); }
-  while (conehigh < 0.01) { conehigh = G4RandGauss::shoot(0.2,0.2); }
-
-  topthick = G4RandGauss::shoot(5.49,0.939);//pmtHeight
-  while (topthick < 1.0) { topthick = G4RandGauss::shoot(5.49,0.939); }
-
-  G4double cloud = 100.0;//G4RandFlat::shoot(10.0,100.0);
-  ultra = 40.0;//G4RandFlat::shoot(5.0,40.0);//max radius of bottom clouding
-  DefineLAr(base,100.0,cloud,threehun,mult);
-  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, randwide);
-
+  DefineLAr(base,ultra,threehun,mult,larRin,scaleRin,ray128,scaleRay);
+  
+  //PMT Variables:
+  fifth = -0.92;//G4RandGauss::shoot(-0.92,0.25);//vertical shift of the entire rod (missed the cent)
+  topthick = G4RandGauss::shoot(7.23,0.939);//5.56;//pmtHeight
+  while (topthick < 1.1) { topthick = G4RandGauss::shoot(5.83,0.5); }
+  G4double plasAbs = 2.4;//G4RandGauss::shoot(2.25,0.25);//2.25;//
+  G4double plasRefl = 0.27;//G4RandFlat::shoot(0.01,0.5);
+  G4double plasRin = 1.6;//G4RandGauss::shoot(1.4,0.2);
+  //conewide = G4RandFlat::shoot(0.2,4.0);//frill Thick
+  //conehigh = G4RandFlat::shoot(0.2,4.0);//frill Height
+  
+  DefinePlastic(plasAbs,plasRefl,plasRin);//frill absorption length, reflection %, rindex
+ 
+  //TPB Variables:
+  tpbEff = G4RandGauss::shoot(0.92,0.11);//0.95;//pmt tpb Eff
+  while (tpbEff < 0.6 || tpbEff > 0.999) {  tpbEff = G4RandGauss::shoot(0.90,0.04); }
+  foilEff = 0.8;//G4RandGauss::shoot(0.894,0.21);//0.80;//foil tpb eff
+  tpbAbs = G4RandGauss::shoot(0.72,0.15);//all tpb abs (visible light)
+  while (tpbAbs < 0.5 || tpbAbs > 0.99) {  tpbAbs = G4RandGauss::shoot(0.83,0.8); }
+  randwide = 1.0;//G4RandFlat::shoot(0.3,3.0);//1.0;//probability of scattering in foil TPB
+  G4double scatter = G4RandGauss::shoot(1.03,0.3);//probability of scattering in pmt TPB
+  while (scatter < 0.5) {  scatter = G4RandGauss::shoot(2.0,0.4); }
+  conewide = G4RandGauss::shoot(0.93,0.33);//1.0;//foilThick
+  while (conewide < 0.1 || conewide > 3.0) { conewide = G4RandGauss::shoot(1.0,0.5); }
+  conehigh = G4RandGauss::shoot(0.65,0.33);//pmtThick
+  while (conehigh < 0.1 || conehigh > 2.0) { conehigh = G4RandGauss::shoot(0.25,0.2); }
+  G4double tpbRin = G4RandGauss::shoot(1.71,0.3);//tpb index of refraction
+  while (tpbRin < 1.3 || tpbRin > 2.5) { tpbRin = G4RandGauss::shoot(1.71,0.5); }
+  
+  DefineTpb(foilEff, tpbEff, tpbAbs, tpbRin, randwide, scatter);
+  
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
   std::ostringstream oss;
 
+  //RandomSet07/20s: oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs << "\t plastAbs \t" << plasAbs << "\t pmtThick \t" << conehigh << "\t tpbRin \t" << tpbRin << "\t pmtScatter \t" << scatter << "\t abs400s \t" << mult << "\n";
+  //oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs << "\t foilThick \t" << conewide << "\t pmtThick \t" << conehigh << "\t tpbRin \t" << tpbRin << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\n";
+
   //oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;
-  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t rodShift \t" << fifth << "\t tpbScatter \t" << randwide << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs  << "\t frillwide \t" << conewide << "\t frillhigh \t" << conehigh << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\n";
+  //oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs << "\t foilThick \t" << conewide << "\t pmtThick \t" << conehigh << "\t pmtEff \t" << tpbEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\n";
+  //oss << "Randoms_" << rootfile << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t pmtThick \t" << conehigh << "\t foilThick \t" << conewide << "\t abs100s \t" << base << "\t rodShift \t" << fifth << "\n";
+  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t scaleRay \t" << scaleRay << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtThick \t" << conehigh << "\t plasAbs \t" << plasAbs << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t larRin \t" << larRin << "\t pmtHeight \t" << topthick  << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\n";
 
   randomized = true;
   
@@ -2186,6 +2308,12 @@ void detectorConstruction::SetCosmic(G4bool b) {
   fCosmic=b;
   G4cout << "Set Cosmic to " << fCosmic << G4endl;
 }
+//MARK FOR REACTOR: set inverse beta event
+void detectorConstruction::SetInverseBeta(G4bool b) {
+  fInvBeta=b;
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+  G4cout << "Set InverseBeta to " << fInvBeta << G4endl;
+}
 //sets the dark matter and changes the scintillation to nuclear recoil or electronic
 void detectorConstruction::SetDarkMatter(G4bool b) {
   darkMatter=b;
@@ -2213,6 +2341,38 @@ void detectorConstruction::SetALP(G4bool b) {
 //sets ccm200 on or off. off defaults to ccm120
 void detectorConstruction::SetCCM200(G4bool b) {
   ccm200=b;
+  if (ccm200) {
+    //LAR variables
+    G4double base = 39.56;//AbsLAr < 200 nm
+    ultra = 100.0;//AbsLAr 200-300 nm
+    threehun = 1400.;//AbsLAr 300-400 nm
+    G4double mult = 2400.;//AbsLAr 400+ nm
+    G4double larRin = 1.69;//LAr rindex @ 128
+    G4double scaleRin = 1.0;//scaling slope of rindex
+    G4double ray128 = 94.096;//LAr rayleigh length @128
+    G4double scaleRay = 1.73;//scaling slope of rayleigh
+
+    //PMT Variables:
+    fifth = -0.92;//vertical shift of the entire rod (missed the center)
+    topthick = 7.052; //pmtHeight
+    G4double plasAbs = 2.4;//plastic absorbtion length cm
+    G4double plasRefl = 0.27;//plastic absorbtion length cm
+    G4double plasRin = 1.6;//plastic absorbtion length cm
+  
+    //TPB Variables:
+    tpbEff = 0.878;//pmt tpb Eff
+    foilEff = 0.80;//foil tpb eff
+    tpbAbs = 0.7215;//all tpb abs (visible light)
+    randwide = 1.0;//scattering length in foil TPB
+    G4double scatter = 1.13;//scattering length in pmt TPB
+    conewide = 0.897;//foilThick
+    conehigh = 0.601;//pmtThick
+    G4double tpbRin = 1.592;//tpb index of refraction
+
+    DefineLAr(base,ultra,threehun,mult,larRin,scaleRin,ray128,scaleRay);
+    DefineTpb(foilEff, tpbEff, tpbAbs, tpbRin, randwide, scatter);
+    DefinePlastic(plasAbs,plasRefl,plasRin);
+  }
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
 }
@@ -2238,7 +2398,7 @@ int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
   G4double variables[] = {7.555, 0.590, 37.55, 1310.0, 2.922, 26.12, 
 			  12.2318, 31.948, .45548, 55.9506};
   G4double errors[] = {1.488, 0.075, 18.17, 172.0, 14.17, 0.480,
-		       5.92, 11.08, .0797, 6.923};
+                       5.92, 11.08, .0797, 6.923};
   
   if (var < 10) {
     variables[var] = variables[var]+errors[var]*sigma;
@@ -2260,8 +2420,9 @@ int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
 
   G4double mult = 2800.0;
 
-  DefineLAr(base,ultra,fifth,threehun,mult);
-  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, 2.75);
+  DefineLAr(base,100.0,threehun,mult,1.358,1,100.7813004,1);//ultra is second
+  //DefineLAr(base,ultra,fifth,threehun,mult);
+  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, 2.75, 2.75);
 
   G4RunManager::GetRunManager()->ReinitializeGeometry();
 
@@ -2278,8 +2439,19 @@ int detectorConstruction::ModulateRandom(G4int var, G4double sigma) {
 
 //throws a set of randomized correlated OM parameters
 void detectorConstruction::CorrelateRandom() {
-  G4double variables[] = {7.555, 0.590, 37.55, 1310.0, 2.922, 26.12, 
-			  12.2318, 31.948, .45548, 55.9506};
+  G4double variables[] = {7.555, 0.590, 37.55, 1310.0, 2.922, 26.12, 12.2318, 31.948, .45548, 55.9506};
+  if (ccm200) {
+    variables[0] = 39.556;
+    variables[1] = 1.73;
+    variables[2] = 94.096;
+    variables[3] = 0.878;
+    variables[4] = 0.7215;
+    variables[5] = 1.592;
+    variables[6] = 0.601;
+    variables[7] = 7.052;
+    variables[8] = 1.13;
+    variables[9] = 0.537;
+  }
   
   G4double errors[10];
   G4double throws[10];
@@ -2306,7 +2478,25 @@ void detectorConstruction::CorrelateRandom() {
   errors[8] = throws[6]*-0.035238137+throws[7]*0.034674956+throws[8]*0.051884376;
   errors[9] = throws[6]*-0.645903006+throws[7]*0.551776675+throws[8]*-1.960392196+throws[9]*6.116201031;
 
-
+  if (ccm200) {
+    G4double cov[10][10] =
+      {{3.8959, 0.0108, -2.3116, -0.0234, -0.0600, 0.0294, -0.0613, -0.1600, -0.0180, 0.0391 },
+       { 0.0108, 0.0433, 0.0468, 0.0044, 0.0000, 0.0032, -0.0016, 0.0112, 0.0078, -0.0015 },
+       { -2.3116, 0.0468, 34.1389, 0.0365, 0.0710, 0.1831, -0.0773, 0.2002, -0.1160, -0.0886 },
+       { -0.0234, 0.0044, 0.0365, 0.0074, -0.0031, 0.0050, -0.0024, -0.0031, 0.0056, -0.0028 },
+       { -0.0600, 0.0000, 0.0710, -0.0031, 0.0095, 0.0048, -0.0005, -0.0020, 0.0004, 0.0029 },
+       { 0.0294, 0.0032, 0.1831, 0.0050, 0.0048, 0.0414, -0.0155, -0.0622, 0.0947, -0.0333 },
+       { -0.0613, -0.0016, -0.0773, -0.0024, -0.0005, -0.0155, 0.0224, 0.0630, -0.0458, 0.0254 },
+       { -0.1600, 0.0112, 0.2002, -0.0031, -0.0020, -0.0622, 0.0630, 1.2100, -0.4828, 0.1828 },
+       { -0.0180, 0.0078, -0.1160, 0.0056, 0.0004, 0.0947, -0.0458, -0.4828, 0.5947, -0.1561 },
+       { 0.0391, -0.0015, -0.0886, -0.0028, 0.0029, -0.0333, 0.0254, 0.1828, -0.1561, 0.0989 }};
+    for (int i = 0; i < 10; ++i) {
+      errors[i] = 0.0;
+      for (int j = i; j < 10; ++j) {
+	errors[i] += throws[j]*cov[i][j];
+      }
+    } 
+  }
 
   for (int i = 0; i < 10; ++i){
     variables[i] = variables[i] + errors[i];
@@ -2314,28 +2504,67 @@ void detectorConstruction::CorrelateRandom() {
       variables[i] = -1*variables[i];
     }
   }
-  conewide = variables[0];
-  conehigh = variables[1];
-  ultra = variables[2];
-  threehun = variables[3];
-  randwide = variables[4];
-  topthick = variables[5];
   
-  fifth = variables[6];
-  r5radius = variables[7];
-  foilEff = variables[8];
-  G4double base = variables[9];
-
-  G4double mult = 2800.0;
-
-  DefineLAr(base,ultra,fifth,threehun,mult);
-  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, 2.75);
-
-  G4RunManager::GetRunManager()->ReinitializeGeometry();
-
   std::ostringstream oss;
-  oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
+  if (ccm200) {
+    //LAR variables
+    G4double base = variables[0];//AbsLAr < 200 nm
+    ultra = 100.0;//AbsLAr 200-300 nm
+    threehun = 1400.;//AbsLAr 300-400 nm
+    G4double mult = 2400.;//AbsLAr 400+ nm
+    G4double larRin = 1.69;//LAr rindex @ 128
+    G4double scaleRin = 1.0;//scaling slope of rindex
+    G4double ray128 = variables[2];//LAr rayleigh length @128
+    G4double scaleRay = variables[1];//scaling slope of rayleigh
 
+    //PMT Variables:
+    fifth = -0.92;//vertical shift of the entire rod (missed the center)
+    topthick = variables[7]; //pmtHeight
+    G4double plasAbs = 2.4;//plastic absorbtion length cm
+    G4double plasRefl = 0.27;//plastic absorbtion length cm
+    G4double plasRin = 1.6;//plastic absorbtion length cm
+  
+    //TPB Variables:
+    tpbEff = variables[3];//pmt tpb Eff
+    while (tpbEff > 0.999) { tpbEff = 0.999; }
+    foilEff = 0.80;//foil tpb eff
+    tpbAbs = variables[4];//all tpb abs (visible light)
+    while (tpbAbs > 0.999) { tpbAbs = 0.999; }
+    randwide = 1.0;//scattering length in foil TPB
+    G4double scatter = variables[8];//scattering length in pmt TPB
+    conewide = variables[9];//foilThick
+    conehigh = variables[6];//pmtThick
+    G4double tpbRin = variables[5];//tpb index of refraction
+    while (tpbRin < 1.001) { tpbRin = 1.001; }
+
+    DefineLAr(base,ultra,threehun,mult,larRin,scaleRin,ray128,scaleRay);
+    DefineTpb(foilEff, tpbEff, tpbAbs, tpbRin, randwide, scatter);
+    DefinePlastic(plasAbs,plasRefl,plasRin);
+
+    oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t scaleRay \t" << scaleRay << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtThick \t" << conehigh << "\t plasAbs \t" << plasAbs << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t larRin \t" << larRin << "\t pmtHeight \t" << topthick  << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\n";
+  } else {
+    conewide = variables[0];
+    conehigh = variables[1];
+    ultra = variables[2];
+    threehun = variables[3];
+    randwide = variables[4];
+    topthick = variables[5];
+    
+    fifth = variables[6];
+    r5radius = variables[7];
+    foilEff = variables[8];
+    G4double base = variables[9];
+    
+    G4double mult = 2800.0;
+    
+    DefineLAr(base,100.0,threehun,mult,1.358,1,100.7813004,1);//ultra is second
+    //DefineLAr(base,ultra,fifth,threehun,mult);
+    DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, 2.75, 2.75);
+    
+    oss << "Randoms: cone\t" << conewide << "\t high\t" << conehigh << "\t ultra\t" << ultra << "\t threehun\t" << threehun << "\t unsmooth\t" << randwide << "\t top\t" << topthick << "\t fifth\t" << fifth << "\t rad\t" << r5radius << "\t foil\t" << foilEff << "\t VUVabsorb\t" << base;  
+  }
+  G4RunManager::GetRunManager()->ReinitializeGeometry();
+    
   randomized = true;
   
   variableString = oss.str();
@@ -2376,53 +2605,76 @@ void detectorConstruction::OneRandom(G4int var) {
     }*/
 
   //ccm200 variable set
-  G4double base = 47.6;
-  G4double mult = 2400.;
-  threehun = 1600.0;
-  fifth = -2.0;
-  randwide = 0.7;//1.5?
-  topthick = 5.5;
-  tpbAbs = 0.85;
-  conewide = 0.5;
-  conehigh = 0.2;
-  foilEff = 0.8;
-  tpbEff = 0.7;
+  //LAR variables
+  G4double base = 39.25;//AbsLAr < 200 nm
+  ultra = 100.0;//AbsLAr 200-300 nm
+  threehun = 1400.;//AbsLAr 300-400 nm
+  G4double mult = 2400.;//AbsLAr 400+ nm
+  G4double larRin = 1.69;//LAr rindex @ 128
+  G4double scaleRin = 1.0;//scaling slope of rindex
+  G4double ray128 = 94.49;//100.78;//LAr rayleigh length @128
+  G4double scaleRay = 1.77;//scaling slope of rayleigh
+
+  //PMT Variables:
+  fifth = -0.92;//vertical shift of the entire rod (missed the center)
+  topthick = 5.83; //pmtHeight
+  //conewide = G4RandFlat::shoot(0.2,4.0);//frill Thick
+  //conehigh = G4RandFlat::shoot(0.2,4.0);//frill Height
+  G4double plasAbs = 2.4;//plastic absorbtion length cm
+  G4double plasRefl = 0.27;//plastic absorbtion length cm
+  G4double plasRin = 1.6;//plastic absorbtion length cm
+  
+  //TPB Variables:
+  tpbEff = 0.96;//G4RandGauss::shoot(0.9,0.11);//pmt tpb Eff
+  foilEff = 0.80;//G4RandGauss::shoot(0.894,0.21);//foil tpb eff
+  tpbAbs = 0.83;//G4RandGauss::shoot(0.913,0.172);//all tpb abs (visible light)
+  randwide = 1.0;//G4RandFlat::shoot(0.2,5.0);//probability of scattering in foil TPB
+  G4double scatter = 2.0;//G4RandFlat::shoot(0.2,5.0);//probability of scattering in pmt TPB
+  conewide = 1.0;//G4RandFlat::shoot(0.2,4.0);//foilThick
+  conehigh = 0.30;//G4RandFlat::shoot(0.2,4.0);//pmtThick
+  G4double tpbRin = 1.62;//1.38;//G4RandFlat::shoot(1.1,2.0);//tpb index of refraction
   if (var > 11) {
-    return;
+    base = 42.5;
+    //return;
   } else if (var == 0) {
-    base = G4RandFlat::shoot(30.0,70.0);
+    base = G4RandFlat::shoot(30.0,50.0);
   } else if (var == 1) {
-    fifth = G4RandFlat::shoot(-5.0,2.0);//up or down shift of the entire rod (missed the center)
+    fifth = G4RandFlat::shoot(-5.0,2.0);//vertical shift of the entire rod
   } else if (var == 2) {
-    randwide = G4RandFlat::shoot(0.3,5.0);//top/bottom thickness ratio cap PMT TPB
+    topthick = G4RandFlat::shoot(4.0,8.0);//AbsLAr 200-300 nm
   } else if (var == 3) {
-    topthick = G4RandFlat::shoot(3.0, 8.0);//pmtHeight
+    scaleRay = G4RandFlat::shoot(1.0,2.5);//AbsLAr 300-400 nm
   } else if (var == 4) {
-    tpbAbs = G4RandGauss::shoot(0.903,0.072);//all tpb abs (visible light)
-    while (tpbAbs > 0.9999 || tpbAbs < 0.1) { tpbAbs  = G4RandGauss::shoot(0.968,0.064); } 
+    tpbRin = G4RandFlat::shoot(1.2,2.4);//AbsLAr 400+ nm
   } else if (var == 5) {
-    //mult = G4RandFlat::shoot(100.0,3200.0);
-    conewide = G4RandFlat::shoot(0.1,2.0);
+    tpbAbs = G4RandFlat::shoot(0.60,0.999);//LAr rindex @ 128
   } else if (var == 6) {
-    //threehun = G4RandFlat::shoot(100.0,2000.0);
-    conehigh = G4RandFlat::shoot(0.1,1.0);
+    plasAbs = G4RandFlat::shoot(1.5,3.5);
+    //randwide = G4RandFlat::shoot(0.2,3.0);//FoilScattering
   } else if (var == 7) {
-    foilEff = G4RandFlat::shoot(0.30,0.999);
+    ray128 = G4RandFlat::shoot(70.0,120.0);//100.7813004;//LAr rayleigh length @128
   } else if (var == 8) {
-    tpbEff = G4RandFlat::shoot(0.10,0.999);
+    tpbEff = G4RandFlat::shoot(0.6,0.999);//scaling slope of rayleigh
   } else if (var == 9) {
-    ultra = G4RandFlat::shoot(5.0,200.0);//max radius of bottom clouding
+    conehigh = G4RandFlat::shoot(0.15,1.0);//pmtHeight
   } else if (var == 10) {
-    base = G4RandFlat::shoot(20.0,70.0);
+    fifth = G4RandFlat::shoot(-6.0,3.0);//vertical shift of the entire rod
   }
-  DefineTpb(foilEff, tpbEff, tpbAbs, 1.7, randwide);
-  DefineLAr(base,ultra,100.0,threehun,mult);
+  DefineLAr(base,ultra,threehun,mult,larRin,scaleRin,ray128,scaleRay);
+  //DefineLAr(base,100.0,threehun,mult,1.358,1,100.7813004,1);//ultra is second
+  DefineTpb(foilEff, tpbEff, tpbAbs, tpbRin, randwide, scatter);
+  DefinePlastic(plasAbs,plasRefl,plasRin);//absorption length, reflection %, rindex
   
   G4RunManager::GetRunManager()->ReinitializeGeometry();
-  
+
   std::ostringstream oss;
 
-  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t rodShift \t" << fifth << "\t tpbScatter \t" << randwide << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs  << "\t frillwide \t" << conewide << "\t frillhigh \t" << conehigh << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t abs200s \t" << ultra << "\n";
+  oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t larRin \t" << larRin << "\t scaleRay \t" << scaleRay << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtHeight \t" << topthick  << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t ray128 \t" << ray128 << "\t pmtThick \t" << conehigh << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasAbs \t" << plasAbs << "\n";
+
+  //oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs << "\t plastAbs \t" << plastAbs << "\t pmtThick \t" << conehigh << "\t tpbRin \t" << tpbRin << "\t pmtScatter \t" << scatter << "\t scaleRay \t" << scaleRay << "\n";
+  //oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t larRin \t" << larRin << "\t scaleRin \t" << scaleRin << "\t ray128 \t" << ray128 << "\t scaleRay \t" << scaleRay << "\t rodShift \t" << fifth << "\t pmtHeight \t" << topthick << "\n";
+  //oss << "Randoms_" << rootfile << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t pmtThick \t" << conehigh << "\t foilThick \t" << conewide << "\t abs100s \t" << base << "\t larRin \t" << ultra << "\n";
+  //oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t rodShift \t" << fifth << "\t tpbScatter \t" << randwide << "\t pmtHeight \t" << topthick << "\t tpbAbs \t" << tpbAbs  << "\t frillAbsl \t" << conewide << "\t frillRefl \t" << conehigh << "\t pmtEff \t" << tpbEff << "\t foilEff \t" << foilEff << "\t larRin \t" << ultra << "\n";
 
   randomized = true;
   
@@ -2435,7 +2687,8 @@ void detectorConstruction::CleanArgon() {
   ultra = 1000.;
   fifth = 100.0;
   
-  DefineLAr(ultra, ultra, fifth, 2800., 2800.);
+  DefineLAr(ultra,ultra,2800.,2800.,1.358,1,100.7813004,1);//ultra is second
+  //DefineLAr(ultra, ultra, fifth, 2800., 2800.);
 
   std::ostringstream oss;
 

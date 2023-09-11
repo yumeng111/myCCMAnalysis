@@ -43,6 +43,7 @@ class detectorMessenger: public G4UImessenger
     G4UIcmdWithABool*            fSodiumCmd;
     G4UIcmdWithABool*            fAr39Cmd;
     G4UIcmdWithABool*            fCosmicCmd;
+    G4UIcmdWithABool*            fInvBetaCmd;
     G4UIcmdWithABool*            fDMCmd;
     G4UIcmdWithABool*            fALPCmd;
     G4UIcmdWithABool*            f200Cmd;
