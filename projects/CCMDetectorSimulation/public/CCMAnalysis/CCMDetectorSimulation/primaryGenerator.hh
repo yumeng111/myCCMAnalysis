@@ -30,6 +30,7 @@ public:
   void shootSodium(G4Event*);
   void shootCosmic(G4Event*);
   void shootALP(G4Event*);
+  void shootInverseBeta(G4Event*);
 
   const G4ParticleGun* GetParticleGun() const {return fParticleGun; }
   //defines a method to access the fParticleGun variable from any part of the code is the primary generator is included.
