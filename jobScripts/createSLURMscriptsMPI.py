@@ -157,16 +157,17 @@ for raw_file in raw_list:
 
   print("run ",run, " out ",out_name)
 
-  log_script = log_loc+"/"+job_name+".log"
+  log_script = log_loc+"/"+job_name+baseName+".log"
 
   current_xml_list.append("CCMAnalysis -i "+raw_file+" -o "+out_name+" -c "+xml_script+" -l "+log_script)
 
   print("len(current_xml_list) ",len(current_xml_list))
 
-  if len(current_xml_list) == 34:
+  if len(current_xml_list) == 20:
     script_num = script_num + 1
     slurm_script = script_loc+"/"+run_type+"_slurm_"+run+".script"
-    app_script = script_loc+"/"+run_type+"_mpiapp_"+run
+    #app_script = script_loc+"/"+run_type+"_mpiapp_"+run
+    app_script = script_loc+"/"+run_type+"_bash_"+run+".sh"
     slurm_scripts.append(slurm_script)
 
     if not os.path.exists(slurm_script) or rewrite:
@@ -179,15 +180,23 @@ for raw_file in raw_list:
         copyLine = copyLine.replace('SOURCEFILE',source_file)
         copyLine = copyLine.replace('JOBNAME',job_name)
         copyLine = copyLine.replace('LOGFILELOCATION',log_loc)
-        copyLine = copyLine.replace('MPIAPP',app_script)
+        #copyLine = copyLine.replace('MPIAPP',"mpiexec --app "+app_script)
+        copyLine = copyLine.replace('MPIAPP',"bash "+app_script)
         fout.write(copyLine)
       fin.close()
       fout.close()
 
       print("Create and Write MPI APP File")
       fout = open(app_script,"wt")
+      proc = 0
       for line in current_xml_list:
-        fout.write("--map-by node -n 1 "+line+"\n")
+          #fout.write("--map-by node -n 1 "+line+"\n")
+          proc = proc+1
+          fout.write(line+" &"+'\n')
+          fout.write("P"+str(proc)+"=$!"+'\n')
+      fout.write("wait ")
+      for i in range(1,21):
+          fout.write("$P"+str(i)+" ")
       fout.close()
 
     current_xml_list = []
@@ -198,7 +207,8 @@ for raw_file in raw_list:
 
 if len(current_xml_list) != 0:
     slurm_script = script_loc+"/"+run_type+"_slurm_"+run+".script"
-    app_script = script_loc+"/"+run_type+"_mpiapp_"+run
+    #app_script = script_loc+"/"+run_type+"_mpiapp_"+run
+    app_script = script_loc+"/"+run_type+"_bash_"+run+".sh"
     slurm_scripts.append(slurm_script)
 
     if not os.path.exists(slurm_script) or rewrite:
@@ -211,15 +221,24 @@ if len(current_xml_list) != 0:
         copyLine = copyLine.replace('SOURCEFILE',source_file)
         copyLine = copyLine.replace('JOBNAME',job_name)
         copyLine = copyLine.replace('LOGFILELOCATION',log_loc)
-        copyLine = copyLine.replace('MPIAPP',app_script)
+        #copyLine = copyLine.replace('MPIAPP',app_script)
+        copyLine = copyLine.replace('MPIAPP',"bash "+app_script)
         fout.write(copyLine)
       fin.close()
       fout.close()
 
       print("Create and Write MPI APP File")
       fout = open(app_script,"wt")
+      endval = len(current_xml_list)
+      proc = 0
       for line in current_xml_list:
-        fout.write("--map-by node -n 1 "+line+"\n")
+          #fout.write("--map-by node -n 1 "+line+"\n")
+          proc = proc+1
+          fout.write(line+" &"+'\n')
+          fout.write("P"+str(proc)+"=$!"+'\n')
+      fout.write("wait ")
+      for i in range(1,endval+1):
+          fout.write("$P"+str(i)+" ")
       fout.close()
 
     current_xml_list = []
