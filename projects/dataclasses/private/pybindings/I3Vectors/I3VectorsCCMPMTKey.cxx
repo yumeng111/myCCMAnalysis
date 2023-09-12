@@ -1,6 +1,6 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim
-//
+//   Copyright (c) 2004, 2005, 2006, 2007, 2008   Troy D. Straszheim  
+//   
 //   $Id$
 //
 //   This file is part of IceTray.
@@ -13,7 +13,7 @@
 //   2. Redistributions in binary form must reproduce the above copyright
 //      notice, this list of conditions and the following disclaimer in the
 //      documentation and/or other materials provided with the distribution.
-//
+//   
 //   THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 //   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 //   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,48 +25,14 @@
 //   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 //   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 //   SUCH DAMAGE.
-//
+//   
 //   SPDX-License-Identifier: BSD-2-Clause
+//   
 //
-//
 
-#include <vector>
+#include "I3Vectors.h"
 
-#include <dataclasses/geometry/CCMOMGeo.h>
-#include <icetray/python/dataclass_suite.hpp>
-
-using namespace boost::python;
-
-#define ENUM_DEF(r,data,T) .value(BOOST_PP_STRINGIZE(T), data::T)
-
-void register_CCMOMGeo()
+void register_I3VectorCCMPMTKey()
 {
-
-  //
-  // CCMOMGeo
-  //
-  {
-    scope omg = class_<CCMOMGeo, boost::shared_ptr<CCMOMGeo> >("CCMOMGeo")
-      .add_property("direction", &CCMOMGeo::GetDirection)
-      #define CCMOMGEOPROPS (position)(omtype)(orientation)
-      BOOST_PP_SEQ_FOR_EACH(WRAP_RW_RECASE, CCMOMGeo, CCMOMGEOPROPS )
-      #undef CCMOMGEOPROPS
-      .def(dataclass_suite<CCMOMGeo>())
-      ;
-
-
-    enum_<CCMOMGeo::OMType>("OMType")
-      BOOST_PP_SEQ_FOR_EACH(ENUM_DEF,CCMOMGeo::OMType,CCMOMGEO_H_CCMOMGeo_OMType)
-      .export_values()
-      ;
-    ;
-
-  }
-  def("identity", identity_<CCMOMGeo::OMType>);
-
-  class_<CCMOMGeoMap, bases<I3FrameObject>, CCMOMGeoMapPtr>("CCMOMGeoMap")
-    .def(dataclass_suite<CCMOMGeoMap>())
-    ;
-
-  register_pointer_conversions<CCMOMGeoMap>();
+	register_i3vector_of<CCMPMTKey>("CCMPMTKey");
 }

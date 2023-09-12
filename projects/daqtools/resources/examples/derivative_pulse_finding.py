@@ -10,21 +10,33 @@ from icecube import wavedeform, wavereform
 import time
 import uuid
 import os
+import collections
+import json
 
-icetray.set_log_level('INFO')
+icetray.set_log_level("INFO")
 icetray.logging.set_level("INFO")
 
 load("CCMBinary", False)
 load("daqtools", False)
 load("dataclasses", False)
 
+class NpEncoder(json.JSONEncoder):
+	def default(self, obj):
+		if isinstance(obj, np.integer):
+			return int(obj)
+		if isinstance(obj, np.floating):
+			return float(obj)
+		if isinstance(obj, np.ndarray):
+			return obj.tolist()
+		return super(NpEncoder, self).default(obj)
+
 
 class FindDesiredFrames(I3ConditionalModule):
     def __init__(self, context):
         I3ConditionalModule.__init__(self, context)
         self.AddParameter(
-            "DesiredTriggerType",
-            "Trigger type you want to select for and continue processing data",
+            "DesiredTriggerTypes",
+            "Trigger types you want to select for and continue processing data",
             "",
         )
         self.AddParameter(
@@ -35,15 +47,16 @@ class FindDesiredFrames(I3ConditionalModule):
         self.n_frames = 0
 
     def Configure(self):
-        self.desired_trigger_type = self.GetParameter("DesiredTriggerType")
+        self.desired_trigger_types = self.GetParameter("DesiredTriggerTypes")
         self.frame_types = self.GetParameter("FrameTypesToFilter")
 
     def IsCorrectTriggerType(self, frame):
         ### let's get the nim pulse
         nim_pulses = frame["NIMPulses"]
-        trigger_key = CCMTriggerKey(self.desired_trigger_type, 1)
-        if trigger_key in nim_pulses and len(nim_pulses[trigger_key]) > 0:
-            return True
+        for trigger_type in self.desired_trigger_types:
+            trigger_key = CCMTriggerKey(trigger_type, 1)
+            if trigger_key in nim_pulses and len(nim_pulses[trigger_key]) > 0:
+                return True
         return False
 
     def Process(self):
@@ -117,6 +130,53 @@ class InjectCalibrationFrame(I3Module):
             self.PushFrame(frame)
             self.cached_frames = []
 
+class HistogramPulses(I3Module):
+    def __init__(self, context):
+        I3Module.__init__(self, context)
+        self.AddParameter("PulsesName", "Key for the pulse series", "DerivativePulses")
+        self.AddParameter("TimeBinWidth", "Bin edges for the time dimension of the histogram", 2.0)
+        self.AddParameter("ChargeBinWidth", "Bin edges for the charge dimension of the histogram", 0.5)
+        self.AddParameter("LengthBinWidth", "Bin edges for the length dimension of the histogram", 2.0)
+        self.AddParameter("MinTime", "Minimum time to save", -np.inf)
+        self.AddParameter("MaxTime", "Maximum time to save", np.inf)
+        self.AddParameter("OutputFile", "Output file name", "test.npz")
+
+    def Configure(self):
+        self.pulses_name = self.GetParameter("PulsesName")
+        self.time_width = self.GetParameter("TimeBinWidth")
+        self.charge_width = self.GetParameter("ChargeBinWidth")
+        self.length_width = self.GetParameter("LengthBinWidth")
+        self.output_file = self.GetParameter("OutputFile")
+        self.min_time = self.GetParameter("MinTime")
+        self.max_time = self.GetParameter("MaxTime")
+        self.divisor = np.array([self.time_width, self.charge_width, self.length_width])[None, :]
+        self.charge_histogram = collections.defaultdict(lambda:collections.defaultdict(int))
+
+    def DAQ(self, frame):
+        if not frame.Has(self.pulses_name):
+            self.PushFrame(frame)
+            return
+        pulses = frame[self.pulses_name]
+        for pmt_key, pmt_pulses in pulses.items():
+            if len(pmt_pulses) == 0:
+                continue
+            bin_dict = self.charge_histogram[pmt_key]
+            data = np.array([(pulse.time, pulse.charge, pulse.width) for pulse in pmt_pulses if (pulse.time > self.min_time and pulse.time < self.max_time)])
+            if len(data) == 0:
+                continue
+            idxs = np.floor_divide(data, self.divisor).astype(int)
+            for idx in idxs:
+                key = tuple(idx)
+                bin_dict[key] += 1
+        self.PushFrame(frame)
+
+    def Finish(self):
+        entries = []
+        for pmt_key, bin_dict in self.charge_histogram.items():
+            key = list(pmt_key)
+            for idx, count in bin_dict.items():
+                entries.append([key, idx, count])
+        json.dump(entries, open(self.output_file, "w"), cls=NpEncoder)
 
 if __name__ == "__main__":
     import argparse
@@ -179,7 +239,8 @@ if __name__ == "__main__":
         output_dir = args.output_dir
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, f"{output_prefix}.i3.zst")
-        geo_output_file = output_dir + f"GCD_{output_prefix}.i3.zst"
+        geo_output_file = os.path.join(output_dir, f"GCD_{output_prefix}.i3.zst")
+        json_output_file = os.path.join(output_dir, f"{output_prefix}.json")
     elif args.run is not None:
         run_prefix = "run%06d" % args.run
         if args.in_run_folders:
@@ -189,14 +250,19 @@ if __name__ == "__main__":
             ]
         else:
             args.files = [
-                [args.input_directory + "/" + s + "/*.i3.zst"]
+                [args.input_directory + "/" + s + "/*" + run_prefix + "*.i3.zst"]
                 for s in args.daq_directories
             ]
         output_dir = os.path.join(args.output_dir, run_prefix)
         os.makedirs(output_dir, exist_ok=True)
-        stripped_output_prefix = output_prefix[:output_prefix.find("%")]
-        output_file = os.path.join(output_dir, f"{run_prefix}_{stripped_output_prefix}.i3.zst")
-        geo_output_file = os.path.join(output_dir, f"GCD_{run_prefix}_{output_prefix}.i3.zst")
+        stripped_output_prefix = output_prefix[: output_prefix.find("%")]
+        output_file = os.path.join(
+            output_dir, f"{run_prefix}_{output_prefix}.i3.zst"
+        )
+        geo_output_file = os.path.join(
+            output_dir, f"GCD_{run_prefix}_{stripped_output_prefix}.i3.zst"
+        )
+        json_output_file = os.path.join(output_dir, f"{run_prefix}_{stripped_output_prefix}.json")
 
     import glob
 
@@ -211,10 +277,10 @@ if __name__ == "__main__":
     # This also produces a geometry object from the CCMDAQConfig contained in the files
     tray.Add("MergedSource", "reader", FileLists=fnames, MaxTimeDiff=32)
     # Replace the geometry and CCMDAQConfig with the patched version
-    #tray.Add(
+    # tray.Add(
     #    daqtools.GeometryReplacer.GeometryReplacer,
     #    GeometryFile=args.geometry_file,
-    #)
+    # )
     # Merge triggers that are overlapping
     tray.Add("CCMGeometryGenerator")
     tray.Add("CCMTriggerMerger", "trigger_merger")
@@ -226,14 +292,18 @@ if __name__ == "__main__":
     tray.Add("BeamCurrentMonitorSummary", "bcm_summary")
     # Filter out DAQ frames for certain triggers
     tray.Add(
-        FindDesiredFrames, DesiredTriggerType=CCMTriggerKey.TriggerType.CosmicTrigger
+        FindDesiredFrames,
+        DesiredTriggerTypes=[
+            CCMTriggerKey.TriggerType.LEDTopTrigger,
+            CCMTriggerKey.TriggerType.LEDBottomTrigger,
+        ],
     )
-    tray.Add("BaselineEstimator")
+    #tray.Add("BaselineEstimator")
     tray.Add("Rename", Keys=["CCMPMTCalibration", "CCMCalibration"])
-    tray.Add("ElectronicsCorrection")
-    tray.Add("CCMDerivativePulseFinder")
-    tray.Add("Delete", Keys=["CCMCalibratedWaveforms"])
-    #tray.Add("Delete", Keys=["CCMWaveforms"])
+    #tray.Add("ElectronicsCorrection")
+    tray.Add("CCMDerivativePulseFinder", MinPulseIntegral=2, CCMWaveformsName="CCMWaveforms", ExpectRawWaveforms=True, NumThreads=16)
+    tray.Add(HistogramPulses, OutputFile=json_output_file, MinTime=-500, MaxTime=500)
+    # tray.Add("Delete", Keys=["CCMWaveforms"])
     # Write the GCD frames to a separate file
     tray.AddModule(
         "I3Writer",
@@ -245,6 +315,7 @@ if __name__ == "__main__":
             icetray.I3Frame.DetectorStatus,
         ],
     )
+    tray.Add("Keep", Keys=["DerivativePulses", "NIMPulses"])
     # Write all the DAQ frames to their own set of files
     if "%" in output_file:
         # Split the output into files of a desired size
@@ -262,7 +333,6 @@ if __name__ == "__main__":
             SizeCheckInterval=1000,
             NWorkers=8,
             Streams=[
-                icetray.I3Frame.DetectorStatus,
                 icetray.I3Frame.DAQ,
                 icetray.I3Frame.Physics,
             ],
@@ -274,8 +344,6 @@ if __name__ == "__main__":
             "writer",
             FileName=output_file,
             Streams=[
-                icetray.I3Frame.Calibration,
-                icetray.I3Frame.DetectorStatus,
                 icetray.I3Frame.DAQ,
                 icetray.I3Frame.Physics,
             ],

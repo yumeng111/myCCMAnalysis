@@ -57,7 +57,7 @@ public:
 	
     void Geometry(I3FramePtr frame);
     void GetRefoldedWf(std::vector<double> & refolded_wf, std::vector<CCMRecoPulse> const & pulses, CCMPMTCalibration const & calib);
-    void GetChi(double & chi, std::vector<double> const & refolded_wf, std::vector<double> const & samples);
+    void GetChi(double & chi, double & dof, std::vector<double> const & refolded_wf, std::vector<double> const & samples);
 	
 private:
 	std::string waveform_name_, pulse_name_, chi_name_, flag_name_;
