@@ -38,7 +38,8 @@
 //See CCMModuleTable for info
 MODULE_DECL(CCMBuildAccumWaveform);
 
-const int gkMaxBinLoc = 5960;//for CCM200.
+//const int gkMaxBinLoc = 5960;//for CCM200.
+const int gkMaxBinLoc = 8960;//for CCM200 - post 2021.
 //const int gkMaxBinLoc = 7960;//for CCM120.
 
 //_______________________________________________________________________________________

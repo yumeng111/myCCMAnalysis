@@ -151,9 +151,9 @@ void detectorConstruction::DefineMaterials(){
   //MARK FOR REACTOR
   //EJ-335 for liquid scintillator detector  
   fEj335 = new G4Material("ej-335",density=0.89*g/cm3,3);
-  fEj335->AddElement(fH, 11.55*perCent);
-  fEj335->AddElement(fC, 88.20*perCent);
-  fEj335->AddElement(fGd, 0.25*perCent);
+  fEj335->AddElement(fH, 11.52*perCent);//11.55
+  fEj335->AddElement(fC, 87.98*perCent);//88.20
+  fEj335->AddElement(fGd, 0.5*perCent);//0.25
 
   //ej_wavelengths = {300, 380, 400, 420, 424, 436, 440, 446, 460, 480, 500, 520, 540, 600}
   G4double ej_energy[] =  {4.133*eV, 3.263*eV, 3.099*eV, 2.952*eV, 2.924*eV,
@@ -809,10 +809,10 @@ G4VPhysicalVolume* detectorConstruction::Construct(){
 
     //define the fiducal volumes of liquid Argon.
     fFiducialAr = new G4Tubs("Fiducial", 0*cm, 96*cm, totalH*cm, 0*deg, 360*deg);
-    if (fInvBeta) {
-      fLogicFiduc = new G4LogicalVolume(fFiducialAr,fEj335,"Fiducial");
-    } else {
+    if (!fInvBeta) {
       fLogicFiduc = new G4LogicalVolume(fFiducialAr,lAr,"Fiducial");
+    } else {
+      fLogicFiduc = new G4LogicalVolume(fFiducialAr,fEj335,"Fiducial");
     }
     //G4cout << "FiducialhalfZlength = " << fFiducialAr->GetZHalfLength() << G4endl;
     

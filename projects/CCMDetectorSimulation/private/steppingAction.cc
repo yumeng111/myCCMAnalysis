@@ -103,7 +103,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     G4cout << process << '\t' << kinEn << '\n';
   }
 
-  G4int sNum = step->GetTrack()->GetCurrentStepNumber();
+  /*G4int sNum = step->GetTrack()->GetCurrentStepNumber();
   if ((particlen == "gamma" || particlen == "e-") && sNum==1) {
     //get the original process.
     G4String creatorProcess = step->GetTrack()->GetCreatorProcess()->GetProcessName();
@@ -111,7 +111,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     if (creatorProcess == "nCapture") {
       G4cout << particlen << '\t' << creatorProcess << '\t' << kinEn << '\n';
     }
-  }
+    }*/
   //if the particle is not an optical photon and is in the Fiducial volume, 
   // calculate the energy deposited during the step and output it. 
   //currently off for root based output, lacking the mechanics to currently use it.

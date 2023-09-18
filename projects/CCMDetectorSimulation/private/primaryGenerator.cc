@@ -443,11 +443,11 @@ void primaryGenerator::shootALP(G4Event* anEvent) {
   //section to define particle type
   //find some way to switch between these
   //G4ParticleDefinition* particle = particleTable->FindParticle(particleName="e-");
-  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
-  G4String particleName;
+  //G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+  //G4String particleName;
 
-  G4ParticleDefinition* particle = particleTable->FindParticle(particleName="gamma");
-  fParticleGun->SetParticleDefinition(particle);
+  //G4ParticleDefinition* particle = particleTable->FindParticle(particleName="gamma");
+  //fParticleGun->SetParticleDefinition(particle);
 
   //method to get ALP energy from detector? /ccm/detector/alp {energy} {unit}
   //partEneg=detector->GetALPenergy(); //move to main, pass to function
