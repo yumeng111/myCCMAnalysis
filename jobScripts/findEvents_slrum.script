@@ -22,6 +22,7 @@
 
 #########       #SBATCH --array=1-50
 #SBATCH --nodes=1   # number of nodes
+#SBATCH -L scratch4@slurmdb
 #########       #SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
 #########       #SBATCH --ntasks-per-node=1   # number of tasks per node
 #SBATCH --job-name=JOBNAME   # job name
@@ -52,8 +53,8 @@ echo ---------------------- Job Output ----------------------------
 echo
 
 source SOURCEFILE
-module load openmpi
-mpirun --app MPIAPP
+module load cray-mpich/8.1.21
+MPIAPP
 
 echo ----------------------- DONE ---------------------------------
 echo

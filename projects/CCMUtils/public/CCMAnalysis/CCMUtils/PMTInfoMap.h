@@ -46,7 +46,8 @@ class PMTInfoMap
     static void FillPMTMap(std::istream& file);
     static void FillPMTMap(TTree * tree);
     static void LoadHVOffList(std::string fileName);
-    static void LoadCalibrationFile(std::string fileName, bool fixedThreshold = true, double threshValue = 5.0, double maxValue = 40.0);
+    static void LoadCalibrationFile(std::string fileName, bool fixedThreshold = true, double threshValue = 5.0, double maxValue = 50.0);
+    static void LoadThresholdFile(std::string fileName);
 
     static void WritePMTMap(TTree *& tree);
 

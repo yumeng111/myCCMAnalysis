@@ -50,6 +50,7 @@ class detectorConstruction : public G4VUserDetectorConstruction
     void SetLaserRod( G4double );//Sets the height of the Laser calibration rod. also turns the laser to true
     void SetAr39( G4bool ); //turns the Ar39 flag on
     void SetCosmic( G4bool ); //turns the Cosmic flag on
+    void SetInverseBeta( G4bool ); //turns the Inverse Beta flag on
     void SetDarkMatter( G4bool ); //turns the DarkMatter flag on
     void SetALP( G4bool ); //turns the alp flag on
     void SetRootFile ( G4String ); //sets the ROOT output filename
@@ -65,6 +66,7 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4bool GetfSodium() const {return fSodium;};//method to obtain fSodium
     G4bool GetfAr39() const {return fAr39;};//method to obtain fAr39
     G4bool GetfCosmic() const {return fCosmic;};//method to obtain fCosmic
+    G4bool GetfInvBeta() const {return fInvBeta;};//method to obtain fInvBeta
     G4bool GetDarkMatter() const {return darkMatter;};//method to obtain LDM
     G4bool GetALP() const {return alp;};//method to obtain ALP
     G4String GetRootFile () const { return rootfile;};  
@@ -74,10 +76,11 @@ class detectorConstruction : public G4VUserDetectorConstruction
   private:
 
     void DefineMaterials();
-    void placePMT( G4String , G4double , G4double , G4double , G4bool );
+    void placePMT( G4String , G4double , G4double , G4double , G4double, G4bool );
     void placeTopBot( G4String , G4double , G4double , G4double , G4bool );
-    void DefineLAr(G4double , G4double , G4double , G4double , G4double );
-    void DefineTpb(G4double, G4double, G4double );
+    void DefineLAr(G4double , G4double , G4double , G4double , G4double , G4double , G4double , G4double );
+    void DefineTpb(G4double, G4double, G4double, G4double, G4double, G4double );
+    void DefinePlastic(G4double, G4double, G4double );
   //methods to define materials and place PMTS on the sides or on the top/bottom
 
     detectorMessenger* fDetectorMessenger;
@@ -94,6 +97,9 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4Element* fN;
     G4Element* fO;
     G4Material* fGlass;
+    G4Material* fPlastic;
+    G4Material* fBlackPlastic;
+    G4Material* fEj335;
     G4Material* tPBhundred;
     G4Material* lAr;
     G4Material* lAr2;
@@ -120,8 +126,10 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4LogicalVolume* fLogicFrame;
     G4Tubs* fTPBSides;
     G4LogicalVolume* fLogicTPB;
+    G4VPhysicalVolume* fPhysTPB;
     G4Tubs* fTPBBottom;
     G4LogicalVolume* fLogicTPBb;
+    G4VPhysicalVolume* fPhysTPBb;
     G4Tubs* fFiducialAr;
     G4LogicalVolume* fLogicFiduc;
     G4VPhysicalVolume* lArFiducial;
@@ -149,6 +157,7 @@ class detectorConstruction : public G4VUserDetectorConstruction
     G4bool fSodium;
     G4bool fAr39;
     G4bool fCosmic;
+    G4bool fInvBeta;
     G4bool darkMatter;
     G4bool alp;
     G4bool fTPBfoilOn;

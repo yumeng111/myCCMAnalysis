@@ -467,8 +467,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   //const int kNumBins1p6us = 1.6e3/Utility::fgkBinWidth;
 
   // calculate start and end time of event
-  float startTime = Utility::ShiftTime(startBin,fAccumWaveform->GetBeamOffset());
-  float endTime = Utility::ShiftTime(endBin,fAccumWaveform->GetBeamOffset());
+  float startTime = startBin*2;//Utility::ShiftTime(startBin,fAccumWaveform->GetBeamOffset());
+  float endTime = endBin*2;//Utility::ShiftTime(endBin,fAccumWaveform->GetBeamOffset());
 
   
   start = std::max(startBin - kNumBins90ns,0);
@@ -549,22 +549,22 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
 
   // subtract the beam time to remove the jitter of the beam timing
   if (vetoTimeTop >= 0) {
-    vetoTimeTop = Utility::ShiftTime(vetoTimeTop,fAccumWaveform->GetBeamOffset());
+    vetoTimeTop = vetoTimeTop*2;//Utility::ShiftTime(vetoTimeTop,fAccumWaveform->GetBeamOffset());
   }
   if (vetoTimeCRight >= 0) {
-    vetoTimeCRight = Utility::ShiftTime(vetoTimeCRight,fAccumWaveform->GetBeamOffset());
+    vetoTimeCRight = vetoTimeCRight*2;//Utility::ShiftTime(vetoTimeCRight,fAccumWaveform->GetBeamOffset());
   }
   if (vetoTimeCLeft >= 0) {
-    vetoTimeCLeft = Utility::ShiftTime(vetoTimeCLeft,fAccumWaveform->GetBeamOffset());
+    vetoTimeCLeft = vetoTimeCLeft*2;//Utility::ShiftTime(vetoTimeCLeft,fAccumWaveform->GetBeamOffset());
   }
   if (vetoTimeCFront >= 0) {
-    vetoTimeCFront = Utility::ShiftTime(vetoTimeCRight,fAccumWaveform->GetBeamOffset());
+    vetoTimeCFront = vetoTimeCFront*2;//Utility::ShiftTime(vetoTimeCRight,fAccumWaveform->GetBeamOffset());
   }
   if (vetoTimeCBack >= 0) {
-    vetoTimeCBack = Utility::ShiftTime(vetoTimeCBack,fAccumWaveform->GetBeamOffset());
+    vetoTimeCBack = vetoTimeCBack*2;//Utility::ShiftTime(vetoTimeCBack,fAccumWaveform->GetBeamOffset());
   }
   if (vetoTimeBottom >= 0) {
-    vetoTimeBottom = Utility::ShiftTime(vetoTimeBottom,fAccumWaveform->GetBeamOffset());
+    vetoTimeBottom = vetoTimeBottom*2;//Utility::ShiftTime(vetoTimeBottom,fAccumWaveform->GetBeamOffset());
   }
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
     MsgDebug(4,"Got first none empty bin for the veto tubes");
@@ -708,8 +708,8 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   } // end for over all digitizer channels
   pos *= 1.0/promptFit;
 
-  timeUncoated = Utility::ShiftTime(timeUncoated,fAccumWaveform->GetBeamOffset());
-  timeCoated = Utility::ShiftTime(timeCoated,fAccumWaveform->GetBeamOffset());
+  timeUncoated = timeUncoated*2;//Utility::ShiftTime(timeUncoated,fAccumWaveform->GetBeamOffset());
+  timeCoated = timeCoated*2;//Utility::ShiftTime(timeCoated,fAccumWaveform->GetBeamOffset());
 
   if (MsgLog::GetGlobalDebugLevel() >= 4) {
     MsgDebug(4,"Set events parameters");
@@ -732,7 +732,7 @@ void CCMFindEvents::SaveEvent(int startBin, int endBin)
   event->SetStartTimeVetoBack(vetoTimeCBack);
   event->SetStartTimeVetoBottom(vetoTimeBottom);
 
-  event->SetMaxAccumWaveformTime(Utility::ShiftTime(maxLoc,fAccumWaveform->GetBeamOffset())-startTime);
+  event->SetMaxAccumWaveformTime(maxLoc*2-startTime);//Utility::ShiftTime(maxLoc,fAccumWaveform->GetBeamOffset())-startTime);
   event->SetMaxAccumWaveformValue(maxValue);
 
   event->SetNumCoated(fAccumWaveform->Integrate(startBin,end90nsBin,fAccumWaveformMethodID,kCCMPulsesTimeID),true);

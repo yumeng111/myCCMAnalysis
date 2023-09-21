@@ -38,7 +38,8 @@
 //See CCMModuleTable for info
 MODULE_DECL(CCMBuildAccumWaveform);
 
-const int gkMaxBinLoc = 5960;//for CCM200.
+//const int gkMaxBinLoc = 5960;//for CCM200.
+const int gkMaxBinLoc = 8960;//for CCM200 - post 2021.
 //const int gkMaxBinLoc = 7960;//for CCM120.
 
 //_______________________________________________________________________________________
@@ -221,21 +222,13 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
     threshold = pmtInfo->GetADCThreshold();
     pe = pmtInfo->GetADCToPE();
 
-    //accounting for high threshold of some PMTs.
-    if(key == 86) threshold = 20.0;
-    if(key == 88) threshold = 27.0;
-    if(key == 90) threshold = 22.0;
-    if(key == 93) threshold = 24.0;
-    if(key == 97) threshold = 27.0;
-    if(key == 102) threshold = 36.0;
-    if(key == 113) threshold = 35.0;
-    if(key == 196) threshold = 33.0;
-    if(key == 197) threshold = 23.0;
-    if(key == 203) threshold = 36.0;
-    if(key == 206) threshold = 28.0;
-    
- 
     time = std::max(std::min(time,static_cast<double>(Utility::fgkNumBins-1)),0.0);
+
+    // check if pulse integral is below threshold or the ADCtoPE calibration is negative or zero
+    // if either is true do not analyze the pulse
+    if (pulseIntegral < threshold || pe <= 0) {
+      continue;
+    }
 
     // if the PMT was a veto pmt see if the integral is above 9ADC.
     // keep track the number of times that pmt fired in the DAQ window
@@ -243,40 +236,6 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
       name = pmtInfo->GetLocName();
       if (pulseIntegral > 9.0) {
 	//accounting for higher noise levels of some pmts.
-	if(key == 0 && pulseIntegral < 30.0){
-	  continue;
-	}
-	if(key == 1 && pulseIntegral < 37.0){
-          continue;
-	}
-	if(key == 3 && pulseIntegral < 25.0){
-          continue;
-	}
-	if(key == 5 && pulseIntegral < 33.0){
-          continue;
-	}
-	if(key == 10 && pulseIntegral < 36.0){
-          continue;
-	}
-	if(key == 12 && pulseIntegral < 33.0){
-          continue;
-	}
-	if(key == 20 && pulseIntegral < 18.0){
-          continue;
-	}
-	if(key == 22 && pulseIntegral < 34.0){
-          continue;
-	}
-	if(key == 23 && pulseIntegral < 18.0){
-          continue;
-	}
-	if(key == 25 && pulseIntegral < 25.0){
-          continue;
-	}
-	if(key == 30 && pulseIntegral < 18.0){
-          continue;
-	}
-
  
         CCMAccWaveform_t waveform = kCCMVetoTotalTimeID;
         // veto top tubes
@@ -329,13 +288,6 @@ CCMResult_t CCMBuildAccumWaveform::ProcessTrigger()
       continue;
     } // end if pmtInfo->IsVeto()
     
-
-    // check if pulse integral is below threshold or the ADCtoPE calibration is negative or zero
-    // if either is true do not analyze the pulse
-    if (pulseIntegral < threshold || pe <= 0) {
-      continue;
-    }
-
 
     // check length of pulse make sure it is greater than or equal to 20 ns
     length = fPulses->GetPulseLength(loc);

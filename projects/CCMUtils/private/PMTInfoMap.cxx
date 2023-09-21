@@ -32,7 +32,7 @@ bool PMTInfoMap::fgBadListLoaded = false;
 int PMTInfoMap::fgEJStart = 249;
 int PMTInfoMap::fgEJEnd = 254;
 size_t PMTInfoMap::fgMinKey = 0;
-size_t PMTInfoMap::fgMaxKey = 240;
+size_t PMTInfoMap::fgMaxKey = 254;
 
 /*
 detsim/libCCMDetSim.so: undefined reference to `PMTInfoMap::ConvertRowColToKey(int const&, int const&)'
@@ -289,7 +289,7 @@ void PMTInfoMap::FillPMTMap(std::istream& file)
       } // end switch(index)
     } // end for index < currRow->size()
     int key = CreateKey(adcBoardOrder,adcCH);
-    std::cout << "key: " << key << "\n";
+    std::cout << "key: " << key << "\n";//" threshold " << adcThreshold << " adcToPE " << adcToPE <<  " adcToPEder " << adcToPEDer << "\n";
     if (fgPMTInfo.find(key) == fgPMTInfo.end()) {
       fgPMTInfo.insert(std::make_pair(key,new PMTInformation()));
       std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.find(key);
@@ -658,13 +658,79 @@ void PMTInfoMap::SetParameter(std::string /*name*/, const double /*value*/)
   // nothing yet
 }
 
+/*!************************************************************************************************
+ * \fn void PMTInfoMap::LoadThresholdFile(std::istream& file)
+ * \brief Function that changes the adc thresholds to hand generated values
+ * \param[in] file The csv file to loop through
+ **************************************************************************************************/
+void PMTInfoMap::LoadThresholdFile(std::string fileName)
+{
+  if (fileName == "default" || fileName == "") {
+    std::string env = std::getenv("CCMPROJECT");
+    fileName = env + "/calibrationFiles/2021/threshold_corrections.csv";
+  }
+
+  MsgInfo(MsgLog::Form("thresholdFile %s",fileName.c_str()));
+  std::ifstream file(fileName.c_str());
+
+  if (MsgLog::GetGlobalDebugLevel() >= 2) {
+    MsgDebug(1,MsgLog::Form("Filling thresholds from file..."));
+  }
+
+  double adcThreshold = 0.0;
+
+  std::size_t counter = 0;
+  for (CSVIterator iter(file); iter != CSVIterator(); ++iter, ++counter) {
+    if (counter == 0) {
+      continue;
+    }
+    //std::cout << "Counter: " << counter << "\n";   
+
+    std::string currentString = "";
+    int key;
+
+    const CSVRow * currRow  = &(*iter);
+    std::size_t currRowSize = currRow->size();
+    for (size_t index = 0; index < currRowSize; ++index) {
+        
+      currentString = currRow->operator[](index);
+      
+      switch(index) {
+        case 0: ///PMT Key integer
+	  key = std::stoi(currentString);
+          break; 
+        case 1: ///User Input Threshold from file
+	  adcThreshold = std::stod(currentString);
+          break;
+        default: break;
+      } // end switch(index)
+    } // end for index < currRow->size()
+    std::cout << "key: " << key << " threshold " << adcThreshold << "\n";
+
+    std::map<int,PMTInformation*>::iterator itMap = fgPMTInfo.begin();
+    itMap = fgPMTInfo.find(key);
+    if (itMap == fgPMTInfo.end()) {
+      continue;
+    }
+
+    // change threshold value
+    itMap->second->SetADCThreshold(adcThreshold);
+    
+    if (MsgLog::GetGlobalDebugLevel() >= 1) {
+      MsgDebug(1,MsgLog::Form("Changed key %3d threshold %f", key, adcThreshold));
+      //std::cout << "IsVeto" << itMap->second->IsVeto() << "\n";
+    }
+  } // end for CSVIterator
+}
+
 //--------------------------------------------------------------------
+//Runs PMTInfoMap setup from configFile for ./CCMAnalysis
 void PMTInfoMap::SetParameter(std::string name, std::string value)
 {
   if (name.compare("HVOffFile") == 0) {
     LoadHVOffList(value);
   } else if (name.compare("CalibrationFile") == 0) {
-    LoadCalibrationFile(value);
+    LoadCalibrationFile(value,false);
   } else if (name.compare("MappingFile") == 0) {
     ClearMap();
     if (value.compare("default") == 0) {
@@ -674,6 +740,8 @@ void PMTInfoMap::SetParameter(std::string name, std::string value)
       FillPMTMap(infile);
       infile.close();
     }
+  } else if (name.compare("ThresholdFile") == 0) {
+    LoadThresholdFile(value);
   }
 }
 

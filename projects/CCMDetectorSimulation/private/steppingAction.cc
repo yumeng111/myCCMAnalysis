@@ -75,6 +75,9 @@ void steppingAction::UserSteppingAction(const G4Step* step)
   G4double pmtx = 0;
   G4double pmty = 0;
   G4double pmtz = 0;
+  G4double topx = 0;
+  G4double topy = 0;
+  G4double topz = 0;
   G4double kinEn = 0;
   G4ThreeVector mom = G4ThreeVector(0,0,0);
   G4ThreeVector pos = G4ThreeVector(0,0,0);
@@ -95,6 +98,20 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     return;
   }
 
+  if (process == "nCapture") {
+    kinEn = step->GetPreStepPoint()->GetKineticEnergy();
+    G4cout << process << '\t' << kinEn << '\n';
+  }
+
+  /*G4int sNum = step->GetTrack()->GetCurrentStepNumber();
+  if ((particlen == "gamma" || particlen == "e-") && sNum==1) {
+    //get the original process.
+    G4String creatorProcess = step->GetTrack()->GetCreatorProcess()->GetProcessName();
+
+    if (creatorProcess == "nCapture") {
+      G4cout << particlen << '\t' << creatorProcess << '\t' << kinEn << '\n';
+    }
+    }*/
   //if the particle is not an optical photon and is in the Fiducial volume, 
   // calculate the energy deposited during the step and output it. 
   //currently off for root based output, lacking the mechanics to currently use it.
@@ -110,7 +127,7 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     }//*/
   
   //Check if the volume is a PMT, then get the energy and ingoing angle, as well as the full name of the pmt.
-  if (testn == "PMT" || testnp == "PMT") {
+  if (particlen == "opticalphoton" && testn == "PMT") {
     //skip any photons above 5 eV (wavelength < 250 nm) as the PMTs can't detect them.
     if (kinEn >= 5*eV) {
       step->GetTrack()->SetTrackStatus(fStopAndKill);
@@ -138,11 +155,16 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 
     //G4cout << row << '\t' << col << G4endl;
     //Get the location of the PMT based on row and column. 
-    //Caution: the simulation has row numbering backwards from the mapping, with row 1 on bottom and row 5 on top.
+    //Caution: the simulation has row numbering backwards from the mapping, with row 1 on bottom and row 5 on top.//No longer applies, old comment.
     angle = (2*CLHEP::pi/24)*(col-1);
     pmtx = 96*std::cos(angle);
     pmty = 96*std::sin(angle);
     pmtz = (3-row)*22.86;
+
+    //Get the position of the top of the pmt
+    topx = 90*std::cos(angle);
+    topy = 90*std::sin(angle);
+    topz = (3-row)*22.86;
 
     //get pmt location of rows 0 and 6 (top and bottom, ccm200)
     if (row == 0 || row == 6) {
@@ -170,6 +192,9 @@ void steppingAction::UserSteppingAction(const G4Step* step)
 	pmtx = 20.0*std::cos(angle);
 	pmty = 20.0*std::sin(angle);
       }
+      topx = pmtx;
+      topy = pmty;
+      topz = pmtz*.9;
     }
     
     //get the momentum direction and position of the photon when it enters the PMT.
@@ -182,22 +207,34 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     xy = pos.y();
     xz = pos.z();
 
-    //get the original process.
-    G4String creatorProcess = step->GetTrack()->GetCreatorProcess()->GetProcessName();
-
     //define the radial vector of the PMT matched to the location of photon impact.
-    pmtx = xx-pmtx;
-    pmty = xy-pmty;
-    pmtz = xz-pmtz;
+    G4double vectx = xx-pmtx;
+    G4double vecty = xy-pmty;
+    G4double vectz = xz-pmtz;
     
     //Calculate the ingoing angle based on radial vector and momentum vector.
-    magpos = std::sqrt(pmtx*pmtx+pmty*pmty+pmtz*pmtz);
+    magpos = std::sqrt(vectx*vectx+vecty*vecty+vectz*vectz);
     //dot = cos(ingoing angle).
-    dot = (pmtx*px+pmty*py+pmtz*pz)/magpos;
+    dot = (vectx*px+vecty*py+vectz*pz)/magpos;
+
+    //define the pointing vector of the PMT
+    vectx = pmtx-topx;
+    vecty = pmty-topy;
+    vectz = pmtz-topz;
+
+    //Calculate the ingoing angle based on pointing vector and momentum vector.
+    magpos = std::sqrt(vectx*vectx+vecty*vecty+vectz*vectz);
+    G4double dot2 = (vectx*px+vecty*py+vectz*pz)/magpos;
+    
+    //combine the angles of radial and popinting vector to get the overall cos2 angle
+    dot = dot*std::sqrt(std::sqrt(dot2));
 
     //terminate any photon absorbed by the PMT.
     step->GetTrack()->SetTrackStatus(fStopAndKill);
   
+    //get the original process.
+    G4String creatorProcess = step->GetTrack()->GetCreatorProcess()->GetProcessName();
+
     //abbreviated output with only the relevant information (pmt, photon energy, time, and angle)
     fEventAction->AddHit(row,col,coated,kinEn/eV,time/ns,dot,creatorProcess);
     //G4cout << row << '\t' << col << '\t' << coated << '\t' << kinEn/eV << '\t' << time/ns << '\t' << dot << G4endl;
@@ -205,14 +242,18 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     return;
   }
 
-
   //If the particle is a optical photon, and has just transferred from the reflector foil on the top or bottom,
   //alter the direction to induce a slight randomness due to the unsmoothness of the foils there.
   //if ( (particlen == "opticalphoton" && volname=="TPBfoilb" && volpname == "ptfefoil") || (particlen == "opticalphoton" && volname=="tpbbcone" && volpname == "ptfebcone") ) {
   
-  //CCM200 alter path of all photons in tpb volume of any sort. 
-  if ( (particlen == "opticalphoton" && volname.find("TPB") != std::string::npos) || (particlen == "opticalphoton" && volname.find("tpb") != std::string::npos) ) {
+  //CCM200 alter path of visible photons in tpb volume of any sort. 
+  /*if ( (particlen == "opticalphoton" && volname.find("TPB") != std::string::npos) || (particlen == "opticalphoton" && volname.find("tpb") != std::string::npos) ) {
     const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
+    //G4cout << "Stepping calls to primaries: " << detector->GetfSodium() << '\t' << detector->GetfLaser() << '\t' << detector->GetDarkMatter() << '\t' << detector->GetALP() << '\n';
+
+    if (kinEn >= 4*eV) {
+      return;
+    }
 
     mom = step->GetPostStepPoint()->GetMomentumDirection();
     px = mom.x();
@@ -221,32 +262,35 @@ void steppingAction::UserSteppingAction(const G4Step* step)
     
     //creates three random variables, two angles and a test.
     //the gaussian angles are for a slight rotation biased towards maintaing the same direction, 
-    //G4double randwide = detector->GetUnsmooth();
-    //G4double thmax = randwide/2.0;
-    //G4double phi = G4RandGauss::shoot(0,randwide);
-    //G4double theta = G4RandGauss::shoot(0,thmax);
-
-    //CCM200 randmization of photons in TPB: total random as in white paint. 
-    G4double pi = CLHEP::pi;
-    G4double phi = G4RandFlat::shoot(0.0,pi);
-    G4double theta = G4RandFlat::shoot(0.0,2*pi);
+    G4double randwide = detector->GetUnsmooth();
+    G4double test = G4RandFlat::shoot(0.1,1.1);
+    if (test > randwide+0.1) {
+      //G4double thmax = randwide/2.0;
+      //G4double phi = G4RandGauss::shoot(0,randwide);
+      //G4double theta = G4RandGauss::shoot(0,thmax);
+      
+      //CCM200 randmization of photons in TPB: total random as in white paint. 
+      G4double pi = CLHEP::pi;
+      G4double phi = G4RandFlat::shoot(0.0,pi);
+      G4double theta = G4RandFlat::shoot(0.0,2*pi);
     
-    //Use the two angles to calculate a new outgoing angle based on a rotation from the original
-    G4double px1 = px;
-    G4double py1 = py;
-    G4double pz1 = pz;
-    
-    px = cos(theta)*px1-sin(theta)*py1;
-    py = cos(phi)*sin(theta)*px1+cos(phi)*cos(theta)*py1-sin(phi)*pz;
-    pz = sin(phi)*sin(theta)*px1+sin(phi)*cos(theta)*py1+cos(phi)*pz;
-
-    //make sure the z direction of the output matches the z direction of the input.
-    if ((pz < 0 && pz1 > 0) || (pz > 0 && pz1 < 0)) {
-      pz = -pz;
+      //Use the two angles to calculate a new outgoing angle based on a rotation from the original
+      G4double px1 = px;
+      G4double py1 = py;
+      G4double pz1 = pz;
+      
+      px = cos(theta)*px1-sin(theta)*py1;
+      py = cos(phi)*sin(theta)*px1+cos(phi)*cos(theta)*py1-sin(phi)*pz;
+      pz = sin(phi)*sin(theta)*px1+sin(phi)*cos(theta)*py1+cos(phi)*pz;
+      
+      //make sure the z direction of the output matches the z direction of the input.
+      if ((pz < 0 && pz1 > 0) || (pz > 0 && pz1 < 0)) {
+	pz = -pz;
+      }
+      mom = G4ThreeVector(px,py,pz);
+      step->GetPostStepPoint()->SetMomentumDirection(mom);
     }
-    mom = G4ThreeVector(px,py,pz);
-    step->GetPostStepPoint()->SetMomentumDirection(mom);
-  }
+    }//*/
 
   //  G4cout << "maincodenote: end stepping Action" << G4endl;
 }

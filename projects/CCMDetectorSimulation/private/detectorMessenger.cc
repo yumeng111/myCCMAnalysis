@@ -70,6 +70,11 @@ detectorMessenger::detectorMessenger(detectorConstruction* detector)
   fCosmicCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
   fCosmicCmd->SetToBeBroadcasted(false);
 
+  fInvBetaCmd = new G4UIcmdWithABool("/ccm/detector/invBeta",this);
+  fInvBetaCmd->SetGuidance("Enable/Disable the invBeta Source.");
+  fInvBetaCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
+  fInvBetaCmd->SetToBeBroadcasted(false);
+
   fDMCmd = new G4UIcmdWithABool("/ccm/detector/darkmatter",this);
   fDMCmd->SetGuidance("Enable/Disable the DM Source.");
   fDMCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
@@ -151,6 +156,7 @@ detectorMessenger::~detectorMessenger()
   delete fSodiumCmd;
   delete fAr39Cmd;
   delete fCosmicCmd;
+  delete fInvBetaCmd;
   delete fDMCmd;
   delete fALPCmd;
   delete fRodCmd;
@@ -183,6 +189,9 @@ void detectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   }
   else if (command == fCosmicCmd){
     fdetector->SetCosmic(fCosmicCmd->GetNewBoolValue(newValue));
+  }
+  else if (command == fInvBetaCmd){
+    fdetector->SetInverseBeta(fInvBetaCmd->GetNewBoolValue(newValue));
   }
   else if (command == fDMCmd){
     fdetector->SetDarkMatter(fDMCmd->GetNewBoolValue(newValue));

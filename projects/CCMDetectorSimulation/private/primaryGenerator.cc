@@ -9,8 +9,8 @@ Sodium: setting Sodium to true creates events with the proper Sodium-22 decay ch
 Neither: setting both to false allows the creation of other kinds of initial events, 
          such as 120 keV gammas for cobalt, or neutrons/Ar-39 decay events. 
  */
-#include "primaryGenerator.hh"
-#include "detectorConstruction.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/primaryGenerator.hh"
+#include "CCMAnalysis/CCMDetectorSimulation/detectorConstruction.hh"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
@@ -60,22 +60,26 @@ primaryGenerator::~primaryGenerator()
 void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
 {
   //This function is called at the beginning of an event
+  
+  //defines a variable for rodHeight, necessary for the laser.
+  G4double rodHeight = 0;
 
   //Booleans to be flagged if running either a Sodium or Laser simulation.
+  nameString = "Cobalt";//default generation
   G4bool Sodium = false;
   G4bool Laser = true;
   G4bool Ar39 = false;
   G4bool darkMatter = false;
   G4bool alp = false;
   G4bool Cosmic = false;
-  nameString = "Cobalt";
+  G4bool InvBeta = false;
 
   //generates several randoms for position, momentum, and probabilities. 
   G4double phi = G4RandFlat::shoot(-0.28, 6.002);
   G4double theta = G4RandFlat::shoot(-0.0005, 3.142);
   G4double check = G4RandFlat::shoot(0.1,1.1);
   G4double radi = G4RandFlat::shoot(0.01, 0.1)*cm;
-
+  
   //Define the position based on the randoms generated above. current settings: within the laser plates.
   ypos = radi*sin(phi);
   xpos = radi*cos(phi);
@@ -87,9 +91,6 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
   momz = cos(theta);
   partEneg = fParticleGun->GetParticleEnergy()/keV;
     
-  //defines a variable for rodHeight, necessary for the laser.
-  G4double rodHeight = 0;
-
   //Obtain the rod Height from the detector to produce the photons at the right location.
   const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
   
@@ -104,7 +105,9 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     darkMatter = detector->GetDarkMatter();
     Cosmic = detector->GetfCosmic();
     alp = detector->GetALP();
+    InvBeta = detector->GetfInvBeta();
     //G4cout << "Primary found sodium as " << Sodium << G4endl;
+    //    G4cout << "5Primaries found as: laser Ar39 DM sodium cosmic alp " << Laser << '\t' << Ar39 << '\t' << darkMatter << '\t' << Sodium << '\t' << Cosmic << '\t' << alp << '\t' << rodHeight << '\n';
   }
 
   //call methods to generate events of non-laser types. the order of priority is as below, so only one kind of event can be generated at a time. See below methods for details.
@@ -118,7 +121,9 @@ void primaryGenerator::GeneratePrimaries(G4Event* anEvent)
     shootCosmic(anEvent);
   } else if (alp) {
     shootALP(anEvent);
-  }
+  } else if (InvBeta) {
+    shootInverseBeta(anEvent);
+  } //MARK FOR REACTOR
 
   //begin the primary generation for laser runs.
   if (Laser) {
@@ -275,7 +280,7 @@ void primaryGenerator::shootDarkMatter(G4Event* anEvent) {
   G4double phi = G4RandFlat::shoot(-0.28, 6.002);
   ypos = radi2*sin(phi);
   xpos = radi2*cos(phi);
-  zpos = G4RandFlat::shoot(-70.79, 70.79)*cm;
+  zpos = G4RandFlat::shoot(-60.79, 60.79)*cm;
   partEneg = G4RandFlat::shoot(energy,energy2);
   fParticleGun->SetParticleEnergy(partEneg*keV);
   
@@ -438,11 +443,11 @@ void primaryGenerator::shootALP(G4Event* anEvent) {
   //section to define particle type
   //find some way to switch between these
   //G4ParticleDefinition* particle = particleTable->FindParticle(particleName="e-");
-  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
-  G4String particleName;
+  //G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+  //G4String particleName;
 
-  G4ParticleDefinition* particle = particleTable->FindParticle(particleName="gamma");
-  fParticleGun->SetParticleDefinition(particle);
+  //G4ParticleDefinition* particle = particleTable->FindParticle(particleName="gamma");
+  //fParticleGun->SetParticleDefinition(particle);
 
   //method to get ALP energy from detector? /ccm/detector/alp {energy} {unit}
   //partEneg=detector->GetALPenergy(); //move to main, pass to function
@@ -496,3 +501,144 @@ void primaryGenerator::shootALP(G4Event* anEvent) {
   fParticleGun->GeneratePrimaryVertex(anEvent);
 
 }
+
+
+//MARK FOR REACTOR
+//defines a method for generating an inverse Beta Decay event
+void primaryGenerator::shootInverseBeta(G4Event* anEvent) {
+  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+
+  //rewrites the particle energy for the particle creation
+  nameString = "InverseBeta";
+  partEneg=1200;
+  //fParticleGun->SetParticleEnergy(partEneg*keV);
+  //G4double check = G4RandFlat::shoot(0.1,1.1);
+
+  G4double IBeneg[] = { 1.715, 1.895, 2.075, 2.255, 2.435,
+			2.615, 2.795, 2.975, 3.155, 3.335,
+			3.515, 3.695, 3.875, 4.055, 4.235, 
+			4.415, 4.595, 4.775, 4.955, 5.135, 
+			5.315, 5.495, 5.675, 5.855, 6.035,
+			6.215, 6.395, 6.575, 6.755, 6.935, 
+			7.115, 7.295, 7.475, 7.655, 7.835, 
+			8.015, 8.195, 8.375, 8.555, 8.735, 
+			8.915, 9.095, 9.275, 9.455, 9.635, 
+			9.815, 10.0 };
+  G4double IBprob[] = { 0.0041, 0.0144, 0.0306, 0.0524, 0.0799, 
+			0.1131, 0.1511, 0.1938, 0.2402, 0.2892, 
+			0.3404, 0.3927, 0.4454, 0.4968, 0.5466, 
+			0.5933, 0.6375, 0.6795, 0.7191, 0.7556, 
+			0.7891, 0.8198, 0.8474, 0.8715, 0.8926, 
+			0.9109, 0.9269, 0.9406, 0.9522, 0.9619, 
+			0.9698, 0.9762, 0.9814, 0.9858, 0.9892, 
+			0.9916, 0.9935, 0.9950, 0.9963, 0.9973, 
+			0.9980, 0.9986, 0.9991, 0.9995, 0.9998, 
+			1.0200 };
+
+  //pulls an upper and lower energy from the antineutrino source energy table
+  G4double test = G4RandFlat::shoot(0.1,1.1);
+  test = test - 0.1;
+  G4double energy = 10.0;
+  G4double energy2 = 10.0;
+  for (int i=0;i<46;++i) {
+    if (test < IBprob[i]) {
+      energy = IBeneg[i];
+      energy2 = IBeneg[i+1];
+      break;
+    }
+  }
+  //Defines the anti-neutrino energy
+  partEneg = G4RandFlat::shoot(energy,energy2);
+  //Define the positron and its energy with respect to the anti-neutrino energy
+  G4ParticleDefinition* particle = particleTable->FindParticle("e+");  
+  G4double posEneg = partEneg - 1.3;
+  fParticleGun->SetParticleDefinition(particle);
+  fParticleGun->SetParticleEnergy(posEneg*MeV);
+  
+  //defines the initial position and energy for the inverse beta decay
+  G4double radi2 = G4RandFlat::shoot(0.001,900.0);//12735.1225);
+  radi2 = sqrt(radi2)*cm;
+  G4double phi = G4RandFlat::shoot(-0.28, 6.002);
+  ypos = radi2*sin(phi);
+  xpos = radi2*cos(phi);
+  zpos = G4RandFlat::shoot(-40.0,40.0)*cm;//-60.79, 60.79)*cm;
+  fParticleGun->SetParticlePosition(G4ThreeVector(xpos, ypos, zpos));
+
+  //determine the location of the target -> somewhere between columns 15 and 16
+  //column 1 is at angle of 0.
+  G4double angle = (360.0/24)*(15.5-1)*CLHEP::pi/180; //angle to column 15.5
+  G4double distance = 21.0*m; //distance to target
+  G4double tx = distance*cos(angle);
+  G4double ty = distance*sin(angle);
+  G4double tz = 0.0;//assume target height equal to center of detector
+
+  //set momentum direction as straight line from target
+  G4double momx1 = xpos-tx;
+  G4double momy1 = ypos-ty;
+  G4double momz1 = zpos-tz;
+
+  //'simulate' speed of light particle from the target to get the variable delay across the detector (delta is approx 7 ns from front to back). 
+  distance = sqrt(momx1*momx1 + momy1*momy1 + momz1*momz1);
+  G4double time = (distance)/(299792458*m/s);
+  fParticleGun->SetParticleTime(time);
+
+  // set momentum to unit vector
+  momx1 = momx1/distance;
+  momy1 = momy1/distance;
+  momz1 = momz1/distance;
+
+  //Define the positron momentum wrt antineutrino
+  //positron momentum direction slightly backwards according to ERNIE paper
+  //doi.org/10.1016/j.cpc.2022.108543
+  G4double theta = G4RandGauss::shoot(100,80);
+  while (theta < 0 || theta > 180) { theta = G4RandGauss::shoot(100,80); }
+  phi = G4RandFlat::shoot(-0.28, 6.002);
+  
+  //add direction change from antineutrino to positron
+  momx = cos(theta)*momx1-sin(theta)*momy1;
+  momy = cos(phi)*sin(theta)*momx1+cos(phi)*cos(theta)*momy1-sin(phi)*momz1;
+  momz = sin(phi)*sin(theta)*momx1+sin(phi)*cos(theta)*momy1+cos(phi)*momz1;
+  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(momx, momy, momz));
+
+  //shoots the positron
+  fParticleGun->GeneratePrimaryVertex(anEvent);
+
+  //Begin neutron calculations:
+  
+  //do conservation of momentum to get total energy/momentum values
+  //Define neutrino momentum with magnitude
+  momx1 = momx1*partEneg;
+  momy1 = momy1*partEneg;
+  momz1 = momz1*partEneg;
+
+  //Define positron momentum with magnitude
+  G4double twomk = std::sqrt(2*0.511*posEneg);
+  momx = momx*twomk;
+  momy = momy*twomk;
+  momz = momz*twomk;
+
+  //Subtract positron momentum to get neutron momentum
+  G4double momxn = momx1 - momx;
+  G4double momyn = momy1 - momy;
+  G4double momzn = momz1 - momz;
+
+  //neutron kinetic energy = p^2/2m
+  G4double momn = std::sqrt(momxn*momxn + momyn*momyn + momzn*momzn);
+  G4double nke = momn*momn/2/940.6;
+  momxn = momxn/momn;
+  momyn = momyn/momn;
+  momzn = momzn/momn;  
+  
+  //Define the neutron
+  G4ParticleDefinition* particleN = particleTable->FindParticle("neutron");  
+  fParticleGun->SetParticleDefinition(particleN);
+  fParticleGun->SetParticleEnergy(nke*MeV);
+  fParticleGun->SetParticleTime(time);
+  fParticleGun->SetParticlePosition(G4ThreeVector(xpos, ypos, zpos));
+  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(momxn, momyn, momzn));
+  
+  //Shoots the neutron
+  fParticleGun->GeneratePrimaryVertex(anEvent);
+  
+}
+

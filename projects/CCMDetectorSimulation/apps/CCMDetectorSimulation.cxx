@@ -21,7 +21,8 @@ Otherwise this is just a container code that calls the more specific headers and
 #endif
 
 #include "G4UImanager.hh"
-#include "FTFP_BERT.hh"
+//#include "QGSP_BIC_HP.hh"
+#include "FTFP_BERT_HP.hh"
 #include "G4OpticalPhysics.hh"
 #include "G4EmStandardPhysics_option4.hh"
 
@@ -63,7 +64,7 @@ int main(int argc, char** argv)
   //The FTFP_BERT physics list used as the base has most nuclear processes for normal particles 
   //(photons, neutrons, electrons, etc) but has some approximations that one should be cautious of. 
   //As such this simulation is best used for simulating scintillation, not nucleonic interactions. 
-  G4VModularPhysicsList* physics = new FTFP_BERT;
+  G4VModularPhysicsList* physics = new FTFP_BERT_HP;//QGSP_BIC_HP;
   physics->ReplacePhysics(new G4EmStandardPhysics_option4());
   G4OpticalPhysics* opticalPhysics = new G4OpticalPhysics();
   //G4cout << "maincodenote: installed main physics" << G4endl;
