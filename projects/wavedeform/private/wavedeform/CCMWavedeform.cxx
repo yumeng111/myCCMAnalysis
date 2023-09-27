@@ -164,7 +164,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
 void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
     double GetPulsesInternal_s = 0.0;
     double GetPulsesInternal_u = 0.0;
-    NNLSTimer GetPulsesInternal_timer("GetPulsesInternal", GetPulsesInternal_s, GetPulsesInternal_u, true);
+    //NNLSTimer GetPulsesInternal_timer("GetPulsesInternal", GetPulsesInternal_s, GetPulsesInternal_u, true);
     output.clear();
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
@@ -177,7 +177,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     //double eigen_s = 0.0;
     //double eigen_u = 0.0;
     //NNLSTimer eigen_timer("Eigen", eigen_s, eigen_u, false);
-    NNLSTimer pre_compute("Pre compute total", dummy_s, dummy_u, true);
+    //NNLSTimer pre_compute("Pre compute total", dummy_s, dummy_u, true);
 
     // Determine the total number of WF bins
     nbins = wf.GetWaveform().size();
@@ -759,7 +759,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     //eigen_timer.end();
     //std::vector<double> SBB_data_vector(((double *)data->x), ((double *)data->x) + data->nrow);
     //nsNNLS::vector SBB_data(SBB_data_vector.size(), SBB_data_vector.data());
-    pre_compute.end();
+    //pre_compute.end();
     //eigen_timer.print();
 
     // Solve for SPE heights
@@ -768,7 +768,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             double s = 0.0;
             double u = 0.0;
             std::string name = "RNNLS";
-            NNLSTimer nnls_timer(name, s, u, true);
+            //NNLSTimer nnls_timer(name, s, u, true);
             unfolded = rnnls(basis, data, tolerance_, 2000, 0, &chol_common);
         }
         /*{
@@ -796,7 +796,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
     double PostNNLS_s = 0.0;
     double PostNNLS_u = 0.0;
-    NNLSTimer PostNNLS_timer("PostNNLS", PostNNLS_s, PostNNLS_u, true);
+    //NNLSTimer PostNNLS_timer("PostNNLS", PostNNLS_s, PostNNLS_u, true);
 
     cholmod_l_free_sparse(&basis, &chol_common);
     cholmod_l_free_dense(&data, &chol_common);
@@ -851,7 +851,7 @@ void RunPulsesThread(
         ) {
     double RunPulsesThread_s = 0.0;
     double RunPulsesThread_u = 0.0;
-    NNLSTimer RunPulsesThread_timer("RunPulsesThread", RunPulsesThread_s, RunPulsesThread_u, true);
+    //NNLSTimer RunPulsesThread_timer("RunPulsesThread", RunPulsesThread_s, RunPulsesThread_u, true);
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
         size_t channel = pmt_channel_map.at(pmt_key);
@@ -870,8 +870,8 @@ void RunPulsesThread(
 
         double GetPulses_s = 0.0;
         double GetPulses_u = 0.0;
-        NNLSTimer GetPulses_timer("GetPulses", GetPulses_s, GetPulses_u, true);
-        GetPulses_timer.start();
+        //NNLSTimer GetPulses_timer("GetPulses", GetPulses_s, GetPulses_u, true);
+        //GetPulses_timer.start();
         GetPulses(
                 waveform,
                 templates.at(pmt_key),
@@ -890,7 +890,7 @@ void RunPulsesThread(
                 output_rebin_data_times_references[i].get(),
                 frame
                 );
-        GetPulses_timer.end();
+        //GetPulses_timer.end();
     }
 }
 
@@ -1156,7 +1156,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     }
     double DAQ_s = 0.0;
     double DAQ_u = 0.0;
-    NNLSTimer DAQ_timer("DAQ", DAQ_s, DAQ_u, true);
+    //NNLSTimer DAQ_timer("DAQ", DAQ_s, DAQ_u, true);
 
     //const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
     boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);
