@@ -242,6 +242,9 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             weights[k] /= 4.;
         } else if (fabs(((double *)(data->x))[k]) > basisThreshmV) {
             passBasisThresh[k] = true;
+        } else {
+            ((double *)(data->x))[k] = 0;
+            weights[k] = 0;
         }
     }
 
@@ -288,12 +291,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             }
             double binTime = redges[k];
             // Don't jump if we're moving less than the basis spacing
-            if (present + fwhmStop < (binTime - fine_spacing)) {
+            if (present < (binTime - fwhmStop)) {
                 present = binTime - fwhmStop;
             }
 
             // Add start times to the set
-            while (present < (binTime - fwhmStart) && present < max) {
+            while (present < (binTime - fwhmStart) && present < max && present >= (binTime - fwhmStop)) {
                 start_times.push_back(std::pair<double, double>(present, spacing));
                 present += spacing;
             }
@@ -407,7 +410,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
     output_data_times = data_times;
     std::vector<std::vector<size_t>> bb_rebin_ranges;
-    double ncp_prior = 0.001;
+    double ncp_prior = 100;
     rebin_bayesian_blocks(data_times, ((double *)(data->x)), bb_rebin_ranges, ncp_prior, wfTemplate.total_mass);
     output_rebin_data_times.clear();
 
@@ -441,14 +444,15 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
     for(size_t i=0; i<rebin_ranges.size(); ++i) {
         output_rebin_data_times.push_back(data_times[rebin_ranges[i][0]]);
-        double d = 0.0;
-        for(size_t j=0; j<rebin_ranges[i].size(); ++j) {
-            d += ((double *)(data->x))[rebin_ranges[i][j]];
-        }
-        ((double *)(data->x))[i] = d;
+        // double d = 0.0;
+        // for(size_t j=0; j<rebin_ranges[i].size(); ++j) {
+        //     d += ((double *)(data->x))[rebin_ranges[i][j]];
+        // }
+        // ((double *)(data->x))[i] = d;
     }
     output_rebin_data_times.push_back(data_times.back());
-    data->nrow = rebin_ranges.size();
+    //redges = std::vector<double>(output_rebin_data_times.begin()+1, output_rebin_data_times.end());
+    // data->nrow = rebin_ranges.size();
 
 
     std::cout << "Original data bins: " << data_times.size() - 1 << std::endl;
@@ -522,9 +526,15 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
         // The earliest pulse influencing this bin is PULSE_WIDTH in the past.
         // The template is defined up to (but not including) PULSE_WIDTH.
-        while (first_spe < nspes && redges[i] -
-                start_times[first_spe].first - wfTemplate.start_time >= wfTemplate.pulse_width)
+        std::cout << "--" << std::endl;
+        while (first_spe < nspes && start_times[first_spe].first + wfTemplate.end_time <= redges[i]) {
             first_spe++;
+            std::cout << "data bin == " << i << std::endl;
+            std::cout << "first_spe == " << first_spe << std::endl;
+            std::cout << "SPE end time == " << start_times[first_spe].first + wfTemplate.end_time << std::endl;
+            std::cout << "Right edge == " << redges[i] << std::endl;
+        }
+        std::cout << std::endl;
         if (first_spe == nspes) {
             continue;
         }
@@ -538,12 +548,15 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         // Precache which pulse template we're using
         double templ_bin_spacing_inv = 1./template_bin_spacing_;
         std::vector<double> const & pulse_templ = wfTemplate.digitizer_template;
+        size_t n_bins = pulse_templ.size();
 
         // The last pulse for this bin is 2 ns in the future
         for (int j = first_spe; j < nspes; j++) {
             int templ_bin = int(((redges[i] - start_times[j].first) - wfTemplate.start_time)*templ_bin_spacing_inv);
             if (templ_bin < 0)
                 break;
+            if (templ_bin >=- n_bins)
+                continue;
 
             ((long *)(basis_trip->i))[basis_trip->nnz] = i;
             ((long *)(basis_trip->j))[basis_trip->nnz] = j;
@@ -588,6 +601,11 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             }
         }
     }
+
+    for(size_t i=0; i<rebinned_data.size(); ++i) {
+        ((double *)(data->x))[i] = rebinned_data[i];
+    }
+    data->nrow = rebin_ranges.size();
 
     size_t reduced_nnz = 0;
     // Parent SPE, child SPE
@@ -639,6 +657,20 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                     spe_magnitudes.emplace_back(dot_product);
                     total_dot_product += dot_product;
                 }
+                if(total_dot_product == 0) {
+                    std::cout << "total_dot_product is zero" << std::endl;
+                    for(size_t jj=1; jj<num_same_support; ++jj) {
+                        size_t j = matching_support_idx + jj;
+                        std::cout << "SPE " << j << std::endl;
+                        std::cout << "SPE start time: " << start_times[j].first << " ns" << std::endl;
+                        for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
+                            size_t data_idx = spe_bb_support[j][ii];
+                            std::cout << "\trebinned_data[" << data_idx << "] = " << rebinned_data[data_idx] << std::endl;
+                        }
+                    }
+                    std::cout << std::endl;
+                    std::cout << "##################################################" << std::endl;
+                }
 
                 std::vector<double> spe_start_times;
                 spe_start_times.reserve(num_same_support-1);
@@ -646,7 +678,11 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                 spe_widths.reserve(num_same_support-1);
                 std::vector<double> spe_entries(spe_bb_support[matching_support_idx].size(), 0.0);
                 for(size_t jj=1; jj<num_same_support; ++jj) {
-                    spe_magnitudes[jj-1] /= total_dot_product;
+                    if(total_dot_product > 0) {
+                        spe_magnitudes[jj-1] /= total_dot_product;
+                    } else {
+                        spe_magnitudes[jj-1] = 1.0 / (num_same_support-1);
+                    }
                     size_t j = matching_support_idx + jj;
                     spe_start_times.emplace_back(start_times[j].first);
                     spe_widths.emplace_back(start_times[j].second);
@@ -680,6 +716,28 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             matching_support_idx = spe_idx;
         }
     }
+    size_t num_original_spes = spe_original_support.size();
+    size_t num_final_spes = merged_spe_magnitudes.size();
+    size_t num_composite_spes = 0;
+    size_t num_lone_spes = 0;
+    size_t num_zero_spes = 0;
+    size_t num_contributing_spes = 0;
+    for(size_t i=0; i<merged_spe_magnitudes.size(); ++i) {
+        if(merged_spe_magnitudes[i].size() == 1) {
+            num_lone_spes += 1;
+        } else if(merged_spe_magnitudes[i].size() > 1) {
+            num_composite_spes += 1;
+        } else {
+            num_zero_spes += 1;
+        }
+        num_contributing_spes += merged_spe_magnitudes[i].size();
+    }
+    std::cout << "Num original spes: " << num_original_spes << std::endl;
+    std::cout << "Num final spes: " << num_final_spes << std::endl;
+    std::cout << "Num composite spes: " << num_composite_spes << std::endl;
+    std::cout << "Num lone spes: " << num_lone_spes << std::endl;
+    std::cout << "Num zero spes: " << num_zero_spes << std::endl;
+    std::cout << "Num contributing spes: " << num_contributing_spes << std::endl;
 
     /*
     // let's save our basis trip vector
@@ -747,11 +805,23 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     for(size_t spe_idx=0; spe_idx<merged_spe_entries.size(); ++spe_idx) {
         ((long *)(basis->p))[spe_idx] = nnz_idx;
         for(size_t jj=0; jj<merged_spe_support[spe_idx].size(); ++jj) {
+            if(std::isnan(merged_spe_support[spe_idx][jj])) {
+                std::cout << "merged_spe_support[" << spe_idx << "][" << jj << "] is nan" << std::endl;
+            }
+            if(std::isnan(merged_spe_entries[spe_idx][jj])) {
+                std::cout << "merged_spe_entries[" << spe_idx << "][" << jj << "] is nan" << std::endl;
+            }
             ((long *)(basis->i))[nnz_idx] = merged_spe_support[spe_idx][jj];
             ((double *)(basis->x))[nnz_idx] = merged_spe_entries[spe_idx][jj];
             ++nnz_idx;
         }
     }
+    for(size_t i=0; i<data->nrow; ++i) {
+        if(std::isnan(((double *)(data->x))[i])) {
+            std::cout << "data[" << i << "] is nan" << std::endl;
+        }
+    }
+    std::cout << "reduced_nnz: " << reduced_nnz << ", nnz_idx: " << nnz_idx << std::endl;
 
     cholmod_l_free_triplet(&basis_trip, &chol_common);
     //eigen_timer.start();
