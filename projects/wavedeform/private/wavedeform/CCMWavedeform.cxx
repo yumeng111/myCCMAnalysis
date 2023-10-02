@@ -270,6 +270,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
 
     double coarse_spacing = wf_bin_width;
+    double triplet_spacing = wf_bin_width + 2;
     double spacing = coarse_spacing;
 
     // Get the peak FWHM start, stop times for this waveform
@@ -278,14 +279,16 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // Generate the set of pulse start times that have reasonable
     // non-zero data within the FWHM of the corresponding pulse
     bool prev_below = true;
-    size_t fine_spacing_tau = 1;
+    size_t fine_spacing_tau = 2;
+    size_t triplet_spacing_tau = 50;
     size_t n_since_fine = 0;
     for (k = 0; k < wf.GetWaveform().size(); ++k) {
         if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
-            n_since_fine += 1;
             if(prev_below) {
                 n_since_fine = 0;
                 spacing = fine_spacing;
+            } else if(n_since_fine > triplet_spacing_tau){
+                spacing = triplet_spacing;
             } else if(n_since_fine > fine_spacing_tau) {
                 spacing = coarse_spacing;
             }
@@ -300,6 +303,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                 start_times.push_back(std::pair<double, double>(present, spacing));
                 present += spacing;
             }
+            n_since_fine += 1;
             prev_below = false;
         } else {
             prev_below = true;
@@ -410,7 +414,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
     output_data_times = data_times;
     std::vector<std::vector<size_t>> bb_rebin_ranges;
-    double ncp_prior = 100;
+    double ncp_prior = 100.0;
     rebin_bayesian_blocks(data_times, ((double *)(data->x)), bb_rebin_ranges, ncp_prior, wfTemplate.total_mass);
     output_rebin_data_times.clear();
 
