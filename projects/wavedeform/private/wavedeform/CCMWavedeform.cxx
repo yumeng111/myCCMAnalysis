@@ -161,11 +161,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
-    double GetPulsesInternal_s = 0.0;
-    double GetPulsesInternal_u = 0.0;
-    //NNLSTimer GetPulsesInternal_timer("GetPulsesInternal", GetPulsesInternal_s, GetPulsesInternal_u, true);
-    output.clear();
+void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
     cholmod_dense *data, *unfolded;
@@ -179,8 +175,10 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     //NNLSTimer eigen_timer("Eigen", eigen_s, eigen_u, false);
     //NNLSTimer pre_compute("Pre compute total", dummy_s, dummy_u, true);
 
+    size_t wf_size = wf_end - wf_begin;
+
     // Determine the total number of WF bins
-    nbins = wf.GetWaveform().size();
+    nbins = wf_size;
     // If we have no data, nothing to do
     if (nbins == 0 || !std::isfinite(spe_charge) || spe_charge == 0)
         return;
@@ -212,20 +210,20 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // If the waveform is shorter than a pulse width,
     // increase the per-bin weights so the aggregate weight
     // is closer to what it should be
-    if (wf.GetWaveform().size() * wf_bin_width < wfTemplate.pulse_width){
-        base_weight *= wfTemplate.pulse_width / (wf.GetWaveform().size() * wf_bin_width);
+    if (wf_size * wf_bin_width < wfTemplate.pulse_width){
+        base_weight *= wfTemplate.pulse_width / (wf_size * wf_bin_width);
     }
 
     double noise = noise_threshold_;
     double basisThreshmV = basis_threshold_;
 
     std::vector<double> data_times;
-    data_times.reserve(wf.GetWaveform().size());
+    data_times.reserve(wf_size);
 
     // Read waveform
-    for (k = 0; k < wf.GetWaveform().size(); k++) {
+    for (k = 0; k < wf_size; k++) {
         redges[k] = (1. + k) * wf_bin_width;
-        ((double *)(data->x))[k] = wf.GetWaveform()[k];
+        ((double *)(data->x))[k] = wf.GetWaveform()[k+wf_begin];
         data_times.push_back(k * 2.0);
 
         weights[k] = base_weight;
@@ -254,7 +252,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
 
     // Precalculate the max number of basis functions to avoid reallocation
-    int maxspes = int(spes_per_bin_*(wf.GetWaveform().size()));
+    int maxspes = int(spes_per_bin_*(wf_size));
 
     std::vector<std::pair<double, double> > start_times;
     start_times.reserve(maxspes);
@@ -262,7 +260,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
     // Start, end two bins early
     double present = - 2. * wf_bin_width;
-    double max = present + wf.GetWaveform().size() * wf_bin_width;
+    double max = present + wf_size * wf_bin_width;
 
     double fine_spacing = wf_bin_width / spes_per_bin_;
     if (fine_spacing < min_spe_spacing) {
@@ -270,7 +268,6 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
 
     double coarse_spacing = wf_bin_width;
-    double triplet_spacing = wf_bin_width + 2;
     double spacing = coarse_spacing;
 
     // Get the peak FWHM start, stop times for this waveform
@@ -280,15 +277,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // non-zero data within the FWHM of the corresponding pulse
     bool prev_below = true;
     size_t fine_spacing_tau = 2;
-    size_t triplet_spacing_tau = 50;
     size_t n_since_fine = 0;
-    for (k = 0; k < wf.GetWaveform().size(); ++k) {
+    for (k = 0; k < wf_size; ++k) {
         if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
             if(prev_below) {
                 n_since_fine = 0;
                 spacing = fine_spacing;
-            } else if(n_since_fine > triplet_spacing_tau){
-                spacing = triplet_spacing;
             } else if(n_since_fine > fine_spacing_tau) {
                 spacing = coarse_spacing;
             }
@@ -375,7 +369,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         end = it->first + wfTemplate.end_time;
 
         // Evaluate bins up until we pass the end of the current time range
-        for (; k < wf.GetWaveform().size() && redges[k] < end; ++k) {
+        for (; k < wf_size && redges[k] < end; ++k) {
             // Check if bin time is inside the max of
             // the last range and the min of the current range
             if (redges[k] < start) {
@@ -383,12 +377,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             }
         }
 
-        if (k == wf.GetWaveform().size()) {
+        if (k == wf_size) {
             break;
         }
     }
 
-    while (k < wf.GetWaveform().size()) {
+    while (k < wf_size) {
         // Get rid of bins with times later than the end of the support of the
         // last basis function
         weights[k] = 0.;
@@ -830,25 +824,103 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         speCorrection = 1.;
     }
 
-    // let's account for the electron transit time!!
-    double electron_time = calibration.GetPMTDeltaT();
-
     // Convert to pulse series
     for (int i = 0; i < merged_spe_start_times.size(); i++) {
         if (((double *)(unfolded->x))[i] == 0)
             continue;
 
-
         for(size_t j=0; j<merged_spe_start_times[i].size(); ++j) {
             CCMRecoPulse pulse;
-            pulse.SetTime(merged_spe_start_times[i][j] - electron_time);
+            pulse.SetTime(merged_spe_start_times[i][j]);
             pulse.SetCharge((((double *)(unfolded->x))[i]) * speCorrection * merged_spe_magnitudes[i][j]);
             pulse.SetWidth(merged_spe_widths[i][j]);
             output.push_back(pulse);
         }
     }
     cholmod_l_free_dense(&unfolded, &chol_common);
+}
 
+void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
+    output.clear();
+    std::vector<double> const & w = wf.GetWaveform();
+    if(w.size() == 0)
+        return;
+
+    std::vector<std::pair<size_t, size_t>> regions;
+    size_t start = 0;
+    size_t end = 0;
+    bool prev_in_region = w[0] > basis_threshold_;
+    for(size_t i=0; i<w.size(); ++i) {
+        bool in_region = w[i] > basis_threshold_;
+        if(in_region) {
+            if(prev_in_region) {
+                //
+            } else {
+                start = i;
+            }
+        } else {
+            if(prev_in_region) {
+                end = i;
+                if(regions.size() > 0 and end - regions.back().second < wfTemplate.digitizer_template.size()*2) {
+                    regions.back() = std::pair<size_t, size_t>(regions.back().first, end);
+                } else {
+                    regions.emplace_back(start, end);
+                }
+            } else {
+                //
+            }
+        }
+        prev_in_region = in_region;
+    }
+    if(prev_in_region) {
+        end = w.size();
+        regions.emplace_back(start, end);
+        prev_in_region = false;
+    }
+
+    //std::cout << "Split into " << regions.size() << " regions" << std::endl;
+
+    //size_t front_ext = -wfTemplate.digitizerStart;
+    size_t front_ext = wfTemplate.digitizer_template.size();
+    //size_t back_ext = wfTemplate.digitizerStop;
+    size_t back_ext = wfTemplate.digitizer_template.size();
+
+    end = 0;
+    for(size_t i=0; i<regions.size(); ++i) {
+        if(i+1 < regions.size())
+            start = regions[i+1].first;
+        else
+            start = regions.size();
+        size_t start_idx = regions[i].first;
+        if(start_idx >= front_ext)
+            start_idx = std::max(end, start_idx - front_ext);
+        else
+            start_idx = 0;
+        size_t end_idx = regions[i].second;
+        if(end_idx < (int(w.size()) - int(back_ext)))
+            end_idx = std::min(start, end_idx + back_ext);
+        else
+            end_idx = w.size();
+        end = end_idx;
+        double start_time = start_idx * 2.0;
+        double end_time = end_idx * 2.0;
+        CCMRecoPulseSeries region_output;
+        std::vector<double> region_output_data_times;
+        std::vector<double> region_output_rebin_data_times;
+        GetPulses(wf, regions[i].first, regions[i].second, wfTemplate, calibration, spe_charge, template_bin_spacing_, noise_threshold_, basis_threshold_, spes_per_bin_, reduce_, tolerance_, apply_spe_corr_, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, frame);
+        for(size_t j=0; j<region_output.size(); ++j) {
+            CCMRecoPulse const & pulse = region_output[j];
+            CCMRecoPulse new_pulse;
+            new_pulse.SetTime(pulse.GetTime() + start_time);
+            new_pulse.SetCharge(pulse.GetCharge());
+            new_pulse.SetWidth(pulse.GetWidth());
+            output.push_back(new_pulse);
+        }
+        for(size_t j=0; j<region_output_data_times.size(); ++j)
+            output_data_times.push_back(region_output_data_times[j] + start_time);
+        for(size_t j=0; j<region_output_rebin_data_times.size(); ++j)
+            output_rebin_data_times.push_back(region_output_rebin_data_times[j] + start_time);
+    }
 }
 
 void RunPulsesThread(
@@ -1245,6 +1317,19 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
     for(size_t i=0; i<num_threads; ++i) {
         threads[i].join();
     }
+
+    size_t original_bins = 0;
+    size_t rebinned_bins = 0;
+    for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *output_data_times) {
+        if(p.second.size() == 0) {
+            continue;
+        }
+        original_bins += p.second.size() - 1;
+        rebinned_bins += output_rebin_data_times->operator[](p.first).size() - 1;
+    }
+
+    //std::cout << "Original bins" << original_bins << std::endl;
+    //std::cout << "Rebinned bins" << rebinned_bins << std::endl;
 
     frame->Put("OriginalDataBins", output_data_times);
     frame->Put("RebinnedDataBins", output_rebin_data_times);
