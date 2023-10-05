@@ -408,7 +408,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
 
     output_data_times = data_times;
     std::vector<std::vector<size_t>> bb_rebin_ranges;
-    double ncp_prior = 100.0;
+    double ncp_prior = 0.0000001;
     rebin_bayesian_blocks(data_times, ((double *)(data->x)), bb_rebin_ranges, ncp_prior, wfTemplate.total_mass);
     output_rebin_data_times.clear();
 
