@@ -50,12 +50,17 @@ class SumWaveforms: public I3Module {
     std::string nim_pulses_name_;
     CCMPMTKey bcm_key;
     size_t bcm_channel;
+    bool use_raw_waveforms_;
+    std::string waveforms_key_;
+    std::string output_prefix_;
     std::set<CCMTriggerKey> allowed_trigger_keys;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     I3Map<CCMPMTKey, CCMOMGeo> pmt_geo_;
     void Geometry(I3FramePtr frame);
     bool IsCorrectTrigger(I3FramePtr frame);
+
     std::tuple<std::deque<double>, std::deque<unsigned int>> ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position);
+    std::tuple<std::deque<double>, std::deque<unsigned int>> ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformDoubleSeries> const & waveforms, int & fixed_position);
 public:
     SumWaveforms(const I3Context&);
     void Configure();
@@ -70,8 +75,10 @@ SumWaveforms::SumWaveforms(const I3Context& context) : I3Module(context),
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("AllowedTriggerKeys", "Trigger keys to sum", I3Vector<CCMTriggerKey>());
+    AddParameter("UseRawWaveforms", "Toggle using raw waveforms, default is false", bool(false));
+    AddParameter("WaveformsKey", "Key for input waveforms, must match type", "CCMCalibratedWaveforms");
+    AddParameter("OutputPrefix", "Prefix for output keys", "");
 }
-
 
 void SumWaveforms::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
@@ -79,6 +86,9 @@ void SumWaveforms::Configure() {
     I3Vector<CCMTriggerKey> keys;
     GetParameter("AllowedTriggerKeys", keys);
     std::copy(keys.begin(), keys.end(), std::inserter(allowed_trigger_keys, allowed_trigger_keys.end()));
+    GetParameter("UseRawWaveforms", use_raw_waveforms_);
+    GetParameter("WaveformsKey", waveforms_key_);
+    GetParameter("OutputPrefix", output_prefix_);
 }
 
 
@@ -144,7 +154,7 @@ std::tuple<std::deque<double>, std::deque<unsigned int>> SumWaveforms::ComputeSu
             continue;
         BaselineEstimate value = it.second;
         double mode = value.baseline; //baseline mode is negative!!!
-	uint32_t channel = pmt_channel_map_[key];
+        uint32_t channel = pmt_channel_map_[key];
         CCMWaveformUInt16 const & waveform = waveforms->at(channel);
         std::vector<short unsigned int> const & samples = waveform.GetWaveform();
         std::vector<double> wf_minus_baseline(samples.size());
@@ -152,7 +162,7 @@ std::tuple<std::deque<double>, std::deque<unsigned int>> SumWaveforms::ComputeSu
         for(size_t i = 0; i < samples.size(); ++i){
             wf_minus_baseline[i] = samples[i] + mode;
         }
-	CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+        CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
         double pos = frame->Get<NIMLogicPulseSeriesMap>("NIMPulses").at(geo.trigger_copy_map.at(key)).at(0).GetNIMPulseTime() / 2.0 ;
         summed_waveforms_.AddWaveform(wf_minus_baseline, pos);
     }
@@ -163,6 +173,30 @@ std::tuple<std::deque<double>, std::deque<unsigned int>> SumWaveforms::ComputeSu
     return {summed_wf, summed_wf_counts};
 }
 
+std::tuple<std::deque<double>, std::deque<unsigned int>> SumWaveforms::ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformDoubleSeries> const & waveforms, int & fixed_position) {
+
+    //reset summed_waveforms_ !!!
+    WaveformAccumulator summed_waveforms_;
+
+    for(std::pair<CCMPMTKey const, CCMOMGeo> const & it : pmt_geo_) {
+        CCMPMTKey key = it.first;
+        CCMOMGeo::OMType const & omtype = it.second.omtype;
+        if(omtype != CCMOMGeo::OMType::CCM8inUncoated and omtype != CCMOMGeo::OMType::CCM8inCoated)
+            continue;
+        uint32_t channel = pmt_channel_map_[key];
+        CCMWaveformDouble const & waveform = waveforms->at(channel);
+        std::vector<double> const & samples = waveform.GetWaveform();
+
+        CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+        double pos = frame->Get<NIMLogicPulseSeriesMap>("NIMPulses").at(geo.trigger_copy_map.at(key)).at(0).GetNIMPulseTime() / 2.0 ;
+        summed_waveforms_.AddWaveform(samples, pos);
+    }
+
+    std::deque<double> summed_wf = summed_waveforms_.GetSummedWaveform();
+    std::deque<unsigned int> summed_wf_counts = summed_waveforms_.GetCounts();
+    fixed_position = summed_waveforms_.GetFixedPosition();
+    return {summed_wf, summed_wf_counts};
+}
 
 void SumWaveforms::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
@@ -174,28 +208,36 @@ void SumWaveforms::DAQ(I3FramePtr frame) {
         return;
     }
 
-    if(not frame->Has("CCMWaveforms")) {
+    if(not frame->Has(waveforms_key_)) {
         throw std::runtime_error("No waveforms!");
     }
 
-    // ptr to vector of all waveforms and baselines (one for each channel)
-    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>("CCMWaveforms");
-    I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
-
     // a shared pointer to store the total charge per pmt for each event
-    boost::shared_ptr<I3Vector<int>> summed_wf_reference_time(new I3Vector<int>(1));
-
-    // let's add up all the charge in the detector
+    boost::shared_ptr<I3PODHolder<int>> summed_wf_reference_time = boost::make_shared<I3PODHolder<int>>();
     int fixed_position;
-    std::tuple<std::deque<double>, std::deque<unsigned int>> summed_wf = ComputeSummedWaveforms(frame, waveforms, baseline_mode, fixed_position);
+    std::tuple<std::deque<double>, std::deque<unsigned int>> summed_wf;
+
+    // ptr to vector of all waveforms and baselines (one for each channel)
+    if(use_raw_waveforms_) {
+        boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(waveforms_key_);
+        I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
+
+        // let's add up all the charge in the detector
+        summed_wf = ComputeSummedWaveforms(frame, waveforms, baseline_mode, fixed_position);
+    } else {
+        boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_key_);
+        // let's add up all the charge in the detector
+        summed_wf = ComputeSummedWaveforms(frame, waveforms, fixed_position);
+    }
+
     boost::shared_ptr<I3Vector<double>> summed_wf_per_frame = boost::make_shared<I3Vector<double>>(std::get<0>(summed_wf).begin(), std::get<0>(summed_wf).end());
     boost::shared_ptr<I3Vector<unsigned int>> summed_wf_counts_per_frame = boost::make_shared<I3Vector<unsigned int>>(std::get<1>(summed_wf).begin(), std::get<1>(summed_wf).end());
 
-    summed_wf_reference_time->operator[](0) = fixed_position;
+    summed_wf_reference_time->value = fixed_position;
 
-    frame->Put("SummedWaveform", summed_wf_per_frame);
-    frame->Put("SummedWaveformCounts", summed_wf_counts_per_frame);
-    frame->Put("SummedWaveformFixedPosition", summed_wf_reference_time);
+    frame->Put((output_prefix_ + "SummedWaveform").c_str(), summed_wf_per_frame);
+    frame->Put((output_prefix_ + "SummedWaveformCounts").c_str(), summed_wf_counts_per_frame);
+    frame->Put((output_prefix_ + "SummedWaveformFixedPosition").c_str(), summed_wf_reference_time);
     PushFrame(frame);
 }
 
