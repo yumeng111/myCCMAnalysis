@@ -168,13 +168,6 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     unsigned j, k;
     int nbins = 0;
 
-    double dummy_s = 0.0;
-    double dummy_u = 0.0;
-    //double eigen_s = 0.0;
-    //double eigen_u = 0.0;
-    //NNLSTimer eigen_timer("Eigen", eigen_s, eigen_u, false);
-    //NNLSTimer pre_compute("Pre compute total", dummy_s, dummy_u, true);
-
     size_t wf_size = wf_end - wf_begin;
 
     // Determine the total number of WF bins
@@ -207,6 +200,15 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     // HARDCODING WF BIN WIDTH TO AVOID NANS
     double wf_bin_width = 2; // 2 nsec
 
+    double max_template_val = 0;
+    double max_template_delta = 0;
+    for(size_t i=0; i+1<wfTemplate.digitizer_template.size(); ++i) {
+        double delta = std::abs(wfTemplate.digitizer_template[i] - wfTemplate.digitizer_template[i+1]);
+        max_template_delta = std::max(max_template_delta, delta);
+        max_template_val = std::max(max_template_val, wfTemplate.digitizer_template[i]);
+    }
+    max_template_val = std::max(max_template_val, wfTemplate.digitizer_template[wfTemplate.digitizer_template.size()-1]);
+
     // If the waveform is shorter than a pulse width,
     // increase the per-bin weights so the aggregate weight
     // is closer to what it should be
@@ -220,7 +222,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     std::vector<double> data_times;
     data_times.reserve(wf_size);
 
-    // Read waveform
+   // Read waveform
     for (k = 0; k < wf_size; k++) {
         redges[k] = (1. + k) * wf_bin_width;
         ((double *)(data->x))[k] = wf.GetWaveform()[k+wf_begin];
@@ -408,36 +410,58 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
 
     output_data_times = data_times;
     std::vector<std::vector<size_t>> bb_rebin_ranges;
-    double ncp_prior = 0.0000001;
+    double ncp_prior = 1.0;
     rebin_bayesian_blocks(data_times, ((double *)(data->x)), bb_rebin_ranges, ncp_prior, wfTemplate.total_mass);
     output_rebin_data_times.clear();
 
     std::vector<std::vector<size_t>> rebin_ranges;
     rebin_ranges.reserve(bb_rebin_ranges.size());
     std::vector<size_t> current_binning;
-    for(size_t i=0; i<bb_rebin_ranges.size(); ++i) {
-        for(size_t j=0; j<bb_rebin_ranges[i].size(); ++j) {
-            if(bb_rebin_ranges[i][j] > 0 and ((double *)(data->x))[bb_rebin_ranges[i][j] - 1] <= 0) {
-                // If previous bin is zero, keep this bin unmerged
-                if(current_binning.size() == 0) {
-                    current_binning.push_back(bb_rebin_ranges[i][j]);
-                    rebin_ranges.push_back(current_binning);
-                    current_binning.clear();
-                } else {
-                    rebin_ranges.push_back(current_binning);
-                    current_binning.clear();
-                    current_binning.push_back(bb_rebin_ranges[i][j]);
-                    rebin_ranges.push_back(current_binning);
-                    current_binning.clear();
-                }
-            } else {
-                current_binning.push_back(bb_rebin_ranges[i][j]);
-            }
-        }
-        if(current_binning.size() > 0) {
+    std::function<void(size_t)> new_bin = [&current_binning, &rebin_ranges] (size_t idx) {
+        if(current_binning.size() == 0) {
+            current_binning.push_back(idx);
+            rebin_ranges.push_back(current_binning);
+            current_binning.clear();
+        } else {
+            rebin_ranges.push_back(current_binning);
+            current_binning.clear();
+            current_binning.push_back(idx);
             rebin_ranges.push_back(current_binning);
             current_binning.clear();
         }
+    };
+    bool zero_bin = true;
+    for(size_t i=0; i<bb_rebin_ranges.size(); ++i) {
+        for(size_t j=0; j<bb_rebin_ranges[i].size(); ++j) {
+            size_t idx = bb_rebin_ranges[i][j];
+            bool current_zero = ((double *)(data->x))[idx] <= 0;
+            double current_val = ((double *)(data->x))[idx];
+            double next_val = ((double *)(data->x))[idx+1];
+            bool large_delta = (idx+1 < data_times.size()) and
+                (std::abs(current_val - next_val) >
+                 std::min(
+                     std::max(max_template_delta, max_template_delta * current_val / max_template_val),
+                     max_template_val));
+            if((zero_bin != current_zero) or large_delta) {
+                 new_bin(idx);
+            } else {
+                current_binning.push_back(idx);
+            }
+            zero_bin = current_zero;
+            if(not zero_bin and current_binning.size() > 2) {
+                rebin_ranges.push_back(current_binning);
+                current_binning.clear();
+            }
+        }
+        if(current_binning.size() > 0 and not zero_bin) {
+            rebin_ranges.push_back(current_binning);
+            current_binning.clear();
+            zero_bin = true;
+        }
+    }
+    if(current_binning.size() > 0) {
+        rebin_ranges.push_back(current_binning);
+        current_binning.clear();
     }
 
     for(size_t i=0; i<rebin_ranges.size(); ++i) {
@@ -534,7 +558,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             int templ_bin = int(((redges[i] - start_times[j].first) - wfTemplate.start_time)*templ_bin_spacing_inv);
             if (templ_bin < 0)
                 break;
-            if (templ_bin >=- n_bins)
+            if (templ_bin >= n_bins)
                 continue;
 
             ((long *)(basis_trip->i))[basis_trip->nnz] = i;
@@ -581,11 +605,6 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
         }
     }
 
-    for(size_t i=0; i<rebinned_data.size(); ++i) {
-        ((double *)(data->x))[i] = rebinned_data[i];
-    }
-    data->nrow = rebin_ranges.size();
-
     size_t reduced_nnz = 0;
     // Parent SPE, child SPE
     std::vector<std::vector<double>> merged_spe_magnitudes;
@@ -629,9 +648,9 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
                 for(size_t jj=1; jj<num_same_support; ++jj) {
                     size_t j = matching_support_idx + jj;
                     double dot_product = 0.0;
-                    for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
-                        size_t data_idx = spe_bb_support[j][ii];
-                        dot_product += spe_bb_entries[j][ii] * rebinned_data[data_idx];
+                    for(size_t ii = 0; ii<spe_original_support[j].size(); ++ii) {
+                        size_t data_idx = spe_original_support[j][ii];
+                        std::max(dot_product, spe_original_entries[j][ii] * ((double *)(data->x))[data_idx]);
                     }
                     spe_magnitudes.emplace_back(dot_product);
                     total_dot_product += dot_product;
@@ -769,6 +788,11 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
         }
     }
 
+    for(size_t i=0; i<rebinned_data.size(); ++i) {
+        ((double *)(data->x))[i] = rebinned_data[i];
+    }
+    data->nrow = rebin_ranges.size();
+
     cholmod_l_free_triplet(&basis_trip, &chol_common);
     //eigen_timer.start();
     //Eigen::Map<fnnls::VectorX_<double>> data_view(((double *)(data->x)), data->nrow);
@@ -890,24 +914,31 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         if(i+1 < regions.size())
             start = regions[i+1].first;
         else
-            start = regions.size();
+            start = w.size();
         size_t start_idx = regions[i].first;
-        if(start_idx >= front_ext)
-            start_idx = std::max(end, start_idx - front_ext);
-        else
-            start_idx = 0;
+        // std::cout << "start_idx = " << start_idx << std::endl;
+        size_t ext = std::min(start_idx, back_ext);
+        // std::cout << "ext = std::min(" << start_idx << ", " << back_ext << ") = " << ext << std::endl;
+        start_idx -= ext;
+        // std::cout << "start_idx = " << start_idx << std::endl;
+        // std::cout << "start_idx = std::max(" << end << ", " << start_idx << ") = " << std::max(end, start_idx) << std::endl;
+        start_idx = std::max(end, start_idx);
         size_t end_idx = regions[i].second;
-        if(end_idx < (int(w.size()) - int(back_ext)))
-            end_idx = std::min(start, end_idx + back_ext);
-        else
-            end_idx = w.size();
+        // std::cout << "end_idx = " << end_idx << std::endl;
+        ext = std::min(w.size() - end_idx, front_ext);
+        // std::cout << "ext = std::min(" << w.size() - end_idx << ", " << front_ext << ") = " << ext << std::endl;
+        end_idx += ext;
+        // std::cout << "end_idx = " << end_idx << std::endl;
+        // std::cout << "end_idx = std::min(" << start << ", " << end_idx << ") = " << std::min(start, end_idx) << std::endl;
+        end_idx = std::min(start, end_idx);
         end = end_idx;
         double start_time = start_idx * 2.0;
         double end_time = end_idx * 2.0;
+        // std::cout << "(" << regions[i].first << ", " << regions[i].second << ") -> (" << start_idx << ", " << end_idx << ")" << std::endl;
         CCMRecoPulseSeries region_output;
         std::vector<double> region_output_data_times;
         std::vector<double> region_output_rebin_data_times;
-        GetPulses(wf, regions[i].first, regions[i].second, wfTemplate, calibration, spe_charge, template_bin_spacing_, noise_threshold_, basis_threshold_, spes_per_bin_, reduce_, tolerance_, apply_spe_corr_, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, frame);
+        GetPulses(wf, start_idx, end_idx, wfTemplate, calibration, spe_charge, template_bin_spacing_, noise_threshold_, basis_threshold_, spes_per_bin_, reduce_, tolerance_, apply_spe_corr_, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, frame);
         for(size_t j=0; j<region_output.size(); ++j) {
             CCMRecoPulse const & pulse = region_output[j];
             CCMRecoPulse new_pulse;
