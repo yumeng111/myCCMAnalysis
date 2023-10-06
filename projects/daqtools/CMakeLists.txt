@@ -25,6 +25,7 @@ i3_add_library(${PROJECT_NAME}
     private/FirstPulseFinder.cxx
     private/CCMDerivativePulseFinder.cxx
     private/EventFinder.cxx
+    private/AccumulateWaveforms.cxx
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services
