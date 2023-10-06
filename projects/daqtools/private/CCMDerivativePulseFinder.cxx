@@ -369,11 +369,7 @@ void CCMDerivativePulseFinder::FindPulses(
     // Reset the smoother position to the start of the waveform
     deriv.Reset();
     // nim_pulse_time is in ns, so divide by 2 to get bins and subtract 250 to get -500. Add 250 to get +500.
-    size_t startIndex = size_t(nim_pulse_time / 2.0) - 250;
-    size_t endIndex = std::min(startIndex + 500 + 1, N) - 1;
-    // Ensure the derivative calculator is at the right index
-    deriv.Reset(startIndex);
-    for(size_t i=startIndex; i<endIndex; ++i) {//Loop from start to end of the time region desired.
+    for(size_t i=0; i<N; ++i) {//Loop from start to end of the time region desired.
         uint16_t failure_reason = 0;
         // Check the condition for the beginning of a pulse
         if(deriv.Derivative() > deriv_threshold) {
