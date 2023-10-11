@@ -704,53 +704,200 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     // Only merge if we have 3 or more SPEs in a row with the same support, and merge all SPEs except the first one
     // We must choose a relative magnitude for the merged SPEs when combining them and when uncombining after fitting,
     //   we can use the dot product of the SPE row with the data to determine this relative magnitude
+    size_t min_spe_idx = 0;
+    size_t max_spe_idx = 0;
+    size_t pad_left = 0;
+    size_t pad_right = 0;
+    for(size_t rebin_data_idx=0; rebin_data_idx<rebin_ranges.size() and min_spe_idx<spe_bb_support.size(); ++rebin_data_idx) {
+        max_spe_idx += 1;
+
+        while(rebin_data_idx < rebin_ranges.size()-1
+                and max_spe_idx < spe_bb_support.size()
+                and std::abs(start_times[max_spe_idx].first - data_times[rebin_ranges[rebin_data_idx].back()])
+                    < std::abs(start_times[max_spe_idx].first - data_times[rebin_ranges[rebin_data_idx].back()+1])) {
+            max_spe_idx += 1;
+        }
+        if(rebin_ranges[rebin_data_idx].size() == 1) {
+            // Put the unmerged SPEs into the final basis
+            for(size_t jj=0; jj<(max_spe_idx-min_spe_idx); ++jj) {
+                size_t j = min_spe_idx + jj;
+                merged_spe_magnitudes.push_back({1.0});
+                merged_spe_start_times.push_back({start_times[j].first});
+                merged_spe_widths.push_back({start_times[j].second});
+
+                merged_spe_support.push_back(spe_bb_support[j]);
+                merged_spe_entries.push_back(spe_bb_entries[j]);
+                reduced_nnz += merged_spe_entries.back().size();
+                for(size_t ii=0; ii<spe_bb_entries[j].size(); ++ii) {
+                    if(std::isnan(spe_bb_entries[j][ii])) {
+                        std::cout << "NaN spe entry 2" << std::endl;
+                    }
+                }
+            }
+            min_spe_idx = max_spe_idx;
+        } else {
+            std::cout << "Merged bin" << std::endl;
+            std::cout << "Data times ";
+            for(size_t i=0; i<rebin_ranges[rebin_data_idx].size(); ++i) {
+                std::cout << data_times[rebin_ranges[rebin_data_idx][i]] + wf_begin * 2.0 << ", ";
+            }
+            std::cout << std::endl;
+            std::cout << "N spes closest to bin: " << max_spe_idx - min_spe_idx << std::endl;
+            std::cout << "Min spe time:" << start_times[min_spe_idx].first + wf_begin * 2.0 << std::endl;
+            std::cout << "Max spe time:" << start_times[max_spe_idx-1].first + wf_begin * 2.0 << std::endl;
+            bool skip_left = (rebin_data_idx > 0 and rebin_ranges[rebin_data_idx-1].size() == 1);
+            bool skip_right = (rebin_data_idx < rebin_ranges.size() - 1 and rebin_ranges[rebin_data_idx+1].size() == 1);
+            size_t merge_min_idx = std::min(min_spe_idx + pad_left, spe_bb_support.size()-1);
+            size_t merge_max_idx = std::max(max_spe_idx - std::min(pad_right, max_spe_idx), merge_min_idx);
+            size_t n_merge = merge_max_idx - merge_min_idx;
+            std::cout << "N spes to merge: " << n_merge << std::endl;
+            std::cout << "Min merge spe time:" << start_times[merge_min_idx].first + wf_begin * 2.0 << std::endl;
+            std::cout << "Max merge spe time:" << start_times[merge_max_idx-1].first + wf_begin * 2.0 << std::endl;
+            if(skip_left) {
+                for(size_t jj=0; jj<pad_left; ++jj) {
+                    size_t j = merge_min_idx + jj;
+                    merged_spe_magnitudes.push_back({1.0});
+                    merged_spe_start_times.push_back({start_times[j].first});
+                    merged_spe_widths.push_back({start_times[j].second});
+
+                    merged_spe_support.push_back(spe_bb_support[j]);
+                    merged_spe_entries.push_back(spe_bb_entries[j]);
+                    reduced_nnz += merged_spe_entries.back().size();
+                    for(size_t ii=0; ii<spe_bb_entries[j].size(); ++ii) {
+                        if(std::isnan(spe_bb_entries[j][ii])) {
+                            std::cout << "NaN spe entry 2" << std::endl;
+                        }
+                    }
+                }
+            }
+            if(skip_right) {
+                for(size_t jj=0; jj<pad_right; ++jj) {
+                    size_t j = merge_max_idx + jj;
+                    merged_spe_magnitudes.push_back({1.0});
+                    merged_spe_start_times.push_back({start_times[j].first});
+                    merged_spe_widths.push_back({start_times[j].second});
+
+                    merged_spe_support.push_back(spe_bb_support[j]);
+                    merged_spe_entries.push_back(spe_bb_entries[j]);
+                    reduced_nnz += merged_spe_entries.back().size();
+                    for(size_t ii=0; ii<spe_bb_entries[j].size(); ++ii) {
+                        if(std::isnan(spe_bb_entries[j][ii])) {
+                            std::cout << "NaN spe entry 2" << std::endl;
+                        }
+                    }
+                }
+            }
+            // Use the dot product with the data to set the relative magnitudes
+            double total_dot_product = 0.0;
+            std::vector<double> spe_magnitudes;
+            spe_magnitudes.reserve(n_merge);
+            // Iterate over SPEs in the center
+            size_t min_data_idx = spe_original_support[merge_min_idx].front();
+            size_t max_data_idx = spe_original_support[merge_max_idx-1].back();
+            std::cout << "Min data support time = " << redges[min_data_idx] + 2.0 * wf_begin << std::endl;
+            std::cout << "Max data support time = " << redges[max_data_idx] + 2.0 * wf_begin << std::endl;
+            while(redges[min_data_idx] < start_times[merge_min_idx].first + fwhmStart - 2.0 and min_data_idx < max_data_idx) {
+                min_data_idx += 1;
+            }
+            while(redges[max_data_idx] > start_times[merge_max_idx-1].first + fwhmStop - 2.0 and max_data_idx > min_data_idx) {
+                max_data_idx -= 1;
+            }
+            std::cout << "Min fwhm data support time = " << redges[min_data_idx] + 2.0 * wf_begin << std::endl;
+            std::cout << "Max fwhm data support time = " << redges[max_data_idx] + 2.0 * wf_begin << std::endl;
+            double linear_b = 0;
+            double linear_m = 0;
+            if(max_data_idx > min_data_idx) {
+                linear_fit((double *)(data->x) + min_data_idx, (double *)(data->x) + max_data_idx + 1, linear_b, linear_m);
+                linear_m /= 2.0; // convert slope to ns
+            }
+            std::cout << "linear_b = " << linear_b << std::endl;
+            std::cout << "linear_m = " << linear_m << std::endl;
+
+            for(size_t jj=0; jj<n_merge; ++jj) {
+                size_t j = merge_min_idx + jj;
+                double dot_product = std::max(0.0, linear_b + linear_m * (start_times[j].first - redges[min_data_idx]));
+                dot_product /= start_times[j].second;
+                spe_magnitudes.emplace_back(dot_product);
+                total_dot_product += dot_product;
+            }
+            std::vector<double> spe_start_times;
+            spe_start_times.reserve(n_merge);
+            std::vector<double> spe_widths;
+            spe_widths.reserve(n_merge);
+            size_t min_support_idx = spe_bb_support[merge_min_idx].front();
+            size_t max_support_idx = spe_bb_support[merge_max_idx-1].back();
+            std::vector<double> spe_entries(max_support_idx - min_support_idx + 1, 0.0);
+            std::vector<size_t> spe_support(max_support_idx - min_support_idx + 1);
+            std::iota(spe_support.begin(), spe_support.end(), min_support_idx);
+
+            for(size_t jj=0; jj<n_merge; ++jj) {
+                if(total_dot_product > 0) {
+                    spe_magnitudes[jj] /= total_dot_product;
+                } else {
+                    spe_magnitudes[jj] = 1.0 / (n_merge);
+                }
+                size_t j = merge_min_idx + jj;
+                spe_start_times.emplace_back(start_times[j].first);
+                spe_widths.emplace_back(start_times[j].second);
+                for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
+                    spe_entries[ii + spe_bb_support[j].front() - min_support_idx] += spe_bb_entries[j][ii] * spe_magnitudes[jj];
+                    if(std::isnan(spe_entries[ii + spe_bb_support[j].front() - min_support_idx])) {
+                        std::cout << "NaN spe entry 1" << std::endl;
+                    }
+                }
+            }
+
+            merged_spe_magnitudes.push_back(spe_magnitudes);
+            merged_spe_start_times.push_back(spe_start_times);
+            merged_spe_widths.push_back(spe_widths);
+
+            merged_spe_support.push_back(spe_support);
+            merged_spe_entries.push_back(spe_entries);
+            reduced_nnz += merged_spe_entries.back().size();
+        }
+        min_spe_idx = max_spe_idx;
+    }
+    /*
     size_t num_same_support = 1;
     size_t matching_support_idx = 0;
-    size_t front_padding = 3;
-    size_t back_padding = 3;
+    size_t front_padding = 0;
+    size_t back_padding = 0;
     size_t min_to_merge = front_padding + back_padding + 2;
-    for(size_t spe_idx=1; spe_idx<=spe_bb_fwhm_support.size(); ++spe_idx) {
-        if(spe_idx<spe_bb_fwhm_support.size() and spe_bb_fwhm_support[spe_idx] == spe_bb_fwhm_support[matching_support_idx]) {
+    for(size_t spe_idx=1; spe_idx<=spe_bb_support.size(); ++spe_idx) {
+        if(spe_idx<spe_bb_support.size() and spe_bb_support[spe_idx] == spe_bb_support[matching_support_idx]) {
             num_same_support += 1;
         } else {
             // The support has now changed
             // Store the first spe
+            //
+            size_t min_spe_idx = matching_support_idx + front_padding;
+            size_t max_spe_idx = matching_support_idx + num_same_support - 1 - back_padding;
+            double min_time = start_times[min_spe_idx].first + fwhmStart;
+            double max_time = start_times[max_spe_idx].first + fwhmStop;
+
+            // Check if the bb support is rebinned or is all original bins
+            bool is_rebinned = false;
+            for(size_t const & rebinned_data_idx : spe_bb_support[matching_support_idx]) {
+                if(rebin_ranges[rebinned_data_idx].size() > 1) {
+                    for(size_t const & data_idx : rebin_ranges[rebinned_data_idx]) {
+                        if(data_times[data_idx] > min_time and data_times[data_idx] < max_time) {
+                            is_rebinned = true;
+                            break;
+                        }
+                    }
+                    if(is_rebinned)
+                        break;
+                }
+            }
 
             // Check for how many identical supports we had in a row
-            if(num_same_support >= min_to_merge and spe_bb_fwhm_support[matching_support_idx].size() == 1) {
-                // Store the padding SPEs that are not merged
-                //for(size_t jj=0; jj<num_same_support; ++jj) {
-                //    size_t j = matching_support_idx + jj;
-                //    merged_spe_magnitudes.push_back({1.0});
-                //    merged_spe_start_times.push_back({start_times[j].first});
-                //    merged_spe_widths.push_back({start_times[j].second});
-
-                //    merged_spe_support.push_back(spe_bb_support[j]);
-                //    merged_spe_entries.push_back(spe_bb_entries[j]);
-                //    for(size_t ii=0; ii<spe_bb_entries[j].size(); ++ii) {
-                //        if(std::isnan(spe_bb_entries[j][ii])) {
-                //            std::cout << "NaN spe entry 0" << std::endl;
-                //        }
-                //    }
-                //    reduced_nnz += merged_spe_entries.back().size();
-                //    if(jj == front_padding - 1) // Skip over center elements
-                //        jj = num_same_support - back_padding - 1;
-                //}
-
+            if(num_same_support >= min_to_merge and is_rebinned) {
                 // Merge all but the first SPE with matching support
                 // Use the dot product with the data to set the relative magnitudes
                 double total_dot_product = 0.0;
                 std::vector<double> spe_magnitudes;
                 spe_magnitudes.reserve(num_same_support);
                 // Iterate over SPEs in the center
-                //size_t min_data_idx = spe_original_support[matching_support_idx + front_padding].front();
-                //size_t max_data_idx = spe_original_support[matching_support_idx + num_same_support - back_padding].back();
-                //while(redges[min_data_idx] < start_times[matching_support_idx + front_padding].first + fwhmStart - 2.0 and min_data_idx < max_data_idx) {
-                //    min_data_idx += 1;
-                //}
-                //while(redges[max_data_idx] > start_times[matching_support_idx + num_same_support - back_padding].first + fwhmStop - 2.0 and max_data_idx > min_data_idx) {
-                //    max_data_idx -= 1;
-                //}
                 size_t min_data_idx = spe_original_support[matching_support_idx].front();
                 size_t max_data_idx = spe_original_support[matching_support_idx + num_same_support - 1].back();
                 while(redges[min_data_idx] < start_times[matching_support_idx].first + fwhmStart - 2.0 and min_data_idx < max_data_idx) {
@@ -759,50 +906,17 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
                 while(redges[max_data_idx] > start_times[matching_support_idx + num_same_support - 1].first + fwhmStop - 2.0 and max_data_idx > min_data_idx) {
                     max_data_idx -= 1;
                 }
-                std::cout << "start_times, redges:" << std::endl;
-                for(size_t spe_idx = matching_support_idx; spe_idx < matching_support_idx + num_same_support; ++spe_idx) {
-                    std::cout << "\t" << spe_idx << " : " << start_times[spe_idx].first << std::endl;
-                    for(size_t r_idx : spe_original_support[spe_idx]) {
-                        std::cout << "\t\t" << redges[r_idx] << std::endl;
-                    }
-                }
-                std::cout << "min_idx = " << min_data_idx << std::endl;
-                std::cout << "max_idx = " << max_data_idx << std::endl;
-                //min_data_idx = std::max(min_data_idx, size_t(std::max(0.0, start_times[matching_support_idx].first + fwhmStart - 2.0)/2.0));
-                //max_data_idx = std::min(max_data_idx, size_t(std::max(0.0, start_times[matching_support_idx+num_same_support-1].first + fwhmStop - 2.0)/2.0));
-                //std::cout << "new_min_idx = " << min_data_idx << std::endl;
-                //std::cout << "new_max_idx = " << max_data_idx << std::endl;
-                std::cout << "redges[new_min_idx] = " << redges[min_data_idx] << std::endl;
-                std::cout << "redges[new_max_idx] = " << redges[max_data_idx] << std::endl;
                 double linear_b = 0;
                 double linear_m = 0;
                 if(max_data_idx > min_data_idx) {
                     linear_fit((double *)(data->x) + min_data_idx, (double *)(data->x) + max_data_idx + 1, linear_b, linear_m);
-                    //linear_b -= linear_m; // shift fit to sit on right edge of bin
                     linear_m /= 2.0; // convert slope to ns
                 }
-                std::cout << "linear_b: " << linear_b << std::endl;
-                std::cout << "linear_m: " << linear_m << std::endl;
 
-
-                //for(size_t jj=front_padding; jj<(num_same_support-back_padding); ++jj) {
                 for(size_t jj=0; jj<num_same_support; ++jj) {
                     size_t j = matching_support_idx + jj;
                     double dot_product = std::max(0.0, linear_b + linear_m * (start_times[j].first - redges[min_data_idx]));
                     dot_product /= start_times[j].second;
-                    //size_t max_entry_idx = 0;
-                    //double max_entry = 0;
-                    //for(size_t ii = 0; ii<spe_original_support[j].size(); ++ii) {
-                    //    //size_t data_idx = spe_original_support[j][ii];
-                    //    //std::max(dot_product, spe_original_entries[j][ii] * ((double *)(data->x))[data_idx]);
-                    //    if(spe_original_entries[j][ii] > max_entry) {
-                    //        max_entry = spe_original_entries[j][ii];
-                    //        max_entry_idx = ii;
-                    //    }
-                    //}
-                    //size_t data_idx = spe_original_support[j][max_entry_idx];
-                    //double dot_product = spe_original_entries[j][max_entry_idx] * ((double *)(data->x))[data_idx];
-                    //dot_product /= start_times[j].second;
                     spe_magnitudes.emplace_back(dot_product);
                     total_dot_product += dot_product;
                 }
@@ -815,22 +929,6 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
                 std::vector<double> spe_entries(max_support_idx - min_support_idx + 1, 0.0);
                 std::vector<size_t> spe_support(max_support_idx - min_support_idx + 1);
                 std::iota(spe_support.begin(), spe_support.end(), min_support_idx);
-                //for(size_t jj=front_padding; jj<(num_same_support-back_padding); ++jj) {
-                //    if(total_dot_product > 0) {
-                //        spe_magnitudes[jj-front_padding] /= total_dot_product;
-                //    } else {
-                //        spe_magnitudes[jj-front_padding] = 1.0 / (num_same_support-(front_padding+back_padding));
-                //    }
-                //    size_t j = matching_support_idx + jj;
-                //    spe_start_times.emplace_back(start_times[j].first);
-                //    spe_widths.emplace_back(start_times[j].second);
-                //    for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
-                //        spe_entries[ii] += spe_bb_entries[j][ii] * spe_magnitudes[jj-front_padding];
-                //        if(std::isnan(spe_entries[ii])) {
-                //            std::cout << "NaN spe entry 1" << std::endl;
-                //        }
-                //    }
-                //}
 
                 for(size_t jj=0; jj<num_same_support; ++jj) {
                     if(total_dot_product > 0) {
@@ -842,7 +940,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
                     spe_start_times.emplace_back(start_times[j].first);
                     spe_widths.emplace_back(start_times[j].second);
                     for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
-                        spe_entries[ii + spe_bb_support[j].front() - min_support_idx] += spe_bb_entries[j][ii] * spe_magnitudes[jj];
+                        spe_entries[ii + spe_bb_support[j].front() - min_support_idx] += spe_bb_entries[j][ii] * spe_magnitudes.size();
                         if(std::isnan(spe_entries[ii + spe_bb_support[j].front() - min_support_idx])) {
                             std::cout << "NaN spe entry 1" << std::endl;
                         }
@@ -878,6 +976,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             matching_support_idx = spe_idx;
         }
     }
+*/
     size_t num_original_spes = spe_original_support.size();
     size_t num_final_spes = merged_spe_magnitudes.size();
     size_t num_composite_spes = 0;
@@ -1160,6 +1259,7 @@ void RunPulsesThread(
     //NNLSTimer RunPulsesThread_timer("RunPulsesThread", RunPulsesThread_s, RunPulsesThread_u, true);
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
+        std::cout << pmt_key << std::endl;
         size_t channel = pmt_channel_map.at(pmt_key);
         CCMWaveformDouble const & waveform = waveforms.at(channel);
 
