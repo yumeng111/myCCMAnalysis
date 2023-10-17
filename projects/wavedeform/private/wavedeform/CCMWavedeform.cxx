@@ -294,6 +294,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
 
     std::vector<double> data_times;
     data_times.reserve(wf_size);
+    int first_nonzero_idx = -1;
 
    // Read waveform
     for (k = 0; k < wf_size; k++) {
@@ -315,10 +316,18 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             weights[k] /= 4.;
         } else if (fabs(((double *)(data->x))[k]) > basisThreshmV) {
             passBasisThresh[k] = true;
+            if(first_nonzero_idx < 0) {
+                first_nonzero_idx = k;
+            }
         } else {
             ((double *)(data->x))[k] = 0;
             weights[k] = 0;
         }
+    }
+
+    size_t first_bin_idx = std::max(0, first_nonzero_idx-1);
+    if (fabs(((double *)(data->x))[first_nonzero_idx]) < basisThreshmV) {
+        weights[first_nonzero_idx] = base_weight / 4;
     }
 
     // Apply weights
@@ -342,7 +351,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
         min_spe_spacing = fine_spacing;
     }
 
-    double coarse_spacing = wf_bin_width;
+    double coarse_spacing = wf_bin_width * 1.5;
     double spacing = coarse_spacing;
 
     // Get the peak FWHM start, stop times for this waveform
@@ -531,7 +540,8 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
                      std::abs(first_derivative[idx] - reference_first_derivative) > max_difference or
                      //deriv_ratio > 5 or (deriv_ratio > 0 and deriv_ratio < 0.2) or
                      (not second_derivative_mask[idx]));
-            if((zero_bin != current_zero) or large_delta) {
+            large_delta = true;
+            if((zero_bin != current_zero) or (large_delta and not current_zero)) {
                 new_bin(idx);
                 reference_first_derivative = first_derivative[idx];
             } else {
@@ -1451,7 +1461,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("NumThreads", "Number of worker threads to use for pulse fitting", (size_t)(0));
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
-    AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 4.);
+    AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 1.);
     AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 9.);
     AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 5.0);
     AddParameter("BasisThreshold",
