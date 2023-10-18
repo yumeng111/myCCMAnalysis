@@ -785,7 +785,6 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
         if (((double *)(unfolded->x))[i] == 0)
             continue;
 
-        //std::cout << "SPE magnitude: " << (((double *)(unfolded->x))[i]) << std::endl;
         for(size_t j=0; j<merged_spe_start_times[i].size(); ++j) {
             CCMRecoPulse pulse;
             pulse.SetTime(merged_spe_start_times[i][j]);
@@ -897,14 +896,12 @@ void RunPulsesThread(
     double RunPulsesThread_u = 0.0;
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
-        std::cout << pmt_key << std::endl;
         size_t channel = pmt_channel_map.at(pmt_key);
         CCMWaveformDouble const & waveform = waveforms.at(channel);
 
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(pmt_key);
 
         if(calib == calibration.pmtCal.cend()) {
-            //std::cout << "oops! no calibration for " << pmt_key << std::endl;
             continue;
         }
 
@@ -1162,7 +1159,9 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
         if(not template_.at(key).filled) {
             int template_bins = (int)ceil(range / template_bin_spacing);
             FillTemplate(template_.at(key), calib->second, start_time, template_bins, template_bin_spacing, frame);
-            std::cout << key << " Template(" << template_.at(key).start_time << ", " << template_.at(key).end_time << ") FWHM(" << template_.at(key).digitizerStart << ", " << template_.at(key).digitizerStop << ")" << std::endl;
+            std::stringstream ss;
+            ss << key << " Template(" << template_.at(key).start_time << ", " << template_.at(key).end_time << ") FWHM(" << template_.at(key).digitizerStart << ", " << template_.at(key).digitizerStop << ")" << std::endl;
+            log_info(ss.str().c_str());
         }
     }
 
