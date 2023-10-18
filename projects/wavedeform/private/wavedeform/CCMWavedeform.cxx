@@ -200,6 +200,8 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
 
     size_t wf_size = wf_end - wf_begin;
 
+    wf_size += 1;
+
     // Determine the total number of WF bins
     nbins = wf_size;
     // If we have no data, nothing to do
@@ -250,18 +252,18 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
         second_derivative_mask[0] = 0;
         second_derivative_mask[1] = 0;
     }
-    first_derivative[0] = (wf.GetWaveform()[wf_begin+1] - wf.GetWaveform()[wf_begin]) / (2.0);
+    first_derivative[1+0] = (wf.GetWaveform()[wf_begin+1] - wf.GetWaveform()[wf_begin]) / (2.0);
     first_derivative[wf_size-1] = (wf.GetWaveform()[wf_end-2] - wf.GetWaveform()[wf_end-1]) / (2.0);
-    second_derivative[0] = (wf.GetWaveform()[2+wf_begin] - 2.0 * wf.GetWaveform()[1+wf_begin] + wf.GetWaveform()[wf_begin])/4.0;
+    second_derivative[1+0] = (wf.GetWaveform()[2+wf_begin] - 2.0 * wf.GetWaveform()[1+wf_begin] + wf.GetWaveform()[wf_begin])/4.0;
     second_derivative[wf_size-1] = (wf.GetWaveform()[wf_end-1] - 2.0 * wf.GetWaveform()[wf_end-2] + wf.GetWaveform()[wf_end-3])/4.0;
-    for(size_t i=1; i<wf_size-1; ++i) {
+    for(size_t i=1; i<wf_size-2; ++i) {
         size_t it = i + wf_begin;
-        first_derivative[i] = (wf.GetWaveform()[it+1] - wf.GetWaveform()[it-1]) / (2.0 * 2.0);
-        second_derivative[i] = (wf.GetWaveform()[it+1] - 2.0*wf.GetWaveform()[it] + wf.GetWaveform()[it-1]) / 4.0;
-        if(std::abs(second_derivative[i]) > max_second_derivative or std::abs(first_derivative[i]) > max_first_derivative) {
-            second_derivative_mask[i-1] = 0;
-            second_derivative_mask[i] = 0;
-            second_derivative_mask[i+1] = 0;
+        first_derivative[1+i] = (wf.GetWaveform()[it+1] - wf.GetWaveform()[it-1]) / (2.0 * 2.0);
+        second_derivative[1+i] = (wf.GetWaveform()[it+1] - 2.0*wf.GetWaveform()[it] + wf.GetWaveform()[it-1]) / 4.0;
+        if(std::abs(second_derivative[1+i]) > max_second_derivative or std::abs(first_derivative[1+i]) > max_first_derivative) {
+            second_derivative_mask[1+i-1] = 0;
+            second_derivative_mask[1+i] = 0;
+            second_derivative_mask[1+i+1] = 0;
         } else {
             double left_diff = wf.GetWaveform()[it] - wf.GetWaveform()[it-1];
             double right_diff = wf.GetWaveform()[it+1] - wf.GetWaveform()[it];
@@ -270,9 +272,9 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             bool left_pos = left_diff > 0;
             bool right_pos = right_diff > 0;
             if(large_first and (left_pos != right_pos)) {
-                second_derivative_mask[i-1] = 0;
-                second_derivative_mask[i] = 0;
-                second_derivative_mask[i+1] = 0;
+                second_derivative_mask[1+i-1] = 0;
+                second_derivative_mask[1+i] = 0;
+                second_derivative_mask[1+i+1] = 0;
             }
         }
     }
@@ -294,13 +296,17 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
 
     std::vector<double> data_times;
     data_times.reserve(wf_size);
-    int first_nonzero_idx = -1;
+
+    redges[0] = 0;
+    data_times.push_back(-2.0);
+    weights[0] = base_weight / 1.0;
+    passBasisThresh[0] = false;
 
    // Read waveform
-    for (k = 0; k < wf_size; k++) {
-        redges[k] = (1. + k) * wf_bin_width;
-        ((double *)(data->x))[k] = wf.GetWaveform()[k+wf_begin];
-        data_times.push_back(k * 2.0);
+    for (k = 1; k < wf_size; k++) {
+        redges[k] = (1. + k - 1) * wf_bin_width;
+        ((double *)(data->x))[k] = wf.GetWaveform()[k+wf_begin-1];
+        data_times.push_back((k-1) * wf_bin_width);
 
         weights[k] = base_weight;
 
@@ -316,18 +322,10 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             weights[k] /= 4.;
         } else if (fabs(((double *)(data->x))[k]) > basisThreshmV) {
             passBasisThresh[k] = true;
-            if(first_nonzero_idx < 0) {
-                first_nonzero_idx = k;
-            }
         } else {
             ((double *)(data->x))[k] = 0;
             weights[k] = 0;
         }
-    }
-
-    size_t first_bin_idx = std::max(0, first_nonzero_idx-1);
-    if (fabs(((double *)(data->x))[first_nonzero_idx]) < basisThreshmV) {
-        weights[first_nonzero_idx] = base_weight / 4;
     }
 
     // Apply weights
@@ -494,7 +492,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     nbins = j;
     data->nrow = nbins;
     data_times.resize(nbins);
-    data_times.push_back(data_times.back() + 2.0);
+    data_times.push_back(data_times.back() + wf_bin_width);
 
     output_data_times = data_times;
     std::vector<std::vector<size_t>> bb_rebin_ranges;
@@ -520,7 +518,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     };
 
     bool zero_bin = true;
-    double max_difference = 1e3 / 2.0 * max_template_val;
+    double max_difference = 1e3 / wf_bin_width * max_template_val;
     double reference_first_derivative;
     for(size_t i=0; i<bb_rebin_ranges.size(); ++i) {
         reference_first_derivative = first_derivative[bb_rebin_ranges[i].front()];
@@ -820,10 +818,10 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             size_t max_data_idx = spe_original_support[merge_max_idx-1].back();
             //std::cout << "Min data support time = " << redges[min_data_idx] + 2.0 * wf_begin << std::endl;
             //std::cout << "Max data support time = " << redges[max_data_idx] + 2.0 * wf_begin << std::endl;
-            while(redges[min_data_idx] < start_times[merge_min_idx].first + fwhmStart - 2.0 and min_data_idx < max_data_idx) {
+            while(redges[min_data_idx] < start_times[merge_min_idx].first + fwhmStart - wf_bin_width and min_data_idx < max_data_idx) {
                 min_data_idx += 1;
             }
-            while(redges[max_data_idx] > start_times[merge_max_idx-1].first + fwhmStop - 2.0 and max_data_idx > min_data_idx) {
+            while(redges[max_data_idx] > start_times[merge_max_idx-1].first + fwhmStop - wf_bin_width and max_data_idx > min_data_idx) {
                 max_data_idx -= 1;
             }
             for(size_t i=0; i<2 and max_data_idx == min_data_idx; ++i) {
@@ -838,7 +836,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             double linear_m = 0;
             if(max_data_idx > min_data_idx) {
                 linear_fit((double *)(data->x) + min_data_idx, (double *)(data->x) + max_data_idx + 1, linear_b, linear_m);
-                linear_m /= 2.0; // convert slope to ns
+                linear_m /= wf_bin_width; // convert slope to ns
             }
             //std::cout << "linear_b = " << linear_b << std::endl;
             //std::cout << "linear_m = " << linear_m << std::endl;
