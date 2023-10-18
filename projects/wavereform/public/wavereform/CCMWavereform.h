@@ -1,6 +1,6 @@
 /**
- * @file 
- * @brief 
+ * @file
+ * @brief
  *
  * (c) 2011 the IceCube Collaboration
  *
@@ -48,23 +48,42 @@
 class CCMCalibration;
 class CCMPMTCalibration;
 
+struct CCMWaveformTemplate {
+
+    std::vector<double> digitizer_template;
+    double digitizerStart;
+    double digitizerStop;
+    double start_time;
+    double end_time;
+    double pulse_width;
+    double total_mass;
+    bool filled;
+};
+
 class CCMWavereform : public I3ConditionalModule {
 public:
 	CCMWavereform(const I3Context&);
 	void Configure();
 	void Calibration(I3FramePtr);
 	void DAQ(I3FramePtr);
-	
+
     void Geometry(I3FramePtr frame);
-    void GetRefoldedWf(std::vector<double> & refolded_wf, std::vector<CCMRecoPulse> const & pulses, CCMPMTCalibration const & calib);
+    void GetRefoldedWf(std::vector<double> & refolded_wf, std::vector<CCMRecoPulse> const & pulses, CCMPMTKey pmt_key);
     void GetChi(double & chi, double & dof, std::vector<double> const & refolded_wf, std::vector<double> const & samples);
-	
+
 private:
 	std::string waveform_name_, pulse_name_, chi_name_, flag_name_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     std::string geometry_name_;
 	double chi_threshold_;
-	
+
+    double template_bin_spacing_;
+    I3Map<CCMPMTKey, CCMWaveformTemplate> template_;
+    std::vector<CCMPMTKey> pmt_keys_;
+    I3Vector<CCMPMTKey> allowed_pmt_keys_;
+    CCMCalibration calibration;
+    double spes_per_bin_ = 4.0;
+
 	SET_LOGGER("CCMWavereform");
 };
 

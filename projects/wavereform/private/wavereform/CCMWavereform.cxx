@@ -64,7 +64,146 @@ void CCMWavereform::Configure(){
 	GetParameter("Flag", flag_name_);
 }
 
+void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, double spacing, double min) {
+
+    // Find the maximum
+    double max = DBL_MIN;
+    for (unsigned i = 0; i < data.size(); ++i) {
+        if (data[i] > max) {
+            max = data[i];
+        }
+    }
+
+    double hm = max*0.5;
+    unsigned hmbin = 0;
+    for (unsigned i = 0; i < data.size(); ++i) {
+        if (data[i] > hm) {
+            hmbin = i;
+            break;
+        }
+    }
+
+    // Be conservative: choose the bin before the first rise above hm
+    if (hmbin > 0) {
+        --hmbin;
+    }
+
+    start = min + hmbin*spacing;
+
+    for (int i = data.size() - 1; i >= 0; --i) {
+        if (data[i] > hm) {
+            hmbin = i;
+            break;
+        }
+    }
+
+    if (hmbin < data.size() - 1) {
+        ++hmbin;
+    }
+
+    stop = min + hmbin*spacing;
+    if (stop == start) {
+        stop += spacing;
+    }
+}
+
+void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, double const & start_time, int const & template_bins, double const & template_bin_spacing_) {
+    CCMSPETemplate channel_template = calibration.GetSPETemplate();
+    wfTemplate.digitizer_template.resize(template_bins);
+    double total = 0.0;
+    double wf_max = DBL_MIN;
+    for(int i = 0; i < template_bins; i++) {
+        double value = channel_template.Evaluate(start_time + i*template_bin_spacing_); // hard coding bin spacing...use calib one day
+        wfTemplate.digitizer_template[i] = value;
+        total += value;
+        wf_max = std::max(wf_max, value);
+    }
+
+    double tail_fraction = 0.005;
+    double target_amount = tail_fraction * total;
+    double height_cut = tail_fraction * wf_max;
+
+    double running_total = 0.0;
+    size_t begin_idx = 0;
+    for(size_t i=0; i<wfTemplate.digitizer_template.size(); ++i) {
+        running_total += wfTemplate.digitizer_template[i];
+        //if(running_total >= target_amount) {
+        if(wfTemplate.digitizer_template[i] >= height_cut) {
+            begin_idx = i;
+            break;
+        }
+    }
+    if(begin_idx > 0)
+        begin_idx -= 1;
+
+    target_amount = tail_fraction * total;
+    running_total = 0.0;
+    size_t end_idx = wfTemplate.digitizer_template.size();
+    for(int i=wfTemplate.digitizer_template.size()-1; i>=0; --i) {
+        running_total += wfTemplate.digitizer_template[i];
+        //if(running_total >= target_amount) {
+        if(wfTemplate.digitizer_template[i] >= height_cut) {
+            end_idx = i;
+            break;
+        }
+    }
+    if(end_idx < wfTemplate.digitizer_template.size() - 1)
+        end_idx += 1;
+
+    wfTemplate.digitizer_template.erase(wfTemplate.digitizer_template.begin(), wfTemplate.digitizer_template.begin() + begin_idx);
+    wfTemplate.start_time = start_time + template_bin_spacing_ * begin_idx;
+
+    end_idx -= begin_idx;
+
+    wfTemplate.digitizer_template.erase(wfTemplate.digitizer_template.begin() + end_idx, wfTemplate.digitizer_template.end());
+    wfTemplate.end_time = wfTemplate.start_time + wfTemplate.digitizer_template.size() * template_bin_spacing_;
+
+    wfTemplate.pulse_width = wfTemplate.end_time - wfTemplate.start_time;
+
+    total = 0.0;
+    for(size_t i=0; i<wfTemplate.digitizer_template.size(); ++i) {
+        total += wfTemplate.digitizer_template[i];
+    }
+
+    wfTemplate.total_mass = total;
+
+    CCMFillFWHM(wfTemplate.digitizerStart,
+            wfTemplate.digitizerStop,
+            wfTemplate.digitizer_template,
+            template_bin_spacing_, wfTemplate.start_time);
+
+    wfTemplate.filled = true;
+}
+
 void CCMWavereform::Calibration(I3FramePtr frame){
+    calibration = frame->Get<CCMCalibration>("CCMCalibration");
+
+    double start_time = 2 * -10;
+    double end_time = 2 * 60;
+
+    template_bin_spacing_ = 2.0 / spes_per_bin_;
+    double range = end_time - start_time;
+
+    for(size_t i=0; i<pmt_keys_.size(); ++i) {
+        // let's get our wf and what not
+        CCMPMTKey key = pmt_keys_[i];
+        uint32_t channel = pmt_channel_map_[key];
+
+        if(calibration.pmtCal.count(key) == 0) {
+            // std::cout << "oops! no calibration for " << key << std::endl;
+            continue;
+        }
+
+        std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(key);
+
+        double placeholder = 1.0;
+
+        if(not template_.at(key).filled) {
+            int template_bins = (int)ceil(range / template_bin_spacing_);
+            FillTemplate(template_.at(key), calib->second, start_time, template_bins, template_bin_spacing_);
+            std::cout << key << " Template(" << template_.at(key).start_time << ", " << template_.at(key).end_time << ") FWHM(" << template_.at(key).digitizerStart << ", " << template_.at(key).digitizerStop << ")" << std::endl;
+        }
+    }
 	PushFrame(frame);
 }
 
@@ -74,6 +213,24 @@ void CCMWavereform::Geometry(I3FramePtr frame) {
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
+    template_.clear();
+    for(auto pmt_channel_pair : pmt_channel_map_) {
+        template_[pmt_channel_pair.first] = CCMWaveformTemplate();
+        template_[pmt_channel_pair.first].filled = false;
+    }
+
+    I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo_ = geo.pmt_geo;
+    std::set<CCMPMTKey> allowed_pmt_keys(allowed_pmt_keys_.begin(), allowed_pmt_keys_.end());
+    bool filter_pmts = allowed_pmt_keys.size() > 0;
+    for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : pmt_geo_) {
+        if(filter_pmts and allowed_pmt_keys.find(p.first) == allowed_pmt_keys.end()) {
+            continue;
+        }
+        if(p.second.omtype == CCMOMGeo::OMType::CCM8inCoated or p.second.omtype == CCMOMGeo::OMType::CCM8inUncoated or p.second.omtype == CCMOMGeo::OMType::CCM1in) {
+            pmt_keys_.push_back(p.first);
+        }
+    }
+
     PushFrame(frame);
 }
 
@@ -92,30 +249,47 @@ void CCMWavereform::GetChi(double & chi, double & dof, std::vector<double> const
     }
 }
 
-void CCMWavereform::GetRefoldedWf(std::vector<double> & refolded_wf, std::vector<CCMRecoPulse> const & pulses, CCMPMTCalibration const & calib){
+void CCMWavereform::GetRefoldedWf(std::vector<double> & refolded_wf, std::vector<CCMRecoPulse> const & pulses, CCMPMTKey pmt_key){
     // time for how far we need to calculate our pulse out to
     // should replace with paramters from calibration one day
     double pulse_time;
     double pulse_charge;
-    double electron_time = calib.GetPMTDeltaT();
 
-    // now let's loop over pulses
-    for (size_t pulse_it = 0; pulse_it < pulses.size(); ++pulse_it){
-        pulse_time = pulses[pulse_it].GetTime() + electron_time;
-        pulse_charge = pulses[pulse_it].GetCharge();
-        // now let's figure out how many ADC counts this pulse is
-        CCMSPETemplate channel_template = calib.GetSPETemplate();
-        int start_bin = int((pulse_time - 20.0) / 2.0);
-        int end_bin = int((pulse_time + 120.0) / 2.0);
-        start_bin = std::max(int(0), start_bin);
-        end_bin = std::min(int(refolded_wf.size()) - 1, end_bin+1);
+    CCMWaveformTemplate & temp = template_[pmt_key];
 
-        // let's loop over all the bins in this pulse
-        int i = 0;
-        for(int bin_it = start_bin; bin_it < end_bin; ++bin_it, ++i){
-            double time = i * 2 - 20 + 2; // fitting to the left edge of the data
-            double wf_value = pulse_charge * (channel_template.Evaluate(time));
-            refolded_wf[bin_it] += wf_value;
+    double templ_bin_spacing_inv = 1./template_bin_spacing_;
+    std::vector<double> const & pulse_templ = temp.digitizer_template;
+    size_t n_bins = pulse_templ.size();
+
+    size_t nspes = pulses.size();
+    int i = 0;
+    int first_spe = 0;
+    double last_t = 0;
+    for(int i=0; i<refolded_wf.size(); ++i) {
+        double bin_time = (i + 1) * 2.0;
+
+        if (bin_time < last_t)
+            first_spe = 0;
+        last_t = bin_time;
+
+        // The earliest pulse influencing this bin is PULSE_WIDTH in the past.
+        // The template is defined up to (but not including) PULSE_WIDTH.
+        while (first_spe < nspes && pulses[first_spe].GetTime() + temp.end_time <= bin_time) {
+            first_spe++;
+        }
+        if (first_spe == nspes) {
+            break;
+        }
+
+        // The last pulse for this bin is 2 ns in the future
+        for (int j = first_spe; j < nspes; j++) {
+            int templ_bin = int(((bin_time - pulses[j].GetTime()) - temp.start_time)*templ_bin_spacing_inv);
+            if (templ_bin < 0)
+                break;
+            if (templ_bin >= n_bins)
+                continue;
+
+            refolded_wf.at(i) += pulse_templ.at(templ_bin) * pulses[j].GetCharge();
         }
     }
 }
@@ -176,11 +350,9 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
         }
 
 
-        std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration_.pmtCal.find(key);
-
 		// first let's get our refolded wf
         std::vector<double> refolded_wf(waveform.GetWaveform().size(), 0.0);
-        GetRefoldedWf(refolded_wf, pulse_series, calib->second);
+        GetRefoldedWf(refolded_wf, pulse_series, key);
 
         // now let's get our chi^2
         double chi = 0;

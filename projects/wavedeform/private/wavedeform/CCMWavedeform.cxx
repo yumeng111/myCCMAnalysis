@@ -6,6 +6,8 @@
 #include <thread>
 #include <mutex>
 #include <stack>
+#include <numeric>
+
 #include <cholmod.h>
 
 #include <boost/make_shared.hpp>
@@ -52,10 +54,34 @@ struct CCMWaveformTemplate {
     bool filled;
 };
 
+void linear_fit(double const * begin, double const * end, double & linear_b, double & linear_m) {
+    double N = std::distance(begin, end);
+    double X = 0.0;
+    double T = 0.0;
+    double T2 = 0.0;
+    double XT = 0.0;
+
+    size_t t = 0;
+    double const * it = begin;
+    for(; it != end; ++it) {
+        double x = *it;
+        X += x;
+        T += t;
+        T2 += t*t;
+        XT += t*x;
+
+        ++t;
+    }
+    double b = X/N - (N*XT*T-X*T*T) / (N*N*T2 - N*T*T);
+    double m = (N*XT - X*T) / (N*T2 - T*T);
+    linear_b = b;
+    linear_m = m;
+}
+
 void rebin_bayesian_blocks(std::vector<double> const & raw_bins,
     double const * raw_charges, std::vector<std::vector<size_t>> & bin_indices,
     double ncp_prior, double poisson_scale_factor) {
-    size_t N_raw = raw_bins.size() - 1;
+    int N_raw = int(raw_bins.size()) - 1;
     std::vector<double> best(N_raw, -std::numeric_limits<double>::infinity());
     std::vector<int> last(N_raw, 0);
 
@@ -161,26 +187,20 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double template_bin_spacing_, double noise_threshold_, double basis_threshold_, double spes_per_bin_, bool reduce_, double tolerance_, bool apply_spe_corr_, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
-    double GetPulsesInternal_s = 0.0;
-    double GetPulsesInternal_u = 0.0;
-    NNLSTimer GetPulsesInternal_timer("GetPulsesInternal", GetPulsesInternal_s, GetPulsesInternal_u, true);
-    output.clear();
+void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
     cholmod_dense *data, *unfolded;
     unsigned j, k;
     int nbins = 0;
 
-    double dummy_s = 0.0;
-    double dummy_u = 0.0;
-    //double eigen_s = 0.0;
-    //double eigen_u = 0.0;
-    //NNLSTimer eigen_timer("Eigen", eigen_s, eigen_u, false);
-    NNLSTimer pre_compute("Pre compute total", dummy_s, dummy_u, true);
+    size_t wf_size = wf_end - wf_begin;
+
+    // Increase size by 1 to account for zero padding at the start of the waveform
+    wf_size += 1;
 
     // Determine the total number of WF bins
-    nbins = wf.GetWaveform().size();
+    nbins = wf_size;
     // If we have no data, nothing to do
     if (nbins == 0 || !std::isfinite(spe_charge) || spe_charge == 0)
         return;
@@ -206,27 +226,31 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
 
     double base_weight = 1;
-    // HARDCODING WF BIN WIDTH TO AVOID NANS
-    double wf_bin_width = 2; // 2 nsec
+    double template_bin_spacing = wf_bin_width / spes_per_bin;
 
     // If the waveform is shorter than a pulse width,
     // increase the per-bin weights so the aggregate weight
     // is closer to what it should be
-    if (wf.GetWaveform().size() * wf_bin_width < wfTemplate.pulse_width){
-        base_weight *= wfTemplate.pulse_width / (wf.GetWaveform().size() * wf_bin_width);
+    if (wf_size * wf_bin_width < wfTemplate.pulse_width){
+        base_weight *= wfTemplate.pulse_width / (wf_size * wf_bin_width);
     }
 
-    double noise = noise_threshold_;
-    double basisThreshmV = basis_threshold_;
+    double noise = noise_threshold;
+    double basisThreshmV = basis_threshold;
 
     std::vector<double> data_times;
-    data_times.reserve(wf.GetWaveform().size());
+    data_times.reserve(wf_size);
+
+    redges[0] = 0;
+    data_times.push_back(-2.0);
+    weights[0] = base_weight / 1.0;
+    passBasisThresh[0] = false;
 
     // Read waveform
-    for (k = 0; k < wf.GetWaveform().size(); k++) {
-        redges[k] = (1. + k) * wf_bin_width;
-        ((double *)(data->x))[k] = wf.GetWaveform()[k];
-        data_times.push_back(k * 2.0);
+    for (k = 1; k < wf_size; k++) {
+        redges[k] = (1. + k - 1) * wf_bin_width;
+        ((double *)(data->x))[k] = wf.GetWaveform()[k+wf_begin-1];
+        data_times.push_back((k-1) * wf_bin_width);
 
         weights[k] = base_weight;
 
@@ -240,8 +264,11 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         if (((double *)(data->x))[k] < noise) {
             ((double *)(data->x))[k] = 0;
             weights[k] /= 4.;
-        } else if (fabs(((double *)(data->x))[k]) > basisThreshmV) {
+        } else if (fabs(((double *)(data->x))[k]) > basis_threshold) {
             passBasisThresh[k] = true;
+        } else {
+            ((double *)(data->x))[k] = 0;
+            weights[k] = 0;
         }
     }
 
@@ -251,22 +278,25 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     }
 
     // Precalculate the max number of basis functions to avoid reallocation
-    int maxspes = int(spes_per_bin_*(wf.GetWaveform().size()));
+    int maxspes = int(spes_per_bin*(wf_size));
 
     std::vector<std::pair<double, double> > start_times;
     start_times.reserve(maxspes);
     double min_spe_spacing = DBL_MAX;
+    double max_spe_spacing = DBL_MIN;
 
     // Start, end two bins early
     double present = - 2. * wf_bin_width;
-    double max = present + wf.GetWaveform().size() * wf_bin_width;
+    double max = present + wf_size * wf_bin_width;
 
-    double fine_spacing = wf_bin_width / spes_per_bin_;
-    if (fine_spacing < min_spe_spacing) {
-        min_spe_spacing = fine_spacing;
-    }
+    double fine_spacing = wf_bin_width / spes_per_bin;
+    min_spe_spacing = std::min(fine_spacing, min_spe_spacing);
+    max_spe_spacing = std::max(fine_spacing, max_spe_spacing);
 
-    double coarse_spacing = wf_bin_width;
+    double coarse_spacing = wf_bin_width * 1.5;
+    min_spe_spacing = std::min(coarse_spacing, min_spe_spacing);
+    max_spe_spacing = std::max(coarse_spacing, max_spe_spacing);
+
     double spacing = coarse_spacing;
 
     // Get the peak FWHM start, stop times for this waveform
@@ -275,11 +305,10 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // Generate the set of pulse start times that have reasonable
     // non-zero data within the FWHM of the corresponding pulse
     bool prev_below = true;
-    size_t fine_spacing_tau = 1;
+    size_t fine_spacing_tau = 20;
     size_t n_since_fine = 0;
-    for (k = 0; k < wf.GetWaveform().size(); ++k) {
+    for (k = 0; k < wf_size; ++k) {
         if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
-            n_since_fine += 1;
             if(prev_below) {
                 n_since_fine = 0;
                 spacing = fine_spacing;
@@ -288,15 +317,16 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             }
             double binTime = redges[k];
             // Don't jump if we're moving less than the basis spacing
-            if (present + fwhmStop < (binTime - fine_spacing)) {
+            if (present < (binTime - fwhmStop)) {
                 present = binTime - fwhmStop;
             }
 
             // Add start times to the set
-            while (present < (binTime - fwhmStart) && present < max) {
+            while (present < (binTime - fwhmStart) && present < max && present >= (binTime - fwhmStop)) {
                 start_times.push_back(std::pair<double, double>(present, spacing));
                 present += spacing;
             }
+            n_since_fine += 1;
             prev_below = false;
         } else {
             prev_below = true;
@@ -331,31 +361,20 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // Recompute spacings based on deduplicated basis
     if (nspes > 1) {
         int i;
+        start_times[0].second = start_times[1].first - start_times[0].first;
+        start_times[nspes-1].second = start_times[nspes-1].first - start_times[nspes-2].first;
         // Compute rightdiff
-        for (i = 0; i < nspes-1; ++i) {
+        for (i = 1; i < nspes-1; ++i) {
             start_times[i].second =
                 start_times[i+1].first - start_times[i].first;
         }
-        // Compute leftdiff and use the smaller
-        for (i = 1; i < nspes; ++i) {
+        // Compute leftdiff and average
+        for (i = 1; i < nspes-1; ++i) {
             double leftdiff =
                 start_times[i].first - start_times[i-1].first;
-            if (leftdiff < start_times[i].second) {
-                start_times[i].second = leftdiff;
-            }
+            start_times[i].second = (leftdiff + start_times[i].second) / 2.0;
         }
     }
-
-    /*
-    // now let's save the start times after de-duplication
-    boost::shared_ptr<I3Vector<double>> start_times_copy = boost::make_shared<I3Vector<double>>();
-
-    for (size_t i = 0; i < start_times.size(); ++i) {
-        start_times_copy->push_back(start_times[i].first);
-    }
-    frame->Put("StartTimes" , start_times_copy);
-
-    */
 
     //Don't use data bins that are not in the support of any basis function
     double start = DBL_MIN;
@@ -368,7 +387,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         end = it->first + wfTemplate.end_time;
 
         // Evaluate bins up until we pass the end of the current time range
-        for (; k < wf.GetWaveform().size() && redges[k] < end; ++k) {
+        for (; k < wf_size && redges[k] < end; ++k) {
             // Check if bin time is inside the max of
             // the last range and the min of the current range
             if (redges[k] < start) {
@@ -376,12 +395,12 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             }
         }
 
-        if (k == wf.GetWaveform().size()) {
+        if (k == wf_size) {
             break;
         }
     }
 
-    while (k < wf.GetWaveform().size()) {
+    while (k < wf_size) {
         // Get rid of bins with times later than the end of the support of the
         // last basis function
         weights[k] = 0.;
@@ -395,7 +414,6 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             weights[j] = weights[i];
             redges[j] = redges[i];
             data_times[j] = data_times[i];
-            //sources[j] = sources[i];
             ((double *)(data->x))[j] = ((double *)(data->x))[i];
             ++j;
         }
@@ -403,58 +421,65 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     nbins = j;
     data->nrow = nbins;
     data_times.resize(nbins);
-    data_times.push_back(data_times.back() + 2.0);
-
+    data_times.push_back(data_times.back() + wf_bin_width);
     output_data_times = data_times;
+
+
+    // Attempt to rebin the data with bayesian blocks
     std::vector<std::vector<size_t>> bb_rebin_ranges;
-    double ncp_prior = 0.001;
+    double ncp_prior = 100.0;
     rebin_bayesian_blocks(data_times, ((double *)(data->x)), bb_rebin_ranges, ncp_prior, wfTemplate.total_mass);
     output_rebin_data_times.clear();
 
+    // Modify the rebinning so that only data below threshold is rebinned
     std::vector<std::vector<size_t>> rebin_ranges;
     rebin_ranges.reserve(bb_rebin_ranges.size());
     std::vector<size_t> current_binning;
-    for(size_t i=0; i<bb_rebin_ranges.size(); ++i) {
-        for(size_t j=0; j<bb_rebin_ranges[i].size(); ++j) {
-            if(bb_rebin_ranges[i][j] > 0 and ((double *)(data->x))[bb_rebin_ranges[i][j] - 1] <= 0) {
-                // If previous bin is zero, keep this bin unmerged
-                if(current_binning.size() == 0) {
-                    current_binning.push_back(bb_rebin_ranges[i][j]);
-                    rebin_ranges.push_back(current_binning);
-                    current_binning.clear();
-                } else {
-                    rebin_ranges.push_back(current_binning);
-                    current_binning.clear();
-                    current_binning.push_back(bb_rebin_ranges[i][j]);
-                    rebin_ranges.push_back(current_binning);
-                    current_binning.clear();
-                }
-            } else {
-                current_binning.push_back(bb_rebin_ranges[i][j]);
-            }
-        }
-        if(current_binning.size() > 0) {
+    std::function<void(size_t)> new_bin = [&current_binning, &rebin_ranges] (size_t idx) {
+        if(current_binning.size() == 0) {
+            current_binning.push_back(idx);
+            rebin_ranges.push_back(current_binning);
+            current_binning.clear();
+        } else {
+            rebin_ranges.push_back(current_binning);
+            current_binning.clear();
+            current_binning.push_back(idx);
             rebin_ranges.push_back(current_binning);
             current_binning.clear();
         }
+    };
+
+    bool zero_bin = true;
+    for(size_t i=0; i<bb_rebin_ranges.size(); ++i) {
+        for(size_t j=0; j<bb_rebin_ranges[i].size(); ++j) {
+            size_t idx = bb_rebin_ranges[i][j];
+            bool current_zero = ((double *)(data->x))[idx] <= 0;
+            if((zero_bin != current_zero) or (not current_zero)) {
+                new_bin(idx);
+            } else {
+                current_binning.push_back(idx);
+            }
+            zero_bin = current_zero;
+            if(not zero_bin and current_binning.size() > 2) {
+                rebin_ranges.push_back(current_binning);
+                current_binning.clear();
+            }
+        }
+        if(current_binning.size() > 0 and not zero_bin) {
+            rebin_ranges.push_back(current_binning);
+            current_binning.clear();
+            zero_bin = true;
+        }
+    }
+    if(current_binning.size() > 0) {
+        rebin_ranges.push_back(current_binning);
+        current_binning.clear();
     }
 
     for(size_t i=0; i<rebin_ranges.size(); ++i) {
         output_rebin_data_times.push_back(data_times[rebin_ranges[i][0]]);
-        double d = 0.0;
-        for(size_t j=0; j<rebin_ranges[i].size(); ++j) {
-            d += ((double *)(data->x))[rebin_ranges[i][j]];
-        }
-        ((double *)(data->x))[i] = d;
     }
     output_rebin_data_times.push_back(data_times.back());
-    data->nrow = rebin_ranges.size();
-
-
-    std::cout << "Original data bins: " << data_times.size() - 1 << std::endl;
-    std::cout << "Rebinned data bins: " << output_rebin_data_times.size() - 1 << std::endl;
-    std::cout << "Rebinned last index: " << rebin_ranges.back().back() << std::endl;
-    std::cout << std::endl;
 
     // Compute a reasonable upper bound on the number of non-zero matrix
     // elements.
@@ -466,41 +491,14 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         if (redges[i] < last_t)
             first_spe = 0;
         last_t = redges[i];
-        while (first_spe < nspes-1 && redges[i] -
-                start_times[first_spe].first - wfTemplate.start_time > wfTemplate.end_time - wfTemplate.pulse_width)
+        while(first_spe < nspes-1 && redges[i] > start_times[first_spe].first + wfTemplate.end_time + max_spe_spacing)
             first_spe++;
-        for (int j = first_spe; j < nspes; j++) {
-            if (((redges[i] - start_times[j].first) - wfTemplate.start_time) < -template_bin_spacing_)
+        for(int j = first_spe; j < nspes; j++) {
+            if(redges[i] < start_times[j].first + wfTemplate.start_time - max_spe_spacing)
                 break;
             nzmax++;
         }
     }
-
-    nzmax = (int(wfTemplate.digitizer_template.size() / spes_per_bin_) + 1) * nspes;
-
-    //std::vector<double> SBB_seed_vector;
-    /*
-    size_t data_idx = 0;
-    double template_avg = 0.0;
-    for(size_t i=0; i<wfTemplate.digitizer_template.size(); ++i) {
-        template_avg += wfTemplate.digitizer_template[i];
-    }
-    template_avg /= wfTemplate.digitizer_template.size();
-    for(size_t i=0; i<start_times.size(); ++i) {
-        double start_time = start_times[i].first;
-        double spacing = start_times[i].second;
-        while(data_idx < data_times.size() - 1 and data_times[data_idx] <= start_time) {
-            data_idx += 1;
-        }
-        if(data_idx > 0 and std::abs(data_times[data_idx - 1] - start_time) < std::abs(data_times[data_idx] - start_time)) {
-            data_idx -= 1;
-        }
-        double seed_value = ((double *)data->x)[data_idx] / (template_avg * (spes_per_bin_ * template_bin_spacing_) * spacing);
-        //SBB_seed_vector.push_back(seed_value);
-    }
-    */
-    //nsNNLS::vector SBB_seed(SBB_seed_vector.size(), SBB_seed_vector.data());
-
 
     // Create model matrix
     basis_trip = cholmod_l_allocate_triplet(nbins, nspes, nzmax, 0,
@@ -522,9 +520,9 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 
         // The earliest pulse influencing this bin is PULSE_WIDTH in the past.
         // The template is defined up to (but not including) PULSE_WIDTH.
-        while (first_spe < nspes && redges[i] -
-                start_times[first_spe].first - wfTemplate.start_time >= wfTemplate.pulse_width)
+        while (first_spe < nspes && start_times[first_spe].first + wfTemplate.end_time <= redges[i]) {
             first_spe++;
+        }
         if (first_spe == nspes) {
             continue;
         }
@@ -536,20 +534,22 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
             continue;
 
         // Precache which pulse template we're using
-        double templ_bin_spacing_inv = 1./template_bin_spacing_;
+        double templ_bin_spacing_inv = 1./template_bin_spacing;
         std::vector<double> const & pulse_templ = wfTemplate.digitizer_template;
+        int n_template_bins = pulse_templ.size();
 
         // The last pulse for this bin is 2 ns in the future
         for (int j = first_spe; j < nspes; j++) {
             int templ_bin = int(((redges[i] - start_times[j].first) - wfTemplate.start_time)*templ_bin_spacing_inv);
             if (templ_bin < 0)
                 break;
+            if (templ_bin >= n_template_bins)
+                continue;
 
             ((long *)(basis_trip->i))[basis_trip->nnz] = i;
             ((long *)(basis_trip->j))[basis_trip->nnz] = j;
             ((double *)(basis_trip->x))[basis_trip->nnz] = pulse_templ.at(templ_bin) * weighted_charge;
 
-            //pflags[j] |= sources[i];
             pflags[j] |= source;
 
             basis_trip->nnz++;
@@ -565,15 +565,16 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     std::vector<std::vector<size_t>> spe_bb_support(nspes);
     std::vector<std::vector<double>> spe_bb_entries(nspes);
     std::vector<double> rebinned_data(rebin_ranges.size(), 0.0);
+
     // Merge entries in the matrix according to the data rebinning
     for(size_t bb_idx=0; bb_idx<rebin_ranges.size(); ++bb_idx) {
         for(size_t data_idx : rebin_ranges[bb_idx]) {
-            while(((long *)(basis_trip->i))[k] < data_idx) {
+            while(((long *)(basis_trip->i))[k] < (long int)(data_idx)) {
                 ++k;
             }
-            assert(((long *)(basis_trip->i))[k] == data_idx);
+            assert(((long *)(basis_trip->i))[k] == (long int)(data_idx));
             rebinned_data[bb_idx] += ((double *)(data->x))[data_idx];
-            while(k < basis_trip->nnz and ((long *)(basis_trip->i))[k] == data_idx) {
+            while(k < basis_trip->nnz and ((long *)(basis_trip->i))[k] == (long int)(data_idx)) {
                 size_t spe_idx = ((long *)(basis_trip->j))[k];
                 spe_original_support[spe_idx].push_back(data_idx);
                 double x = ((double *)(basis_trip->x))[k];
@@ -601,71 +602,49 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
     // Store representative SPE index, and a vector of combined SPE times and ratios
 
     // Determine if any SPEs have the same support for the rebinned data and merge them accordingly
-    // We want to leave the leading edge SPEs alone
-    // Only merge if we have 3 or more SPEs in a row with the same support, and merge all SPEs except the first one
+    // Only merge SPEs that are supported by a data bin that has been rebinned
     // We must choose a relative magnitude for the merged SPEs when combining them and when uncombining after fitting,
-    //   we can use the dot product of the SPE row with the data to determine this relative magnitude
-    size_t num_same_support = 1;
-    size_t matching_support_idx = 0;
-    for(size_t spe_idx=1; spe_idx<=spe_bb_support.size(); ++spe_idx) {
-        if(spe_idx<spe_bb_support.size() and spe_bb_support[spe_idx] == spe_bb_support[matching_support_idx]) {
-            num_same_support += 1;
-        } else {
-            // The support has now changed
-            // Store the first spe
-            merged_spe_magnitudes.push_back({1.0});
-            merged_spe_start_times.push_back({start_times[matching_support_idx].first});
-            merged_spe_widths.push_back({start_times[matching_support_idx].second});
+    //   we can use a linear fit of the supporting data to determine this relative magnitude
+    size_t min_spe_idx = 0;
+    size_t max_spe_idx = 0;
+    size_t pad_left = 0;
+    size_t pad_right = 0;
+    for(size_t rebin_data_idx=0; rebin_data_idx<rebin_ranges.size() and min_spe_idx<spe_bb_support.size(); ++rebin_data_idx) {
+        max_spe_idx += 1;
 
-            merged_spe_support.push_back(spe_bb_support[matching_support_idx]);
-            merged_spe_entries.push_back(spe_bb_entries[matching_support_idx]);
-            reduced_nnz += merged_spe_entries.back().size();
+        while(rebin_data_idx < rebin_ranges.size()-1
+                and max_spe_idx < spe_bb_support.size()
+                and std::abs(start_times[max_spe_idx].first - data_times[rebin_ranges[rebin_data_idx].back()])
+                    < std::abs(start_times[max_spe_idx].first - data_times[rebin_ranges[rebin_data_idx].back()+1])) {
+            max_spe_idx += 1;
+        }
+        if(rebin_ranges[rebin_data_idx].size() == 1) {
+            // Put the unmerged SPEs into the final basis
+            for(size_t jj=0; jj<(max_spe_idx-min_spe_idx); ++jj) {
+                size_t j = min_spe_idx + jj;
+                merged_spe_magnitudes.push_back({1.0});
+                merged_spe_start_times.push_back({start_times[j].first});
+                merged_spe_widths.push_back({start_times[j].second});
 
-            // Check for how many identical supports we had in a row
-            if(num_same_support >= 3) {
-                // Merge all but the first SPE with matching support
-                // Use the dot product with the data to set the relative magnitudes
-                double total_dot_product = 0.0;
-                std::vector<double> spe_magnitudes;
-                spe_magnitudes.reserve(num_same_support-1);
-                // Iterate over SPEs with same support except the first
-                for(size_t jj=1; jj<num_same_support; ++jj) {
-                    size_t j = matching_support_idx + jj;
-                    double dot_product = 0.0;
-                    for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
-                        size_t data_idx = spe_bb_support[j][ii];
-                        dot_product += spe_bb_entries[j][ii] * rebinned_data[data_idx];
-                    }
-                    spe_magnitudes.emplace_back(dot_product);
-                    total_dot_product += dot_product;
-                }
-
-                std::vector<double> spe_start_times;
-                spe_start_times.reserve(num_same_support-1);
-                std::vector<double> spe_widths;
-                spe_widths.reserve(num_same_support-1);
-                std::vector<double> spe_entries(spe_bb_support[matching_support_idx].size(), 0.0);
-                for(size_t jj=1; jj<num_same_support; ++jj) {
-                    spe_magnitudes[jj-1] /= total_dot_product;
-                    size_t j = matching_support_idx + jj;
-                    spe_start_times.emplace_back(start_times[j].first);
-                    spe_widths.emplace_back(start_times[j].second);
-                    for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
-                        spe_entries[ii] += spe_bb_entries[j][ii] * spe_magnitudes[jj-1];
-                    }
-                }
-
-                merged_spe_magnitudes.push_back(spe_magnitudes);
-                merged_spe_start_times.push_back(spe_start_times);
-                merged_spe_widths.push_back(spe_widths);
-
-                merged_spe_support.push_back(spe_bb_support[matching_support_idx]);
-                merged_spe_entries.push_back(spe_entries);
+                merged_spe_support.push_back(spe_bb_support[j]);
+                merged_spe_entries.push_back(spe_bb_entries[j]);
                 reduced_nnz += merged_spe_entries.back().size();
-            } else {
-                // Put the unmerged SPEs into the final basis
-                for(size_t jj=1; jj<num_same_support; ++jj) {
-                    size_t j = matching_support_idx + jj;
+                for(size_t ii=0; ii<spe_bb_entries[j].size(); ++ii) {
+                    if(std::isnan(spe_bb_entries[j][ii])) {
+                        std::cout << "NaN spe entry 2" << std::endl;
+                    }
+                }
+            }
+            min_spe_idx = max_spe_idx;
+        } else {
+            bool skip_left = (rebin_data_idx > 0 and rebin_ranges[rebin_data_idx-1].size() == 1);
+            bool skip_right = (rebin_data_idx < rebin_ranges.size() - 1 and rebin_ranges[rebin_data_idx+1].size() == 1);
+            size_t merge_min_idx = std::min(min_spe_idx + pad_left, spe_bb_support.size()-1);
+            size_t merge_max_idx = std::max(max_spe_idx - std::min(pad_right, max_spe_idx), merge_min_idx);
+            size_t n_merge = merge_max_idx - merge_min_idx;
+            if(skip_left) {
+                for(size_t jj=0; jj<pad_left; ++jj) {
+                    size_t j = merge_min_idx + jj;
                     merged_spe_magnitudes.push_back({1.0});
                     merged_spe_start_times.push_back({start_times[j].first});
                     merged_spe_widths.push_back({start_times[j].second});
@@ -673,72 +652,100 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
                     merged_spe_support.push_back(spe_bb_support[j]);
                     merged_spe_entries.push_back(spe_bb_entries[j]);
                     reduced_nnz += merged_spe_entries.back().size();
-
+                    for(size_t ii=0; ii<spe_bb_entries[j].size(); ++ii) {
+                        if(std::isnan(spe_bb_entries[j][ii])) {
+                            std::cout << "NaN spe entry 2" << std::endl;
+                        }
+                    }
                 }
             }
-            num_same_support = 1;
-            matching_support_idx = spe_idx;
+            if(skip_right) {
+                for(size_t jj=0; jj<pad_right; ++jj) {
+                    size_t j = merge_max_idx + jj;
+                    merged_spe_magnitudes.push_back({1.0});
+                    merged_spe_start_times.push_back({start_times[j].first});
+                    merged_spe_widths.push_back({start_times[j].second});
+
+                    merged_spe_support.push_back(spe_bb_support[j]);
+                    merged_spe_entries.push_back(spe_bb_entries[j]);
+                    reduced_nnz += merged_spe_entries.back().size();
+                    for(size_t ii=0; ii<spe_bb_entries[j].size(); ++ii) {
+                        if(std::isnan(spe_bb_entries[j][ii])) {
+                            std::cout << "NaN spe entry 2" << std::endl;
+                        }
+                    }
+                }
+            }
+            // Use the dot product with the data to set the relative magnitudes
+            double total_dot_product = 0.0;
+            std::vector<double> spe_magnitudes;
+            spe_magnitudes.reserve(n_merge);
+            // Iterate over SPEs in the center
+            size_t min_data_idx = spe_original_support[merge_min_idx].front();
+            size_t max_data_idx = spe_original_support[merge_max_idx-1].back();
+            while(redges[min_data_idx] < start_times[merge_min_idx].first + fwhmStart - wf_bin_width and min_data_idx < max_data_idx) {
+                min_data_idx += 1;
+            }
+            while(redges[max_data_idx] > start_times[merge_max_idx-1].first + fwhmStop - wf_bin_width and max_data_idx > min_data_idx) {
+                max_data_idx -= 1;
+            }
+            for(size_t i=0; i<2 and max_data_idx == min_data_idx; ++i) {
+                if(min_data_idx > 0)
+                    min_data_idx -= 1;
+                if(max_data_idx < redges.size() - 1)
+                    max_data_idx += 1;
+            }
+            double linear_b = 0;
+            double linear_m = 0;
+            if(max_data_idx > min_data_idx) {
+                linear_fit((double *)(data->x) + min_data_idx, (double *)(data->x) + max_data_idx + 1, linear_b, linear_m);
+                linear_m /= wf_bin_width; // convert slope to ns
+            }
+
+            for(size_t jj=0; jj<n_merge; ++jj) {
+                size_t j = merge_min_idx + jj;
+                double dot_product = std::max(0.0, linear_b + linear_m * (start_times[j].first - redges[min_data_idx]));
+                dot_product /= start_times[j].second;
+                spe_magnitudes.emplace_back(dot_product);
+                total_dot_product += dot_product;
+            }
+            std::vector<double> spe_start_times;
+            spe_start_times.reserve(n_merge);
+            std::vector<double> spe_widths;
+            spe_widths.reserve(n_merge);
+            size_t min_support_idx = spe_bb_support[merge_min_idx].front();
+            size_t max_support_idx = spe_bb_support[merge_max_idx-1].back();
+            std::vector<double> spe_entries(max_support_idx - min_support_idx + 1, 0.0);
+            std::vector<size_t> spe_support(max_support_idx - min_support_idx + 1);
+            std::iota(spe_support.begin(), spe_support.end(), min_support_idx);
+
+            for(size_t jj=0; jj<n_merge; ++jj) {
+                if(total_dot_product > 0) {
+                    spe_magnitudes[jj] /= total_dot_product;
+                } else {
+                    spe_magnitudes[jj] = 1.0 / (n_merge);
+                }
+                size_t j = merge_min_idx + jj;
+                spe_start_times.emplace_back(start_times[j].first);
+                spe_widths.emplace_back(start_times[j].second);
+                for(size_t ii = 0; ii<spe_bb_support[j].size(); ++ii) {
+                    spe_entries[ii + spe_bb_support[j].front() - min_support_idx] += spe_bb_entries[j][ii] * spe_magnitudes[jj];
+                    if(std::isnan(spe_entries[ii + spe_bb_support[j].front() - min_support_idx])) {
+                        std::cout << "NaN spe entry 1" << std::endl;
+                    }
+                }
+            }
+
+            merged_spe_magnitudes.push_back(spe_magnitudes);
+            merged_spe_start_times.push_back(spe_start_times);
+            merged_spe_widths.push_back(spe_widths);
+
+            merged_spe_support.push_back(spe_support);
+            merged_spe_entries.push_back(spe_entries);
+            reduced_nnz += merged_spe_entries.back().size();
         }
+        min_spe_idx = max_spe_idx;
     }
-
-    /*
-    // let's save our basis trip vector
-    boost::shared_ptr<I3Vector<long int>> basis_trip_i_copy = boost::make_shared<I3Vector<long int>>();
-    boost::shared_ptr<I3Vector<long int>> basis_trip_j_copy = boost::make_shared<I3Vector<long int>>();
-    boost::shared_ptr<I3Vector<double>> basis_trip_x_copy = boost::make_shared<I3Vector<double>>();
-
-    for (unsigned i = 0; i < basis_trip->nnz; ++i){
-        basis_trip_i_copy->push_back(((long int *)(basis_trip->i))[i]);
-        basis_trip_j_copy->push_back(((long int *)(basis_trip->j))[i]);
-        basis_trip_x_copy->push_back(((double *)(basis_trip->x))[i]);
-    }
-
-    frame->Put("BasisTripI", basis_trip_i_copy);
-    frame->Put("BasisTripJ", basis_trip_j_copy);
-    frame->Put("BasisTripX", basis_trip_x_copy);
-    */
-
-    //  Convert to column-ordered sparse matrix
-    //  Note: This is handrolled instead of using
-    //  cholmod_l_triplet_to_sparse() in order to exploit some of the
-    //  structure of our specific triplet matrix, which lets this
-    //  run in less than one third the time of cholmod_l_triplet_to_sparse.
-    /*
-    basis = cholmod_l_allocate_sparse(basis_trip->nrow, basis_trip->ncol,
-            basis_trip->nnz, true, true, 0, CHOLMOD_REAL, &chol_common);
-
-    int accum = 0;
-    for (int i = 0; i < nspes; i++) {
-        ((long *)(basis->p))[i] = accum;
-        //eigen_timer.start();
-        //eigen_basis.outerIndexPtr()[i] = accum;
-        //eigen_timer.end();
-        //SBB_cptr[i] = accum;
-        accum += col_counts[i];
-        //eigen_basis.innerNonZeroPtr()[i] = accum; // the matrix is in the compressed format so we do not need this
-    }
-    // Need to set data end pointer for the last column.  Otherwise
-    // SuiteSparse will ignore the last column.
-    ((long *)(basis->p))[nspes] = accum;
-    //SBB_cptimer.start();
-    //eigen_basis.outerIndexPtr()[nspes] = accum;
-    //eigen_timer.end();
-    std::vector<long> col_indices(nspes,0);
-
-
-    for (unsigned i = 0; i < basis_trip->nnz; i++) {
-        long col = ((long *)(basis_trip->j))[i];
-        long index = ((long *)(basis->p))[col] + col_indices[col]++;
-        ((long *)(basis->i))[index] = ((long *)(basis_trip->i))[i];
-        ((double *)(basis->x))[index] = ((double *)(basis_trip->x))[i];
-        //SBB_ridx[i] = ((long *)(basis_trip->i))[i];
-        //SBB_val[i] = ((double *)(basis_trip->x))[i];
-        //eigen_timer.start();
-        //eigen_basis.innerIndexPtr()[index] = ((long *)(basis_trip->i))[i];
-        //eigen_basis.valuePtr()[index] = ((double *)(basis_trip->x))[i];
-        //eigen_timer.end();
-    }
-    */
 
     basis = cholmod_l_allocate_sparse(rebinned_data.size(), merged_spe_entries.size(),
             reduced_nnz, true, true, 0, CHOLMOD_REAL, &chol_common);
@@ -753,80 +760,117 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         }
     }
 
+    for(size_t i=0; i<rebinned_data.size(); ++i) {
+        ((double *)(data->x))[i] = rebinned_data[i];
+    }
+    data->nrow = rebin_ranges.size();
+
     cholmod_l_free_triplet(&basis_trip, &chol_common);
-    //eigen_timer.start();
-    //Eigen::Map<fnnls::VectorX_<double>> data_view(((double *)(data->x)), data->nrow);
-    //eigen_timer.end();
-    //std::vector<double> SBB_data_vector(((double *)data->x), ((double *)data->x) + data->nrow);
-    //nsNNLS::vector SBB_data(SBB_data_vector.size(), SBB_data_vector.data());
-    pre_compute.end();
-    //eigen_timer.print();
 
     // Solve for SPE heights
-    if (reduce_) {
+    if (reduce) {
         {
-            double s = 0.0;
-            double u = 0.0;
-            std::string name = "RNNLS";
-            NNLSTimer nnls_timer(name, s, u, true);
-            unfolded = rnnls(basis, data, tolerance_, 2000, 0, &chol_common);
+            unfolded = rnnls(basis, data, tolerance, 2000, 0, &chol_common);
         }
-        /*{
-            double s = 0.0;
-            double u = 0.0;
-            std::string name = "FNNLS";
-            NNLSTimer nnls_timer(name, s, u, true);
-            fnnls::fnnls_solver(eigen_basis, data_view, 2000, tolerance_);
-        }
-        nsNNLS::vector* result;
-        {
-            double s = 0.0;
-            double u = 0.0;
-            std::string name = "SBB_NNLS";
-            NNLSTimer nnls_timer(name, s, u, true);
-
-            nsNNLS::nnls solver(&SBB_basis, &SBB_data, &SBB_seed, 2000);
-            solver.optimize();
-            result = solver.getSolution();
-        }
-        delete result; */
     } else {
-        unfolded = nnls_lawson_hanson(basis, data, tolerance_,
+        unfolded = nnls_lawson_hanson(basis, data, tolerance,
             0, 2000, nspes, 0, 1, 0, &chol_common);
     }
-    double PostNNLS_s = 0.0;
-    double PostNNLS_u = 0.0;
-    NNLSTimer PostNNLS_timer("PostNNLS", PostNNLS_s, PostNNLS_u, true);
 
     cholmod_l_free_sparse(&basis, &chol_common);
     cholmod_l_free_dense(&data, &chol_common);
 
-    // Load the SPE corrections
-    double speCorrection = 1.;
-    if (apply_spe_corr_) {
-        //speCorrection = 1. / calibration.GetMeanPMTCharge();
-        speCorrection = 1.;
-    }
-
-    // let's account for the electron transit time!!
-    double electron_time = calibration.GetPMTDeltaT();
-
     // Convert to pulse series
-    for (int i = 0; i < merged_spe_start_times.size(); i++) {
+    for(size_t i = 0; i < merged_spe_start_times.size(); i++) {
         if (((double *)(unfolded->x))[i] == 0)
             continue;
 
-
         for(size_t j=0; j<merged_spe_start_times[i].size(); ++j) {
             CCMRecoPulse pulse;
-            pulse.SetTime(merged_spe_start_times[i][j] - electron_time);
-            pulse.SetCharge((((double *)(unfolded->x))[i]) * speCorrection * merged_spe_magnitudes[i][j]);
+            pulse.SetTime(merged_spe_start_times[i][j]);
+            pulse.SetCharge((((double *)(unfolded->x))[i]) * merged_spe_magnitudes[i][j]);
             pulse.SetWidth(merged_spe_widths[i][j]);
             output.push_back(pulse);
         }
     }
     cholmod_l_free_dense(&unfolded, &chol_common);
+}
 
+void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
+    output.clear();
+    std::vector<double> const & w = wf.GetWaveform();
+    if(w.size() == 0)
+        return;
+
+    std::vector<std::pair<size_t, size_t>> regions;
+    size_t start = 0;
+    size_t end = 0;
+    bool prev_in_region = w[0] > basis_threshold;
+    for(size_t i=0; i<w.size(); ++i) {
+        bool in_region = w[i] > basis_threshold;
+        if(in_region) {
+            if(prev_in_region) {
+                //
+            } else {
+                start = i;
+            }
+        } else {
+            if(prev_in_region) {
+                end = i;
+                if(regions.size() > 0 and end - regions.back().second < wfTemplate.digitizer_template.size()*2) {
+                    regions.back() = std::pair<size_t, size_t>(regions.back().first, end);
+                } else {
+                    regions.emplace_back(start, end);
+                }
+            } else {
+                //
+            }
+        }
+        prev_in_region = in_region;
+    }
+    if(prev_in_region) {
+        end = w.size();
+        regions.emplace_back(start, end);
+        prev_in_region = false;
+    }
+
+    size_t front_ext = wfTemplate.digitizer_template.size();
+    size_t back_ext = wfTemplate.digitizer_template.size();
+
+    end = 0;
+    for(size_t i=0; i<regions.size(); ++i) {
+        if(i+1 < regions.size())
+            start = regions[i+1].first;
+        else
+            start = w.size();
+        size_t start_idx = regions[i].first;
+        size_t ext = std::min(start_idx, back_ext);
+        start_idx -= ext;
+        start_idx = std::max(end, start_idx);
+        size_t end_idx = regions[i].second;
+        ext = std::min(w.size() - end_idx, front_ext);
+        end_idx += ext;
+        end_idx = std::min(start, end_idx);
+        end = end_idx;
+        double start_time = start_idx * 2.0;
+        double end_time = end_idx * 2.0;
+        CCMRecoPulseSeries region_output;
+        std::vector<double> region_output_data_times;
+        std::vector<double> region_output_rebin_data_times;
+        GetPulses(wf, start_idx, end_idx, wfTemplate, calibration, spe_charge, wf_bin_width, noise_threshold, basis_threshold, spes_per_bin, reduce, tolerance, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, frame);
+        for(size_t j=0; j<region_output.size(); ++j) {
+            CCMRecoPulse const & pulse = region_output[j];
+            CCMRecoPulse new_pulse;
+            new_pulse.SetTime(pulse.GetTime() + start_time);
+            new_pulse.SetCharge(pulse.GetCharge());
+            new_pulse.SetWidth(pulse.GetWidth());
+            output.push_back(new_pulse);
+        }
+        for(size_t j=0; j<region_output_data_times.size(); ++j)
+            output_data_times.push_back(region_output_data_times[j] + start_time);
+        for(size_t j=0; j<region_output_rebin_data_times.size(); ++j)
+            output_rebin_data_times.push_back(region_output_rebin_data_times[j] + start_time);
+    }
 }
 
 void RunPulsesThread(
@@ -841,17 +885,15 @@ void RunPulsesThread(
         std::vector<std::reference_wrapper<CCMRecoPulseSeries>> & output_pulses_references,
         std::vector<std::reference_wrapper<std::vector<double>>> & output_data_times_references,
         std::vector<std::reference_wrapper<std::vector<double>>> & output_rebin_data_times_references,
-        double template_bin_spacing_,
-        double noise_threshold_,
-        double basis_threshold_,
-        double spes_per_bin_,
-        double tolerance_,
-        bool apply_spe_corr_,
+        double wf_bin_width,
+        double noise_threshold,
+        double basis_threshold,
+        double spes_per_bin,
+        double tolerance,
         I3FramePtr frame
         ) {
     double RunPulsesThread_s = 0.0;
     double RunPulsesThread_u = 0.0;
-    NNLSTimer RunPulsesThread_timer("RunPulsesThread", RunPulsesThread_s, RunPulsesThread_u, true);
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
         size_t channel = pmt_channel_map.at(pmt_key);
@@ -860,61 +902,52 @@ void RunPulsesThread(
         std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib = calibration.pmtCal.find(pmt_key);
 
         if(calib == calibration.pmtCal.cend()) {
-            //std::cout << "oops! no calibration for " << pmt_key << std::endl;
             continue;
         }
-
-        double template_bin_spacing_ = 2.0 / spes_per_bin_ ;
 
         double placeholder = 1.0;
 
         double GetPulses_s = 0.0;
         double GetPulses_u = 0.0;
-        NNLSTimer GetPulses_timer("GetPulses", GetPulses_s, GetPulses_u, true);
-        GetPulses_timer.start();
         GetPulses(
                 waveform,
                 templates.at(pmt_key),
                 calib->second,
                 placeholder,
-                template_bin_spacing_,
-                noise_threshold_,
-                basis_threshold_,
-                spes_per_bin_,
+                wf_bin_width,
+                noise_threshold,
+                basis_threshold,
+                spes_per_bin,
                 reduce,
-                tolerance_,
-                apply_spe_corr_,
+                tolerance,
                 cholmod_common_vec.at(i),
                 output_pulses_references[i].get(),
                 output_data_times_references[i].get(),
                 output_rebin_data_times_references[i].get(),
                 frame
                 );
-        GetPulses_timer.end();
     }
 }
 
-void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, double const & start_time, int const & template_bins, double const & template_bin_spacing_, I3FramePtr frame) {
+void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, double const & start_time, int const & template_bins, double const & template_bin_spacing, I3FramePtr frame) {
     CCMSPETemplate channel_template = calibration.GetSPETemplate();
     wfTemplate.digitizer_template.resize(template_bins);
     double total = 0.0;
     double wf_max = DBL_MIN;
     for(int i = 0; i < template_bins; i++) {
-        double value = channel_template.Evaluate(start_time + i*template_bin_spacing_); // hard coding bin spacing...use calib one day
+        double value = channel_template.Evaluate(start_time + i*template_bin_spacing); // hard coding bin spacing...use calib one day
         wfTemplate.digitizer_template[i] = value;
         total += value;
         wf_max = std::max(wf_max, value);
     }
 
     double tail_fraction = 0.005;
-    double target_amount = tail_fraction * total;
     double height_cut = tail_fraction * wf_max;
 
     double running_total = 0.0;
     size_t begin_idx = 0;
     for(size_t i=0; i<wfTemplate.digitizer_template.size(); ++i) {
         running_total += wfTemplate.digitizer_template[i];
-        //if(running_total >= target_amount) {
         if(wfTemplate.digitizer_template[i] >= height_cut) {
             begin_idx = i;
             break;
@@ -923,12 +956,10 @@ void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& cali
     if(begin_idx > 0)
         begin_idx -= 1;
 
-    target_amount = tail_fraction * total;
     running_total = 0.0;
     size_t end_idx = wfTemplate.digitizer_template.size();
     for(int i=wfTemplate.digitizer_template.size()-1; i>=0; --i) {
         running_total += wfTemplate.digitizer_template[i];
-        //if(running_total >= target_amount) {
         if(wfTemplate.digitizer_template[i] >= height_cut) {
             end_idx = i;
             break;
@@ -938,12 +969,12 @@ void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& cali
         end_idx += 1;
 
     wfTemplate.digitizer_template.erase(wfTemplate.digitizer_template.begin(), wfTemplate.digitizer_template.begin() + begin_idx);
-    wfTemplate.start_time = start_time + template_bin_spacing_ * begin_idx;
+    wfTemplate.start_time = start_time + template_bin_spacing * begin_idx;
 
     end_idx -= begin_idx;
 
     wfTemplate.digitizer_template.erase(wfTemplate.digitizer_template.begin() + end_idx, wfTemplate.digitizer_template.end());
-    wfTemplate.end_time = wfTemplate.start_time + wfTemplate.digitizer_template.size() * template_bin_spacing_;
+    wfTemplate.end_time = wfTemplate.start_time + wfTemplate.digitizer_template.size() * template_bin_spacing;
 
     wfTemplate.pulse_width = wfTemplate.end_time - wfTemplate.start_time;
 
@@ -954,19 +985,10 @@ void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& cali
 
     wfTemplate.total_mass = total;
 
-    /*
-    boost::shared_ptr<I3Vector<double>> wf_template_copy = boost::make_shared<I3Vector<double>>();
-    for (int i = 0; i < wfTemplate.digitizer_template.size(); ++i){
-        wf_template_copy->push_back(wfTemplate.digitizer_template.at(i));
-    }
-
-    frame->Put("WaveformTemplate", wf_template_copy);
-    */
-
     CCMFillFWHM(wfTemplate.digitizerStart,
             wfTemplate.digitizerStop,
             wfTemplate.digitizer_template,
-            template_bin_spacing_, wfTemplate.start_time);
+            template_bin_spacing, wfTemplate.start_time);
 
     wfTemplate.filled = true;
 }
@@ -975,8 +997,8 @@ void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& cali
 class CCMWavedeform : public I3ConditionalModule {
     public:
         size_t num_threads;
-        bool geo_seen;
         std::string geometry_name_;
+        bool geo_seen;
         std::string nim_pulses_name_;
         I3Vector<CCMPMTKey> allowed_pmt_keys_;
         I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
@@ -1007,9 +1029,8 @@ class CCMWavedeform : public I3ConditionalModule {
 
         std::map<CCMPMTKey, int> start_bins_;
         std::map<CCMPMTKey, int> end_bins_;
-        double template_bin_spacing_;
+        double wf_bin_width_;
 
-        bool apply_spe_corr_;
         bool reduce_;
 
         I3Map<CCMPMTKey, CCMWaveformTemplate> template_;
@@ -1025,7 +1046,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("NumThreads", "Number of worker threads to use for pulse fitting", (size_t)(0));
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
-    AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 4.);
+    AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 1.);
     AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 9.);
     AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 5.0);
     AddParameter("BasisThreshold",
@@ -1036,12 +1057,9 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
             "CCMCalibratedWaveforms");
     AddParameter("Output", "Name of output pulse series",
             "WavedeformPulses");
-    AddParameter("ApplySPECorrections", "Whether to apply DOM-by-DOM"
-            " corrections to the pulse charge scaling if available", false);
     AddParameter("Reduce", "Find the optimal NNLS solution, then eliminate"
             " basis members until tolerance is reached", true);
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
-    //AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>({CCMPMTKey(3,8,0)}));
 
 }
 
@@ -1059,7 +1077,6 @@ void CCMWavedeform::Configure() {
     GetParameter("Tolerance", tolerance_);
     GetParameter("NoiseThreshold", noise_threshold_);
     GetParameter("BasisThreshold", basis_threshold_);
-    GetParameter("ApplySPECorrections", apply_spe_corr_);
     GetParameter("Reduce", reduce_);
     GetParameter("PMTKeys", allowed_pmt_keys_);
 }
@@ -1072,7 +1089,7 @@ CCMWavedeform::~CCMWavedeform() {
 
 void CCMWavedeform::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
@@ -1122,7 +1139,8 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
     double start_time = 2 * -10;
     double end_time = 2 * 60;
 
-    template_bin_spacing_ = 2.0 / spes_per_bin_;
+    wf_bin_width_ = 2.0;
+    double template_bin_spacing = wf_bin_width_ / spes_per_bin_;
     double range = end_time - start_time;
 
     for(size_t i=0; i<pmt_keys_.size(); ++i) {
@@ -1131,7 +1149,6 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
         uint32_t channel = pmt_channel_map_[key];
 
         if(calibration.pmtCal.count(key) == 0) {
-            // std::cout << "oops! no calibration for " << key << std::endl;
             continue;
         }
 
@@ -1140,9 +1157,11 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
         double placeholder = 1.0;
 
         if(not template_.at(key).filled) {
-            int template_bins = (int)ceil(range / template_bin_spacing_);
-            FillTemplate(template_.at(key), calib->second, start_time, template_bins, template_bin_spacing_, frame);
-            std::cout << key << " Template(" << template_.at(key).start_time << ", " << template_.at(key).end_time << ") FWHM(" << template_.at(key).digitizerStart << ", " << template_.at(key).digitizerStop << ")" << std::endl;
+            int template_bins = (int)ceil(range / template_bin_spacing);
+            FillTemplate(template_.at(key), calib->second, start_time, template_bins, template_bin_spacing, frame);
+            std::stringstream ss;
+            ss << key << " Template(" << template_.at(key).start_time << ", " << template_.at(key).end_time << ") FWHM(" << template_.at(key).digitizerStart << ", " << template_.at(key).digitizerStop << ")" << std::endl;
+            log_info(ss.str().c_str());
         }
     }
 
@@ -1154,19 +1173,13 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         PushFrame(frame);
         return;
     }
-    double DAQ_s = 0.0;
-    double DAQ_u = 0.0;
-    NNLSTimer DAQ_timer("DAQ", DAQ_s, DAQ_u, true);
 
-    //const CCMDetectorStatus& status = frame->Get<CCMDetectorStatus>();
     boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);
     I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 
     if(waveforms == nullptr) {
         log_warn("CCMWaveformDoubleSeries named %s not present in frame", "CCMCalibratedWaveforms");
     }
-
-    size_t num_pulse_series = pmt_keys_.size();
 
     if(num_threads == 0) {
         num_threads = pmt_keys_.size();
@@ -1210,12 +1223,11 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             std::ref(output_pulses_references),
             std::ref(output_data_times_references),
             std::ref(output_rebin_data_times_references),
-            template_bin_spacing_,
+            wf_bin_width_,
             noise_threshold_,
             basis_threshold_,
             spes_per_bin_,
             tolerance_,
-            apply_spe_corr_,
             frame
         );
     }

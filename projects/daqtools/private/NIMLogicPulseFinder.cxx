@@ -175,6 +175,8 @@ void NIMLogicPulseFinder::EstimateBaselines() {
     for(std::pair<CCMTriggerKey const, std::vector<uint16_t>> & key_val : baseline_samples) {
         CCMTriggerKey key = key_val.first;
         std::vector<uint16_t> & samples = key_val.second;
+        if(samples.size() == 0)
+            continue;
         std::vector<double> smoothed = SmoothWaveform(samples.begin(), samples.end());
         std::sort(smoothed.begin(), smoothed.end()); // Must be sorted for Mode function
         // Use the mode of N smoothed waveforms as a baseline estimate
