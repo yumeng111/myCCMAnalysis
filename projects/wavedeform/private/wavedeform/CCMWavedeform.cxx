@@ -1313,7 +1313,6 @@ void CCMWavedeform::Process() {
   I3FramePtr frame = PopFrame();
 
   if(!frame or frame->GetStop() == I3Frame::DAQ) {
-    std::cout << "Calling DAQ function" << std::endl;
     DAQ(frame);
     return;
   }
@@ -1337,15 +1336,7 @@ void CCMWavedeform::Process() {
 }
 
 void CCMWavedeform::DAQ(I3FramePtr frame) {
-    if(frame) {
-		std::cout << "Have new frame: " << frame_index << std::endl;
-	}
 	while(true) {
-
-        std::cout << running_jobs.size() << " in running_jobs" << std::endl;
-        std::cout << free_jobs.size() << " in free_jobs" << std::endl;
-        std::cout << results.size() << " in results" << std::endl;
-
 		// Check if any jobs have finished
 		for(int i=int(running_jobs.size())-1; i>=0; --i) {
 			if (teptr) {
@@ -1359,22 +1350,18 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
 			}
 			if(not running_jobs[i]->running.load()) {
 				WavedeformJob * job = running_jobs[i];
-                std::cout << "Job has finished: " << job->thread_index << " : " << job->frame_index << std::endl;
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
-                std::cout << "Marking result " << job->frame_index - min_frame_idx << " as done" << std::endl;
                 results[job->frame_index - min_frame_idx].done = true;
             } else {
                 WavedeformJob * job = running_jobs[i];
-                std::cout << "Job still running: " << job->thread_index << " : " << job->frame_index << std::endl;
             }
         }
 
         // Check for any done results and push the corresponding frames
         size_t results_done = 0;
         for(size_t i=0; i<results.size(); ++i) {
-            std::cout << "results[" << i << "].done == " << results[i].done << std::endl;
             if(results[i].done) {
                 PushFrame(results[i].frame);
                 results[i].frame = nullptr;
@@ -1397,11 +1384,9 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         if(free_jobs.size() > 0) {
             job = free_jobs.front();
             free_jobs.pop_front();
-            std::cout << "Have a free job: " << job->thread_index << std::endl;
         } else if(running_jobs.size() < num_threads) {
             job = new WavedeformJob();
             job->thread_index = running_jobs.size();
-            std::cout << "Making a new job: " << job->thread_index << std::endl;
         }
 
         if(job != nullptr) {
@@ -1409,7 +1394,6 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             running_jobs.push_back(job);
             job->frame = frame;
             job->frame_index = frame_index;
-            std::cout << "Starting job: " << job->thread_index << " : " << job->frame_index << std::endl;
             results.emplace_back();
             results.back().frame = frame;
             results.back().done = false;
@@ -1431,8 +1415,6 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             break;
         }
     }
-
-    std::cout << std::endl;
 }
 
 void CCMWavedeform::Finish() {
