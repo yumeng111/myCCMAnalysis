@@ -43,7 +43,6 @@
 /* Simple class to hold together ATWD and FADC
  * templates along with a validity flag and waveform features */
 struct CCMWaveformTemplate {
-
     std::vector<double> digitizer_template;
     double digitizerStart;
     double digitizerStop;
@@ -1003,50 +1002,52 @@ struct WavedeformResult {
 };
 
 class CCMWavedeform : public I3ConditionalModule {
-    public:
-        size_t num_threads;
-        std::string geometry_name_;
-        bool geo_seen;
-        std::string nim_pulses_name_;
-        I3Vector<CCMPMTKey> allowed_pmt_keys_;
-        I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-        CCMWavedeform(const I3Context &);
+    std::exception_ptr teptr;
+public:
+    size_t num_threads;
+    size_t max_cached_frames;
+    std::string geometry_name_;
+    bool geo_seen;
+    std::string nim_pulses_name_;
+    I3Vector<CCMPMTKey> allowed_pmt_keys_;
+    I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
+    CCMWavedeform(const I3Context &);
 
-        std::vector<std::tuple<size_t, size_t>> thread_ranges_;
-        CCMCalibration calibration;
+    std::vector<std::tuple<size_t, size_t>> thread_ranges_;
+    CCMCalibration calibration;
 
-        virtual ~CCMWavedeform();
+    virtual ~CCMWavedeform();
 
-        void Configure();
-        void Process();
-        void Finish();
-        void Geometry(I3FramePtr frame);
-        void Calibration(I3FramePtr frame);
-        void DAQ(I3FramePtr frame);
-    private:
-        std::string waveforms_name_;
-        std::string output_name_;
+    void Configure();
+    void Process();
+    void Finish();
+    void Geometry(I3FramePtr frame);
+    void Calibration(I3FramePtr frame);
+    void DAQ(I3FramePtr frame);
+private:
+    std::string waveforms_name_;
+    std::string output_name_;
 
-        double spes_per_bin_;
-        double tolerance_;
-        double noise_threshold_;
-        double basis_threshold_;
+    double spes_per_bin_;
+    double tolerance_;
+    double noise_threshold_;
+    double basis_threshold_;
 
-        std::map<CCMPMTKey, int> start_bins_;
-        std::map<CCMPMTKey, int> end_bins_;
-        double wf_bin_width_;
+    std::map<CCMPMTKey, int> start_bins_;
+    std::map<CCMPMTKey, int> end_bins_;
+    double wf_bin_width_;
 
-        bool reduce_;
+    bool reduce_;
 
-        I3Map<CCMPMTKey, CCMWaveformTemplate> templates_;
-        std::vector<CCMPMTKey> pmt_keys_;
-        std::vector<std::vector<cholmod_common>> cholmod_common_vec_;
+    I3Map<CCMPMTKey, CCMWaveformTemplate> templates_;
+    std::vector<CCMPMTKey> pmt_keys_;
+    std::vector<std::vector<cholmod_common>> cholmod_common_vec_;
 
-        size_t frame_index = 0;
-        size_t min_frame_idx = 0;
-        std::deque<WavedeformJob *> free_jobs;
-        std::deque<WavedeformJob *> running_jobs;
-        std::deque<WavedeformResult> results;
+    size_t frame_index = 0;
+    size_t min_frame_idx = 0;
+    std::deque<WavedeformJob *> free_jobs;
+    std::deque<WavedeformJob *> running_jobs;
+    std::deque<WavedeformResult> results;
 };
 
 I3_MODULE(CCMWavedeform);
@@ -1070,6 +1071,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("Reduce", "Find the optimal NNLS solution, then eliminate"
             " basis members until tolerance is reached", true);
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
+    AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(1000));
 
 }
 
@@ -1089,6 +1091,8 @@ void CCMWavedeform::Configure() {
     GetParameter("BasisThreshold", basis_threshold_);
     GetParameter("Reduce", reduce_);
     GetParameter("PMTKeys", allowed_pmt_keys_);
+    GetParameter("MaxCachedFrames", max_cached_frames);
+    teptr = nullptr;
 }
 
 CCMWavedeform::~CCMWavedeform() {
@@ -1186,8 +1190,6 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-static std::exception_ptr teptr = nullptr;
-
 void FrameThread(
         std::atomic<bool> & running,
         I3Frame * frame,
@@ -1203,7 +1205,8 @@ void FrameThread(
         double noise_threshold_,
         double basis_threshold_,
         double spes_per_bin_,
-        double tolerance_) {
+        double tolerance_,
+        std::exception_ptr & teptr) {
 
     try {
         if (!frame->Has(waveforms_name_)) {
@@ -1282,7 +1285,8 @@ void RunFrameThread(WavedeformJob * job,
         double noise_threshold,
         double basis_threshold,
         double spes_per_bin,
-        double tolerance) {
+        double tolerance,
+        std::exception_ptr & teptr) {
 
     job->running.store(true);
 
@@ -1301,7 +1305,8 @@ void RunFrameThread(WavedeformJob * job,
         noise_threshold,
         basis_threshold,
         spes_per_bin,
-        tolerance
+        tolerance,
+        std::ref(teptr)
     );
 }
 
@@ -1383,13 +1388,15 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
 
         if(free_jobs.size() > 0) {
             job = free_jobs.front();
+            job->running.store(false);
             free_jobs.pop_front();
         } else if(running_jobs.size() < num_threads) {
             job = new WavedeformJob();
+            job->running.store(false);
             job->thread_index = running_jobs.size();
         }
 
-        if(job != nullptr) {
+        if(job != nullptr and results.size() < max_cached_frames) {
             job->running.store(true);
             running_jobs.push_back(job);
             job->frame = frame;
@@ -1411,8 +1418,11 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 noise_threshold_,
                 basis_threshold_,
                 spes_per_bin_,
-                tolerance_);
+                tolerance_,
+                teptr);
             break;
+        } else if(job != nullptr) {
+            free_jobs.push_back(job);
         }
     }
 }
