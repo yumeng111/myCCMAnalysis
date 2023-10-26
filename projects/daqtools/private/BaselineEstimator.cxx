@@ -338,7 +338,7 @@ BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(contex
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key for CCMWaveforms object", std::string("CCMWaveforms"));
-    AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(1));
+    AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(0));
     AddParameter("NumSamples", "Number of samples to use for the baseline estimation", (size_t)(800));
     AddParameter("NumExpSamples", "Number of samples to use for the exponential fit", (size_t)(4000));
     AddParameter("OutputName", "Key to save output I3Vector<BaselineEstimate> to", std::string("BaselineEstimates"));
