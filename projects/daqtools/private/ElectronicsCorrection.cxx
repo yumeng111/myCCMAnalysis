@@ -71,8 +71,6 @@ class  ElectronicsCorrection: public I3Module {
 
     // initialize droop correction time constant map
     double delta_t = 2.0;
-    void Geometry(I3FramePtr frame);
-    void Calibration(I3FramePtr frame);
     //void BoxFilter(std::vector<double> const & samples, std::vector<double> & box_filter_results);
     //void OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results);
     // void ECorrection(std::vector<uint16_t> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples);
@@ -87,6 +85,8 @@ public:
     void Process();
     void Finish();
     void DAQ(I3FramePtr frame);
+    void Geometry(I3FramePtr frame);
+    void Calibration(I3FramePtr frame);
 };
 
 I3_MODULE( ElectronicsCorrection);
