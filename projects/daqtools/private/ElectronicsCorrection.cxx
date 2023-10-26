@@ -39,7 +39,21 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 
+struct ElectronicsCorrectionJob {
+    std::atomic<bool> running = false;
+    std::thread thread;
+    size_t thread_index = 0;
+    I3FramePtr frame = nullptr;
+    size_t frame_index = 0;
+};
+
+struct ElectronicsCorrectionResult {
+    I3FramePtr frame = nullptr;
+    bool done = false;
+};
+
 class  ElectronicsCorrection: public I3Module {
+    std::exception_ptr teptr = nullptr;
     bool geo_seen;
     bool calib_seen;
     std::string geometry_name_;
@@ -53,7 +67,7 @@ class  ElectronicsCorrection: public I3Module {
     CCMCalibration ccm_calibration_;
 
     size_t num_threads;
-    ctpl::thread_pool pool;
+    size_t max_cached_frames;
 
     // initialize droop correction time constant map
     double delta_t = 2.0;
@@ -62,11 +76,17 @@ class  ElectronicsCorrection: public I3Module {
     //void BoxFilter(std::vector<double> const & samples, std::vector<double> & box_filter_results);
     //void OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results);
     // void ECorrection(std::vector<uint16_t> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples);
+    size_t frame_index = 0;
+    size_t min_frame_idx = 0;
+    std::deque<ElectronicsCorrectionJob *> free_jobs;
+    std::deque<ElectronicsCorrectionJob *> running_jobs;
+    std::deque<ElectronicsCorrectionResult> results;
 public:
     ElectronicsCorrection(const I3Context&);
     void Configure();
-    void DAQ(I3FramePtr frame);
+    void Process();
     void Finish();
+    void DAQ(I3FramePtr frame);
 };
 
 I3_MODULE( ElectronicsCorrection);
@@ -80,7 +100,8 @@ ElectronicsCorrection:: ElectronicsCorrection(const I3Context& context) : I3Modu
         AddParameter("DefaultDroopTau", "The default droop time constant (in ns) to use if there is no entry in the calibratioin", std::vector((double)1200, (double)5000));
         AddParameter("OutputName", "Key to save output CCMWaveformDoubleSeries to", std::string("CCMCalibratedWaveforms"));
         AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(0));
-    }
+        AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(1000));
+}
 
 
 void  ElectronicsCorrection::Configure() {
@@ -92,12 +113,10 @@ void  ElectronicsCorrection::Configure() {
     GetParameter("OutputName", output_name_);
     default_calib_.SetDroopTimeConstant(default_droop_tau_);
     GetParameter("NumThreads", num_threads);
+    GetParameter("MaxCachedFrames", max_cached_frames);
     if(num_threads == 0) {
         size_t const processor_count = std::thread::hardware_concurrency();
         num_threads = processor_count;
-    }
-    if(num_threads > 0) {
-        pool.resize(num_threads);
     }
 }
 
@@ -169,7 +188,6 @@ void BoxFilter(std::vector<double> const & samples, std::vector<double> & box_fi
         else
             box_filter_results[i] = (samples[i-1] + samples[i] + samples[i+1])/3;
     }
-
 }
 
 // void ElectronicsCorrection::
@@ -248,7 +266,6 @@ void ECorrection(std::vector<uint16_t> const & samples, double const & mode, con
 }
 
 int ProcessWaveform(
-        int thread_id,
         std::pair<CCMPMTKey const, BaselineEstimate> const & it,
         I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_,
         CCMCalibration const & calibration,
@@ -289,7 +306,36 @@ int ProcessWaveform(
     return 0;
 }
 
-void  ElectronicsCorrection::DAQ(I3FramePtr frame) {
+void ElectronicsCorrection::Process() {
+  if (inbox_)
+    log_trace("%zu frames in inbox", inbox_->size());
+
+  I3FramePtr frame = PopFrame();
+
+  if(!frame or frame->GetStop() == I3Frame::DAQ) {
+    DAQ(frame);
+    return;
+  }
+
+  if(frame->GetStop() == I3Frame::Physics && ShouldDoPhysics(frame))
+    {
+      Physics(frame);
+    }
+  else if(frame->GetStop() == I3Frame::Geometry && ShouldDoGeometry(frame))
+    Geometry(frame);
+  else if(frame->GetStop() == I3Frame::Calibration && ShouldDoCalibration(frame))
+    Calibration(frame);
+  else if(frame->GetStop() == I3Frame::DetectorStatus && ShouldDoDetectorStatus(frame))
+    DetectorStatus(frame);
+  else if(frame->GetStop() == I3Frame::Simulation && ShouldDoSimulation(frame))
+    Simulation(frame);
+  else if(frame->GetStop() == I3Frame::DAQ && ShouldDoDAQ(frame)) {
+    DAQ(frame);
+  } else if(ShouldDoOtherStops(frame))
+    OtherStops(frame);
+}
+
+void FrameThread(I3Frame * frame, CCMCalibration const & ccm_calibration_, std::string const & ccm_waveforms_name_, std::string const & baseline_estimates_name_, std::string const & output_name_, bool geo_seen, bool calib_seen, I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_, CCMPMTCalibration const & default_calib_, std::vector<double> const & default_droop_tau_, double delta_t) {
     if(not geo_seen) {
         log_fatal("No Geometry frame seen before DAQ frame! Did you forget to include a geometry file?");
     }
@@ -321,28 +367,162 @@ void  ElectronicsCorrection::DAQ(I3FramePtr frame) {
     // We loop over pmt keys in baseline_estimates because a baseline estimate is required for the electronics correction
     // and the baseline_estimates object should have its pmt keys derived from the same geometry
     for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : *baseline_mode) {
-        results.emplace_back(pool.push(
-                    ProcessWaveform,
-                    it,
-                    pmt_channel_map_,
-                    calibration,
-                    std::cref(*waveforms),
-                    std::ref(*electronics_corrected_wf),
-                    default_calib_,
-                    default_droop_tau_,
-                    delta_t)
-                );
-    }
-
-    for(size_t i = 0; i < results.size(); ++i) {
-        results[i].wait();
+        ProcessWaveform(
+            it,
+            pmt_channel_map_,
+            calibration,
+            std::cref(*waveforms),
+            std::ref(*electronics_corrected_wf),
+            default_calib_,
+            default_droop_tau_,
+            delta_t
+        );
     }
 
     frame->Put(output_name_, electronics_corrected_wf);
-    PushFrame(frame);
 }
 
-void  ElectronicsCorrection::Finish() {
+void RunFrameThread(ElectronicsCorrectionJob * job,
+        CCMCalibration const & ccm_calibration_,
+        std::string const & ccm_waveforms_name_,
+        std::string const & baseline_estimates_name_,
+        std::string const & output_name_,
+        bool geo_seen,
+        bool calib_seen,
+        I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_,
+        CCMPMTCalibration const & default_calib_,
+        std::vector<double> const & default_droop_tau_,
+        double delta_t) {
+
+    job->running.store(true);
+
+    job->thread = std::thread(FrameThread,
+        job->frame.get(),
+        std::cref(ccm_calibration_),
+        std::cref(ccm_waveforms_name_),
+        std::cref(baseline_estimates_name_),
+        std::cref(output_name_),
+        geo_seen,
+        calib_seen,
+        std::cref(pmt_channel_map_),
+        std::cref(default_calib_),
+        std::cref(default_droop_tau_),
+        delta_t
+    );
+}
+
+void ElectronicsCorrection::DAQ(I3FramePtr frame) {
+	while(true) {
+		// Check if any jobs have finished
+		for(int i=int(running_jobs.size())-1; i>=0; --i) {
+			if (teptr) {
+				try{
+					std::rethrow_exception(teptr);
+				}
+				catch(const std::exception &ex)
+				{
+					std::cerr << "Thread exited with exception: " << ex.what() << "\n";
+				}
+			}
+			if(not running_jobs[i]->running.load()) {
+				ElectronicsCorrectionJob * job = running_jobs[i];
+                running_jobs.erase(running_jobs.begin() + i);
+                free_jobs.push_back(job);
+                job->thread.join();
+                results[job->frame_index - min_frame_idx].done = true;
+            } else {
+                ElectronicsCorrectionJob * job = running_jobs[i];
+            }
+        }
+
+        // Check for any done results and push the corresponding frames
+        size_t results_done = 0;
+        for(size_t i=0; i<results.size(); ++i) {
+            if(results[i].done) {
+                PushFrame(results[i].frame);
+                results[i].frame = nullptr;
+                results_done += 1;
+            } else {
+                break;
+            }
+        }
+        if(results_done > 0) {
+            results.erase(results.begin(), results.begin() + results_done);
+            min_frame_idx += results_done;
+        }
+
+        if(not frame)
+            break;
+
+        // Attempt to queue up a new job for the frame
+        ElectronicsCorrectionJob * job = nullptr;
+
+        if(free_jobs.size() > 0) {
+            job = free_jobs.front();
+            job->running.store(false);
+            free_jobs.pop_front();
+        } else if(running_jobs.size() < num_threads) {
+            job = new ElectronicsCorrectionJob();
+            job->running.store(false);
+            job->thread_index = running_jobs.size();
+        }
+
+        if(job != nullptr and results.size() < max_cached_frames) {
+            job->running.store(true);
+            running_jobs.push_back(job);
+            job->frame = frame;
+            job->frame_index = frame_index;
+            results.emplace_back();
+            results.back().frame = frame;
+            results.back().done = false;
+            frame_index += 1;
+            RunFrameThread(job,
+                ccm_calibration_,
+                ccm_waveforms_name_,
+                baseline_estimates_name_,
+                output_name_,
+                geo_seen,
+                calib_seen,
+                pmt_channel_map_,
+                default_calib_,
+                default_droop_tau_,
+                delta_t);
+            break;
+        } else if(job != nullptr) {
+            free_jobs.push_back(job);
+        }
+    }
+}
+
+void ElectronicsCorrection::Finish() {
+    while(running_jobs.size() > 0) {
+        // Check if any jobs have finished
+        for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            if(not running_jobs[i]->running.load()) {
+                ElectronicsCorrectionJob * job = running_jobs[i];
+                running_jobs.erase(running_jobs.begin() + i);
+                free_jobs.push_back(job);
+                job->thread.join();
+                results[job->frame_index - min_frame_idx].done = true;
+            }
+        }
+
+        // Check for any done results and push the corresponding frames
+        size_t results_done = 0;
+        for(size_t i=0; i<results.size(); ++i) {
+            if(results[i].done) {
+                PushFrame(results[i].frame);
+                results[i].frame = nullptr;
+                results_done += 1;
+            } else {
+                break;
+            }
+        }
+        if(results_done > 0) {
+            results.erase(results.begin(), results.begin() + results_done);
+            min_frame_idx += results_done;
+        }
+    }
 }
 
 
