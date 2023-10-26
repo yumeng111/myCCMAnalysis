@@ -335,7 +335,7 @@ void ElectronicsCorrection::Process() {
     OtherStops(frame);
 }
 
-void FrameThread(I3Frame * frame, CCMCalibration const & ccm_calibration_, std::string const & ccm_waveforms_name_, std::string const & baseline_estimates_name_, std::string const & output_name_, bool geo_seen, bool calib_seen, I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_, CCMPMTCalibration const & default_calib_, std::vector<double> const & default_droop_tau_, double delta_t) {
+void FrameThread(std::atomic<bool> & running, I3Frame * frame, CCMCalibration const & ccm_calibration_, std::string const & ccm_waveforms_name_, std::string const & baseline_estimates_name_, std::string const & output_name_, bool geo_seen, bool calib_seen, I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_, CCMPMTCalibration const & default_calib_, std::vector<double> const & default_droop_tau_, double delta_t) {
     if(not geo_seen) {
         log_fatal("No Geometry frame seen before DAQ frame! Did you forget to include a geometry file?");
     }
@@ -380,6 +380,7 @@ void FrameThread(I3Frame * frame, CCMCalibration const & ccm_calibration_, std::
     }
 
     frame->Put(output_name_, electronics_corrected_wf);
+    running.store(false);
 }
 
 void RunFrameThread(ElectronicsCorrectionJob * job,
@@ -397,6 +398,7 @@ void RunFrameThread(ElectronicsCorrectionJob * job,
     job->running.store(true);
 
     job->thread = std::thread(FrameThread,
+        std::ref(job->running),
         job->frame.get(),
         std::cref(ccm_calibration_),
         std::cref(ccm_waveforms_name_),
@@ -412,9 +414,11 @@ void RunFrameThread(ElectronicsCorrectionJob * job,
 }
 
 void ElectronicsCorrection::DAQ(I3FramePtr frame) {
+    std::cout << "Calling DAQ()" << std::endl;
 	while(true) {
 		// Check if any jobs have finished
 		for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            std::cout << "running_jobs[" << i << "]->running == " << running_jobs[i]->running.load() << std::endl;
 			if (teptr) {
 				try{
 					std::rethrow_exception(teptr);
@@ -426,18 +430,21 @@ void ElectronicsCorrection::DAQ(I3FramePtr frame) {
 			}
 			if(not running_jobs[i]->running.load()) {
 				ElectronicsCorrectionJob * job = running_jobs[i];
+                std::cout << "Job finished: " << job->thread_index << " : " << job->frame_index << std::endl;
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
                 results[job->frame_index - min_frame_idx].done = true;
             } else {
                 ElectronicsCorrectionJob * job = running_jobs[i];
+                std::cout << "Job still running: " << job->thread_index << " : " << job->frame_index << std::endl;
             }
         }
 
         // Check for any done results and push the corresponding frames
         size_t results_done = 0;
         for(size_t i=0; i<results.size(); ++i) {
+            std::cout << "results[" << i << "].done == " << results[i].done << std::endl;
             if(results[i].done) {
                 PushFrame(results[i].frame);
                 results[i].frame = nullptr;
@@ -459,15 +466,18 @@ void ElectronicsCorrection::DAQ(I3FramePtr frame) {
 
         if(free_jobs.size() > 0) {
             job = free_jobs.front();
+            std::cout << "Have a free job: " << job->thread_index << " : " << frame_index << std::endl;
             job->running.store(false);
             free_jobs.pop_front();
         } else if(running_jobs.size() < num_threads) {
             job = new ElectronicsCorrectionJob();
             job->running.store(false);
             job->thread_index = running_jobs.size();
+            std::cout << "Creating new job: " << job->thread_index << " : " << frame_index << std::endl;
         }
 
         if(job != nullptr and results.size() < max_cached_frames) {
+            std::cout << "Starting job: " << job->thread_index << " : " << frame_index << std::endl;
             job->running.store(true);
             running_jobs.push_back(job);
             job->frame = frame;
@@ -489,6 +499,7 @@ void ElectronicsCorrection::DAQ(I3FramePtr frame) {
                 delta_t);
             break;
         } else if(job != nullptr) {
+            std::cout << "Not enough space to start new job: " << job->thread_index << " : " << frame_index << std::endl;
             free_jobs.push_back(job);
         }
     }
