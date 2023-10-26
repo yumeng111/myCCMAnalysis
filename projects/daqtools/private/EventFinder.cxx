@@ -50,6 +50,8 @@ class EventFinder: public I3Module {
     CCMGeometryConstPtr geo;
     double timeWindow_;
     double event_charge_threshold_;
+    bool allow_overlapping_events_;
+    std::string output_prefix_;
     std::string pulses_;
 
     I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
@@ -74,6 +76,8 @@ EventFinder::EventFinder(const I3Context& context) : I3Module(context),
         AddParameter("EventChargeThreshold", "Charge threshold in window to define an event", double(5.0));
         AddParameter("Pulses", "Name of pulse series to use", "OfflinePulses");
         AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
+        AddParameter("AllowOverlappingEvents", "False -> merge overlapping event windows. True -> allow overlapping event windows", bool(false));
+        AddParameter("Ouptut", "Prefix for the outputs", std::string(""));
     }
 
 
@@ -84,6 +88,8 @@ void EventFinder::Configure() {
     GetParameter("EventChargeThreshold", event_charge_threshold_);
     GetParameter("Pulses", pulses_);
     GetParameter("PMTTypes", pmt_types);
+    GetParameter("AllowOverlappingEvents", allow_overlapping_events_);
+    GetParameter("Ouptut", output_prefix_);
 }
 
 
@@ -163,7 +169,16 @@ void EventFinder::DAQ(I3FramePtr frame) {
         } else {
             if(have_event) {
                 event_end_time = std::get<1>(*j).GetTime();
-                events.emplace_back(event_start_time, event_end_time, max_event_charge, max_event_charge_time);
+
+                if((not allow_overlapping_events_) and events.size() > 0 and std::get<1>(events.back()) > event_start_time) {
+                    if(max_event_charge > std::get<2>(events.back())) {
+                        max_event_charge = std::get<2>(events.back());
+                        max_event_charge_time = std::get<3>(events.back());
+                    }
+                    events.back() = std::make_tuple(std::get<0>(events.back()), event_end_time, max_event_charge, max_event_charge_time);
+                } else {
+                    events.emplace_back(event_start_time, event_end_time, max_event_charge, max_event_charge_time);
+                }
                 have_event = false;
                 max_event_charge = 0.0;
             } else {
@@ -182,10 +197,10 @@ void EventFinder::DAQ(I3FramePtr frame) {
         max_event_charge_times->at(i) = std::get<3>(events[i]);
     }
 
-    frame->Put("EventStartTimes", event_start_times);
-    frame->Put("EventEndTimes", event_end_times);
-    frame->Put("MaxEventCharges", max_event_charges);
-    frame->Put("MaxEventChargeTimes", max_event_charge_times);
+    frame->Put(output_prefix_ + "EventStartTimes", event_start_times);
+    frame->Put(output_prefix_ + "EventEndTimes", event_end_times);
+    frame->Put(output_prefix_ + "MaxEventCharges", max_event_charges);
+    frame->Put(output_prefix_ + "MaxEventChargeTimes", max_event_charge_times);
 
     PushFrame(frame);
 }
