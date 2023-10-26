@@ -482,11 +482,9 @@ void RunFrameThread(BaselineEstimatorJob * job,
 }
 
 void BaselineEstimator::DAQ(I3FramePtr frame) {
-    std::cout << "Calling DAQ()" << std::endl;
 	while(true) {
 		// Check if any jobs have finished
 		for(int i=int(running_jobs.size())-1; i>=0; --i) {
-            std::cout << "running_jobs[" << i << "]->running == " << running_jobs[i]->running.load() << std::endl;
 			if (teptr) {
 				try{
 					std::rethrow_exception(teptr);
@@ -498,21 +496,18 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
 			}
 			if(not running_jobs[i]->running.load()) {
 				BaselineEstimatorJob * job = running_jobs[i];
-                std::cout << "Job finished: " << job->thread_index << " : " << job->frame_index << std::endl;
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
                 results[job->frame_index - min_frame_idx].done = true;
             } else {
                 BaselineEstimatorJob * job = running_jobs[i];
-                std::cout << "Job still running: " << job->thread_index << " : " << job->frame_index << std::endl;
             }
         }
 
         // Check for any done results and push the corresponding frames
         size_t results_done = 0;
         for(size_t i=0; i<results.size(); ++i) {
-            std::cout << "results[" << i << "].done == " << results[i].done << std::endl;
             if(results[i].done) {
                 PushFrame(results[i].frame);
                 results[i].frame = nullptr;
@@ -534,18 +529,15 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
 
         if(free_jobs.size() > 0) {
             job = free_jobs.front();
-            std::cout << "Have a free job: " << job->thread_index << " : " << frame_index << std::endl;
             job->running.store(false);
             free_jobs.pop_front();
         } else if(running_jobs.size() < num_threads) {
             job = new BaselineEstimatorJob();
             job->running.store(false);
             job->thread_index = running_jobs.size();
-            std::cout << "Creating new job: " << job->thread_index << " : " << frame_index << std::endl;
         }
 
         if(job != nullptr and results.size() < max_cached_frames) {
-            std::cout << "Starting job: " << job->thread_index << " : " << frame_index << std::endl;
             job->running.store(true);
             running_jobs.push_back(job);
             job->frame = frame;
@@ -562,7 +554,6 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
                 num_exp_samples);
             break;
         } else if(job != nullptr) {
-            std::cout << "Not enough space to start new job: " << job->thread_index << " : " << frame_index << std::endl;
             free_jobs.push_back(job);
         }
     }
