@@ -21,6 +21,7 @@
 #include <icetray/CCMTriggerKey.h>
 #include <icetray/I3ConditionalModule.h>
 
+#include <dataclasses/I3Double.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
@@ -1206,6 +1207,7 @@ void FrameThread(
         double basis_threshold_,
         double spes_per_bin_,
         double tolerance_,
+        size_t num_threads,
         std::exception_ptr & teptr) {
 
     try {
@@ -1215,6 +1217,7 @@ void FrameThread(
         }
 
         boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);
+        boost::shared_ptr<const I3Double> total_adc_count = frame->Get<boost::shared_ptr<const I3Double>>(waveforms_name_ + "TotalADC");
         I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 
         if(waveforms == nullptr) {
@@ -1241,26 +1244,60 @@ void FrameThread(
             output_rebin_data_times_references.emplace_back(output_rebin_data_times->at(pmt_keys_[i]));
         }
 
-        RunPulsesThread(
-            std::tuple<size_t, size_t>(0, pmt_keys_.size()),
-            std::cref(pmt_keys_),
-            std::cref(pmt_channel_map_),
-            std::cref(*waveforms),
-            std::cref(templates_),
-            std::cref(calibration),
-            std::ref(cholmod_common_vec_),
-            reduce_,
-            std::ref(output_pulses_references),
-            std::ref(output_data_times_references),
-            std::ref(output_rebin_data_times_references),
-            wf_bin_width_,
-            noise_threshold_,
-            basis_threshold_,
-            spes_per_bin_,
-            tolerance_,
-            frame
-        );
-
+        if(total_adc_count and total_adc_count->value > 1e7) {
+            ctpl::thread_pool pool;
+            pool.resize(num_threads);
+            std::vector<std::future<int>> results(pmt_keys_.size());
+            for(size_t i=0; i<pmt_keys_.size(); ++i) {
+                results[i] = pool.push(
+                    [&,i] (int thread_id) -> int {
+                        RunPulsesThread(
+                            std::tuple<size_t, size_t>(i, i+1),
+                            std::cref(pmt_keys_),
+                            std::cref(pmt_channel_map_),
+                            std::cref(*waveforms),
+                            std::cref(templates_),
+                            std::cref(calibration),
+                            std::ref(cholmod_common_vec_),
+                            reduce_,
+                            std::ref(output_pulses_references),
+                            std::ref(output_data_times_references),
+                            std::ref(output_rebin_data_times_references),
+                            wf_bin_width_,
+                            noise_threshold_,
+                            basis_threshold_,
+                            spes_per_bin_,
+                            tolerance_,
+                            frame
+                        );
+                        return 0;
+                    }
+                );
+            }
+            for(size_t i=0; i<results.size(); ++i) {
+                results[i].wait();
+            }
+        } else {
+            RunPulsesThread(
+                std::tuple<size_t, size_t>(0, pmt_keys_.size()),
+                std::cref(pmt_keys_),
+                std::cref(pmt_channel_map_),
+                std::cref(*waveforms),
+                std::cref(templates_),
+                std::cref(calibration),
+                std::ref(cholmod_common_vec_),
+                reduce_,
+                std::ref(output_pulses_references),
+                std::ref(output_data_times_references),
+                std::ref(output_rebin_data_times_references),
+                wf_bin_width_,
+                noise_threshold_,
+                basis_threshold_,
+                spes_per_bin_,
+                tolerance_,
+                frame
+            );
+        }
 
         frame->Put("OriginalDataBins", output_data_times);
         frame->Put("RebinnedDataBins", output_rebin_data_times);
@@ -1286,6 +1323,7 @@ void RunFrameThread(WavedeformJob * job,
         double basis_threshold,
         double spes_per_bin,
         double tolerance,
+        size_t num_threads,
         std::exception_ptr & teptr) {
 
     job->running.store(true);
@@ -1306,6 +1344,7 @@ void RunFrameThread(WavedeformJob * job,
         basis_threshold,
         spes_per_bin,
         tolerance,
+        num_threads,
         std::ref(teptr)
     );
 }
@@ -1419,6 +1458,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 basis_threshold_,
                 spes_per_bin_,
                 tolerance_,
+                num_threads,
                 teptr);
             break;
         } else if(job != nullptr) {
