@@ -25,6 +25,7 @@
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
+#include <dataclasses/I3Double.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/calibration/CCMCalibration.h>
@@ -378,8 +379,16 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, CCMCalibration co
             delta_t
         );
     }
+    double total_adc_count = 0.0;
+    for(size_t i=0; i<electronics_corrected_wf->size(); ++i) {
+        std::vector<double> const & wf = electronics_corrected_wf->at(i).GetWaveform();
+        for(size_t j=0; j<wf.size(); ++j) {
+            total_adc_count += wf.at(j);
+        }
+    }
 
     frame->Put(output_name_, electronics_corrected_wf);
+    frame->Put(output_name_ + "TotalADC", boost::make_shared<I3Double>(total_adc_count));
     running.store(false);
 }
 
