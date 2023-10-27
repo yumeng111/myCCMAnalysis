@@ -1005,6 +1005,7 @@ struct WavedeformResult {
 class CCMWavedeform : public I3ConditionalModule {
     std::exception_ptr teptr;
 public:
+    bool remove_waveforms;
     size_t num_threads;
     size_t max_cached_frames;
     std::string geometry_name_;
@@ -1073,6 +1074,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
             " basis members until tolerance is reached", true);
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
     AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(3000));
+    AddParameter("RemoveWaveforms", "Remove the input waveforms?", bool(false));
 
 }
 
@@ -1093,6 +1095,7 @@ void CCMWavedeform::Configure() {
     GetParameter("Reduce", reduce_);
     GetParameter("PMTKeys", allowed_pmt_keys_);
     GetParameter("MaxCachedFrames", max_cached_frames);
+    GetParameter("RemoveWaveforms", remove_waveforms);
     teptr = nullptr;
 }
 
@@ -1208,6 +1211,7 @@ void FrameThread(
         double spes_per_bin_,
         double tolerance_,
         size_t num_threads,
+        bool remove_waveforms,
         std::exception_ptr & teptr) {
 
     try {
@@ -1299,6 +1303,9 @@ void FrameThread(
             );
         }
 
+        if(remove_waveforms) {
+            frame->Delete(waveforms_name_);
+        }
         frame->Put("OriginalDataBins", output_data_times);
         frame->Put("RebinnedDataBins", output_rebin_data_times);
         frame->Put(output_name_, output);
@@ -1324,6 +1331,7 @@ void RunFrameThread(WavedeformJob * job,
         double spes_per_bin,
         double tolerance,
         size_t num_threads,
+        bool remove_waveforms,
         std::exception_ptr & teptr) {
 
     job->running.store(true);
@@ -1345,6 +1353,7 @@ void RunFrameThread(WavedeformJob * job,
         spes_per_bin,
         tolerance,
         num_threads,
+        remove_waveforms,
         std::ref(teptr)
     );
 }
@@ -1459,6 +1468,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 spes_per_bin_,
                 tolerance_,
                 num_threads,
+                remove_waveforms,
                 teptr);
             break;
         } else if(job != nullptr) {

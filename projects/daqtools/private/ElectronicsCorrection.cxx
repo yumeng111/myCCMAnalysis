@@ -67,6 +67,7 @@ class  ElectronicsCorrection: public I3Module {
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     CCMCalibration ccm_calibration_;
 
+    bool remove_waveforms;
     size_t num_threads;
     size_t max_cached_frames;
 
@@ -102,6 +103,7 @@ ElectronicsCorrection:: ElectronicsCorrection(const I3Context& context) : I3Modu
         AddParameter("OutputName", "Key to save output CCMWaveformDoubleSeries to", std::string("CCMCalibratedWaveforms"));
         AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(0));
         AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(1000));
+        AddParameter("RemoveWaveforms", "Remove the input waveforms?", bool(false));
 }
 
 
@@ -115,6 +117,7 @@ void  ElectronicsCorrection::Configure() {
     default_calib_.SetDroopTimeConstant(default_droop_tau_);
     GetParameter("NumThreads", num_threads);
     GetParameter("MaxCachedFrames", max_cached_frames);
+    GetParameter("RemoveWaveforms", remove_waveforms);
     if(num_threads == 0) {
         size_t const processor_count = std::thread::hardware_concurrency();
         num_threads = processor_count;
@@ -336,7 +339,7 @@ void ElectronicsCorrection::Process() {
     OtherStops(frame);
 }
 
-void FrameThread(std::atomic<bool> & running, I3Frame * frame, CCMCalibration const & ccm_calibration_, std::string const & ccm_waveforms_name_, std::string const & baseline_estimates_name_, std::string const & output_name_, bool geo_seen, bool calib_seen, I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_, CCMPMTCalibration const & default_calib_, std::vector<double> const & default_droop_tau_, double delta_t) {
+void FrameThread(std::atomic<bool> & running, I3Frame * frame, CCMCalibration const & ccm_calibration_, std::string const & ccm_waveforms_name_, std::string const & baseline_estimates_name_, std::string const & output_name_, bool geo_seen, bool calib_seen, I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_, CCMPMTCalibration const & default_calib_, std::vector<double> const & default_droop_tau_, double delta_t, bool remove_waveforms) {
     if(not geo_seen) {
         log_fatal("No Geometry frame seen before DAQ frame! Did you forget to include a geometry file?");
     }
@@ -387,6 +390,9 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, CCMCalibration co
         }
     }
 
+    if(remove_waveforms) {
+        frame->Delete(ccm_waveforms_name_);
+    }
     frame->Put(output_name_, electronics_corrected_wf);
     frame->Put(output_name_ + "TotalADC", boost::make_shared<I3Double>(total_adc_count));
     running.store(false);
@@ -402,7 +408,8 @@ void RunFrameThread(ElectronicsCorrectionJob * job,
         I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_,
         CCMPMTCalibration const & default_calib_,
         std::vector<double> const & default_droop_tau_,
-        double delta_t) {
+        double delta_t,
+        bool remove_waveforms) {
 
     job->running.store(true);
 
@@ -418,7 +425,8 @@ void RunFrameThread(ElectronicsCorrectionJob * job,
         std::cref(pmt_channel_map_),
         std::cref(default_calib_),
         std::cref(default_droop_tau_),
-        delta_t
+        delta_t,
+        remove_waveforms
     );
 }
 
@@ -497,7 +505,8 @@ void ElectronicsCorrection::DAQ(I3FramePtr frame) {
                 pmt_channel_map_,
                 default_calib_,
                 default_droop_tau_,
-                delta_t);
+                delta_t,
+                remove_waveforms);
             break;
         } else if(job != nullptr) {
             free_jobs.push_back(job);
