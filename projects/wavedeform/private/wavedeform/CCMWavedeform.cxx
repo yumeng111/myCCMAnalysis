@@ -1072,7 +1072,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("Reduce", "Find the optimal NNLS solution, then eliminate"
             " basis members until tolerance is reached", true);
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
-    AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(1000));
+    AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(3000));
 
 }
 
