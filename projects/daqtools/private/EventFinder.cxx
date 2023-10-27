@@ -74,10 +74,10 @@ EventFinder::EventFinder(const I3Context& context) : I3Module(context),
         AddParameter("TimeWindow", "Size of sliding time window to examine.",
                 2 * I3Units::ns);
         AddParameter("EventChargeThreshold", "Charge threshold in window to define an event", double(5.0));
-        AddParameter("Pulses", "Name of pulse series to use", "OfflinePulses");
+        AddParameter("Pulses", "Name of pulse series to use", "WavedeformPulses");
         AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
         AddParameter("AllowOverlappingEvents", "False -> merge overlapping event windows. True -> allow overlapping event windows", bool(false));
-        AddParameter("Ouptut", "Prefix for the outputs", std::string(""));
+        AddParameter("Output", "Prefix for the outputs", std::string(""));
     }
 
 
@@ -89,7 +89,7 @@ void EventFinder::Configure() {
     GetParameter("Pulses", pulses_);
     GetParameter("PMTTypes", pmt_types);
     GetParameter("AllowOverlappingEvents", allow_overlapping_events_);
-    GetParameter("Ouptut", output_prefix_);
+    GetParameter("Output", output_prefix_);
 }
 
 
