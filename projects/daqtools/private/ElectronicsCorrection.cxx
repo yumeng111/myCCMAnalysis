@@ -147,19 +147,14 @@ void ElectronicsCorrection::Calibration(I3FramePtr frame) {
 //void ElectronicsCorrection::
 void OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results) {
 
-    // first let's find the average of the first 10 bins of our wf as the starting value
     double delta_tau = 20;
     double prev_tau = 2.0;
     double next_tau = 2.0;
-    double starting_val = 0;
-    double counter = 0;
 
-    for(size_t it = 0; it < 10; ++it) {
-        starting_val += samples[it];
-        counter += 1;
-    }
-
-    double value = starting_val/counter;
+    // first let's find the mode of the first 100 bins of our wf as the starting value
+    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), samples.size()));
+    std::sort(starting_samples.begin(), starting_samples.end());
+    double value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
 
     // now let's loop over the waveform
     for(size_t wf_it = 0; wf_it < samples.size(); ++wf_it) {

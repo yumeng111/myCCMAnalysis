@@ -293,7 +293,9 @@ void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int
     size_t N = std::min(samples.size(), target_num_samples);
     std::vector<double> outlier_filter_results;
     outlier_filter_results.reserve(N);
-    double starting_value = Average(samples.begin(), samples.begin() + std::min(size_t(10), N));
+    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), N));
+    std::sort(starting_samples.begin(), starting_samples.end());
+    double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
     OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
     starting_value = outlier_filter_results.back();
 
