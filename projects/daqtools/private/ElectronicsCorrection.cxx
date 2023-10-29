@@ -152,7 +152,7 @@ void OutlierFilter(std::vector<double> const & samples, std::vector<double> & ou
     double next_tau = 2.0;
 
     // first let's find the mode of the first 100 bins of our wf as the starting value
-    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), samples.size()));
+    std::vector<double> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), samples.size()));
     std::sort(starting_samples.begin(), starting_samples.end());
     double value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
 
