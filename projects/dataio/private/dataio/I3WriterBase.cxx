@@ -85,6 +85,8 @@ I3WriterBase::I3WriterBase(const I3Context& ctx)
 	AddParameter("DropOrphanStreams", "Vector of I3Frame.Stream types to "
 	    "drop if they are not followed by other frames. Default: drop "
 	    "nothing", dropOrphanStreams_);
+    AddParameter("NWorkers",
+        "Number of workers to use for compression", 0);
 }
 
 void
@@ -136,6 +138,7 @@ I3WriterBase::Configure()
 	file_stager_ = context_.Get<I3FileStagerPtr>();
 	if (!file_stager_)
 		file_stager_ = I3TrivialFileStager::create();
+    GetParameter("NWorkers", num_workers_);
 }
 
 void
