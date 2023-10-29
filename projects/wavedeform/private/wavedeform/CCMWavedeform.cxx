@@ -297,6 +297,10 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     min_spe_spacing = std::min(coarse_spacing, min_spe_spacing);
     max_spe_spacing = std::max(coarse_spacing, max_spe_spacing);
 
+    double ccoarse_spacing = wf_bin_width * 3.0;
+    min_spe_spacing = std::min(ccoarse_spacing, min_spe_spacing);
+    max_spe_spacing = std::max(ccoarse_spacing, max_spe_spacing);
+
     double spacing = coarse_spacing;
 
     // Get the peak FWHM start, stop times for this waveform
@@ -306,12 +310,15 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     // non-zero data within the FWHM of the corresponding pulse
     bool prev_below = true;
     size_t fine_spacing_tau = 20;
+    size_t coarse_spacing_tau = 40;
     size_t n_since_fine = 0;
     for (k = 0; k < wf_size; ++k) {
         if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
             if(prev_below) {
                 n_since_fine = 0;
                 spacing = fine_spacing;
+            } else if(n_since_fine > coarse_spacing_tau) {
+                spacing = ccoarse_spacing;
             } else if(n_since_fine > fine_spacing_tau) {
                 spacing = coarse_spacing;
             }
@@ -770,11 +777,11 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     // Solve for SPE heights
     if (reduce) {
         {
-            unfolded = rnnls(basis, data, tolerance, 2000, 0, &chol_common);
+            unfolded = rnnls(basis, data, tolerance, 1000, 0, &chol_common);
         }
     } else {
         unfolded = nnls_lawson_hanson(basis, data, tolerance,
-            0, 2000, nspes, 0, 1, 0, &chol_common);
+            0, 1000, nspes, 0, 1, 0, &chol_common);
     }
 
     cholmod_l_free_sparse(&basis, &chol_common);
@@ -1065,7 +1072,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("BasisThreshold",
             "Require a bin with amplitude at least this number of counts "
             "within the FWHM of the template waveform in order to include "
-            "a given start time in the basis set", 10.0);
+            "a given start time in the basis set", 7.0);
     AddParameter("Waveforms", "Name of input waveforms",
             "CCMCalibratedWaveforms");
     AddParameter("Output", "Name of output pulse series",
