@@ -297,7 +297,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     min_spe_spacing = std::min(coarse_spacing, min_spe_spacing);
     max_spe_spacing = std::max(coarse_spacing, max_spe_spacing);
 
-    double ccoarse_spacing = wf_bin_width * 3.0;
+    double ccoarse_spacing = wf_bin_width * 2.0;
     min_spe_spacing = std::min(ccoarse_spacing, min_spe_spacing);
     max_spe_spacing = std::max(ccoarse_spacing, max_spe_spacing);
 
