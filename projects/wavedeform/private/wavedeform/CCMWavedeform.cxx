@@ -1067,7 +1067,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 1.);
-    AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 9.);
+    AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 49.);
     AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 5.0);
     AddParameter("BasisThreshold",
             "Require a bin with amplitude at least this number of counts "
