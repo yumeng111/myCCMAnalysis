@@ -18,6 +18,8 @@
 #include <dataclasses/I3MapCCMPMTKeyMask.h>
 #include <dataclasses/I3MapCCMPMTKeyUnion.h>
 #include <dataclasses/I3RecoPulseSeriesMapApplySPECorrection.h>
+#include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime.h>
+#include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusBeamTime.h>
 #include <dataclasses/physics/I3RecoPulseSeriesMapCombineByModule.h>
 #include <dataclasses/physics/I3RecoHit.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
@@ -168,14 +170,20 @@ I3Frame::Get(const std::string& name, void*, void*) const
 	if (uni)
 		return uni->Apply(*this);
 
-    // Not yet implemented: CCMRecoPulseSeriesMapApplySPECorrection, CCMRecoPulseSeriesMapCombineByModule
-    /*
-	CCMRecoPulseSeriesMapApplySPECorrectionConstPtr spe_shift = 
-	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapApplySPECorrection>(focp);
+	CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr spe_cal_trigger_time =
+	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(focp);
 
-	if (spe_shift)
-		return spe_shift->Apply(*this);
+	if (spe_cal_trigger_time)
+		return spe_cal_trigger_time->Apply(*this);
+
+	CCMRecoPulseSeriesMapApplySPECalPlusBeamTimeConstPtr spe_cal_beam_time =
+	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(focp);
+
+	if (spe_cal_beam_time)
+		return spe_cal_beam_time->Apply(*this);
 	
+    // Not yet implemented: CCMRecoPulseSeriesMapCombineByModule
+    /*
 	{
 		CCMRecoPulseSeriesMapCombineByModuleConstPtr combined = 
 		    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapCombineByModule>(focp);

@@ -18,7 +18,7 @@
 #include "icetray/serialization.h"
 #include "dataclasses/physics/CCMRecoPulse.h"
 
-static const unsigned ccmrecopulseseriesmapapplyspecalplustriggertime_version_ = 0;
+static const unsigned ccmrecopulseseriesmapapplyspecalplusbeamtime_version_ = 0;
 
 class CCMRecoPulseSeriesMapApplySPECalPlusBeamTime : public I3FrameObject {
 public:
@@ -64,7 +64,7 @@ private:
 std::ostream& operator<<(std::ostream&, const CCMRecoPulseSeriesMapApplySPECalPlusBeamTime&);
 
 I3_CLASS_VERSION(CCMRecoPulseSeriesMapApplySPECalPlusBeamTime,
-        ccmrecopulseseriesmapapplyspecalplustriggertime_version_);
+        ccmrecopulseseriesmapapplyspecalplusbeamtime_version_);
 I3_POINTER_TYPEDEFS(CCMRecoPulseSeriesMapApplySPECalPlusBeamTime);
 
 #endif // dataclasses_CCMRecoPulseSeriesMapApplySPECalPlusBeamTime_H
