@@ -47,6 +47,7 @@ class I3WriterBase : public I3ConditionalModule
 protected:
   bool configWritten_;
   int frameCounter_;
+  unsigned int num_workers_;
   std::vector<std::string> skip_keys_;
   std::vector<I3Frame::Stream> streams_;
   std::vector<I3Frame::Stream> dropOrphanStreams_;

@@ -21,6 +21,7 @@
 #include <icetray/CCMTriggerKey.h>
 #include <icetray/I3ConditionalModule.h>
 
+#include <dataclasses/I3Double.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
@@ -43,7 +44,6 @@
 /* Simple class to hold together ATWD and FADC
  * templates along with a validity flag and waveform features */
 struct CCMWaveformTemplate {
-
     std::vector<double> digitizer_template;
     double digitizerStart;
     double digitizerStop;
@@ -187,7 +187,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
+void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3Frame * frame) {
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
     cholmod_dense *data, *unfolded;
@@ -297,6 +297,10 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     min_spe_spacing = std::min(coarse_spacing, min_spe_spacing);
     max_spe_spacing = std::max(coarse_spacing, max_spe_spacing);
 
+    double ccoarse_spacing = wf_bin_width * 2.0;
+    min_spe_spacing = std::min(ccoarse_spacing, min_spe_spacing);
+    max_spe_spacing = std::max(ccoarse_spacing, max_spe_spacing);
+
     double spacing = coarse_spacing;
 
     // Get the peak FWHM start, stop times for this waveform
@@ -306,12 +310,15 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     // non-zero data within the FWHM of the corresponding pulse
     bool prev_below = true;
     size_t fine_spacing_tau = 20;
+    size_t coarse_spacing_tau = 40;
     size_t n_since_fine = 0;
     for (k = 0; k < wf_size; ++k) {
         if (((double *)(data->x))[k] != 0. && passBasisThresh[k]) {
             if(prev_below) {
                 n_since_fine = 0;
                 spacing = fine_spacing;
+            } else if(n_since_fine > coarse_spacing_tau) {
+                spacing = ccoarse_spacing;
             } else if(n_since_fine > fine_spacing_tau) {
                 spacing = coarse_spacing;
             }
@@ -770,11 +777,11 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     // Solve for SPE heights
     if (reduce) {
         {
-            unfolded = rnnls(basis, data, tolerance, 2000, 0, &chol_common);
+            unfolded = rnnls(basis, data, tolerance, 1000, 0, &chol_common);
         }
     } else {
         unfolded = nnls_lawson_hanson(basis, data, tolerance,
-            0, 2000, nspes, 0, 1, 0, &chol_common);
+            0, 1000, nspes, 0, 1, 0, &chol_common);
     }
 
     cholmod_l_free_sparse(&basis, &chol_common);
@@ -796,7 +803,7 @@ void GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     cholmod_l_free_dense(&unfolded, &chol_common);
 }
 
-void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3FramePtr frame) {
+void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, I3Frame * frame) {
     output.clear();
     std::vector<double> const & w = wf.GetWaveform();
     if(w.size() == 0)
@@ -890,10 +897,8 @@ void RunPulsesThread(
         double basis_threshold,
         double spes_per_bin,
         double tolerance,
-        I3FramePtr frame
+        I3Frame * frame
         ) {
-    double RunPulsesThread_s = 0.0;
-    double RunPulsesThread_u = 0.0;
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
         size_t channel = pmt_channel_map.at(pmt_key);
@@ -907,8 +912,6 @@ void RunPulsesThread(
 
         double placeholder = 1.0;
 
-        double GetPulses_s = 0.0;
-        double GetPulses_u = 0.0;
         GetPulses(
                 waveform,
                 templates.at(pmt_key),
@@ -993,50 +996,67 @@ void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& cali
     wfTemplate.filled = true;
 }
 
+struct WavedeformJob {
+    std::atomic<bool> running = false;
+    std::thread thread;
+    size_t thread_index = 0;
+    I3FramePtr frame = nullptr;
+    size_t frame_index = 0;
+};
+
+struct WavedeformResult {
+    I3FramePtr frame = nullptr;
+    bool done = false;
+};
 
 class CCMWavedeform : public I3ConditionalModule {
-    public:
-        size_t num_threads;
-        std::string geometry_name_;
-        bool geo_seen;
-        std::string nim_pulses_name_;
-        I3Vector<CCMPMTKey> allowed_pmt_keys_;
-        I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-        CCMWavedeform(const I3Context &);
+    std::exception_ptr teptr;
+public:
+    bool remove_waveforms;
+    size_t num_threads;
+    size_t max_cached_frames;
+    std::string geometry_name_;
+    bool geo_seen;
+    std::string nim_pulses_name_;
+    I3Vector<CCMPMTKey> allowed_pmt_keys_;
+    I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
+    CCMWavedeform(const I3Context &);
 
-        double rnnls_u = 0.0;
-        double rnnls_s = 0.0;
-        double fnnls_u = 0.0;
-        double fnnls_s = 0.0;
+    std::vector<std::tuple<size_t, size_t>> thread_ranges_;
+    CCMCalibration calibration;
 
-        std::vector<std::tuple<size_t, size_t>> thread_ranges_;
-        CCMCalibration calibration;
+    virtual ~CCMWavedeform();
 
-        virtual ~CCMWavedeform();
+    void Configure();
+    void Process();
+    void Finish();
+    void Geometry(I3FramePtr frame);
+    void Calibration(I3FramePtr frame);
+    void DAQ(I3FramePtr frame);
+private:
+    std::string waveforms_name_;
+    std::string output_name_;
 
-        void Geometry(I3FramePtr frame);
-        void Configure();
-        void Calibration(I3FramePtr frame);
-        void DAQ(I3FramePtr frame);
-    private:
-        std::string waveforms_name_;
-        std::string output_name_;
+    double spes_per_bin_;
+    double tolerance_;
+    double noise_threshold_;
+    double basis_threshold_;
 
-        double spes_per_bin_;
-        double tolerance_;
-        double noise_threshold_;
-        double basis_threshold_;
+    std::map<CCMPMTKey, int> start_bins_;
+    std::map<CCMPMTKey, int> end_bins_;
+    double wf_bin_width_;
 
-        std::map<CCMPMTKey, int> start_bins_;
-        std::map<CCMPMTKey, int> end_bins_;
-        double wf_bin_width_;
+    bool reduce_;
 
-        bool reduce_;
+    I3Map<CCMPMTKey, CCMWaveformTemplate> templates_;
+    std::vector<CCMPMTKey> pmt_keys_;
+    std::vector<std::vector<cholmod_common>> cholmod_common_vec_;
 
-        I3Map<CCMPMTKey, CCMWaveformTemplate> template_;
-        std::vector<CCMPMTKey> pmt_keys_;
-        std::vector<cholmod_common> cholmod_common_vec_;
-
+    size_t frame_index = 0;
+    size_t min_frame_idx = 0;
+    std::deque<WavedeformJob *> free_jobs;
+    std::deque<WavedeformJob *> running_jobs;
+    std::deque<WavedeformResult> results;
 };
 
 I3_MODULE(CCMWavedeform);
@@ -1047,12 +1067,12 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 1.);
-    AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 9.);
+    AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 49.);
     AddParameter("NoiseThreshold","Consider bins with amplitude below this number of counts as noise", 5.0);
     AddParameter("BasisThreshold",
             "Require a bin with amplitude at least this number of counts "
             "within the FWHM of the template waveform in order to include "
-            "a given start time in the basis set", 10.0);
+            "a given start time in the basis set", 7.0);
     AddParameter("Waveforms", "Name of input waveforms",
             "CCMCalibratedWaveforms");
     AddParameter("Output", "Name of output pulse series",
@@ -1060,6 +1080,8 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("Reduce", "Find the optimal NNLS solution, then eliminate"
             " basis members until tolerance is reached", true);
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
+    AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(3000));
+    AddParameter("RemoveWaveforms", "Remove the input waveforms?", bool(false));
 
 }
 
@@ -1079,11 +1101,16 @@ void CCMWavedeform::Configure() {
     GetParameter("BasisThreshold", basis_threshold_);
     GetParameter("Reduce", reduce_);
     GetParameter("PMTKeys", allowed_pmt_keys_);
+    GetParameter("MaxCachedFrames", max_cached_frames);
+    GetParameter("RemoveWaveforms", remove_waveforms);
+    teptr = nullptr;
 }
 
 CCMWavedeform::~CCMWavedeform() {
     for(size_t i=0; i<cholmod_common_vec_.size(); ++i) {
-        cholmod_l_finish(&(cholmod_common_vec_[i]));
+        for(size_t j=0; j<cholmod_common_vec_[i].size(); ++j) {
+            cholmod_l_finish(&(cholmod_common_vec_[i][j]));
+        }
     }
 }
 
@@ -1094,10 +1121,10 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
     geo_seen = true;
-    template_.clear();
+    templates_.clear();
     for(auto pmt_channel_pair : pmt_channel_map_) {
-        template_[pmt_channel_pair.first] = CCMWaveformTemplate();
-        template_[pmt_channel_pair.first].filled = false;
+        templates_[pmt_channel_pair.first] = CCMWaveformTemplate();
+        templates_[pmt_channel_pair.first].filled = false;
     }
 
     I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo_ = geo.pmt_geo;
@@ -1112,6 +1139,7 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
         }
     }
 
+    /*
     size_t min_channels_per_thread = pmt_keys_.size() / num_threads;
     size_t max_channels_per_thread = min_channels_per_thread + 1;
     size_t num_threads_with_max = pmt_keys_.size() - num_threads * min_channels_per_thread;
@@ -1124,10 +1152,15 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
         thread_ranges_.emplace_back(channel_start, channel_start + n_channels);
         channel_start += n_channels;
     }
+    */
+    thread_ranges_.emplace_back(0, pmt_keys_.size());
 
-    cholmod_common_vec_.resize(pmt_keys_.size());
-    for(size_t i=0; i<pmt_keys_.size(); ++i) {
-        cholmod_l_start(&(cholmod_common_vec_[i]));
+    cholmod_common_vec_.resize(num_threads);
+    for(size_t i=0; i<cholmod_common_vec_.size(); ++i) {
+        cholmod_common_vec_[i].resize(pmt_keys_.size());
+        for(size_t j=0; j<cholmod_common_vec_[i].size(); ++j) {
+            cholmod_l_start(&(cholmod_common_vec_[i][j]));
+        }
     }
 
     PushFrame(frame);
@@ -1156,11 +1189,11 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
 
         double placeholder = 1.0;
 
-        if(not template_.at(key).filled) {
+        if(not templates_.at(key).filled) {
             int template_bins = (int)ceil(range / template_bin_spacing);
-            FillTemplate(template_.at(key), calib->second, start_time, template_bins, template_bin_spacing, frame);
+            FillTemplate(templates_.at(key), calib->second, start_time, template_bins, template_bin_spacing, frame);
             std::stringstream ss;
-            ss << key << " Template(" << template_.at(key).start_time << ", " << template_.at(key).end_time << ") FWHM(" << template_.at(key).digitizerStart << ", " << template_.at(key).digitizerStop << ")" << std::endl;
+            ss << key << " Template(" << templates_.at(key).start_time << ", " << templates_.at(key).end_time << ") FWHM(" << templates_.at(key).digitizerStart << ", " << templates_.at(key).digitizerStop << ")" << std::endl;
             log_info(ss.str().c_str());
         }
     }
@@ -1168,79 +1201,318 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
     PushFrame(frame);
 }
 
+void FrameThread(
+        std::atomic<bool> & running,
+        I3Frame * frame,
+        std::string const & waveforms_name_,
+        std::string const & output_name_,
+        std::vector<CCMPMTKey> const & pmt_keys_,
+        I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_,
+        I3Map<CCMPMTKey, CCMWaveformTemplate> const & templates_,
+        CCMCalibration const & calibration,
+        std::vector<cholmod_common> & cholmod_common_vec_,
+        bool reduce_,
+        double wf_bin_width_,
+        double noise_threshold_,
+        double basis_threshold_,
+        double spes_per_bin_,
+        double tolerance_,
+        size_t num_threads,
+        bool remove_waveforms,
+        std::exception_ptr & teptr) {
+
+    try {
+        if (!frame->Has(waveforms_name_)) {
+            running.store(false);
+            return;
+        }
+
+        boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);
+        boost::shared_ptr<const I3Double> total_adc_count = frame->Get<boost::shared_ptr<const I3Double>>(waveforms_name_ + "TotalADC");
+        I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
+
+        if(waveforms == nullptr) {
+            log_warn("CCMWaveformDoubleSeries named %s not present in frame", "CCMCalibratedWaveforms");
+        }
+
+        // place to store pulses
+        boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
+        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
+        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_rebin_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
+        for(size_t i = 0; i < pmt_keys_.size(); ++i) {
+            output->operator[](pmt_keys_[i]) = CCMRecoPulseSeries();
+            output_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
+            output_rebin_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
+        }
+
+        std::vector<std::reference_wrapper<CCMRecoPulseSeries>> output_pulses_references;
+        std::vector<std::reference_wrapper<std::vector<double>>> output_data_times_references;
+        std::vector<std::reference_wrapper<std::vector<double>>> output_rebin_data_times_references;
+        output_pulses_references.reserve(pmt_keys_.size());
+        for(size_t i = 0; i < pmt_keys_.size(); ++i) {
+            output_pulses_references.emplace_back(output->at(pmt_keys_[i]));
+            output_data_times_references.emplace_back(output_data_times->at(pmt_keys_[i]));
+            output_rebin_data_times_references.emplace_back(output_rebin_data_times->at(pmt_keys_[i]));
+        }
+
+        if(total_adc_count and total_adc_count->value > 1e7) {
+            ctpl::thread_pool pool;
+            pool.resize(num_threads);
+            std::vector<std::future<int>> results(pmt_keys_.size());
+            for(size_t i=0; i<pmt_keys_.size(); ++i) {
+                results[i] = pool.push(
+                    [&,i] (int thread_id) -> int {
+                        RunPulsesThread(
+                            std::tuple<size_t, size_t>(i, i+1),
+                            std::cref(pmt_keys_),
+                            std::cref(pmt_channel_map_),
+                            std::cref(*waveforms),
+                            std::cref(templates_),
+                            std::cref(calibration),
+                            std::ref(cholmod_common_vec_),
+                            reduce_,
+                            std::ref(output_pulses_references),
+                            std::ref(output_data_times_references),
+                            std::ref(output_rebin_data_times_references),
+                            wf_bin_width_,
+                            noise_threshold_,
+                            basis_threshold_,
+                            spes_per_bin_,
+                            tolerance_,
+                            frame
+                        );
+                        return 0;
+                    }
+                );
+            }
+            for(size_t i=0; i<results.size(); ++i) {
+                results[i].wait();
+            }
+        } else {
+            RunPulsesThread(
+                std::tuple<size_t, size_t>(0, pmt_keys_.size()),
+                std::cref(pmt_keys_),
+                std::cref(pmt_channel_map_),
+                std::cref(*waveforms),
+                std::cref(templates_),
+                std::cref(calibration),
+                std::ref(cholmod_common_vec_),
+                reduce_,
+                std::ref(output_pulses_references),
+                std::ref(output_data_times_references),
+                std::ref(output_rebin_data_times_references),
+                wf_bin_width_,
+                noise_threshold_,
+                basis_threshold_,
+                spes_per_bin_,
+                tolerance_,
+                frame
+            );
+        }
+
+        if(remove_waveforms) {
+            frame->Delete(waveforms_name_);
+        }
+        frame->Put("OriginalDataBins", output_data_times);
+        frame->Put("RebinnedDataBins", output_rebin_data_times);
+        frame->Put(output_name_, output);
+        running.store(false);
+    } catch (...) {
+        teptr = std::current_exception();
+        running.store(false);
+    }
+}
+
+void RunFrameThread(WavedeformJob * job,
+        std::string const & waveforms_name,
+        std::string const & output_name,
+        std::vector<CCMPMTKey> const & pmt_keys,
+        I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map,
+        I3Map<CCMPMTKey, CCMWaveformTemplate> const & templates,
+        CCMCalibration const & calibration,
+        std::vector<std::vector<cholmod_common>> & cholmod_common_vec,
+        bool reduce,
+        double wf_bin_width,
+        double noise_threshold,
+        double basis_threshold,
+        double spes_per_bin,
+        double tolerance,
+        size_t num_threads,
+        bool remove_waveforms,
+        std::exception_ptr & teptr) {
+
+    job->running.store(true);
+
+    job->thread = std::thread(FrameThread,
+        std::ref(job->running),
+        job->frame.get(),
+        std::cref(waveforms_name),
+        std::cref(output_name),
+        std::cref(pmt_keys),
+        std::cref(pmt_channel_map),
+        std::cref(templates),
+        std::cref(calibration),
+        std::ref(cholmod_common_vec[job->thread_index]),
+        reduce,
+        wf_bin_width,
+        noise_threshold,
+        basis_threshold,
+        spes_per_bin,
+        tolerance,
+        num_threads,
+        remove_waveforms,
+        std::ref(teptr)
+    );
+}
+
+
+void CCMWavedeform::Process() {
+  if (inbox_)
+    log_trace("%zu frames in inbox", inbox_->size());
+
+  I3FramePtr frame = PopFrame();
+
+  if(!frame or frame->GetStop() == I3Frame::DAQ) {
+    DAQ(frame);
+    return;
+  }
+
+  if(frame->GetStop() == I3Frame::Physics && ShouldDoPhysics(frame))
+    {
+      Physics(frame);
+    }
+  else if(frame->GetStop() == I3Frame::Geometry && ShouldDoGeometry(frame))
+    Geometry(frame);
+  else if(frame->GetStop() == I3Frame::Calibration && ShouldDoCalibration(frame))
+    Calibration(frame);
+  else if(frame->GetStop() == I3Frame::DetectorStatus && ShouldDoDetectorStatus(frame))
+    DetectorStatus(frame);
+  else if(frame->GetStop() == I3Frame::Simulation && ShouldDoSimulation(frame))
+    Simulation(frame);
+  else if(frame->GetStop() == I3Frame::DAQ && ShouldDoDAQ(frame)) {
+    DAQ(frame);
+  } else if(ShouldDoOtherStops(frame))
+    OtherStops(frame);
+}
+
 void CCMWavedeform::DAQ(I3FramePtr frame) {
-    if (!frame->Has(waveforms_name_)) {
-        PushFrame(frame);
-        return;
+	while(true) {
+		// Check if any jobs have finished
+		for(int i=int(running_jobs.size())-1; i>=0; --i) {
+			if (teptr) {
+				try{
+					std::rethrow_exception(teptr);
+				}
+				catch(const std::exception &ex)
+				{
+					std::cerr << "Thread exited with exception: " << ex.what() << "\n";
+				}
+			}
+			if(not running_jobs[i]->running.load()) {
+				WavedeformJob * job = running_jobs[i];
+                running_jobs.erase(running_jobs.begin() + i);
+                free_jobs.push_back(job);
+                job->thread.join();
+                results[job->frame_index - min_frame_idx].done = true;
+            } else {
+                WavedeformJob * job = running_jobs[i];
+            }
+        }
+
+        // Check for any done results and push the corresponding frames
+        size_t results_done = 0;
+        for(size_t i=0; i<results.size(); ++i) {
+            if(results[i].done) {
+                PushFrame(results[i].frame);
+                results[i].frame = nullptr;
+                results_done += 1;
+            } else {
+                break;
+            }
+        }
+        if(results_done > 0) {
+            results.erase(results.begin(), results.begin() + results_done);
+            min_frame_idx += results_done;
+        }
+
+        if(not frame)
+            break;
+
+        // Attempt to queue up a new job for the frame
+        WavedeformJob * job = nullptr;
+
+        if(free_jobs.size() > 0) {
+            job = free_jobs.front();
+            job->running.store(false);
+            free_jobs.pop_front();
+        } else if(running_jobs.size() < num_threads) {
+            job = new WavedeformJob();
+            job->running.store(false);
+            job->thread_index = running_jobs.size();
+        }
+
+        if(job != nullptr and results.size() < max_cached_frames) {
+            job->running.store(true);
+            running_jobs.push_back(job);
+            job->frame = frame;
+            job->frame_index = frame_index;
+            results.emplace_back();
+            results.back().frame = frame;
+            results.back().done = false;
+            frame_index += 1;
+            RunFrameThread(job,
+                waveforms_name_,
+                output_name_,
+                pmt_keys_,
+                pmt_channel_map_,
+                templates_,
+                calibration,
+                cholmod_common_vec_,
+                reduce_,
+                wf_bin_width_,
+                noise_threshold_,
+                basis_threshold_,
+                spes_per_bin_,
+                tolerance_,
+                num_threads,
+                remove_waveforms,
+                teptr);
+            break;
+        } else if(job != nullptr) {
+            free_jobs.push_back(job);
+        }
     }
+}
 
-    boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);
-    I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
+void CCMWavedeform::Finish() {
+    while(running_jobs.size() > 0) {
+        // Check if any jobs have finished
+        for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            if(not running_jobs[i]->running.load()) {
+                WavedeformJob * job = running_jobs[i];
+                running_jobs.erase(running_jobs.begin() + i);
+                free_jobs.push_back(job);
+                job->thread.join();
+                results[job->frame_index - min_frame_idx].done = true;
+            }
+        }
 
-    if(waveforms == nullptr) {
-        log_warn("CCMWaveformDoubleSeries named %s not present in frame", "CCMCalibratedWaveforms");
+        // Check for any done results and push the corresponding frames
+        size_t results_done = 0;
+        for(size_t i=0; i<results.size(); ++i) {
+            if(results[i].done) {
+                PushFrame(results[i].frame);
+                results[i].frame = nullptr;
+                results_done += 1;
+            } else {
+                break;
+            }
+        }
+        if(results_done > 0) {
+            results.erase(results.begin(), results.begin() + results_done);
+            min_frame_idx += results_done;
+        }
     }
-
-    if(num_threads == 0) {
-        num_threads = pmt_keys_.size();
-    }
-
-    std::vector<std::thread> threads;
-    threads.reserve(thread_ranges_.size());
-
-    // place to store pulses
-    boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
-    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
-    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_rebin_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
-    for(size_t i = 0; i < pmt_keys_.size(); ++i) {
-        output->operator[](pmt_keys_[i]) = CCMRecoPulseSeries();
-        output_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
-        output_rebin_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
-    }
-
-    std::vector<std::reference_wrapper<CCMRecoPulseSeries>> output_pulses_references;
-    std::vector<std::reference_wrapper<std::vector<double>>> output_data_times_references;
-    std::vector<std::reference_wrapper<std::vector<double>>> output_rebin_data_times_references;
-    output_pulses_references.reserve(pmt_keys_.size());
-    for(size_t i = 0; i < pmt_keys_.size(); ++i) {
-        output_pulses_references.emplace_back(output->at(pmt_keys_[i]));
-        output_data_times_references.emplace_back(output_data_times->at(pmt_keys_[i]));
-        output_rebin_data_times_references.emplace_back(output_rebin_data_times->at(pmt_keys_[i]));
-    }
-
-    // loop over each channel in waveforms
-    for(size_t i=0; i<num_threads; ++i) {
-        threads.emplace_back(
-            RunPulsesThread,
-            thread_ranges_[i],
-            std::cref(pmt_keys_),
-            std::cref(pmt_channel_map_),
-            std::cref(*waveforms),
-            std::cref(template_),
-            std::cref(calibration),
-            std::ref(cholmod_common_vec_),
-            reduce_,
-            std::ref(output_pulses_references),
-            std::ref(output_data_times_references),
-            std::ref(output_rebin_data_times_references),
-            wf_bin_width_,
-            noise_threshold_,
-            basis_threshold_,
-            spes_per_bin_,
-            tolerance_,
-            frame
-        );
-    }
-
-    for(size_t i=0; i<num_threads; ++i) {
-        threads[i].join();
-    }
-
-    frame->Put("OriginalDataBins", output_data_times);
-    frame->Put("RebinnedDataBins", output_rebin_data_times);
-    frame->Put(output_name_, output);
-
-    PushFrame(frame, "OutBox");
 }
 
 

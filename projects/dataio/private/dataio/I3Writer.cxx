@@ -49,7 +49,7 @@ I3Writer::Configure_()
   log_trace("%s", __PRETTY_FUNCTION__);
   I3ConditionalModule::Configure_();
   current_filename_ = file_stager_->GetWriteablePath(path_);
-  dataio::open(filterstream_, *current_filename_, gzip_compression_level_);
+  dataio::open(filterstream_, *current_filename_, gzip_compression_level_, std::ios::binary, num_workers_);
 }
 
 void

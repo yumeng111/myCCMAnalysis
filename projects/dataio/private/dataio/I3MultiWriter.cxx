@@ -66,8 +66,6 @@ I3MultiWriter::I3MultiWriter(const I3Context& ctx)
           "Frame type to count when determining whether to flush the outputstreams to check the file size", I3Frame::DAQ);
   AddParameter("SizeCheckInterval",
           "Number of frames after which to check the size of the file", 1);
-  AddParameter("NWorkers",
-          "Number of workers to use for compression", 0);
 }
 
 I3MultiWriter::~I3MultiWriter() { }
@@ -85,7 +83,6 @@ I3MultiWriter::Configure_()
   GetParameter("MetadataStreams", metadata_streams_);
   GetParameter("CounterStream", counter_stream_);
   GetParameter("SizeCheckInterval", size_check_interval_);
-  GetParameter("NWorkers", num_workers_);
 
   log_trace("path_=%s", path_.c_str());
   NewFile();

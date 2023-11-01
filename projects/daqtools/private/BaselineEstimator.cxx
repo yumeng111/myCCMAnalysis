@@ -41,6 +41,19 @@
 #include "daqtools/WaveformSmoother.h"
 #include <dataclasses/calibration/BaselineEstimate.h>
 
+struct BaselineEstimatorJob {
+    std::atomic<bool> running = false;
+    std::thread thread;
+    size_t thread_index = 0;
+    I3FramePtr frame = nullptr;
+    size_t frame_index = 0;
+};
+
+struct BaselineEstimatorResult {
+    I3FramePtr frame = nullptr;
+    bool done = false;
+};
+
 void LinearFlatFit(std::vector<double>::const_iterator begin, std::vector<double>::const_iterator end, double & linear_b, double & linear_m, double & linear_sigma, double & flat_mean, double & flat_sigma) {
     double N = std::distance(begin, end);
     double X = 0.0;
@@ -114,18 +127,29 @@ double LinearChi2PerDOF(
 }
 
 class BaselineEstimator: public I3Module {
+    std::exception_ptr teptr = nullptr;
     bool geo_seen;
     std::string geometry_name_;
     std::string ccm_waveforms_name_;
     std::string output_name_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-    ctpl::thread_pool pool;
+
     size_t num_threads;
+    size_t max_cached_frames;
+
     size_t num_samples;
     size_t num_exp_samples;
+
+    size_t frame_index = 0;
+    size_t min_frame_idx = 0;
+    std::deque<BaselineEstimatorJob *> free_jobs;
+    std::deque<BaselineEstimatorJob *> running_jobs;
+    std::deque<BaselineEstimatorResult> results;
 public:
     BaselineEstimator(const I3Context&);
     void Configure();
+    void Process();
+    void Finish();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
 };
@@ -255,22 +279,23 @@ void FitExponential(std::vector<double> const & y, double & a, double & b, doubl
     b = double(m_inv01 * v0 + m_inv11 * v1);
 }
 
-BaselineEstimate ProcessWaveform(int thread_id, std::vector<short unsigned int> const & samples, size_t target_num_samples, size_t target_exp_samples) {
-    BaselineEstimate baseline;
+void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int> const & samples, size_t target_num_samples, size_t target_exp_samples) {
     baseline.target_num_frames = 1;
     if (samples.size() == 0) {
         baseline.baseline = std::numeric_limits<double>::quiet_NaN();
         baseline.stddev = std::numeric_limits<double>::quiet_NaN();
         baseline.num_frames = 1;
         baseline.num_samples = 0;
-        return baseline;
+        return;
     }
 
     // vector to store results of outlier filter
     size_t N = std::min(samples.size(), target_num_samples);
     std::vector<double> outlier_filter_results;
     outlier_filter_results.reserve(N);
-    double starting_value = Average(samples.begin(), samples.begin() + std::min(size_t(10), N));
+    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), N));
+    std::sort(starting_samples.begin(), starting_samples.end());
+    double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
     OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
     starting_value = outlier_filter_results.back();
 
@@ -329,7 +354,7 @@ BaselineEstimate ProcessWaveform(int thread_id, std::vector<short unsigned int> 
     baseline.num_samples = outlier_filter_results.size();
     outlier_filter_results.clear();
     outlier_filter_results.shrink_to_fit();
-    return baseline;
+    return;
 }
 
 I3_MODULE(BaselineEstimator);
@@ -338,10 +363,11 @@ BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(contex
     geometry_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key for CCMWaveforms object", std::string("CCMWaveforms"));
-    AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(1));
+    AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(0));
     AddParameter("NumSamples", "Number of samples to use for the baseline estimation", (size_t)(800));
     AddParameter("NumExpSamples", "Number of samples to use for the exponential fit", (size_t)(4000));
     AddParameter("OutputName", "Key to save output I3Vector<BaselineEstimate> to", std::string("BaselineEstimates"));
+    AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(1000));
 }
 
 void BaselineEstimator::Configure() {
@@ -352,12 +378,39 @@ void BaselineEstimator::Configure() {
         size_t const processor_count = std::thread::hardware_concurrency();
         num_threads = processor_count;
     }
-    if(num_threads > 0) {
-        pool.resize(num_threads);
-    }
     GetParameter("NumSamples", num_samples);
     GetParameter("NumExpSamples", num_exp_samples);
     GetParameter("OutputName", output_name_);
+    GetParameter("MaxCachedFrames", max_cached_frames);
+}
+
+void BaselineEstimator::Process() {
+  if (inbox_)
+    log_trace("%zu frames in inbox", inbox_->size());
+
+  I3FramePtr frame = PopFrame();
+
+  if(!frame or frame->GetStop() == I3Frame::DAQ) {
+    DAQ(frame);
+    return;
+  }
+
+  if(frame->GetStop() == I3Frame::Physics && ShouldDoPhysics(frame))
+    {
+      Physics(frame);
+    }
+  else if(frame->GetStop() == I3Frame::Geometry && ShouldDoGeometry(frame))
+    Geometry(frame);
+  else if(frame->GetStop() == I3Frame::Calibration && ShouldDoCalibration(frame))
+    Calibration(frame);
+  else if(frame->GetStop() == I3Frame::DetectorStatus && ShouldDoDetectorStatus(frame))
+    DetectorStatus(frame);
+  else if(frame->GetStop() == I3Frame::Simulation && ShouldDoSimulation(frame))
+    Simulation(frame);
+  else if(frame->GetStop() == I3Frame::DAQ && ShouldDoDAQ(frame)) {
+    DAQ(frame);
+  } else if(ShouldDoOtherStops(frame))
+    OtherStops(frame);
 }
 
 
@@ -371,7 +424,7 @@ void BaselineEstimator::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void BaselineEstimator::DAQ(I3FramePtr frame) {
+void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const & ccm_waveforms_name_, std::string const & output_name_, I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_, size_t num_samples, size_t num_exp_samples) {
     // let's read in our waveform
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_name_);
     if(waveforms == nullptr) {
@@ -384,35 +437,157 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
         pmt_keys.push_back(p.first);
     }
     size_t num_baselines = pmt_keys.size();
-    std::vector<std::future<BaselineEstimate>> baseline_estimates;
-    baseline_estimates.reserve(num_baselines);
-
-    if(num_threads == 0) {
-        pool.resize(pmt_keys.size());
-        num_threads = pmt_keys.size();
-    }
+    std::vector<BaselineEstimate> baseline_estimates;
+    baseline_estimates.resize(num_baselines);
 
     // loop over each channel in waveforms
     for(size_t i=0; i<num_baselines; ++i) {
         // let's get our baseline
         CCMPMTKey key = pmt_keys[i];
-        uint32_t channel = pmt_channel_map_[key];
-        baseline_estimates.emplace_back(pool.push(
-            ProcessWaveform,
+        uint32_t channel = pmt_channel_map_.at(key);
+        ProcessWaveform(
+            baseline_estimates[i],
             std::cref(waveforms->at(channel).GetWaveform()),
             num_samples,
             num_exp_samples
-        ));
+        );
     }
 
     // I3Map to store pmt key and baselines
     boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
     for(size_t i = 0; i < num_baselines; ++i) {
-        baseline_estimates[i].wait();
-        baselines->emplace(pmt_keys[i], baseline_estimates[i].get());
+        baselines->emplace(pmt_keys[i], baseline_estimates[i]);
     }
 
     frame->Put(output_name_, baselines);
-    PushFrame(frame);
+    running.store(false);
 }
 
+void RunFrameThread(BaselineEstimatorJob * job,
+    std::string const & ccm_waveforms_name_,
+    std::string const & output_name_,
+    I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_,
+    size_t num_samples,
+    size_t num_exp_samples) {
+
+    job->running.store(true);
+
+    job->thread = std::thread(FrameThread,
+        std::ref(job->running),
+        job->frame.get(),
+        std::cref(ccm_waveforms_name_),
+        std::cref(output_name_),
+        std::cref(pmt_channel_map_),
+        num_samples,
+        num_exp_samples
+    );
+}
+
+void BaselineEstimator::DAQ(I3FramePtr frame) {
+	while(true) {
+		// Check if any jobs have finished
+		for(int i=int(running_jobs.size())-1; i>=0; --i) {
+			if (teptr) {
+				try{
+					std::rethrow_exception(teptr);
+				}
+				catch(const std::exception &ex)
+				{
+					std::cerr << "Thread exited with exception: " << ex.what() << "\n";
+				}
+			}
+			if(not running_jobs[i]->running.load()) {
+				BaselineEstimatorJob * job = running_jobs[i];
+                running_jobs.erase(running_jobs.begin() + i);
+                free_jobs.push_back(job);
+                job->thread.join();
+                results[job->frame_index - min_frame_idx].done = true;
+            } else {
+                BaselineEstimatorJob * job = running_jobs[i];
+            }
+        }
+
+        // Check for any done results and push the corresponding frames
+        size_t results_done = 0;
+        for(size_t i=0; i<results.size(); ++i) {
+            if(results[i].done) {
+                PushFrame(results[i].frame);
+                results[i].frame = nullptr;
+                results_done += 1;
+            } else {
+                break;
+            }
+        }
+        if(results_done > 0) {
+            results.erase(results.begin(), results.begin() + results_done);
+            min_frame_idx += results_done;
+        }
+
+        if(not frame)
+            break;
+
+        // Attempt to queue up a new job for the frame
+        BaselineEstimatorJob * job = nullptr;
+
+        if(free_jobs.size() > 0) {
+            job = free_jobs.front();
+            job->running.store(false);
+            free_jobs.pop_front();
+        } else if(running_jobs.size() < num_threads) {
+            job = new BaselineEstimatorJob();
+            job->running.store(false);
+            job->thread_index = running_jobs.size();
+        }
+
+        if(job != nullptr and results.size() < max_cached_frames) {
+            job->running.store(true);
+            running_jobs.push_back(job);
+            job->frame = frame;
+            job->frame_index = frame_index;
+            results.emplace_back();
+            results.back().frame = frame;
+            results.back().done = false;
+            frame_index += 1;
+            RunFrameThread(job,
+                ccm_waveforms_name_,
+                output_name_,
+                pmt_channel_map_,
+                num_samples,
+                num_exp_samples);
+            break;
+        } else if(job != nullptr) {
+            free_jobs.push_back(job);
+        }
+    }
+}
+
+void BaselineEstimator::Finish() {
+    while(running_jobs.size() > 0) {
+        // Check if any jobs have finished
+        for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            if(not running_jobs[i]->running.load()) {
+                BaselineEstimatorJob * job = running_jobs[i];
+                running_jobs.erase(running_jobs.begin() + i);
+                free_jobs.push_back(job);
+                job->thread.join();
+                results[job->frame_index - min_frame_idx].done = true;
+            }
+        }
+
+        // Check for any done results and push the corresponding frames
+        size_t results_done = 0;
+        for(size_t i=0; i<results.size(); ++i) {
+            if(results[i].done) {
+                PushFrame(results[i].frame);
+                results[i].frame = nullptr;
+                results_done += 1;
+            } else {
+                break;
+            }
+        }
+        if(results_done > 0) {
+            results.erase(results.begin(), results.begin() + results_done);
+            min_frame_idx += results_done;
+        }
+    }
+}
