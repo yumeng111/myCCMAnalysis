@@ -131,7 +131,20 @@ void EventFinder::DAQ(I3FramePtr frame) {
             i != pulses->end(); i++) {
         if(pmt_keys.count(i->first) == 0)
             continue;
-        double nim_pulse_time = nim_pulses->at(geo->trigger_copy_map.at(i->first)).at(0).GetNIMPulseTime();
+        if(nim_pulses->at(geo->trigger_copy_map.at(i->first)).size() == 0) {
+            log_warn((nim_pulses_name_ + " object does not have any nim pulses for " + geo->trigger_copy_map.at(i->first).str()).c_str());
+            PushFrame(frame);
+            return;
+        }
+        double nim_pulse_time = 0.0;
+        double max_nim_pulse_length = 0.0;
+        for(size_t j=0; j<nim_pulses->at(geo->trigger_copy_map.at(i->first)).size(); ++j) {
+            double length = nim_pulses->at(geo->trigger_copy_map.at(i->first)).at(j).GetNIMPulseLength();
+            if(length > max_nim_pulse_length) {
+                nim_pulse_time = nim_pulses->at(geo->trigger_copy_map.at(i->first)).at(j).GetNIMPulseTime();
+                max_nim_pulse_length = length;
+            }
+        }
         for(CCMRecoPulse const & pulse: i->second) {
             pulse_list.push_back(PMTKeyPulsePair(i->first, pulse));
             std::get<1>(pulse_list.back()).SetTime(std::get<1>(pulse_list.back()).GetTime() - nim_pulse_time);
