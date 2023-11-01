@@ -79,13 +79,13 @@ CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime::Apply(const I3Frame &frame) con
         if(trigger_key == geo->trigger_copy_map.end())
             log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
                     pair.first.GetRegion(), pair.first.GetSensor(),
-                    geometry_key_);
+                    geometry_key_.c_str());
         NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
             nim_pulses->find(trigger_key->second);
         if(pmt_trigger_nim_pulses == nim_pulses->end())
             log_fatal("Could not find PMT (%i/%u) in '%s'",
                     pair.first.GetRegion(), pair.first.GetSensor(),
-                    nim_pulses_key_);
+                    nim_pulses_key_.c_str());
         double nim_pulse_time = 0.0;
         double max_nim_pulse_length = 0.0;
         for(size_t j=0; j<pmt_trigger_nim_pulses->second.size(); ++j) {
