@@ -36,7 +36,6 @@
 #include "daqtools/WaveformAccumulator.h"
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/CCMBCMSummary.h>
-#include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 
@@ -46,7 +45,6 @@ typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
 class EventFinder: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
-    std::string nim_pulses_name_;
     CCMGeometryConstPtr geo;
     double timeWindow_;
     double event_charge_threshold_;
@@ -70,7 +68,6 @@ I3_MODULE(EventFinder);
 EventFinder::EventFinder(const I3Context& context) : I3Module(context),
     geometry_name_(""), geo_seen(false) {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-        AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
         AddParameter("TimeWindow", "Size of sliding time window to examine.",
                 2 * I3Units::ns);
         AddParameter("EventChargeThreshold", "Charge threshold in window to define an event", double(5.0));
@@ -83,7 +80,6 @@ EventFinder::EventFinder(const I3Context& context) : I3Module(context),
 
 void EventFinder::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("NIMPulsesName", nim_pulses_name_);
     GetParameter("TimeWindow", timeWindow_);
     GetParameter("EventChargeThreshold", event_charge_threshold_);
     GetParameter("Pulses", pulses_);
@@ -112,10 +108,6 @@ void EventFinder::Geometry(I3FramePtr frame) {
 }
 
 void EventFinder::DAQ(I3FramePtr frame) {
-    if(not frame->Has(nim_pulses_name_)) {
-        log_warn(("No key named " + nim_pulses_name_ + " present in frame").c_str());
-    }
-    boost::shared_ptr<NIMLogicPulseSeriesMap const> nim_pulses = frame->Get<boost::shared_ptr<NIMLogicPulseSeriesMap const>>(nim_pulses_name_);
     CCMRecoPulseSeriesMapConstPtr pulses =
         frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulses_);
     if (!pulses) {
@@ -131,23 +123,8 @@ void EventFinder::DAQ(I3FramePtr frame) {
             i != pulses->end(); i++) {
         if(pmt_keys.count(i->first) == 0)
             continue;
-        if(nim_pulses->at(geo->trigger_copy_map.at(i->first)).size() == 0) {
-            log_warn((nim_pulses_name_ + " object does not have any nim pulses for " + geo->trigger_copy_map.at(i->first).str()).c_str());
-            PushFrame(frame);
-            return;
-        }
-        double nim_pulse_time = 0.0;
-        double max_nim_pulse_length = 0.0;
-        for(size_t j=0; j<nim_pulses->at(geo->trigger_copy_map.at(i->first)).size(); ++j) {
-            double length = nim_pulses->at(geo->trigger_copy_map.at(i->first)).at(j).GetNIMPulseLength();
-            if(length > max_nim_pulse_length) {
-                nim_pulse_time = nim_pulses->at(geo->trigger_copy_map.at(i->first)).at(j).GetNIMPulseTime();
-                max_nim_pulse_length = length;
-            }
-        }
         for(CCMRecoPulse const & pulse: i->second) {
             pulse_list.push_back(PMTKeyPulsePair(i->first, pulse));
-            std::get<1>(pulse_list.back()).SetTime(std::get<1>(pulse_list.back()).GetTime() - nim_pulse_time);
         }
     }
 
