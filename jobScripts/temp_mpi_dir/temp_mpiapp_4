@@ -1,5 +1,0 @@
---map-by node -n 1 CCMAnalysis -I build/txtFiles/strobeCuts_11-1.txt -o /lustre/scratch3/turquoise/rtthorn/processedFiles/strobe/nuDMPlots_11-1.root -c configFiles/nuDMPlots.xml -l /lustre/scratch3/turquoise/rtthorn/processedFiles/log_cuts_strobe_11-1.log
---map-by node -n 1 CCMAnalysis -I build/txtFiles/strobeCuts_11-2.txt -o /lustre/scratch3/turquoise/rtthorn/processedFiles/strobe/nuDMPlots_11-2.root -c configFiles/nuDMPlots.xml -l /lustre/scratch3/turquoise/rtthorn/processedFiles/log_cuts_strobe_11-2.log
---map-by node -n 1 CCMAnalysis -I build/txtFiles/strobeCuts_11-2_2.txt -o /lustre/scratch3/turquoise/rtthorn/processedFiles/strobe/nuDMPlots_11-2_2.root -c configFiles/nuDMPlots.xml -l /lustre/scratch3/turquoise/rtthorn/processedFiles/log_cuts_strobe_11-2_0.log
---map-by node -n 1 CCMAnalysis -I build/txtFiles/strobeCuts_12-0.txt -o /lustre/scratch3/turquoise/rtthorn/processedFiles/strobe/nuDMPlots_12-0.root -c configFiles/nuDMPlots.xml -l /lustre/scratch3/turquoise/rtthorn/processedFiles/log_cuts_strobe_12-0.log
-

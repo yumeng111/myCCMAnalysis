@@ -1,0 +1,65 @@
+.. _docs-release-notes:
+
+Release Notes
+=============
+
+main
+----
+
+June 22, 2023 don la dieu (nega at icecube.umd.edu)
+---------------------------------------------------
+IceTray Release v1.7.0
+
+- Make footnotes smaller
+- A bunch of intersphinx links w/ only links to the Python docs enabled
+- Use implicit namespaces with sphinx-apidoc
+- Make I3Tray.I3Tray and icecube.icetray.I3Tray the same thing. (#3102)
+- General docs cleanups
+- Support py3-v4.3.0 changes (#3098)
+- Suppress boost python object registration warnings during docs generation
+
+Apr. 12, 2023 don la dieu (nega AT icecube.umd.edu
+--------------------------------------------------
+IceTray Release v1.6.0
+
+- Add a "supercomputing tutorial"
+- General cleanups
+
+Dec. 12, 2022 don la dieu (nega AT icecube.umd.edu)
+---------------------------------------------------
+IceTray Release v1.5.0
+
+- Update "getting started" docs to include info about photospline
+- Docs - update example python test with a functional version
+- Docs - retry generating python api docs on error
+- Update docs for cvmfs 4.2.1 (#2944)
+- Remove unused sphinx extension for email
+- Remove reference to defunct online rst editor
+- Update urls in documentation which are redirected
+- Use sphinx extension extlinks to shorten/correct links
+
+Jul. 27, 2022 don la dieu (nega AT icecube.umd.edu)
+---------------------------------------------------
+IceTray Release v1.4.0
+
+- Drop support for Python 2
+- Clean up tests
+- Add tutorial on ssh keys for connecting to github on cobalts
+- Add information about the svn test-data repo
+- Reflect relicensing agreements received from authors of core IceTray modules.
+- Update cvmfs docs to py3-v4.2.0 (#2842)
+- Clean up documentation
+
+Feb. 22, 2022 don la dieu (nega AT icecube.umd.edu)
+---------------------------------------------------
+IceTray Release v1.3.0
+
+There have been extensive updates to the documentation, especially in
+how it's built, since the last time these release notes were
+updated. Please refer to the git log for points prior to this release.
+
+June 13, 2018, Alex Olivas  (olivas@icecube.umd.edu)
+----------------------------------------------------
+Release V18-06-00
+
+* First release.
