@@ -4,13 +4,13 @@
 initiates variables for all commands defined for the detector through the UI
 Also initiates the methods needed for using the commands and the format of each command.
  */
-#ifndef detectorMessenger_h
-#define detectorMessenger_h 1
+#ifndef G4CCMDetectorMessenger_h
+#define G4CCMDetectorMessenger_h 1
 
 #include "G4UImessenger.hh"
 #include "globals.hh"
 
-class detectorConstruction;
+class G4CCMDetectorConstruction;
 class G4UIdirectory;
 class G4UIcmdWithADoubleAndUnit;
 class G4UIcmdWithAnInteger;
@@ -18,18 +18,17 @@ class G4UIcommand;
 class G4UIcmdWithABool;
 class G4UIcmdWithAString;
 
-class detectorMessenger: public G4UImessenger
-{
+class G4CCMDetectorMessenger: public G4UImessenger {
   public:
 
-    detectorMessenger(detectorConstruction*);
-    virtual ~detectorMessenger();
+    G4CCMDetectorMessenger(G4CCMDetectorConstruction*);
+    virtual ~G4CCMDetectorMessenger();
  
     virtual void SetNewValue(G4UIcommand*, G4String);
  
   private:
 
-    detectorConstruction*        fdetector;
+    G4CCMDetectorConstruction*        fdetector;
     G4UIdirectory*               fDetectorDir;
     G4UIdirectory*               fVolumesDir;
     G4UIcmdWithADoubleAndUnit*   fPmtRadiusCmd;
@@ -43,6 +42,7 @@ class detectorMessenger: public G4UImessenger
     G4UIcmdWithABool*            fSodiumCmd;
     G4UIcmdWithABool*            fAr39Cmd;
     G4UIcmdWithABool*            fCosmicCmd;
+    G4UIcmdWithABool*            fInvBetaCmd;
     G4UIcmdWithABool*            fDMCmd;
     G4UIcmdWithABool*            fALPCmd;
     G4UIcmdWithABool*            f200Cmd;
