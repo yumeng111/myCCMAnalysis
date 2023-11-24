@@ -19,9 +19,9 @@
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
-G4Interface::G4Interface(const std::string& visMacro, bool triangulatedSnow,bool useScintillator):
+G4Interface::G4Interface(const std::string& visMacro):
     detector_(NULL), initialized_(false),
-    eventInitialized_(false), visMacro_(visMacro), triangulatedSnow_(triangulatedSnow), useScintillator_(useScintillator)
+    eventInitialized_(false), visMacro_(visMacro)
 {
     g4Interface_ = this;
 
@@ -47,8 +47,7 @@ G4Interface::~G4Interface()
 }
 
 
-void G4Interface::InstallTank(G4IceTopTank* tank)
-{
+void G4Interface::InstallTank(G4IceTopTank* tank) {
     if(initialized_)
     {
         log_fatal("G4Interface already initialized. Cannot install tank!");
@@ -58,11 +57,10 @@ void G4Interface::InstallTank(G4IceTopTank* tank)
     if(!detector_) {
         detector_ = new G4CCMDetectorConstruction();
     }
-    detector_->InstallTank(tank);
+    //detector_->InstallTank(tank);
 }
 
-void G4Interface::InstallScintillator(G4IceScintStation* scint)
-{
+void G4Interface::InstallScintillator(G4IceScintStation* scint) {
     if(initialized_)
     {
         log_fatal("G4Interface already initialized. Cannot install scintillator!");
@@ -72,12 +70,10 @@ void G4Interface::InstallScintillator(G4IceScintStation* scint)
     if(!detector_) {
         detector_ = new G4CCMDetectorConstruction();
     }
-    detector_->InstallStation(scint);
-
+    //detector_->InstallStation(scint);
 }
 
-void G4Interface::InitializeEvent()
-{
+void G4Interface::InitializeEvent() {
     ///
     /// An IceTray EVENT corresponds to a G4RUN
     /// where each injected particle initiates an G4EVENT
@@ -96,8 +92,7 @@ void G4Interface::InitializeEvent()
 }
 
 
-void G4Interface::InjectParticle(const I3Particle& particle)
-{
+void G4Interface::InjectParticle(const I3Particle& particle) {
     if(!eventInitialized_)
     {
         log_fatal("No event initialized. Cannot inject particle!");
@@ -269,8 +264,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
 }
 
 
-void G4Interface::TerminateEvent()
-{
+void G4Interface::TerminateEvent() {
     ///
     /// An IceTray EVENT corresponds to a G4RUN
     /// where each injected particle initiates an G4EVENT
@@ -284,8 +278,7 @@ void G4Interface::TerminateEvent()
 }
 
 
-void G4Interface::Initialize()
-{
+void G4Interface::Initialize() {
     if(initialized_)
     {
         log_error("G4Interface has already been initialized. Ignoring this call!");

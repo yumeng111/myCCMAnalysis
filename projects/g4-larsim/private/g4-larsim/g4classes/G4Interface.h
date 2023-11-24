@@ -11,7 +11,7 @@ class G4VisManager;
 class I3Particle;
 class G4IceTopTank;
 class G4IceScintStation;
-class G4IceTopDetectorConstruction;
+class G4CCMDetectorConstruction;
 
 /**
  * Top-level class to handle Geant4. All global things are initialized here (run manager, visualization manager, detector construction, physics list and user actions).
