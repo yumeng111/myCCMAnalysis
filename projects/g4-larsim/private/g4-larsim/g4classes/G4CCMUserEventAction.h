@@ -27,7 +27,7 @@ class G4CCMUserRunAction;
 // Event action class
 class G4CCMUserEventAction : public G4UserEventAction {
 public:
-    G4CCMUserEventAction(runAction* runact);
+    G4CCMUserEventAction(G4CCMUserRunAction* runact);
     virtual ~G4CCMUserEventAction();
 
     virtual void BeginOfEventAction(const G4Event* event);
