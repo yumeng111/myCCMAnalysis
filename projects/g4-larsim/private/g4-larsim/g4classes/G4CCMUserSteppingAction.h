@@ -1,11 +1,11 @@
 /*
-  header file for stepping action
+   header file for stepping action
 
-does not contain any actions. All methods done in the stepping action made from the .cc code in the UserSteppingAction method
- */
+   does not contain any actions. All methods done in the stepping action made from the .cc code in the UserSteppingAction method
+*/
 
-#ifndef steppingAction_h
-#define steppingAction_h 1
+#ifndef g4_larsim_G4CCMUserSteppingAction_H
+#define g4_larsim_G4CCMUserSteppingAction_H
 
 #include "G4UserSteppingAction.hh"
 #include "globals.hh"
@@ -13,16 +13,15 @@ does not contain any actions. All methods done in the stepping action made from 
 class eventAction;
 class G4LogicalVolume;
 
-class steppingAction : public G4UserSteppingAction
-{
+class G4CCMUserSteppingAction : public G4UserSteppingAction {
 public:
-  steppingAction(eventAction* eventAction);
-  virtual ~steppingAction();
-  
-  virtual void UserSteppingAction(const G4Step*);
-  
+    G4CCMUserSteppingAction(eventAction* eventAction);
+    virtual ~G4CCMUserSteppingAction();
+
+    virtual void UserSteppingAction(const G4Step*);
+
 private:
-  eventAction* fEventAction;
+    eventAction* fEventAction;
 };
 
-#endif
+#endif // g4_larsim_G4CCMUserSteppingAction_H
