@@ -47,7 +47,7 @@
 
 // Constructor
 G4CCMDetectorConstruction::G4CCMDetectorConstruction()
-    : lAr_mt(nullptr), lAr2_mt(nullptr), TPBProp(nullptr), TPBsProp(nullptr) {
+    : lAr_mt(nullptr), lAr2_mt(nullptr), TPBProp(nullptr), TPBsProp(nullptr), detectorOrigin_(0,0,0) {
     wBox = nullptr;
     wLog = nullptr;
     wPhys = nullptr;
@@ -2557,3 +2557,6 @@ void G4CCMDetectorConstruction::CleanArgon() {
 
 }
 
+G4ThreeVector const & G4CCMDetectorConstruction::GetWorldOrigin() {
+    return detectorOrigin_;
+}

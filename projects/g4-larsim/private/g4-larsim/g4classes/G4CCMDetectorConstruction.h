@@ -1,5 +1,5 @@
-#ifndef g4larsim_G4CCMDetectorConstruction_H
-#define g4larsim_G4CCMDetectorConstruction_H
+#ifndef g4_larsim_G4CCMDetectorConstruction_H
+#define g4_larsim_G4CCMDetectorConstruction_H
 /*
    header file for the detector construction
 
@@ -58,6 +58,8 @@ public:
     void OneRandom( G4int var );
     void CleanArgon();
 
+    G4ThreeVector const & GetWorldOrigin();
+
     //Get values
     G4double GetPMTRadius() const {return fOuterRadius_pmt;}//method to obtain the PMT radiu entered in the previous method (or the default, if unchanged)
     G4double GetRodHeight() const {return rodHeight;}; // method to obtain the rodHeight defined in the previous method
@@ -81,6 +83,8 @@ private:
     void DefineTpb(G4double, G4double, G4double, G4double, G4double, G4double );
     void DefinePlastic(G4double, G4double, G4double );
     //methods to define materials and place PMTS on the sides or on the top/bottom
+    
+    G4ThreeVector detectorOrigin_;
 
     G4CCMDetectorMessenger* fDetectorMessenger;
     //links the detector messenger to this detector construction
@@ -188,4 +192,4 @@ private:
 
 };
 
-#endif // g4larsim_G4CCMDetectorConstruction_H
+#endif // g4_larsim_G4CCMDetectorConstruction_H
