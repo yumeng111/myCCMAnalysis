@@ -10,18 +10,18 @@
 #include "G4UserSteppingAction.hh"
 #include "globals.hh"
 
-class eventAction;
+class G4CCMUserEventAction;
 class G4LogicalVolume;
 
 class G4CCMUserSteppingAction : public G4UserSteppingAction {
 public:
-    G4CCMUserSteppingAction(eventAction* eventAction);
+    G4CCMUserSteppingAction(G4CCMUserEventAction* G4CCMUserEventAction);
     virtual ~G4CCMUserSteppingAction();
 
     virtual void UserSteppingAction(const G4Step*);
 
 private:
-    eventAction* fEventAction;
+    G4CCMUserEventAction* fEventAction;
 };
 
 #endif // g4_larsim_G4CCMUserSteppingAction_H
