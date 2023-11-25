@@ -289,7 +289,7 @@ void G4Interface::Initialize() {
     runManager_.SetUserInitialization(detector_);
 
     log_debug("Init physics list ...");
-    runManager_.SetUserInitialization(new G4IceTopPhysicsList());
+    runManager_.SetUserInitialization(new G4CCMPhysicsList());
 
     //log_debug("Init UserTrackingAction ...");
     //runManager_.SetUserAction(new G4IceTopUserTrackingAction());
