@@ -14,7 +14,7 @@
  */
 class G4CCMPhysicsList: public G4VModularPhysicsList {
 public:
-    G4CCMPhysicsList(G4int ver);
+    G4CCMPhysicsList(G4int ver=1);
     ~G4CCMPhysicsList();
 private:
     void SetCuts();
