@@ -1,7 +1,7 @@
 /*
    stepping action for CCM simulation
 
-   This code describes the functions to be applied at every step of the simulation. 
+   This code describes the functions to be applied at every step of the simulation.
    It also contains most of the output generation, currently sent to a text file through the G4cout.
    Adjustment to the output, perhaps to better fit the .root data style, should be done through this code.
 
@@ -32,11 +32,10 @@ G4CCMUserSteppingAction::~G4CCMUserSteppingAction()
 {}
 
 // Stepping action: describes the actions to be taken at every stepof the simulation.
-// G4Step: an event is made up of ultiple steps, each describing every possible physics process that a particle can take.
+// G4Step: an event is made up of multiple steps, each describing every possible physics process that a particle can take.
 // Some example steps: OpAbsorption, elastic scattering, reflection, , Traveling (change logical volume)
 // Note: as the stepping action is called for every step, it is advisible to put simple escapes as early as possible to reduce run time.
-void G4CCMUserSteppingAction::UserSteppingAction(const G4Step* step)
-{  
+void G4CCMUserSteppingAction::UserSteppingAction(const G4Step* step) {
     // get the volume at the end of the step. If none, return (indicates particle was just created and so should be ignored).
     if (step->GetPostStepPoint()->GetTouchableHandle()->GetVolume() == NULL){
         return;
@@ -48,7 +47,7 @@ void G4CCMUserSteppingAction::UserSteppingAction(const G4Step* step)
     G4LogicalVolume* volumep = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume();
     G4LogicalVolume* volumei = step->GetTrack()->GetOriginTouchableHandle()->GetVolume()->GetLogicalVolume();
 
-    // Get the names of the three volumes defined above. 
+    // Get the names of the three volumes defined above.
     G4String volname = volume->GetName();
     G4String volpname = volumep->GetName();
     G4String voliname = volumei->GetName();
@@ -113,7 +112,7 @@ void G4CCMUserSteppingAction::UserSteppingAction(const G4Step* step)
         // get the pmt row and column. rows 0 and 6 are for top and bottom of CCM200
         if (testn == "PMT") {
             std::istringstream iss (volname.substr(volname.find('C')+1,volname.find('R')));
-            iss >> col; 
+            iss >> col;
             std::istringstream isr (volname.substr(volname.find('R')+1,volname.find('R')+2));
             isr >> row;
             if (volname.find("coat") != std::string::npos) {
@@ -121,7 +120,7 @@ void G4CCMUserSteppingAction::UserSteppingAction(const G4Step* step)
             }
         } else if (testnp == "PMT") {
             std::istringstream iss (volpname.substr(volpname.find('C')+1,volpname.find('R')));
-            iss >> col; 
+            iss >> col;
             std::istringstream isr (volpname.substr(volpname.find('R')+1,volpname.find('R')+2));
             isr >> row;
             if (volname.find("coat") != std::string::npos) {
@@ -129,7 +128,7 @@ void G4CCMUserSteppingAction::UserSteppingAction(const G4Step* step)
             }
         }
 
-        // Get the location of the PMT based on row and column. 
+        // Get the location of the PMT based on row and column.
         angle = (2*CLHEP::pi/24)*(col-1);
         pmtx = 96*std::cos(angle);
         pmty = 96*std::sin(angle);

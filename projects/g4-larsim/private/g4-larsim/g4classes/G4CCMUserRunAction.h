@@ -27,4 +27,4 @@ class G4CCMUserRunAction : public G4UserRunAction {
         G4bool rootSet;
 };
 
-#define // g4_larsim_G4CCMUserRunAction_H
+#endif // g4_larsim_G4CCMUserRunAction_H

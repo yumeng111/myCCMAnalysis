@@ -1,8 +1,8 @@
 /*
    Event Action for CCM simulation.
 
-   This code offers the ability to perform actions at the start/end of events. 
-   Currently handles the output to ROOT, using a file defined in the BeginOfEventAction, 
+   This code offers the ability to perform actions at the start/end of events.
+   Currently handles the output to ROOT, using a file defined in the BeginOfEventAction,
    trigger information obtained in the EndOfEventAction, and defines a method for adding
    a hit (optical photon to PMT).
 */
@@ -42,7 +42,7 @@ void G4CCMUserEventAction::BeginOfEventAction(const G4Event* event) {
     rootSet = fRunAction->GetRootSet();
 
     // if rootSet is false, pull the root file name and use it to open a new root file and rootIO structure
-    if (!rootSet){
+    if (!rootSet) {
         const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
         G4String filename = detector->GetRootFile();
         std::ostringstream oss;

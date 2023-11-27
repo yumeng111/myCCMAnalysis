@@ -4,6 +4,8 @@
 #include <g4-larsim/g4classes/G4CCMDetectorConstruction.h>
 #include <g4-larsim/g4classes/G4CCMPhysicsList.h>
 #include <g4-larsim/g4classes/G4CCMUserSteppingAction.h>
+#include <g4-larsim/g4classes/G4CCMUserEventAction.h>
+#include <g4-larsim/g4classes/G4CCMUserRunAction.h>
 
 #include <icetray/I3Logging.h>
 
@@ -294,8 +296,16 @@ void G4Interface::Initialize() {
     //log_debug("Init UserTrackingAction ...");
     //runManager_.SetUserAction(new G4IceTopUserTrackingAction());
 
+    log_debug("Init UserRunAction ...");
+    G4CCMUserRunAction* run_action = new G4CCMUserRunAction();
+    runManager_.SetUserAction(run_action);
+
+    log_debug("Init UserEventAction ...");
+    G4CCMUserEventAction * event_action = new G4CCMUserEventAction(run_action);
+    runManager_.SetUserAction(event_action);
+
     log_debug("Init UserSteppingAction ...");
-    runManager_.SetUserAction(new G4CCMUserSteppingAction());
+    runManager_.SetUserAction(new G4CCMUserSteppingAction(event_action));
 
     // Initialize G4 kernel
     log_debug("Init run manager ...");
