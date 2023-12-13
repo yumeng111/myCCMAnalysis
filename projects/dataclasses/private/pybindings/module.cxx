@@ -98,7 +98,8 @@ namespace bp = boost::python;
   (SPEChargeDistribution)(I3TriggerHierarchy)(I3Trigger)(TriggerKey)    \
   (I3RecoPulseSeriesMapApplySPECorrection)(I3FlasherStatus)             \
   (I3FlasherStatusMap)(I3FlasherSubrunMap)                              \
-  (I3RecoPulseSeriesMapCombineByModule)(I3Int64)(I3UInt64)              \
+  (I3RecoPulseSeriesMapCombineByModule)                                 \
+  (I3Int64)(I3UInt64)(I3UInt32)                                 \
   (ScintKey)(I3ScintGeo)(I3ScintRecoPulseSeriesMap)                     \
   (I3ScintWaveformSeriesMap)                                            \
   (AntennaKey)(I3AntennaChannel)(I3AntennaDataMap)(I3AntennaGeo)        \

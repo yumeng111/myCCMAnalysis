@@ -8,7 +8,6 @@ configFiles/local/
 *core.*
 
 *.root
-*.s*
 *.d*
 *ACLiC_dict*
 *.pdf*

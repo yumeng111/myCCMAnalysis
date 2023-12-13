@@ -17,5 +17,6 @@ load_pybindings(__name__,__path__)
 I3RecoPulseSeries = vector_I3RecoPulse
 I3RecoHitSeries = vector_I3RecoHit
 I3MCHitSeries = vector_I3MCHit
+I3Int32 = icecube.icetray.I3Int
 
 del icecube
