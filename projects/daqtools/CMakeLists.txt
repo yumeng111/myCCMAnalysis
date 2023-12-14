@@ -26,7 +26,7 @@ i3_add_library(${PROJECT_NAME}
     private/daqtools/FirstPulseFinder.cxx
     private/daqtools/CCMDerivativePulseFinder.cxx
     private/daqtools/EventFinder.cxx
-    private/daqtools/AccumulateWaveforms.cxx
+    private/daqtools/AccumulateSummedWaveforms.cxx
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services
