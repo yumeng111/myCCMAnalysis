@@ -144,15 +144,13 @@ void ElectronicsCorrection::Calibration(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-//void ElectronicsCorrection::
 void OutlierFilter(std::vector<double> const & samples, std::vector<double> & outlier_filter_results) {
-
     double delta_tau = 20;
     double prev_tau = 2.0;
     double next_tau = 2.0;
 
-    // first let's find the mode of the first 100 bins of our wf as the starting value
-    std::vector<double> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), samples.size()));
+    // first let's find the mode of the first 800 bins of our wf as the starting value
+    std::vector<double> starting_samples(samples.begin(), samples.begin() + std::min(size_t(800), samples.size()));
     std::sort(starting_samples.begin(), starting_samples.end());
     double value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
 
@@ -172,10 +170,8 @@ void OutlierFilter(std::vector<double> const & samples, std::vector<double> & ou
         value += delta;
         outlier_filter_results[wf_it] = value;
     }
-
 }
 
-//void ElectronicsCorrection::
 void BoxFilter(std::vector<double> const & samples, std::vector<double> & box_filter_results) {
     for(size_t i = 0; i < samples.size(); ++i) {
         // special logic for first element
@@ -189,7 +185,6 @@ void BoxFilter(std::vector<double> const & samples, std::vector<double> & box_fi
     }
 }
 
-// void ElectronicsCorrection::
 void ECorrection(std::vector<uint16_t> const & samples, double const & mode, const CCMPMTCalibration& calibration,  std::vector<double> & electronics_correction_samples, std::vector<double> default_droop_tau_, double delta_t) {
 
     // let's start off by inverting samples and subtracting off the baseline
@@ -199,8 +194,10 @@ void ECorrection(std::vector<uint16_t> const & samples, double const & mode, con
         inv_wf_min_baseline[wf_it] = -1 * (double(samples[wf_it]) + mode); // mode is negative and samples is positive!
     }
 
+    size_t N = samples.size();
+
     // now let's run inv_wf_min_baseline through our box filter
-    std::vector<double> box_filter_results(samples.size());
+    std::vector<double> box_filter_results(N);
     BoxFilter(inv_wf_min_baseline, box_filter_results);
 
     // now droop correction time
@@ -218,9 +215,15 @@ void ECorrection(std::vector<uint16_t> const & samples, double const & mode, con
     double X;
 
     // place to store our results from droop correcting once
-    std::vector<double> first_droop_correction_results(box_filter_results.size());
+    std::vector<double> first_droop_correction_results(N);
+    electronics_correction_samples.resize(N);
 
-    for (size_t tau_it = 0; tau_it < 2; ++tau_it){
+    std::vector<double *> inputs = {box_filter_results.data(), first_droop_correction_results.data()};
+    std::vector<double *> outputs = {first_droop_correction_results.data(), electronics_correction_samples.data()};
+
+    for (size_t tau_it = 0; tau_it < 2; ++tau_it) {
+        double * input = inputs[tau_it];
+        double * output = outputs[tau_it];
 
         // define our numbers on the first iteration
         C = std::exp(-delta_t/tau.at(tau_it));
@@ -228,29 +231,14 @@ void ECorrection(std::vector<uint16_t> const & samples, double const & mode, con
         A = tau.at(tau_it) / delta_t * B;
         S = 0.0;
 
-        if (tau_it == 0){
-            X = double(box_filter_results[0]) / A + B * S;
-            first_droop_correction_results[0] = X;
+        X = double(input[0]) / A + B * S;
+        output[0] = X;
 
-            for (size_t i = 1; i < box_filter_results.size(); ++i) {
-                S = X + C * S;
-                X = box_filter_results[i] / A + B * S;
-                first_droop_correction_results[i] = X;
-            }
+        for(size_t i=1; i<N; ++i) {
+            S = X + C * S;
+            X = input[i] / A + B * S;
+            output[i] = X;
         }
-
-        if (tau_it == 1){
-            X = double(first_droop_correction_results[0]) / A + B * S;
-            electronics_correction_samples.push_back(X);
-
-            for (size_t i = 1; i < box_filter_results.size(); ++i) {
-                S = X + C * S;
-                X = first_droop_correction_results[i] / A + B * S;
-                electronics_correction_samples.push_back(X);
-            }
-        }
-
-
     }
 
     // now let's subtract off our outlier filter
