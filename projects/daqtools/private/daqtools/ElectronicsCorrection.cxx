@@ -55,9 +55,9 @@ struct ElectronicsCorrectionResult {
 
 class  ElectronicsCorrection: public I3Module {
     std::exception_ptr teptr = nullptr;
+    std::string geometry_name_;
     bool geo_seen;
     bool calib_seen;
-    std::string geometry_name_;
     std::string ccm_calibration_name_;
     std::string ccm_waveforms_name_;
     std::string baseline_estimates_name_;

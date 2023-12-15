@@ -45,8 +45,8 @@
 #include <dataclasses/calibration/BaselineEstimate.h>
 
 class SumWaveforms: public I3Module {
-    bool geo_seen;
     std::string geometry_name_;
+    bool geo_seen;
     std::string nim_pulses_name_;
     CCMPMTKey bcm_key;
     size_t bcm_channel;
@@ -94,7 +94,7 @@ void SumWaveforms::Configure() {
 
 void SumWaveforms::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;

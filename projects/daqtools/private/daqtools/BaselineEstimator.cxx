@@ -128,8 +128,8 @@ double LinearChi2PerDOF(
 
 class BaselineEstimator: public I3Module {
     std::exception_ptr teptr = nullptr;
-    bool geo_seen;
     std::string geometry_name_;
+    bool geo_seen;
     std::string ccm_waveforms_name_;
     std::string output_name_;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
@@ -416,7 +416,7 @@ void BaselineEstimator::Process() {
 
 void BaselineEstimator::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
@@ -428,7 +428,7 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
     // let's read in our waveform
     boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_name_);
     if(waveforms == nullptr) {
-        log_fatal("No CCMWaveformUInt16Series under key name \"%s\"", ccm_waveforms_name_);
+        log_fatal("No CCMWaveformUInt16Series under key name \"%s\"", ccm_waveforms_name_.c_str());
     }
 
     std::vector<CCMPMTKey> pmt_keys;

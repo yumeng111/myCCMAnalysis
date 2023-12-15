@@ -39,8 +39,8 @@
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
 class CCMDerivativePulseFinder: public I3Module {
-    bool geo_seen;
     std::string geometry_name_;
+    bool geo_seen;
     std::string ccm_waveform_name_;
     std::string ccm_trigger_name_;
     std::string nim_pulses_name_;
@@ -147,7 +147,7 @@ void CCMDerivativePulseFinder::Configure() {
 void CCMDerivativePulseFinder::Geometry(I3FramePtr frame) {
     // std::cout << "CCMDerivativePulseFinder::Geometry" << std::endl;
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     geo = frame->Get<CCMGeometry const>(geometry_name_);
     // std::cout << "geo.pmt_channel_map.size() == " << geo.pmt_channel_map.size() << std::endl;
