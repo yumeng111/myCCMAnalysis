@@ -35,7 +35,7 @@ public:
         int init_avg_end_idx = std::min(3 * std::max(int(tau / delta_t), 1), int(N));
         double exp_start = 0.0;
         std::vector<uint16_t>::const_iterator x_it = begin;
-        for(size_t i=0; i < init_avg_end_idx and x_it != end; ++i, ++x_it) {
+        for(size_t i=0; int(i) < init_avg_end_idx and x_it != end; ++i, ++x_it) {
             exp_start += -double(*x_it);
         }
         exp_start /= init_avg_end_idx;
