@@ -86,8 +86,11 @@ std::map<CCMPMTKey, int32_t> AccumulateIndividualPMTWaveforms::GetReferenceIndic
 
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
         double time_correction = 0.0;
+        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+        CCMPMTType const & pmt_type = pmt.omtype;
+        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
 
-        if(correct_electron_transit_time_) {
+        if(correct_electron_transit_time_ and is_pmt) {
             // retrieve the calibration for this PMT
             std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
                 calibration->pmtCal.find(pmt_key);
@@ -128,7 +131,7 @@ std::map<CCMPMTKey, int32_t> AccumulateIndividualPMTWaveforms::GetReferenceIndic
                 time_correction -= nim_pulse_time;
             }
         }
-        output_indices[pmt_key] = (int32_t)(time_correction / 2.0);
+        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
     }
 
     return output_indices;
@@ -188,7 +191,11 @@ std::map<CCMPMTKey, int32_t> AccumulateIndividualPMTWaveforms::GetReferenceIndic
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
         double time_correction = 0.0;
 
-        if(correct_electron_transit_time_) {
+        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+        CCMPMTType const & pmt_type = pmt.omtype;
+        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+
+        if(correct_electron_transit_time_ and is_pmt) {
             // retrieve the calibration for this PMT
             std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
                 calibration->pmtCal.find(pmt_key);
@@ -237,14 +244,14 @@ std::map<CCMPMTKey, int32_t> AccumulateIndividualPMTWaveforms::GetReferenceIndic
             time_correction -= bcm_time;
         }
 
-        output_indices[pmt_key] = (int32_t)(time_correction / 2.0);
+        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
     }
 
     return output_indices;
 }
 
 std::map<CCMPMTKey, int32_t> AccumulateIndividualPMTWaveforms::GetReferenceIndicesUser(I3FramePtr frame) {
-    boost::shared_ptr<I3Map<CCMPMTKey, uint32_t> const> reference_times = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, uint32_t> const>>(reference_time_key_);
+    boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const> reference_times = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const>>(reference_time_key_);
     if(reference_times == nullptr) {
         log_fatal("Couldn't find '%s' in the frame!",
                 reference_time_key_.c_str());
@@ -265,7 +272,11 @@ std::map<CCMPMTKey, int32_t> AccumulateIndividualPMTWaveforms::GetReferenceIndic
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
         double time_correction = 0.0;
 
-        if(correct_electron_transit_time_) {
+        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+        CCMPMTType const & pmt_type = pmt.omtype;
+        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+
+        if(correct_electron_transit_time_ and is_pmt) {
             // retrieve the calibration for this PMT
             std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
                 calibration->pmtCal.find(pmt_key);
@@ -311,7 +322,7 @@ std::map<CCMPMTKey, int32_t> AccumulateIndividualPMTWaveforms::GetReferenceIndic
             time_correction -= (*reference_times).at(pmt_key);
         }
 
-        output_indices[pmt_key] = (int32_t)(time_correction / 2.0);
+        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
     }
 
     return output_indices;
@@ -381,7 +392,7 @@ AccumulateIndividualPMTWaveforms::AccumulateIndividualPMTWaveforms(const I3Conte
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
     AddParameter("TriggerReferenceTime", "Use the trigger time as a reference time? This is the default", bool(false));
     AddParameter("BCMReferenceTime", "Use the Beam Current Monitor start time as a reference time?", bool(false));
-    AddParameter("ReferenceTimeKey", "Name of a frame key that contains an I3Map<CCMPMTKey, uint32_t> for the PMT reference times", std::string(""));
+    AddParameter("ReferenceTimeKey", "Name of a frame key that contains an I3Map<CCMPMTKey, int32_t> for the PMT reference indices", std::string(""));
     AddParameter("CorrectNIMPulseTime", "Correct for channel 15 NIM pulse arrival time?", bool(true));
     AddParameter("CorrectElectronTransitTime", "Correct for PMT electron transit time?", bool(true));
     AddParameter("OutputFrameType", "The type of frame to use in the ouptut. Default: DAQ", I3Frame::DAQ);
@@ -498,18 +509,16 @@ void AccumulateIndividualPMTWaveforms::DumpWaveforms() {
     boost::shared_ptr<I3Map<CCMPMTKey, int32_t>> p_fixed_positions = boost::make_shared<I3Map<CCMPMTKey, int32_t>>();
 
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
-
         std::deque<double> deque_samples = accumulated_waveforms_[pmt_key].GetSummedWaveform();
         std::deque<unsigned int> deque_counts = accumulated_waveforms_[pmt_key].GetCounts();
         int32_t fixed_position = accumulated_waveforms_[pmt_key].GetFixedPosition();
-
 
         p_samples->insert(std::make_pair<CCMPMTKey, std::vector<double>>(CCMPMTKey(pmt_key), std::vector<double>(deque_samples.begin(), deque_samples.end())));
         p_counts->insert(std::make_pair<CCMPMTKey, std::vector<uint32_t>>(CCMPMTKey(pmt_key), std::vector<uint32_t>(deque_counts.begin(), deque_counts.end())));
         p_fixed_positions->insert(std::make_pair<CCMPMTKey, int32_t>(CCMPMTKey(pmt_key), std::move(fixed_position)));
     }
 
-    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::DAQ);
+    I3FramePtr frame = boost::make_shared<I3Frame>(output_frame_type_);
 
     frame->Put((output_prefix_).c_str(), p_samples);
     frame->Put((output_prefix_ + "Counts").c_str(), p_counts);
