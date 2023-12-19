@@ -721,24 +721,22 @@ void AccumulateIndividualPMTWaveforms::Geometry(I3FramePtr frame) {
     // Assume we're doing all PMTs if none are specified
     if(allowed_pmt_keys_.size() == 0) {
         pmt_keys_ = geo_keys;
-        PushFrame(frame);
-        return;
-    }
+    } else {
+        // Clear the final pmt key list
+        pmt_keys_.clear();
+        // Fill the final pmt key list with the intersection of specified pmt keys and those available in the geometry
+        // If allowed_pmt_keys_ is not sorted then this will fail horribly
+        std::set_intersection(geo_keys.begin(), geo_keys.end(), allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), std::back_inserter(pmt_keys_));
 
-    // Clear the final pmt key list
-    pmt_keys_.clear();
-    // Fill the final pmt key list with the intersection of specified pmt keys and those available in the geometry
-    // If allowed_pmt_keys_ is not sorted then this will fail horribly
-    std::set_intersection(geo_keys.begin(), geo_keys.end(), allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), std::back_inserter(pmt_keys_));
-
-    if(pmt_keys_.size() < allowed_pmt_keys_.size()) {
-        std::vector<CCMPMTKey> missing_keys;
-        std::set_difference(allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), pmt_keys_.begin(), pmt_keys_.end(), std::back_inserter(missing_keys));
-        std::stringstream ss;
-        ss << "Some specified CCMPMTKeys are not present in the geometry:";
-        for(CCMPMTKey const & key : missing_keys)
-            ss << " " << key;
-        log_warn(ss.str().c_str());
+        if(pmt_keys_.size() < allowed_pmt_keys_.size()) {
+            std::vector<CCMPMTKey> missing_keys;
+            std::set_difference(allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), pmt_keys_.begin(), pmt_keys_.end(), std::back_inserter(missing_keys));
+            std::stringstream ss;
+            ss << "Some specified CCMPMTKeys are not present in the geometry:";
+            for(CCMPMTKey const & key : missing_keys)
+                ss << " " << key;
+            log_warn(ss.str().c_str());
+        }
     }
 
     // Initialize the accumulated waveforms
