@@ -526,7 +526,7 @@ bool AccumulateIndividualPMTWaveforms::ComputeReferenceIndicesUser(I3FramePtr fr
         }
 
         if(reference_times and reference_times->count(pmt_key)) {
-            time_correction -= (*reference_times).at(pmt_key);
+            time_correction -= (*reference_times).at(pmt_key) * 2.0;
             pmt_corrections.user_time = true;
         }
 
