@@ -168,22 +168,24 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesTrigger(I3Fram
 
         if(correct_nim_pulse_time_) {
             // retrieve the board trigger nim pulse time for this PMT
-            std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
-                geo_.trigger_copy_map.find(pmt_key);
-            if(trigger_key == geo_.trigger_copy_map.end()) {
+            std::map<uint32_t, CCMTriggerKey>::const_iterator trigger_key =
+                channel_trigger_map_.find(channel);
+            if(trigger_key == channel_trigger_map_.end()) {
                 if(not allow_missing_) {
-                    log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
-                            pmt_key.GetRegion(), pmt_key.GetSensor(),
-                            geometry_key_.c_str());
+                    log_fatal("Could not find channel %u in 'channel_trigger_map_'",
+                            channel);
                 }
             } else {
                 NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
                     nim_pulses->find(trigger_key->second);
                 if(pmt_trigger_nim_pulses == nim_pulses->end()) {
                     if(not allow_missing_) {
-                        log_fatal("Could not find PMT (%i/%u) in '%s'",
-                                pmt_key.GetRegion(), pmt_key.GetSensor(),
-                                nim_pulses_key_.c_str());
+                        std::stringstream ss;
+                        ss << "Could not find CCMTriggerKey("
+                            << trigger_key->second.GetType() << ", "
+                            << trigger_key->second.GetNumber() << ") in '"
+                            << nim_pulses_key_ << "'";
+                        log_fatal(ss.str().c_str());
                     }
                 } else {
                     double nim_pulse_time = 0.0;
@@ -202,8 +204,8 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesTrigger(I3Fram
                 }
             }
         }
-        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
-        output_corrections[pmt_key] = pmt_corrections;
+        output_indices[channel] = (int32_t)(-time_correction / 2.0);
+        output_corrections[channel] = pmt_corrections;
     }
 
     return true;
@@ -291,13 +293,18 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesBCM(I3FramePtr
     // get the BCM time
     double bcm_time = bcm->bcm_start_time;
 
-    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+    for(uint32_t const & channel : channels_) {
         Corrections pmt_corrections;
-        double time_correction = 0.0;
 
-        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
-        CCMPMTType const & pmt_type = pmt.omtype;
-        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+        double time_correction = 0.0;
+        bool is_pmt = false;
+        CCMPMTKey pmt_key;
+        if(channel_pmt_map_.count(channel)) {
+            pmt_key = channel_pmt_map_.at(channel);
+            CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+            CCMPMTType const & pmt_type = pmt.omtype;
+            is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+        }
 
         if(correct_electron_transit_time_ and is_pmt) {
             // retrieve the calibration for this PMT
@@ -320,22 +327,24 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesBCM(I3FramePtr
 
         if(correct_nim_pulse_time_) {
             // retrieve the board trigger nim pulse time for this PMT
-            std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
-                geo_.trigger_copy_map.find(pmt_key);
-            if(trigger_key == geo_.trigger_copy_map.end()) {
+            std::map<uint32_t, CCMTriggerKey>::const_iterator trigger_key =
+                channel_trigger_map_.find(channel);
+            if(trigger_key == channel_trigger_map_.end()) {
                 if(not allow_missing_) {
-                    log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
-                            pmt_key.GetRegion(), pmt_key.GetSensor(),
-                            geometry_key_.c_str());
+                    log_fatal("Could not find channel %u in 'channel_trigger_map_'",
+                            channel);
                 }
             } else {
                 NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
                     nim_pulses->find(trigger_key->second);
                 if(pmt_trigger_nim_pulses == nim_pulses->end()) {
                     if(not allow_missing_) {
-                        log_fatal("Could not find PMT (%i/%u) in '%s'",
-                                pmt_key.GetRegion(), pmt_key.GetSensor(),
-                                nim_pulses_key_.c_str());
+                        std::stringstream ss;
+                        ss << "Could not find CCMTriggerKey("
+                            << trigger_key->second.GetType() << ", "
+                            << trigger_key->second.GetNumber() << ") in '"
+                            << nim_pulses_key_ << "'";
+                        log_fatal(ss.str().c_str());
                     }
                 } else {
                     double nim_pulse_time = 0.0;
@@ -364,8 +373,8 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesBCM(I3FramePtr
             pmt_corrections.bcm_start_time = true;
         }
 
-        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
-        output_corrections[pmt_key] = pmt_corrections;
+        output_indices[channel] = (int32_t)(-time_correction / 2.0);
+        output_corrections[channel] = pmt_corrections;
     }
 
     return true;
@@ -464,13 +473,18 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesUser(I3FramePt
     // get the BCM time
     double bcm_time = bcm->bcm_start_time;
 
-    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+    for(uint32_t const & channel : channels_) {
         Corrections pmt_corrections;
-        double time_correction = 0.0;
 
-        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
-        CCMPMTType const & pmt_type = pmt.omtype;
-        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+        double time_correction = 0.0;
+        bool is_pmt = false;
+        CCMPMTKey pmt_key;
+        if(channel_pmt_map_.count(channel)) {
+            pmt_key = channel_pmt_map_.at(channel);
+            CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+            CCMPMTType const & pmt_type = pmt.omtype;
+            is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+        }
 
         if(correct_electron_transit_time_ and is_pmt) {
             // retrieve the calibration for this PMT
@@ -492,21 +506,25 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesUser(I3FramePt
 
         if(correct_nim_pulse_time_) {
             // retrieve the board trigger nim pulse time for this PMT
-            std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
-                geo_.trigger_copy_map.find(pmt_key);
-            if(trigger_key == geo_.trigger_copy_map.end()) {
-                if(not allow_missing_)
-                    log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
-                        geometry_key_.c_str());
+            std::map<uint32_t, CCMTriggerKey>::const_iterator trigger_key =
+                channel_trigger_map_.find(channel);
+            if(trigger_key == channel_trigger_map_.end()) {
+                if(not allow_missing_) {
+                    log_fatal("Could not find channel %u in 'channel_trigger_map_'",
+                            channel);
+                }
             } else {
                 NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
                     nim_pulses->find(trigger_key->second);
                 if(pmt_trigger_nim_pulses == nim_pulses->end()) {
-                    if(not allow_missing_)
-                        log_fatal("Could not find PMT (%i/%u) in '%s'",
-                            pmt_key.GetRegion(), pmt_key.GetSensor(),
-                            nim_pulses_key_.c_str());
+                    if(not allow_missing_) {
+                        std::stringstream ss;
+                        ss << "Could not find CCMTriggerKey("
+                            << trigger_key->second.GetType() << ", "
+                            << trigger_key->second.GetNumber() << ") in '"
+                            << nim_pulses_key_ << "'";
+                        log_fatal(ss.str().c_str());
+                    }
                 } else {
                     double nim_pulse_time = 0.0;
                     double max_nim_pulse_length = 0.0;
@@ -535,12 +553,12 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesUser(I3FramePt
         }
 
         if(reference_times and reference_times->count(pmt_key)) {
-            time_correction -= (*reference_times).at(pmt_key);
+            time_correction -= (*reference_times).at(pmt_key) * 2.0;
             pmt_corrections.user_time = true;
         }
 
-        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
-        output_corrections[pmt_key] = pmt_corrections;
+        output_indices[channel] = (int32_t)(-time_correction / 2.0);
+        output_corrections[channel] = pmt_corrections;
     }
 
     return true;
@@ -573,19 +591,26 @@ void AccumulateIndividualChannelWaveforms::ProcessFrame(I3FramePtr frame) {
         log_fatal("Couldn't find '%s' in the frame!",
                 waveforms_key_.c_str());
 
-    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const> baseline_estimates_map = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const>>(baseline_estimates_key_);
-    boost::shared_ptr<I3Vector<uint32_t, BaselineEstimate> const> baseline_estimates_vec = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const>>(baseline_estimates_key_);
+    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const> baseline_estimates_pmts = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const>>(baseline_estimates_key_);
+    boost::shared_ptr<I3Map<uint32_t, BaselineEstimate> const> baseline_estimates_channels = frame->Get<boost::shared_ptr<I3Map<uint32_t, BaselineEstimate> const>>(baseline_estimates_key_);
+    bool baseline_estimates = baseline_estimates_channels or baseline_estimates_channels;
+    if(!baseline_estimates_pmts and !baseline_estimates_channels and correct_baseline_and_invert_raw_waveforms_)
+        log_fatal("Couldn't find '%s' in the frame!",
+                baseline_estimates_key_.c_str());
 
     I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map = geo_.pmt_channel_map;
 
-    for(CCMPMTKey const & pmt_key : pmt_keys_) {
-        if(pmt_channel_map.count(pmt_key) == 0) {
-            log_fatal("Could not find PMT (%i/%u) in '%s'",
-                    pmt_key.GetRegion(), pmt_key.GetSensor(),
-                    geometry_key_.c_str());
+    for(uint32_t const & channel : channels_) {
+        bool is_pmt = false;
+        CCMPMTKey pmt_key;
+        if(channel_pmt_map_.count(channel)) {
+            pmt_key = channel_pmt_map_.at(channel);
+            CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+            CCMPMTType const & pmt_type = pmt.omtype;
+            is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
         }
-        uint32_t channel = pmt_channel_map.at(pmt_key);
-        Corrections & pmt_corrections = corrections.at(pmt_key);
+
+        Corrections & channel_corrections = corrections.at(channel);
         if(waveform_raw) {
             if(channel >= waveform_raw->size()) {
                 log_fatal("Could not find PMT (%i/%u) in '%s'",
@@ -594,27 +619,34 @@ void AccumulateIndividualChannelWaveforms::ProcessFrame(I3FramePtr frame) {
             }
             CCMWaveformUInt16 const & waveform = waveform_raw->at(channel);
             std::vector<double> wf(waveform.GetWaveform().begin(), waveform.GetWaveform().end());
-            if(correct_baseline_and_invert_raw_waveforms_ and baseline_estimates and baseline_estimates->count(pmt_key)) {
-                BaselineEstimate const & baseline_estimate = baseline_estimates->at(pmt_key);
+            if(correct_baseline_and_invert_raw_waveforms_) {
+                BaselineEstimate baseline_estimate;
+                baseline_estimate.baseline = std::numeric_limits<double>::quiet_NaN();
+                if(baseline_estimates_pmts and is_pmt and baseline_estimates_pmts->count(pmt_key)) {
+                    baseline_estimate = baseline_estimates_pmts->at(pmt_key);
+                } else if(baseline_estimates_channels and baseline_estimates_channels->count(channel)) {
+                    baseline_estimate = baseline_estimates_channels->at(channel);
+                }
+
                 if(not std::isnan(baseline_estimate.baseline)) {
                     for(double & sample : wf) {
                         sample = -(sample + baseline_estimate.baseline);
                     }
-                    pmt_corrections.baseline = true;
+                    channel_corrections.baseline = true;
                 }
             }
             if(allow_missing_) {
-                if(corrections_.count(pmt_key)) {
-                    Corrections const & previous_corrections = corrections_.at(pmt_key);
-                    if(previous_corrections != pmt_corrections) {
-                        log_fatal("Previous corrections for PMT (%i/%u) do not match current corrections! This should never happen!",
-                                pmt_key.GetRegion(), pmt_key.GetSensor());
+                if(corrections_.count(channel)) {
+                    Corrections const & previous_corrections = corrections_.at(channel);
+                    if(previous_corrections != channel_corrections) {
+                        log_fatal("Previous corrections for channel (%u) do not match current corrections! This should never happen!",
+                                channel);
                     }
                 } else {
-                    corrections_[pmt_key] = pmt_corrections;
+                    corrections_[channel] = channel_corrections;
                 }
             }
-            accumulated_waveforms_[pmt_key].AddWaveform(wf, reference_indices[pmt_key]);
+            accumulated_waveforms_[channel].AddWaveform(wf, reference_indices[channel]);
         } else if(waveform_cal) {
             if(channel >= waveform_cal->size()) {
                 log_fatal("Could not find PMT (%i/%u) in '%s'",
@@ -623,17 +655,17 @@ void AccumulateIndividualChannelWaveforms::ProcessFrame(I3FramePtr frame) {
             }
             CCMWaveformDouble const & waveform = waveform_cal->at(channel);
             if(allow_missing_) {
-                if(corrections_.count(pmt_key)) {
-                    Corrections const & previous_corrections = corrections_.at(pmt_key);
-                    if(previous_corrections != pmt_corrections) {
-                        log_fatal("Previous corrections for PMT (%i/%u) do not match current corrections! This should never happen!",
-                                pmt_key.GetRegion(), pmt_key.GetSensor());
+                if(corrections_.count(channel)) {
+                    Corrections const & previous_corrections = corrections_.at(channel);
+                    if(previous_corrections != channel_corrections) {
+                        log_fatal("Previous corrections for channel (%u) do not match current corrections! This should never happen!",
+                                channel);
                     }
                 } else {
-                    corrections_[pmt_key] = pmt_corrections;
+                    corrections_[channel] = channel_corrections;
                 }
             }
-            accumulated_waveforms_[pmt_key].AddWaveform(waveform.GetWaveform(), reference_indices[pmt_key]);
+            accumulated_waveforms_[channel].AddWaveform(waveform.GetWaveform(), reference_indices[channel]);
         }
     }
 }
