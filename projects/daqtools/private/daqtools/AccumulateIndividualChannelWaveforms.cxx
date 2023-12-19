@@ -381,7 +381,7 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesBCM(I3FramePtr
 }
 
 bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<uint32_t, int32_t> & output_indices, std::map<uint32_t, Corrections> & output_corrections) {
-    boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const> reference_times = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const>>(reference_time_key_);
+    boost::shared_ptr<I3Map<uint32_t, int32_t> const> reference_times = frame->Get<boost::shared_ptr<I3Map<uint32_t, int32_t> const>>(reference_time_key_);
     if(reference_times == nullptr) {
         if(skip_missing_) {
             log_warn("Couldn't find '%s' in the frame! Skipping frame...",
@@ -552,8 +552,8 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesUser(I3FramePt
             pmt_corrections.bcm_start_time = true;
         }
 
-        if(reference_times and reference_times->count(pmt_key)) {
-            time_correction -= (*reference_times).at(pmt_key) * 2.0;
+        if(reference_times and reference_times->count(channel)) {
+            time_correction -= (*reference_times).at(channel) * 2.0;
             pmt_corrections.user_time = true;
         }
 
@@ -613,8 +613,8 @@ void AccumulateIndividualChannelWaveforms::ProcessFrame(I3FramePtr frame) {
         Corrections & channel_corrections = corrections.at(channel);
         if(waveform_raw) {
             if(channel >= waveform_raw->size()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                log_fatal("Could not find channel (%u) in '%s'",
+                        channel,
                         waveforms_key_.c_str());
             }
             CCMWaveformUInt16 const & waveform = waveform_raw->at(channel);
@@ -649,8 +649,8 @@ void AccumulateIndividualChannelWaveforms::ProcessFrame(I3FramePtr frame) {
             accumulated_waveforms_[channel].AddWaveform(wf, reference_indices[channel]);
         } else if(waveform_cal) {
             if(channel >= waveform_cal->size()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                log_fatal("Could not find channel (%u) in '%s'",
+                        channel,
                         waveforms_key_.c_str());
             }
             CCMWaveformDouble const & waveform = waveform_cal->at(channel);
