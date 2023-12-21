@@ -66,6 +66,7 @@ namespace bp = boost::python;
   (I3DetectorStatus)(I3DOMStatus)(I3TriggerStatus)(MapOMKeyI3DOMStatus) \
   (MapSubdetectorI3TriggerReadoutConfig)(MapTriggerKeyI3TriggerStatus)  \
   (I3DOMFunctions)(I3MapUnsignedUnsigned)(I3MapUShortUShort)            \
+  (I3MapUIntInt)(I3MapUIntVectorUInt)(I3MapUIntVectorDouble)            \
   (I3MapIntVectorInt)(I3MapKeyVectorDouble)(I3MapKeyDouble)             \
   (I3MapKeyUInt)(I3MapKeyVectorInt)(I3MapTriggerDouble)                 \
   (I3MapPMTKeyVectorVectorDouble)(I3MapPMTKeyVectorDouble)              \
