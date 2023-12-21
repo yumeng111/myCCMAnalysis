@@ -36,11 +36,14 @@ struct BaselineEstimate : public I3FrameObject {
 
 typedef I3Map<CCMPMTKey, BaselineEstimate> BaselineEstimateMap;
 I3_POINTER_TYPEDEFS(BaselineEstimateMap);
+typedef I3Map<unsigned int, BaselineEstimate> BaselineEstimateChannelMap;
+I3_POINTER_TYPEDEFS(BaselineEstimateChannelMap);
 
 I3_CLASS_VERSION(BaselineEstimate, baselineestimate_version_);
 I3_POINTER_TYPEDEFS(BaselineEstimate);
 
 std::ostream& operator<<(std::ostream& oss, const BaselineEstimate& c);
 std::ostream& operator<<(std::ostream& oss, const BaselineEstimateMap& m);
+std::ostream& operator<<(std::ostream& oss, const BaselineEstimateChannelMap& m);
 
 #endif // BaselineEstimate_H
