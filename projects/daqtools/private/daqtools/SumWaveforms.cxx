@@ -1,7 +1,3 @@
-// This modules reads in the data files and selects only the cosmic triggers to process.
-// This sums the waveforms across all PMTs for each cosmic trigger and saves to the frame.
-// This will also save the fixed position of the summed waveforms that can be used for timing analyses.
-
 #include <icetray/IcetrayFwd.h>
 
 #include <boost/iostreams/filtering_stream.hpp>
@@ -11,236 +7,660 @@
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
 
-#include <set>
-#include <tuple>
-#include <cctype>
 #include <string>
-#include <fstream>
+#include <random>
 #include <iostream>
-#include <limits>
 #include <algorithm>
-#include <iterator>
 
-#include <icetray/open.h>
+#include <icetray/I3Int.h>
 #include <icetray/I3Frame.h>
-#include <icetray/I3TrayInfo.h>
-#include <icetray/I3Module.h>
+#include <icetray/I3ConditionalModule.h>
 #include <icetray/I3Logging.h>
-#include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
 #include <dataclasses/physics/CCMWaveform.h>
-#include <dataclasses/geometry/CCMGeometry.h>
-#include <dataclasses/calibration/CCMPMTCalibration.h>
-#include <dataclasses/calibration/I3DOMCalibration.h>
-#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
-#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
-#include "icetray/robust_statistics.h"
-#include "daqtools/WaveformSmoother.h"
-#include "daqtools/WaveformAccumulator.h"
-#include <dataclasses/physics/CCMWaveform.h>
-#include <dataclasses/physics/CCMBCMSummary.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/physics/CCMBCMSummary.h>
+#include <dataclasses/calibration/CCMCalibration.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 
-class SumWaveforms: public I3Module {
-    std::string geometry_name_;
-    bool geo_seen;
-    std::string nim_pulses_name_;
-    CCMPMTKey bcm_key;
-    size_t bcm_channel;
-    bool use_raw_waveforms_;
+#include "daqtools/WaveformAccumulator.h"
+
+class SumWaveforms : public I3ConditionalModule {
+    std::string geometry_key_;
+    std::string nim_pulses_key_;
+    std::string bcm_summary_key_;
+    std::string calibration_key_;
     std::string waveforms_key_;
     std::string output_prefix_;
-    std::set<CCMTriggerKey> allowed_trigger_keys;
-    I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-    I3Map<CCMPMTKey, CCMOMGeo> pmt_geo_;
-    void Geometry(I3FramePtr frame);
-    bool IsCorrectTrigger(I3FramePtr frame);
+    std::string baseline_estimates_key_;
+    bool correct_nim_pulse_time_;
+    bool correct_electron_transit_time_;
+    bool correct_baseline_and_invert_raw_waveforms_;
+    bool skip_missing_;
 
-    std::tuple<std::deque<double>, std::deque<unsigned int>> ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position);
-    std::tuple<std::deque<double>, std::deque<unsigned int>> ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformDoubleSeries> const & waveforms, int & fixed_position);
+    bool geo_seen_ = false;
+    CCMGeometry geo_;
+    I3Vector<CCMPMTKey> allowed_pmt_keys_;
+    I3Vector<CCMOMGeo::OMType> allowed_pmt_types_;
+    std::vector<CCMPMTKey> pmt_keys_;
+    bool trigger_reference_time_;
+    bool bcm_reference_time_;
+    std::string reference_time_key_;
+
+    enum class ReferenceTimeType {TriggerTime, BCMTime, UserSpecifiedTime};
+    ReferenceTimeType chosen_time_reference_;
+
 public:
     SumWaveforms(const I3Context&);
     void Configure();
+    void Geometry(I3FramePtr frame);
     void DAQ(I3FramePtr frame);
-    void Finish();
+
+    void ProcessFrame(I3FramePtr frame);
+    bool ComputeReferenceIndices(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
+    bool ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
+    bool ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
+    bool ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
 };
 
 I3_MODULE(SumWaveforms);
 
-SumWaveforms::SumWaveforms(const I3Context& context) : I3Module(context),
-    geometry_name_(""), geo_seen(false) {
-    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-    AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
-    AddParameter("AllowedTriggerKeys", "Trigger keys to sum", I3Vector<CCMTriggerKey>());
-    AddParameter("UseRawWaveforms", "Toggle using raw waveforms, default is false", bool(false));
-    AddParameter("WaveformsKey", "Key for input waveforms, must match type", "CCMCalibratedWaveforms");
-    AddParameter("OutputPrefix", "Prefix for output keys", "");
-}
-
-void SumWaveforms::Configure() {
-    GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("NIMPulsesName", nim_pulses_name_);
-    I3Vector<CCMTriggerKey> keys;
-    GetParameter("AllowedTriggerKeys", keys);
-    std::copy(keys.begin(), keys.end(), std::inserter(allowed_trigger_keys, allowed_trigger_keys.end()));
-    GetParameter("UseRawWaveforms", use_raw_waveforms_);
-    GetParameter("WaveformsKey", waveforms_key_);
-    GetParameter("OutputPrefix", output_prefix_);
-}
-
-
-void SumWaveforms::Geometry(I3FramePtr frame) {
-    if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
+bool SumWaveforms::ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+    NIMLogicPulseSeriesMapConstPtr nim_pulses = frame->Get<NIMLogicPulseSeriesMapConstPtr>(nim_pulses_key_);
+    if (!nim_pulses and correct_nim_pulse_time_) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                    nim_pulses_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                nim_pulses_key_.c_str());
     }
-    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-    pmt_channel_map_ = geo.pmt_channel_map;
-    pmt_geo_ = geo.pmt_geo;
-    geo_seen = true;
-    bool found_bcm_key = false;
-    for(auto const & key_om : geo.pmt_geo) {
-        if(key_om.second.omtype == CCMOMGeo::OMType::BeamCurrentMonitor) {
-            bcm_key = key_om.first;
-            found_bcm_key = true;
+
+    CCMCalibrationConstPtr calibration = frame->Get<CCMCalibrationConstPtr>(calibration_key_);
+    if (!calibration and correct_electron_transit_time_) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                calibration_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                calibration_key_.c_str());
+    }
+
+    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        double time_correction = 0.0;
+        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+        CCMPMTType const & pmt_type = pmt.omtype;
+        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+
+        if(correct_electron_transit_time_ and is_pmt) {
+            // retrieve the calibration for this PMT
+            std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
+                calibration->pmtCal.find(pmt_key);
+            if (calib == calibration->pmtCal.end()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        calibration_key_.c_str());
+            } else {
+                CCMPMTCalibration const & pmt_calibration = calib->second;
+                if(not std::isnan(pmt_calibration.GetPMTDeltaT())) {
+                    time_correction -= pmt_calibration.GetPMTDeltaT();
+                }
+            }
         }
+
+        if(correct_nim_pulse_time_) {
+            // retrieve the board trigger nim pulse time for this PMT
+            std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
+                geo_.trigger_copy_map.find(pmt_key);
+            if(trigger_key == geo_.trigger_copy_map.end()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        geometry_key_.c_str());
+            } else {
+                NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
+                    nim_pulses->find(trigger_key->second);
+                if(pmt_trigger_nim_pulses == nim_pulses->end()) {
+                    log_fatal("Could not find PMT (%i/%u) in '%s'",
+                            pmt_key.GetRegion(), pmt_key.GetSensor(),
+                            nim_pulses_key_.c_str());
+                } else {
+                    double nim_pulse_time = 0.0;
+                    double max_nim_pulse_length = 0.0;
+                    for(size_t j=0; j<pmt_trigger_nim_pulses->second.size(); ++j) {
+                        double length = pmt_trigger_nim_pulses->second.at(j).GetNIMPulseLength();
+                        if(length > max_nim_pulse_length) {
+                            nim_pulse_time = pmt_trigger_nim_pulses->second.at(j).GetNIMPulseTime();
+                            max_nim_pulse_length = length;
+                        }
+                    }
+                    if(not std::isnan(nim_pulse_time)) {
+                        time_correction -= nim_pulse_time;
+                    }
+                }
+            }
+        }
+        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
     }
-    if(not found_bcm_key) {
-        log_fatal("CCMGeometry does not contain a channel corresponding to a BeamCurrentMonitor");
-    }
-    bcm_channel = geo.pmt_channel_map.at(bcm_key);
-    PushFrame(frame);
+
+    return true;
 }
 
-bool SumWaveforms::IsCorrectTrigger(I3FramePtr frame) {
-    if(allowed_trigger_keys.size() == 0)
-        return true;
-    if(not frame->Has(nim_pulses_name_)) {
-        log_warn(("No key named " + nim_pulses_name_ + " present in frame").c_str());
-        return false;
+bool SumWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+    CCMBCMSummaryConstPtr bcm = frame->Get<CCMBCMSummaryConstPtr>(bcm_summary_key_);
+    if(!bcm) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                    bcm_summary_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                bcm_summary_key_.c_str());
     }
-    boost::shared_ptr<NIMLogicPulseSeriesMap const> nim_pulses = frame->Get<boost::shared_ptr<NIMLogicPulseSeriesMap const>>(nim_pulses_name_);
-    if(not nim_pulses) {
-        log_warn(("No NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " present in frame").c_str());
-        return false;
+
+    NIMLogicPulseSeriesMapConstPtr nim_pulses = frame->Get<NIMLogicPulseSeriesMapConstPtr>(nim_pulses_key_);
+    if (!nim_pulses and correct_nim_pulse_time_) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                    nim_pulses_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                nim_pulses_key_.c_str());
     }
-    bool found_allowed_trigger = false;
-    for(auto trigger_key : allowed_trigger_keys) {
-        NIMLogicPulseSeriesMap::const_iterator it = nim_pulses->find(trigger_key);
-        if(it != nim_pulses->end()) {
-            if(it->second.size() >= 0) {
-                found_allowed_trigger = true;
-                break;
+
+    CCMCalibrationConstPtr calibration = frame->Get<CCMCalibrationConstPtr>(calibration_key_);
+    if (!calibration and correct_electron_transit_time_) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                calibration_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                calibration_key_.c_str());
+    }
+
+    // Find the BCM nim pulse
+    CCMPMTKey bcm_pmt_key = CCMPMTKey(10, 1);
+    std::map<CCMPMTKey, CCMTriggerKey>::const_iterator bcm_trigger_key =
+        geo_.trigger_copy_map.find(bcm_pmt_key);
+    if(bcm_trigger_key == geo_.trigger_copy_map.end()) {
+        if(skip_missing_) {
+            log_warn("Could not find PMT (%i/%u) in '%s'.trigger_copy_map! Skipping frame...",
+                    bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                    geometry_key_.c_str());
+            return false;
+        } else
+            log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                    bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                    geometry_key_.c_str());
+    }
+
+    double bcm_nim_pulse_time = 0.0;
+    double bcm_max_nim_pulse_length = 0.0;
+
+    NIMLogicPulseSeriesMap::const_iterator bcm_trigger_nim_pulses;
+    if(correct_nim_pulse_time_) {
+        bcm_trigger_nim_pulses = nim_pulses->find(bcm_trigger_key->second);
+        if(bcm_trigger_nim_pulses == nim_pulses->end()) {
+            if(skip_missing_) {
+                log_warn("Could not find PMT (%i/%u) in '%s'! Skipping frame...",
+                        bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                        nim_pulses_key_.c_str());
+                return false;
+            } else
+                log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                        nim_pulses_key_.c_str());
+        }
+    } else {
+        if(correct_nim_pulse_time_) {
+            for(size_t j=0; j<bcm_trigger_nim_pulses->second.size(); ++j) {
+                double length = bcm_trigger_nim_pulses->second.at(j).GetNIMPulseLength();
+                if(length > bcm_max_nim_pulse_length) {
+                    bcm_nim_pulse_time = bcm_trigger_nim_pulses->second.at(j).GetNIMPulseTime();
+                    bcm_max_nim_pulse_length = length;
+                }
             }
         }
     }
-    // We found a NIM pulse on the cosmic trigger,
-    // therefore this is a cosmic frame
-    return found_allowed_trigger;
-}
 
+    // get the BCM time
+    double bcm_time = bcm->bcm_start_time;
 
-std::tuple<std::deque<double>, std::deque<unsigned int>> SumWaveforms::ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformUInt16Series> const & waveforms, I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode, int & fixed_position){
+    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        double time_correction = 0.0;
 
-    //reset summed_waveforms_ !!!
-    WaveformAccumulator summed_waveforms_;
+        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+        CCMPMTType const & pmt_type = pmt.omtype;
+        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
 
-    for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : baseline_mode){
-        CCMPMTKey key = it.first;
-        CCMOMGeo::OMType const & omtype = pmt_geo_[key].omtype;
-        if(omtype != CCMOMGeo::OMType::CCM8inUncoated and omtype != CCMOMGeo::OMType::CCM8inCoated)
-            continue;
-        BaselineEstimate value = it.second;
-        double mode = value.baseline; //baseline mode is negative!!!
-        uint32_t channel = pmt_channel_map_[key];
-        CCMWaveformUInt16 const & waveform = waveforms->at(channel);
-        std::vector<short unsigned int> const & samples = waveform.GetWaveform();
-        std::vector<double> wf_minus_baseline(samples.size());
-
-        for(size_t i = 0; i < samples.size(); ++i){
-            wf_minus_baseline[i] = samples[i] + mode;
+        if(correct_electron_transit_time_ and is_pmt) {
+            // retrieve the calibration for this PMT
+            std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
+                calibration->pmtCal.find(pmt_key);
+            if (calib == calibration->pmtCal.end()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        calibration_key_.c_str());
+            } else {
+                CCMPMTCalibration const & pmt_calibration = calib->second;
+                if(not std::isnan(pmt_calibration.GetPMTDeltaT())) {
+                    time_correction -= pmt_calibration.GetPMTDeltaT();
+                }
+            }
         }
-        CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-        double pos = frame->Get<NIMLogicPulseSeriesMap>("NIMPulses").at(geo.trigger_copy_map.at(key)).at(0).GetNIMPulseTime() / 2.0 ;
-        summed_waveforms_.AddWaveform(wf_minus_baseline, pos);
+
+        if(correct_nim_pulse_time_) {
+            // retrieve the board trigger nim pulse time for this PMT
+            std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
+                geo_.trigger_copy_map.find(pmt_key);
+            if(trigger_key == geo_.trigger_copy_map.end()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        geometry_key_.c_str());
+            } else {
+                NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
+                    nim_pulses->find(trigger_key->second);
+                if(pmt_trigger_nim_pulses == nim_pulses->end()) {
+                    log_fatal("Could not find PMT (%i/%u) in '%s'",
+                            pmt_key.GetRegion(), pmt_key.GetSensor(),
+                            nim_pulses_key_.c_str());
+                } else {
+                    double nim_pulse_time = 0.0;
+                    double max_nim_pulse_length = 0.0;
+                    for(size_t j=0; j<pmt_trigger_nim_pulses->second.size(); ++j) {
+                        double length = pmt_trigger_nim_pulses->second.at(j).GetNIMPulseLength();
+                        if(length > max_nim_pulse_length) {
+                            nim_pulse_time = pmt_trigger_nim_pulses->second.at(j).GetNIMPulseTime();
+                            max_nim_pulse_length = length;
+                        }
+                    }
+                    if(not std::isnan(nim_pulse_time)) {
+                        time_correction -= nim_pulse_time;
+                    }
+                    if(not std::isnan(bcm_nim_pulse_time)) {
+                        time_correction -= (-bcm_nim_pulse_time);
+                    }
+                }
+            }
+        }
+
+        if(not std::isnan(bcm_time)) {
+            time_correction -= bcm_time;
+        }
+
+        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
     }
 
-    std::deque<double> summed_wf = summed_waveforms_.GetSummedWaveform();
-    std::deque<unsigned int> summed_wf_counts = summed_waveforms_.GetCounts();
-    fixed_position = summed_waveforms_.GetFixedPosition();
-    return {summed_wf, summed_wf_counts};
+    return true;
 }
 
-std::tuple<std::deque<double>, std::deque<unsigned int>> SumWaveforms::ComputeSummedWaveforms(I3FramePtr frame, boost::shared_ptr<const CCMWaveformDoubleSeries> const & waveforms, int & fixed_position) {
-
-    //reset summed_waveforms_ !!!
-    WaveformAccumulator summed_waveforms_;
-
-    for(std::pair<CCMPMTKey const, CCMOMGeo> const & it : pmt_geo_) {
-        CCMPMTKey key = it.first;
-        CCMOMGeo::OMType const & omtype = it.second.omtype;
-        if(omtype != CCMOMGeo::OMType::CCM8inUncoated and omtype != CCMOMGeo::OMType::CCM8inCoated)
-            continue;
-        uint32_t channel = pmt_channel_map_[key];
-        CCMWaveformDouble const & waveform = waveforms->at(channel);
-        std::vector<double> const & samples = waveform.GetWaveform();
-
-        CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-        double pos = frame->Get<NIMLogicPulseSeriesMap>("NIMPulses").at(geo.trigger_copy_map.at(key)).at(0).GetNIMPulseTime() / 2.0 ;
-        summed_waveforms_.AddWaveform(samples, pos);
+bool SumWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+    boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const> reference_times = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const>>(reference_time_key_);
+    if(reference_times == nullptr) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                reference_time_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                reference_time_key_.c_str());
     }
 
-    std::deque<double> summed_wf = summed_waveforms_.GetSummedWaveform();
-    std::deque<unsigned int> summed_wf_counts = summed_waveforms_.GetCounts();
-    fixed_position = summed_waveforms_.GetFixedPosition();
-    return {summed_wf, summed_wf_counts};
-}
-
-void SumWaveforms::DAQ(I3FramePtr frame) {
-    if(not geo_seen) {
-        log_fatal("Geometry not seen yet!");
+    CCMBCMSummaryConstPtr bcm = frame->Get<CCMBCMSummaryConstPtr>(bcm_summary_key_);
+    if(!bcm) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                bcm_summary_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                bcm_summary_key_.c_str());
     }
 
-    if(not IsCorrectTrigger(frame)) {
-        PushFrame(frame);
-        return;
+    NIMLogicPulseSeriesMapConstPtr nim_pulses = frame->Get<NIMLogicPulseSeriesMapConstPtr>(nim_pulses_key_);
+    if (!nim_pulses and correct_nim_pulse_time_) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                nim_pulses_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                nim_pulses_key_.c_str());
     }
 
-    if(not frame->Has(waveforms_key_)) {
-        throw std::runtime_error("No waveforms!");
+    CCMCalibrationConstPtr calibration = frame->Get<CCMCalibrationConstPtr>(calibration_key_);
+    if (!calibration and correct_electron_transit_time_) {
+        if(skip_missing_) {
+            log_warn("Couldn't find '%s' in the frame! Skipping frame...",
+                calibration_key_.c_str());
+            return false;
+        } else
+            log_fatal("Couldn't find '%s' in the frame!",
+                calibration_key_.c_str());
     }
 
-    // a shared pointer to store the total charge per pmt for each event
-    boost::shared_ptr<I3PODHolder<int>> summed_wf_reference_time = boost::make_shared<I3PODHolder<int>>();
-    int fixed_position;
-    std::tuple<std::deque<double>, std::deque<unsigned int>> summed_wf;
+    // Find the BCM nim pulse
+    CCMPMTKey bcm_pmt_key = CCMPMTKey(10, 1);
+    std::map<CCMPMTKey, CCMTriggerKey>::const_iterator bcm_trigger_key =
+        geo_.trigger_copy_map.find(bcm_pmt_key);
+    if(bcm_trigger_key == geo_.trigger_copy_map.end()) {
+        if(skip_missing_) {
+            log_warn("Could not find PMT (%i/%u) in '%s'.trigger_copy_map! Skipping frame...",
+                    bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                    geometry_key_.c_str());
+            return false;
+        } else
+            log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                    bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                    geometry_key_.c_str());
+    }
 
-    // ptr to vector of all waveforms and baselines (one for each channel)
-    if(use_raw_waveforms_) {
-        boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(waveforms_key_);
-        I3Map<CCMPMTKey, BaselineEstimate> const & baseline_mode = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
+    double bcm_nim_pulse_time = 0.0;
+    double bcm_max_nim_pulse_length = 0.0;
 
-        // let's add up all the charge in the detector
-        summed_wf = ComputeSummedWaveforms(frame, waveforms, baseline_mode, fixed_position);
+    NIMLogicPulseSeriesMap::const_iterator bcm_trigger_nim_pulses;
+    if(correct_nim_pulse_time_) {
+        bcm_trigger_nim_pulses = nim_pulses->find(bcm_trigger_key->second);
+        if(bcm_trigger_nim_pulses == nim_pulses->end()) {
+            if(skip_missing_) {
+                log_warn("Could not find PMT (%i/%u) in '%s'! Skipping frame...",
+                        bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                        nim_pulses_key_.c_str());
+                return false;
+            } else
+                log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        bcm_pmt_key.GetRegion(), bcm_pmt_key.GetSensor(),
+                        nim_pulses_key_.c_str());
+        }
     } else {
-        boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_key_);
-        // let's add up all the charge in the detector
-        summed_wf = ComputeSummedWaveforms(frame, waveforms, fixed_position);
+        if(correct_nim_pulse_time_) {
+            for(size_t j=0; j<bcm_trigger_nim_pulses->second.size(); ++j) {
+                double length = bcm_trigger_nim_pulses->second.at(j).GetNIMPulseLength();
+                if(length > bcm_max_nim_pulse_length) {
+                    bcm_nim_pulse_time = bcm_trigger_nim_pulses->second.at(j).GetNIMPulseTime();
+                    bcm_max_nim_pulse_length = length;
+                }
+            }
+        }
     }
 
-    boost::shared_ptr<I3Vector<double>> summed_wf_per_frame = boost::make_shared<I3Vector<double>>(std::get<0>(summed_wf).begin(), std::get<0>(summed_wf).end());
-    boost::shared_ptr<I3Vector<unsigned int>> summed_wf_counts_per_frame = boost::make_shared<I3Vector<unsigned int>>(std::get<1>(summed_wf).begin(), std::get<1>(summed_wf).end());
+    // get the BCM time
+    double bcm_time = bcm->bcm_start_time;
 
-    summed_wf_reference_time->value = fixed_position;
+    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        double time_correction = 0.0;
 
-    frame->Put((output_prefix_ + "SummedWaveform").c_str(), summed_wf_per_frame);
-    frame->Put((output_prefix_ + "SummedWaveformCounts").c_str(), summed_wf_counts_per_frame);
-    frame->Put((output_prefix_ + "SummedWaveformFixedPosition").c_str(), summed_wf_reference_time);
+        CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
+        CCMPMTType const & pmt_type = pmt.omtype;
+        bool is_pmt = pmt_type == CCMPMTType::CCM8inCoated or pmt_type == CCMPMTType::CCM8inUncoated or pmt_type == CCMPMTType::CCM1in;
+
+        if(correct_electron_transit_time_ and is_pmt) {
+            // retrieve the calibration for this PMT
+            std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
+                calibration->pmtCal.find(pmt_key);
+            if (calib == calibration->pmtCal.end()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'",
+                    pmt_key.GetRegion(), pmt_key.GetSensor(),
+                    calibration_key_.c_str());
+            } else {
+                CCMPMTCalibration const & pmt_calibration = calib->second;
+                if(not std::isnan(pmt_calibration.GetPMTDeltaT())) {
+                    time_correction -= pmt_calibration.GetPMTDeltaT();
+                }
+            }
+        }
+
+        if(correct_nim_pulse_time_) {
+            // retrieve the board trigger nim pulse time for this PMT
+            std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
+                geo_.trigger_copy_map.find(pmt_key);
+            if(trigger_key == geo_.trigger_copy_map.end()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                    pmt_key.GetRegion(), pmt_key.GetSensor(),
+                    geometry_key_.c_str());
+            } else {
+                NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
+                    nim_pulses->find(trigger_key->second);
+                if(pmt_trigger_nim_pulses == nim_pulses->end()) {
+                    log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        nim_pulses_key_.c_str());
+                } else {
+                    double nim_pulse_time = 0.0;
+                    double max_nim_pulse_length = 0.0;
+                    for(size_t j=0; j<pmt_trigger_nim_pulses->second.size(); ++j) {
+                        double length = pmt_trigger_nim_pulses->second.at(j).GetNIMPulseLength();
+                        if(length > max_nim_pulse_length) {
+                            nim_pulse_time = pmt_trigger_nim_pulses->second.at(j).GetNIMPulseTime();
+                            max_nim_pulse_length = length;
+                        }
+                    }
+                    if(not std::isnan(nim_pulse_time)) {
+                        time_correction -= nim_pulse_time;
+                    }
+                    if(not std::isnan(bcm_nim_pulse_time)) {
+                        time_correction -= (-bcm_nim_pulse_time);
+                    }
+                }
+            }
+        }
+
+        if(not std::isnan(bcm_time)) {
+            time_correction -= bcm_time;
+        }
+
+        if(reference_times and reference_times->count(pmt_key)) {
+            time_correction -= (*reference_times).at(pmt_key) * 2.0;
+        }
+
+        output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
+    }
+
+    return true;
+}
+
+bool SumWaveforms::ComputeReferenceIndices(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+    switch(chosen_time_reference_) {
+        case ReferenceTimeType::TriggerTime:
+            return ComputeReferenceIndicesTrigger(frame, output_indices);
+        case ReferenceTimeType::BCMTime:
+            return ComputeReferenceIndicesBCM(frame, output_indices);
+        case ReferenceTimeType::UserSpecifiedTime:
+            return ComputeReferenceIndicesUser(frame, output_indices);
+        default:
+            break;
+    };
+    log_fatal("Received enum type that is not initialized properly!");
+    return false;
+}
+
+void SumWaveforms::ProcessFrame(I3FramePtr frame) {
+    std::map<CCMPMTKey, int32_t> reference_indices;
+    bool computed_reference_indices = ComputeReferenceIndices(frame, reference_indices);
+    if(not computed_reference_indices and skip_missing_)
+        return PushFrame(frame);
+    boost::shared_ptr<CCMWaveformUInt16Series const> waveform_raw = frame->Get<boost::shared_ptr<CCMWaveformUInt16Series const>>(waveforms_key_);
+    boost::shared_ptr<CCMWaveformDoubleSeries const> waveform_cal = frame->Get<boost::shared_ptr<CCMWaveformDoubleSeries const>>(waveforms_key_);
+    if(!waveform_raw and !waveform_cal)
+        log_fatal("Couldn't find '%s' in the frame!",
+                waveforms_key_.c_str());
+
+    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const> baseline_estimates = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const>>(baseline_estimates_key_);
+
+    I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map = geo_.pmt_channel_map;
+
+    WaveformAccumulator summed_waveform;
+
+    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        if(pmt_channel_map.count(pmt_key) == 0) {
+            log_fatal("Could not find PMT (%i/%u) in '%s'",
+                    pmt_key.GetRegion(), pmt_key.GetSensor(),
+                    geometry_key_.c_str());
+        }
+        uint32_t channel = pmt_channel_map.at(pmt_key);
+        if(waveform_raw) {
+            if(channel >= waveform_raw->size()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        waveforms_key_.c_str());
+            }
+            CCMWaveformUInt16 const & waveform = waveform_raw->at(channel);
+            std::vector<double> wf(waveform.GetWaveform().begin(), waveform.GetWaveform().end());
+            if(correct_baseline_and_invert_raw_waveforms_ and baseline_estimates and baseline_estimates->count(pmt_key)) {
+                BaselineEstimate const & baseline_estimate = baseline_estimates->at(pmt_key);
+                if(not std::isnan(baseline_estimate.baseline)) {
+                    for(double & sample : wf) {
+                        sample = -(sample + baseline_estimate.baseline);
+                    }
+                }
+            }
+            summed_waveform.AddWaveform(wf, reference_indices[pmt_key]);
+        } else if(waveform_cal) {
+            if(channel >= waveform_cal->size()) {
+                log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        waveforms_key_.c_str());
+            }
+            CCMWaveformDouble const & waveform = waveform_cal->at(channel);
+            summed_waveform.AddWaveform(waveform.GetWaveform(), reference_indices[pmt_key]);
+        }
+    }
+
+    std::deque<double> deque_samples = summed_waveform.GetSummedWaveform();
+    std::deque<unsigned int> deque_counts = summed_waveform.GetCounts();
+    int32_t fixed_position = summed_waveform.GetFixedPosition();
+
+    boost::shared_ptr<I3Vector<double>> p_samples = boost::make_shared<I3Vector<double>>(deque_samples.begin(), deque_samples.end());
+    boost::shared_ptr<I3Vector<uint32_t>> p_counts = boost::make_shared<I3Vector<uint32_t>>(deque_counts.begin(), deque_counts.end());
+    boost::shared_ptr<I3Int> p_fixed_position = boost::make_shared<I3Int>(fixed_position);
+
+    frame->Put((output_prefix_).c_str(), p_samples);
+    frame->Put((output_prefix_ + "Counts").c_str(), p_counts);
+    frame->Put((output_prefix_ + "FixedPosition").c_str(), p_fixed_position);
+}
+
+SumWaveforms::SumWaveforms(const I3Context& context) : I3ConditionalModule(context) {
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string(I3DefaultName<CCMCalibration>::value()));
+    AddParameter("NIMPulsesName", "Key for NIMPulses", std::string("NIMPulses"));
+    AddParameter("BCMSummaryName", "Key for BCMSummary", std::string("BCMSummary"));
+    AddParameter("BaselineEstimatesName", "Key for BaselineEstimates", std::string("BaselineEstimates"));
+    AddParameter("WaveformsKey", "Key for Waveforms", std::string("CCMWaveforms"));
+    AddParameter("OutputPrefix", "Prefix for the module output", std::string("SummedWaveforms"));
+    AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
+    AddParameter("PMTTypes", "PMTKeys to run over", I3Vector<CCMOMGeo::OMType>{CCMOMGeo::OMType::CCM8inCoated, CCMOMGeo::OMType::CCM8inUncoated});
+    AddParameter("TriggerReferenceTime", "Use the trigger time as a reference time? This is the default", bool(false));
+    AddParameter("BCMReferenceTime", "Use the Beam Current Monitor start time as a reference time?", bool(false));
+    AddParameter("ReferenceTimeKey", "Name of a frame key that contains an I3Map<CCMPMTKey, int32_t> for the PMT reference indices", std::string(""));
+    AddParameter("CorrectNIMPulseTime", "Correct for channel 15 NIM pulse arrival time?", bool(true));
+    AddParameter("CorrectElectronTransitTime", "Correct for PMT electron transit time?", bool(true));
+    AddParameter("CorrectBaselineAndInvertRawWaveforms", "Correct the baseline of raw waveforms and invert them?", bool(true));
+    AddParameter("SkipMissingInformation", "Skip frames that are missing information?", bool(false));
+}
+
+void SumWaveforms::Configure() {
+    GetParameter("CCMGeometryName", geometry_key_);
+    GetParameter("CCMCalibrationName", calibration_key_);
+    GetParameter("NIMPulsesName", nim_pulses_key_);
+    GetParameter("BCMSummaryName", bcm_summary_key_);
+    GetParameter("BaselineEstimatesName", baseline_estimates_key_);
+    GetParameter("WaveformsKey", waveforms_key_);
+    GetParameter("OutputPrefix", output_prefix_);
+    GetParameter("PMTKeys", allowed_pmt_keys_);
+    GetParameter("PMTTypes", allowed_pmt_types_);
+    GetParameter("TriggerReferenceTime", trigger_reference_time_);
+    GetParameter("BCMReferenceTime", bcm_reference_time_);
+    GetParameter("ReferenceTimeKey", reference_time_key_);
+    GetParameter("CorrectNIMPulseTime", correct_nim_pulse_time_);
+    GetParameter("CorrectElectronTransitTime", correct_electron_transit_time_);
+    GetParameter("CorrectBaselineAndInvertRawWaveforms", correct_baseline_and_invert_raw_waveforms_);
+    GetParameter("SkipMissingInformation", skip_missing_);
+
+    // Preemtively sort the allowed_pmt_keys_ so they're ready for the Geometry function
+    if(allowed_pmt_keys_.size() > 0)
+        std::sort(allowed_pmt_keys_.begin(), allowed_pmt_keys_.end());
+
+    unsigned int n_options = 0;
+    n_options += (unsigned int)(trigger_reference_time_);
+    n_options += (unsigned int)(bcm_reference_time_);
+    n_options += (unsigned int)(reference_time_key_ != "");
+
+    if(n_options == 0) {
+        chosen_time_reference_ = ReferenceTimeType::TriggerTime;
+    } else if(n_options == 1) {
+        if(trigger_reference_time_) {
+            chosen_time_reference_ = ReferenceTimeType::TriggerTime;
+        } else if (bcm_reference_time_) {
+            chosen_time_reference_ = ReferenceTimeType::BCMTime;
+        } else {
+            chosen_time_reference_ = ReferenceTimeType::UserSpecifiedTime;
+        }
+    } else {
+        std::stringstream ss;
+        ss << "More than one reference time option specified! Please select only one. Received ";
+        ss << "TriggerReferenceTime == " << (trigger_reference_time_ ? "true" : "false") << ", ";
+        ss << "BCMReferenceTime == " << (bcm_reference_time_ ? "true" : "false") << ", ";
+        ss << "ReferenceTimeKey == \"" << reference_time_key_ << "\"";
+        log_fatal(ss.str().c_str());
+    }
+}
+
+void SumWaveforms::Geometry(I3FramePtr frame) {
+    // Assumes allowed_pmt_keys_ is already sorted
+    CCMGeometryConstPtr geo = frame->Get<CCMGeometryConstPtr>(geometry_key_);
+    if (!geo)
+        log_fatal("Couldn't find '%s' in the frame!",
+                geometry_key_.c_str());
+    geo_ = *geo;
+    geo_seen_ = true;
+
+    // Copy and sort the pmt keys from the geometry
+    std::vector<CCMPMTKey> geo_keys; geo_keys.reserve(geo_.pmt_channel_map.size());
+    for(std::pair<CCMPMTKey const, uint32_t> const & p : geo_.pmt_channel_map)
+        geo_keys.push_back(p.first);
+    std::sort(geo_keys.begin(), geo_keys.end());
+
+    // Assume we're doing all PMTs if none are specified
+    if(allowed_pmt_keys_.size() == 0) {
+        if(allowed_pmt_types_.size() == 0) {
+            pmt_keys_ = geo_keys;
+        } else {
+            // Clear the final pmt key list
+            pmt_keys_.clear();
+            // Fill the final pmt key list with the intersection of specified pmt types and those available in the geometry
+            for(CCMPMTKey const & pmt_key : geo_keys) {
+                if(std::find(allowed_pmt_types_.begin(), allowed_pmt_types_.end(), geo_.pmt_geo.at(pmt_key).omtype) != allowed_pmt_types_.end())
+                    pmt_keys_.push_back(pmt_key);
+            }
+        }
+        pmt_keys_ = geo_keys;
+    } else {
+        // Clear the final pmt key list
+        pmt_keys_.clear();
+        // Fill the final pmt key list with the intersection of specified pmt keys and those available in the geometry
+        // If allowed_pmt_keys_ is not sorted then this will fail horribly
+        std::set_intersection(geo_keys.begin(), geo_keys.end(), allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), std::back_inserter(pmt_keys_));
+
+        if(pmt_keys_.size() < allowed_pmt_keys_.size()) {
+            std::vector<CCMPMTKey> missing_keys;
+            std::set_difference(allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), pmt_keys_.begin(), pmt_keys_.end(), std::back_inserter(missing_keys));
+            std::stringstream ss;
+            ss << "Some specified CCMPMTKeys are not present in the geometry:";
+            for(CCMPMTKey const & key : missing_keys)
+                ss << " " << key;
+            log_warn(ss.str().c_str());
+        }
+    }
+
     PushFrame(frame);
 }
 
-void SumWaveforms::Finish() {
+void SumWaveforms::DAQ(I3FramePtr frame) {
+    ProcessFrame(frame);
+    PushFrame(frame);
 }
-
