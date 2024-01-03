@@ -483,7 +483,7 @@ void SumWaveforms::ProcessFrame(I3FramePtr frame) {
     std::map<CCMPMTKey, int32_t> reference_indices;
     bool computed_reference_indices = ComputeReferenceIndices(frame, reference_indices);
     if(not computed_reference_indices and skip_missing_)
-        return PushFrame(frame);
+        return;
     boost::shared_ptr<CCMWaveformUInt16Series const> waveform_raw = frame->Get<boost::shared_ptr<CCMWaveformUInt16Series const>>(waveforms_key_);
     boost::shared_ptr<CCMWaveformDoubleSeries const> waveform_cal = frame->Get<boost::shared_ptr<CCMWaveformDoubleSeries const>>(waveforms_key_);
     if(!waveform_raw and !waveform_cal)
@@ -638,7 +638,6 @@ void SumWaveforms::Geometry(I3FramePtr frame) {
                     pmt_keys_.push_back(pmt_key);
             }
         }
-        pmt_keys_ = geo_keys;
     } else {
         // Clear the final pmt key list
         pmt_keys_.clear();
