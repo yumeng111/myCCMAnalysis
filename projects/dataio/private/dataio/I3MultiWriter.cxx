@@ -211,7 +211,9 @@ I3MultiWriter::Finish()
 {
   log_trace("%s", __PRETTY_FUNCTION__);
 
-  io::counter64* ctr = filterstream_.component<io::counter64>(filterstream_.size() - 2);
+  filterstream_.flush();
+  filterstream_.pop();
+  io::counter64* ctr = filterstream_.component<io::counter64>(filterstream_.size() - 1);
   if (!ctr) log_fatal("couldnt get counter from stream");
   uint64_t lastfile_bytes = ctr->characters();
 
