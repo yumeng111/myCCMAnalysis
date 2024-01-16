@@ -881,6 +881,7 @@ void GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
 }
 
 void RunPulsesThread(
+        std::atomic<bool> & running,
         std::tuple<size_t, size_t> thread_range,
         std::vector<CCMPMTKey> const & pmt_keys,
         I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map,
@@ -899,6 +900,7 @@ void RunPulsesThread(
         double tolerance,
         I3Frame * frame
         ) {
+    running.store(true);
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
         size_t channel = pmt_channel_map.at(pmt_key);
@@ -930,6 +932,7 @@ void RunPulsesThread(
                 frame
                 );
     }
+    running.store(false);
 }
 
 void FillTemplate(CCMWaveformTemplate& wfTemplate, const CCMPMTCalibration& calibration, double const & start_time, int const & template_bins, double const & template_bin_spacing, I3FramePtr frame) {
@@ -1007,6 +1010,131 @@ struct WavedeformJob {
 struct WavedeformResult {
     I3FramePtr frame = nullptr;
     bool done = false;
+    size_t frame_index = 0;
+};
+
+struct FrameWorkspace {
+    bool can_run_jobs = false;
+    size_t total_jobs = 0;
+    size_t jobs_queued = 0;
+    size_t jobs_done = 0;
+
+    I3FramePtr frame;
+
+    boost::shared_ptr<CCMWaveformDoubleSeries const> waveforms;
+    boost::shared_ptr<I3Double const> total_adc_count;
+
+    // place to store pulses
+    boost::shared_ptr<CCMRecoPulseSeriesMap> output;
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_data_times;
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_rebin_data_times;
+
+    std::vector<std::reference_wrapper<CCMRecoPulseSeries>> output_pulses_references;
+    std::vector<std::reference_wrapper<std::vector<double>>> output_data_times_references;
+    std::vector<std::reference_wrapper<std::vector<double>>> output_rebin_data_times_references;
+
+    std::vector<std::tuple<size_t, size_t>> job_ranges;
+
+    FrameWorkspace(I3FramePtr frame, std::vector<CCMPMTKey> const & pmt_keys_, std::string const & waveforms_name_) :
+        frame(frame) {
+        if (!frame->Has(waveforms_name_)) {
+            can_run_jobs = false;
+            return;
+        }
+
+        waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);
+        total_adc_count = frame->Get<boost::shared_ptr<const I3Double>>(waveforms_name_ + "TotalADC");
+
+        // place to store pulses
+        output = boost::make_shared<CCMRecoPulseSeriesMap>();
+        output_data_times = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+        output_rebin_data_times = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+
+        for(size_t i = 0; i < pmt_keys_.size(); ++i) {
+            output->operator[](pmt_keys_[i]) = CCMRecoPulseSeries();
+            output_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
+            output_rebin_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
+        }
+
+        output_pulses_references.reserve(pmt_keys_.size());
+        output_data_times_references.reserve(pmt_keys_.size());
+        output_rebin_data_times_references.reserve(pmt_keys_.size());
+
+        for(size_t i = 0; i < pmt_keys_.size(); ++i) {
+            output_pulses_references.emplace_back(output->at(pmt_keys_[i]));
+            output_data_times_references.emplace_back(output_data_times->at(pmt_keys_[i]));
+            output_rebin_data_times_references.emplace_back(output_rebin_data_times->at(pmt_keys_[i]));
+        }
+
+        total_jobs = 1;
+        if(total_adc_count) {
+            total_jobs = (unsigned int)(total_adc_count->value / 5e6);
+            total_jobs = std::max(size_t(1), total_jobs);
+            total_jobs = std::min(total_jobs, pmt_keys_.size());
+        }
+        if(total_jobs == 1) {
+            job_ranges.push_back(std::tuple<size_t, size_t>(0, pmt_keys_.size()));
+        } else {
+            size_t max_size = pmt_keys_.size() / total_jobs; 
+            for(size_t i=0; i<total_jobs-1; ++i) {
+                job_ranges.push_back(std::tuple<size_t, size_t>(max_size*i, max_size*(i+1)));
+            }
+            job_ranges.push_back(std::tuple<size_t, size_t>(max_size*(total_jobs-1), pmt_keys_.size()));
+        }
+    }
+
+    void StartJob(WavedeformJob * job,
+        std::string const & waveforms_name,
+        std::string const & output_name,
+        std::vector<CCMPMTKey> const & pmt_keys,
+        I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map,
+        I3Map<CCMPMTKey, CCMWaveformTemplate> const & templates,
+        CCMCalibration const & calibration,
+        std::vector<std::vector<cholmod_common>> & cholmod_common_vec,
+        bool reduce,
+        double wf_bin_width,
+        double noise_threshold,
+        double basis_threshold,
+        double spes_per_bin,
+        double tolerance,
+        size_t num_threads,
+        bool remove_waveforms,
+        std::exception_ptr & teptr) {
+
+        job->running.store(true);
+
+        size_t i = jobs_queued;
+        job->thread = std::thread(RunPulsesThread,
+            std::ref(job->running),
+            job_ranges[i],
+            std::cref(pmt_keys),
+            std::cref(pmt_channel_map),
+            std::cref(*waveforms),
+            std::cref(templates),
+            std::cref(calibration),
+            std::ref(cholmod_common_vec[job->thread_index]),
+            reduce,
+            std::ref(output_pulses_references),
+            std::ref(output_data_times_references),
+            std::ref(output_rebin_data_times_references),
+            wf_bin_width,
+            noise_threshold,
+            basis_threshold,
+            spes_per_bin,
+            tolerance,
+            job->frame.get()
+        );
+        jobs_queued += 1;
+    }
+
+    void Finish(bool remove_waveforms, std::string const & waveforms_name_, std::string const & output_name_) {
+        if(remove_waveforms) {
+            frame->Delete(waveforms_name_);
+        }
+        frame->Put("OriginalDataBins", output_data_times);
+        frame->Put("RebinnedDataBins", output_rebin_data_times);
+        frame->Put(output_name_, output);
+    }
 };
 
 class CCMWavedeform : public I3ConditionalModule {
@@ -1057,6 +1185,7 @@ private:
     std::deque<WavedeformJob *> free_jobs;
     std::deque<WavedeformJob *> running_jobs;
     std::deque<WavedeformResult> results;
+    std::map<size_t, FrameWorkspace *> frame_workspaces;
 };
 
 I3_MODULE(CCMWavedeform);
@@ -1201,171 +1330,6 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void FrameThread(
-        std::atomic<bool> & running,
-        I3Frame * frame,
-        std::string const & waveforms_name_,
-        std::string const & output_name_,
-        std::vector<CCMPMTKey> const & pmt_keys_,
-        I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_,
-        I3Map<CCMPMTKey, CCMWaveformTemplate> const & templates_,
-        CCMCalibration const & calibration,
-        std::vector<cholmod_common> & cholmod_common_vec_,
-        bool reduce_,
-        double wf_bin_width_,
-        double noise_threshold_,
-        double basis_threshold_,
-        double spes_per_bin_,
-        double tolerance_,
-        size_t num_threads,
-        bool remove_waveforms,
-        std::exception_ptr & teptr) {
-
-    try {
-        if (!frame->Has(waveforms_name_)) {
-            running.store(false);
-            return;
-        }
-
-        boost::shared_ptr<const CCMWaveformDoubleSeries> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveforms_name_);
-        boost::shared_ptr<const I3Double> total_adc_count = frame->Get<boost::shared_ptr<const I3Double>>(waveforms_name_ + "TotalADC");
-        I3Map<CCMPMTKey, BaselineEstimate> const & baselines = frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
-
-        if(waveforms == nullptr) {
-            log_warn("CCMWaveformDoubleSeries named %s not present in frame", "CCMCalibratedWaveforms");
-        }
-
-        // place to store pulses
-        boost::shared_ptr<CCMRecoPulseSeriesMap> output(new CCMRecoPulseSeriesMap);
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> output_rebin_data_times(new I3Map<CCMPMTKey, std::vector<double>>());
-        for(size_t i = 0; i < pmt_keys_.size(); ++i) {
-            output->operator[](pmt_keys_[i]) = CCMRecoPulseSeries();
-            output_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
-            output_rebin_data_times->operator[](pmt_keys_[i]) = std::vector<double>();
-        }
-
-        std::vector<std::reference_wrapper<CCMRecoPulseSeries>> output_pulses_references;
-        std::vector<std::reference_wrapper<std::vector<double>>> output_data_times_references;
-        std::vector<std::reference_wrapper<std::vector<double>>> output_rebin_data_times_references;
-        output_pulses_references.reserve(pmt_keys_.size());
-        for(size_t i = 0; i < pmt_keys_.size(); ++i) {
-            output_pulses_references.emplace_back(output->at(pmt_keys_[i]));
-            output_data_times_references.emplace_back(output_data_times->at(pmt_keys_[i]));
-            output_rebin_data_times_references.emplace_back(output_rebin_data_times->at(pmt_keys_[i]));
-        }
-
-        if(total_adc_count and total_adc_count->value > 1e7) {
-            ctpl::thread_pool pool;
-            pool.resize(num_threads);
-            std::vector<std::future<int>> results(pmt_keys_.size());
-            for(size_t i=0; i<pmt_keys_.size(); ++i) {
-                results[i] = pool.push(
-                    [&,i] (int thread_id) -> int {
-                        RunPulsesThread(
-                            std::tuple<size_t, size_t>(i, i+1),
-                            std::cref(pmt_keys_),
-                            std::cref(pmt_channel_map_),
-                            std::cref(*waveforms),
-                            std::cref(templates_),
-                            std::cref(calibration),
-                            std::ref(cholmod_common_vec_),
-                            reduce_,
-                            std::ref(output_pulses_references),
-                            std::ref(output_data_times_references),
-                            std::ref(output_rebin_data_times_references),
-                            wf_bin_width_,
-                            noise_threshold_,
-                            basis_threshold_,
-                            spes_per_bin_,
-                            tolerance_,
-                            frame
-                        );
-                        return 0;
-                    }
-                );
-            }
-            for(size_t i=0; i<results.size(); ++i) {
-                results[i].wait();
-            }
-        } else {
-            RunPulsesThread(
-                std::tuple<size_t, size_t>(0, pmt_keys_.size()),
-                std::cref(pmt_keys_),
-                std::cref(pmt_channel_map_),
-                std::cref(*waveforms),
-                std::cref(templates_),
-                std::cref(calibration),
-                std::ref(cholmod_common_vec_),
-                reduce_,
-                std::ref(output_pulses_references),
-                std::ref(output_data_times_references),
-                std::ref(output_rebin_data_times_references),
-                wf_bin_width_,
-                noise_threshold_,
-                basis_threshold_,
-                spes_per_bin_,
-                tolerance_,
-                frame
-            );
-        }
-
-        if(remove_waveforms) {
-            frame->Delete(waveforms_name_);
-        }
-        frame->Put("OriginalDataBins", output_data_times);
-        frame->Put("RebinnedDataBins", output_rebin_data_times);
-        frame->Put(output_name_, output);
-        running.store(false);
-    } catch (...) {
-        teptr = std::current_exception();
-        running.store(false);
-    }
-}
-
-void RunFrameThread(WavedeformJob * job,
-        std::string const & waveforms_name,
-        std::string const & output_name,
-        std::vector<CCMPMTKey> const & pmt_keys,
-        I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map,
-        I3Map<CCMPMTKey, CCMWaveformTemplate> const & templates,
-        CCMCalibration const & calibration,
-        std::vector<std::vector<cholmod_common>> & cholmod_common_vec,
-        bool reduce,
-        double wf_bin_width,
-        double noise_threshold,
-        double basis_threshold,
-        double spes_per_bin,
-        double tolerance,
-        size_t num_threads,
-        bool remove_waveforms,
-        std::exception_ptr & teptr) {
-
-    job->running.store(true);
-
-    job->thread = std::thread(FrameThread,
-        std::ref(job->running),
-        job->frame.get(),
-        std::cref(waveforms_name),
-        std::cref(output_name),
-        std::cref(pmt_keys),
-        std::cref(pmt_channel_map),
-        std::cref(templates),
-        std::cref(calibration),
-        std::ref(cholmod_common_vec[job->thread_index]),
-        reduce,
-        wf_bin_width,
-        noise_threshold,
-        basis_threshold,
-        spes_per_bin,
-        tolerance,
-        num_threads,
-        remove_waveforms,
-        std::ref(teptr)
-    );
-}
-
-
 void CCMWavedeform::Process() {
   if (inbox_)
     log_trace("%zu frames in inbox", inbox_->size());
@@ -1396,6 +1360,8 @@ void CCMWavedeform::Process() {
 }
 
 void CCMWavedeform::DAQ(I3FramePtr frame) {
+    FrameWorkspace * workspace = new FrameWorkspace(frame, pmt_keys_, waveforms_name_);
+    frame_workspaces[frame_index] = workspace;
 	while(true) {
 		// Check if any jobs have finished
 		for(int i=int(running_jobs.size())-1; i>=0; --i) {
@@ -1413,9 +1379,10 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
-                results[job->frame_index - min_frame_idx].done = true;
-            } else {
-                WavedeformJob * job = running_jobs[i];
+                frame_workspaces[job->frame_index]->jobs_done += 1;
+                if(frame_workspaces[job->frame_index]->jobs_done == frame_workspaces[job->frame_index]->total_jobs) {
+                    results[job->frame_index - min_frame_idx].done = true;
+                }
             }
         }
 
@@ -1423,7 +1390,11 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         size_t results_done = 0;
         for(size_t i=0; i<results.size(); ++i) {
             if(results[i].done) {
+                FrameWorkspace * workspace_ptr = frame_workspaces[results[i].frame_index];
+                workspace_ptr->Finish(remove_waveforms, waveforms_name_, output_name_);
                 PushFrame(results[i].frame);
+                delete workspace_ptr;
+                frame_workspaces.erase(results[i].frame_index);
                 results[i].frame = nullptr;
                 results_done += 1;
             } else {
@@ -1456,11 +1427,14 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
             running_jobs.push_back(job);
             job->frame = frame;
             job->frame_index = frame_index;
-            results.emplace_back();
-            results.back().frame = frame;
-            results.back().done = false;
-            frame_index += 1;
-            RunFrameThread(job,
+            if(workspace->jobs_queued == 0) {
+                results.emplace_back();
+                results.back().frame = frame;
+                results.back().frame_index = frame_index;
+                results.back().done = false;
+            }
+            // Starts a job and increments workspace->jobs_queued
+            workspace->StartJob(job,
                 waveforms_name_,
                 output_name_,
                 pmt_keys_,
@@ -1477,23 +1451,38 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 num_threads,
                 remove_waveforms,
                 teptr);
-            break;
+            if(workspace->jobs_queued == workspace->total_jobs) {
+                break;
+            }
         } else if(job != nullptr) {
             free_jobs.push_back(job);
         }
     }
+    frame_index += 1;
 }
 
 void CCMWavedeform::Finish() {
     while(running_jobs.size() > 0) {
         // Check if any jobs have finished
         for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            if (teptr) {
+                try{
+                    std::rethrow_exception(teptr);
+                }
+                catch(const std::exception &ex)
+                {
+                    std::cerr << "Thread exited with exception: " << ex.what() << "\n";
+                }
+            }
             if(not running_jobs[i]->running.load()) {
                 WavedeformJob * job = running_jobs[i];
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
-                results[job->frame_index - min_frame_idx].done = true;
+                frame_workspaces[job->frame_index]->jobs_done += 1;
+                if(frame_workspaces[job->frame_index]->jobs_done == frame_workspaces[job->frame_index]->total_jobs) {
+                    results[job->frame_index - min_frame_idx].done = true;
+                }
             }
         }
 
@@ -1501,7 +1490,11 @@ void CCMWavedeform::Finish() {
         size_t results_done = 0;
         for(size_t i=0; i<results.size(); ++i) {
             if(results[i].done) {
+                FrameWorkspace * workspace_ptr = frame_workspaces[results[i].frame_index];
+                workspace_ptr->Finish(remove_waveforms, waveforms_name_, output_name_);
                 PushFrame(results[i].frame);
+                delete workspace_ptr;
+                frame_workspaces.erase(results[i].frame_index);
                 results[i].frame = nullptr;
                 results_done += 1;
             } else {
