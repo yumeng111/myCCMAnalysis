@@ -41,6 +41,591 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <daqtools/PhotonPropagation.h>
 
+struct PhotonPropagationJob {
+    std::atomic<bool> running = false;
+    std::thread thread;
+    size_t thread_index = 0;
+};
+
+struct PhotonPropagationResult {
+    bool done = false;
+};
+
+class PhotonPropagation: public I3Module {
+    std::exception_ptr teptr = nullptr;
+    bool geo_seen;
+    std::string geometry_name_;
+    std::string output_name_;
+    double singlet_ratio_;
+    double triplet_ratio_;
+    double singlet_tau_;
+    double triplet_tau_;
+    double recombination_tau_;
+    double TPB_ratio_;
+    double TPB_tau_;
+    double smearing_mu_;
+    double smearing_sigma_;
+    double smearing_xi_;
+    size_t n_convolution_chunks_;
+    double desired_chunk_width_;
+    double desired_chunk_height_;
+    double n_chunks_top_;
+    double portion_light_reflected_by_tpb_;
+    size_t n_events_to_simulate_;
+    double UV_absorption_length_;
+    double visible_absorption_length_;
+    double n_photons_produced_;
+
+    // place to store relevant information about our pmts!!!
+    // pmt_x_loc, pmt_y_loc, pmt_z_loc, facing direction_x, facing_direction_y, facing_direction_z, coating flag, pmt facing area, pmt side area
+    std::vector<std::vector<double>> pmt_parsed_information_;
+
+    // similar place to store relevant information about our secondary locations
+    // x_loc, y_loc, z_loc, facing_direction_x, facing_direction_y, facing_direction_z, TPB portion, facing area, side area
+    std::vector<std::vector<double>> locations_to_check_information_;
+
+    unsigned int coated_omtype = (unsigned int)10;
+    unsigned int uncoated_omtype = (unsigned int)20;
+
+    // defining some geomtry things for modelling the detector...not the most elegant
+    double pmt_radius = 10.16; //radius in cm^2
+    double pmt_facing_area = M_PI * std::pow(pmt_radius, 2);
+    double pmt_side_area_factor = 0.217549;
+    double pmt_side_area = pmt_facing_area * pmt_side_area_factor;
+    double cylinder_max_x = 96.0;
+    double cylinder_min_x = - cylinder_max_x;
+    double cylinder_max_y = 96.0;
+    double cylinder_min_y = - cylinder_max_y;
+    double cylinder_max_z = 58.0;
+    double cylinder_min_z = - cylinder_max_z;
+    double cylinder_radius = cylinder_max_x;
+    double cylinder_circumference = M_PI * 2 * cylinder_max_x;
+    double cylinder_height = cylinder_max_z * 2;
+    double chunk_side_area_factor = 0.1; // this number is a guess..maybe model it one day
+
+    // now some geometry things for throwing source events
+    double rod_diameter = 1.0;
+    double source_diameter = 0.8;
+    double rod_width = (rod_diameter - source_diameter)/2;
+    double source_inset = -0.25;
+    double decay_constant = 10.0;
+    double source_rod_lower_end_cap = - source_inset;
+    double detector_lower_end_cap = cylinder_min_z;
+    double detector_radius = cylinder_radius;
+    double pos_rad = source_diameter / 2;
+    size_t total_events_that_escaped = 0;
+
+    // pmt noise rate
+    double noise_photons = 1.0;
+    double noise_triggers = 5.0;
+    double digitization_time = 16 * std::pow(10, 3); //16 usec in nsec
+    double noise_rate = noise_photons / (noise_triggers * digitization_time); // units of photons/nsec
+    double noise_rate_per_time_bin = 2.0 * noise_rate; // 2nsec binning
+
+    // some constants we use for the simulation
+    double c = 2.998 * std::pow(10, 8); // speed of light in m/s
+    double c_cm_per_nsec = c * std::pow(10, -7); // speed of light in cm/nsec
+    double uv_index_of_refraction = 1.358;
+    double vis_index_of_refraction = 1.23;
+    double pmt_quantum_efficiency = 0.25;
+    double full_acceptance = 4.0 * M_PI;
+
+    size_t num_threads;
+    size_t max_cached_frames;
+
+    size_t frame_index = 0;
+    size_t min_frame_idx = 0;
+    std::deque<PhotonPropagationJob *> free_jobs;
+    std::deque<PhotonPropagationJob *> running_jobs;
+    std::deque<PhotonPropagationResult> results;
+public:
+    PhotonPropagation(const I3Context&);
+    void Configure();
+    void Geometry(I3FramePtr frame);
+    //void Process();
+    //void Finish();
+    void Physics(I3FramePtr frame);
+    //void Calibration(I3FramePtr frame);
+};
+
+I3_MODULE(PhotonPropagation);
+
+PhotonPropagation::PhotonPropagation(const I3Context& context) : I3Module(context),
+    geometry_name_(""), geo_seen(false) {
+        AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string("CCMGeometry"));
+        AddParameter("R_s", "ratio of singlet light", (double)0.23);
+        AddParameter("R_t", "ratio of triplet light", (double)0.71);
+        AddParameter("tau_s", "singlet time constant", (double)8.2);
+        AddParameter("tau_t", "triplet time constant", (double)1445.0);
+        AddParameter("tau_rec", "recombination time constant", (double)75.5);
+        AddParameter("R_TPB", "ratio of TPB light", (double)0.1);
+        AddParameter("tau_TPB", "TPB time constant", (double)2.0);
+        AddParameter("mu", "mu for GEV function to smear light", (double)1.0);
+        AddParameter("sigma", "sigma for GEV function to smear light", (double)1.0);
+        AddParameter("xi", "xi for GEV function to smear light", (double)0.5);
+        AddParameter("NConvolutionChunks", "number of chunks to convolve over", (size_t)200);
+        AddParameter("ChunkWidth", "width to chunk up the sides of the detector for light propagation", 5.0);
+        AddParameter("ChunkHeight", "height to chunk up the sides of the detector for light propagation", 5.0);
+        AddParameter("NChunksTop", "number of chunks to split top and bottom faces of detector into", 50.0);
+        AddParameter("TPBPortion", "portion of light that tpb reflects", 1.0);
+        AddParameter("NEventsToSimulate", "number of events we want to simulate for sodium source like ensemble", (size_t)1000);
+        AddParameter("UVAbsorptionLength", "how far UV light travels in cm before 1/e is absorped", 40.0);
+        AddParameter("VisAbsorptionLength", "how far visible light travels in cm before 1/e is absorped", 2000.0);
+        AddParameter("NPhotonsProduced", "how many photons are produced in this event (~40,000 photons/MeV is the hope)", 40000.0);
+        AddParameter("OutputName", "Key to save output CCMWaveformDoubleSeries to", std::string("CCMCalibratedWaveforms"));
+        AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(0));
+        AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(1000));
+}
+
+
+void  PhotonPropagation::Configure() {
+    GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("R_s", singlet_ratio_);
+    GetParameter("R_t", triplet_ratio_);
+    GetParameter("tau_s", singlet_tau_);
+    GetParameter("tau_t", triplet_tau_);
+    GetParameter("tau_rec", recombination_tau_);
+    GetParameter("R_TPB", TPB_ratio_);
+    GetParameter("tau_TPB", TPB_tau_);
+    GetParameter("mu", smearing_mu_);
+    GetParameter("sigma", smearing_sigma_);
+    GetParameter("xi", smearing_xi_);
+    GetParameter("NConvolutionChunks", n_convolution_chunks_);
+    GetParameter("ChunkWidth", desired_chunk_width_);
+    GetParameter("ChunkHeight", desired_chunk_height_);
+    GetParameter("NChunksTop", n_chunks_top_);
+    GetParameter("TPBPortion", portion_light_reflected_by_tpb_);
+    GetParameter("NEventsToSimulate", n_events_to_simulate_);
+    GetParameter("UVAbsorptionLength", UV_absorption_length_);
+    GetParameter("VisAbsorptionLength", visible_absorption_length_);
+    GetParameter("NPhotonsProduced", n_photons_produced_);
+    GetParameter("OutputName", output_name_);
+    GetParameter("NumThreads", num_threads);
+    GetParameter("MaxCachedFrames", max_cached_frames);
+    if(num_threads == 0) {
+        size_t const processor_count = std::thread::hardware_concurrency();
+        num_threads = processor_count;
+    }
+}
+
+void PhotonPropagation::Geometry(I3FramePtr frame) {
+    if(not frame->Has(geometry_name_)) {
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
+    }
+    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+    I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo = geo.pmt_geo;
+    std::vector<double> this_pmt_info (9);
+    std::vector<double> this_loc_info (9);
+
+    for(std::pair<CCMPMTKey const, CCMOMGeo> const & it : pmt_geo) {
+        CCMPMTType omtype = it.second.omtype;
+        double coating_flag;
+        if (omtype == coated_omtype){
+            coating_flag = 1.0; // coating flag = 1 ==> pmt is coated!
+        }
+        else if (omtype == uncoated_omtype){
+            coating_flag = 0.0; // uncoated pmt!
+        }
+        else{
+            continue; // this pmt is not an 8in! we dont need it!
+        }
+        // now let's compute our facing direction
+        I3Position position = it.second.position;
+        double pos_x = position.GetX();
+        double pos_y = position.GetY();
+        double pos_z = position.GetZ();
+
+        double facing_dir_x;
+        double facing_dir_y;
+        double facing_dir_z;
+
+        if (pos_z == 58.0){
+            // region 0 pmts!
+            facing_dir_x = 0.0;
+            facing_dir_y = 0.0;
+            facing_dir_z = -1.0;
+        }
+        else if (pos_z == -58.0){
+            // region 6 pmts!
+            facing_dir_x = 0.0;
+            facing_dir_y = 0.0;
+            facing_dir_z = 1.0;
+        }
+        else{
+            double facing_radius = std::pow(pos_x, 2) + std::pow(pos_y, 2);
+            double facing_r_x = - pos_x / facing_radius;
+            double facing_r_y = - pos_y / facing_radius;
+            double facing_dir_norm_factor = std::sqrt(std::pow(facing_r_x, 2) + std::pow(facing_r_y, 2));
+            facing_dir_x = facing_r_x / facing_dir_norm_factor;
+            facing_dir_y = facing_r_y / facing_dir_norm_factor;
+            facing_dir_z = 0.0;
+        }
+
+        // now time save!!!
+        this_pmt_info.clear();
+        this_pmt_info.push_back(pos_x);
+        this_pmt_info.push_back(pos_y);
+        this_pmt_info.push_back(pos_z);
+        this_pmt_info.push_back(facing_dir_x);
+        this_pmt_info.push_back(facing_dir_y);
+        this_pmt_info.push_back(facing_dir_z);
+        this_pmt_info.push_back(coating_flag);
+        this_pmt_info.push_back(pmt_facing_area);
+        this_pmt_info.push_back(pmt_side_area);
+        pmt_parsed_information_.push_back(this_pmt_info);
+
+    }
+    // so we've parsed our pmt info, but now we need to get our secondary locations
+    // let's start with chunking up the sides of the detector
+    size_t n_chunks_c = (size_t) cylinder_circumference / desired_chunk_width_;
+    size_t n_chunks_z = (size_t) cylinder_height / desired_chunk_height_;
+
+    std::vector<double> possible_circumference_positions(n_chunks_c);
+    for (size_t i = 0; i < n_chunks_c; i++){
+        double this_circ = cylinder_circumference * i / n_chunks_c;
+        possible_circumference_positions[i] = this_circ;
+    }
+
+    std::vector<double> possible_z_positions(n_chunks_z - 1);
+    for (size_t i = 1; i < n_chunks_z; i++){
+        double this_z = cylinder_min_z + ((cylinder_max_z - cylinder_min_z) * i / n_chunks_z);
+        possible_z_positions[i-1] = this_z;
+    }
+
+    double area_side_chunks = std::abs((possible_circumference_positions[1] - possible_circumference_positions[0]) * (possible_z_positions[1] - possible_z_positions[0]));
+
+    // now let's calculate x and y from these circumference positions
+    for (size_t i = 0; i < possible_circumference_positions.size(); i++){
+        double loc_theta = possible_circumference_positions[i] / cylinder_radius;
+        double loc_x = cylinder_radius * std::cos(loc_theta);
+        double loc_y = cylinder_radius * std::sin(loc_theta);
+
+        // now let's iterate over possible z positions
+        for (size_t j = 0; j <possible_z_positions.size(); j++){
+            double loc_z = possible_z_positions[j];
+
+            // now we need to check if we're on an uncoated pmt...if so we do NOT save
+            bool save_this_loc = true;
+            double pmt_portion = portion_light_reflected_by_tpb_;
+            for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
+                std::vector<double> this_pmt_info = pmt_parsed_information_[pmt_it];
+                double pmt_coating_flag = this_pmt_info[6];
+
+                double pmt_x = this_pmt_info[0];
+                double pmt_y = this_pmt_info[1];
+                double pmt_z = this_pmt_info[2];
+
+                // now let's calculate distance from this location to this pmt
+                double loc_dist_to_pmt = std::sqrt(std::pow(pmt_x - loc_x, 2) + std::pow(pmt_y - loc_y, 2) + std::pow(pmt_z - loc_z, 2));
+
+                // now check if we're on top a pmt
+                if (loc_dist_to_pmt <= pmt_radius){
+                        // oops! we're on a pmt! if it's an uncoated pmt, save_this_loc = false, if it's a coated pmt, TPB portion = 0.5
+                        if (pmt_coating_flag == 1.0){
+                            pmt_portion *= 0.5;
+                        }
+                        else{
+                            save_this_loc = false;
+                        }
+                    }
+                }
+
+            // so we have a possible loc and we've finished check if it's on top an uncoated pmt...let's save (maybe)!
+            if (save_this_loc){
+                double facing_radius = std::pow(loc_x, 2) + std::pow(loc_y, 2);
+                double facing_r_x = - loc_x / facing_radius;
+                double facing_r_y = - loc_y / facing_radius;
+                double facing_dir_norm_factor = std::sqrt(std::pow(facing_r_x, 2) + std::pow(facing_r_y, 2));
+                double facing_dir_x = facing_r_x / facing_dir_norm_factor;
+                double facing_dir_y = facing_r_y / facing_dir_norm_factor;
+                double facing_dir_z = 0.0;
+
+                // now a vector to save things to
+                this_loc_info.clear();
+                this_loc_info.push_back(loc_x);
+                this_loc_info.push_back(loc_y);
+                this_loc_info.push_back(loc_z);
+                this_loc_info.push_back(facing_dir_x);
+                this_loc_info.push_back(facing_dir_y);
+                this_loc_info.push_back(facing_dir_z);
+                this_loc_info.push_back(pmt_portion);
+                this_loc_info.push_back(area_side_chunks);
+                this_loc_info.push_back(area_side_chunks * chunk_side_area_factor);
+                locations_to_check_information_.push_back(this_loc_info);
+            }
+        }
+
+    }
+
+
+    // time to chunk up the top and bottom of the detector
+    std::vector<double> possible_x_positions(n_chunks_top_ - 1);
+    for (size_t i = 1; i < n_chunks_top_; i++){
+        double x = cylinder_min_x + ((cylinder_max_x - cylinder_min_x) * i / n_chunks_top_);
+        possible_x_positions[i-1] = x;
+    }
+
+    std::vector<double> possible_y_positions(n_chunks_top_ - 1);
+    for (size_t i = 1; i < n_chunks_top_; i++){
+        double y = cylinder_min_y + ((cylinder_max_y - cylinder_min_y) * i / n_chunks_top_);
+        possible_y_positions[i-1] = y;
+    }
+
+    double area_face_chunks = std::abs((possible_x_positions[1] - possible_x_positions[0]) * (possible_y_positions[1] - possible_y_positions[0]));
+
+    // now loop over our possible x and y pos
+    for (size_t x_it = 0; x_it < possible_x_positions.size(); x_it ++){
+        for (size_t y_it = 0; y_it < possible_y_positions.size(); y_it ++){
+            // now let's make the sure this x, y combination is physics
+            double this_x = possible_x_positions[x_it];
+            double this_y = possible_y_positions[y_it];
+            double radius = std::sqrt(std::pow(this_x, 2) + std::pow(this_y, 2));
+            if (radius >= cylinder_max_x){
+                continue;
+            }
+
+            // ok so this is a valid position on the face of the detector!
+            // let's check if either the top or bottom pos is on a PMT
+            double z_top = cylinder_max_z;
+            double z_bottom = cylinder_min_z;
+
+            bool save_top_loc = true;
+            double pmt_portion_top = portion_light_reflected_by_tpb_;
+            bool save_bottom_loc = true;
+            double pmt_portion_bottom = portion_light_reflected_by_tpb_;
+            for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
+                std::vector<double> this_pmt_info = pmt_parsed_information_[pmt_it];
+                double pmt_coating_flag = this_pmt_info[6];
+
+                double pmt_x = this_pmt_info[0];
+                double pmt_y = this_pmt_info[1];
+                double pmt_z = this_pmt_info[2];
+
+                // now let's calculate distance from this location to this pmt
+                double top_loc_dist_to_pmt = std::sqrt(std::pow(pmt_x - this_x, 2) + std::pow(pmt_y - this_y, 2) + std::pow(pmt_z - z_top, 2));
+                double bottom_loc_dist_to_pmt = std::sqrt(std::pow(pmt_x - this_x, 2) + std::pow(pmt_y - this_y, 2) + std::pow(pmt_z - z_bottom, 2));
+
+                // now check if we're on top a pmt
+                if (top_loc_dist_to_pmt <= pmt_radius){
+                    // oops! we're on a pmt! if it's an uncoated pmt, save_this_loc = false, if it's a coated pmt, TPB portion = 0.5
+                    if (pmt_coating_flag == 1.0){
+                        pmt_portion_top *= 0.5;
+                    }
+                    else{
+                        save_top_loc = false;
+                    }
+                }
+
+                // now check if we're on bottom a pmt
+                if (bottom_loc_dist_to_pmt <= pmt_radius){
+                    // oops! we're on a pmt! if it's an uncoated pmt, save_this_loc = false, if it's a coated pmt, TPB portion = 0.5
+                    if (pmt_coating_flag == 1.0){
+                        pmt_portion_bottom *= 0.5;
+                    }
+                    else{
+                        save_bottom_loc = false;
+                    }
+                }
+
+            }
+            // ok we've finished checking if we're on pmts...let's save
+            if (save_top_loc){
+                double facing_dir_x = 0.0;
+                double facing_dir_y = 0.0;
+                double facing_dir_z = -1.0;
+
+                // now a vector to save things to
+                this_loc_info.clear();
+                this_loc_info.push_back(this_x);
+                this_loc_info.push_back(this_y);
+                this_loc_info.push_back(z_top);
+                this_loc_info.push_back(facing_dir_x);
+                this_loc_info.push_back(facing_dir_y);
+                this_loc_info.push_back(facing_dir_z);
+                this_loc_info.push_back(pmt_portion_top);
+                this_loc_info.push_back(area_face_chunks);
+                this_loc_info.push_back(area_face_chunks * chunk_side_area_factor);
+                locations_to_check_information_.push_back(this_loc_info);
+            }
+
+            if (save_bottom_loc){
+                double facing_dir_x = 0.0;
+                double facing_dir_y = 0.0;
+                double facing_dir_z = 1.0;
+
+                // now a vector to save things to
+                this_loc_info.clear();
+                this_loc_info.push_back(this_x);
+                this_loc_info.push_back(this_y);
+                this_loc_info.push_back(z_bottom);
+                this_loc_info.push_back(facing_dir_x);
+                this_loc_info.push_back(facing_dir_y);
+                this_loc_info.push_back(facing_dir_z);
+                this_loc_info.push_back(pmt_portion_bottom);
+                this_loc_info.push_back(area_face_chunks);
+                this_loc_info.push_back(area_face_chunks * chunk_side_area_factor);
+                locations_to_check_information_.push_back(this_loc_info);
+            }
+
+
+        }
+    }
+
+    geo_seen = true;
+    PushFrame(frame);
+}
+
+void LAr_scintillation_timing(double const & time, double const & R_s, double const & R_t, double const & tau_s, double const & tau_t, double const & tau_rec, double & resulting_light){
+    double singlet = (R_s /tau_s) * std::exp(- time / tau_s);
+    double triplet = (R_t /tau_t) * std::exp(- time / tau_t);
+    double recombination = (1 - R_s - R_t) / (tau_rec * std::pow((1 + time / tau_rec), 2));
+    resulting_light = singlet + triplet + recombination;
+
+}
+
+void TPB_emission(double const & time, double const & R_TPB, double const & tau_TPB, double & resulting_light){
+    double prompt = ((1 - R_TPB) / tau_TPB) * std::exp(- time / tau_TPB);
+    resulting_light = prompt;
+}
+
+void generalized_extreme_value_pdf(double const & time, double const & sigma, double const & mu, double const & xi, double & resulting_value){
+    resulting_value = 0;
+    double s = (time - mu) / sigma;
+    if (xi == 0){
+        resulting_value = std::exp(-s) * std::exp(-std::exp(-s));
+    }
+    if (xi != 0 and xi * s > -1){
+        resulting_value = std::pow((1 + xi * s), (-(1 + 1/xi))) * std::exp(-std::pow((1 + xi * s), (-1/xi)));
+    }
+}
+
+void linear_interpolation(double const & desired_time,
+                        std::vector<double> const & all_times,
+                        std::vector<double> const & all_data,
+                        double & desired_value){
+    auto it_below = std::lower_bound(all_times.begin(), all_times.end(), desired_time);
+
+    if (it_below == all_times.begin()) {
+        desired_value = all_data.front();
+    }
+    else if (it_below == all_times.end()) {
+        desired_value = all_data.back();
+    }
+    else {
+        int idx_below = std::distance(all_times.begin(), it_below) - 1;
+        double time_below = all_times[idx_below];
+        double data_value_below = all_data[idx_below];
+
+        double time_above = all_times[idx_below + 1];
+        double data_value_above = all_data[idx_below + 1];
+
+        desired_value = data_value_below + (desired_time - time_below) * (data_value_above - data_value_below) / (time_above - time_below);
+    }
+}
+
+void convolve_light_with_gev(double const & this_time_step,
+                            std::vector<double> const & light_profile,
+                            std::vector<double> const & light_times,
+                            double const & delta,
+                            size_t const & n_convolution_chunks,
+                            double const & sigma,
+                            double const & mu,
+                            double const & xi,
+                            double & result){
+    double total_val = 0;
+    double delta_convolution_time_step = this_time_step / n_convolution_chunks;
+
+    for (size_t i = 0; i <= n_convolution_chunks; i++){
+        double t2 = this_time_step * i / n_convolution_chunks;
+        double gev_result;
+        generalized_extreme_value_pdf(this_time_step - t2, sigma, mu, xi, gev_result);
+        double interpolated_light_value;
+        linear_interpolation(t2, light_times, light_profile, interpolated_light_value);
+        double this_val = gev_result * interpolated_light_value * delta_convolution_time_step;
+        total_val += this_val;
+    }
+
+    result = total_val * delta;
+
+}
+
+void LAr_scintillation_light_integration(double const & this_time_step,
+                                        double const & delta,
+                                        size_t const & n_convolution_chunks,
+                                        double const & R_s,
+                                        double const & R_t,
+                                        double const & tau_s,
+                                        double const & tau_t,
+                                        double const & tau_rec,
+                                        double const & R_TPB,
+                                        double const & tau_TPB,
+                                        double & result){
+
+    double total_val = 0;
+    double delta_convolution_time_step = this_time_step / n_convolution_chunks;
+
+    for (size_t i = 0; i <= n_convolution_chunks; i++){
+        double t2 = this_time_step * i / n_convolution_chunks;
+        double TPB_result;
+        TPB_emission(this_time_step - t2, R_TPB, tau_TPB, TPB_result);
+        double LAr_scint_result;
+        LAr_scintillation_timing(t2, R_s, R_t, tau_s, tau_t, tau_rec, LAr_scint_result);
+        double light_val = TPB_result * LAr_scint_result * delta_convolution_time_step;
+        total_val += light_val;
+    }
+
+    result = total_val * delta;
+
+}
+
+void get_total_light_profile(double const & R_s,
+                            double const & R_t,
+                            double const & tau_s,
+                            double const & tau_t,
+                            double const & tau_rec,
+                            double const & R_TPB,
+                            double const & tau_TPB,
+                            double const & sigma,
+                            double const & mu,
+                            double const & xi,
+                            size_t const & n_convolution_chunks,
+                            std::vector<double> const & times,
+                            std::vector<double> & final_light_profile){
+    // times is a vector of times that we are integrating over
+    double delta = times[1] - times[0];
+    std::vector<double> LAr_light_profile (times.size());
+    for (size_t t = 0; t < times.size(); t++){
+        LAr_scintillation_light_integration(times[t], delta, n_convolution_chunks, R_s, R_t, tau_s, tau_t, tau_rec, R_TPB, tau_TPB, LAr_light_profile[t]);
+    }
+    // let's normalize our light profile
+    double total_light_profile_value = 0;
+    for (size_t i = 0; i < LAr_light_profile.size(); i++){
+        total_light_profile_value += LAr_light_profile[i];
+    }
+
+    std::vector<double> normalized_LAr_light_profile (LAr_light_profile.size());
+    for (size_t i = 0; i < LAr_light_profile.size(); i++){
+        normalized_LAr_light_profile[i] = LAr_light_profile[i] / total_light_profile_value;
+    }
+
+    // now let's convolve our light profile with a gev
+    std::vector<double> light_convolved_with_gev (times.size());
+    for (size_t t = 0; t < times.size(); t++){
+        convolve_light_with_gev(times[t], normalized_LAr_light_profile, times, delta, n_convolution_chunks, sigma, mu, xi, light_convolved_with_gev[t]);
+    }
+
+    // let's normalize our final light profile
+    double total_light_convolved_with_gev_value = 0;
+    for (size_t i = 0; i < light_convolved_with_gev.size(); i++){
+        total_light_convolved_with_gev_value += light_convolved_with_gev[i];
+    }
+
+    for (size_t i = 0; i < light_convolved_with_gev.size(); i++){
+        final_light_profile[i] = light_convolved_with_gev[i] / total_light_convolved_with_gev_value;
+    }
+
+}
+
 void get_ray_intersections(double const & x,
                            double const & y,
                            double const & z,
