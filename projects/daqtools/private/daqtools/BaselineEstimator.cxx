@@ -128,11 +128,20 @@ double LinearChi2PerDOF(
 
 class BaselineEstimator: public I3Module {
     std::exception_ptr teptr = nullptr;
-    bool geo_seen;
-    std::string geometry_name_;
-    std::string ccm_waveforms_name_;
-    std::string output_name_;
-    I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
+    std::string geometry_key_;
+    std::string daq_config_key_;
+    std::string ccm_waveforms_key_;
+    std::string output_key_;
+
+    bool geo_seen_;
+    CCMGeometry geo_;
+
+    I3Vector<CCMPMTKey> allowed_pmt_keys_;
+    I3Vector<uint32_t> allowed_channels_;
+    std::vector<CCMPMTKey> pmt_keys_;
+    std::vector<uint32_t> channels_;
+
+    bool output_channels_;
 
     size_t num_threads;
     size_t max_cached_frames;
@@ -359,10 +368,13 @@ void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int
 
 I3_MODULE(BaselineEstimator);
 
-BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(context), 
-    geometry_name_(""), geo_seen(false) {
+BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(context) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("CCMDAQConfigName", "Key for CCMDAQConfig", std::string(I3DefaultName<CCMAnalysis::Binary::CCMDAQConfig>::value()));
     AddParameter("CCMWaveformsName", "Key for CCMWaveforms object", std::string("CCMWaveforms"));
+    AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
+    AddParameter("Channels", "PMTKeys to run over", I3Vector<uint32_t>());
+    AddParameter("OutputChannels", "Output based on channel number rather than PMTKey", bool(false));
     AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)(0));
     AddParameter("NumSamples", "Number of samples to use for the baseline estimation", (size_t)(800));
     AddParameter("NumExpSamples", "Number of samples to use for the exponential fit", (size_t)(4000));
@@ -371,8 +383,12 @@ BaselineEstimator::BaselineEstimator(const I3Context& context) : I3Module(contex
 }
 
 void BaselineEstimator::Configure() {
-    GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("CCMWaveformsName", ccm_waveforms_name_);
+    GetParameter("CCMGeometryName", geometry_key_);
+    GetParameter("CCMDAQConfigName", daq_config_key_);
+    GetParameter("CCMWaveformsName", ccm_waveforms_key_);
+    GetParameter("PMTKeys", allowed_pmt_keys_);
+    GetParameter("Channels", allowed_channels_);
+    GetParameter("OutputChannels", output_channels_);
     GetParameter("NumThreads", num_threads);
     if(num_threads == 0) {
         size_t const processor_count = std::thread::hardware_concurrency();
@@ -380,7 +396,7 @@ void BaselineEstimator::Configure() {
     }
     GetParameter("NumSamples", num_samples);
     GetParameter("NumExpSamples", num_exp_samples);
-    GetParameter("OutputName", output_name_);
+    GetParameter("OutputName", output_key_);
     GetParameter("MaxCachedFrames", max_cached_frames);
 }
 
@@ -415,36 +431,113 @@ void BaselineEstimator::Process() {
 
 
 void BaselineEstimator::Geometry(I3FramePtr frame) {
-    if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+    if(not frame->Has(geometry_key_)) {
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_key_.c_str());
     }
-    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-    pmt_channel_map_ = geo.pmt_channel_map;
-    geo_seen = true;
+
+    CCMGeometryConstPtr geo = frame->Get<CCMGeometryConstPtr>(geometry_key_);
+    if (!geo)
+        log_fatal("Couldn't find '%s' in the frame!",
+                geometry_key_.c_str());
+    geo_ = *geo;
+    geo_seen_ = true;
+
+    channels_.clear();
+    pmt_keys_.clear();
+
+    CCMAnalysis::Binary::CCMDAQConfigConstPtr daq_config = frame->Get<CCMAnalysis::Binary::CCMDAQConfigConstPtr>(daq_config_key_);
+    if (!daq_config)
+        log_fatal("Couldn't find '%s' in the frame!",
+                daq_config_key_.c_str());
+
+    if(output_channels_) {
+        // Copy and sort the channels from the daq config
+        std::vector<uint32_t> geo_channels;
+        uint32_t channel_index = 0;
+        for(CCMAnalysis::Binary::DigitizerBoard const & board : daq_config->digitizer_boards) {
+            for(CCMAnalysis::Binary::ChannelHeader const & channel : board.channels) {
+                geo_channels.push_back(channel_index);
+                channel_index += 1;
+            }
+        }
+
+        // Assume we're doing all PMTs if none are specified
+        if(allowed_channels_.size() == 0) {
+            channels_ = geo_channels;
+        } else {
+            // Clear the final channel list
+            channels_.clear();
+            // Fill the final channel list with the intersection of specified channels and those available in the geometry
+            // If allowed_channels_ is not sorted then this will fail horribly
+            std::set_intersection(geo_channels.begin(), geo_channels.end(), allowed_channels_.begin(), allowed_channels_.end(), std::back_inserter(channels_));
+
+            if(channels_.size() < allowed_channels_.size()) {
+                std::vector<uint32_t> missing_channels;
+                std::set_difference(allowed_channels_.begin(), allowed_channels_.end(), geo_channels.begin(), geo_channels.end(), std::back_inserter(missing_channels));
+                std::stringstream ss;
+                ss << "Some specified channels are not present in the geometry: ";
+                for(uint32_t const & channel : allowed_channels_)
+                    ss << " " << channel;
+                log_warn(ss.str().c_str());
+            }
+        }
+    } else {
+        // Copy and sort the pmt keys from the geometry
+        std::vector<CCMPMTKey> geo_keys; geo_keys.reserve(geo_.pmt_channel_map.size());
+        for(std::pair<CCMPMTKey const, uint32_t> const & p : geo_.pmt_channel_map)
+            geo_keys.push_back(p.first);
+        std::sort(geo_keys.begin(), geo_keys.end());
+
+        // Assume we're doing all PMTs if none are specified
+        if(allowed_pmt_keys_.size() == 0) {
+            pmt_keys_ = geo_keys;
+        } else {
+            // Clear the final pmt key list
+            pmt_keys_.clear();
+            // Fill the final pmt key list with the intersection of specified pmt keys and those available in the geometry
+            // If allowed_pmt_keys_ is not sorted then this will fail horribly
+            std::set_intersection(geo_keys.begin(), geo_keys.end(), allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), std::back_inserter(pmt_keys_));
+
+            if(pmt_keys_.size() < allowed_pmt_keys_.size()) {
+                std::vector<CCMPMTKey> missing_keys;
+                std::set_difference(allowed_pmt_keys_.begin(), allowed_pmt_keys_.end(), pmt_keys_.begin(), pmt_keys_.end(), std::back_inserter(missing_keys));
+                std::stringstream ss;
+                ss << "Some specified CCMPMTKeys are not present in the geometry:";
+                for(CCMPMTKey const & key : missing_keys)
+                    ss << " " << key;
+                log_warn(ss.str().c_str());
+            }
+        }
+    }
+
     PushFrame(frame);
 }
 
-void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const & ccm_waveforms_name_, std::string const & output_name_, I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_, size_t num_samples, size_t num_exp_samples) {
+void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const & ccm_waveforms_key_, std::string const & output_key_, CCMGeometry const & geo_, std::vector<CCMPMTKey> const & pmt_keys_, std::vector<uint32_t> const & channels_, bool output_channels_, size_t num_samples, size_t num_exp_samples) {
     // let's read in our waveform
-    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_name_);
+    boost::shared_ptr<const CCMWaveformUInt16Series> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_key_);
     if(waveforms == nullptr) {
-        log_fatal("No CCMWaveformUInt16Series under key name \"%s\"", ccm_waveforms_name_);
+        log_fatal("No CCMWaveformUInt16Series under key name \"%s\"", ccm_waveforms_key_.c_str());
     }
 
-    std::vector<CCMPMTKey> pmt_keys;
-    pmt_keys.reserve(pmt_channel_map_.size());
-    for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
-        pmt_keys.push_back(p.first);
+    size_t num_baselines;
+    if(output_channels_) {
+        num_baselines = channels_.size();
+    } else {
+        num_baselines = pmt_keys_.size();
     }
-    size_t num_baselines = pmt_keys.size();
     std::vector<BaselineEstimate> baseline_estimates;
     baseline_estimates.resize(num_baselines);
 
     // loop over each channel in waveforms
     for(size_t i=0; i<num_baselines; ++i) {
         // let's get our baseline
-        CCMPMTKey key = pmt_keys[i];
-        uint32_t channel = pmt_channel_map_.at(key);
+        uint32_t channel;
+        if(output_channels_) {
+            channel = channels_[i];
+        } else {
+            channel = geo_.pmt_channel_map.at(pmt_keys_[i]);
+        }
         ProcessWaveform(
             baseline_estimates[i],
             std::cref(waveforms->at(channel).GetWaveform()),
@@ -453,20 +546,31 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
         );
     }
 
-    // I3Map to store pmt key and baselines
-    boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
-    for(size_t i = 0; i < num_baselines; ++i) {
-        baselines->emplace(pmt_keys[i], baseline_estimates[i]);
+    if(output_channels_) {
+        boost::shared_ptr<I3Map<uint32_t, BaselineEstimate>> baselines = boost::make_shared<I3Map<uint32_t, BaselineEstimate>>();
+        for(size_t i = 0; i < num_baselines; ++i) {
+            baselines->emplace(channels_[i], baseline_estimates[i]);
+        }
+        frame->Put(output_key_, baselines);
+    } else {
+        // I3Map to store pmt key and baselines
+        boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
+        for(size_t i = 0; i < num_baselines; ++i) {
+            baselines->emplace(pmt_keys_[i], baseline_estimates[i]);
+        }
+        frame->Put(output_key_, baselines);
     }
 
-    frame->Put(output_name_, baselines);
     running.store(false);
 }
 
 void RunFrameThread(BaselineEstimatorJob * job,
-    std::string const & ccm_waveforms_name_,
-    std::string const & output_name_,
-    I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map_,
+    std::string const & ccm_waveforms_key_,
+    std::string const & output_key_,
+    CCMGeometry & geo_,
+    std::vector<CCMPMTKey> const & pmt_keys_,
+    std::vector<uint32_t> const & channels_,
+    bool output_channels_,
     size_t num_samples,
     size_t num_exp_samples) {
 
@@ -475,9 +579,12 @@ void RunFrameThread(BaselineEstimatorJob * job,
     job->thread = std::thread(FrameThread,
         std::ref(job->running),
         job->frame.get(),
-        std::cref(ccm_waveforms_name_),
-        std::cref(output_name_),
-        std::cref(pmt_channel_map_),
+        std::cref(ccm_waveforms_key_),
+        std::cref(output_key_),
+        std::cref(geo_),
+        std::cref(pmt_keys_),
+        std::cref(channels_),
+        output_channels_,
         num_samples,
         num_exp_samples
     );
@@ -549,9 +656,12 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
             results.back().done = false;
             frame_index += 1;
             RunFrameThread(job,
-                ccm_waveforms_name_,
-                output_name_,
-                pmt_channel_map_,
+                ccm_waveforms_key_,
+                output_key_,
+                geo_,
+                pmt_keys_,
+                channels_,
+                output_channels_,
                 num_samples,
                 num_exp_samples);
             break;

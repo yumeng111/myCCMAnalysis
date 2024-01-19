@@ -43,8 +43,8 @@ typedef std::tuple<CCMPMTKey, CCMRecoPulse> PMTKeyPulsePair;
 typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
 
 class EventFinder: public I3Module {
-    bool geo_seen;
     std::string geometry_name_;
+    bool geo_seen;
     CCMGeometryConstPtr geo;
     double timeWindow_;
     double event_charge_threshold_;
@@ -91,7 +91,7 @@ void EventFinder::Configure() {
 
 void EventFinder::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     geo = frame->Get<CCMGeometryConstPtr>(geometry_name_);
     geo_seen = bool(geo);

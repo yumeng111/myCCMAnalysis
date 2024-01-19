@@ -1,5 +1,5 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim  
+//   Copyright (c) 2004, 2005, 2006, 2007, 2008   Troy D. Straszheim  
 //   
 //   $Id$
 //
@@ -30,37 +30,16 @@
 //   
 //
 
-#include <dataclasses/calibration/BaselineEstimate.h>
-#include <icetray/python/copy_suite.hpp>
-#include <icetray/python/indexed_property.hpp>
-#include <icetray/python/boost_serializable_pickle_suite.hpp>
+#include <dataclasses/I3Map.h>
 #include <icetray/python/dataclass_suite.hpp>
-#include <icetray/python/stream_to_string.hpp>
 
 using namespace boost::python;
 
-void register_BaselineEstimate()
+void register_I3MapUIntVectorDouble()
 {
-
-  {
-
-    scope outer = 
-      class_<BaselineEstimate, boost::shared_ptr<BaselineEstimate> >("BaselineEstimate")
-      #define BASELINEPROPS (baseline)(stddev)(target_num_frames)(num_frames)(num_samples)
-      BOOST_PP_SEQ_FOR_EACH(WRAP_RW, BaselineEstimate, BASELINEPROPS)
-      #undef BASELINEPROPS
-      .def(dataclass_suite<BaselineEstimate>())
-      ;
-  }
-
-  class_<BaselineEstimateMap, bases<I3FrameObject>,
-         BaselineEstimateMapPtr>("BaselineEstimateMap")
-    .def(dataclass_suite<BaselineEstimateMap>())
+  class_<I3MapUIntVectorDouble, bases<I3FrameObject>, I3MapUIntVectorDoublePtr>("I3MapUIntVectorDouble")
+    .def(dataclass_suite<I3MapUIntVectorDouble >())
     ;
-  register_pointer_conversions<BaselineEstimateMap>();
-  class_<BaselineEstimateChannelMap, bases<I3FrameObject>,
-         BaselineEstimateChannelMapPtr>("BaselineEstimateChannelMap")
-    .def(dataclass_suite<BaselineEstimateChannelMap>())
-    ;
-  register_pointer_conversions<BaselineEstimateChannelMap>();
+  register_pointer_conversions<I3MapUIntVectorDouble>();
 }
+

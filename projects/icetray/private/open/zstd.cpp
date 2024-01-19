@@ -72,7 +72,7 @@ int zstd_multithread_base::deflate(int action)
     zstd_error::check BOOST_PREVENT_MACRO_SUBSTITUTION(result);
     if (action != zstd::run)
     {
-        while(action == zstd::finish && result != 0) {
+        while((action == zstd::finish && result != 0) or (action == zstd::flush && in->pos < in->size)) {
             result = ZSTD_compressStream2(s, out, in, directive);
             zstd_error::check BOOST_PREVENT_MACRO_SUBSTITUTION(result);
         }

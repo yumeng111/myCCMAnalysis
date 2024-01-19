@@ -38,7 +38,7 @@
 #include "daqtools/WaveformSmoother.h"
 #include <dataclasses/calibration/BaselineEstimate.h>
 
-// struct to hold peak data when fitting 
+// struct to hold peak data when fitting
 typedef struct {
     std::vector<double>::const_iterator v_start;
     std::vector<double>::const_iterator v_end;
@@ -46,7 +46,7 @@ typedef struct {
 } fit_data;
 
 
-// struct to hold resulting best fit vals 
+// struct to hold resulting best fit vals
 struct BestFitParams{
     double c;
     double t0;
@@ -60,8 +60,8 @@ struct BestFitParams{
 
 
 class FitSummedPulses: public I3Module {
-    bool geo_seen;
     std::string geometry_name_;
+    bool geo_seen;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     void Geometry(I3FramePtr frame);
     static double GetPred(double & c, double & t0, double & b1, double & b2, double &t, double & C, double & T0, double & B1, double & B2);
@@ -82,7 +82,7 @@ class FitSummedPulses: public I3Module {
 
 I3_MODULE(FitSummedPulses);
 
-FitSummedPulses::FitSummedPulses(const I3Context& context) : I3Module(context), 
+FitSummedPulses::FitSummedPulses(const I3Context& context) : I3Module(context),
     geometry_name_(""), geo_seen(false) {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     }
@@ -95,7 +95,7 @@ void FitSummedPulses::Configure() {
 
 void FitSummedPulses::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     pmt_channel_map_ = geo.pmt_channel_map;
@@ -212,7 +212,7 @@ double FitSummedPulses::PeakLossFunction(const std::vector<double> & x, std::vec
     double squared_residuals = 0;
     double pred, data;
     if (!grad.empty()) {
-        for(int i = 0; i < grad.size(); ++i) grad[i] = 0; 
+        for(size_t i = 0; i < grad.size(); ++i) grad[i] = 0;
     }
 
     // loop over each time bin, add to square residuals

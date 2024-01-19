@@ -22,5 +22,17 @@ std::ostream& operator<<(std::ostream& oss, BaselineEstimateMap const & m) {
     return oss;
 }
 
+std::ostream& operator<<(std::ostream& oss, BaselineEstimateChannelMap const & m) {
+    oss << "[ BaselineEstimateChannelMap :: " << std::endl;
+    BaselineEstimateChannelMap::const_iterator iter = m.begin();
+    for (;iter != m.end();iter++)
+    {
+        oss << "  " << iter->first << " : " << iter->second << std::endl;
+    }
+    oss << "]" ;
+    return oss;
+}
+
 I3_SERIALIZABLE(BaselineEstimate);
 I3_SERIALIZABLE(BaselineEstimateMap);
+I3_SERIALIZABLE(BaselineEstimateChannelMap);

@@ -12,12 +12,13 @@
 #include <iostream>
 #include <algorithm>
 
-#include <icetray/I3Int.h>
 #include <icetray/I3Frame.h>
 #include <icetray/I3ConditionalModule.h>
 #include <icetray/I3Logging.h>
 #include <icetray/CCMPMTKey.h>
+#include <icetray/I3PODHolder.h>
 #include <icetray/CCMTriggerKey.h>
+#include <icetray/robust_statistics.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
@@ -25,9 +26,40 @@
 #include <dataclasses/calibration/CCMCalibration.h>
 #include <dataclasses/calibration/BaselineEstimate.h>
 
+#include "daqtools/OnlineRobustStats.h"
+#include "daqtools/WaveformSmoother.h"
 #include "daqtools/WaveformAccumulator.h"
 
-class SumWaveforms : public I3ConditionalModule {
+class AccumulateIndividualPMTWaveforms : public I3ConditionalModule {
+    struct Corrections {
+        bool nim_pulse_time = false;
+        bool bcm_nim_pulse_time = false;
+        bool electron_transit_time = false;
+        bool bcm_start_time = false;
+        bool user_time = false;
+        bool baseline = false;
+        bool operator==(Corrections const & o) const {
+            return std::tie(
+                    nim_pulse_time,
+                    bcm_nim_pulse_time,
+                    electron_transit_time,
+                    bcm_start_time,
+                    user_time,
+                    baseline
+                    ) == std::tie(
+                    o.nim_pulse_time,
+                    o.bcm_nim_pulse_time,
+                    o.electron_transit_time,
+                    o.bcm_start_time,
+                    o.user_time,
+                    o.baseline
+                    );
+        }
+        bool operator!=(Corrections const & o) const {
+            return not (*this == o);
+        }
+    };
+
     std::string geometry_key_;
     std::string nim_pulses_key_;
     std::string bcm_summary_key_;
@@ -35,39 +67,47 @@ class SumWaveforms : public I3ConditionalModule {
     std::string waveforms_key_;
     std::string output_prefix_;
     std::string baseline_estimates_key_;
+    bool consume_frames_;
     bool correct_nim_pulse_time_;
     bool correct_electron_transit_time_;
     bool correct_baseline_and_invert_raw_waveforms_;
+    bool allow_missing_;
     bool skip_missing_;
+    I3Frame::Stream output_frame_type_;
 
     bool geo_seen_ = false;
     CCMGeometry geo_;
     I3Vector<CCMPMTKey> allowed_pmt_keys_;
-    I3Vector<CCMOMGeo::OMType> allowed_pmt_types_;
     std::vector<CCMPMTKey> pmt_keys_;
+    std::map<CCMPMTKey, WaveformAccumulator> accumulated_waveforms_;
     bool trigger_reference_time_;
     bool bcm_reference_time_;
     std::string reference_time_key_;
+
+    std::map<CCMPMTKey, Corrections> corrections_;
 
     enum class ReferenceTimeType {TriggerTime, BCMTime, UserSpecifiedTime};
     ReferenceTimeType chosen_time_reference_;
 
 public:
-    SumWaveforms(const I3Context&);
+    AccumulateIndividualPMTWaveforms(const I3Context&);
     void Configure();
     void Geometry(I3FramePtr frame);
     void DAQ(I3FramePtr frame);
+    void Finish();
+
+    void DumpWaveforms();
 
     void ProcessFrame(I3FramePtr frame);
-    bool ComputeReferenceIndices(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
-    bool ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
-    bool ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
-    bool ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices);
+    bool ComputeReferenceIndices(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections);
+    bool ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections);
+    bool ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections);
+    bool ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections);
 };
 
-I3_MODULE(SumWaveforms);
+I3_MODULE(AccumulateIndividualPMTWaveforms);
 
-bool SumWaveforms::ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+bool AccumulateIndividualPMTWaveforms::ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections) {
     NIMLogicPulseSeriesMapConstPtr nim_pulses = frame->Get<NIMLogicPulseSeriesMapConstPtr>(nim_pulses_key_);
     if (!nim_pulses and correct_nim_pulse_time_) {
         if(skip_missing_) {
@@ -91,6 +131,8 @@ bool SumWaveforms::ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCM
     }
 
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        Corrections pmt_corrections;
+
         double time_correction = 0.0;
         CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
         CCMPMTType const & pmt_type = pmt.omtype;
@@ -101,13 +143,16 @@ bool SumWaveforms::ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCM
             std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
                 calibration->pmtCal.find(pmt_key);
             if (calib == calibration->pmtCal.end()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
-                        calibration_key_.c_str());
+                if(not allow_missing_) {
+                    log_fatal("Could not find PMT (%i/%u) in '%s'",
+                            pmt_key.GetRegion(), pmt_key.GetSensor(),
+                            calibration_key_.c_str());
+                }
             } else {
                 CCMPMTCalibration const & pmt_calibration = calib->second;
                 if(not std::isnan(pmt_calibration.GetPMTDeltaT())) {
                     time_correction -= pmt_calibration.GetPMTDeltaT();
+                    pmt_corrections.electron_transit_time = true;
                 }
             }
         }
@@ -117,16 +162,20 @@ bool SumWaveforms::ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCM
             std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
                 geo_.trigger_copy_map.find(pmt_key);
             if(trigger_key == geo_.trigger_copy_map.end()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
-                        geometry_key_.c_str());
+                if(not allow_missing_) {
+                    log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                            pmt_key.GetRegion(), pmt_key.GetSensor(),
+                            geometry_key_.c_str());
+                }
             } else {
                 NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
                     nim_pulses->find(trigger_key->second);
                 if(pmt_trigger_nim_pulses == nim_pulses->end()) {
-                    log_fatal("Could not find PMT (%i/%u) in '%s'",
-                            pmt_key.GetRegion(), pmt_key.GetSensor(),
-                            nim_pulses_key_.c_str());
+                    if(not allow_missing_) {
+                        log_fatal("Could not find PMT (%i/%u) in '%s'",
+                                pmt_key.GetRegion(), pmt_key.GetSensor(),
+                                nim_pulses_key_.c_str());
+                    }
                 } else {
                     double nim_pulse_time = 0.0;
                     double max_nim_pulse_length = 0.0;
@@ -139,17 +188,19 @@ bool SumWaveforms::ComputeReferenceIndicesTrigger(I3FramePtr frame, std::map<CCM
                     }
                     if(not std::isnan(nim_pulse_time)) {
                         time_correction -= nim_pulse_time;
+                        pmt_corrections.nim_pulse_time = true;
                     }
                 }
             }
         }
         output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
+        output_corrections[pmt_key] = pmt_corrections;
     }
 
     return true;
 }
 
-bool SumWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+bool AccumulateIndividualPMTWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections) {
     CCMBCMSummaryConstPtr bcm = frame->Get<CCMBCMSummaryConstPtr>(bcm_summary_key_);
     if(!bcm) {
         if(skip_missing_) {
@@ -232,6 +283,7 @@ bool SumWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTK
     double bcm_time = bcm->bcm_start_time;
 
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        Corrections pmt_corrections;
         double time_correction = 0.0;
 
         CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
@@ -243,13 +295,16 @@ bool SumWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTK
             std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
                 calibration->pmtCal.find(pmt_key);
             if (calib == calibration->pmtCal.end()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
-                        calibration_key_.c_str());
+                if(not allow_missing_) {
+                    log_fatal("Could not find PMT (%i/%u) in '%s'",
+                            pmt_key.GetRegion(), pmt_key.GetSensor(),
+                            calibration_key_.c_str());
+                }
             } else {
                 CCMPMTCalibration const & pmt_calibration = calib->second;
                 if(not std::isnan(pmt_calibration.GetPMTDeltaT())) {
                     time_correction -= pmt_calibration.GetPMTDeltaT();
+                    pmt_corrections.electron_transit_time = true;
                 }
             }
         }
@@ -259,16 +314,20 @@ bool SumWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTK
             std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
                 geo_.trigger_copy_map.find(pmt_key);
             if(trigger_key == geo_.trigger_copy_map.end()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
-                        geometry_key_.c_str());
+                if(not allow_missing_) {
+                    log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                            pmt_key.GetRegion(), pmt_key.GetSensor(),
+                            geometry_key_.c_str());
+                }
             } else {
                 NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
                     nim_pulses->find(trigger_key->second);
                 if(pmt_trigger_nim_pulses == nim_pulses->end()) {
-                    log_fatal("Could not find PMT (%i/%u) in '%s'",
-                            pmt_key.GetRegion(), pmt_key.GetSensor(),
-                            nim_pulses_key_.c_str());
+                    if(not allow_missing_) {
+                        log_fatal("Could not find PMT (%i/%u) in '%s'",
+                                pmt_key.GetRegion(), pmt_key.GetSensor(),
+                                nim_pulses_key_.c_str());
+                    }
                 } else {
                     double nim_pulse_time = 0.0;
                     double max_nim_pulse_length = 0.0;
@@ -281,9 +340,11 @@ bool SumWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTK
                     }
                     if(not std::isnan(nim_pulse_time)) {
                         time_correction -= nim_pulse_time;
+                        pmt_corrections.nim_pulse_time = true;
                     }
                     if(not std::isnan(bcm_nim_pulse_time)) {
                         time_correction -= (-bcm_nim_pulse_time);
+                        pmt_corrections.bcm_nim_pulse_time = true;
                     }
                 }
             }
@@ -291,15 +352,17 @@ bool SumWaveforms::ComputeReferenceIndicesBCM(I3FramePtr frame, std::map<CCMPMTK
 
         if(not std::isnan(bcm_time)) {
             time_correction -= bcm_time;
+            pmt_corrections.bcm_start_time = true;
         }
 
         output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
+        output_corrections[pmt_key] = pmt_corrections;
     }
 
     return true;
 }
 
-bool SumWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+bool AccumulateIndividualPMTWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections) {
     boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const> reference_times = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, int32_t> const>>(reference_time_key_);
     if(reference_times == nullptr) {
         if(skip_missing_) {
@@ -393,6 +456,7 @@ bool SumWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMT
     double bcm_time = bcm->bcm_start_time;
 
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        Corrections pmt_corrections;
         double time_correction = 0.0;
 
         CCMOMGeo const & pmt = geo_.pmt_geo.at(pmt_key);
@@ -404,13 +468,15 @@ bool SumWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMT
             std::map<CCMPMTKey, CCMPMTCalibration>::const_iterator calib =
                 calibration->pmtCal.find(pmt_key);
             if (calib == calibration->pmtCal.end()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'",
-                    pmt_key.GetRegion(), pmt_key.GetSensor(),
-                    calibration_key_.c_str());
+                if(not allow_missing_)
+                    log_fatal("Could not find PMT (%i/%u) in '%s'",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        calibration_key_.c_str());
             } else {
                 CCMPMTCalibration const & pmt_calibration = calib->second;
                 if(not std::isnan(pmt_calibration.GetPMTDeltaT())) {
                     time_correction -= pmt_calibration.GetPMTDeltaT();
+                    pmt_corrections.electron_transit_time = true;
                 }
             }
         }
@@ -420,16 +486,18 @@ bool SumWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMT
             std::map<CCMPMTKey, CCMTriggerKey>::const_iterator trigger_key =
                 geo_.trigger_copy_map.find(pmt_key);
             if(trigger_key == geo_.trigger_copy_map.end()) {
-                log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
-                    pmt_key.GetRegion(), pmt_key.GetSensor(),
-                    geometry_key_.c_str());
+                if(not allow_missing_)
+                    log_fatal("Could not find PMT (%i/%u) in '%s'.trigger_copy_map",
+                        pmt_key.GetRegion(), pmt_key.GetSensor(),
+                        geometry_key_.c_str());
             } else {
                 NIMLogicPulseSeriesMap::const_iterator pmt_trigger_nim_pulses =
                     nim_pulses->find(trigger_key->second);
                 if(pmt_trigger_nim_pulses == nim_pulses->end()) {
-                    log_fatal("Could not find PMT (%i/%u) in '%s'",
-                        pmt_key.GetRegion(), pmt_key.GetSensor(),
-                        nim_pulses_key_.c_str());
+                    if(not allow_missing_)
+                        log_fatal("Could not find PMT (%i/%u) in '%s'",
+                            pmt_key.GetRegion(), pmt_key.GetSensor(),
+                            nim_pulses_key_.c_str());
                 } else {
                     double nim_pulse_time = 0.0;
                     double max_nim_pulse_length = 0.0;
@@ -442,9 +510,11 @@ bool SumWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMT
                     }
                     if(not std::isnan(nim_pulse_time)) {
                         time_correction -= nim_pulse_time;
+                        pmt_corrections.nim_pulse_time = true;
                     }
                     if(not std::isnan(bcm_nim_pulse_time)) {
                         time_correction -= (-bcm_nim_pulse_time);
+                        pmt_corrections.bcm_nim_pulse_time = true;
                     }
                 }
             }
@@ -452,26 +522,29 @@ bool SumWaveforms::ComputeReferenceIndicesUser(I3FramePtr frame, std::map<CCMPMT
 
         if(not std::isnan(bcm_time)) {
             time_correction -= bcm_time;
+            pmt_corrections.bcm_start_time = true;
         }
 
         if(reference_times and reference_times->count(pmt_key)) {
             time_correction -= (*reference_times).at(pmt_key) * 2.0;
+            pmt_corrections.user_time = true;
         }
 
         output_indices[pmt_key] = (int32_t)(-time_correction / 2.0);
+        output_corrections[pmt_key] = pmt_corrections;
     }
 
     return true;
 }
 
-bool SumWaveforms::ComputeReferenceIndices(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices) {
+bool AccumulateIndividualPMTWaveforms::ComputeReferenceIndices(I3FramePtr frame, std::map<CCMPMTKey, int32_t> & output_indices, std::map<CCMPMTKey, Corrections> & output_corrections) {
     switch(chosen_time_reference_) {
         case ReferenceTimeType::TriggerTime:
-            return ComputeReferenceIndicesTrigger(frame, output_indices);
+            return ComputeReferenceIndicesTrigger(frame, output_indices, output_corrections);
         case ReferenceTimeType::BCMTime:
-            return ComputeReferenceIndicesBCM(frame, output_indices);
+            return ComputeReferenceIndicesBCM(frame, output_indices, output_corrections);
         case ReferenceTimeType::UserSpecifiedTime:
-            return ComputeReferenceIndicesUser(frame, output_indices);
+            return ComputeReferenceIndicesUser(frame, output_indices, output_corrections);
         default:
             break;
     };
@@ -479,11 +552,12 @@ bool SumWaveforms::ComputeReferenceIndices(I3FramePtr frame, std::map<CCMPMTKey,
     return false;
 }
 
-void SumWaveforms::ProcessFrame(I3FramePtr frame) {
+void AccumulateIndividualPMTWaveforms::ProcessFrame(I3FramePtr frame) {
     std::map<CCMPMTKey, int32_t> reference_indices;
-    bool computed_reference_indices = ComputeReferenceIndices(frame, reference_indices);
+    std::map<CCMPMTKey, Corrections> corrections;
+    bool computed_reference_indices = ComputeReferenceIndices(frame, reference_indices, corrections);
     if(not computed_reference_indices and skip_missing_)
-        return;
+        return PushFrame(frame);
     boost::shared_ptr<CCMWaveformUInt16Series const> waveform_raw = frame->Get<boost::shared_ptr<CCMWaveformUInt16Series const>>(waveforms_key_);
     boost::shared_ptr<CCMWaveformDoubleSeries const> waveform_cal = frame->Get<boost::shared_ptr<CCMWaveformDoubleSeries const>>(waveforms_key_);
     if(!waveform_raw and !waveform_cal)
@@ -494,8 +568,6 @@ void SumWaveforms::ProcessFrame(I3FramePtr frame) {
 
     I3Map<CCMPMTKey, uint32_t> const & pmt_channel_map = geo_.pmt_channel_map;
 
-    WaveformAccumulator summed_waveform;
-
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
         if(pmt_channel_map.count(pmt_key) == 0) {
             log_fatal("Could not find PMT (%i/%u) in '%s'",
@@ -503,6 +575,7 @@ void SumWaveforms::ProcessFrame(I3FramePtr frame) {
                     geometry_key_.c_str());
         }
         uint32_t channel = pmt_channel_map.at(pmt_key);
+        Corrections & pmt_corrections = corrections.at(pmt_key);
         if(waveform_raw) {
             if(channel >= waveform_raw->size()) {
                 log_fatal("Could not find PMT (%i/%u) in '%s'",
@@ -517,9 +590,21 @@ void SumWaveforms::ProcessFrame(I3FramePtr frame) {
                     for(double & sample : wf) {
                         sample = -(sample + baseline_estimate.baseline);
                     }
+                    pmt_corrections.baseline = true;
                 }
             }
-            summed_waveform.AddWaveform(wf, reference_indices[pmt_key]);
+            if(allow_missing_) {
+                if(corrections_.count(pmt_key)) {
+                    Corrections const & previous_corrections = corrections_.at(pmt_key);
+                    if(previous_corrections != pmt_corrections) {
+                        log_fatal("Previous corrections for PMT (%i/%u) do not match current corrections! This should never happen!",
+                                pmt_key.GetRegion(), pmt_key.GetSensor());
+                    }
+                } else {
+                    corrections_[pmt_key] = pmt_corrections;
+                }
+            }
+            accumulated_waveforms_[pmt_key].AddWaveform(wf, reference_indices[pmt_key]);
         } else if(waveform_cal) {
             if(channel >= waveform_cal->size()) {
                 log_fatal("Could not find PMT (%i/%u) in '%s'",
@@ -527,43 +612,44 @@ void SumWaveforms::ProcessFrame(I3FramePtr frame) {
                         waveforms_key_.c_str());
             }
             CCMWaveformDouble const & waveform = waveform_cal->at(channel);
-            summed_waveform.AddWaveform(waveform.GetWaveform(), reference_indices[pmt_key]);
+            if(allow_missing_) {
+                if(corrections_.count(pmt_key)) {
+                    Corrections const & previous_corrections = corrections_.at(pmt_key);
+                    if(previous_corrections != pmt_corrections) {
+                        log_fatal("Previous corrections for PMT (%i/%u) do not match current corrections! This should never happen!",
+                                pmt_key.GetRegion(), pmt_key.GetSensor());
+                    }
+                } else {
+                    corrections_[pmt_key] = pmt_corrections;
+                }
+            }
+            accumulated_waveforms_[pmt_key].AddWaveform(waveform.GetWaveform(), reference_indices[pmt_key]);
         }
     }
-
-    std::deque<double> deque_samples = summed_waveform.GetSummedWaveform();
-    std::deque<unsigned int> deque_counts = summed_waveform.GetCounts();
-    int32_t fixed_position = summed_waveform.GetFixedPosition();
-
-    boost::shared_ptr<I3Vector<double>> p_samples = boost::make_shared<I3Vector<double>>(deque_samples.begin(), deque_samples.end());
-    boost::shared_ptr<I3Vector<uint32_t>> p_counts = boost::make_shared<I3Vector<uint32_t>>(deque_counts.begin(), deque_counts.end());
-    boost::shared_ptr<I3Int> p_fixed_position = boost::make_shared<I3Int>(fixed_position);
-
-    frame->Put((output_prefix_).c_str(), p_samples);
-    frame->Put((output_prefix_ + "Counts").c_str(), p_counts);
-    frame->Put((output_prefix_ + "FixedPosition").c_str(), p_fixed_position);
 }
 
-SumWaveforms::SumWaveforms(const I3Context& context) : I3ConditionalModule(context) {
+AccumulateIndividualPMTWaveforms::AccumulateIndividualPMTWaveforms(const I3Context& context) : I3ConditionalModule(context) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string(I3DefaultName<CCMCalibration>::value()));
     AddParameter("NIMPulsesName", "Key for NIMPulses", std::string("NIMPulses"));
     AddParameter("BCMSummaryName", "Key for BCMSummary", std::string("BCMSummary"));
     AddParameter("BaselineEstimatesName", "Key for BaselineEstimates", std::string("BaselineEstimates"));
     AddParameter("WaveformsKey", "Key for Waveforms", std::string("CCMWaveforms"));
-    AddParameter("OutputPrefix", "Prefix for the module output", std::string("SummedWaveforms"));
+    AddParameter("OutputPrefix", "Prefix for the module output", std::string("AccumulatedWaveforms"));
+    AddParameter("ConsumeFrames", "Consume frames used as input?", bool(true));
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
-    AddParameter("PMTTypes", "PMTKeys to run over", I3Vector<CCMOMGeo::OMType>{CCMOMGeo::OMType::CCM8inCoated, CCMOMGeo::OMType::CCM8inUncoated});
     AddParameter("TriggerReferenceTime", "Use the trigger time as a reference time? This is the default", bool(false));
     AddParameter("BCMReferenceTime", "Use the Beam Current Monitor start time as a reference time?", bool(false));
     AddParameter("ReferenceTimeKey", "Name of a frame key that contains an I3Map<CCMPMTKey, int32_t> for the PMT reference indices", std::string(""));
     AddParameter("CorrectNIMPulseTime", "Correct for channel 15 NIM pulse arrival time?", bool(true));
     AddParameter("CorrectElectronTransitTime", "Correct for PMT electron transit time?", bool(true));
     AddParameter("CorrectBaselineAndInvertRawWaveforms", "Correct the baseline of raw waveforms and invert them?", bool(true));
+    AddParameter("AllowMissingInformationPerPMT", "Allow information to be missing from the frame?", bool(false));
     AddParameter("SkipMissingInformation", "Skip frames that are missing information?", bool(false));
+    AddParameter("OutputFrameType", "The type of frame to use in the ouptut. Default: DAQ", I3Frame::DAQ);
 }
 
-void SumWaveforms::Configure() {
+void AccumulateIndividualPMTWaveforms::Configure() {
     GetParameter("CCMGeometryName", geometry_key_);
     GetParameter("CCMCalibrationName", calibration_key_);
     GetParameter("NIMPulsesName", nim_pulses_key_);
@@ -571,15 +657,17 @@ void SumWaveforms::Configure() {
     GetParameter("BaselineEstimatesName", baseline_estimates_key_);
     GetParameter("WaveformsKey", waveforms_key_);
     GetParameter("OutputPrefix", output_prefix_);
+    GetParameter("ConsumeFrames", consume_frames_);
     GetParameter("PMTKeys", allowed_pmt_keys_);
-    GetParameter("PMTTypes", allowed_pmt_types_);
     GetParameter("TriggerReferenceTime", trigger_reference_time_);
     GetParameter("BCMReferenceTime", bcm_reference_time_);
     GetParameter("ReferenceTimeKey", reference_time_key_);
     GetParameter("CorrectNIMPulseTime", correct_nim_pulse_time_);
     GetParameter("CorrectElectronTransitTime", correct_electron_transit_time_);
     GetParameter("CorrectBaselineAndInvertRawWaveforms", correct_baseline_and_invert_raw_waveforms_);
+    GetParameter("AllowMissingInformationPerPMT", allow_missing_);
     GetParameter("SkipMissingInformation", skip_missing_);
+    GetParameter("OutputFrameType", output_frame_type_);
 
     // Preemtively sort the allowed_pmt_keys_ so they're ready for the Geometry function
     if(allowed_pmt_keys_.size() > 0)
@@ -610,7 +698,12 @@ void SumWaveforms::Configure() {
     }
 }
 
-void SumWaveforms::Geometry(I3FramePtr frame) {
+void AccumulateIndividualPMTWaveforms::Geometry(I3FramePtr frame) {
+    // Dump the accumulated waveforms if we get a new geometry
+    if(geo_seen_) {
+        DumpWaveforms();
+    }
+
     // Assumes allowed_pmt_keys_ is already sorted
     CCMGeometryConstPtr geo = frame->Get<CCMGeometryConstPtr>(geometry_key_);
     if (!geo)
@@ -627,17 +720,7 @@ void SumWaveforms::Geometry(I3FramePtr frame) {
 
     // Assume we're doing all PMTs if none are specified
     if(allowed_pmt_keys_.size() == 0) {
-        if(allowed_pmt_types_.size() == 0) {
-            pmt_keys_ = geo_keys;
-        } else {
-            // Clear the final pmt key list
-            pmt_keys_.clear();
-            // Fill the final pmt key list with the intersection of specified pmt types and those available in the geometry
-            for(CCMPMTKey const & pmt_key : geo_keys) {
-                if(std::find(allowed_pmt_types_.begin(), allowed_pmt_types_.end(), geo_.pmt_geo.at(pmt_key).omtype) != allowed_pmt_types_.end())
-                    pmt_keys_.push_back(pmt_key);
-            }
-        }
+        pmt_keys_ = geo_keys;
     } else {
         // Clear the final pmt key list
         pmt_keys_.clear();
@@ -656,10 +739,47 @@ void SumWaveforms::Geometry(I3FramePtr frame) {
         }
     }
 
+    // Initialize the accumulated waveforms
+    accumulated_waveforms_.clear();
+    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        if(accumulated_waveforms_.count(pmt_key) == 0) {
+            accumulated_waveforms_[pmt_key] = WaveformAccumulator();
+        }
+    }
+
     PushFrame(frame);
 }
 
-void SumWaveforms::DAQ(I3FramePtr frame) {
+void AccumulateIndividualPMTWaveforms::DAQ(I3FramePtr frame) {
     ProcessFrame(frame);
+    if(not consume_frames_)
+        PushFrame(frame);
+}
+
+void AccumulateIndividualPMTWaveforms::DumpWaveforms() {
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> p_samples = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<uint32_t>>> p_counts = boost::make_shared<I3Map<CCMPMTKey, std::vector<uint32_t>>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, int32_t>> p_fixed_positions = boost::make_shared<I3Map<CCMPMTKey, int32_t>>();
+
+    for(CCMPMTKey const & pmt_key : pmt_keys_) {
+        std::deque<double> deque_samples = accumulated_waveforms_[pmt_key].GetSummedWaveform();
+        std::deque<unsigned int> deque_counts = accumulated_waveforms_[pmt_key].GetCounts();
+        int32_t fixed_position = accumulated_waveforms_[pmt_key].GetFixedPosition();
+
+        p_samples->insert(std::make_pair<CCMPMTKey, std::vector<double>>(CCMPMTKey(pmt_key), std::vector<double>(deque_samples.begin(), deque_samples.end())));
+        p_counts->insert(std::make_pair<CCMPMTKey, std::vector<uint32_t>>(CCMPMTKey(pmt_key), std::vector<uint32_t>(deque_counts.begin(), deque_counts.end())));
+        p_fixed_positions->insert(std::make_pair<CCMPMTKey, int32_t>(CCMPMTKey(pmt_key), std::move(fixed_position)));
+    }
+
+    I3FramePtr frame = boost::make_shared<I3Frame>(output_frame_type_);
+
+    frame->Put((output_prefix_).c_str(), p_samples);
+    frame->Put((output_prefix_ + "Counts").c_str(), p_counts);
+    frame->Put((output_prefix_ + "FixedPosition").c_str(), p_fixed_positions);
     PushFrame(frame);
+}
+
+void AccumulateIndividualPMTWaveforms::Finish() {
+    DumpWaveforms();
+    Flush();
 }
