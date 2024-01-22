@@ -78,9 +78,14 @@ class PhotonPropagation: public I3Module {
     std::vector<std::vector<double>> pmt_parsed_information_;
 
     // similar place to store relevant information about our secondary locations
+    // for our secondary locations, I think we can probably also pre-compute the yield and travel time for 1 photon from each location to each pmt
     // x_loc, y_loc, z_loc, facing_direction_x, facing_direction_y, facing_direction_z, TPB portion, facing area, side area
     std::vector<std::vector<double>> locations_to_check_information_;
+    std::vector<std::vector<double>> locations_to_check_to_pmt_yield_;
+    std::vector<std::vector<double>> locations_to_check_to_pmt_travel_time_;
 
+    // place to store list of vertices to simulate
+    std::vector<std::vector<double>> verticies_to_simuate_;
     unsigned int coated_omtype = (unsigned int)10;
     unsigned int uncoated_omtype = (unsigned int)20;
 
@@ -138,7 +143,6 @@ public:
     PhotonPropagation(const I3Context&);
     void Configure();
     void Geometry(I3FramePtr frame);
-    //void Finish();
     void Physics(I3FramePtr frame);
 };
 
@@ -158,9 +162,9 @@ PhotonPropagation::PhotonPropagation(const I3Context& context) : I3Module(contex
         AddParameter("sigma", "sigma for GEV function to smear light", (double)1.0);
         AddParameter("xi", "xi for GEV function to smear light", (double)0.5);
         AddParameter("NConvolutionChunks", "number of chunks to convolve over", (size_t)200);
-        AddParameter("ChunkWidth", "width to chunk up the sides of the detector for light propagation", 5.0);
-        AddParameter("ChunkHeight", "height to chunk up the sides of the detector for light propagation", 5.0);
-        AddParameter("NChunksTop", "number of chunks to split top and bottom faces of detector into", 50.0);
+        AddParameter("ChunkWidth", "width to chunk up the sides of the detector for light propagation", 5.0); // used to be 5
+        AddParameter("ChunkHeight", "height to chunk up the sides of the detector for light propagation", 5.0); // used to be 5
+        AddParameter("NChunksTop", "number of chunks to split top and bottom faces of detector into", 50.0); // used to be 50
         AddParameter("TPBPortion", "portion of light that tpb reflects", 1.0);
         AddParameter("NEventsToSimulate", "number of events we want to simulate for sodium source like ensemble", (size_t)1000);
         AddParameter("UVAbsorptionLength", "how far UV light travels in cm before 1/e is absorped", 40.0);
@@ -168,7 +172,7 @@ PhotonPropagation::PhotonPropagation(const I3Context& context) : I3Module(contex
         AddParameter("NPhotonsProduced", "how many photons are produced in this event (~40,000 photons/MeV is the hope)", 40000.0);
         AddParameter("OutputName", "Key to save output CCMWaveformDoubleSeries to", std::string("CCMCalibratedWaveforms"));
         AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)0);
-        AddParameter("MaxCachedVertices", "The maximum number of vertices this module is allowed to have cached", (size_t)(1000));
+        AddParameter("MaxCachedVertices", "The maximum number of vertices this module is allowed to have cached", (size_t)(2000));
 }
 
 
@@ -202,6 +206,257 @@ void  PhotonPropagation::Configure() {
     }
 }
 
+void get_ray_intersections(double const & x,
+                           double const & y,
+                           double const & z,
+                           double const & nx,
+                           double const & ny,
+                           double const & nz,
+                           double const & cz2,
+                           double & return_x,
+                           double & return_y,
+                           double & return_z){
+    double nx2 = std::pow(nx, 2);
+    double ny2 = std::pow(ny, 2);
+    double nr2 = nx2 + ny2;
+    double nr = std::sqrt(nr2);
+    double r0_2 = std::pow(x, 2) + std::pow(y, 2);
+    double r0 = std::sqrt(r0_2);
+
+    // now let's check for intersection with lower z cap
+    double t1 = (cz2 - z) / nz;
+    double xx = x + nx * t1;
+    double yy = y + ny * t1;
+    double zz = cz2;
+    return_x = xx;
+    return_y = yy;
+    return_z = zz;
+
+}
+
+void check_escape(double const & x,
+                  double const & y,
+                  double const & z,
+                  double const & nx,
+                  double const & ny,
+                  double const & nz,
+                  double const & source_rod_lower_end_cap,
+                  double const & detector_radius,
+                  double const & decay_constant,
+                  double const & pos_rad,
+                  double const & detector_lower_end_cap,
+                  std::mt19937 & gen,
+                  std::uniform_real_distribution<double> & dis_0_1,
+                  bool & escaped,
+                  double & final_x,
+                  double & final_y,
+                  double & final_z){
+
+    // first let's get our intersection
+    double x1;
+    double y1;
+    double z1;
+    get_ray_intersections(x, y, z, nx, ny, nz, source_rod_lower_end_cap, x1, y1, z1);
+
+    // need to check the radius of intersection
+    double intersection_radius = std::sqrt(std::pow(x1, 2) + std::pow(y1, 2));
+
+    // Generate a random number
+    double cdf_prob = dis_0_1(gen);
+    // distance travelled
+    double dist = -decay_constant * std::log(cdf_prob + 1/decay_constant);
+
+    if (intersection_radius < pos_rad){
+
+        // now let's check if inside the detector
+        final_x = x + dist * nx;
+        final_y = y + dist * ny;
+        final_z = z + dist * nz;
+
+        if (-detector_radius < final_x  and final_x < detector_radius and -detector_radius < final_y  and final_y < detector_radius and detector_lower_end_cap < final_z){
+            escaped = true;
+            if (final_z > 0){
+                escaped = false;
+            }
+        }
+    }
+
+    if (intersection_radius >= pos_rad){
+        // ok so we are a sodium photon going up through the rod... about 1/3 chance of survival (this is pretty ad hoc..)
+        double survival = dis_0_1(gen);
+        if (survival > 1.0/3.0){
+            escaped = false;
+        }
+        else{
+            // now let's check if inside the detector
+            final_x = x + dist * nx;
+            final_y = y + dist * ny;
+            final_z = z + dist * nz;
+
+            if (-detector_radius < final_x  and final_x < detector_radius and -detector_radius < final_y  and final_y < detector_radius and detector_lower_end_cap < final_z){
+                escaped = true;
+            }
+        }
+    }
+
+}
+
+void get_1275kev_photon(double const & source_diameter,
+                        double const & source_rod_lower_end_cap,
+                        double const & pos_rad,
+                        double const & decay_constant,
+                        double const & detector_radius,
+                        double const & detector_lower_end_cap,
+                        std::mt19937 & gen,
+                        std::uniform_real_distribution<double> & dis_angle,
+                        std::uniform_real_distribution<double> & dis_0_1,
+                        std::uniform_real_distribution<double> & dis_neg_1_1,
+                        bool & escaped,
+                        double & final_x,
+                        double & final_y,
+                        double & final_z){
+    // let's get an initial position
+    double theta_pos = dis_angle(gen);
+    double r = std::sqrt(dis_0_1(gen)) * source_diameter/2;
+    double x = r * std::cos(theta_pos);
+    double y = r * std::sin(theta_pos);
+    double z = 0;
+
+    // now let's get an initial direction
+    double phi = dis_angle(gen);
+    double cos_theta = dis_neg_1_1(gen);
+    double theta = std::acos(cos_theta);
+    double nx = std::cos(phi) * std::sin(theta);
+    double ny = std::sin(phi) * std::sin(theta);
+    double nz = std::cos(theta);
+
+    // now let's see if the event escapes the rod
+    check_escape(x, y, z, nx, ny, nz, source_rod_lower_end_cap, detector_radius, decay_constant, pos_rad, detector_lower_end_cap, gen, dis_0_1, escaped, final_x, final_y, final_z);
+}
+
+void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
+                                                     double const & vertex_y,
+                                                     double const & vertex_z,
+                                                     double const & loc_x,
+                                                     double const & loc_y,
+                                                     double const & loc_z,
+                                                     double const & facing_dir_x,
+                                                     double const & facing_dir_y,
+                                                     double const & facing_dir_z,
+                                                     double const & facing_area,
+                                                     double const & side_area,
+                                                     double & omega,
+                                                     double & D){
+    double v_to_loc_dir_x = loc_x - vertex_x;
+    double v_to_loc_dir_y = loc_y - vertex_y;
+    double v_to_loc_dir_z = loc_z - vertex_z;
+
+    double v_to_loc_dir_norm = std::sqrt(std::pow(v_to_loc_dir_x, 2) + std::pow(v_to_loc_dir_y, 2) + std::pow(v_to_loc_dir_z, 2));
+    v_to_loc_dir_x /= v_to_loc_dir_norm;
+    v_to_loc_dir_y /= v_to_loc_dir_norm;
+    v_to_loc_dir_z /= v_to_loc_dir_norm;
+
+    double dot = std::abs((v_to_loc_dir_x * facing_dir_x) + (v_to_loc_dir_y * facing_dir_y) + (v_to_loc_dir_z * facing_dir_z));
+    double effective_area = facing_area * dot + (1.0 - dot) * side_area;
+    double effective_radius = std::sqrt(effective_area / M_PI);
+    double effective_diameter = 2.0 * effective_radius;
+
+    D = std::sqrt(std::pow(loc_x - vertex_x, 2) + std::pow(loc_y - vertex_y, 2) + std::pow(loc_z - vertex_z, 2));
+    double d = effective_diameter;
+
+    if (D == 0.0){
+        omega = 2.0 * M_PI;
+    }
+    else {
+        double delta = 2.0 * std::atan(d / (2.0 * D)); // opening angle
+        omega = 2.0 * M_PI * (1 - std::cos(delta / 2.0));
+    }
+}
+
+void get_light_yield(double const & omega,
+                     double const & total_omega,
+                     double const & distance_travelled,
+                     double const & normalization,
+                     double const & absorption_length,
+                     double const & efficiency,
+                     double & light_yield){
+
+    light_yield = efficiency * (omega / total_omega) * normalization * std::exp(- distance_travelled / absorption_length);
+}
+
+void secondary_loc_to_pmt_propagation(double const & full_acceptance,
+                                      double const & c_cm_per_nsec,
+                                      double const & vis_index_of_refraction,
+                                      double const & quantum_efficiency,
+                                      double const & vis_absorption_length,
+                                      std::vector<std::vector<double>> const & pmt_parsed_information_,
+                                      double const & loc_x,
+                                      double const & loc_y,
+                                      double const & loc_z,
+                                      std::vector<double> & pmt_photon_yields,
+                                      std::vector<double> & pmt_photon_propagation_times){
+
+    // we pass this function two vectors to store yields and time offsets for charge in each ptm
+    // let's define some things
+    bool is_visible = true; // we are propagating wavelengthshifted visible light from TPB locs to PMTs...always visible!
+    double n_photons_produced = 1.0; // we are only propagating 1 photons! so we can mulitply by actually number of photons later on!
+
+    double efficiency;
+    double omega;
+    double distance_travelled;
+    double photons_in_this_pmt;
+    double travel_time;
+    double pmt_x_loc;
+    double pmt_y_loc;
+    double pmt_z_loc;
+    double facing_dir_x;
+    double facing_dir_y;
+    double facing_dir_z;
+    double coating_flag;
+    double pmt_facing_area;
+    double pmt_side_area;
+
+    // let's start by looping over our pmt parsed information
+    for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
+        efficiency = 1.0; // this describes light that goes into pmts
+                          // for vis light on coated, it's 0.5
+                          // for vis light on unocated, it's 1.0
+
+        pmt_x_loc = pmt_parsed_information_[pmt_it][0];
+        pmt_y_loc = pmt_parsed_information_[pmt_it][1];
+        pmt_z_loc = pmt_parsed_information_[pmt_it][2];
+        facing_dir_x = pmt_parsed_information_[pmt_it][3];
+        facing_dir_y = pmt_parsed_information_[pmt_it][4];
+        facing_dir_z = pmt_parsed_information_[pmt_it][5];
+        coating_flag = pmt_parsed_information_[pmt_it][6]; // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
+        pmt_facing_area = pmt_parsed_information_[pmt_it][7];
+        pmt_side_area = pmt_parsed_information_[pmt_it][8];
+
+        // let's get solid angle and distance from loc to this pmt
+        get_solid_angle_and_distance_vertex_to_location(loc_x, loc_y, loc_z,
+                                                     pmt_x_loc, pmt_y_loc, pmt_z_loc,
+                                                     facing_dir_x, facing_dir_y, facing_dir_z,
+                                                     pmt_facing_area, pmt_side_area, omega, distance_travelled);
+
+       // now let's do a check for the efficiency
+        if (is_visible and coating_flag == 1.0){
+            // visible light on coated pmts
+            efficiency = 0.5;
+        }
+
+        // now call function to get light yields
+        get_light_yield(omega, full_acceptance, distance_travelled, n_photons_produced, vis_absorption_length, efficiency, photons_in_this_pmt);
+        photons_in_this_pmt *= quantum_efficiency;
+
+        // ok so we have the photons seen by this pmt, let's get the propagation times
+        travel_time = distance_travelled / (c_cm_per_nsec / vis_index_of_refraction); // units of nsec
+
+        // now all that's left to do is save!
+        pmt_photon_yields.push_back(photons_in_this_pmt);
+        pmt_photon_propagation_times.push_back(travel_time);
+    }
+
+}
 void PhotonPropagation::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
@@ -210,6 +465,8 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
     I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo = geo.pmt_geo;
     std::vector<double> this_pmt_info (9);
     std::vector<double> this_loc_info (9);
+    std::vector<double> loc_to_pmt_photon_yields;
+    std::vector<double> loc_to_pmt_photon_propagation_times;
 
     for(std::pair<CCMPMTKey const, CCMOMGeo> const & it : pmt_geo) {
         CCMPMTType omtype = it.second.omtype;
@@ -347,6 +604,16 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
                 this_loc_info.push_back(area_side_chunks);
                 this_loc_info.push_back(area_side_chunks * chunk_side_area_factor);
                 locations_to_check_information_.push_back(this_loc_info);
+
+                // we are also going to pre-compute the light yield from 1 visible photon from this loc to every pmt
+                // as well as the travel time for that 1 photon to go from this loc to every pmt
+                loc_to_pmt_photon_yields.clear();
+                loc_to_pmt_photon_propagation_times.clear();
+                secondary_loc_to_pmt_propagation(full_acceptance, c_cm_per_nsec, vis_index_of_refraction, pmt_quantum_efficiency,
+                                                 visible_absorption_length_, pmt_parsed_information_, loc_x, loc_y, loc_z,
+                                                 loc_to_pmt_photon_yields, loc_to_pmt_photon_propagation_times);
+                locations_to_check_to_pmt_yield_.push_back(loc_to_pmt_photon_yields);
+                locations_to_check_to_pmt_travel_time_.push_back(loc_to_pmt_photon_propagation_times);
             }
         }
 
@@ -441,6 +708,16 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
                 this_loc_info.push_back(area_face_chunks);
                 this_loc_info.push_back(area_face_chunks * chunk_side_area_factor);
                 locations_to_check_information_.push_back(this_loc_info);
+
+                // we are also going to pre-compute the light yield from 1 visible photon from this loc to every pmt
+                // as well as the travel time for that 1 photon to go from this loc to every pmt
+                loc_to_pmt_photon_yields.clear();
+                loc_to_pmt_photon_propagation_times.clear();
+                secondary_loc_to_pmt_propagation(full_acceptance, c_cm_per_nsec, vis_index_of_refraction, pmt_quantum_efficiency,
+                                                 visible_absorption_length_, pmt_parsed_information_, this_x, this_y, z_top,
+                                                 loc_to_pmt_photon_yields, loc_to_pmt_photon_propagation_times);
+                locations_to_check_to_pmt_yield_.push_back(loc_to_pmt_photon_yields);
+                locations_to_check_to_pmt_travel_time_.push_back(loc_to_pmt_photon_propagation_times);
             }
 
             if (save_bottom_loc){
@@ -460,9 +737,65 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
                 this_loc_info.push_back(area_face_chunks);
                 this_loc_info.push_back(area_face_chunks * chunk_side_area_factor);
                 locations_to_check_information_.push_back(this_loc_info);
+
+                // we are also going to pre-compute the light yield from 1 visible photon from this loc to every pmt
+                // as well as the travel time for that 1 photon to go from this loc to every pmt
+                loc_to_pmt_photon_yields.clear();
+                loc_to_pmt_photon_propagation_times.clear();
+                secondary_loc_to_pmt_propagation(full_acceptance, c_cm_per_nsec, vis_index_of_refraction, pmt_quantum_efficiency,
+                                                 visible_absorption_length_, pmt_parsed_information_, this_x, this_y, z_bottom,
+                                                 loc_to_pmt_photon_yields, loc_to_pmt_photon_propagation_times);
+                locations_to_check_to_pmt_yield_.push_back(loc_to_pmt_photon_yields);
+                locations_to_check_to_pmt_travel_time_.push_back(loc_to_pmt_photon_propagation_times);
             }
 
 
+        }
+    }
+
+    // while we're pre-computing things, let's also pre-compute verticies for our ensemble of sodium events
+    // let's make some random number generators that we will pass to our functions
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    // Create a uniform distribution between 0 and 1
+    std::uniform_real_distribution<double> dis_0_1(0.0, 1.0);
+    // Create a uniform distribution between -1 and 1
+    std::uniform_real_distribution<double> dis_neg_1_1(-1.0, 1.0);
+    // Create a uniform distribution between 0 and 2pi
+    std::uniform_real_distribution<double> dis_angle(0.0, 2.0*M_PI);
+
+    // let's throw some sodium events and get a list of verticies to simulate!
+    bool escaped;
+    double final_x;
+    double final_y;
+    double final_z;
+    std::vector<double> this_vertex (3);
+
+    for (size_t event_it = 0; event_it < 10 * n_events_to_simulate_; event_it ++){
+        if (total_events_that_escaped < n_events_to_simulate_){
+            get_1275kev_photon(source_diameter,
+                               source_rod_lower_end_cap,
+                               pos_rad,
+                               decay_constant,
+                               detector_radius,
+                               detector_lower_end_cap,
+                               gen,
+                               dis_angle,
+                               dis_0_1,
+                               dis_neg_1_1,
+                               escaped,
+                               final_x,
+                               final_y,
+                               final_z);
+            if (escaped){
+                total_events_that_escaped += 1;
+                // let's save this vertex!
+                this_vertex.clear();
+                this_vertex.push_back(final_x);
+                this_vertex.push_back(final_y);
+                this_vertex.push_back(final_z);
+                verticies_to_simuate_.push_back(this_vertex);
+            }
         }
     }
 
@@ -621,186 +954,8 @@ void get_total_light_profile(double const & R_s,
 
 }
 
-void get_ray_intersections(double const & x,
-                           double const & y,
-                           double const & z,
-                           double const & nx,
-                           double const & ny,
-                           double const & nz,
-                           double const & cz2,
-                           double & return_x,
-                           double & return_y,
-                           double & return_z){
-    double nx2 = std::pow(nx, 2);
-    double ny2 = std::pow(ny, 2);
-    double nr2 = nx2 + ny2;
-    double nr = std::sqrt(nr2);
-    double r0_2 = std::pow(x, 2) + std::pow(y, 2);
-    double r0 = std::sqrt(r0_2);
-
-    // now let's check for intersection with lower z cap
-    double t1 = (cz2 - z) / nz;
-    double xx = x + nx * t1;
-    double yy = y + ny * t1;
-    double zz = cz2;
-    return_x = xx;
-    return_y = yy;
-    return_z = zz;
-
-}
-
-void check_escape(double const & x,
-                  double const & y,
-                  double const & z,
-                  double const & nx,
-                  double const & ny,
-                  double const & nz,
-                  double const & source_rod_lower_end_cap,
-                  double const & detector_radius,
-                  double const & decay_constant,
-                  double const & pos_rad,
-                  double const & detector_lower_end_cap,
-                  std::mt19937 & gen,
-                  std::uniform_real_distribution<double> & dis_0_1,
-                  bool & escaped,
-                  double & final_x,
-                  double & final_y,
-                  double & final_z){
-
-    // first let's get our intersection
-    double x1;
-    double y1;
-    double z1;
-    get_ray_intersections(x, y, z, nx, ny, nz, source_rod_lower_end_cap, x1, y1, z1);
-
-    // need to check the radius of intersection
-    double intersection_radius = std::sqrt(std::pow(x1, 2) + std::pow(y1, 2));
-
-    // Generate a random number
-    double cdf_prob = dis_0_1(gen);
-    // distance travelled
-    double dist = -decay_constant * std::log(cdf_prob + 1/decay_constant);
-
-    if (intersection_radius < pos_rad){
-
-        // now let's check if inside the detector
-        final_x = x + dist * nx;
-        final_y = y + dist * ny;
-        final_z = z + dist * nz;
-
-        if (-detector_radius < final_x  and final_x < detector_radius and -detector_radius < final_y  and final_y < detector_radius and detector_lower_end_cap < final_z){
-            escaped = true;
-            if (final_z > 0){
-                escaped = false;
-            }
-        }
-    }
-
-    if (intersection_radius >= pos_rad){
-        // ok so we are a sodium photon going up through the rod... about 1/3 chance of survival (this is pretty ad hoc..)
-        double survival = dis_0_1(gen);
-        if (survival > 1.0/3.0){
-            escaped = false;
-        }
-        else{
-            // now let's check if inside the detector
-            final_x = x + dist * nx;
-            final_y = y + dist * ny;
-            final_z = z + dist * nz;
-
-            if (-detector_radius < final_x  and final_x < detector_radius and -detector_radius < final_y  and final_y < detector_radius and detector_lower_end_cap < final_z){
-                escaped = true;
-            }
-        }
-    }
-
-}
-
-void get_1275kev_photon(double const & source_diameter,
-                        double const & source_rod_lower_end_cap,
-                        double const & pos_rad,
-                        double const & decay_constant,
-                        double const & detector_radius,
-                        double const & detector_lower_end_cap,
-                        std::mt19937 & gen,
-                        std::uniform_real_distribution<double> & dis_angle,
-                        std::uniform_real_distribution<double> & dis_0_1,
-                        std::uniform_real_distribution<double> & dis_neg_1_1,
-                        bool & escaped,
-                        double & final_x,
-                        double & final_y,
-                        double & final_z){
-    // let's get an initial position
-    double theta_pos = dis_angle(gen);
-    double r = std::sqrt(dis_0_1(gen)) * source_diameter/2;
-    double x = r * std::cos(theta_pos);
-    double y = r * std::sin(theta_pos);
-    double z = 0;
-
-    // now let's get an initial direction
-    double phi = dis_angle(gen);
-    double cos_theta = dis_neg_1_1(gen);
-    double theta = std::acos(cos_theta);
-    double nx = std::cos(phi) * std::sin(theta);
-    double ny = std::sin(phi) * std::sin(theta);
-    double nz = std::cos(theta);
-
-    // now let's see if the event escapes the rod
-    check_escape(x, y, z, nx, ny, nz, source_rod_lower_end_cap, detector_radius, decay_constant, pos_rad, detector_lower_end_cap, gen, dis_0_1, escaped, final_x, final_y, final_z);
-}
 
 //time for the meaty functions...actually propagating light!
-void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
-                                                     double const & vertex_y,
-                                                     double const & vertex_z,
-                                                     double const & loc_x,
-                                                     double const & loc_y,
-                                                     double const & loc_z,
-                                                     double const & facing_dir_x,
-                                                     double const & facing_dir_y,
-                                                     double const & facing_dir_z,
-                                                     double const & facing_area,
-                                                     double const & side_area,
-                                                     double & omega,
-                                                     double & D){
-    double v_to_loc_dir_x = loc_x - vertex_x;
-    double v_to_loc_dir_y = loc_y - vertex_y;
-    double v_to_loc_dir_z = loc_z - vertex_z;
-
-    double v_to_loc_dir_norm = std::sqrt(std::pow(v_to_loc_dir_x, 2) + std::pow(v_to_loc_dir_y, 2) + std::pow(v_to_loc_dir_z, 2));
-    v_to_loc_dir_x /= v_to_loc_dir_norm;
-    v_to_loc_dir_y /= v_to_loc_dir_norm;
-    v_to_loc_dir_z /= v_to_loc_dir_norm;
-
-    double dot = std::abs((v_to_loc_dir_x * facing_dir_x) + (v_to_loc_dir_y * facing_dir_y) + (v_to_loc_dir_z * facing_dir_z));
-    double effective_area = facing_area * dot + (1.0 - dot) * side_area;
-    double effective_radius = std::sqrt(effective_area / M_PI);
-    double effective_diameter = 2.0 * effective_radius;
-
-    D = std::sqrt(std::pow(loc_x - vertex_x, 2) + std::pow(loc_y - vertex_y, 2) + std::pow(loc_z - vertex_z, 2));
-    double d = effective_diameter;
-
-    if (D == 0.0){
-        omega = 2.0 * M_PI;
-    }
-    else {
-        double delta = 2.0 * std::atan(d / (2.0 * D)); // opening angle
-        omega = 2.0 * M_PI * (1 - std::cos(delta / 2.0));
-    }
-}
-
-void get_light_yield(double const & omega,
-                     double const & total_omega,
-                     double const & distance_travelled,
-                     double const & normalization,
-                     double const & absorption_length,
-                     double const & efficiency,
-                     double & light_yield){
-
-    light_yield = efficiency * (omega / total_omega) * normalization * std::exp(- distance_travelled / absorption_length);
-}
-
-
 void vertex_to_pmt_propagation(double const & full_acceptance,
                                double const & c_cm_per_nsec,
                                double const & uv_index_of_refraction,
@@ -834,7 +989,7 @@ void vertex_to_pmt_propagation(double const & full_acceptance,
     double pmt_facing_area;
     double pmt_side_area;
 
-    // let's start by looping our our pmt parsed information
+    // let's start by looping over our pmt parsed information
     for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
         efficiency = 1.0; // this describes light that goes into pmts...so for UV light on coated it will be changed to 0.5
                           // for vis light on coated, it's 0.5
@@ -893,17 +1048,21 @@ void vertex_to_pmt_propagation(double const & full_acceptance,
 
 }
 
-void vertex_to_TPB_propagation(double const & full_acceptance,
-                               double const & c_cm_per_nsec,
-                               double const & uv_index_of_refraction,
-                               double const & n_photons_produced,
-                               double const & absorption_length,
-                               std::vector<std::vector<double>> const & locations_to_check_information_,
-                               double const & vertex_x,
-                               double const & vertex_y,
-                               double const & vertex_z,
-                               std::vector<double> & secondary_location_photon_yields,
-                               std::vector<double> & secondary_location_photon_propagation_times){
+// I bet we can combine vertex_to_TPB_propagation and TPB_to_PMT_propagation functions into 1...
+void vertex_to_TPB_to_PMT_propagation(double const & full_acceptance,
+                            double const & c_cm_per_nsec,
+                            double const & uv_index_of_refraction,
+                            double const & UV_absorption_length,
+                            double const & vertex_x,
+                            double const & vertex_y,
+                            double const & vertex_z,
+                            double const & n_photons_produced,
+                            std::vector<std::vector<double>> const & pmt_parsed_information_,
+                            std::vector<std::vector<double>> const & locations_to_check_information_,
+                            std::vector<std::vector<double>> const & locations_to_check_to_pmt_yield_,
+                            std::vector<std::vector<double>> const & locations_to_check_to_pmt_travel_time_,
+                            std::vector<std::vector<double>> & cumulative_pmt_photon_yields,
+                            std::vector<std::vector<double>> & cumulative_pmt_photon_propagation_times){
     // define some things
     double omega;
     double distance_travelled;
@@ -918,6 +1077,8 @@ void vertex_to_TPB_propagation(double const & full_acceptance,
     double pmt_portion;
     double facing_area;
     double side_area;
+    std::vector<double> loc_to_pmt_photon_yields;
+    std::vector<double> loc_to_pmt_photon_propagation_times;
 
     // let's start by looping our our secondary locations parsed information
     for (size_t loc_it = 0; loc_it < locations_to_check_information_.size(); loc_it ++){
@@ -938,74 +1099,24 @@ void vertex_to_TPB_propagation(double const & full_acceptance,
                                                         facing_dir_x, facing_dir_y, facing_dir_z,
                                                         facing_area, side_area, omega, distance_travelled);
         // now call function to get light yields
-        get_light_yield(omega, full_acceptance, distance_travelled, n_photons_produced, absorption_length, pmt_portion, photons_at_secondary_location);
+        // we are propagating scint light from vertex to TPB locs, so want to use UV absorption length
+        get_light_yield(omega, full_acceptance, distance_travelled, n_photons_produced, UV_absorption_length, pmt_portion, photons_at_secondary_location);
 
         // now let's get the travel time as well
         travel_time = distance_travelled / (c_cm_per_nsec / uv_index_of_refraction); // units of nsec
 
-        // now time to save
-        secondary_location_photon_yields.push_back(photons_at_secondary_location);
-        secondary_location_photon_propagation_times.push_back(travel_time);
-    }
-}
-
-void TPB_to_PMT_propagation(double const & full_acceptance,
-                            double const & c_cm_per_nsec,
-                            double const & uv_index_of_refraction,
-                            double const & vis_index_of_refraction,
-                            double const & quantum_efficiency,
-                            double const & absorption_length,
-                            std::vector<std::vector<double>> const & pmt_parsed_information_,
-                            bool const & is_visible,
-                            std::vector<double> const & secondary_location_photon_yields,
-                            std::vector<double> const & secondary_location_photon_propagation_times,
-                            std::vector<std::vector<double>> const & locations_to_check_information_,
-                            std::vector<std::vector<double>> & cumulative_pmt_photon_yields,
-                            std::vector<std::vector<double>> & cumulative_pmt_photon_propagation_times){
-
-    // last propagation step! figure out how light from locs around the detector propagate into pmts
-    double this_loc_photon_yields;
-    double this_loc_photon_propagation_times;
-    std::vector<double> pmt_photon_yields;
-    std::vector<double> pmt_photon_propagation_times;
-    double loc_x;
-    double loc_y;
-    double loc_z;
-
-    // loop over secondary location yields
-    for (size_t loc_it = 0; loc_it < secondary_location_photon_yields.size(); loc_it ++){
-        loc_x = locations_to_check_information_[loc_it][0];
-        loc_y = locations_to_check_information_[loc_it][1];
-        loc_z = locations_to_check_information_[loc_it][2];
-
-        // let's get photon yields and travel times at this location
-        this_loc_photon_yields = secondary_location_photon_yields[loc_it];
-        this_loc_photon_propagation_times = secondary_location_photon_propagation_times[loc_it];
-
-        // now let's get pmt yields
-        // first clear out our vectors where we are going to save charge in each pmt to
-        pmt_photon_yields.clear();
-        pmt_photon_propagation_times.clear();
-        vertex_to_pmt_propagation(full_acceptance,
-                                  c_cm_per_nsec,
-                                  uv_index_of_refraction,
-                                  vis_index_of_refraction,
-                                  quantum_efficiency,
-                                  this_loc_photon_yields,
-                                  absorption_length,
-                                  pmt_parsed_information_,
-                                  is_visible,
-                                  loc_x,
-                                  loc_y,
-                                  loc_z,
-                                  pmt_photon_yields,
-                                  pmt_photon_propagation_times);
+        // now we've already pre-computed the light yield for 1 photon going from every secondary loc to each pmt
+        // as well as that photon's travel time
+        loc_to_pmt_photon_yields.clear();
+        loc_to_pmt_photon_propagation_times.clear();
+        loc_to_pmt_photon_yields = locations_to_check_to_pmt_yield_[loc_it];
+        loc_to_pmt_photon_propagation_times = locations_to_check_to_pmt_travel_time_[loc_it];
 
         // now we need to go through our vectors containing 1 element for every pmt and push_back to correct vector in our cumulative vector
-        for (size_t j = 0; j < pmt_photon_yields.size(); j++){
+        for (size_t j = 0; j < loc_to_pmt_photon_yields.size(); j++){
             // j is index of pmt
-            cumulative_pmt_photon_yields[j].push_back(pmt_photon_yields[j]);
-            cumulative_pmt_photon_propagation_times[j].push_back(pmt_photon_propagation_times[j] + this_loc_photon_propagation_times);
+            cumulative_pmt_photon_yields[j].push_back(loc_to_pmt_photon_yields[j] * photons_at_secondary_location);
+            cumulative_pmt_photon_propagation_times[j].push_back(loc_to_pmt_photon_propagation_times[j] + travel_time);
         }
     }
 
@@ -1091,6 +1202,8 @@ void put_simulation_steps_together(double const & full_acceptance,
                                    double const & vis_absorption_length,
                                    std::vector<std::vector<double>> const & pmt_parsed_information_,
                                    std::vector<std::vector<double>> const & locations_to_check_information_,
+                                   std::vector<std::vector<double>> const & locations_to_check_to_pmt_yield_,
+                                   std::vector<std::vector<double>> const & locations_to_check_to_pmt_travel_time_,
                                    double const & vertex_x,
                                    double const & vertex_y,
                                    double const & vertex_z,
@@ -1115,14 +1228,13 @@ void put_simulation_steps_together(double const & full_acceptance,
     vertex_to_pmt_propagation(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, quantum_efficiency,
                               n_photons_produced, UV_absorption_length, pmt_parsed_information_, is_visible, vertex_x, vertex_y, vertex_z,
                               direct_pmt_photon_yields, direct_pmt_photon_propagation_times);
+
     // now we propagate light from vertex to TPB locs
-    vertex_to_TPB_propagation(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, n_photons_produced, UV_absorption_length, locations_to_check_information_,
-                              vertex_x, vertex_y, vertex_z, secondary_location_photon_yields, secondary_location_photon_propagation_times);
-    // now let's propagate light from each TPB location to our PMTs
-    is_visible = true;
-    TPB_to_PMT_propagation(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, quantum_efficiency, vis_absorption_length,
-                           pmt_parsed_information_, is_visible, secondary_location_photon_yields, secondary_location_photon_propagation_times, locations_to_check_information_,
-                           cumulative_pmt_photon_yields, cumulative_pmt_photon_propagation_times);
+    vertex_to_TPB_to_PMT_propagation(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, UV_absorption_length,
+                                     vertex_x, vertex_y, vertex_z, n_photons_produced, pmt_parsed_information_,
+                                     locations_to_check_information_, locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_,
+                                     cumulative_pmt_photon_yields, cumulative_pmt_photon_propagation_times);
+
     // now we can put it all together by binning!
     get_yields_per_pmt(direct_pmt_photon_yields, direct_pmt_photon_propagation_times, cumulative_pmt_photon_yields, cumulative_pmt_photon_propagation_times,
                        light_times, light_profile, bin_centers, bin_width, binned_charges);
@@ -1139,6 +1251,8 @@ void FrameThread(std::atomic<bool> & running,
                  double const & vis_absorption_length,
                  std::vector<std::vector<double>> const & pmt_parsed_information_,
                  std::vector<std::vector<double>> const & locations_to_check_information_,
+                 std::vector<std::vector<double>> const & locations_to_check_to_pmt_yield_,
+                 std::vector<std::vector<double>> const & locations_to_check_to_pmt_travel_time_,
                  std::vector<double> * vertex,
                  std::vector<double> const & light_times,
                  std::vector<double> const & light_profile,
@@ -1149,6 +1263,7 @@ void FrameThread(std::atomic<bool> & running,
     // call simulation code
     put_simulation_steps_together(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, quantum_efficiency,
                                   n_photons_produced, UV_absorption_length, vis_absorption_length, pmt_parsed_information_, locations_to_check_information_,
+                                  locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_,
                                   vertex->at(0), vertex->at(1), vertex->at(2), light_times, light_profile, bin_centers, bin_width, binned_charges);
 
 
@@ -1167,6 +1282,8 @@ void RunFrameThread(PhotonPropagationJob * job,
                     double const & vis_absorption_length,
                     std::vector<std::vector<double>> const & pmt_parsed_information_,
                     std::vector<std::vector<double>> const & locations_to_check_information_,
+                    std::vector<std::vector<double>> const & locations_to_check_to_pmt_yield_,
+                    std::vector<std::vector<double>> const & locations_to_check_to_pmt_travel_time_,
                     std::vector<double> const & light_times,
                     std::vector<double> const & light_profile,
                     std::vector<double> const & bin_centers,
@@ -1185,6 +1302,8 @@ void RunFrameThread(PhotonPropagationJob * job,
                               std::cref(vis_absorption_length),
                               std::cref(pmt_parsed_information_),
                               std::cref(locations_to_check_information_),
+                              std::cref(locations_to_check_to_pmt_yield_),
+                              std::cref(locations_to_check_to_pmt_travel_time_),
                               job->vertex,
                               std::cref(light_times),
                               std::cref(light_profile),
@@ -1195,9 +1314,8 @@ void RunFrameThread(PhotonPropagationJob * job,
 
 void PhotonPropagation::Physics(I3FramePtr frame) {
     // will be used for multi-threading our simulation jobs
-    size_t vertex_index = 0;
     size_t min_vertex_idx = 0;
-    
+
     // first let's set up our light profile
     double start_time = 0.0;
     double end_time = 92.0;
@@ -1232,67 +1350,18 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
                             light_profile);
 
 
-    // ok so we've seen our geometry file, pre-computed the lists of locations to check for light propagation
+    // ok so we've seen our geometry file, pre-computed the lists of pmt info and locations to check for light propagation
+    // we've also pre-compute the verticies of each event we want to simulate
     // and we just computed our light profile....all that's left to do is propagate our light!
     // we have the parameter n_events_to_simulate_ which says how many simulated events we want (and then we aggregate)
 
-    // let's make some random number generators that we will pass to our functions
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    // Create a uniform distribution between 0 and 1
-    std::uniform_real_distribution<double> dis_0_1(0.0, 1.0);
-    // Create a uniform distribution between -1 and 1
-    std::uniform_real_distribution<double> dis_neg_1_1(-1.0, 1.0);
-    // Create a uniform distribution between 0 and 2pi
-    std::uniform_real_distribution<double> dis_angle(0.0, 2.0*M_PI);
-
-    // let's throw some sodium events and get a list of verticies to simulate!
-    bool escaped;
-    double final_x;
-    double final_y;
-    double final_z;
-    std::vector<double> this_vertex (3);
-    std::vector<std::vector<double>> verticies_to_simuate;
-
-    for (size_t event_it = 0; event_it < 10 * n_events_to_simulate_; event_it ++){
-        if (total_events_that_escaped < n_events_to_simulate_){
-            get_1275kev_photon(source_diameter,
-                               source_rod_lower_end_cap,
-                               pos_rad,
-                               decay_constant,
-                               detector_radius,
-                               detector_lower_end_cap,
-                               gen,
-                               dis_angle,
-                               dis_0_1,
-                               dis_neg_1_1,
-                               escaped,
-                               final_x,
-                               final_y,
-                               final_z);
-            if (escaped){
-                total_events_that_escaped += 1;
-                // let's save this vertex!
-                this_vertex.clear();
-                this_vertex.push_back(final_x);
-                this_vertex.push_back(final_y);
-                this_vertex.push_back(final_z);
-                verticies_to_simuate.push_back(this_vertex);
-            }
-        }
-    }
     // so now we can loop over our vector containing vector of verticies to simulate
     // let's make out final vector that we will be saving to
-    std::vector<std::vector<std::vector<double>>> all_events_binned_charges(n_pmts_to_simulate,
-                                                                            std::vector<std::vector<double>>(bin_centers.size(),
-                                                                            std::vector<double>(total_events_that_escaped, 0.0)));
-                                                                            // dimensions are n_pmts x n_time_bins x n_events
-
-    //std::vector<std::vector<double>> summed_over_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
+    std::vector<std::vector<double>> summed_over_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
     // loop over all verticies to simulate
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    for (size_t vert_it = 0; vert_it < verticies_to_simuate.size(); vert_it++){
+    for (size_t vert_it = 0; vert_it < verticies_to_simuate_.size(); vert_it++){
         // now ready to simulate.. this is where we want to dispatch our threads
         while(true) {
             // Check if any jobs have finished
@@ -1324,8 +1393,7 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
                     // let's save to all_events_binned_charges
                     for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                         for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                            //summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
-                            all_events_binned_charges[pmt_it][time_bin_it][results[i].vertex_index] = results[i].binned_charges->at(pmt_it)[time_bin_it];
+                            summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
                         }
                     }
                     results[i].binned_charges = nullptr;
@@ -1351,22 +1419,21 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
                 job = new PhotonPropagationJob();
                 job->running.store(false);
                 job->thread_index = running_jobs.size();
+                job->binned_charges = new std::vector<std::vector<double>>();
             }
 
             if(job != nullptr and results.size() < max_cached_vertices) {
                 job->running.store(true);
                 running_jobs.push_back(job);
-                job->vertex = &verticies_to_simuate[vertex_index];
-                job->vertex_index = vertex_index;
-                job->binned_charges = new std::vector<std::vector<double>>();
+                job->vertex_index = vert_it;
+                job->vertex = &verticies_to_simuate_[job->vertex_index];
                 results.emplace_back();
                 results.back().binned_charges = job->binned_charges;
                 results.back().vertex_index = job->vertex_index;
                 results.back().done = false;
-                vertex_index += 1;
                 RunFrameThread(job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, pmt_quantum_efficiency,
                                n_photons_produced_, UV_absorption_length_, visible_absorption_length_, pmt_parsed_information_, locations_to_check_information_,
-                               times, light_profile,bin_centers, bin_width);
+                               locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_, times, light_profile,bin_centers, bin_width);
                 break;
             } else if(job != nullptr) {
                 free_jobs.push_back(job);
@@ -1395,8 +1462,7 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
                 // let's save to all_events_binned_charges
                 for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                        //summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
-                        all_events_binned_charges[pmt_it][time_bin_it][results[i].vertex_index] = results[i].binned_charges->at(pmt_it)[time_bin_it];
+                        summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
                     }
                 }
                 results[i].binned_charges = nullptr;
@@ -1417,26 +1483,13 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
     std::vector<std::vector<double>> averaged_all_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
 
-    /*for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
+    for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
         for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
             averaged_all_events_binned_charges[pmt_it][time_bin_it] = summed_over_events_binned_charges[pmt_it][time_bin_it] / total_events_that_escaped;
         }
-    }*/
-
-    double this_pmt_this_time_bin_averaged_over_events;
-
-    for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-        for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-            this_pmt_this_time_bin_averaged_over_events = 0;
-            for (size_t event_it = 0; event_it < total_events_that_escaped; event_it++){
-                this_pmt_this_time_bin_averaged_over_events += all_events_binned_charges[pmt_it][time_bin_it][event_it];
-            }
-            this_pmt_this_time_bin_averaged_over_events /= total_events_that_escaped;
-            averaged_all_events_binned_charges[pmt_it][time_bin_it] = this_pmt_this_time_bin_averaged_over_events;
-        }
     }
 
-    /*// and let's print the summed wf to check
+    // and let's print the summed wf to check
     std::cout << "summed wf charges averaged over " << total_events_that_escaped <<  " events:" << std::endl;
     double total_charge_in_this_bin;
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it++){
@@ -1445,7 +1498,7 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
             total_charge_in_this_bin += averaged_all_events_binned_charges[pmt_it][time_bin_it];
         }
         std::cout << "at time = " << bin_centers[time_bin_it] << ", charge = " <<  total_charge_in_this_bin << std::endl;
-    }*/
+    }
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
