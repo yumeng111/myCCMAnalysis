@@ -35,3 +35,8 @@ i3_add_library(${PROJECT_NAME}
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services
 )
+i3_add_pybindings(${PROJECT_NAME}
+  private/pybindings/*.cxx
+  USE_TOOLS boost python
+  USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services daqtools
+  )

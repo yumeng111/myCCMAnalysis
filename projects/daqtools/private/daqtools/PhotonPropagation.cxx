@@ -32,179 +32,7 @@
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 #include "icetray/robust_statistics.h"
 #include <dataclasses/geometry/CCMGeometry.h>
-
-struct PhotonPropagationJob {
-    std::atomic<bool> running = false;
-    std::thread thread;
-    size_t thread_index = 0;
-    std::vector<double>* vertex = nullptr;
-    size_t vertex_index = 0;
-    std::vector<std::vector<double>>* binned_charges = nullptr; // this is where we save the binned charges for each pmt for each event
-};
-
-struct PhotonPropagationResult {
-    size_t vertex_index = 0;
-    std::vector<std::vector<double>>* binned_charges = nullptr; // this is where we save the binned charges for each pmt for each event
-    bool done = false;
-};
-
-class PhotonPropagation: public I3Module {
-    std::exception_ptr teptr = nullptr;
-    bool geo_seen;
-    std::string geometry_name_;
-    std::string output_name_;
-    double singlet_ratio_;
-    double triplet_ratio_;
-    double singlet_tau_;
-    double triplet_tau_;
-    double recombination_tau_;
-    double TPB_ratio_;
-    double TPB_tau_;
-    double smearing_mu_;
-    double smearing_sigma_;
-    double smearing_xi_;
-    size_t n_convolution_chunks_;
-    double desired_chunk_width_;
-    double desired_chunk_height_;
-    double n_chunks_top_;
-    double portion_light_reflected_by_tpb_;
-    size_t n_events_to_simulate_;
-    double UV_absorption_length_;
-    double visible_absorption_length_;
-    double n_photons_produced_;
-
-    // place to store relevant information about our pmts!!!
-    // pmt_x_loc, pmt_y_loc, pmt_z_loc, facing direction_x, facing_direction_y, facing_direction_z, coating flag, pmt facing area, pmt side area
-    std::vector<std::vector<double>> pmt_parsed_information_;
-
-    // similar place to store relevant information about our secondary locations
-    // for our secondary locations, I think we can probably also pre-compute the yield and travel time for 1 photon from each location to each pmt
-    // x_loc, y_loc, z_loc, facing_direction_x, facing_direction_y, facing_direction_z, TPB portion, facing area, side area
-    std::vector<std::vector<double>> locations_to_check_information_;
-    std::vector<std::vector<double>> locations_to_check_to_pmt_yield_;
-    std::vector<std::vector<double>> locations_to_check_to_pmt_travel_time_;
-
-    // place to store list of vertices to simulate
-    std::vector<std::vector<double>> verticies_to_simuate_;
-    unsigned int coated_omtype = (unsigned int)10;
-    unsigned int uncoated_omtype = (unsigned int)20;
-
-    // defining some geomtry things for modelling the detector...not the most elegant
-    double pmt_radius = 10.16; //radius in cm^2
-    double pmt_facing_area = M_PI * std::pow(pmt_radius, 2);
-    double pmt_side_area_factor = 0.217549;
-    double pmt_side_area = pmt_facing_area * pmt_side_area_factor;
-    double cylinder_max_x = 96.0;
-    double cylinder_min_x = - cylinder_max_x;
-    double cylinder_max_y = 96.0;
-    double cylinder_min_y = - cylinder_max_y;
-    double cylinder_max_z = 58.0;
-    double cylinder_min_z = - cylinder_max_z;
-    double cylinder_radius = cylinder_max_x;
-    double cylinder_circumference = M_PI * 2 * cylinder_max_x;
-    double cylinder_height = cylinder_max_z * 2;
-    double chunk_side_area_factor = 0.1; // this number is a guess..maybe model it one day
-
-    // now some geometry things for throwing source events
-    double rod_diameter = 1.0;
-    double source_diameter = 0.8;
-    double rod_width = (rod_diameter - source_diameter)/2;
-    double source_inset = -0.25;
-    double decay_constant = 10.0;
-    double source_rod_lower_end_cap = - source_inset;
-    double detector_lower_end_cap = cylinder_min_z;
-    double detector_radius = cylinder_radius;
-    double pos_rad = source_diameter / 2;
-    size_t total_events_that_escaped = 0;
-
-    // pmt noise rate
-    double noise_photons = 1.0;
-    double noise_triggers = 5.0;
-    double digitization_time = 16 * std::pow(10, 3); //16 usec in nsec
-    double noise_rate = noise_photons / (noise_triggers * digitization_time); // units of photons/nsec
-    double noise_rate_per_time_bin = 2.0 * noise_rate; // 2nsec binning
-
-    // some constants we use for the simulation
-    double c = 2.998 * std::pow(10, 8); // speed of light in m/s
-    double c_cm_per_nsec = c * std::pow(10, -7); // speed of light in cm/nsec
-    double uv_index_of_refraction = 1.358;
-    double vis_index_of_refraction = 1.23;
-    double pmt_quantum_efficiency = 0.25;
-    double full_acceptance = 4.0 * M_PI;
-    size_t n_pmts_to_simulate = (size_t) 0;
-
-    size_t num_threads;
-    size_t max_cached_vertices;
-
-    std::deque<PhotonPropagationJob *> free_jobs;
-    std::deque<PhotonPropagationJob *> running_jobs;
-    std::deque<PhotonPropagationResult> results;
-public:
-    PhotonPropagation(const I3Context&);
-    void Configure();
-    void Geometry(I3FramePtr frame);
-    void Physics(I3FramePtr frame);
-};
-
-I3_MODULE(PhotonPropagation);
-
-PhotonPropagation::PhotonPropagation(const I3Context& context) : I3Module(context),
-    geometry_name_(""), geo_seen(false) {
-        AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string("CCMGeometry"));
-        AddParameter("R_s", "ratio of singlet light", (double)0.23);
-        AddParameter("R_t", "ratio of triplet light", (double)0.71);
-        AddParameter("tau_s", "singlet time constant", (double)8.2);
-        AddParameter("tau_t", "triplet time constant", (double)1445.0);
-        AddParameter("tau_rec", "recombination time constant", (double)75.5);
-        AddParameter("R_TPB", "ratio of TPB light", (double)0.1);
-        AddParameter("tau_TPB", "TPB time constant", (double)2.0);
-        AddParameter("mu", "mu for GEV function to smear light", (double)1.0);
-        AddParameter("sigma", "sigma for GEV function to smear light", (double)1.0);
-        AddParameter("xi", "xi for GEV function to smear light", (double)0.5);
-        AddParameter("NConvolutionChunks", "number of chunks to convolve over", (size_t)200);
-        AddParameter("ChunkWidth", "width to chunk up the sides of the detector for light propagation", 5.0); // used to be 5
-        AddParameter("ChunkHeight", "height to chunk up the sides of the detector for light propagation", 5.0); // used to be 5
-        AddParameter("NChunksTop", "number of chunks to split top and bottom faces of detector into", 50.0); // used to be 50
-        AddParameter("TPBPortion", "portion of light that tpb reflects", 1.0);
-        AddParameter("NEventsToSimulate", "number of events we want to simulate for sodium source like ensemble", (size_t)1000);
-        AddParameter("UVAbsorptionLength", "how far UV light travels in cm before 1/e is absorped", 40.0);
-        AddParameter("VisAbsorptionLength", "how far visible light travels in cm before 1/e is absorped", 2000.0);
-        AddParameter("NPhotonsProduced", "how many photons are produced in this event (~40,000 photons/MeV is the hope)", 40000.0);
-        AddParameter("OutputName", "Key to save output CCMWaveformDoubleSeries to", std::string("CCMCalibratedWaveforms"));
-        AddParameter("NumThreads", "Number of worker threads to use for baseline estimation", (size_t)0);
-        AddParameter("MaxCachedVertices", "The maximum number of vertices this module is allowed to have cached", (size_t)(2000));
-}
-
-
-void  PhotonPropagation::Configure() {
-    GetParameter("CCMGeometryName", geometry_name_);
-    GetParameter("R_s", singlet_ratio_);
-    GetParameter("R_t", triplet_ratio_);
-    GetParameter("tau_s", singlet_tau_);
-    GetParameter("tau_t", triplet_tau_);
-    GetParameter("tau_rec", recombination_tau_);
-    GetParameter("R_TPB", TPB_ratio_);
-    GetParameter("tau_TPB", TPB_tau_);
-    GetParameter("mu", smearing_mu_);
-    GetParameter("sigma", smearing_sigma_);
-    GetParameter("xi", smearing_xi_);
-    GetParameter("NConvolutionChunks", n_convolution_chunks_);
-    GetParameter("ChunkWidth", desired_chunk_width_);
-    GetParameter("ChunkHeight", desired_chunk_height_);
-    GetParameter("NChunksTop", n_chunks_top_);
-    GetParameter("TPBPortion", portion_light_reflected_by_tpb_);
-    GetParameter("NEventsToSimulate", n_events_to_simulate_);
-    GetParameter("UVAbsorptionLength", UV_absorption_length_);
-    GetParameter("VisAbsorptionLength", visible_absorption_length_);
-    GetParameter("NPhotonsProduced", n_photons_produced_);
-    GetParameter("OutputName", output_name_);
-    GetParameter("NumThreads", num_threads);
-    GetParameter("MaxCachedVertices", max_cached_vertices);
-    if(num_threads == 0) {
-        size_t const processor_count = std::thread::hardware_concurrency();
-        num_threads = processor_count;
-    }
-}
+#include <daqtools/PhotonPropagation.h>
 
 void get_ray_intersections(double const & x,
                            double const & y,
@@ -457,6 +285,8 @@ void secondary_loc_to_pmt_propagation(double const & full_acceptance,
     }
 
 }
+PhotonPropagation::PhotonPropagation(){}
+
 void PhotonPropagation::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
@@ -800,7 +630,6 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
     }
 
     geo_seen = true;
-    PushFrame(frame);
 }
 
 void LAr_scintillation_timing(double const & time, double const & R_s, double const & R_t, double const & tau_s, double const & tau_t, double const & tau_rec, double & resulting_light){
@@ -1312,7 +1141,15 @@ void RunFrameThread(PhotonPropagationJob * job,
                               std::ref(*job->binned_charges));
 }
 
-void PhotonPropagation::Physics(I3FramePtr frame) {
+I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+                                                                  double const & triplet_ratio_,
+                                                                  double const & singlet_tau_,
+                                                                  double const & triplet_tau_,
+                                                                  double const & recombination_tau_,
+                                                                  double const & TPB_ratio_,
+                                                                  double const & TPB_tau_,
+                                                                  double const & UV_absorption_length_,
+                                                                  double const & n_photons_produced_) {
     // will be used for multi-threading our simulation jobs
     size_t min_vertex_idx = 0;
 
@@ -1480,7 +1317,7 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
 
 
     // now we should go through all_events_binned_charges and calculate average over all events
-    std::vector<std::vector<double>> averaged_all_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
+    I3Vector<I3Vector<double>> averaged_all_events_binned_charges(n_pmts_to_simulate, I3Vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
 
     for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
@@ -1489,7 +1326,7 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
         }
     }
 
-    // and let's print the summed wf to check
+    /*// and let's print the summed wf to check
     std::cout << "summed wf charges averaged over " << total_events_that_escaped <<  " events:" << std::endl;
     double total_charge_in_this_bin;
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it++){
@@ -1498,11 +1335,11 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
             total_charge_in_this_bin += averaged_all_events_binned_charges[pmt_it][time_bin_it];
         }
         std::cout << "at time = " << bin_centers[time_bin_it] << ", charge = " <<  total_charge_in_this_bin << std::endl;
-    }
+    }*/
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
 
-    PushFrame(frame);
+    return averaged_all_events_binned_charges;
 
 }
