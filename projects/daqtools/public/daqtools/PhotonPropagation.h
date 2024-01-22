@@ -337,7 +337,7 @@ class PhotonPropagation {
     // now some geometry things for throwing source events
     double rod_diameter = 1.0;
     double source_diameter = 0.8;
-    double rod_width = (rod_diameter - source_diameter ) / 2;
+    double rod_width = (rod_diameter - source_diameter)/2;
     double source_inset = -0.25;
     double decay_constant = 10.0;
     double source_rod_lower_end_cap = - source_inset;
