@@ -44,14 +44,16 @@ struct PhotonPropagationJob {
     std::atomic<bool> running = false;
     std::thread thread;
     size_t thread_index = 0;
-    std::vector<double>* vertex = nullptr;
-    size_t vertex_index = 0;
-    std::vector<std::vector<double>>* binned_charges = nullptr; // this is where we save the binned charges for each pmt for each event
+    std::vector<std::vector<double>>* vector_of_vertices = nullptr;
+    bool vertex_1275_flag = false;
+    size_t vector_of_vertices_index = 0;
+    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges = nullptr;
+    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges_squared = nullptr;
 };
 
 struct PhotonPropagationResult {
-    size_t vertex_index = 0;
-    std::vector<std::vector<double>>* binned_charges = nullptr; // this is where we save the binned charges for each pmt for each event
+    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges = nullptr;
+    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges_squared = nullptr;
     bool done = false;
 };
 
@@ -292,7 +294,9 @@ class PhotonPropagation {
     std::vector<std::vector<double>> locations_to_check_to_pmt_travel_time_;
 
     // place to store list of vertices to simulate
+    std::vector<std::vector<double>> verticies_to_simuate_1275_;
     std::vector<std::vector<double>> verticies_to_simuate_;
+    std::vector<std::vector<double>> verticies_to_simuate_511_;
     unsigned int coated_omtype = (unsigned int)10;
     unsigned int uncoated_omtype = (unsigned int)20;
 
@@ -341,6 +345,9 @@ class PhotonPropagation {
     size_t n_pmts_to_simulate = (size_t) 0;
 
     size_t num_threads = std::thread::hardware_concurrency();
+    std::vector<std::vector<std::vector<double>>> thread_verticies_;
+    std::vector<std::vector<std::vector<double>>> thread_1275_verticies_;
+    std::vector<std::vector<std::vector<double>>> thread_511_verticies_;
     size_t max_cached_vertices = (size_t) 2000;
 
     //std::deque<PhotonPropagationJob *> free_jobs;

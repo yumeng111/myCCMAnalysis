@@ -166,6 +166,46 @@ void get_1275kev_photon(double const & source_diameter,
     check_escape(x, y, z, nx, ny, nz, source_rod_lower_end_cap, detector_radius, decay_constant, pos_rad, detector_lower_end_cap, gen, dis_0_1, escaped, final_x, final_y, final_z);
 }
 
+void get_511kev_photon(double const & source_diameter,
+                       double const & source_rod_lower_end_cap,
+                       double const & pos_rad,
+                       double const & decay_constant,
+                       double const & detector_radius,
+                       double const & detector_lower_end_cap,
+                       std::mt19937 & gen,
+                       std::uniform_real_distribution<double> & dis_angle,
+                       std::uniform_real_distribution<double> & dis_0_1,
+                       std::uniform_real_distribution<double> & dis_neg_1_1,
+                       bool & escaped_photon_1,
+                       double & final_x_photon_1,
+                       double & final_y_photon_1,
+                       double & final_z_photon_1,
+                       bool & escaped_photon_2,
+                       double & final_x_photon_2,
+                       double & final_y_photon_2,
+                       double & final_z_photon_2){
+    // let's get an initial position
+    double theta_pos = dis_angle(gen);
+    double r = std::sqrt(dis_0_1(gen)) * source_diameter/2;
+    double x = r * std::cos(theta_pos);
+    double y = r * std::sin(theta_pos);
+    double z = 0;
+
+    // now let's get an initial direction
+    double phi = dis_angle(gen);
+    double cos_theta = dis_neg_1_1(gen);
+    double theta = std::acos(cos_theta);
+    double nx = std::cos(phi) * std::sin(theta);
+    double ny = std::sin(phi) * std::sin(theta);
+    double nz = std::cos(theta);
+
+    // now let's see if the event escapes the rod
+    check_escape(x, y, z, nx, ny, nz, source_rod_lower_end_cap, detector_radius, decay_constant, pos_rad,
+                detector_lower_end_cap, gen, dis_0_1, escaped_photon_1, final_x_photon_1, final_y_photon_1, final_z_photon_1);
+    check_escape(x, y, z, -nx, -ny, -nz, source_rod_lower_end_cap, detector_radius, decay_constant, pos_rad,
+                detector_lower_end_cap, gen, dis_0_1, escaped_photon_2, final_x_photon_2, final_y_photon_2, final_z_photon_2);
+}
+
 void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
                                                      double const & vertex_y,
                                                      double const & vertex_z,
@@ -642,10 +682,21 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
     double final_x;
     double final_y;
     double final_z;
+    bool escaped_photon_1;
+    double final_x_photon_1;
+    double final_y_photon_1;
+    double final_z_photon_1;
+    bool escaped_photon_2;
+    double final_x_photon_2;
+    double final_y_photon_2;
+    double final_z_photon_2;
     std::vector<double> this_vertex (3);
 
     for (size_t event_it = 0; event_it < 10 * n_events_to_simulate_; event_it ++){
+        // so for the high energy bump, we want 3 photons -- isotropic 1275 kev, and 2 back to back 511 kev photons
+
         if (total_events_that_escaped < n_events_to_simulate_){
+            // let's call our functions to check if 511 and 1275 kev photons escape
             get_1275kev_photon(source_diameter,
                                source_rod_lower_end_cap,
                                pos_rad,
@@ -660,16 +711,165 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
                                final_x,
                                final_y,
                                final_z);
-            if (escaped){
-                total_events_that_escaped += 1;
+            get_511kev_photon(source_diameter,
+                              source_rod_lower_end_cap,
+                              pos_rad,
+                              decay_constant,
+                              detector_radius,
+                              detector_lower_end_cap,
+                              gen,
+                              dis_angle,
+                              dis_0_1,
+                              dis_neg_1_1,
+                              escaped_photon_1,
+                              final_x_photon_1,
+                              final_y_photon_1,
+                              final_z_photon_1,
+                              escaped_photon_2,
+                              final_x_photon_2,
+                              final_y_photon_2,
+                              final_z_photon_2);
+            // now we only want events where all 3 photons escape
+            if (escaped and escaped_photon_1 and escaped_photon_2){
+                total_events_that_escaped += 3;
                 // let's save this vertex!
                 this_vertex.clear();
                 this_vertex.push_back(final_x);
                 this_vertex.push_back(final_y);
                 this_vertex.push_back(final_z);
-                verticies_to_simuate_.push_back(this_vertex);
+                verticies_to_simuate_1275_.push_back(this_vertex);
+                this_vertex.clear();
+                this_vertex.push_back(final_x_photon_1);
+                this_vertex.push_back(final_y_photon_1);
+                this_vertex.push_back(final_z_photon_1);
+                verticies_to_simuate_511_.push_back(this_vertex);
+                this_vertex.clear();
+                this_vertex.push_back(final_x_photon_2);
+                this_vertex.push_back(final_y_photon_2);
+                this_vertex.push_back(final_z_photon_2);
+                verticies_to_simuate_511_.push_back(this_vertex);
             }
         }
+    }
+
+    // we should also pre-emptively chunk out our vertices for the threads
+    // so we have num_threads to work with and total_events_that_escaped to split over them (being careful to keep track of 1275 and 511 separtely)
+    // we also know that we have twice as many 511 events as 1275, so can split threads into 511 and 1275
+
+    size_t total_number_1275_verticies = verticies_to_simuate_1275_.size();
+    size_t n_threads_for_1275 = (size_t) num_threads/3;
+    size_t n_1275_verticies_per_thread_rounding_up = (size_t) ((total_number_1275_verticies + n_threads_for_1275 - 1) / n_threads_for_1275); // this is rounding up!
+    size_t n_1275_verticies_per_thread_rounding_down = n_1275_verticies_per_thread_rounding_up - 1;
+    size_t n_1275_threads_rounding_up = (size_t) (total_number_1275_verticies - (n_1275_verticies_per_thread_rounding_down * n_threads_for_1275)) /
+                                                 (n_1275_verticies_per_thread_rounding_up - n_1275_verticies_per_thread_rounding_down);
+    size_t n_1275_threads_rounding_down = n_threads_for_1275 - n_1275_threads_rounding_up;
+
+    size_t total_number_511_verticies = verticies_to_simuate_511_.size();
+    size_t n_threads_for_511 = num_threads - n_threads_for_1275;
+    size_t n_511_verticies_per_thread_rounding_up = (size_t) ((total_number_511_verticies  + n_threads_for_511 - 1) / n_threads_for_511); // this is rounding up!
+    size_t n_511_verticies_per_thread_rounding_down = n_511_verticies_per_thread_rounding_up - 1;
+    size_t n_511_threads_rounding_up = (size_t) (total_number_511_verticies - (n_511_verticies_per_thread_rounding_down * n_threads_for_511)) /
+                                                 (n_511_verticies_per_thread_rounding_up - n_511_verticies_per_thread_rounding_down);
+    size_t n_511_threads_rounding_down = n_threads_for_511 - n_511_threads_rounding_up;
+
+    // ok so now we can fill in vector of vector of vertex vectors for each thread type
+    std::vector<std::vector<double>> verticies_for_one_thread;
+    size_t vertices_in_this_clump = 0;
+    bool finished_accumulating_threads_rounding_up = false;
+    bool finished_accumulating_threads_rounding_down = false;
+    size_t total_threads_rounding_up = 0;
+    size_t total_threads_rounding_down = 0;
+
+    for (size_t vertices_1275_it = 0; vertices_1275_it < verticies_to_simuate_1275_.size(); vertices_1275_it ++){
+        if (total_threads_rounding_up == n_1275_threads_rounding_up){
+            finished_accumulating_threads_rounding_up = true;
+        }
+        if (total_threads_rounding_down == n_1275_threads_rounding_down){
+            finished_accumulating_threads_rounding_down = true;
+        }
+
+        if (finished_accumulating_threads_rounding_up == false){
+            if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_up - 1)){
+                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                thread_1275_verticies_.push_back(verticies_for_one_thread);
+                vertices_in_this_clump = 0;
+                verticies_for_one_thread.clear();
+                total_threads_rounding_up += 1;
+            }
+            else {
+                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                vertices_in_this_clump += 1;
+            }
+        }
+
+        if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
+            if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_down - 1)){
+                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                thread_1275_verticies_.push_back(verticies_for_one_thread);
+                vertices_in_this_clump = 0;
+                verticies_for_one_thread.clear();
+                total_threads_rounding_down += 1;
+            }
+            else {
+                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                vertices_in_this_clump += 1;
+            }
+        }
+    }
+
+    verticies_for_one_thread.clear();
+    vertices_in_this_clump = 0;
+    finished_accumulating_threads_rounding_up = false;
+    finished_accumulating_threads_rounding_down = false;
+    total_threads_rounding_up = 0;
+    total_threads_rounding_down = 0;
+
+    for (size_t vertices_511_it = 0; vertices_511_it < verticies_to_simuate_511_.size(); vertices_511_it ++){
+        if (total_threads_rounding_up == n_511_threads_rounding_up){
+            finished_accumulating_threads_rounding_up = true;
+        }
+        if (total_threads_rounding_down == n_511_threads_rounding_down){
+            finished_accumulating_threads_rounding_down = true;
+        }
+
+        if (finished_accumulating_threads_rounding_up == false){
+            if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_up - 1)){
+                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                thread_511_verticies_.push_back(verticies_for_one_thread);
+                vertices_in_this_clump = 0;
+                verticies_for_one_thread.clear();
+                total_threads_rounding_up += 1;
+            }
+            else {
+                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                vertices_in_this_clump += 1;
+            }
+        }
+
+        if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
+            if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_down - 1)){
+                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                thread_511_verticies_.push_back(verticies_for_one_thread);
+                vertices_in_this_clump = 0;
+                verticies_for_one_thread.clear();
+                total_threads_rounding_down += 1;
+            }
+            else {
+                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                vertices_in_this_clump += 1;
+            }
+        }
+    }
+
+    // yayy! thread_511_verticies_ and thread_1275_verticies_ are all filled in correctly!
+    // let's combine into one list to give threads
+
+    for (size_t vert_1275_it = 0; vert_1275_it < thread_1275_verticies_.size(); vert_1275_it ++){
+       thread_verticies_.push_back(thread_1275_verticies_[vert_1275_it]);
+    }
+
+    for (size_t vert_511_it = 0; vert_511_it < thread_511_verticies_.size(); vert_511_it ++){
+       thread_verticies_.push_back(thread_511_verticies_[vert_511_it]);
     }
 
     geo_seen = true;
@@ -1113,6 +1313,7 @@ void put_simulation_steps_together(double const & full_acceptance,
 }
 
 void FrameThread(std::atomic<bool> & running,
+                 bool const & vertex_1275_flag,
                  double const & full_acceptance,
                  double const & c_cm_per_nsec,
                  double const & uv_index_of_refraction,
@@ -1125,18 +1326,40 @@ void FrameThread(std::atomic<bool> & running,
                  std::vector<std::vector<double>> const & locations_to_check_information_,
                  std::vector<std::vector<double>> const & locations_to_check_to_pmt_yield_,
                  std::vector<std::vector<double>> const & locations_to_check_to_pmt_travel_time_,
-                 std::vector<double> * vertex,
+                 std::vector<std::vector<double>> * vector_of_vertices,
                  std::vector<double> const & light_times,
                  std::vector<double> const & light_profile,
                  std::vector<double> const & bin_centers,
                  double const & bin_width,
-                 std::vector<std::vector<double>> & binned_charges){
+                 std::vector<std::vector<double>> & vector_of_vertices_summed_binned_charges,
+                 std::vector<std::vector<double>> & vector_of_vertices_summed_binned_charges_squared){
 
     // call simulation code
-    put_simulation_steps_together(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, quantum_efficiency,
-                                  n_photons_produced, UV_absorption_length, vis_absorption_length, pmt_parsed_information_, locations_to_check_information_,
-                                  locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_,
-                                  vertex->at(0), vertex->at(1), vertex->at(2), light_times, light_profile, bin_centers, bin_width, binned_charges);
+    std::vector<std::vector<double>> binned_charges;
+    double n_photons_produced_this_event;
+    if (vertex_1275_flag){
+        n_photons_produced_this_event = n_photons_produced * 1.275;
+    } else {
+        n_photons_produced_this_event = n_photons_produced * 0.511;
+    }
+
+    for (size_t vertex_it = 0; vertex_it < vector_of_vertices->size(); vertex_it ++){
+        binned_charges.clear();
+        put_simulation_steps_together(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, quantum_efficiency,
+                                      n_photons_produced_this_event, UV_absorption_length, vis_absorption_length, pmt_parsed_information_, locations_to_check_information_,
+                                      locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_,
+                                      vector_of_vertices->at(vertex_it)[0], vector_of_vertices->at(vertex_it)[1], vector_of_vertices->at(vertex_it)[2],
+                                      light_times, light_profile, bin_centers, bin_width, binned_charges);
+
+        // now let's add binned_charges to vector_of_vertices_summed_binned_charges!
+        for (size_t pmt_it = 0; pmt_it < binned_charges.size(); pmt_it ++){
+            for (size_t time_bin_it = 0; time_bin_it < binned_charges[0].size(); time_bin_it ++){
+                vector_of_vertices_summed_binned_charges[pmt_it][time_bin_it] += binned_charges[pmt_it][time_bin_it];
+                vector_of_vertices_summed_binned_charges_squared[pmt_it][time_bin_it] += std::pow(binned_charges[pmt_it][time_bin_it], 2);
+            }
+        }
+
+    }
 
 
     running.store(false);
@@ -1164,6 +1387,7 @@ void RunFrameThread(PhotonPropagationJob * job,
     job->running.store(true);
     job->thread = std::thread(FrameThread,
                               std::ref(job->running),
+                              std::cref(job->vertex_1275_flag),
                               std::cref(full_acceptance),
                               std::cref(c_cm_per_nsec),
                               std::cref(uv_index_of_refraction),
@@ -1176,16 +1400,17 @@ void RunFrameThread(PhotonPropagationJob * job,
                               std::cref(locations_to_check_information_),
                               std::cref(locations_to_check_to_pmt_yield_),
                               std::cref(locations_to_check_to_pmt_travel_time_),
-                              job->vertex,
+                              job->vector_of_vertices,
                               std::cref(light_times),
                               std::cref(light_profile),
                               std::cref(bin_centers),
                               std::cref(bin_width),
-                              std::ref(*job->binned_charges));
+                              std::ref(*job->vector_of_vertices_summed_binned_charges),
+                              std::ref(*job->vector_of_vertices_summed_binned_charges_squared));
 }
 
 size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
- 
+
     size_t nearestIndex = 0;
     double minDifference = std::abs(vec[0] - targetValue);
 
@@ -1252,7 +1477,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     // ok so we've seen our geometry file, pre-computed the lists of pmt info and locations to check for light propagation
     // we've also pre-compute the verticies of each event we want to simulate
     // and we just computed our light profile....all that's left to do is propagate our light!
-    // we have the parameter n_events_to_simulate_ which says how many simulated events we want (and then we aggregate)
+    // we have the parameter total_events_that_escaped which says how many events we are simulating
 
     // so now we can loop over our vector containing vector of verticies to simulate
     // let's make out final vector that we will be saving to
@@ -1260,9 +1485,11 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                                                             // dimensions are n_pmts x n_time_bins
     std::vector<std::vector<double>> summed_over_squared_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
-    // loop over all verticies to simulate
-    for (size_t vert_it = 0; vert_it < verticies_to_simuate_.size(); vert_it++){
-        // now ready to simulate.. this is where we want to dispatch our threads
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    // loop over thread_verticies_ and dispatch one thread per vector of vertices
+    // note -- we added 1275kev vertices to thread_verticies_ first, so can use that to keep track of if we're dealing with a 1275 or 511 event
+    for (size_t vert_it = 0; vert_it < thread_verticies_.size(); vert_it ++){
         while(true) {
             // Check if any jobs have finished
             for(int i=int(running_jobs.size())-1; i>=0; --i) {
@@ -1280,7 +1507,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                     running_jobs.erase(running_jobs.begin() + i);
                     free_jobs.push_back(job);
                     job->thread.join();
-                    results[job->vertex_index - min_vertex_idx].done = true;
+                    results[job->vector_of_vertices_index - min_vertex_idx].done = true;
                 } else {
                     PhotonPropagationJob * job = running_jobs[i];
                 }
@@ -1293,12 +1520,12 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                     // let's save to all_events_binned_charges
                     for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                         for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                            summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
-                            summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += std::pow(results[i].binned_charges->at(pmt_it)[time_bin_it], 2.0);
+                            summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges->at(pmt_it)[time_bin_it];
+                            summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges_squared->at(pmt_it)[time_bin_it];
                         }
                     }
-                    results[i].binned_charges = nullptr;
-                    results[i].vertex_index = 0;
+                    results[i].vector_of_vertices_summed_binned_charges = nullptr;
+                    results[i].vector_of_vertices_summed_binned_charges_squared = nullptr;
                     results_done += 1;
                 } else {
                     break;
@@ -1320,27 +1547,33 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 job = new PhotonPropagationJob();
                 job->running.store(false);
                 job->thread_index = running_jobs.size();
-                job->binned_charges = new std::vector<std::vector<double>>();
+                job->vector_of_vertices_summed_binned_charges = new std::vector<std::vector<double>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
+                job->vector_of_vertices_summed_binned_charges_squared = new std::vector<std::vector<double>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
             }
 
             if(job != nullptr and results.size() < max_cached_vertices) {
                 job->running.store(true);
                 running_jobs.push_back(job);
-                job->vertex_index = vert_it;
-                job->vertex = &verticies_to_simuate_[job->vertex_index];
+                job->vector_of_vertices_index = vert_it;
+                if (job->vector_of_vertices_index < thread_1275_verticies_.size()){
+                    job->vertex_1275_flag = true;
+                }
+                else{
+                    job->vertex_1275_flag = false;
+                }
+                job->vector_of_vertices = &thread_verticies_[job->vector_of_vertices_index];
                 results.emplace_back();
-                results.back().binned_charges = job->binned_charges;
-                results.back().vertex_index = job->vertex_index;
+                results.back().vector_of_vertices_summed_binned_charges = job->vector_of_vertices_summed_binned_charges;
+                results.back().vector_of_vertices_summed_binned_charges_squared = job->vector_of_vertices_summed_binned_charges_squared;
                 results.back().done = false;
                 RunFrameThread(job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, pmt_quantum_efficiency,
                                n_photons_produced_, UV_absorption_length_, visible_absorption_length_, pmt_parsed_information_, locations_to_check_information_,
-                               locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_, times, light_profile,bin_centers, bin_width);
+                               locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_, times, light_profile, bin_centers, bin_width);
                 break;
             } else if(job != nullptr) {
                 free_jobs.push_back(job);
             }
         }
-
     }
 
     // final check for any running jobs
@@ -1352,7 +1585,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
-                results[job->vertex_index - min_vertex_idx].done = true;
+                results[job->vector_of_vertices_index - min_vertex_idx].done = true;
             }
         }
 
@@ -1363,12 +1596,12 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 // let's save to all_events_binned_charges
                 for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                        summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
-                        summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += std::pow(results[i].binned_charges->at(pmt_it)[time_bin_it], 2.0);
+                        summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges->at(pmt_it)[time_bin_it];
+                        summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges_squared->at(pmt_it)[time_bin_it];
                     }
                 }
-                results[i].binned_charges = nullptr;
-                results[i].vertex_index = 0;
+                results[i].vector_of_vertices_summed_binned_charges = nullptr;
+                results[i].vector_of_vertices_summed_binned_charges_squared = nullptr;
                 results_done += 1;
             } else {
                 break;
@@ -1379,6 +1612,23 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
             min_vertex_idx += results_done;
         }
     }
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
+
+    /*// let's print out the averaged summed wf just to make sure i didnt fuck anything up
+    double total_charge_in_this_time_bin;
+    std::cout << "for " << total_events_that_escaped << " events, avg summed wf = " << std::endl;
+    for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
+        total_charge_in_this_time_bin = 0;
+        for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
+            total_charge_in_this_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
+        }
+        total_charge_in_this_time_bin /= total_events_that_escaped;
+        std::cout << "at time = " << bin_centers[time_bin_it] << ", charge = " << total_charge_in_this_time_bin << std::endl;
+    }*/
+
+
+
 
     // instead of just returning the averaged_all_events_binned_charges, we are going to compute the liklihood quickly
     // we are computing the liklihood on a per-pmt basis on a per-time bin basis
