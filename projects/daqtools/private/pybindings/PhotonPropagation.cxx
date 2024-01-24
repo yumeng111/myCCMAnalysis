@@ -45,6 +45,8 @@ void register_PhotonPropagation() {
     class_<PhotonPropagation, boost::shared_ptr<PhotonPropagation>> ("PhotonPropagation")
         .def(init<>())
         .def("Geometry", &PhotonPropagation::Geometry)
+        .def("SetData", &PhotonPropagation::SetData)
+        .def("SetDataSampleSize", &PhotonPropagation::SetDataSampleSize)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }
