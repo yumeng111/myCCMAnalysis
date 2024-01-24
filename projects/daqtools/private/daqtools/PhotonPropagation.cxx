@@ -370,6 +370,10 @@ void PhotonPropagation::SetDataSampleSize(size_t n_data_samples){
     n_data_samples_ = n_data_samples;
 }
 
+void PhotonPropagation::SetNEventsToSimulate(size_t n_events_to_simulate){
+    n_events_to_simulate_ = n_events_to_simulate;
+}
+
 void PhotonPropagation::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
@@ -692,63 +696,60 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
     double final_z_photon_2;
     std::vector<double> this_vertex (3);
 
-    for (size_t event_it = 0; event_it < 10 * n_events_to_simulate_; event_it ++){
+    while (total_events_that_escaped < n_events_to_simulate_){
         // so for the high energy bump, we want 3 photons -- isotropic 1275 kev, and 2 back to back 511 kev photons
-
-        if (total_events_that_escaped < n_events_to_simulate_){
-            // let's call our functions to check if 511 and 1275 kev photons escape
-            get_1275kev_photon(source_diameter,
-                               source_rod_lower_end_cap,
-                               pos_rad,
-                               decay_constant,
-                               detector_radius,
-                               detector_lower_end_cap,
-                               gen,
-                               dis_angle,
-                               dis_0_1,
-                               dis_neg_1_1,
-                               escaped,
-                               final_x,
-                               final_y,
-                               final_z);
-            get_511kev_photon(source_diameter,
-                              source_rod_lower_end_cap,
-                              pos_rad,
-                              decay_constant,
-                              detector_radius,
-                              detector_lower_end_cap,
-                              gen,
-                              dis_angle,
-                              dis_0_1,
-                              dis_neg_1_1,
-                              escaped_photon_1,
-                              final_x_photon_1,
-                              final_y_photon_1,
-                              final_z_photon_1,
-                              escaped_photon_2,
-                              final_x_photon_2,
-                              final_y_photon_2,
-                              final_z_photon_2);
-            // now we only want events where all 3 photons escape
-            if (escaped and escaped_photon_1 and escaped_photon_2){
-                total_events_that_escaped += 3;
-                // let's save this vertex!
-                this_vertex.clear();
-                this_vertex.push_back(final_x);
-                this_vertex.push_back(final_y);
-                this_vertex.push_back(final_z);
-                verticies_to_simuate_1275_.push_back(this_vertex);
-                this_vertex.clear();
-                this_vertex.push_back(final_x_photon_1);
-                this_vertex.push_back(final_y_photon_1);
-                this_vertex.push_back(final_z_photon_1);
-                verticies_to_simuate_511_.push_back(this_vertex);
-                this_vertex.clear();
-                this_vertex.push_back(final_x_photon_2);
-                this_vertex.push_back(final_y_photon_2);
-                this_vertex.push_back(final_z_photon_2);
-                verticies_to_simuate_511_.push_back(this_vertex);
-            }
+        // let's call our functions to check if 511 and 1275 kev photons escape
+        get_1275kev_photon(source_diameter,
+                           source_rod_lower_end_cap,
+                           pos_rad,
+                           decay_constant,
+                           detector_radius,
+                           detector_lower_end_cap,
+                           gen,
+                           dis_angle,
+                           dis_0_1,
+                           dis_neg_1_1,
+                           escaped,
+                           final_x,
+                           final_y,
+                           final_z);
+        get_511kev_photon(source_diameter,
+                          source_rod_lower_end_cap,
+                          pos_rad,
+                          decay_constant,
+                          detector_radius,
+                          detector_lower_end_cap,
+                          gen,
+                          dis_angle,
+                          dis_0_1,
+                          dis_neg_1_1,
+                          escaped_photon_1,
+                          final_x_photon_1,
+                          final_y_photon_1,
+                          final_z_photon_1,
+                          escaped_photon_2,
+                          final_x_photon_2,
+                          final_y_photon_2,
+                          final_z_photon_2);
+        // now we only want events where all 3 photons escape
+        if (escaped and escaped_photon_1 and escaped_photon_2){
+            total_events_that_escaped += 3;
+            // let's save this vertex!
+            this_vertex.clear();
+            this_vertex.push_back(final_x);
+            this_vertex.push_back(final_y);
+            this_vertex.push_back(final_z);
+            verticies_to_simuate_1275_.push_back(this_vertex);
+            this_vertex.clear();
+            this_vertex.push_back(final_x_photon_1);
+            this_vertex.push_back(final_y_photon_1);
+            this_vertex.push_back(final_z_photon_1);
+            verticies_to_simuate_511_.push_back(this_vertex);
+            this_vertex.clear();
+            this_vertex.push_back(final_x_photon_2);
+            this_vertex.push_back(final_y_photon_2);
+            this_vertex.push_back(final_z_photon_2);
+            verticies_to_simuate_511_.push_back(this_vertex);
         }
     }
 
@@ -1361,7 +1362,6 @@ void FrameThread(std::atomic<bool> & running,
 
     }
 
-
     running.store(false);
 
 }
@@ -1615,8 +1615,8 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
 
-    /*// let's print out the averaged summed wf just to make sure i didnt fuck anything up
-    double total_charge_in_this_time_bin;
+    // let's print out the averaged summed wf just to make sure i didnt fuck anything up
+    /*double total_charge_in_this_time_bin;
     std::cout << "for " << total_events_that_escaped << " events, avg summed wf = " << std::endl;
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
         total_charge_in_this_time_bin = 0;
@@ -1624,11 +1624,8 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
             total_charge_in_this_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
         }
         total_charge_in_this_time_bin /= total_events_that_escaped;
-        std::cout << "at time = " << bin_centers[time_bin_it] << ", charge = " << total_charge_in_this_time_bin << std::endl;
+        std::cout << total_charge_in_this_time_bin << ", " << std::endl;
     }*/
-
-
-
 
     // instead of just returning the averaged_all_events_binned_charges, we are going to compute the liklihood quickly
     // we are computing the liklihood on a per-pmt basis on a per-time bin basis

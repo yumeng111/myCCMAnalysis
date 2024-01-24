@@ -277,9 +277,9 @@ class PhotonPropagation {
     size_t n_convolution_chunks_ = 200.0;
     double desired_chunk_width_ = 10.0; // use 5 for finer binning
     double desired_chunk_height_ = 10.0; // use 5 for finer binning
-    double n_chunks_top_ = 20.0; // use 50 for finer binning
+    double n_chunks_top_ = 30.0; // use 50 for finer binning
     double portion_light_reflected_by_tpb_ = 1.0;
-    size_t n_events_to_simulate_ = (size_t)1000;
+    size_t n_events_to_simulate_ = (size_t) 1000;
     double visible_absorption_length_ = 2000.0;
 
     // place to store relevant information about our pmts!!!
@@ -365,6 +365,7 @@ public:
     void Geometry(I3FramePtr frame);
     void SetData(I3Vector<I3Vector<double>> data_series);
     void SetDataSampleSize(size_t n_data_samples);
+    void SetNEventsToSimulate(size_t n_events_to_simulate);
     double GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,

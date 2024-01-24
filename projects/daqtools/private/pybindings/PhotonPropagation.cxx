@@ -47,6 +47,7 @@ void register_PhotonPropagation() {
         .def("Geometry", &PhotonPropagation::Geometry)
         .def("SetData", &PhotonPropagation::SetData)
         .def("SetDataSampleSize", &PhotonPropagation::SetDataSampleSize)
+        .def("SetNEventsToSimulate", &PhotonPropagation::SetNEventsToSimulate)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }
