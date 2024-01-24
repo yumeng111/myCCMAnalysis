@@ -465,6 +465,47 @@ void secondary_loc_to_pmt_propagation(double const & full_acceptance,
     }
 
 }
+PhotonPropagation::PhotonPropagation(){}
+
+void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
+    data_series_ = data_series;
+    // data_series_ is index by n_pmts x n_time_bins
+    // while we are setting the data, let's also set the time
+    // we want the peak of the data time to be at 0 and 2 nsec binning
+
+    times_of_data_points_.clear();
+    for (size_t second_dim_it = 0; second_dim_it < data_series_[0].size(); second_dim_it ++ ){
+        times_of_data_points_.push_back((double)second_dim_it * 2.0);
+    }
+
+    max_data_value_ = 0;
+    time_of_max_data_value_ = 0;
+
+    // let's first find the time of max, then set that equal to zero
+    double total_charge_per_time_bin;
+    for (size_t time_bin_it = 0; time_bin_it < times_of_data_points_.size(); time_bin_it ++){
+        total_charge_per_time_bin = 0;
+        for (size_t pmt_it = 0; pmt_it < data_series_.size(); pmt_it ++){
+            total_charge_per_time_bin += data_series[pmt_it][time_bin_it];
+        }
+        if (total_charge_per_time_bin > max_data_value_){
+            max_data_value_ = total_charge_per_time_bin;
+            time_of_max_data_value_ = times_of_data_points_[time_bin_it];
+        }
+    }
+
+    // ok now we can subtract time_of_max_data_value_ from times_of_data_points_s
+    for (size_t time_bin_it = 0; time_bin_it < times_of_data_points_.size(); time_bin_it ++){
+        times_of_data_points_[time_bin_it] -= time_of_max_data_value_;
+    }
+
+
+}
+
+void PhotonPropagation::SetDataSampleSize(size_t n_data_samples){
+    n_data_samples_ = n_data_samples;
+}
+
 void PhotonPropagation::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
@@ -1339,8 +1380,35 @@ void RunFrameThread(PhotonPropagationJob * job,
                               std::ref(*job->binned_charges));
 }
 
-void PhotonPropagation::Physics(I3FramePtr frame) {
+size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
+ 
+    size_t nearestIndex = 0;
+    double minDifference = std::abs(vec[0] - targetValue);
+
+    for (size_t i = 1; i < vec.size(); ++i) {
+        double difference = std::abs(vec[i] - targetValue);
+        if (difference < minDifference) {
+            minDifference = difference;
+            nearestIndex = i;
+        }
+    }
+
+    return nearestIndex;
+}
+
+double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+                                        double const & triplet_ratio_,
+                                        double const & singlet_tau_,
+                                        double const & triplet_tau_,
+                                        double const & recombination_tau_,
+                                        double const & TPB_ratio_,
+                                        double const & TPB_tau_,
+                                        double const & UV_absorption_length_,
+                                        double const & n_photons_produced_) {
     // will be used for multi-threading our simulation jobs
+    std::deque<PhotonPropagationJob *> free_jobs;
+    std::deque<PhotonPropagationJob *> running_jobs;
+    std::deque<PhotonPropagationResult> results;
     size_t min_vertex_idx = 0;
 
     // first let's set up our light profile
@@ -1381,8 +1449,9 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
     // let's make out final vector that we will be saving to
     std::vector<std::vector<double>> summed_over_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
+    std::vector<std::vector<double>> summed_over_squared_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
+                                                                            // dimensions are n_pmts x n_time_bins
     // loop over all verticies to simulate
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for (size_t vert_it = 0; vert_it < verticies_to_simuate_.size(); vert_it++){
         // now ready to simulate.. this is where we want to dispatch our threads
         while(true) {
@@ -1416,6 +1485,7 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
                     for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                         for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
                             summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
+                            summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += std::pow(results[i].binned_charges->at(pmt_it)[time_bin_it], 2.0);
                         }
                     }
                     results[i].binned_charges = nullptr;
@@ -1485,6 +1555,7 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
                 for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
                         summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].binned_charges->at(pmt_it)[time_bin_it];
+                        summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += std::pow(results[i].binned_charges->at(pmt_it)[time_bin_it], 2.0);
                     }
                 }
                 results[i].binned_charges = nullptr;
@@ -1500,123 +1571,11 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
         }
     }
 
-
-    // now we should go through all_events_binned_charges and calculate average over all events
-    std::vector<std::vector<double>> averaged_all_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
-                                                                            // dimensions are n_pmts x n_time_bins
-
-    for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-        for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-            averaged_all_events_binned_charges[pmt_it][time_bin_it] = summed_over_events_binned_charges[pmt_it][time_bin_it] / total_events_that_escaped;
-        }
-    }
-
-    // and let's print the summed wf to check
-    std::cout << "summed wf charges averaged over " << total_events_that_escaped <<  " events:" << std::endl;
-    double total_charge_in_this_bin;
-    for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it++){
-        total_charge_in_this_bin = 0;
-        for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it++){
-            total_charge_in_this_bin += averaged_all_events_binned_charges[pmt_it][time_bin_it];
-        }
-        std::cout << "at time = " << bin_centers[time_bin_it] << ", charge = " <<  total_charge_in_this_bin << std::endl;
-    }
-
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
-
-    // final check for any running jobs
-    while(running_jobs.size() > 0) {
-        // Check if any jobs have finished
-        for(int i=int(running_jobs.size())-1; i>=0; --i) {
-            if(not running_jobs.at(i)->running.load()) {
-                PhotonPropagationJob * job = running_jobs.at(i);
-                running_jobs.erase(running_jobs.begin() + i);
-                free_jobs.push_back(job);
-                //job->thread.join();
-                results.at(job->vector_of_vertices_index - min_vertex_idx).done = true;
-            }
-        }
-
-        // Check for any done results and push the corresponding frames
-        size_t results_done = 0;
-        for(size_t i=0; i<results.size(); ++i) {
-            if(results.at(i).done) {
-                // let's save to all_events_binned_charges
-                for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-                    for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                        for (size_t event_it = results.at(i).event_start_idx; event_it < results.at(i).event_end_idx; event_it ++){
-                            events_binned_charges.at(pmt_it).at(time_bin_it).at(event_it) =
-                                results.at(i).vector_of_vertices_binned_charges->at(pmt_it).at(time_bin_it).at(event_it - results.at(i).event_start_idx);
-                            events_squared_binned_charges.at(pmt_it).at(time_bin_it).at(event_it) =
-                                results.at(i).vector_of_vertices_binned_charges_squared->at(pmt_it).at(time_bin_it).at(event_it - results.at(i).event_start_idx);
-                        }
-                    }
-                }
-                results.at(i).vector_of_vertices_binned_charges = nullptr;
-                results.at(i).vector_of_vertices_binned_charges_squared = nullptr;
-                results.at(i).event_start_idx = 0;
-                results.at(i).event_end_idx = 0;
-                results_done += 1;
-            } else {
-                break;
-            }
-        }
-        if(results_done > 0) {
-            results.erase(results.begin(), results.begin() + results_done);
-            min_vertex_idx += results_done;
-        }
-    }
-    // we also need to delete free_jobs now that we're done threading
-    if (free_jobs.size() > 0){
-        for(PhotonPropagationJob * obj : free_jobs){
-            //delete obj->vector_of_vertices;
-            delete obj;
-        }
-    }
-
-    // let's sum yields across events
-    I3Vector<I3Vector<double>> summed_over_events_binned_charges(n_pmts_to_simulate, I3Vector<double>(bin_centers.size(), 0.0)); // dimensions are n_pmts x n_time_bins
-    std::vector<std::vector<double>> summed_over_squared_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0)); // dimensions are n_pmts x n_time_bins
-    double this_pmt_this_time_summed_across_events;
-    double this_pmt_this_time_summed_across_events_squared;
-    for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-        for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-            this_pmt_this_time_summed_across_events = 0;
-            this_pmt_this_time_summed_across_events_squared = 0;
-            for (size_t event_it = 0; event_it < total_events_that_escaped; event_it ++){
-                this_pmt_this_time_summed_across_events += events_binned_charges[pmt_it][time_bin_it][event_it];
-                this_pmt_this_time_summed_across_events_squared += events_squared_binned_charges[pmt_it][time_bin_it][event_it];
-            }
-            summed_over_events_binned_charges[pmt_it][time_bin_it] = this_pmt_this_time_summed_across_events;
-            summed_over_squared_events_binned_charges[pmt_it][time_bin_it] = this_pmt_this_time_summed_across_events_squared;
-        }
-    }
-
-    //return events_binned_charges;
-    //return summed_over_events_binned_charges;
-    //return events_binned_charges;
-    //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << ".at(ms)" << std::endl;
-
-    // let's print out the averaged summed wf just to make sure i didnt fuck anything up
-    //double total_charge_in_this_time_bin;
-    //std::cout << "for " << total_events_that_escaped << " total events, or " << equivalent_events_in_data << " equivalent events in data, avg summed wf = " << std::endl;
-    //for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-    //    total_charge_in_this_time_bin = 0;
-    //    for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-    //        total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
-    //    }
-    //    total_charge_in_this_time_bin /= total_events_that_escaped;
-    //    std::cout << total_charge_in_this_time_bin << ", " << std::endl;
-    //}
-
     // instead of just returning the averaged_all_events_binned_charges, we are going to compute the liklihood quickly
     // we are computing the liklihood on a per-pmt basis on a per-time bin basis
     // we've already found the max time of the data and set that equal to 0
     // let's do the same with the simulation
     // then we actually want to compute the liklihood evaluation from 5 nsec before the max time until 70 nsec after the max time
-
 
     double simulation_time_of_max;
     double simulation_max_value;
@@ -1624,96 +1583,44 @@ void PhotonPropagation::Physics(I3FramePtr frame) {
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
         total_charge_per_time_bin = 0;
         for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-            total_charge_per_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
+            total_charge_per_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
         }
         if (total_charge_per_time_bin > simulation_max_value){
             simulation_max_value = total_charge_per_time_bin;
-            simulation_time_of_max = bin_centers.at(time_bin_it);
+            simulation_time_of_max = bin_centers[time_bin_it];
         }
     }
 
     // let's subtract off the time of the max val
     std::vector<double> simulation_times;
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-        simulation_times.push_back(bin_centers.at(time_bin_it) - simulation_time_of_max);
+        simulation_times.push_back(bin_centers[time_bin_it] - simulation_time_of_max);
     }
-    // print out simulation to check
-    //std::cout << "printing simulation to check : " << std::endl;
-    //total_charge_per_time_bin = 0;
-    //for (size_t time_bin_it = 0; time_bin_it < simulation_times.size(); time_bin_it ++){
-    //    total_charge_per_time_bin = 0;
-    //    for (size_t pmt_it = 0; pmt_it < summed_over_events_binned_charges.size(); pmt_it ++){
-    //        total_charge_per_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
-    //    }
-    //    std::cout << "at time = " << simulation_times[time_bin_it] << " summed charge = " << total_charge_per_time_bin << std::endl;
-    //}
 
-    double min_time_to_evaluate = -6.0;  // relative to summed wf peak times
-    double max_time_to_evaluate = 60;
+    double min_time_to_evaluate = -5.0;  // relative to summed wf peak times
+    double max_time_to_evaluate = 70;
 
-    double total_nllh = 0.0;
+    double total_nllh;
 
     // now we can loop over our simulation, check that we are within the time bands to calculate the nllh, then calculate it!
-    double mu_signal;
-    double mu_background;
-    double mu_total;
-    double sigma_squared_signal;
-    double sigma_squared_background;
-    double sigma_squared_total;
+    double mu;
+    double sigma_squared;
     double k;
     size_t this_time_bin_in_data_idx;
-    bool simulation_data_present;
-    size_t this_time_simulation_idx;
-    size_t this_time_data_idx;
-    size_t simulation_bins_without_data = 0;
 
-    // now instead of looping over simulation times and seeing if they are within our roi, we loop over roi and find corresponding simulation time (or noise if not filled)
-    for (double time_roi_it = min_time_to_evaluate; time_roi_it <= max_time_to_evaluate; time_roi_it += 2.0){
-        simulation_data_present = true;
-        // let's check if our time is out of bounds of our simulation
-        if (time_roi_it < simulation_times.front() or time_roi_it > simulation_times.back()){
-            // ok we have no simulation data for this time, let's use our noise rate * n events
-            simulation_data_present = false;
-            simulation_bins_without_data += 1;
-        } else {
-            this_time_simulation_idx = findNearestIndex(simulation_times, time_roi_it);
+    for (size_t time_bin_it = 0; time_bin_it < simulation_times.size(); time_bin_it ++){
+        if (simulation_times[time_bin_it] >= min_time_to_evaluate and simulation_times[time_bin_it] <= max_time_to_evaluate){
+            // ok we are within the times we want to evaluate!
+            // we need to find the corresponding idx in times_of_data_points_
+            this_time_bin_in_data_idx = findNearestIndex(times_of_data_points_, simulation_times[time_bin_it]);        
+            for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
+                // so now we are looping over each pmt, we need to calculate the nllh for each time bin for each pmt
+                k = data_series_[pmt_it][this_time_bin_in_data_idx];
+                mu = summed_over_events_binned_charges[pmt_it][time_bin_it] * (n_data_samples_ / total_events_that_escaped);
+                sigma_squared = summed_over_squared_events_binned_charges[pmt_it][time_bin_it] * std::pow((n_data_samples_ / total_events_that_escaped), 2);
+                total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+            }
         }
-        this_time_data_idx = findNearestIndex(times_of_data_points_, time_roi_it);
-        for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-            if (pmt_nllh_status_[pmt_it] == false){
-                continue; // we don't want to include this pmt in the fit!!! move on!!!
-            }
-            // so now we are looping over each pmt, we need to calculate the nllh for each time bin for each pmt
-            k = data_series_[pmt_it][this_time_data_idx];
-            if (blank_flag_){
-                mu_background = blank_data_series_[pmt_it][this_time_data_idx] * (ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_));
-                sigma_squared_background = blank_data_sigma_squared_[pmt_it][this_time_data_idx] * std::pow(ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_), 2.0); 
-            }
-            else{
-                mu_background = 0;
-                sigma_squared_background = 0;
-            }
-            if (simulation_data_present){
-                mu_signal = summed_over_events_binned_charges[pmt_it][this_time_simulation_idx] * ((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data));
-                sigma_squared_signal = summed_over_squared_events_binned_charges[pmt_it][this_time_simulation_idx] *
-                    std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2);
-            } else {
-                mu_signal = (noise_rate_per_time_bin * equivalent_events_in_data) * ((1.0 - ratio_blank_to_signal) * n_data_samples_ / equivalent_events_in_data);
-                sigma_squared_signal = std::pow(noise_rate_per_time_bin * equivalent_events_in_data, 2.0) *
-                    std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2.0);
-            }
-            mu_total = mu_background + mu_signal;
-            sigma_squared_total = sigma_squared_background + sigma_squared_signal;
-            total_nllh += MCLLH::LEff()(k, mu_total, sigma_squared_total);
-        }
-
-    }
-
-    size_t max_simulation_bins_without_data = 3;
-
-    if (simulation_bins_without_data > max_simulation_bins_without_data){
-        // oops! too many bins without data! set the nllh to - inf
-        total_nllh = (double)(-std::numeric_limits<double>::infinity());
     }
 
 
