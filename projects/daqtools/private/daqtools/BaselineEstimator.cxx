@@ -127,6 +127,27 @@ double LinearChi2PerDOF(
     return chi2 /= DOF;
 }
 
+double ExponentialChi2PerDOF(
+        std::vector<double>::const_iterator begin,
+        std::vector<double>::const_iterator end,
+        double a,
+        double b,
+        double c) {
+    size_t N = std::distance(begin, end);
+    size_t DOF = std::max(N, size_t(4)) - 3;
+    double stddev = b;
+    double chi2 = 0.0;
+    size_t t = 0;
+    for(; begin != end; ++begin, t += 2) {
+        double pred = a + b * std::exp(c * t);
+        double z = ((*begin) - pred) / stddev;
+        chi2 += z * z;
+    }
+    chi2 /= 2.0;
+    chi2 += log(stddev) + log(sqrt(2.0 * M_PI));
+    return chi2 /= DOF;
+}
+
 class BaselineEstimator: public I3Module {
     std::exception_ptr teptr = nullptr;
     std::string geometry_key_;
@@ -378,7 +399,35 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
     }
 
     // vector to store results of outlier filter
-    size_t N = std::min(samples.size(), window_size);
+    size_t N = samples.size();
+    std::vector<double> outlier_filter_results;
+    outlier_filter_results.reserve(N);
+    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(400), N));
+    std::sort(starting_samples.begin(), starting_samples.end());
+    double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
+    OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
+    starting_value = outlier_filter_results.back();
+
+    {
+        // initializing the exponential fit params
+        double a;
+        double b;
+        double c;
+
+        FitExponential(outlier_filter_results, a, b, c);
+        double exp_chi2_per_dof = ExponentialChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.begin() + std::min(size_t(1000), N), a, b, c);
+
+        bool bad_exp_fit = isnan(a) or isnan(b) or isnan(c);
+        if(not bad_exp_fit and c < 0 and b > 0 and c > -1.0/1000.0 and exp_chi2_per_dof < 35.0) {
+            // Subtract off the exponential component from the outlier filter
+            for (size_t exp_it = 0; exp_it < outlier_filter_results.size(); ++exp_it){
+                outlier_filter_results[exp_it] -= b * std::exp(c * (exp_it * 2.0));
+            }
+        }
+    }
+
+    // vector to store results of outlier filter
+    N = std::min(N, window_size);
     size_t N_for_variance = std::min(samples.size(), std::max(size_t(samples.size() * variance_percentile), size_t(3)));
     size_t N_for_variance_half = N_for_variance / 2;
     size_t N_for_variance_opposite_half = N_for_variance - N_for_variance_half;
