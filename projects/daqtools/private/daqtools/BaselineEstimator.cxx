@@ -39,6 +39,7 @@
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 #include "icetray/robust_statistics.h"
 #include "daqtools/WaveformSmoother.h"
+#include "daqtools/WindowedStats.h"
 #include <dataclasses/calibration/BaselineEstimate.h>
 
 struct BaselineEstimatorJob {
@@ -302,7 +303,7 @@ void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int
     size_t N = std::min(samples.size(), target_num_samples);
     std::vector<double> outlier_filter_results;
     outlier_filter_results.reserve(N);
-    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), N));
+    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(800), N));
     std::sort(starting_samples.begin(), starting_samples.end());
     double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
     OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
@@ -363,6 +364,83 @@ void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int
     baseline.num_samples = outlier_filter_results.size();
     outlier_filter_results.clear();
     outlier_filter_results.shrink_to_fit();
+    return;
+}
+
+void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsigned int> const & samples, size_t window_size, double variance_percentile) {
+    baseline.target_num_frames = 1;
+    if (samples.size() == 0) {
+        baseline.baseline = std::numeric_limits<double>::quiet_NaN();
+        baseline.stddev = std::numeric_limits<double>::quiet_NaN();
+        baseline.num_frames = 1;
+        baseline.num_samples = 0;
+        return;
+    }
+
+    // vector to store results of outlier filter
+    size_t N = std::min(samples.size(), window_size);
+    size_t N_for_variance = std::min(samples.size(), std::max(size_t(samples.size() * variance_percentile), size_t(3)));
+    size_t N_for_variance_half = N_for_variance / 2;
+    size_t N_for_variance_opposite_half = N_for_variance - N_for_variance_half;
+    std::vector<std::tuple<double, double>> variance_and_values;
+    variance_and_values.reserve(N+1);
+    WindowedStats stats;
+    for(size_t i=0; i<N; ++i) {
+        stats.AddValue(samples.at(i));
+    }
+    std::function<bool(std::tuple<double, double>, std::tuple<double, double>)> comp = [](std::tuple<double, double> const & a, std::tuple<double, double> const & b) {
+        return std::get<0>(a) < std::get<0>(b);
+    };
+    for(size_t i=0; i<N_for_variance_half; ++i) {
+        double const var = stats.Variance();
+        double const val = samples.at(i);
+
+        if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
+            std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
+            variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
+            if(variance_and_values.size() > N_for_variance) {
+                variance_and_values.pop_back();
+            }
+        }
+    }
+    for(size_t i=N_for_variance_half; i<samples.size()-N_for_variance_opposite_half; ++i) {
+        stats.AddValue(samples[i+N_for_variance_opposite_half]);
+        stats.RemoveValue();
+        double const var = stats.Variance();
+        double const val = samples.at(i);
+        if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
+            std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
+            variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
+            if(variance_and_values.size() > N_for_variance) {
+                variance_and_values.pop_back();
+            }
+        }
+    }
+    for(size_t i=samples.size()-N_for_variance_opposite_half; i<samples.size(); ++i) {
+        double const var = stats.Variance();
+        double const val = samples.at(i);
+        if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
+            std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
+            variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
+            if(variance_and_values.size() > N_for_variance) {
+                variance_and_values.pop_back();
+            }
+        }
+    }
+
+    std::vector<double> selected_samples;
+    selected_samples.reserve(variance_and_values.size());
+    for(std::tuple<double, double> const & var_and_val : variance_and_values) {
+        selected_samples.push_back(std::get<1>(var_and_val));
+    }
+
+    std::sort(selected_samples.begin(), selected_samples.end());
+    double baseline_mode_val = robust_stats::Mode(selected_samples.begin(), selected_samples.end());
+    double baseline_std = robust_stats::MedianAbsoluteDeviation(selected_samples.begin(), selected_samples.end(), baseline_mode_val);
+    baseline.baseline = -1 * baseline_mode_val;
+    baseline.stddev = baseline_std;
+    baseline.num_frames = 1;
+    baseline.num_samples = selected_samples.size();
     return;
 }
 
@@ -528,6 +606,8 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
     }
     std::vector<BaselineEstimate> baseline_estimates;
     baseline_estimates.resize(num_baselines);
+    std::vector<BaselineEstimate> baseline_estimates_variance;
+    baseline_estimates_variance.resize(num_baselines);
 
     // loop over each channel in waveforms
     for(size_t i=0; i<num_baselines; ++i) {
@@ -544,6 +624,12 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
             num_samples,
             num_exp_samples
         );
+        ProcessWaveformVariance(
+            baseline_estimates[i],
+            std::cref(waveforms->at(channel).GetWaveform()),
+            num_samples,
+            num_exp_samples
+        );
     }
 
     if(output_channels_) {
@@ -552,6 +638,11 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
             baselines->emplace(channels_[i], baseline_estimates[i]);
         }
         frame->Put(output_key_, baselines);
+        boost::shared_ptr<I3Map<uint32_t, BaselineEstimate>> baselines_variance = boost::make_shared<I3Map<uint32_t, BaselineEstimate>>();
+        for(size_t i = 0; i < num_baselines; ++i) {
+            baselines_variance->emplace(channels_[i], baseline_estimates_variance[i]);
+        }
+        frame->Put(output_key_ + "Variance", baselines_variance);
     } else {
         // I3Map to store pmt key and baselines
         boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
@@ -559,6 +650,11 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
             baselines->emplace(pmt_keys_[i], baseline_estimates[i]);
         }
         frame->Put(output_key_, baselines);
+        boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines_variance = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
+        for(size_t i = 0; i < num_baselines; ++i) {
+            baselines_variance->emplace(pmt_keys_[i], baseline_estimates_variance[i]);
+        }
+        frame->Put(output_key_ + "Variance", baselines_variance);
     }
 
     running.store(false);
