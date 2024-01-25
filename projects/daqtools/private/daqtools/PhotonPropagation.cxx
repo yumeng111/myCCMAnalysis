@@ -1385,7 +1385,38 @@ void RunFrameThread(PhotonPropagationJob * job,
                     double const & bin_width){
 
     job->running.store(true);
-    job->thread = std::thread(FrameThread,
+
+    job->thread = std::thread([job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
+                          quantum_efficiency, n_photons_produced, UV_absorption_length, vis_absorption_length,
+                          pmt_parsed_information_, locations_to_check_information_, locations_to_check_to_pmt_yield_,
+                          locations_to_check_to_pmt_travel_time_, light_times, light_profile, bin_centers, bin_width,
+                          &vertices = job->vector_of_vertices,
+                          &charges = *job->vector_of_vertices_summed_binned_charges,
+                          &charges_squared = *job->vector_of_vertices_summed_binned_charges_squared]() {
+    FrameThread(job->running,
+                job->vertex_1275_flag,
+                full_acceptance,
+                c_cm_per_nsec,
+                uv_index_of_refraction,
+                vis_index_of_refraction,
+                quantum_efficiency,
+                n_photons_produced,
+                UV_absorption_length,
+                vis_absorption_length,
+                pmt_parsed_information_,
+                locations_to_check_information_,
+                locations_to_check_to_pmt_yield_,
+                locations_to_check_to_pmt_travel_time_,
+                vertices,
+                light_times,
+                light_profile,
+                bin_centers,
+                bin_width,
+                charges,
+                charges_squared);
+});
+
+    /*job->thread = std::thread(FrameThread,
                               std::ref(job->running),
                               std::cref(job->vertex_1275_flag),
                               std::cref(full_acceptance),
@@ -1406,7 +1437,7 @@ void RunFrameThread(PhotonPropagationJob * job,
                               std::cref(bin_centers),
                               std::cref(bin_width),
                               std::ref(*job->vector_of_vertices_summed_binned_charges),
-                              std::ref(*job->vector_of_vertices_summed_binned_charges_squared));
+                              std::ref(*job->vector_of_vertices_summed_binned_charges_squared));*/
 }
 
 size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
