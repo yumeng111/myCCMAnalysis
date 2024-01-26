@@ -22,6 +22,7 @@
 #include <dataclasses/I3Map.h>
 #include <dataclasses/I3Position.h>
 #include <dataclasses/I3Orientation.h>
+#include <icetray/I3Units.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
 #include <dataclasses/geometry/CCMGeometry.h>
@@ -348,39 +349,39 @@ namespace detail {
 
     // Z positions of the rows of pmts
     std::map<int, double> pmt_region_z_positions = {
-        {-2, 75.00},
-        {-1, 65.00},
-        {0,  58.00},
-        {1,  46.22},
-        {2,  23.11},
-        {3,   0.00},
-        {4, -23.11},
-        {5, -46.22},
-        {6, -58.00},
-        {7, -65.00},
-        {8, -75.00},
+        {-2, 75.00 * I3Units::cm},
+        {-1, 65.00 * I3Units::cm},
+        {0,  58.00 * I3Units::cm},
+        {1,  46.22 * I3Units::cm},
+        {2,  23.11 * I3Units::cm},
+        {3,   0.00 * I3Units::cm},
+        {4, -23.11 * I3Units::cm},
+        {5, -46.22 * I3Units::cm},
+        {6, -58.00 * I3Units::cm},
+        {7, -65.00 * I3Units::cm},
+        {8, -75.00 * I3Units::cm},
     };
 
     // The radii of rings of pmts
     std::map<int, double> ring_radii = {
-        {0,  96.0}, // Outer wall
-        {1,  20.0}, // Inner ring on top/bottom
-        {2,  42.0}, //
-        {3,  64.2}, //
-        {4,  85.5}, // Outer ring on top/bottom
-        {5, 101.6},  // Veto VT and VB rings
-        {6, 111.6}  // Veto VCT and VCB rings
+        {0,  96.0 * I3Units::cm}, // Outer wall
+        {1,  20.0 * I3Units::cm}, // Inner ring on top/bottom
+        {2,  42.0 * I3Units::cm}, //
+        {3,  64.2 * I3Units::cm}, //
+        {4,  85.5 * I3Units::cm}, // Outer ring on top/bottom
+        {5, 101.6 * I3Units::cm},  // Veto VT and VB rings
+        {6, 111.6 * I3Units::cm}  // Veto VCT and VCB rings
     };
 
     // The number of possible pmt positions in each ring (not all positions will be filled)
     std::map<int, int> ring_pmt_pos_count = {
-        {0, 24}, // Outer wall
-        {1,  5}, // Inner ring on top/bottom
-        {2, 10}, //
-        {3, 15}, //
-        {4, 20}, // Outer ring on top/bottom
-        {5, 24},  // Veto VT and VB rings
-        {6, 24}  // Veto VCT and VCB rings
+        {0, 24 * I3Units::cm}, // Outer wall
+        {1,  5 * I3Units::cm}, // Inner ring on top/bottom
+        {2, 10 * I3Units::cm}, //
+        {3, 15 * I3Units::cm}, //
+        {4, 20 * I3Units::cm}, // Outer ring on top/bottom
+        {5, 24 * I3Units::cm},  // Veto VT and VB rings
+        {6, 24 * I3Units::cm}  // Veto VCT and VCB rings
     };
 
     std::set<std::tuple<int, int, int>> cap_uncoated_pmts = {

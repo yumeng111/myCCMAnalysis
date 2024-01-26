@@ -11,7 +11,7 @@
 #include "icetray/CCMTriggerKey.h"
 #include "dataclasses/I3Map.h"
 
-static const unsigned ccmgeometry_version_ = 0;
+static const unsigned ccmgeometry_version_ = 1;
 
 class CCMGeometry : public I3FrameObject {
 public:
