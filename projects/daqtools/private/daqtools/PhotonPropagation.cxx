@@ -350,7 +350,7 @@ void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
     for (size_t time_bin_it = 0; time_bin_it < times_of_data_points_.size(); time_bin_it ++){
         total_charge_per_time_bin = 0;
         for (size_t pmt_it = 0; pmt_it < data_series_.size(); pmt_it ++){
-            total_charge_per_time_bin += data_series[pmt_it][time_bin_it];
+            total_charge_per_time_bin += data_series_[pmt_it][time_bin_it];
         }
         if (total_charge_per_time_bin > max_data_value_){
             max_data_value_ = total_charge_per_time_bin;
@@ -363,6 +363,16 @@ void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
         times_of_data_points_[time_bin_it] -= time_of_max_data_value_;
     }
 
+    /*// print out data to check
+    std::cout << "printing data to check : " << std::endl;
+    total_charge_per_time_bin = 0;
+    for (size_t time_bin_it = 0; time_bin_it < times_of_data_points_.size(); time_bin_it ++){
+        total_charge_per_time_bin = 0;
+        for (size_t pmt_it = 0; pmt_it < data_series_.size(); pmt_it ++){
+            total_charge_per_time_bin += data_series_[pmt_it][time_bin_it];
+        }
+        std::cout << "at time = " << times_of_data_points_[time_bin_it] << " summed charge = " << total_charge_per_time_bin << std::endl;
+    }*/
 
 }
 
@@ -1217,6 +1227,7 @@ void get_yields_per_pmt(std::vector<double> const & direct_photon_yields,
                         std::vector<double> const & light_profile,
                         std::vector<double> const & bin_centers,
                         double const & bin_width,
+                        double const & noise_rate_per_time_bin,
                         std::vector<std::vector<double>> & binned_charges){
 
     // final function!!! just need to put everthing together
@@ -1259,6 +1270,10 @@ void get_yields_per_pmt(std::vector<double> const & direct_photon_yields,
         this_pmt_binned_charges.clear();
         this_pmt_binned_charges.resize(bin_centers.size());
         manual_binning(bin_centers, bin_width, adjusted_light_times, adjusted_light_yields, this_pmt_binned_charges);
+        // first add a lil noise
+        for(size_t bin_it = 0; bin_it < this_pmt_binned_charges.size(); bin_it++){
+            this_pmt_binned_charges[bin_it] += noise_rate_per_time_bin;
+        }
         // now save!!!
         binned_charges.push_back(this_pmt_binned_charges);
 
@@ -1284,6 +1299,7 @@ void put_simulation_steps_together(double const & full_acceptance,
                                    std::vector<double> const & light_profile,
                                    std::vector<double> const & bin_centers,
                                    double const & bin_width,
+                                   double const & noise_rate_per_time_bin,
                                    std::vector<std::vector<double>> & binned_charges){
 
     // this function puts all of our photon simulation code together and returns the binned yields of charge in each pmt
@@ -1310,7 +1326,7 @@ void put_simulation_steps_together(double const & full_acceptance,
 
     // now we can put it all together by binning!
     get_yields_per_pmt(direct_pmt_photon_yields, direct_pmt_photon_propagation_times, cumulative_pmt_photon_yields, cumulative_pmt_photon_propagation_times,
-                       light_times, light_profile, bin_centers, bin_width, binned_charges);
+                       light_times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin, binned_charges);
 }
 
 void FrameThread(std::atomic<bool> & running,
@@ -1332,6 +1348,7 @@ void FrameThread(std::atomic<bool> & running,
                  std::vector<double> const & light_profile,
                  std::vector<double> const & bin_centers,
                  double const & bin_width,
+                 double const & noise_rate_per_time_bin,
                  std::vector<std::vector<double>> & vector_of_vertices_summed_binned_charges,
                  std::vector<std::vector<double>> & vector_of_vertices_summed_binned_charges_squared){
 
@@ -1350,7 +1367,7 @@ void FrameThread(std::atomic<bool> & running,
                                       n_photons_produced_this_event, UV_absorption_length, vis_absorption_length, pmt_parsed_information_, locations_to_check_information_,
                                       locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_,
                                       vector_of_vertices->at(vertex_it)[0], vector_of_vertices->at(vertex_it)[1], vector_of_vertices->at(vertex_it)[2],
-                                      light_times, light_profile, bin_centers, bin_width, binned_charges);
+                                      light_times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin, binned_charges);
 
         // now let's add binned_charges to vector_of_vertices_summed_binned_charges!
         for (size_t pmt_it = 0; pmt_it < binned_charges.size(); pmt_it ++){
@@ -1382,14 +1399,15 @@ void RunFrameThread(PhotonPropagationJob * job,
                     std::vector<double> const & light_times,
                     std::vector<double> const & light_profile,
                     std::vector<double> const & bin_centers,
-                    double const & bin_width){
+                    double const & bin_width,
+                    double const & noise_rate_per_time_bin){
 
     job->running.store(true);
 
     job->thread = std::thread([job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
                           quantum_efficiency, n_photons_produced, UV_absorption_length, vis_absorption_length,
                           pmt_parsed_information_, locations_to_check_information_, locations_to_check_to_pmt_yield_,
-                          locations_to_check_to_pmt_travel_time_, light_times, light_profile, bin_centers, bin_width,
+                          locations_to_check_to_pmt_travel_time_, light_times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin,
                           &vertices = job->vector_of_vertices,
                           &charges = *job->vector_of_vertices_summed_binned_charges,
                           &charges_squared = *job->vector_of_vertices_summed_binned_charges_squared]() {
@@ -1412,6 +1430,7 @@ void RunFrameThread(PhotonPropagationJob * job,
                 light_profile,
                 bin_centers,
                 bin_width,
+                noise_rate_per_time_bin,
                 charges,
                 charges_squared);
 });
@@ -1517,7 +1536,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     std::vector<std::vector<double>> summed_over_squared_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    //std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     // loop over thread_verticies_ and dispatch one thread per vector of vertices
     // note -- we added 1275kev vertices to thread_verticies_ first, so can use that to keep track of if we're dealing with a 1275 or 511 event
     for (size_t vert_it = 0; vert_it < thread_verticies_.size(); vert_it ++){
@@ -1599,7 +1618,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 results.back().done = false;
                 RunFrameThread(job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, pmt_quantum_efficiency,
                                n_photons_produced_, UV_absorption_length_, visible_absorption_length_, pmt_parsed_information_, locations_to_check_information_,
-                               locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_, times, light_profile, bin_centers, bin_width);
+                               locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_, times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin);
                 break;
             } else if(job != nullptr) {
                 free_jobs.push_back(job);
@@ -1643,8 +1662,8 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
             min_vertex_idx += results_done;
         }
     }
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
+    //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
 
     // let's print out the averaged summed wf just to make sure i didnt fuck anything up
     /*double total_charge_in_this_time_bin;
@@ -1683,11 +1702,21 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
         simulation_times.push_back(bin_centers[time_bin_it] - simulation_time_of_max);
     }
+    /*// print out simulation to check
+    std::cout << "printing simulation to check : " << std::endl;
+    total_charge_per_time_bin = 0;
+    for (size_t time_bin_it = 0; time_bin_it < simulation_times.size(); time_bin_it ++){
+        total_charge_per_time_bin = 0;
+        for (size_t pmt_it = 0; pmt_it < summed_over_events_binned_charges.size(); pmt_it ++){
+            total_charge_per_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
+        }
+        std::cout << "at time = " << simulation_times[time_bin_it] << " summed charge = " << total_charge_per_time_bin << std::endl;
+    }*/
 
-    double min_time_to_evaluate = -5.0;  // relative to summed wf peak times
+    double min_time_to_evaluate = -6.0;  // relative to summed wf peak times
     double max_time_to_evaluate = 70;
 
-    double total_nllh;
+    double total_nllh = 0.0;
 
     // now we can loop over our simulation, check that we are within the time bands to calculate the nllh, then calculate it!
     double mu;

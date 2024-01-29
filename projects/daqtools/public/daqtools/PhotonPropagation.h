@@ -344,7 +344,8 @@ class PhotonPropagation {
     double full_acceptance = 4.0 * M_PI;
     size_t n_pmts_to_simulate = (size_t) 0;
 
-    size_t num_threads = std::thread::hardware_concurrency();
+    size_t num_threads = (size_t)10;
+    //size_t num_threads = std::thread::hardware_concurrency();
     std::vector<std::vector<std::vector<double>>> thread_verticies_;
     std::vector<std::vector<std::vector<double>>> thread_1275_verticies_;
     std::vector<std::vector<std::vector<double>>> thread_511_verticies_;
