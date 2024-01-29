@@ -115,6 +115,41 @@ if(PC_${BLA_VENDOR}_FOUND)
   endif()
 endif()
 
+set(BLA_VENDOR "OpenBLAS")
+message(STATUS "Searching for ${BLA_VENDOR} via pkg-config")
+find_package(PkgConfig QUIET)
+pkg_check_modules(PC_${BLA_VENDOR} QUIET openblas)
+
+if(PC_${BLA_VENDOR}_FOUND)
+  find_library(${BLA_VENDOR}_LIBRARIES openblas HINTS ${PC_${BLA_VENDOR}_LIBRARY_DIRS})
+
+  find_file(${BLA_VENDOR}_BUILDINFO openblas_config.h HINTS ${PC_${BLA_VENDOR}_INCLUDE_DIRS})
+  execute_process(COMMAND grep VERSION ${${BLA_VENDOR}_BUILDINFO}
+    COMMAND grep -Eo "[0-9][0-9]?\\.[0-9][0-9]?\\.[0-9][0-9]?"
+    OUTPUT_VARIABLE ${BLA_VENDOR}_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if(PC_${BLA_VENDOR}_INCLUDE_DIRS AND ${BLA_VENDOR}_LIBRARIES)
+    set(BLAS_FOUND TRUE CACHE BOOL "Tool BLAS found successfully" FORCE)
+    set(BLAS_INCLUDE_DIR ${PC_${BLA_VENDOR}_INCLUDE_DIRS} CACHE PATH "Headers for BLAS" FORCE)
+    set(BLAS_LIBRARIES ${${BLA_VENDOR}_LIBRARIES} CACHE PATH "Libraries for BLAS" FORCE)
+
+    pkg_check_modules(PC_LAPACK QUIET openblas)
+    find_library(LAPACK_LIBRARIES lapack HINTS ${PC_LAPACK_LIBRARY_DIRS})
+    list(INSERT LAPACK_LIBRARIES 0 ${BLAS_LIBRARIES})
+    if(LAPACK_LIBRARIES)
+      set(LAPACK_FOUND TRUE CACHE BOOL "Tool LAPACK found successfully" FORCE)
+    endif()
+
+    found_ok(${BLA_VENDOR})
+    found_ok(" version: ${${BLA_VENDOR}_VERSION}")
+    found_ok("includes: ${BLAS_INCLUDE_DIR}")
+    found_ok("    libs: ${BLAS_LIBRARIES}")
+    found_ok("  lapack: ${LAPACK_LIBRARIES}")
+    return()
+  endif()
+endif()
+
 # }}}
 
 # {{{ Not on Ubuntu? Maybe you have "red hat"'s OpenBLAS?
