@@ -11,7 +11,7 @@
 #include "icetray/CCMTriggerKey.h"
 #include "dataclasses/I3Map.h"
 
-static const unsigned ccmgeometry_version_ = 0;
+static const unsigned ccmgeometry_version_ = 1;
 
 class CCMGeometry : public I3FrameObject {
 public:
@@ -45,8 +45,9 @@ public:
   }
 
   friend class icecube::serialization::access;
-
-  template <class Archive> void serialize(Archive & ar, unsigned version);
+  template<class Archive> void save(Archive& ar, unsigned version) const;
+  template<class Archive> void load(Archive& ar, unsigned version);
+  I3_SERIALIZATION_SPLIT_MEMBER();
 };
 
 I3_DEFAULT_NAME(CCMGeometry);
