@@ -1395,6 +1395,10 @@ void FrameThread(std::atomic<bool> & running,
 
 }
 
+size_t PhotonPropagation::GetNSecondaryLocs(){
+    return locations_to_check_information_.size();
+}
+
 void RunFrameThread(PhotonPropagationJob * job,
                     double const & full_acceptance,
                     double const & c_cm_per_nsec,
@@ -1487,7 +1491,7 @@ size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
     return nearestIndex;
 }
 
-double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                         double const & triplet_ratio_,
                                         double const & singlet_tau_,
                                         double const & triplet_tau_,
@@ -1543,7 +1547,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
 
     // so now we can loop over our vector containing vector of verticies to simulate
     // let's make out final vector that we will be saving to
-    std::vector<std::vector<double>> summed_over_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
+    I3Vector<I3Vector<double>> summed_over_events_binned_charges(n_pmts_to_simulate, I3Vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
     std::vector<std::vector<double>> summed_over_squared_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
                                                                             // dimensions are n_pmts x n_time_bins
@@ -1674,6 +1678,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
             min_vertex_idx += results_done;
         }
     }
+    return summed_over_events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
 
@@ -1695,6 +1700,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     // let's do the same with the simulation
     // then we actually want to compute the liklihood evaluation from 5 nsec before the max time until 70 nsec after the max time
 
+    /*
     double simulation_time_of_max;
     double simulation_max_value;
     double total_charge_per_time_bin;
@@ -1714,7 +1720,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
         simulation_times.push_back(bin_centers[time_bin_it] - simulation_time_of_max);
     }
-    /*// print out simulation to check
+    // print out simulation to check
     std::cout << "printing simulation to check : " << std::endl;
     total_charge_per_time_bin = 0;
     for (size_t time_bin_it = 0; time_bin_it < simulation_times.size(); time_bin_it ++){
@@ -1723,7 +1729,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
             total_charge_per_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
         }
         std::cout << "at time = " << simulation_times[time_bin_it] << " summed charge = " << total_charge_per_time_bin << std::endl;
-    }*/
+    }
 
     double min_time_to_evaluate = -6.0;  // relative to summed wf peak times
     double max_time_to_evaluate = 70;
@@ -1752,6 +1758,6 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     }
 
 
-    return total_nllh;
+    return total_nllh;*/
 
 }

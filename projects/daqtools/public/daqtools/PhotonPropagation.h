@@ -407,7 +407,8 @@ public:
     void SetChunkWidth(double desired_chunk_width);
     void SetChunkHeight(double desired_chunk_height);
     void SetNFaceChunks(double n_chunks_top);
-    double GetSimulation(double const & singlet_ratio_,
+    size_t GetNSecondaryLocs();
+    I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
                          double const & triplet_tau_,

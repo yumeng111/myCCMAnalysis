@@ -51,6 +51,7 @@ void register_PhotonPropagation() {
         .def("SetChunkWidth", &PhotonPropagation::SetChunkWidth)
         .def("SetChunkHeight", &PhotonPropagation::SetChunkHeight)
         .def("SetNFaceChunks", &PhotonPropagation::SetNFaceChunks)
+        .def("GetNSecondaryLocs", &PhotonPropagation::GetNSecondaryLocs)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }
