@@ -277,6 +277,8 @@ class PhotonPropagation {
     size_t n_convolution_chunks_ = 200.0;
     double portion_light_reflected_by_tpb_ = 1.0;
     double visible_absorption_length_ = 2000.0;
+    size_t face_chunks_counter = 0;
+    size_t side_chunks_counter = 0;
     // default values but can change with Set functions!
     double desired_chunk_width_ = 20.0; // use 5 for finer binning
     double desired_chunk_height_ = 20.0; // use 5 for finer binning
@@ -371,7 +373,8 @@ public:
     void SetChunkWidth(double desired_chunk_width);
     void SetChunkHeight(double desired_chunk_height);
     void SetNFaceChunks(double n_chunks_top);
-    size_t GetNSecondaryLocs();
+    size_t GetNFaceChunks();
+    size_t GetNSideChunks();
     I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,

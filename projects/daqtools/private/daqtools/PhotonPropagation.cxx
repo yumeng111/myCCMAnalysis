@@ -396,6 +396,15 @@ void PhotonPropagation::SetNFaceChunks(double n_chunks_top){
     n_chunks_top_ = n_chunks_top;
 }
 
+size_t PhotonPropagation::GetNFaceChunks(){
+    return face_chunks_counter;
+}
+
+size_t PhotonPropagation::GetNSideChunks(){
+    return side_chunks_counter;
+}
+
+
 void PhotonPropagation::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
@@ -532,6 +541,7 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
                 double facing_dir_z = 0.0;
 
                 // now a vector to save things to
+                side_chunks_counter += 1;
                 this_loc_info.clear();
                 this_loc_info.push_back(loc_x);
                 this_loc_info.push_back(loc_y);
@@ -636,6 +646,7 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
                 double facing_dir_z = -1.0;
 
                 // now a vector to save things to
+                face_chunks_counter += 1;
                 this_loc_info.clear();
                 this_loc_info.push_back(this_x);
                 this_loc_info.push_back(this_y);
@@ -665,6 +676,7 @@ void PhotonPropagation::Geometry(I3FramePtr frame) {
                 double facing_dir_z = 1.0;
 
                 // now a vector to save things to
+                face_chunks_counter += 1;
                 this_loc_info.clear();
                 this_loc_info.push_back(this_x);
                 this_loc_info.push_back(this_y);
@@ -1395,10 +1407,6 @@ void FrameThread(std::atomic<bool> & running,
 
 }
 
-size_t PhotonPropagation::GetNSecondaryLocs(){
-    return locations_to_check_information_.size();
-}
-
 void RunFrameThread(PhotonPropagationJob * job,
                     double const & full_acceptance,
                     double const & c_cm_per_nsec,
@@ -1682,7 +1690,6 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singl
     for(PhotonPropagationJob * obj : free_jobs){
         delete obj;
     }
-    free_jobs.clear();
 
     return summed_over_events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
