@@ -47,50 +47,14 @@ struct PhotonPropagationJob {
     std::vector<std::vector<double>>* vector_of_vertices = nullptr;
     bool vertex_1275_flag = false;
     size_t vector_of_vertices_index = 0;
-    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges = nullptr;
-    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges_squared = nullptr;
-
-    // Destructor
-    ~PhotonPropagationJob() {
-        // Cleanup code for vector_of_vertices
-        if (vector_of_vertices != nullptr) {
-            delete vector_of_vertices;
-            vector_of_vertices = nullptr;
-        }
-
-        // Cleanup code for vector_of_vertices_summed_binned_charges
-        if (vector_of_vertices_summed_binned_charges != nullptr) {
-            delete vector_of_vertices_summed_binned_charges;
-            vector_of_vertices_summed_binned_charges = nullptr;
-        }
-
-        // Cleanup code for vector_of_vertices_summed_binned_charges_squared
-        if (vector_of_vertices_summed_binned_charges_squared != nullptr) {
-            delete vector_of_vertices_summed_binned_charges_squared;
-            vector_of_vertices_summed_binned_charges_squared = nullptr;
-        }
-    }
+    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges = nullptr;
+    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges_squared = nullptr;
 };
 
 struct PhotonPropagationResult {
-    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges = nullptr;
-    std::vector<std::vector<double>>* vector_of_vertices_summed_binned_charges_squared = nullptr;
+    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges = nullptr;
+    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges_squared = nullptr;
     bool done = false;
-
-    // Destructor
-    ~PhotonPropagationResult() {
-        // Cleanup code for vector_of_vertices_summed_binned_charges
-        if (vector_of_vertices_summed_binned_charges != nullptr) {
-            delete vector_of_vertices_summed_binned_charges;
-            vector_of_vertices_summed_binned_charges = nullptr;
-        }
-
-        // Cleanup code for vector_of_vertices_summed_binned_charges_squared
-        if (vector_of_vertices_summed_binned_charges_squared != nullptr) {
-            delete vector_of_vertices_summed_binned_charges_squared;
-            vector_of_vertices_summed_binned_charges_squared = nullptr;
-        }
-    }
 };
 
 namespace MCLLH {

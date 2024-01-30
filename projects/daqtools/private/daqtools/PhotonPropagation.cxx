@@ -1613,8 +1613,8 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singl
                 job = new PhotonPropagationJob();
                 job->running.store(false);
                 job->thread_index = running_jobs.size();
-                job->vector_of_vertices_summed_binned_charges = new std::vector<std::vector<double>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
-                job->vector_of_vertices_summed_binned_charges_squared = new std::vector<std::vector<double>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
+                job->vector_of_vertices_summed_binned_charges = std::make_shared<std::vector<std::vector<double>>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
+                job->vector_of_vertices_summed_binned_charges_squared = std::make_shared<std::vector<std::vector<double>>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
             }
 
             if(job != nullptr and results.size() < max_cached_vertices) {
@@ -1678,6 +1678,12 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singl
             min_vertex_idx += results_done;
         }
     }
+    // we also need to delete free_jobs now that we're done threading
+    for(PhotonPropagationJob * obj : free_jobs){
+        delete obj;
+    }
+    free_jobs.clear();
+
     return summed_over_events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
