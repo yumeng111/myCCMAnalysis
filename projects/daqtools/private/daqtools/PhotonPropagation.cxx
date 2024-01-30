@@ -384,6 +384,18 @@ void PhotonPropagation::SetNEventsToSimulate(size_t n_events_to_simulate){
     n_events_to_simulate_ = n_events_to_simulate;
 }
 
+void PhotonPropagation::SetChunkWidth(double desired_chunk_width){
+    desired_chunk_width_ = desired_chunk_width;
+}
+
+void PhotonPropagation::SetChunkHeight(double desired_chunk_height){
+    desired_chunk_height_ = desired_chunk_height;
+}
+
+void PhotonPropagation::SetNFaceChunks(double n_chunks_top){
+    n_chunks_top_ = n_chunks_top;
+}
+
 void PhotonPropagation::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());

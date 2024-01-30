@@ -48,6 +48,9 @@ void register_PhotonPropagation() {
         .def("SetData", &PhotonPropagation::SetData)
         .def("SetDataSampleSize", &PhotonPropagation::SetDataSampleSize)
         .def("SetNEventsToSimulate", &PhotonPropagation::SetNEventsToSimulate)
+        .def("SetChunkWidth", &PhotonPropagation::SetChunkWidth)
+        .def("SetChunkHeight", &PhotonPropagation::SetChunkHeight)
+        .def("SetNFaceChunks", &PhotonPropagation::SetNFaceChunks)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }
