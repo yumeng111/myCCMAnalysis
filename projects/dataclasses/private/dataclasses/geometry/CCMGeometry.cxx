@@ -6,7 +6,7 @@
 CCMGeometry::~CCMGeometry() {}
 
 template <class Archive>
-void CCMGeometry::save(Archive& ar, unsigned version) {
+void CCMGeometry::save(Archive& ar, unsigned version) const {
     if (version > ccmgeometry_version_)
         log_fatal("Attempting to save version %u from file but running version %u of CCMGeometry class.", version, ccmgeometry_version_);
 
