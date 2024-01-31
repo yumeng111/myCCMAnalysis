@@ -372,7 +372,8 @@ public:
     void GetEventVertices(size_t const & n_events_to_simulate);
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height, double const & n_chunks_top);
-    I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
+    //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
+    double GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
                          double const & triplet_tau_,

@@ -487,123 +487,134 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
     // we should also pre-emptively chunk out our vertices for the threads
     // so we have num_threads to work with and total_events_that_escaped to split over them (being careful to keep track of 1275 and 511 separtely)
     // we also know that we have twice as many 511 events as 1275, so can split threads into 511 and 1275
-
-    size_t total_number_1275_verticies = verticies_to_simuate_1275_.size();
-    size_t n_threads_for_1275 = (size_t) num_threads/3;
-    size_t n_1275_verticies_per_thread_rounding_up = (size_t) ((total_number_1275_verticies + n_threads_for_1275 - 1) / n_threads_for_1275); // this is rounding up!
-    size_t n_1275_verticies_per_thread_rounding_down = n_1275_verticies_per_thread_rounding_up - 1;
-    size_t n_1275_threads_rounding_up = (size_t) (total_number_1275_verticies - (n_1275_verticies_per_thread_rounding_down * n_threads_for_1275)) /
-                                                 (n_1275_verticies_per_thread_rounding_up - n_1275_verticies_per_thread_rounding_down);
-    size_t n_1275_threads_rounding_down = n_threads_for_1275 - n_1275_threads_rounding_up;
-
-    size_t total_number_511_verticies = verticies_to_simuate_511_.size();
-    size_t n_threads_for_511 = num_threads - n_threads_for_1275;
-    size_t n_511_verticies_per_thread_rounding_up = (size_t) ((total_number_511_verticies  + n_threads_for_511 - 1) / n_threads_for_511); // this is rounding up!
-    size_t n_511_verticies_per_thread_rounding_down = n_511_verticies_per_thread_rounding_up - 1;
-    size_t n_511_threads_rounding_up = (size_t) (total_number_511_verticies - (n_511_verticies_per_thread_rounding_down * n_threads_for_511)) /
-                                                 (n_511_verticies_per_thread_rounding_up - n_511_verticies_per_thread_rounding_down);
-    size_t n_511_threads_rounding_down = n_threads_for_511 - n_511_threads_rounding_up;
-
-    // ok so now we can fill in vector of vector of vertex vectors for each thread type
-    std::vector<std::vector<double>> verticies_for_one_thread;
-    size_t vertices_in_this_clump = 0;
-    bool finished_accumulating_threads_rounding_up = false;
-    bool finished_accumulating_threads_rounding_down = false;
-    size_t total_threads_rounding_up = 0;
-    size_t total_threads_rounding_down = 0;
-
-    for (size_t vertices_1275_it = 0; vertices_1275_it < verticies_to_simuate_1275_.size(); vertices_1275_it ++){
-        if (total_threads_rounding_up == n_1275_threads_rounding_up){
-            finished_accumulating_threads_rounding_up = true;
+    if (num_threads == 1){
+        std::vector<std::vector<double>> filler_vec;
+        for (size_t vertices_1275_it = 0; vertices_1275_it < verticies_to_simuate_1275_.size(); vertices_1275_it ++){
+            filler_vec.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
         }
-        if (total_threads_rounding_down == n_1275_threads_rounding_down){
-            finished_accumulating_threads_rounding_down = true;
+        for (size_t vertices_511_it = 0; vertices_511_it < verticies_to_simuate_511_.size(); vertices_511_it ++){
+            filler_vec.push_back(verticies_to_simuate_511_[vertices_511_it]);
         }
-
-        if (finished_accumulating_threads_rounding_up == false){
-            if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_up - 1)){
-                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
-                thread_1275_verticies_.push_back(verticies_for_one_thread);
-                vertices_in_this_clump = 0;
-                verticies_for_one_thread.clear();
-                total_threads_rounding_up += 1;
-            }
-            else {
-                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
-                vertices_in_this_clump += 1;
-            }
-        }
-
-        if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
-            if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_down - 1)){
-                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
-                thread_1275_verticies_.push_back(verticies_for_one_thread);
-                vertices_in_this_clump = 0;
-                verticies_for_one_thread.clear();
-                total_threads_rounding_down += 1;
-            }
-            else {
-                verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
-                vertices_in_this_clump += 1;
-            }
-        }
+        thread_verticies_.push_back(filler_vec);
     }
+    else {
+        size_t total_number_1275_verticies = verticies_to_simuate_1275_.size();
+        size_t n_threads_for_1275 = (size_t) num_threads/3;
+        size_t n_1275_verticies_per_thread_rounding_up = (size_t) ((total_number_1275_verticies + n_threads_for_1275 - 1) / n_threads_for_1275); // this is rounding up!
+        size_t n_1275_verticies_per_thread_rounding_down = n_1275_verticies_per_thread_rounding_up - 1;
+        size_t n_1275_threads_rounding_up = (size_t) (total_number_1275_verticies - (n_1275_verticies_per_thread_rounding_down * n_threads_for_1275)) /
+                                                     (n_1275_verticies_per_thread_rounding_up - n_1275_verticies_per_thread_rounding_down);
+        size_t n_1275_threads_rounding_down = n_threads_for_1275 - n_1275_threads_rounding_up;
 
-    verticies_for_one_thread.clear();
-    vertices_in_this_clump = 0;
-    finished_accumulating_threads_rounding_up = false;
-    finished_accumulating_threads_rounding_down = false;
-    total_threads_rounding_up = 0;
-    total_threads_rounding_down = 0;
+        size_t total_number_511_verticies = verticies_to_simuate_511_.size();
+        size_t n_threads_for_511 = num_threads - n_threads_for_1275;
+        size_t n_511_verticies_per_thread_rounding_up = (size_t) ((total_number_511_verticies  + n_threads_for_511 - 1) / n_threads_for_511); // this is rounding up!
+        size_t n_511_verticies_per_thread_rounding_down = n_511_verticies_per_thread_rounding_up - 1;
+        size_t n_511_threads_rounding_up = (size_t) (total_number_511_verticies - (n_511_verticies_per_thread_rounding_down * n_threads_for_511)) /
+                                                     (n_511_verticies_per_thread_rounding_up - n_511_verticies_per_thread_rounding_down);
+        size_t n_511_threads_rounding_down = n_threads_for_511 - n_511_threads_rounding_up;
 
-    for (size_t vertices_511_it = 0; vertices_511_it < verticies_to_simuate_511_.size(); vertices_511_it ++){
-        if (total_threads_rounding_up == n_511_threads_rounding_up){
-            finished_accumulating_threads_rounding_up = true;
-        }
-        if (total_threads_rounding_down == n_511_threads_rounding_down){
-            finished_accumulating_threads_rounding_down = true;
+        // ok so now we can fill in vector of vector of vertex vectors for each thread type
+        std::vector<std::vector<double>> verticies_for_one_thread;
+        size_t vertices_in_this_clump = 0;
+        bool finished_accumulating_threads_rounding_up = false;
+        bool finished_accumulating_threads_rounding_down = false;
+        size_t total_threads_rounding_up = 0;
+        size_t total_threads_rounding_down = 0;
+
+        for (size_t vertices_1275_it = 0; vertices_1275_it < verticies_to_simuate_1275_.size(); vertices_1275_it ++){
+            if (total_threads_rounding_up == n_1275_threads_rounding_up){
+                finished_accumulating_threads_rounding_up = true;
+            }
+            if (total_threads_rounding_down == n_1275_threads_rounding_down){
+                finished_accumulating_threads_rounding_down = true;
+            }
+
+            if (finished_accumulating_threads_rounding_up == false){
+                if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_up - 1)){
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    thread_1275_verticies_.push_back(verticies_for_one_thread);
+                    vertices_in_this_clump = 0;
+                    verticies_for_one_thread.clear();
+                    total_threads_rounding_up += 1;
+                }
+                else {
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    vertices_in_this_clump += 1;
+                }
+            }
+
+            if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
+                if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_down - 1)){
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    thread_1275_verticies_.push_back(verticies_for_one_thread);
+                    vertices_in_this_clump = 0;
+                    verticies_for_one_thread.clear();
+                    total_threads_rounding_down += 1;
+                }
+                else {
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    vertices_in_this_clump += 1;
+                }
+            }
         }
 
-        if (finished_accumulating_threads_rounding_up == false){
-            if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_up - 1)){
-                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
-                thread_511_verticies_.push_back(verticies_for_one_thread);
-                vertices_in_this_clump = 0;
-                verticies_for_one_thread.clear();
-                total_threads_rounding_up += 1;
+        verticies_for_one_thread.clear();
+        vertices_in_this_clump = 0;
+        finished_accumulating_threads_rounding_up = false;
+        finished_accumulating_threads_rounding_down = false;
+        total_threads_rounding_up = 0;
+        total_threads_rounding_down = 0;
+
+        for (size_t vertices_511_it = 0; vertices_511_it < verticies_to_simuate_511_.size(); vertices_511_it ++){
+            if (total_threads_rounding_up == n_511_threads_rounding_up){
+                finished_accumulating_threads_rounding_up = true;
             }
-            else {
-                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
-                vertices_in_this_clump += 1;
+            if (total_threads_rounding_down == n_511_threads_rounding_down){
+                finished_accumulating_threads_rounding_down = true;
+            }
+
+            if (finished_accumulating_threads_rounding_up == false){
+                if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_up - 1)){
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    thread_511_verticies_.push_back(verticies_for_one_thread);
+                    vertices_in_this_clump = 0;
+                    verticies_for_one_thread.clear();
+                    total_threads_rounding_up += 1;
+                }
+                else {
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    vertices_in_this_clump += 1;
+                }
+            }
+
+            if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
+                if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_down - 1)){
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    thread_511_verticies_.push_back(verticies_for_one_thread);
+                    vertices_in_this_clump = 0;
+                    verticies_for_one_thread.clear();
+                    total_threads_rounding_down += 1;
+                }
+                else {
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    vertices_in_this_clump += 1;
+                }
             }
         }
 
-        if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
-            if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_down - 1)){
-                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
-                thread_511_verticies_.push_back(verticies_for_one_thread);
-                vertices_in_this_clump = 0;
-                verticies_for_one_thread.clear();
-                total_threads_rounding_down += 1;
-            }
-            else {
-                verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
-                vertices_in_this_clump += 1;
-            }
+        // yayy! thread_511_verticies_ and thread_1275_verticies_ are all filled in correctly!
+        // let's combine into one list to give threads
+
+        for (size_t vert_1275_it = 0; vert_1275_it < thread_1275_verticies_.size(); vert_1275_it ++){
+           thread_verticies_.push_back(thread_1275_verticies_[vert_1275_it]);
         }
+
+        for (size_t vert_511_it = 0; vert_511_it < thread_511_verticies_.size(); vert_511_it ++){
+           thread_verticies_.push_back(thread_511_verticies_[vert_511_it]);
+        }
+
     }
-
-    // yayy! thread_511_verticies_ and thread_1275_verticies_ are all filled in correctly!
-    // let's combine into one list to give threads
-
-    for (size_t vert_1275_it = 0; vert_1275_it < thread_1275_verticies_.size(); vert_1275_it ++){
-       thread_verticies_.push_back(thread_1275_verticies_[vert_1275_it]);
-    }
-
-    for (size_t vert_511_it = 0; vert_511_it < thread_511_verticies_.size(); vert_511_it ++){
-       thread_verticies_.push_back(thread_511_verticies_[vert_511_it]);
-    }
-
 }
 
 void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
@@ -692,11 +703,12 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     std::vector<std::vector<double>>().swap(locations_to_check_to_pmt_yield_);
     std::vector<std::vector<double>>().swap(locations_to_check_to_pmt_travel_time_);
     std::cout << "done swapping vectors" << std::endl;*/
-    std::cout << "pre emptying vectors" << std::endl;
+    std::cout << "pre emptying vectors, locations_to_check_information_.size() = " << locations_to_check_information_.size() << std::endl;
+    std::cout << "pre emptying vectors, locations_to_check_to_pmt_yield_.size() = " << locations_to_check_to_pmt_yield_.size() << std::endl;
+    std::cout << "pre emptying vectors, locations_to_check_to_pmt_travel_time_.size() = " << locations_to_check_to_pmt_travel_time_.size() << std::endl;
     if (locations_to_check_information_.size() > 0){
         // our secondary loc vectors are already filled! let's empty!
         for (size_t i = 0; i < locations_to_check_information_.size(); i++){
-            std::cout << "size of locations_to_check_information_[" << i << "] = " << locations_to_check_information_[i].size() << std::endl;
             locations_to_check_information_[i].clear();
         }
         locations_to_check_information_.clear();
@@ -715,7 +727,9 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
         }
         locations_to_check_to_pmt_travel_time_.clear();
     }
-    std::cout << "done emptying vectors" << std::endl;
+    std::cout << "done emptying vectors, locations_to_check_information_.size() = " << locations_to_check_information_.size() << std::endl;
+    std::cout << "done emptying vectors, locations_to_check_to_pmt_yield_.size() = " << locations_to_check_to_pmt_yield_.size() << std::endl;
+    std::cout << "done emptying vectors, locations_to_check_to_pmt_travel_time_.size() = " << locations_to_check_to_pmt_travel_time_.size() << std::endl;
     std::vector<double> this_loc_info (9);
     std::vector<double> loc_to_pmt_photon_yields;
     std::vector<double> loc_to_pmt_photon_propagation_times;
@@ -1551,7 +1565,8 @@ size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
     return nearestIndex;
 }
 
-I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+//I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                         double const & triplet_ratio_,
                                         double const & singlet_tau_,
                                         double const & triplet_tau_,
@@ -1638,6 +1653,8 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singl
                     free_jobs.push_back(job);
                     job->thread.join();
                     results[job->vector_of_vertices_index - min_vertex_idx].done = true;
+                    //delete  running_jobs[i];
+                    //running_jobs.erase(running_jobs.begin() + i);
                 } else {
                     PhotonPropagationJob * job = running_jobs[i];
                 }
@@ -1717,6 +1734,8 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singl
                 free_jobs.push_back(job);
                 job->thread.join();
                 results[job->vector_of_vertices_index - min_vertex_idx].done = true;
+                //delete  running_jobs[i];
+                //running_jobs.erase(running_jobs.begin() + i);
             }
         }
 
@@ -1744,21 +1763,21 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singl
         }
     }
     // we also need to delete free_jobs now that we're done threading
-    /*std::cout << "free_jobs.size() = " << free_jobs.size() << std::endl;
-    if (free_jobs.size() > 0){
+    std::cout << "free_jobs.size() = " << free_jobs.size() << std::endl;
+    /*if (free_jobs.size() > 0){
         for(PhotonPropagationJob * obj : free_jobs){
-            if (obj != nullptr){
-                delete obj;
-            }
+            std::cout << "obj->vector_of_vertices = " << obj->vector_of_vertices << std::endl;
+            delete obj->vector_of_vertices;
+            delete obj;
         }
-    }
-    free_jobs.erase(free_jobs.begin(), free_jobs.end());*/
+    }*/
     std::cout << "free_jobs.size() = " << free_jobs.size() << std::endl;
     std::cout << "running_jobs.size() = " << running_jobs.size() << std::endl;
     std::cout << "results.size() = " << results.size() << std::endl;
 
 
-    return summed_over_events_binned_charges;
+    return summed_over_events_binned_charges[0][0];
+    //return summed_over_events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
 
