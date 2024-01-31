@@ -44,15 +44,14 @@ void register_PhotonPropagation() {
 
     class_<PhotonPropagation, boost::shared_ptr<PhotonPropagation>> ("PhotonPropagation")
         .def(init<>())
-        .def("Geometry", &PhotonPropagation::Geometry)
         .def("SetData", &PhotonPropagation::SetData)
         .def("SetDataSampleSize", &PhotonPropagation::SetDataSampleSize)
-        .def("SetNEventsToSimulate", &PhotonPropagation::SetNEventsToSimulate)
-        .def("SetChunkWidth", &PhotonPropagation::SetChunkWidth)
-        .def("SetChunkHeight", &PhotonPropagation::SetChunkHeight)
-        .def("SetNFaceChunks", &PhotonPropagation::SetNFaceChunks)
+        .def("SetNThreads", &PhotonPropagation::SetNThreads)
         .def("GetNFaceChunks", &PhotonPropagation::GetNFaceChunks)
         .def("GetNSideChunks", &PhotonPropagation::GetNSideChunks)
+        .def("GetEventVertices", &PhotonPropagation::GetEventVertices)
+        .def("GetPMTInformation", &PhotonPropagation::GetPMTInformation)
+        .def("GetSecondaryLocs", &PhotonPropagation::GetSecondaryLocs)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }

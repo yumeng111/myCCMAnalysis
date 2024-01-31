@@ -269,7 +269,6 @@ struct computeLEff {
 
 class PhotonPropagation {
     std::exception_ptr teptr = nullptr;
-    bool geo_seen = false;
     std::string geometry_name_ = std::string("CCMGeometry");
     double smearing_mu_ = 1.0;
     double smearing_sigma_ = 1.0;
@@ -283,7 +282,7 @@ class PhotonPropagation {
     double desired_chunk_width_ = 20.0; // use 5 for finer binning
     double desired_chunk_height_ = 20.0; // use 5 for finer binning
     double n_chunks_top_ = 20.0; // use 50 for finer binning
-    size_t n_events_to_simulate_ = (size_t) 1000;
+    size_t n_events_to_simulate_ = 1000;
 
     // place to store relevant information about our pmts!!!
     // pmt_x_loc, pmt_y_loc, pmt_z_loc, facing direction_x, facing_direction_y, facing_direction_z, coating flag, pmt facing area, pmt side area
@@ -347,8 +346,7 @@ class PhotonPropagation {
     double full_acceptance = 4.0 * M_PI;
     size_t n_pmts_to_simulate = (size_t) 0;
 
-    //size_t num_threads = (size_t)10;
-    size_t num_threads = std::thread::hardware_concurrency();
+    size_t num_threads;
     std::vector<std::vector<std::vector<double>>> thread_verticies_;
     std::vector<std::vector<std::vector<double>>> thread_1275_verticies_;
     std::vector<std::vector<std::vector<double>>> thread_511_verticies_;
@@ -366,15 +364,14 @@ class PhotonPropagation {
 
 public:
     PhotonPropagation();
-    void Geometry(I3FramePtr frame);
     void SetData(I3Vector<I3Vector<double>> data_series);
     void SetDataSampleSize(size_t n_data_samples);
-    void SetNEventsToSimulate(size_t n_events_to_simulate);
-    void SetChunkWidth(double desired_chunk_width);
-    void SetChunkHeight(double desired_chunk_height);
-    void SetNFaceChunks(double n_chunks_top);
+    void SetNThreads(size_t const & n_threads);
     size_t GetNFaceChunks();
     size_t GetNSideChunks();
+    void GetEventVertices(size_t const & n_events_to_simulate);
+    void GetPMTInformation(I3FramePtr frame);
+    void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height, double const & n_chunks_top);
     I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
