@@ -294,15 +294,15 @@ void secondary_loc_to_pmt_propagation(double const & full_acceptance,
                           // for vis light on coated, it's 0.5
                           // for vis light on unocated, it's 1.0
 
-        pmt_x_loc = pmt_parsed_information_[pmt_it][0];
-        pmt_y_loc = pmt_parsed_information_[pmt_it][1];
-        pmt_z_loc = pmt_parsed_information_[pmt_it][2];
-        facing_dir_x = pmt_parsed_information_[pmt_it][3];
-        facing_dir_y = pmt_parsed_information_[pmt_it][4];
-        facing_dir_z = pmt_parsed_information_[pmt_it][5];
-        coating_flag = pmt_parsed_information_[pmt_it][6]; // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
-        pmt_facing_area = pmt_parsed_information_[pmt_it][7];
-        pmt_side_area = pmt_parsed_information_[pmt_it][8];
+        pmt_x_loc = pmt_parsed_information_.at(pmt_it).at(0);
+        pmt_y_loc = pmt_parsed_information_.at(pmt_it).at(1);
+        pmt_z_loc = pmt_parsed_information_.at(pmt_it).at(2);
+        facing_dir_x = pmt_parsed_information_.at(pmt_it).at(3);
+        facing_dir_y = pmt_parsed_information_.at(pmt_it).at(4);
+        facing_dir_z = pmt_parsed_information_.at(pmt_it).at(5);
+        coating_flag = pmt_parsed_information_.at(pmt_it).at(6); // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
+        pmt_facing_area = pmt_parsed_information_.at(pmt_it).at(7);
+        pmt_side_area = pmt_parsed_information_.at(pmt_it).at(8);
 
         // let's get solid angle and distance from loc to this pmt
         get_solid_angle_and_distance_vertex_to_location(loc_x, loc_y, loc_z,
@@ -338,7 +338,7 @@ void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
     // we want the peak of the data time to be at 0 and 2 nsec binning
 
     times_of_data_points_.clear();
-    for (size_t second_dim_it = 0; second_dim_it < data_series_[0].size(); second_dim_it ++ ){
+    for (size_t second_dim_it = 0; second_dim_it < data_series_.at(0).size(); second_dim_it ++ ){
         times_of_data_points_.push_back((double)second_dim_it * 2.0);
     }
 
@@ -350,17 +350,17 @@ void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
     for (size_t time_bin_it = 0; time_bin_it < times_of_data_points_.size(); time_bin_it ++){
         total_charge_per_time_bin = 0;
         for (size_t pmt_it = 0; pmt_it < data_series_.size(); pmt_it ++){
-            total_charge_per_time_bin += data_series_[pmt_it][time_bin_it];
+            total_charge_per_time_bin += data_series_.at(pmt_it).at(time_bin_it);
         }
         if (total_charge_per_time_bin > max_data_value_){
             max_data_value_ = total_charge_per_time_bin;
-            time_of_max_data_value_ = times_of_data_points_[time_bin_it];
+            time_of_max_data_value_ = times_of_data_points_.at(time_bin_it);
         }
     }
 
     // ok now we can subtract time_of_max_data_value_ from times_of_data_points_s
     for (size_t time_bin_it = 0; time_bin_it < times_of_data_points_.size(); time_bin_it ++){
-        times_of_data_points_[time_bin_it] -= time_of_max_data_value_;
+        times_of_data_points_.at(time_bin_it) -= time_of_max_data_value_;
     }
 
     /*// print out data to check
@@ -369,9 +369,9 @@ void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
     for (size_t time_bin_it = 0; time_bin_it < times_of_data_points_.size(); time_bin_it ++){
         total_charge_per_time_bin = 0;
         for (size_t pmt_it = 0; pmt_it < data_series_.size(); pmt_it ++){
-            total_charge_per_time_bin += data_series_[pmt_it][time_bin_it];
+            total_charge_per_time_bin += data_series_.at(pmt_it).at(time_bin_it);
         }
-        std::cout << "at time = " << times_of_data_points_[time_bin_it] << " summed charge = " << total_charge_per_time_bin << std::endl;
+        std::cout << "at time = " << times_of_data_points_.at(time_bin_it) << " summed charge = " << total_charge_per_time_bin << std::endl;
     }*/
 
 }
@@ -490,10 +490,10 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
     if (num_threads == 1){
         std::vector<std::vector<double>> filler_vec;
         for (size_t vertices_1275_it = 0; vertices_1275_it < verticies_to_simuate_1275_.size(); vertices_1275_it ++){
-            filler_vec.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+            filler_vec.push_back(verticies_to_simuate_1275_.at(vertices_1275_it));
         }
         for (size_t vertices_511_it = 0; vertices_511_it < verticies_to_simuate_511_.size(); vertices_511_it ++){
-            filler_vec.push_back(verticies_to_simuate_511_[vertices_511_it]);
+            filler_vec.push_back(verticies_to_simuate_511_.at(vertices_511_it));
         }
         thread_verticies_.push_back(filler_vec);
     }
@@ -532,28 +532,28 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
 
             if (finished_accumulating_threads_rounding_up == false){
                 if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_up - 1)){
-                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_.at(vertices_1275_it));
                     thread_1275_verticies_.push_back(verticies_for_one_thread);
                     vertices_in_this_clump = 0;
                     verticies_for_one_thread.clear();
                     total_threads_rounding_up += 1;
                 }
                 else {
-                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_.at(vertices_1275_it));
                     vertices_in_this_clump += 1;
                 }
             }
 
             if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
                 if (vertices_in_this_clump == (n_1275_verticies_per_thread_rounding_down - 1)){
-                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_.at(vertices_1275_it));
                     thread_1275_verticies_.push_back(verticies_for_one_thread);
                     vertices_in_this_clump = 0;
                     verticies_for_one_thread.clear();
                     total_threads_rounding_down += 1;
                 }
                 else {
-                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_[vertices_1275_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_1275_.at(vertices_1275_it));
                     vertices_in_this_clump += 1;
                 }
             }
@@ -576,28 +576,28 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
 
             if (finished_accumulating_threads_rounding_up == false){
                 if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_up - 1)){
-                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_.at(vertices_511_it));
                     thread_511_verticies_.push_back(verticies_for_one_thread);
                     vertices_in_this_clump = 0;
                     verticies_for_one_thread.clear();
                     total_threads_rounding_up += 1;
                 }
                 else {
-                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_.at(vertices_511_it));
                     vertices_in_this_clump += 1;
                 }
             }
 
             if (finished_accumulating_threads_rounding_up and finished_accumulating_threads_rounding_down == false){
                 if (vertices_in_this_clump == (n_511_verticies_per_thread_rounding_down - 1)){
-                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_.at(vertices_511_it));
                     thread_511_verticies_.push_back(verticies_for_one_thread);
                     vertices_in_this_clump = 0;
                     verticies_for_one_thread.clear();
                     total_threads_rounding_down += 1;
                 }
                 else {
-                    verticies_for_one_thread.push_back(verticies_to_simuate_511_[vertices_511_it]);
+                    verticies_for_one_thread.push_back(verticies_to_simuate_511_.at(vertices_511_it));
                     vertices_in_this_clump += 1;
                 }
             }
@@ -607,11 +607,11 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
         // let's combine into one list to give threads
 
         for (size_t vert_1275_it = 0; vert_1275_it < thread_1275_verticies_.size(); vert_1275_it ++){
-           thread_verticies_.push_back(thread_1275_verticies_[vert_1275_it]);
+           thread_verticies_.push_back(thread_1275_verticies_.at(vert_1275_it));
         }
 
         for (size_t vert_511_it = 0; vert_511_it < thread_511_verticies_.size(); vert_511_it ++){
-           thread_verticies_.push_back(thread_511_verticies_[vert_511_it]);
+           thread_verticies_.push_back(thread_511_verticies_.at(vert_511_it));
         }
 
     }
@@ -706,30 +706,15 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     std::cout << "pre emptying vectors, locations_to_check_information_.size() = " << locations_to_check_information_.size() << std::endl;
     std::cout << "pre emptying vectors, locations_to_check_to_pmt_yield_.size() = " << locations_to_check_to_pmt_yield_.size() << std::endl;
     std::cout << "pre emptying vectors, locations_to_check_to_pmt_travel_time_.size() = " << locations_to_check_to_pmt_travel_time_.size() << std::endl;
-    if (locations_to_check_information_.size() > 0){
-        // our secondary loc vectors are already filled! let's empty!
-        for (size_t i = 0; i < locations_to_check_information_.size(); i++){
-            locations_to_check_information_[i].clear();
-        }
-        locations_to_check_information_.clear();
-    }
 
-    if (locations_to_check_to_pmt_yield_.size() > 0){
-        for (size_t i = 0; i < locations_to_check_to_pmt_yield_.size(); i++){
-            locations_to_check_to_pmt_yield_[i].clear();
-        }
-        locations_to_check_to_pmt_yield_.clear();
-    }
+    locations_to_check_information_.clear();
+    locations_to_check_to_pmt_yield_.clear();
+    locations_to_check_to_pmt_travel_time_.clear();
 
-    if (locations_to_check_to_pmt_travel_time_.size() > 0){
-       for (size_t i = 0; i < locations_to_check_to_pmt_travel_time_.size(); i++){
-            locations_to_check_to_pmt_travel_time_[i].clear();
-        }
-        locations_to_check_to_pmt_travel_time_.clear();
-    }
     std::cout << "done emptying vectors, locations_to_check_information_.size() = " << locations_to_check_information_.size() << std::endl;
     std::cout << "done emptying vectors, locations_to_check_to_pmt_yield_.size() = " << locations_to_check_to_pmt_yield_.size() << std::endl;
     std::cout << "done emptying vectors, locations_to_check_to_pmt_travel_time_.size() = " << locations_to_check_to_pmt_travel_time_.size() << std::endl;
+
     std::vector<double> this_loc_info (9);
     std::vector<double> loc_to_pmt_photon_yields;
     std::vector<double> loc_to_pmt_photon_propagation_times;
@@ -741,37 +726,37 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     std::vector<double> possible_circumference_positions(n_chunks_c);
     for (size_t i = 0; i < n_chunks_c; i++){
         double this_circ = cylinder_circumference * i / n_chunks_c;
-        possible_circumference_positions[i] = this_circ;
+        possible_circumference_positions.at(i) = this_circ;
     }
 
     std::vector<double> possible_z_positions(n_chunks_z - 1);
     for (size_t i = 1; i < n_chunks_z; i++){
         double this_z = cylinder_min_z + ((cylinder_max_z - cylinder_min_z) * i / n_chunks_z);
-        possible_z_positions[i-1] = this_z;
+        possible_z_positions.at(i-1) = this_z;
     }
 
-    double area_side_chunks = std::abs((possible_circumference_positions[1] - possible_circumference_positions[0]) * (possible_z_positions[1] - possible_z_positions[0]));
+    double area_side_chunks = std::abs((possible_circumference_positions.at(1) - possible_circumference_positions.at(0)) * (possible_z_positions.at(1) - possible_z_positions.at(0)));
 
     // now let's calculate x and y from these circumference positions
     for (size_t i = 0; i < possible_circumference_positions.size(); i++){
-        double loc_theta = possible_circumference_positions[i] / cylinder_radius;
+        double loc_theta = possible_circumference_positions.at(i) / cylinder_radius;
         double loc_x = cylinder_radius * std::cos(loc_theta);
         double loc_y = cylinder_radius * std::sin(loc_theta);
 
         // now let's iterate over possible z positions
         for (size_t j = 0; j <possible_z_positions.size(); j++){
-            double loc_z = possible_z_positions[j];
+            double loc_z = possible_z_positions.at(j);
 
             // now we need to check if we're on an uncoated pmt...if so we do NOT save
             bool save_this_loc = true;
             double pmt_portion = portion_light_reflected_by_tpb_;
             for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
-                std::vector<double> this_pmt_info = pmt_parsed_information_[pmt_it];
-                double pmt_coating_flag = this_pmt_info[6];
+                std::vector<double> this_pmt_info = pmt_parsed_information_.at(pmt_it);
+                double pmt_coating_flag = this_pmt_info.at(6);
 
-                double pmt_x = this_pmt_info[0];
-                double pmt_y = this_pmt_info[1];
-                double pmt_z = this_pmt_info[2];
+                double pmt_x = this_pmt_info.at(0);
+                double pmt_y = this_pmt_info.at(1);
+                double pmt_z = this_pmt_info.at(2);
 
                 // now let's calculate distance from this location to this pmt
                 double loc_dist_to_pmt = std::sqrt(std::pow(pmt_x - loc_x, 2) + std::pow(pmt_y - loc_y, 2) + std::pow(pmt_z - loc_z, 2));
@@ -833,22 +818,22 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     std::vector<double> possible_x_positions(n_chunks_top_ - 1);
     for (size_t i = 1; i < n_chunks_top_; i++){
         double x = cylinder_min_x + ((cylinder_max_x - cylinder_min_x) * i / n_chunks_top_);
-        possible_x_positions[i-1] = x;
+        possible_x_positions.at(i-1) = x;
     }
 
     std::vector<double> possible_y_positions(n_chunks_top_ - 1);
     for (size_t i = 1; i < n_chunks_top_; i++){
         double y = cylinder_min_y + ((cylinder_max_y - cylinder_min_y) * i / n_chunks_top_);
-        possible_y_positions[i-1] = y;
+        possible_y_positions.at(i-1) = y;
     }
 
-    double area_face_chunks = std::abs((possible_x_positions[1] - possible_x_positions[0]) * (possible_y_positions[1] - possible_y_positions[0]));
+    double area_face_chunks = std::abs((possible_x_positions.at(1) - possible_x_positions.at(0)) * (possible_y_positions.at(1) - possible_y_positions.at(0)));
 
     for (size_t x_it = 0; x_it < possible_x_positions.size(); x_it ++){
         for (size_t y_it = 0; y_it < possible_y_positions.size(); y_it ++){
             // now let's make the sure this x, y combination is physics
-            double this_x = possible_x_positions[x_it];
-            double this_y = possible_y_positions[y_it];
+            double this_x = possible_x_positions.at(x_it);
+            double this_y = possible_y_positions.at(y_it);
             double radius = std::sqrt(std::pow(this_x, 2) + std::pow(this_y, 2));
             if (radius >= cylinder_max_x){
                 continue;
@@ -865,12 +850,12 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
             double pmt_portion_bottom = portion_light_reflected_by_tpb_;
 
             for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
-                std::vector<double> this_pmt_info = pmt_parsed_information_[pmt_it];
-                double pmt_coating_flag = this_pmt_info[6];
+                std::vector<double> this_pmt_info = pmt_parsed_information_.at(pmt_it);
+                double pmt_coating_flag = this_pmt_info.at(6);
 
-                double pmt_x = this_pmt_info[0];
-                double pmt_y = this_pmt_info[1];
-                double pmt_z = this_pmt_info[2];
+                double pmt_x = this_pmt_info.at(0);
+                double pmt_y = this_pmt_info.at(1);
+                double pmt_z = this_pmt_info.at(2);
 
                 // now let's calculate distance from this location to this pmt
                 double top_loc_dist_to_pmt = std::sqrt(std::pow(pmt_x - this_x, 2) + std::pow(pmt_y - this_y, 2) + std::pow(pmt_z - z_top, 2));
@@ -1009,11 +994,11 @@ void linear_interpolation(double const & desired_time,
     }
     else {
         int idx_below = std::distance(all_times.begin(), it_below) - 1;
-        double time_below = all_times[idx_below];
-        double data_value_below = all_data[idx_below];
+        double time_below = all_times.at(idx_below);
+        double data_value_below = all_data.at(idx_below);
 
-        double time_above = all_times[idx_below + 1];
-        double data_value_above = all_data[idx_below + 1];
+        double time_above = all_times.at(idx_below + 1);
+        double data_value_above = all_data.at(idx_below + 1);
 
         desired_value = data_value_below + (desired_time - time_below) * (data_value_above - data_value_below) / (time_above - time_below);
     }
@@ -1088,36 +1073,36 @@ void get_total_light_profile(double const & R_s,
                             std::vector<double> const & times,
                             std::vector<double> & final_light_profile){
     // times is a vector of times that we are integrating over
-    double delta = times[1] - times[0];
+    double delta = times.at(1) - times.at(0);
     std::vector<double> LAr_light_profile (times.size());
     for (size_t t = 0; t < times.size(); t++){
-        LAr_scintillation_light_integration(times[t], delta, n_convolution_chunks, R_s, R_t, tau_s, tau_t, tau_rec, R_TPB, tau_TPB, LAr_light_profile[t]);
+        LAr_scintillation_light_integration(times.at(t), delta, n_convolution_chunks, R_s, R_t, tau_s, tau_t, tau_rec, R_TPB, tau_TPB, LAr_light_profile.at(t));
     }
     // let's normalize our light profile
     double total_light_profile_value = 0;
     for (size_t i = 0; i < LAr_light_profile.size(); i++){
-        total_light_profile_value += LAr_light_profile[i];
+        total_light_profile_value += LAr_light_profile.at(i);
     }
 
     std::vector<double> normalized_LAr_light_profile (LAr_light_profile.size());
     for (size_t i = 0; i < LAr_light_profile.size(); i++){
-        normalized_LAr_light_profile[i] = LAr_light_profile[i] / total_light_profile_value;
+        normalized_LAr_light_profile.at(i) = LAr_light_profile.at(i) / total_light_profile_value;
     }
 
     // now let's convolve our light profile with a gev
     std::vector<double> light_convolved_with_gev (times.size());
     for (size_t t = 0; t < times.size(); t++){
-        convolve_light_with_gev(times[t], normalized_LAr_light_profile, times, delta, n_convolution_chunks, sigma, mu, xi, light_convolved_with_gev[t]);
+        convolve_light_with_gev(times.at(t), normalized_LAr_light_profile, times, delta, n_convolution_chunks, sigma, mu, xi, light_convolved_with_gev.at(t));
     }
 
     // let's normalize our final light profile
     double total_light_convolved_with_gev_value = 0;
     for (size_t i = 0; i < light_convolved_with_gev.size(); i++){
-        total_light_convolved_with_gev_value += light_convolved_with_gev[i];
+        total_light_convolved_with_gev_value += light_convolved_with_gev.at(i);
     }
 
     for (size_t i = 0; i < light_convolved_with_gev.size(); i++){
-        final_light_profile[i] = light_convolved_with_gev[i] / total_light_convolved_with_gev_value;
+        final_light_profile.at(i) = light_convolved_with_gev.at(i) / total_light_convolved_with_gev_value;
     }
 
 }
@@ -1164,15 +1149,15 @@ void vertex_to_pmt_propagation(double const & full_acceptance,
                           // for UV light on unocated, it's 0
                           // for vis light on unocated, it's 1.0
 
-        pmt_x_loc = pmt_parsed_information_[pmt_it][0];
-        pmt_y_loc = pmt_parsed_information_[pmt_it][1];
-        pmt_z_loc = pmt_parsed_information_[pmt_it][2];
-        facing_dir_x = pmt_parsed_information_[pmt_it][3];
-        facing_dir_y = pmt_parsed_information_[pmt_it][4];
-        facing_dir_z = pmt_parsed_information_[pmt_it][5];
-        coating_flag = pmt_parsed_information_[pmt_it][6]; // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
-        pmt_facing_area = pmt_parsed_information_[pmt_it][7];
-        pmt_side_area = pmt_parsed_information_[pmt_it][8];
+        pmt_x_loc = pmt_parsed_information_.at(pmt_it).at(0);
+        pmt_y_loc = pmt_parsed_information_.at(pmt_it).at(1);
+        pmt_z_loc = pmt_parsed_information_.at(pmt_it).at(2);
+        facing_dir_x = pmt_parsed_information_.at(pmt_it).at(3);
+        facing_dir_y = pmt_parsed_information_.at(pmt_it).at(4);
+        facing_dir_z = pmt_parsed_information_.at(pmt_it).at(5);
+        coating_flag = pmt_parsed_information_.at(pmt_it).at(6); // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
+        pmt_facing_area = pmt_parsed_information_.at(pmt_it).at(7);
+        pmt_side_area = pmt_parsed_information_.at(pmt_it).at(8);
 
         if (is_visible == false and coating_flag == 0.0){
             // this is the case where we are propagating UV light and we have an uncoated pmt...so we won't see anything
@@ -1251,15 +1236,15 @@ void vertex_to_TPB_to_PMT_propagation(double const & full_acceptance,
     // let's start by looping our our secondary locations parsed information
     for (size_t loc_it = 0; loc_it < locations_to_check_information_.size(); loc_it ++){
 
-        loc_x = locations_to_check_information_[loc_it][0];
-        loc_y = locations_to_check_information_[loc_it][1];
-        loc_z = locations_to_check_information_[loc_it][2];
-        facing_dir_x = locations_to_check_information_[loc_it][3];
-        facing_dir_y = locations_to_check_information_[loc_it][4];
-        facing_dir_z = locations_to_check_information_[loc_it][5];
-        pmt_portion = locations_to_check_information_[loc_it][6]; // portion_light_reflected_by_tpb_ if we are NOT on a pmt, otherwise 0.5 * portion_light_reflected_by_tpb_ 
-        facing_area = locations_to_check_information_[loc_it][7];
-        side_area = locations_to_check_information_[loc_it][8];
+        loc_x = locations_to_check_information_.at(loc_it).at(0);
+        loc_y = locations_to_check_information_.at(loc_it).at(1);
+        loc_z = locations_to_check_information_.at(loc_it).at(2);
+        facing_dir_x = locations_to_check_information_.at(loc_it).at(3);
+        facing_dir_y = locations_to_check_information_.at(loc_it).at(4);
+        facing_dir_z = locations_to_check_information_.at(loc_it).at(5);
+        pmt_portion = locations_to_check_information_.at(loc_it).at(6); // portion_light_reflected_by_tpb_ if we are NOT on a pmt, otherwise 0.5 * portion_light_reflected_by_tpb_ 
+        facing_area = locations_to_check_information_.at(loc_it).at(7);
+        side_area = locations_to_check_information_.at(loc_it).at(8);
 
         // let's get solid angle and distance from vertex to this loc
         get_solid_angle_and_distance_vertex_to_location(vertex_x, vertex_y, vertex_z,
@@ -1277,14 +1262,14 @@ void vertex_to_TPB_to_PMT_propagation(double const & full_acceptance,
         // as well as that photon's travel time
         loc_to_pmt_photon_yields.clear();
         loc_to_pmt_photon_propagation_times.clear();
-        loc_to_pmt_photon_yields = locations_to_check_to_pmt_yield_[loc_it];
-        loc_to_pmt_photon_propagation_times = locations_to_check_to_pmt_travel_time_[loc_it];
+        loc_to_pmt_photon_yields = locations_to_check_to_pmt_yield_.at(loc_it);
+        loc_to_pmt_photon_propagation_times = locations_to_check_to_pmt_travel_time_.at(loc_it);
 
         // now we need to go through our vectors containing 1 element for every pmt and push_back to correct vector in our cumulative vector
         for (size_t j = 0; j < loc_to_pmt_photon_yields.size(); j++){
             // j is index of pmt
-            cumulative_pmt_photon_yields[j].push_back(loc_to_pmt_photon_yields[j] * photons_at_secondary_location);
-            cumulative_pmt_photon_propagation_times[j].push_back(loc_to_pmt_photon_propagation_times[j] + travel_time);
+            cumulative_pmt_photon_yields.at(j).push_back(loc_to_pmt_photon_yields.at(j) * photons_at_secondary_location);
+            cumulative_pmt_photon_propagation_times.at(j).push_back(loc_to_pmt_photon_propagation_times.at(j) + travel_time);
         }
     }
 
@@ -1299,8 +1284,8 @@ void manual_binning(std::vector<double> const & bin_centers,
     size_t current_bin_idx;
     // we are going to loop over the times_to_bin and figure out which bin idx they correspond to
     for (size_t data_it = 0; data_it < charges_to_bin.size(); data_it ++){
-        current_bin_idx = (size_t) times_to_bin[data_it] / bin_width;
-        this_pmt_binned_charges[current_bin_idx] += charges_to_bin[data_it];
+        current_bin_idx = (size_t) times_to_bin.at(data_it) / bin_width;
+        this_pmt_binned_charges.at(current_bin_idx) += charges_to_bin.at(data_it);
     }
 }
 
@@ -1328,26 +1313,26 @@ void get_yields_per_pmt(std::vector<double> const & direct_photon_yields,
 
     for (size_t pmt_it = 0; pmt_it < direct_photon_yields.size(); pmt_it ++){
 
-        direct_yield = direct_photon_yields[pmt_it];
-        direct_time_offset = direct_photon_propagation_times[pmt_it];
+        direct_yield = direct_photon_yields.at(pmt_it);
+        direct_time_offset = direct_photon_propagation_times.at(pmt_it);
 
         // while we're on this pmt, let's see how much indirect charge there is
         indirect_yields.clear();
         indirect_time_offsets.clear();
-        indirect_yields = indirect_photon_yields[pmt_it];
-        indirect_time_offsets = indirect_photon_propagation_times[pmt_it];
+        indirect_yields = indirect_photon_yields.at(pmt_it);
+        indirect_time_offsets = indirect_photon_propagation_times.at(pmt_it);
 
         // now let's multiply our light profile by the yield to get charge
         adjusted_light_yields.clear();
         adjusted_light_times.clear();
         for (size_t light_it = 0; light_it < light_profile.size(); light_it++){
-            adjusted_light_yields.push_back(direct_yield * light_profile[light_it]);
-            adjusted_light_times.push_back(direct_time_offset + light_times[light_it]);
+            adjusted_light_yields.push_back(direct_yield * light_profile.at(light_it));
+            adjusted_light_times.push_back(direct_time_offset + light_times.at(light_it));
 
             // let's also loop over our indirect yields and push those back as well
             for (size_t indirect_it = 0; indirect_it < indirect_yields.size(); indirect_it ++){
-                adjusted_light_yields.push_back(indirect_yields[indirect_it] * light_profile[light_it]);
-                adjusted_light_times.push_back(indirect_time_offsets[indirect_it] + light_times[light_it]);
+                adjusted_light_yields.push_back(indirect_yields.at(indirect_it) * light_profile.at(light_it));
+                adjusted_light_times.push_back(indirect_time_offsets.at(indirect_it) + light_times.at(light_it));
             }
         }
 
@@ -1357,7 +1342,7 @@ void get_yields_per_pmt(std::vector<double> const & direct_photon_yields,
         manual_binning(bin_centers, bin_width, adjusted_light_times, adjusted_light_yields, this_pmt_binned_charges);
         // first add a lil noise
         for(size_t bin_it = 0; bin_it < this_pmt_binned_charges.size(); bin_it++){
-            this_pmt_binned_charges[bin_it] += noise_rate_per_time_bin;
+            this_pmt_binned_charges.at(bin_it) += noise_rate_per_time_bin;
         }
         // now save!!!
         binned_charges.push_back(this_pmt_binned_charges);
@@ -1449,21 +1434,21 @@ void FrameThread(std::atomic<bool> & running,
     for (size_t vertex_it = 0; vertex_it < vector_of_vertices->size(); vertex_it ++){
         if (binned_charges.size() > 0){
             for (size_t i = 0; i < binned_charges.size(); i++){
-                binned_charges[i].clear();
+                binned_charges.at(i).clear();
             }
             binned_charges.clear();
         }
         put_simulation_steps_together(full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, quantum_efficiency,
                                       n_photons_produced_this_event, UV_absorption_length, vis_absorption_length, pmt_parsed_information_, locations_to_check_information_,
                                       locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_,
-                                      vector_of_vertices->at(vertex_it)[0], vector_of_vertices->at(vertex_it)[1], vector_of_vertices->at(vertex_it)[2],
+                                      vector_of_vertices->at(vertex_it).at(0), vector_of_vertices->at(vertex_it).at(1), vector_of_vertices->at(vertex_it).at(2),
                                       light_times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin, binned_charges);
 
         // now let's add binned_charges to vector_of_vertices_summed_binned_charges!
         for (size_t pmt_it = 0; pmt_it < binned_charges.size(); pmt_it ++){
-            for (size_t time_bin_it = 0; time_bin_it < binned_charges[0].size(); time_bin_it ++){
-                vector_of_vertices_summed_binned_charges[pmt_it][time_bin_it] += binned_charges[pmt_it][time_bin_it];
-                vector_of_vertices_summed_binned_charges_squared[pmt_it][time_bin_it] += std::pow(binned_charges[pmt_it][time_bin_it], 2);
+            for (size_t time_bin_it = 0; time_bin_it < binned_charges.at(0).size(); time_bin_it ++){
+                vector_of_vertices_summed_binned_charges.at(pmt_it).at(time_bin_it) += binned_charges.at(pmt_it).at(time_bin_it);
+                vector_of_vertices_summed_binned_charges_squared.at(pmt_it).at(time_bin_it) += std::pow(binned_charges.at(pmt_it).at(time_bin_it), 2);
             }
         }
 
@@ -1552,10 +1537,10 @@ void RunFrameThread(PhotonPropagationJob * job,
 size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
 
     size_t nearestIndex = 0;
-    double minDifference = std::abs(vec[0] - targetValue);
+    double minDifference = std::abs(vec.at(0) - targetValue);
 
     for (size_t i = 1; i < vec.size(); ++i) {
-        double difference = std::abs(vec[i] - targetValue);
+        double difference = std::abs(vec.at(i) - targetValue);
         if (difference < minDifference) {
             minDifference = difference;
             nearestIndex = i;
@@ -1595,11 +1580,11 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     std::vector<double> bin_centers(n_time_bins + 10);
 
     for (size_t i = 0; i < n_time_bins; i++){
-        times[i] = (double) i * 2.0;
+        times.at(i) = (double) i * 2.0;
     }
 
     for (size_t j = 0; j < bin_centers.size(); j++){
-        bin_centers[j] = (double) j * 2.0 + 1.0;
+        bin_centers.at(j) = (double) j * 2.0 + 1.0;
     }
 
     // now let's get out light profile
@@ -1647,32 +1632,32 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
 					    std::cerr << "Thread exited with exception: " << ex.what() << "\n";
 				    }
 			    }
-			    if(not running_jobs[i]->running.load()) {
-				    PhotonPropagationJob * job = running_jobs[i];
+			    if(not running_jobs.at(i)->running.load()) {
+				    PhotonPropagationJob * job = running_jobs.at(i);
                     running_jobs.erase(running_jobs.begin() + i);
                     free_jobs.push_back(job);
                     job->thread.join();
-                    results[job->vector_of_vertices_index - min_vertex_idx].done = true;
-                    //delete  running_jobs[i];
+                    results.at(job->vector_of_vertices_index - min_vertex_idx).done = true;
+                    //delete  running_jobs.at(i);
                     //running_jobs.erase(running_jobs.begin() + i);
                 } else {
-                    PhotonPropagationJob * job = running_jobs[i];
+                    PhotonPropagationJob * job = running_jobs.at(i);
                 }
             }
 
             // Check for any done results and push the corresponding frames
             size_t results_done = 0;
             for(size_t i=0; i<results.size(); ++i) {
-                if(results[i].done) {
+                if(results.at(i).done) {
                     // let's save to all_events_binned_charges
                     for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                         for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                            summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges->at(pmt_it)[time_bin_it];
-                            summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges_squared->at(pmt_it)[time_bin_it];
+                            summed_over_events_binned_charges.at(pmt_it).at(time_bin_it) += results.at(i).vector_of_vertices_summed_binned_charges->at(pmt_it).at(time_bin_it);
+                            summed_over_squared_events_binned_charges.at(pmt_it).at(time_bin_it) += results.at(i).vector_of_vertices_summed_binned_charges_squared->at(pmt_it).at(time_bin_it);
                         }
                     }
-                    results[i].vector_of_vertices_summed_binned_charges = nullptr;
-                    results[i].vector_of_vertices_summed_binned_charges_squared = nullptr;
+                    results.at(i).vector_of_vertices_summed_binned_charges = nullptr;
+                    results.at(i).vector_of_vertices_summed_binned_charges_squared = nullptr;
                     results_done += 1;
                 } else {
                     break;
@@ -1709,7 +1694,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 else{
                     job->vertex_1275_flag = false;
                 }
-                job->vector_of_vertices = &thread_verticies_[job->vector_of_vertices_index];
+                job->vector_of_vertices = &thread_verticies_.at(job->vector_of_vertices_index);
                 results.emplace_back();
                 results.back().vector_of_vertices_summed_binned_charges = job->vector_of_vertices_summed_binned_charges;
                 results.back().vector_of_vertices_summed_binned_charges_squared = job->vector_of_vertices_summed_binned_charges_squared;
@@ -1728,13 +1713,13 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     while(running_jobs.size() > 0) {
         // Check if any jobs have finished
         for(int i=int(running_jobs.size())-1; i>=0; --i) {
-            if(not running_jobs[i]->running.load()) {
-                PhotonPropagationJob * job = running_jobs[i];
+            if(not running_jobs.at(i)->running.load()) {
+                PhotonPropagationJob * job = running_jobs.at(i);
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
-                results[job->vector_of_vertices_index - min_vertex_idx].done = true;
-                //delete  running_jobs[i];
+                results.at(job->vector_of_vertices_index - min_vertex_idx).done = true;
+                //delete  running_jobs.at(i);
                 //running_jobs.erase(running_jobs.begin() + i);
             }
         }
@@ -1742,16 +1727,16 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
         // Check for any done results and push the corresponding frames
         size_t results_done = 0;
         for(size_t i=0; i<results.size(); ++i) {
-            if(results[i].done) {
+            if(results.at(i).done) {
                 // let's save to all_events_binned_charges
                 for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                        summed_over_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges->at(pmt_it)[time_bin_it];
-                        summed_over_squared_events_binned_charges[pmt_it][time_bin_it] += results[i].vector_of_vertices_summed_binned_charges_squared->at(pmt_it)[time_bin_it];
+                        summed_over_events_binned_charges.at(pmt_it).at(time_bin_it) += results.at(i).vector_of_vertices_summed_binned_charges->at(pmt_it).at(time_bin_it);
+                        summed_over_squared_events_binned_charges.at(pmt_it).at(time_bin_it) += results.at(i).vector_of_vertices_summed_binned_charges_squared->at(pmt_it).at(time_bin_it);
                     }
                 }
-                results[i].vector_of_vertices_summed_binned_charges = nullptr;
-                results[i].vector_of_vertices_summed_binned_charges_squared = nullptr;
+                results.at(i).vector_of_vertices_summed_binned_charges = nullptr;
+                results.at(i).vector_of_vertices_summed_binned_charges_squared = nullptr;
                 results_done += 1;
             } else {
                 break;
@@ -1776,10 +1761,10 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     std::cout << "results.size() = " << results.size() << std::endl;
 
 
-    return summed_over_events_binned_charges[0][0];
+    return summed_over_events_binned_charges.at(0).at(0);
     //return summed_over_events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << "[ms]" << std::endl;
+    //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << ".at(ms)" << std::endl;
 
     // let's print out the averaged summed wf just to make sure i didnt fuck anything up
     /*double total_charge_in_this_time_bin;
@@ -1787,7 +1772,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
         total_charge_in_this_time_bin = 0;
         for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-            total_charge_in_this_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
+            total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
         }
         total_charge_in_this_time_bin /= total_events_that_escaped;
         std::cout << total_charge_in_this_time_bin << ", " << std::endl;
@@ -1806,18 +1791,18 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
         total_charge_per_time_bin = 0;
         for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-            total_charge_per_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
+            total_charge_per_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
         }
         if (total_charge_per_time_bin > simulation_max_value){
             simulation_max_value = total_charge_per_time_bin;
-            simulation_time_of_max = bin_centers[time_bin_it];
+            simulation_time_of_max = bin_centers.at(time_bin_it);
         }
     }
 
     // let's subtract off the time of the max val
     std::vector<double> simulation_times;
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-        simulation_times.push_back(bin_centers[time_bin_it] - simulation_time_of_max);
+        simulation_times.push_back(bin_centers.at(time_bin_it) - simulation_time_of_max);
     }
     // print out simulation to check
     std::cout << "printing simulation to check : " << std::endl;
@@ -1825,9 +1810,9 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     for (size_t time_bin_it = 0; time_bin_it < simulation_times.size(); time_bin_it ++){
         total_charge_per_time_bin = 0;
         for (size_t pmt_it = 0; pmt_it < summed_over_events_binned_charges.size(); pmt_it ++){
-            total_charge_per_time_bin += summed_over_events_binned_charges[pmt_it][time_bin_it];
+            total_charge_per_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
         }
-        std::cout << "at time = " << simulation_times[time_bin_it] << " summed charge = " << total_charge_per_time_bin << std::endl;
+        std::cout << "at time = " << simulation_times.at(time_bin_it) << " summed charge = " << total_charge_per_time_bin << std::endl;
     }
 
     double min_time_to_evaluate = -6.0;  // relative to summed wf peak times
@@ -1842,15 +1827,15 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     size_t this_time_bin_in_data_idx;
 
     for (size_t time_bin_it = 0; time_bin_it < simulation_times.size(); time_bin_it ++){
-        if (simulation_times[time_bin_it] >= min_time_to_evaluate and simulation_times[time_bin_it] <= max_time_to_evaluate){
+        if (simulation_times.at(time_bin_it) >= min_time_to_evaluate and simulation_times.at(time_bin_it) <= max_time_to_evaluate){
             // ok we are within the times we want to evaluate!
             // we need to find the corresponding idx in times_of_data_points_
-            this_time_bin_in_data_idx = findNearestIndex(times_of_data_points_, simulation_times[time_bin_it]);        
+            this_time_bin_in_data_idx = findNearestIndex(times_of_data_points_, simulation_times.at(time_bin_it));        
             for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
                 // so now we are looping over each pmt, we need to calculate the nllh for each time bin for each pmt
-                k = data_series_[pmt_it][this_time_bin_in_data_idx];
-                mu = summed_over_events_binned_charges[pmt_it][time_bin_it] * (n_data_samples_ / total_events_that_escaped);
-                sigma_squared = summed_over_squared_events_binned_charges[pmt_it][time_bin_it] * std::pow((n_data_samples_ / total_events_that_escaped), 2);
+                k = data_series_.at(pmt_it).at(this_time_bin_in_data_idx);
+                mu = summed_over_events_binned_charges.at(pmt_it).at(time_bin_it) * (n_data_samples_ / total_events_that_escaped);
+                sigma_squared = summed_over_squared_events_binned_charges.at(pmt_it).at(time_bin_it) * std::pow((n_data_samples_ / total_events_that_escaped), 2);
                 total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
             }
         }
