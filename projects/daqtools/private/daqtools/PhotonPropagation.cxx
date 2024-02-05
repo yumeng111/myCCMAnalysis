@@ -1380,55 +1380,58 @@ void get_yields_per_pmt(std::vector<double> const & direct_photon_yields,
                         std::vector<double> const & bin_centers,
                         double const & bin_width,
                         double const & noise_rate_per_time_bin,
-                        std::vector<std::vector<double>> & binned_charges){
+                        std::vector<std::vector<double>> & binned_charges) {
 
     // final function!!! just need to put everthing together
     // at the end of the day, we want to take the light seen in every pmt, bin the charges, and save to binned_charges (dims = n_pmts x n_time_bins)
 
+    binned_charges = std::vector<std::vector<double>>(direct_photon_yields.size(), std::vector<double>(bin_centers.size()));
+
     double direct_yield;
     double direct_time_offset;
-    std::vector<double> indirect_yields;
-    std::vector<double> indirect_time_offsets;
     std::vector<double> adjusted_light_yields (light_profile.size());
     std::vector<double> adjusted_light_times (light_times.size());
-    std::vector<double> this_pmt_binned_charges(bin_centers.size());
 
-    for (size_t pmt_it = 0; pmt_it < direct_photon_yields.size(); pmt_it ++){
+    for (size_t pmt_it = 0; pmt_it < direct_photon_yields.size(); pmt_it ++) {
+        std::vector<double> & this_pmt_binned_charges = binned_charges.at(pmt_it);
 
         direct_yield = direct_photon_yields.at(pmt_it);
         direct_time_offset = direct_photon_propagation_times.at(pmt_it);
+        size_t first_direct_time_bin = (size_t) direct_time_offset / bin_width;
+        size_t max_direct_time_bin = (size_t) (light_times.back() + direct_time_offset) / bin_width;
+        max_direct_time_bin = std::min(max_direct_time_bin, bin_centers.size() - 1);
+        max_direct_time_bin += 1;
+        size_t num_direct_bins = max_direct_time_bin - first_direct_time_bin;
+
+        for (size_t light_it = 0; light_it < num_direct_bins; ++light_it){
+            size_t bin_it = first_direct_time_bin + light_it;
+            this_pmt_binned_charges.at(bin_it) += direct_yield * light_profile.at(light_it);
+        }
 
         // while we're on this pmt, let's see how much indirect charge there is
-        indirect_yields.clear();
-        indirect_time_offsets.clear();
-        indirect_yields = indirect_photon_yields.at(pmt_it);
-        indirect_time_offsets = indirect_photon_propagation_times.at(pmt_it);
+        std::vector<double> const & indirect_yields = indirect_photon_yields.at(pmt_it);
+        std::vector<double> const & indirect_time_offsets = indirect_photon_propagation_times.at(pmt_it);
 
-        // now let's multiply our light profile by the yield to get charge
-        adjusted_light_yields.clear();
-        adjusted_light_times.clear();
-        for (size_t light_it = 0; light_it < light_profile.size(); light_it++){
-            adjusted_light_yields.push_back(direct_yield * light_profile.at(light_it));
-            adjusted_light_times.push_back(direct_time_offset + light_times.at(light_it));
+        for (size_t indirect_it = 0; indirect_it < indirect_yields.size(); ++indirect_it) {
+            size_t first_indirect_time_bin = (size_t) indirect_time_offsets.at(indirect_it) / bin_width;
+            size_t max_indirect_time_bin = (size_t) (light_times.back() + indirect_time_offsets.at(indirect_it)) / bin_width;
+            max_indirect_time_bin = std::min(max_indirect_time_bin, bin_centers.size() - 1);
+            max_indirect_time_bin += 1;
+            size_t num_indirect_bins = max_indirect_time_bin - first_indirect_time_bin;
 
-            // let's also loop over our indirect yields and push those back as well
-            for (size_t indirect_it = 0; indirect_it < indirect_yields.size(); indirect_it ++){
-                adjusted_light_yields.push_back(indirect_yields.at(indirect_it) * light_profile.at(light_it));
-                adjusted_light_times.push_back(indirect_time_offsets.at(indirect_it) + light_times.at(light_it));
+            double indirect_yield = indirect_yields.at(indirect_it);
+
+            for (size_t light_it = 0; light_it < num_indirect_bins; ++light_it){
+                size_t bin_it = first_indirect_time_bin + light_it;
+                this_pmt_binned_charges.at(bin_it) += indirect_yield * light_profile.at(light_it);
             }
         }
 
         // ok so we have all the data we need for this pmt, time to bin!
-        this_pmt_binned_charges.clear();
-        this_pmt_binned_charges.resize(bin_centers.size());
-        manual_binning(bin_centers, bin_width, adjusted_light_times, adjusted_light_yields, this_pmt_binned_charges);
         // first add a lil noise
         for(size_t bin_it = 0; bin_it < this_pmt_binned_charges.size(); bin_it++){
             this_pmt_binned_charges.at(bin_it) += noise_rate_per_time_bin;
         }
-        // now save!!!
-        binned_charges.push_back(this_pmt_binned_charges);
-
     }
 }
 
