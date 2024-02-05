@@ -336,6 +336,7 @@ class PhotonPropagation {
     double detector_radius = cylinder_radius;
     double pos_rad = source_diameter / 2;
     size_t total_events_that_escaped = 0;
+    double source_z_offset_ = 0.0;
 
     // pmt noise rate
     double noise_photons = 1.0;
@@ -377,12 +378,13 @@ public:
     size_t GetNFaceChunks();
     size_t GetNSideChunks();
     size_t GetNSimulatedEvents();
+    void SetZOffset(double source_z_offset);
     void GetEventVertices(size_t const & n_events_to_simulate);
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height);
-    I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
+    //I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
-    //double GetSimulation(double const & singlet_ratio_,
+    double GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
                          double const & triplet_tau_,

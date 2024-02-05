@@ -401,6 +401,10 @@ size_t PhotonPropagation::GetNSimulatedEvents(){
     return total_events_that_escaped;
 }
 
+void PhotonPropagation::SetZOffset(double source_z_offset){
+    source_z_offset_ = source_z_offset;
+}
+
 void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
     // set our events parameter
     n_events_to_simulate_ = n_events_to_simulate;
@@ -515,6 +519,11 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
             //std::cout << "[" << final_x << ", " << final_y << ", " << final_z  << "]," << std::endl;
             //std::cout << "[" << final_x_photon_1 << ", " << final_y_photon_1 << ", " << final_z_photon_1  << "]," << std::endl;
             //std::cout << "[" << final_x_photon_2 << ", " << final_y_photon_2 << ", " << final_z_photon_2  << "]," << std::endl;
+            // first we need to apply our z offset! if not set, the default value is zero
+            final_z += source_z_offset_;
+            final_z_photon_1 += source_z_offset_;
+            final_z_photon_2 += source_z_offset_;
+            // now we can save
             this_vertex.clear();
             this_vertex.push_back(final_x);
             this_vertex.push_back(final_y);
@@ -1625,9 +1634,9 @@ size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
     return nearestIndex;
 }
 
-I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+//I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
 //I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
-//double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                         double const & triplet_ratio_,
                                         double const & singlet_tau_,
                                         double const & triplet_tau_,
@@ -1879,7 +1888,7 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
     }
 
     //return summed_over_events_binned_charges;
-    return events_binned_charges;
+    //return events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << ".at(ms)" << std::endl;
 
@@ -1902,7 +1911,7 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
     // then we actually want to compute the liklihood evaluation from 5 nsec before the max time until 70 nsec after the max time
 
 
-    /*double simulation_time_of_max;
+    double simulation_time_of_max;
     double simulation_max_value;
     double total_charge_per_time_bin;
     for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
@@ -1997,6 +2006,6 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
     //}
 
 
-    return total_nllh;*/
+    return total_nllh;
 
 }
