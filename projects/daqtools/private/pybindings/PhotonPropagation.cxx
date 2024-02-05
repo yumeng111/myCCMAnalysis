@@ -49,6 +49,7 @@ void register_PhotonPropagation() {
         .def("SetNThreads", &PhotonPropagation::SetNThreads)
         .def("GetNFaceChunks", &PhotonPropagation::GetNFaceChunks)
         .def("GetNSideChunks", &PhotonPropagation::GetNSideChunks)
+        .def("GetNSimulatedEvents", &PhotonPropagation::GetNSimulatedEvents)
         .def("GetEventVertices", &PhotonPropagation::GetEventVertices)
         .def("GetPMTInformation", &PhotonPropagation::GetPMTInformation)
         .def("GetSecondaryLocs", &PhotonPropagation::GetSecondaryLocs)

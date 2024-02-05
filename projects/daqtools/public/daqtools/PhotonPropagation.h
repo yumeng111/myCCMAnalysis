@@ -47,13 +47,21 @@ struct PhotonPropagationJob {
     std::vector<std::vector<double>>* vector_of_vertices = nullptr;
     bool vertex_1275_flag = false;
     size_t vector_of_vertices_index = 0;
-    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges = nullptr;
-    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges_squared = nullptr;
+    size_t event_start_idx = 0;
+    size_t event_end_idx = 0;
+    //std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges = nullptr;
+    //std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges_squared = nullptr;
+    std::shared_ptr<std::vector<std::vector<std::vector<double>>>> vector_of_vertices_binned_charges = nullptr;
+    std::shared_ptr<std::vector<std::vector<std::vector<double>>>> vector_of_vertices_binned_charges_squared = nullptr;
 };
 
 struct PhotonPropagationResult {
-    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges = nullptr;
-    std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges_squared = nullptr;
+    size_t event_start_idx = 0;
+    size_t event_end_idx = 0;
+    //std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges = nullptr;
+    //std::shared_ptr<std::vector<std::vector<double>>> vector_of_vertices_summed_binned_charges_squared = nullptr;
+    std::shared_ptr<std::vector<std::vector<std::vector<double>>>> vector_of_vertices_binned_charges = nullptr;
+    std::shared_ptr<std::vector<std::vector<std::vector<double>>>> vector_of_vertices_binned_charges_squared = nullptr;
     bool done = false;
 };
 
@@ -281,7 +289,6 @@ class PhotonPropagation {
     // default values but can change with Set functions!
     double desired_chunk_width_ = 20.0; // use 5 for finer binning
     double desired_chunk_height_ = 20.0; // use 5 for finer binning
-    double n_chunks_top_ = 20.0; // use 50 for finer binning
     size_t n_events_to_simulate_ = 1000;
 
     // place to store relevant information about our pmts!!!
@@ -369,11 +376,13 @@ public:
     void SetNThreads(size_t const & n_threads);
     size_t GetNFaceChunks();
     size_t GetNSideChunks();
+    size_t GetNSimulatedEvents();
     void GetEventVertices(size_t const & n_events_to_simulate);
     void GetPMTInformation(I3FramePtr frame);
-    void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height, double const & n_chunks_top);
+    void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height);
+    I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
-    double GetSimulation(double const & singlet_ratio_,
+    //double GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
                          double const & triplet_tau_,
