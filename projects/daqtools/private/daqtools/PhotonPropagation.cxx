@@ -1534,8 +1534,6 @@ void FrameThread(std::atomic<bool> & running,
             for (size_t time_bin_it = 0; time_bin_it < binned_charges[0].size(); time_bin_it ++){
                 vector_of_vertices_binned_charges[pmt_it][time_bin_it][vertex_it] = binned_charges[pmt_it][time_bin_it];
                 vector_of_vertices_binned_charges_squared[pmt_it][time_bin_it][vertex_it] = std::pow(binned_charges[pmt_it][time_bin_it], 2);
-                //vector_of_vertices_summed_binned_charges[pmt_it][time_bin_it] += binned_charges[pmt_it][time_bin_it];
-                //vector_of_vertices_summed_binned_charges_squared[pmt_it][time_bin_it] += std::pow(binned_charges[pmt_it][time_bin_it], 2);
             }
         }
 
@@ -1565,14 +1563,13 @@ void RunFrameThread(PhotonPropagationJob * job,
                     double const & noise_rate_per_time_bin){
 
     job->running.store(true);
-
-    job->thread = std::thread([job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
+    job->thread.push([job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
                           quantum_efficiency, n_photons_produced, UV_absorption_length, vis_absorption_length,
                           pmt_parsed_information_, locations_to_check_information_, locations_to_check_to_pmt_yield_,
                           locations_to_check_to_pmt_travel_time_, light_times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin,
                           &vertices = job->vector_of_vertices,
                           &charges = *job->vector_of_vertices_binned_charges,
-                          &charges_squared = *job->vector_of_vertices_binned_charges_squared]() {
+                          &charges_squared = *job->vector_of_vertices_binned_charges_squared](int id) {
     FrameThread(job->running,
                 job->vertex_1275_flag,
                 full_acceptance,
@@ -1597,28 +1594,6 @@ void RunFrameThread(PhotonPropagationJob * job,
                 charges_squared);
 });
 
-    /*job->thread = std::thread(FrameThread,
-                              std::ref(job->running),
-                              std::cref(job->vertex_1275_flag),
-                              std::cref(full_acceptance),
-                              std::cref(c_cm_per_nsec),
-                              std::cref(uv_index_of_refraction),
-                              std::cref(vis_index_of_refraction),
-                              std::cref(quantum_efficiency),
-                              std::cref(n_photons_produced),
-                              std::cref(UV_absorption_length),
-                              std::cref(vis_absorption_length),
-                              std::cref(pmt_parsed_information_),
-                              std::cref(locations_to_check_information_),
-                              std::cref(locations_to_check_to_pmt_yield_),
-                              std::cref(locations_to_check_to_pmt_travel_time_),
-                              job->vector_of_vertices,
-                              std::cref(light_times),
-                              std::cref(light_profile),
-                              std::cref(bin_centers),
-                              std::cref(bin_width),
-                              std::ref(*job->vector_of_vertices_summed_binned_charges),
-                              std::ref(*job->vector_of_vertices_summed_binned_charges_squared));*/
 }
 
 size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
@@ -1649,6 +1624,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                         double const & UV_absorption_length_,
                                         double const & n_photons_produced_) {
     // will be used for multi-threading our simulation jobs
+    ctpl::thread_pool p(num_threads);
     std::deque<PhotonPropagationJob *> free_jobs;
     std::deque<PhotonPropagationJob *> running_jobs;
     std::deque<PhotonPropagationResult> results;
@@ -1696,16 +1672,12 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
 
     // so now we can loop over our vector containing vector of verticies to simulate
     // let's make out final vector that we will be saving to
-    //I3Vector<I3Vector<double>> summed_over_events_binned_charges(n_pmts_to_simulate, I3Vector<double>(bin_centers.size(), 0.0));
-                                                                            // dimensions are n_pmts x n_time_bins
-    //std::vector<std::vector<double>> summed_over_squared_events_binned_charges(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
-                                                                            // dimensions are n_pmts x n_time_bins
     I3Vector<I3Vector<I3Vector<double>>> events_binned_charges(n_pmts_to_simulate, I3Vector<I3Vector<double>>(bin_centers.size(), I3Vector<double>(total_events_that_escaped)));
                                                                             // dimensions are n_pmts x n_time_bins x n_events
     std::vector<std::vector<std::vector<double>>> events_squared_binned_charges(n_pmts_to_simulate, std::vector<std::vector<double>>(bin_centers.size(), std::vector<double>(total_events_that_escaped)));
                                                                             // dimensions are n_pmts x n_time_bins x n_events
 
-    //std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     // loop over thread_verticies_ and dispatch one thread per vector of vertices
     // note -- we added 1275kev vertices to thread_verticies_ first, so can use that to keep track of if we're dealing with a 1275 or 511 event
     for (size_t vert_it = 0; vert_it < thread_verticies_.size(); vert_it ++){
@@ -1725,7 +1697,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
 				    PhotonPropagationJob * job = running_jobs.at(i);
                     running_jobs.erase(running_jobs.begin() + i);
                     free_jobs.push_back(job);
-                    job->thread.join();
+                    //job->thread.join();
                     results.at(job->vector_of_vertices_index - min_vertex_idx).done = true;
                 } else {
                     PhotonPropagationJob * job = running_jobs.at(i);
@@ -1772,8 +1744,6 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 job = new PhotonPropagationJob();
                 job->running.store(false);
                 job->thread_index = running_jobs.size();
-                //job->vector_of_vertices_summed_binned_charges = std::make_shared<std::vector<std::vector<double>>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
-                //job->vector_of_vertices_summed_binned_charges_squared = std::make_shared<std::vector<std::vector<double>>>(n_pmts_to_simulate, std::vector<double>(bin_centers.size(), 0.0));
             }
 
             if(job != nullptr and results.size() < max_cached_vertices) {
@@ -1820,7 +1790,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 PhotonPropagationJob * job = running_jobs.at(i);
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
-                job->thread.join();
+                //job->thread.join();
                 results.at(job->vector_of_vertices_index - min_vertex_idx).done = true;
             }
         }
@@ -1844,16 +1814,6 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 results.at(i).vector_of_vertices_binned_charges_squared = nullptr;
                 results.at(i).event_start_idx = 0;
                 results.at(i).event_end_idx = 0;
-            /*if(results.at(i).done) {
-                // let's save to all_events_binned_charges
-                for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-                    for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-                        summed_over_events_binned_charges.at(pmt_it).at(time_bin_it) += results.at(i).vector_of_vertices_summed_binned_charges->at(pmt_it).at(time_bin_it);
-                        summed_over_squared_events_binned_charges.at(pmt_it).at(time_bin_it) += results.at(i).vector_of_vertices_summed_binned_charges_squared->at(pmt_it).at(time_bin_it);
-                    }
-                }
-                results.at(i).vector_of_vertices_summed_binned_charges = nullptr;
-                results.at(i).vector_of_vertices_summed_binned_charges_squared = nullptr;*/
                 results_done += 1;
             } else {
                 break;
@@ -1892,20 +1852,20 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
 
     //return summed_over_events_binned_charges;
     //return events_binned_charges;
-    //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << ".at(ms)" << std::endl;
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << ".at(ms)" << std::endl;
 
     // let's print out the averaged summed wf just to make sure i didnt fuck anything up
-    // double total_charge_in_this_time_bin;
-    // std::cout << "for " << total_events_that_escaped << " events, avg summed wf = " << std::endl;
-    // for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-    //     total_charge_in_this_time_bin = 0;
-    //     for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-    //         total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
-    //     }
-    //     total_charge_in_this_time_bin /= total_events_that_escaped;
-    //     std::cout << total_charge_in_this_time_bin << ", " << std::endl;
-    // }
+    double total_charge_in_this_time_bin;
+    std::cout << "for " << total_events_that_escaped << " events, avg summed wf = " << std::endl;
+    for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
+        total_charge_in_this_time_bin = 0;
+        for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
+            total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
+        }
+        total_charge_in_this_time_bin /= total_events_that_escaped;
+        std::cout << total_charge_in_this_time_bin << ", " << std::endl;
+    }
 
     // instead of just returning the averaged_all_events_binned_charges, we are going to compute the liklihood quickly
     // we are computing the liklihood on a per-pmt basis on a per-time bin basis
@@ -1992,21 +1952,6 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
         // oops! too many bins without data! set the nllh to - inf
         total_nllh = (double)(-std::numeric_limits<double>::infinity());
     }
-
-    //for (size_t time_bin_it = 0; time_bin_it < simulation_times.size(); time_bin_it ++){
-    //    if (simulation_times[time_bin_it] >= min_time_to_evaluate and simulation_times[time_bin_it] <= max_time_to_evaluate){
-    //        // ok we are within the times we want to evaluate!
-    //        // we need to find the corresponding idx in times_of_data_points_
-    //        this_time_bin_in_data_idx = findNearestIndex(times_of_data_points_, simulation_times[time_bin_it]);
-    //        for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-    //            // so now we are looping over each pmt, we need to calculate the nllh for each time bin for each pmt
-    //            k = data_series_[pmt_it][this_time_bin_in_data_idx];
-    //            mu = summed_over_events_binned_charges[pmt_it][time_bin_it] * (n_data_samples_ / total_events_that_escaped);
-    //            sigma_squared = summed_over_squared_events_binned_charges[pmt_it][time_bin_it] * std::pow((n_data_samples_ / total_events_that_escaped), 2);
-    //            total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
-    //        }
-    //    }
-    //}
 
 
     return total_nllh;
