@@ -348,7 +348,7 @@ class PhotonPropagation {
     double full_acceptance = 4.0 * M_PI;
     size_t n_pmts_to_simulate = (size_t) 0;
 
-    ctpl::thread_pool pool;
+    //ctpl::thread_pool pool;
     size_t num_threads;
     std::vector<std::vector<std::vector<double>>> thread_verticies_;
     std::vector<std::vector<std::vector<double>>> thread_1275_verticies_;
@@ -377,9 +377,9 @@ public:
     void GetEventVertices(size_t const & n_events_to_simulate);
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height);
-    I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
+    //I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
-    //double GetSimulation(double const & singlet_ratio_,
+    double GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
                          double const & triplet_tau_,
