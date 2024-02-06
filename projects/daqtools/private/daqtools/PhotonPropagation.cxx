@@ -1896,16 +1896,16 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
     //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << ".at(ms)" << std::endl;
 
     // let's print out the averaged summed wf just to make sure i didnt fuck anything up
-    /*double total_charge_in_this_time_bin;
-    std::cout << "for " << total_events_that_escaped << " events, avg summed wf = " << std::endl;
-    for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-        total_charge_in_this_time_bin = 0;
-        for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-            total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
-        }
-        total_charge_in_this_time_bin /= total_events_that_escaped;
-        std::cout << total_charge_in_this_time_bin << ", " << std::endl;
-    }*/
+    // double total_charge_in_this_time_bin;
+    // std::cout << "for " << total_events_that_escaped << " events, avg summed wf = " << std::endl;
+    // for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
+    //     total_charge_in_this_time_bin = 0;
+    //     for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
+    //         total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
+    //     }
+    //     total_charge_in_this_time_bin /= total_events_that_escaped;
+    //     std::cout << total_charge_in_this_time_bin << ", " << std::endl;
+    // }
 
     // instead of just returning the averaged_all_events_binned_charges, we are going to compute the liklihood quickly
     // we are computing the liklihood on a per-pmt basis on a per-time bin basis
