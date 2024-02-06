@@ -41,10 +41,7 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 
 struct PhotonPropagationJob {
-    ctpl::thread_pool thread;
     std::atomic<bool> running = false;
-    //std::thread thread;
-    size_t thread_index = 0;
     std::vector<std::vector<double>>* vector_of_vertices = nullptr;
     bool vertex_1275_flag = false;
     size_t vector_of_vertices_index = 0;
@@ -351,6 +348,7 @@ class PhotonPropagation {
     double full_acceptance = 4.0 * M_PI;
     size_t n_pmts_to_simulate = (size_t) 0;
 
+    ctpl::thread_pool pool;
     size_t num_threads;
     std::vector<std::vector<std::vector<double>>> thread_verticies_;
     std::vector<std::vector<std::vector<double>>> thread_1275_verticies_;

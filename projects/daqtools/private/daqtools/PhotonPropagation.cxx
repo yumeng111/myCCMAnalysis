@@ -329,7 +329,7 @@ void secondary_loc_to_pmt_propagation(double const & full_acceptance,
     }
 
 }
-PhotonPropagation::PhotonPropagation(){}
+PhotonPropagation::PhotonPropagation() : pool(0) {}
 
 void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
     data_series_ = data_series;
@@ -387,6 +387,7 @@ void PhotonPropagation::SetNThreads(size_t const & n_threads){
     else{
         num_threads = n_threads;
     }
+    pool.resize(num_threads);
 }
 
 size_t PhotonPropagation::GetNFaceChunks(){
@@ -1505,7 +1506,7 @@ void FrameThread(std::atomic<bool> & running,
                  double const & bin_width,
                  double const & noise_rate_per_time_bin,
                  std::vector<std::vector<std::vector<double>>> & vector_of_vertices_binned_charges,
-                 std::vector<std::vector<std::vector<double>>> & vector_of_vertices_binned_charges_squared){
+                 std::vector<std::vector<std::vector<double>>> & vector_of_vertices_binned_charges_squared) {
 
     // call simulation code
     std::vector<std::vector<double>> binned_charges;
@@ -1540,10 +1541,10 @@ void FrameThread(std::atomic<bool> & running,
     }
 
     running.store(false);
-
 }
 
-void RunFrameThread(PhotonPropagationJob * job,
+void RunFrameThread(ctpl::thread_pool & pool,
+                    PhotonPropagationJob * job,
                     double const & full_acceptance,
                     double const & c_cm_per_nsec,
                     double const & uv_index_of_refraction,
@@ -1563,13 +1564,18 @@ void RunFrameThread(PhotonPropagationJob * job,
                     double const & noise_rate_per_time_bin){
 
     job->running.store(true);
-    job->thread.push([job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
-                          quantum_efficiency, n_photons_produced, UV_absorption_length, vis_absorption_length,
-                          pmt_parsed_information_, locations_to_check_information_, locations_to_check_to_pmt_yield_,
-                          locations_to_check_to_pmt_travel_time_, light_times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin,
-                          &vertices = job->vector_of_vertices,
-                          &charges = *job->vector_of_vertices_binned_charges,
-                          &charges_squared = *job->vector_of_vertices_binned_charges_squared](int id) {
+    pool.push([
+                &job,
+
+                &full_acceptance, &c_cm_per_nsec, &uv_index_of_refraction, &vis_index_of_refraction,
+                &quantum_efficiency, &n_photons_produced, &UV_absorption_length, &vis_absorption_length,
+
+                &pmt_parsed_information_, &locations_to_check_information_, &locations_to_check_to_pmt_yield_,
+                &locations_to_check_to_pmt_travel_time_, &light_times, &light_profile, &bin_centers, &bin_width, &noise_rate_per_time_bin,
+                &vertices = job->vector_of_vertices,
+                &charges = *job->vector_of_vertices_binned_charges,
+                &charges_squared = *job->vector_of_vertices_binned_charges_squared
+    ] (int id) {
     FrameThread(job->running,
                 job->vertex_1275_flag,
                 full_acceptance,
@@ -1592,7 +1598,7 @@ void RunFrameThread(PhotonPropagationJob * job,
                 noise_rate_per_time_bin,
                 charges,
                 charges_squared);
-});
+    });
 
 }
 
@@ -1624,7 +1630,6 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                         double const & UV_absorption_length_,
                                         double const & n_photons_produced_) {
     // will be used for multi-threading our simulation jobs
-    ctpl::thread_pool p(num_threads);
     std::deque<PhotonPropagationJob *> free_jobs;
     std::deque<PhotonPropagationJob *> running_jobs;
     std::deque<PhotonPropagationResult> results;
@@ -1743,7 +1748,6 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
             } else if(running_jobs.size() < num_threads) {
                 job = new PhotonPropagationJob();
                 job->running.store(false);
-                job->thread_index = running_jobs.size();
             }
 
             if(job != nullptr and results.size() < max_cached_vertices) {
@@ -1772,7 +1776,7 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                 results.back().event_start_idx = job->event_start_idx;
                 results.back().event_end_idx = job->event_end_idx;
                 results.back().done = false;
-                RunFrameThread(job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, pmt_quantum_efficiency,
+                RunFrameThread(pool, job, full_acceptance, c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, pmt_quantum_efficiency,
                                n_photons_produced_, UV_absorption_length_, visible_absorption_length_, pmt_parsed_information_, locations_to_check_information_,
                                locations_to_check_to_pmt_yield_, locations_to_check_to_pmt_travel_time_, times, light_profile, bin_centers, bin_width, noise_rate_per_time_bin);
                 break;

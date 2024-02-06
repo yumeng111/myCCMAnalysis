@@ -42,7 +42,7 @@ using namespace boost::python;
 void register_PhotonPropagation() {
 {
 
-    class_<PhotonPropagation, boost::shared_ptr<PhotonPropagation>> ("PhotonPropagation")
+    class_<boost::shared_ptr<PhotonPropagation>> ("PhotonPropagation")
         .def(init<>())
         .def("SetData", &PhotonPropagation::SetData)
         .def("SetDataSampleSize", &PhotonPropagation::SetDataSampleSize)
