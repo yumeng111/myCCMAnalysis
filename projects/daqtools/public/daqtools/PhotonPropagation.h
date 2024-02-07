@@ -308,15 +308,23 @@ class PhotonPropagation {
     double pmt_facing_area = M_PI * std::pow(pmt_radius, 2);
     double pmt_side_area_factor = 0.217549;
     double pmt_side_area = pmt_facing_area * pmt_side_area_factor;
-    double cylinder_max_x = 96.0;
+    //double cylinder_max_x = 96.0;
+    //double cylinder_min_x = - cylinder_max_x;
+    //double cylinder_max_y = 96.0;
+    //double cylinder_min_y = - cylinder_max_y;
+    //double cylinder_max_z = 58.0;
+    //double cylinder_min_z = - cylinder_max_z;
+    //double cylinder_radius = cylinder_max_x;
+    double cylinder_height = 48.4 * 2.54; // units of cm!
+    double cylinder_radius = 40.0 * 2.54; // units of cm!
+    double cylinder_circumference = M_PI * 2.0 * cylinder_radius;
+    double cylinder_max_x = cylinder_radius;
     double cylinder_min_x = - cylinder_max_x;
-    double cylinder_max_y = 96.0;
+    double cylinder_max_y = cylinder_radius;
     double cylinder_min_y = - cylinder_max_y;
-    double cylinder_max_z = 58.0;
+    double cylinder_max_z = cylinder_height / 2.0;
     double cylinder_min_z = - cylinder_max_z;
-    double cylinder_radius = cylinder_max_x;
-    double cylinder_circumference = M_PI * 2 * cylinder_max_x;
-    double cylinder_height = cylinder_max_z * 2;
+    //double cylinder_height = cylinder_max_z * 2;
     double chunk_side_area_factor = 0.1; // this number is a guess..maybe model it one day
 
     // now some geometry things for throwing source events
@@ -330,6 +338,7 @@ class PhotonPropagation {
     double detector_radius = cylinder_radius;
     double pos_rad = source_diameter / 2;
     size_t total_events_that_escaped = 0;
+    size_t equivalent_events_in_data = 0;
     double source_z_offset_ = 0.0;
 
     // pmt noise rate
