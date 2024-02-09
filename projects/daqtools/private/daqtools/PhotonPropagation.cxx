@@ -118,8 +118,8 @@ void area_penalty(double const & x0,
     // circle_center_x, circle_center_y, and circle_radius are what they sound like ... either for the entire top face of the detector or for coated PMTs
 
     // granularity for chunking up our chunk
-    size_t n_chunks_x_side = 50;
-    size_t n_chunks_y_side = 50;
+    size_t n_chunks_x_side = 10;
+    size_t n_chunks_y_side = 10;
 
     std::vector<double> possible_chunk_x_positions(n_chunks_x_side + 1);
     for (size_t i = 0; i < n_chunks_x_side; i++){
@@ -159,14 +159,20 @@ void area_penalty(double const & x0,
                 points_inside_circle += (1.0 * edge_factor);
                 if (top_locs_question){
                     // this is a loc on the top of the detector! let's save
-                    top_loc_inside_circle_xy_.push_back(I3Vector<double> {this_chunk_x, this_chunk_y});
+                    I3Vector<double> top_loc_inside;
+                    top_loc_inside.push_back(this_chunk_x);
+                    top_loc_inside.push_back(this_chunk_y);
+                    top_loc_inside_circle_xy_.push_back(top_loc_inside);
                 }
             }
             else {
                 points_outside_circle += (1.0 * edge_factor);
                 if (top_locs_question){
                     // this is a loc on the top of the detector! let's save
-                    top_loc_outside_circle_xy_.push_back(I3Vector<double> {this_chunk_x, this_chunk_y});
+                    I3Vector<double> top_loc_outside;
+                    top_loc_outside.push_back(this_chunk_x);
+                    top_loc_outside.push_back(this_chunk_y);
+                    top_loc_outside_circle_xy_.push_back(top_loc_outside);
                 }
             }
         }
@@ -890,6 +896,7 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
     }
 
     // let's save some pmt locs for debugging
+    I3Vector<double> this_pmt_loc;
     for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
         std::vector<double> this_pmt_info = pmt_parsed_information_.at(pmt_it);
         double pmt_coating_flag = this_pmt_info.at(6);
@@ -899,7 +906,10 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
         double pmt_z = this_pmt_info.at(2);
 
         if (pmt_z == 58.0 and pmt_coating_flag == 0.0){
-            uncoated_pmt_locs_top_.push_back(I3Vector<double> {pmt_x, pmt_y});
+            this_pmt_loc.clear();
+            this_pmt_loc.push_back(pmt_x);
+            this_pmt_loc.push_back(pmt_y);
+            uncoated_pmt_locs_top_.push_back(this_pmt_loc);
         }
     }
 
@@ -1278,7 +1288,10 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
             }
             //std::cout << "[" << this_x << ", " << this_y << ", " << area_penalty_factor * area_penalty_factor_top_pmts << "]," << std::endl;
             if (save_top_loc){
-                top_loc_xy_.push_back(I3Vector<double> {this_x, this_y});
+                I3Vector<double> this_top_loc;
+                this_top_loc.push_back(this_x);
+                this_top_loc.push_back(this_y);
+                top_loc_xy_.push_back(this_top_loc);
                 double facing_dir_x = 0.0;
                 double facing_dir_y = 0.0;
                 double facing_dir_z = -1.0;
