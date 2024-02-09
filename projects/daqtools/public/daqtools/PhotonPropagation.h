@@ -315,6 +315,7 @@ class PhotonPropagation {
     //double cylinder_max_z = 58.0;
     //double cylinder_min_z = - cylinder_max_z;
     //double cylinder_radius = cylinder_max_x;
+    //double cylinder_height = cylinder_max_z * 2;
     double cylinder_height = 48.4 * 2.54; // units of cm!
     double cylinder_radius = 40.0 * 2.54; // units of cm!
     double cylinder_circumference = M_PI * 2.0 * cylinder_radius;
@@ -324,8 +325,7 @@ class PhotonPropagation {
     double cylinder_min_y = - cylinder_max_y;
     double cylinder_max_z = cylinder_height / 2.0;
     double cylinder_min_z = - cylinder_max_z;
-    //double cylinder_height = cylinder_max_z * 2;
-    double chunk_side_area_factor = 0.1; // this number is a guess..maybe model it one day
+    double chunk_side_area_factor = 0.05; // this number is a guess..maybe model it one day
 
     // now some geometry things for throwing source events
     double rod_diameter = 1.0;
@@ -374,6 +374,15 @@ class PhotonPropagation {
     double time_of_max_data_value_;
     std::vector<double> times_of_data_points_;
 
+
+    // some things for debugging
+    I3Vector<I3Vector<double>> uncoated_pmt_locs_top_;
+    double final_top_loc_width_;
+    double final_top_loc_height_;
+    I3Vector<I3Vector<double>> top_loc_xy_;
+    I3Vector<I3Vector<double>> top_loc_inside_circle_xy_;
+    I3Vector<I3Vector<double>> top_loc_outside_circle_xy_;
+
 public:
     PhotonPropagation();
     void SetData(I3Vector<I3Vector<double>> data_series);
@@ -386,9 +395,15 @@ public:
     void GetEventVertices(size_t const & n_events_to_simulate);
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height);
-    //I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
+    I3Vector<I3Vector<double>> GetTopUncoatedPMTLocs();
+    double GetTopLocWidth();
+    double GetTopLocHeight();
+    I3Vector<I3Vector<double>> GetTopLocXY();
+    I3Vector<I3Vector<double>> GetTopLocInsideCircleXY();
+    I3Vector<I3Vector<double>> GetTopLocOutsideCircleXY();
+    I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
-    double GetSimulation(double const & singlet_ratio_,
+    //double GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
                          double const & triplet_tau_,

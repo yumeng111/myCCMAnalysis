@@ -55,6 +55,12 @@ void register_PhotonPropagation() {
         .def("GetEventVertices", &PhotonPropagation::GetEventVertices)
         .def("GetPMTInformation", &PhotonPropagation::GetPMTInformation)
         .def("GetSecondaryLocs", &PhotonPropagation::GetSecondaryLocs)
+        .def("GetTopUncoatedPMTLocs", &PhotonPropagation::GetTopUncoatedPMTLocs)
+        .def("GetTopLocWidth", &PhotonPropagation::GetTopLocWidth)
+        .def("GetTopLocHeight", &PhotonPropagation::GetTopLocHeight)
+        .def("GetTopLocXY", &PhotonPropagation::GetTopLocXY)
+        .def("GetTopLocInsideCircleXY", &PhotonPropagation::GetTopLocInsideCircleXY)
+        .def("GetTopLocOutsideCircleXY", &PhotonPropagation::GetTopLocOutsideCircleXY)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }
