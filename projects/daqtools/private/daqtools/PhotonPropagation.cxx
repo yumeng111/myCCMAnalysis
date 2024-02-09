@@ -961,6 +961,37 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
         locations_to_check_to_pmt_travel_time_.clear();
     }
 
+    if (top_loc_xy_.size() > 0){
+        for(size_t i = 0; i < top_loc_xy_.size(); i++){
+            top_loc_xy_[i].clear();
+        }
+        top_loc_xy_.clear();
+    }
+    if (top_loc_inside_uncoated_pmt_xy_.size() > 0){
+        for(size_t i = 0; i < top_loc_inside_uncoated_pmt_xy_.size(); i++){
+            top_loc_inside_uncoated_pmt_xy_[i].clear();
+        }
+        top_loc_inside_uncoated_pmt_xy_.clear();
+    }
+    if (top_loc_outside_uncoated_pmt_xy_.size() > 0){
+        for(size_t i = 0; i < top_loc_outside_uncoated_pmt_xy_.size(); i++){
+            top_loc_outside_uncoated_pmt_xy_[i].clear();
+        }
+        top_loc_outside_uncoated_pmt_xy_.clear();
+    }
+    if (top_loc_inside_detector_radius_xy_.size() > 0){
+        for(size_t i = 0; i < top_loc_inside_detector_radius_xy_.size(); i++){
+            top_loc_inside_detector_radius_xy_[i].clear();
+        }
+        top_loc_inside_detector_radius_xy_.clear();
+    }
+    if (top_loc_outside_detector_radius_xy_.size() > 0){
+        for(size_t i = 0; i < top_loc_outside_detector_radius_xy_.size(); i++){
+            top_loc_outside_detector_radius_xy_[i].clear();
+        }
+        top_loc_outside_detector_radius_xy_.clear();
+    }
+
     //std::cout << "locations_to_check_information_.size() = " << locations_to_check_information_.size() << std::endl;
     //std::cout << "locations_to_check_to_pmt_yield_.size() = " << locations_to_check_to_pmt_yield_.size() << std::endl;
     //std::cout << "locations_to_check_to_pmt_travel_time_.size() = " << locations_to_check_to_pmt_travel_time_.size() << std::endl;
