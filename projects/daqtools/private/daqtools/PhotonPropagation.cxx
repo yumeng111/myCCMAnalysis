@@ -537,12 +537,20 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocXY(){
     return top_loc_xy_;
 }
 
-I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocInsideCircleXY(){
-    return top_loc_inside_circle_xy_;
+I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocInsideCoatedPMTXY(){
+    return top_loc_inside_uncoated_pmt_xy_;
 }
 
-I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocOutsideCircleXY(){
-    return top_loc_outside_circle_xy_;
+I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocOutsideCoatedPMTXY(){
+    return top_loc_outside_uncoated_pmt_xy_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocInsideDetectorRadiusXY(){
+    return top_loc_inside_detector_radius_xy_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocOutsideDetectorRadiusXY(){
+    return top_loc_outside_detector_radius_xy_;
 }
 
 void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
@@ -1058,7 +1066,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                             double circle_center_y = pmt_z;
                             double circle_radius = pmt_radius;
                             area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_pmt_portion,
-                                         top_locs_question, top_loc_inside_circle_xy_, top_loc_outside_circle_xy_);
+                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
                             // in this case, the percent inside circle gets the pmt portion penalty
                             pmt_portion *= (0.5 * percent_inside_circle_pmt_portion);
                         }
@@ -1068,7 +1076,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                             double circle_center_y = pmt_z;
                             double circle_radius = pmt_radius;
                             area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle,
-                                         top_locs_question, top_loc_inside_circle_xy_, top_loc_outside_circle_xy_);
+                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
                             // in this case, we want our chunks to be outside the uncoated pmts... so area pentalty factor  = 1 - percent_inside
                             area_penalty_factor = (1.0 - percent_inside_circle);
                             if (area_penalty_factor <= small_percent_pmt_occluded){
@@ -1195,7 +1203,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                 double circle_radius = cylinder_radius;
                 double percent_inside_circle;
                 area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle,
-                             top_locs_question, top_loc_inside_circle_xy_, top_loc_outside_circle_xy_);
+                             top_locs_question, top_loc_inside_detector_radius_xy_, top_loc_outside_detector_radius_xy_);
                 // in this case, we want our chunks to be inside the detector...so area penality factor = percent_inside_circle
                 area_penalty_factor = percent_inside_circle;
             }
@@ -1234,7 +1242,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                             double circle_center_y = pmt_y;
                             double circle_radius = pmt_radius;
                             area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_pmt_portion_top,
-                                         top_locs_question, top_loc_inside_circle_xy_, top_loc_outside_circle_xy_);
+                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
                             // in this case, the percent inside circle gets the pmt portion penalty
                             pmt_portion_top *= (0.5 * percent_inside_circle_pmt_portion_top);
                         }
@@ -1245,7 +1253,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                             double circle_center_y = pmt_y;
                             double circle_radius = pmt_radius;
                             area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_top_pmts,
-                                         top_locs_question, top_loc_inside_circle_xy_, top_loc_outside_circle_xy_);
+                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
                             // in this case, we want our chunks to be outside the uncoate pmts... so area pentalty factor  = 1 - percent_inside
                             area_penalty_factor_top_pmts = (1.0 - percent_inside_circle_top_pmts);
                         }
@@ -1261,7 +1269,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                             double circle_center_y = pmt_y;
                             double circle_radius = pmt_radius;
                             area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_pmt_portion_bottom,
-                                         top_locs_question, top_loc_inside_circle_xy_, top_loc_outside_circle_xy_);
+                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
                             // in this case, the percent inside circle gets the pmt portion penalty
                             pmt_portion_bottom *= (0.5 * percent_inside_circle_pmt_portion_bottom);
                         }
@@ -1271,7 +1279,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                             double circle_center_y = pmt_y;
                             double circle_radius = pmt_radius;
                             area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_bottom_pmts,
-                                         top_locs_question, top_loc_inside_circle_xy_, top_loc_outside_circle_xy_);
+                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
                             // in this case, we want our chunks to be outside the uncoate pmts... so area pentalty factor  = 1 - percent_inside
                             area_penalty_factor_bottom_pmts = (1.0 - percent_inside_circle_bottom_pmts);
                         }

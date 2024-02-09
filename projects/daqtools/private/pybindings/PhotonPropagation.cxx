@@ -59,8 +59,10 @@ void register_PhotonPropagation() {
         .def("GetTopLocWidth", &PhotonPropagation::GetTopLocWidth)
         .def("GetTopLocHeight", &PhotonPropagation::GetTopLocHeight)
         .def("GetTopLocXY", &PhotonPropagation::GetTopLocXY)
-        .def("GetTopLocInsideCircleXY", &PhotonPropagation::GetTopLocInsideCircleXY)
-        .def("GetTopLocOutsideCircleXY", &PhotonPropagation::GetTopLocOutsideCircleXY)
+        .def("GetTopLocInsideCoatedPMTXY", &PhotonPropagation::GetTopLocInsideCoatedPMTXY)
+        .def("GetTopLocOutsideCoatedPMTXY", &PhotonPropagation::GetTopLocOutsideCoatedPMTXY)
+        .def("GetTopLocInsideDetectorRadiusXY", &PhotonPropagation::GetTopLocInsideDetectorRadiusXY)
+        .def("GetTopLocOutsideDetectorRadiusXY", &PhotonPropagation::GetTopLocOutsideDetectorRadiusXY)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }

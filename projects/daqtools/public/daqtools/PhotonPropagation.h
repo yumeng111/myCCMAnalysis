@@ -380,8 +380,10 @@ class PhotonPropagation {
     double final_top_loc_width_;
     double final_top_loc_height_;
     I3Vector<I3Vector<double>> top_loc_xy_;
-    I3Vector<I3Vector<double>> top_loc_inside_circle_xy_;
-    I3Vector<I3Vector<double>> top_loc_outside_circle_xy_;
+    I3Vector<I3Vector<double>> top_loc_inside_uncoated_pmt_xy_;
+    I3Vector<I3Vector<double>> top_loc_outside_uncoated_pmt_xy_;
+    I3Vector<I3Vector<double>> top_loc_inside_detector_radius_xy_;
+    I3Vector<I3Vector<double>> top_loc_outside_detector_radius_xy_;
 
 public:
     PhotonPropagation();
@@ -399,8 +401,10 @@ public:
     double GetTopLocWidth();
     double GetTopLocHeight();
     I3Vector<I3Vector<double>> GetTopLocXY();
-    I3Vector<I3Vector<double>> GetTopLocInsideCircleXY();
-    I3Vector<I3Vector<double>> GetTopLocOutsideCircleXY();
+    I3Vector<I3Vector<double>> GetTopLocInsideCoatedPMTXY();
+    I3Vector<I3Vector<double>> GetTopLocOutsideCoatedPMTXY();
+    I3Vector<I3Vector<double>> GetTopLocInsideDetectorRadiusXY();
+    I3Vector<I3Vector<double>> GetTopLocOutsideDetectorRadiusXY();
     I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
     //double GetSimulation(double const & singlet_ratio_,
