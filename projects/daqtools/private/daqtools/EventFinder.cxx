@@ -12,10 +12,11 @@
 #include <set>
 #include <tuple>
 #include <cctype>
+#include <limits>
 #include <string>
 #include <fstream>
+#include <numeric>
 #include <iostream>
-#include <limits>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -43,8 +44,8 @@ typedef std::tuple<CCMPMTKey, CCMRecoPulse> PMTKeyPulsePair;
 typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
 
 class EventFinder: public I3Module {
-    std::string geometry_name_;
     bool geo_seen;
+    std::string geometry_name_;
     CCMGeometryConstPtr geo;
     double timeWindow_;
     double event_charge_threshold_;
@@ -161,7 +162,7 @@ void EventFinder::DAQ(I3FramePtr frame) {
                 event_end_time = std::get<1>(*j).GetTime();
 
                 if((not allow_overlapping_events_) and events.size() > 0 and std::get<1>(events.back()) > event_start_time) {
-                    if(max_event_charge > std::get<2>(events.back())) {
+                    if(std::get<2>(events.back()) > max_event_charge) {
                         max_event_charge = std::get<2>(events.back());
                         max_event_charge_time = std::get<3>(events.back());
                     }
