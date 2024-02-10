@@ -377,6 +377,12 @@ class PhotonPropagation {
 
     // some things for debugging
     I3Vector<I3Vector<double>> uncoated_pmt_locs_top_;
+    I3Vector<I3Vector<double>> coated_pmt_locs_top_;
+    I3Vector<I3Vector<double>> uncoated_pmt_locs_bottom_;
+    I3Vector<I3Vector<double>> coated_pmt_locs_bottom_;
+    I3Vector<I3Vector<double>> uncoated_pmt_locs_side_;
+    I3Vector<I3Vector<double>> coated_pmt_locs_side_;
+    
     double final_top_loc_width_;
     double final_top_loc_height_;
     I3Vector<I3Vector<double>> top_loc_xy_;
@@ -384,6 +390,16 @@ class PhotonPropagation {
     I3Vector<I3Vector<double>> top_loc_outside_uncoated_pmt_xy_;
     I3Vector<I3Vector<double>> top_loc_inside_detector_radius_xy_;
     I3Vector<I3Vector<double>> top_loc_outside_detector_radius_xy_;
+    
+    I3Vector<I3Vector<double>> all_top_loc_valid_dots_;
+    I3Vector<I3Vector<double>> all_top_loc_invalid_dots_;
+    I3Vector<I3Vector<double>> all_top_loc_coated_pmt_dots_;
+    I3Vector<I3Vector<double>> all_bottom_loc_valid_dots_;
+    I3Vector<I3Vector<double>> all_bottom_loc_invalid_dots_;
+    I3Vector<I3Vector<double>> all_bottom_loc_coated_pmt_dots_;
+    I3Vector<I3Vector<double>> all_side_loc_valid_dots_;
+    I3Vector<I3Vector<double>> all_side_loc_invalid_dots_;
+    I3Vector<I3Vector<double>> all_side_loc_coated_pmt_dots_;
 
 public:
     PhotonPropagation();
@@ -397,7 +413,12 @@ public:
     void GetEventVertices(size_t const & n_events_to_simulate);
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height);
+    I3Vector<I3Vector<double>> GetTopCoatedPMTLocs();
     I3Vector<I3Vector<double>> GetTopUncoatedPMTLocs();
+    I3Vector<I3Vector<double>> GetBottomCoatedPMTLocs();
+    I3Vector<I3Vector<double>> GetBottomUncoatedPMTLocs();
+    I3Vector<I3Vector<double>> GetSideCoatedPMTLocs();
+    I3Vector<I3Vector<double>> GetSideUncoatedPMTLocs();
     double GetTopLocWidth();
     double GetTopLocHeight();
     I3Vector<I3Vector<double>> GetTopLocXY();
@@ -405,6 +426,15 @@ public:
     I3Vector<I3Vector<double>> GetTopLocOutsideCoatedPMTXY();
     I3Vector<I3Vector<double>> GetTopLocInsideDetectorRadiusXY();
     I3Vector<I3Vector<double>> GetTopLocOutsideDetectorRadiusXY();
+    I3Vector<I3Vector<double>> GetAllTopLocValidDots();
+    I3Vector<I3Vector<double>> GetAllTopLocInvalidDots();
+    I3Vector<I3Vector<double>> GetAllTopLocCoatedPMTDots();
+    I3Vector<I3Vector<double>> GetAllBottomLocValidDots();
+    I3Vector<I3Vector<double>> GetAllBottomLocInvalidDots();
+    I3Vector<I3Vector<double>> GetAllBottomLocCoatedPMTDots();
+    I3Vector<I3Vector<double>> GetAllSideLocValidDots();
+    I3Vector<I3Vector<double>> GetAllSideLocInvalidDots();
+    I3Vector<I3Vector<double>> GetAllSideLocCoatedPMTDots();
     I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
     //double GetSimulation(double const & singlet_ratio_,

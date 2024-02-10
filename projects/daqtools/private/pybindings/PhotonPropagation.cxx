@@ -55,7 +55,12 @@ void register_PhotonPropagation() {
         .def("GetEventVertices", &PhotonPropagation::GetEventVertices)
         .def("GetPMTInformation", &PhotonPropagation::GetPMTInformation)
         .def("GetSecondaryLocs", &PhotonPropagation::GetSecondaryLocs)
+        .def("GetTopCoatedPMTLocs", &PhotonPropagation::GetTopCoatedPMTLocs)
         .def("GetTopUncoatedPMTLocs", &PhotonPropagation::GetTopUncoatedPMTLocs)
+        .def("GetBottomCoatedPMTLocs", &PhotonPropagation::GetBottomCoatedPMTLocs)
+        .def("GetBottomUncoatedPMTLocs", &PhotonPropagation::GetBottomUncoatedPMTLocs)
+        .def("GetSideCoatedPMTLocs", &PhotonPropagation::GetSideCoatedPMTLocs)
+        .def("GetSideUncoatedPMTLocs", &PhotonPropagation::GetSideUncoatedPMTLocs)
         .def("GetTopLocWidth", &PhotonPropagation::GetTopLocWidth)
         .def("GetTopLocHeight", &PhotonPropagation::GetTopLocHeight)
         .def("GetTopLocXY", &PhotonPropagation::GetTopLocXY)
@@ -63,6 +68,15 @@ void register_PhotonPropagation() {
         .def("GetTopLocOutsideCoatedPMTXY", &PhotonPropagation::GetTopLocOutsideCoatedPMTXY)
         .def("GetTopLocInsideDetectorRadiusXY", &PhotonPropagation::GetTopLocInsideDetectorRadiusXY)
         .def("GetTopLocOutsideDetectorRadiusXY", &PhotonPropagation::GetTopLocOutsideDetectorRadiusXY)
+        .def("GetAllTopLocValidDots", &PhotonPropagation::GetAllTopLocValidDots)
+        .def("GetAllTopLocInvalidDots", &PhotonPropagation::GetAllTopLocInvalidDots)
+        .def("GetAllTopLocCoatedPMTDots", &PhotonPropagation::GetAllTopLocCoatedPMTDots)
+        .def("GetAllBottomLocValidDots", &PhotonPropagation::GetAllBottomLocValidDots)
+        .def("GetAllBottomLocInvalidDots", &PhotonPropagation::GetAllBottomLocInvalidDots)
+        .def("GetAllBottomLocCoatedPMTDots", &PhotonPropagation::GetAllBottomLocCoatedPMTDots)
+        .def("GetAllSideLocValidDots", &PhotonPropagation::GetAllSideLocValidDots)
+        .def("GetAllSideLocInvalidDots", &PhotonPropagation::GetAllSideLocInvalidDots)
+        .def("GetAllSideLocCoatedPMTDots", &PhotonPropagation::GetAllSideLocCoatedPMTDots)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }

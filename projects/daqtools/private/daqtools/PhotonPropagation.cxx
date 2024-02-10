@@ -67,118 +67,150 @@ void get_ray_intersections(double const & x,
 
 }
 
-void sgn_function(double const & x, double & result){
-    if (x < 0){
-        result = -1.0;
-    }
-    else{
-        result = 1.0;
-    }
-}
-
-void get_circle_line_intersection(double const & x1,
-                                  double const & y1,
-                                  double const & x2,
-                                  double const & y2,
-                                  double const & radius,
-                                  double & intersection_x1,
-                                  double & intersection_y1,
-                                  double & intersection_x2,
-                                  double & intersection_y2,
-                                  double & discriminant){
-    double dx = x2 - x1;
-    double dy = y2 - y1;
-    double dr = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
-
-    double D = x1 * y2 - x2 * y1;
-    double sgn_dy;
-    sgn_function(dy, sgn_dy);
-    discriminant = std::pow(radius, 2) * std::pow(dr, 2) - std::pow(D, 2);
-
-    intersection_x1 = (D * dy + sgn_dy * dx * std::sqrt(std::pow(radius, 2) * std::pow(dr, 2) - std::pow(D, 2))) / (std::pow(dr, 2));
-    intersection_x2 = (D * dy - sgn_dy * dx * std::sqrt(std::pow(radius, 2) * std::pow(dr, 2) - std::pow(D, 2))) / (std::pow(dr, 2));
-    intersection_y1 = (-D * dx + std::abs(dy) * std::sqrt(std::pow(radius, 2) * std::pow(dr, 2) - std::pow(D, 2))) / (std::pow(dr, 2));
-    intersection_y2 = (-D * dx - std::abs(dy) * std::sqrt(std::pow(radius, 2) * std::pow(dr, 2) - std::pow(D, 2))) / (std::pow(dr, 2));
-
-}
-
-void area_penalty(double const & x0,
-                  double const & x1,
-                  double const & y0,
-                  double const & y1,
-                  double const & circle_center_x,
-                  double const & circle_center_y,
-                  double const & circle_radius,
-                  double & percent_inside_circle,
-                  bool const & top_locs_question,
-                  I3Vector<I3Vector<double>> & top_loc_inside_circle_xy_,
-                  I3Vector<I3Vector<double>> & top_loc_outside_circle_xy_){
+void combined_area_penalty(double const & chunk_center_x,
+                           double const & chunk_center_y,
+                           double const & x0,
+                           double const & x1,
+                           double const & y0,
+                           double const & y1,
+                           bool const & top_bottom_flag,
+                           I3Vector<I3Vector<double>> const & relevant_coated_pmt_locs,
+                           I3Vector<I3Vector<double>> const & relevant_uncoated_pmt_locs,
+                           double const & detector_radius,
+                           double const & pmt_radius,
+                           double const & half_chunk_hypotenuse,
+                           I3Vector<I3Vector<double>> & this_chunk_valid_points, 
+                           I3Vector<I3Vector<double>> & this_chunk_invalid_points,
+                           I3Vector<I3Vector<double>> & this_chunk_coated_pmt_points){
 
     // x0, x1, y0, and y1 are the corners of the chunk we are intersting in calcualting overlap with
-    // circle_center_x, circle_center_y, and circle_radius are what they sound like ... either for the entire top face of the detector or for coated PMTs
+    // top_bottom_flag is true if point is on top/bottom and false if on side --> dictates if we check if point is within the detector
+    // before calling this function, we figure out the relevant coated and uncoated pmt locs and save to vectors
 
     // granularity for chunking up our chunk
-    size_t n_chunks_x_side = 10;
-    size_t n_chunks_y_side = 10;
+    size_t n_chunks_x_side = 100;
+    size_t n_chunks_y_side = 100;
 
-    std::vector<double> possible_chunk_x_positions(n_chunks_x_side + 1);
+    // we are splitting up this chunk such that we do not have any points on the edges of the chunk bc that will cause over counting
+    // first chunking up in x
+    std::vector<double> possible_chunk_x_positions(n_chunks_x_side);
     for (size_t i = 0; i < n_chunks_x_side; i++){
         double x = x0 + ((x1 - x0) * (double)i / (double)n_chunks_x_side);
         possible_chunk_x_positions[i] = x;
     }
-    possible_chunk_x_positions.push_back(x1);
+    double width = std::abs(possible_chunk_x_positions[1] - possible_chunk_x_positions[0]);
+    for (size_t i = 0; i < n_chunks_x_side; i++){
+        possible_chunk_x_positions[i] += (width / 2.0);
+    }
 
-    std::vector<double> possible_chunk_y_positions(n_chunks_y_side + 1);
+    // now chunking up in y
+    std::vector<double> possible_chunk_y_positions(n_chunks_y_side);
     for (size_t i = 0; i < n_chunks_y_side; i++){
         double y = y1 + ((y0 - y1) * (double)i / (double)n_chunks_y_side);
         possible_chunk_y_positions[i] = y;
     }
-    possible_chunk_y_positions.push_back(y0);
+    double height = std::abs(possible_chunk_y_positions[1] - possible_chunk_y_positions[0]);
+    for (size_t i = 0; i < n_chunks_y_side; i++){
+        possible_chunk_y_positions[i] += (height / 2.0);
+    }
 
-    double points_inside_circle = 0.0;
-    double points_outside_circle = 0.0;
+    // now that we are done with that, we can loop over our points in the chunk and check:
+    // 1) is this point actually inside the chunk we are considering? should always be yes...but good to check
+    // 2) is this point inside the detector dimenions? if no -- this is an invalid point!
+    // 3) is this point on top of an uncoated pmt? if yes -- this is an invalid point!
+    // 4) is this point on top of a coated pmt? if yes -- this is a valid point, but keep track for tpb portions
 
-    // now loop over points and see if they are inside or outside circle by calculating distance
+    I3Vector<double> this_point;
     for (size_t x_chunk_it = 0; x_chunk_it < possible_chunk_x_positions.size(); x_chunk_it ++){
         for (size_t y_chunk_it = 0; y_chunk_it < possible_chunk_y_positions.size(); y_chunk_it ++){
-            double this_chunk_x = possible_chunk_x_positions.at(x_chunk_it);
-            double this_chunk_y = possible_chunk_y_positions.at(y_chunk_it);
-            double this_chunk_radius = std::sqrt(std::pow(this_chunk_x - circle_center_x, 2) + std::pow(this_chunk_y - circle_center_y, 2));
-            // let's also check if x or y are on the edge of the chunk
-            double edge_factor = 1.0;
-            if (this_chunk_x == x0 or this_chunk_x == x1 or this_chunk_y == y0 or this_chunk_y == y1){
-                // on the boundaries of the square!
-                edge_factor *= 0.5;
+            // booleans to keep track of this point
+            bool valid_point = true;
+            bool on_coated_pmt = false;
+
+            double this_point_in_chunk_x = possible_chunk_x_positions.at(x_chunk_it);
+            double this_point_in_chunk_y = possible_chunk_y_positions.at(y_chunk_it);
+
+            // first things first, let's make sure this point is actually on our chunk by checking radius
+            double this_point_dist_from_center_chunk = std::sqrt(std::pow(this_point_in_chunk_x - chunk_center_x, 2) + std::pow(this_point_in_chunk_y - chunk_center_y, 2)); 
+            if (this_point_dist_from_center_chunk > half_chunk_hypotenuse){
+                // oops! this point is not actually on our chunk
+                continue;
             }
-            if ((this_chunk_x == x0 and this_chunk_y == y0) or (this_chunk_x == x1 and this_chunk_y == y0) or
-                    (this_chunk_x == x1 and this_chunk_y == y1) or (this_chunk_x == x0 and this_chunk_y == y1)){
-                // on the corners of the square!
-                edge_factor *= 0.5;
-            }
-            if (this_chunk_radius <= circle_radius){
-                points_inside_circle += (1.0 * edge_factor);
-                if (top_locs_question){
-                    // this is a loc on the top of the detector! let's save
-                    I3Vector<double> top_loc_inside;
-                    top_loc_inside.push_back(this_chunk_x);
-                    top_loc_inside.push_back(this_chunk_y);
-                    top_loc_inside_circle_xy_.push_back(top_loc_inside);
+
+            // now we check if this point is inside the detector
+            // we start off assuming all points are valid, so want to check if invalid and flip bool
+            if (top_bottom_flag){
+                double this_point_dist_to_edge_of_detector = std::sqrt(std::pow(this_point_in_chunk_x, 2) + std::pow(this_point_in_chunk_y, 2));
+                if (this_point_dist_to_edge_of_detector > detector_radius){
+                    // oops! this point is outside the radius of the detector! definitely invalid
+                    valid_point = false;
                 }
             }
-            else {
-                points_outside_circle += (1.0 * edge_factor);
-                if (top_locs_question){
-                    // this is a loc on the top of the detector! let's save
-                    I3Vector<double> top_loc_outside;
-                    top_loc_outside.push_back(this_chunk_x);
-                    top_loc_outside.push_back(this_chunk_y);
-                    top_loc_outside_circle_xy_.push_back(top_loc_outside);
+
+            // now if this point is within the detector, we need to check if it's on an uncoated pmt --> that will also flip valid bool
+            if (valid_point){
+                // we we have a list of the un coated pmt x and y locs, let's loop through and calculate distances from this point to all of those
+                for(size_t uncoated_pmt_it = 0; uncoated_pmt_it < relevant_uncoated_pmt_locs.size(); uncoated_pmt_it++){
+                    double this_uncoated_pmt_x = relevant_uncoated_pmt_locs[uncoated_pmt_it][0];
+                    double this_uncoated_pmt_y = relevant_uncoated_pmt_locs[uncoated_pmt_it][1];
+                    if (!top_bottom_flag and this_uncoated_pmt_x < -319.0){
+                        // these are pmts on the edges of where we start counting circumference
+                        // let's translate these c, z positions to the edge edge, check, and then check like normal
+                        double adjusted_pmt_x = -this_uncoated_pmt_x;
+                        double adjusted_dist = std::sqrt(std::pow(this_point_in_chunk_x - adjusted_pmt_x, 2) + std::pow(this_point_in_chunk_y - this_uncoated_pmt_y, 2));
+                        if (adjusted_dist <= pmt_radius){
+                            valid_point = false;
+                        }
+                    }
+                    double distance_from_this_point_to_uncoated_pmt = std::sqrt(std::pow(this_point_in_chunk_x - this_uncoated_pmt_x, 2) + std::pow(this_point_in_chunk_y - this_uncoated_pmt_y, 2));
+                    if (distance_from_this_point_to_uncoated_pmt <= pmt_radius){
+                        // we are on an uncoated pmt!!!
+                        valid_point = false;
+                    }
                 }
             }
+
+            // ok so finished check if on uncoated pmt -- last thing to check is if we are on a coated pmt (only if this is still a valid point of course)!
+            if (valid_point){
+                // we we have a list of the coated pmt x and y locs, let's loop through and calculate distances from this point to all of those
+                for(size_t coated_pmt_it = 0; coated_pmt_it < relevant_coated_pmt_locs.size(); coated_pmt_it++){
+                    double this_coated_pmt_x = relevant_coated_pmt_locs[coated_pmt_it][0];
+                    double this_coated_pmt_y = relevant_coated_pmt_locs[coated_pmt_it][1];
+                    if (!top_bottom_flag and this_coated_pmt_x < -319.0){
+                        // these are pmts on the edges of where we start counting circumference
+                        // let's translate these c, z positions to the edge edge, check, and then check like normal
+                        double adjusted_pmt_x = -this_coated_pmt_x;
+                        double adjusted_dist = std::sqrt(std::pow(this_point_in_chunk_x - adjusted_pmt_x, 2) + std::pow(this_point_in_chunk_y - this_coated_pmt_y, 2));
+                        if (adjusted_dist <= pmt_radius){
+                            on_coated_pmt = true;
+                        }
+                    }
+                    double distance_from_this_point_to_coated_pmt = std::sqrt(std::pow(this_point_in_chunk_x - this_coated_pmt_x, 2) + std::pow(this_point_in_chunk_y - this_coated_pmt_y, 2));
+                    if (distance_from_this_point_to_coated_pmt <= pmt_radius){
+                        // we are on an coated pmt!!!
+                        on_coated_pmt = true;
+                    }
+                }
+            }
+
+            // now we can save this point as appropriate!
+            this_point.clear();
+            this_point.push_back(this_point_in_chunk_x);
+            this_point.push_back(this_point_in_chunk_y);
+
+            if (valid_point){
+                this_chunk_valid_points.push_back(this_point);
+                if (on_coated_pmt){
+                    this_chunk_coated_pmt_points.push_back(this_point);
+                }
+            }
+            if (!valid_point){
+                this_chunk_invalid_points.push_back(this_point);
+            }
+
         }
     }
 
-    percent_inside_circle = points_inside_circle / (points_inside_circle + points_outside_circle);
 
 }
 
@@ -525,6 +557,24 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetTopUncoatedPMTLocs(){
     return uncoated_pmt_locs_top_;
 }
 
+I3Vector<I3Vector<double>> PhotonPropagation::GetTopCoatedPMTLocs(){
+    return coated_pmt_locs_top_;
+}
+I3Vector<I3Vector<double>> PhotonPropagation::GetBottomUncoatedPMTLocs(){
+    return uncoated_pmt_locs_bottom_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetBottomCoatedPMTLocs(){
+    return coated_pmt_locs_bottom_;
+}
+I3Vector<I3Vector<double>> PhotonPropagation::GetSideUncoatedPMTLocs(){
+    return uncoated_pmt_locs_side_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetSideCoatedPMTLocs(){
+    return coated_pmt_locs_side_;
+}
+
 double PhotonPropagation::GetTopLocWidth(){
     return final_top_loc_width_;
 }
@@ -551,6 +601,40 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocInsideDetectorRadiusXY(){
 
 I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocOutsideDetectorRadiusXY(){
     return top_loc_outside_detector_radius_xy_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllTopLocValidDots(){
+    return all_top_loc_valid_dots_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllTopLocInvalidDots(){
+    return all_top_loc_invalid_dots_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllTopLocCoatedPMTDots(){
+    return all_top_loc_coated_pmt_dots_;
+}
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllBottomLocValidDots(){
+    return all_bottom_loc_valid_dots_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllBottomLocInvalidDots(){
+    return all_bottom_loc_invalid_dots_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllBottomLocCoatedPMTDots(){
+    return all_bottom_loc_coated_pmt_dots_;
+}
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllSideLocValidDots(){
+    return all_side_loc_valid_dots_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllSideLocInvalidDots(){
+    return all_side_loc_invalid_dots_;
+}
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetAllSideLocCoatedPMTDots(){
+    return all_side_loc_coated_pmt_dots_;
 }
 
 void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
@@ -913,15 +997,48 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
         double pmt_y = this_pmt_info.at(1);
         double pmt_z = this_pmt_info.at(2);
 
-        if (pmt_z == 58.0 and pmt_coating_flag == 0.0){
+        this_pmt_loc.clear();
+        this_pmt_loc.push_back(pmt_x);
+        this_pmt_loc.push_back(pmt_y);
+
+        if (pmt_z == 58.0){
+            if (pmt_coating_flag == 0.0){
+                uncoated_pmt_locs_top_.push_back(this_pmt_loc);
+            }
+            if (pmt_coating_flag == 1.0){
+                coated_pmt_locs_top_.push_back(this_pmt_loc);
+            }
+        }
+        if (pmt_z == -58.0){
+            if (pmt_coating_flag == 0.0){
+                uncoated_pmt_locs_bottom_.push_back(this_pmt_loc);
+            }
+            if (pmt_coating_flag == 1.0){
+                coated_pmt_locs_bottom_.push_back(this_pmt_loc);
+            }
+        }
+        if (pmt_z > -58.0 and pmt_z < 58.0){
+            // for pmts on the sides of the detector, we actually want to save pmt_c and pmt_z
+            double pmt_theta = -atan2(pmt_y, pmt_x);
+            pmt_theta = fmod(M_PI + pmt_theta, 2.0 * M_PI) - M_PI;
+            double pmt_c = cylinder_radius * pmt_theta;
+
             this_pmt_loc.clear();
-            this_pmt_loc.push_back(pmt_x);
-            this_pmt_loc.push_back(pmt_y);
-            uncoated_pmt_locs_top_.push_back(this_pmt_loc);
+            this_pmt_loc.push_back(pmt_c);
+            this_pmt_loc.push_back(pmt_z);
+
+            if (pmt_coating_flag == 0.0){
+                uncoated_pmt_locs_side_.push_back(this_pmt_loc);
+            }
+            if (pmt_coating_flag == 1.0){
+                coated_pmt_locs_side_.push_back(this_pmt_loc);
+            }
         }
     }
 
+
 }
+
 
 void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) {
     // set our chunk vars
@@ -935,9 +1052,9 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     double area_top = 0;
     double area_sides = 0;
     double area_bottom = 0;
-    double area_top_penalties = 0;
-    double area_sides_penalties = 0;
-    double area_bottom_penalties = 0;
+    double area_top_valid = 0;
+    double area_sides_valid = 0;
+    double area_bottom_valid = 0;
     // finally, let's reset some vectors that we're saving info to
     if (locations_to_check_information_.size() > 0){
         // our secondary loc vectors are already filled! let's empty!
@@ -960,41 +1077,60 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
         }
         locations_to_check_to_pmt_travel_time_.clear();
     }
-
-    if (top_loc_xy_.size() > 0){
-        for(size_t i = 0; i < top_loc_xy_.size(); i++){
-            top_loc_xy_[i].clear();
+    if (all_top_loc_valid_dots_.size() > 0){
+        for (size_t i = 0; i < all_top_loc_valid_dots_.size(); i++){
+            all_top_loc_valid_dots_[i].clear();
         }
-        top_loc_xy_.clear();
+        all_top_loc_valid_dots_.clear();
     }
-    if (top_loc_inside_uncoated_pmt_xy_.size() > 0){
-        for(size_t i = 0; i < top_loc_inside_uncoated_pmt_xy_.size(); i++){
-            top_loc_inside_uncoated_pmt_xy_[i].clear();
+    if (all_top_loc_invalid_dots_.size() > 0){
+        for (size_t i = 0; i < all_top_loc_invalid_dots_.size(); i++){
+            all_top_loc_invalid_dots_[i].clear();
         }
-        top_loc_inside_uncoated_pmt_xy_.clear();
+        all_top_loc_invalid_dots_.clear();
     }
-    if (top_loc_outside_uncoated_pmt_xy_.size() > 0){
-        for(size_t i = 0; i < top_loc_outside_uncoated_pmt_xy_.size(); i++){
-            top_loc_outside_uncoated_pmt_xy_[i].clear();
+    if (all_top_loc_coated_pmt_dots_.size() > 0){
+        for (size_t i = 0; i < all_top_loc_coated_pmt_dots_.size(); i++){
+            all_top_loc_coated_pmt_dots_[i].clear();
         }
-        top_loc_outside_uncoated_pmt_xy_.clear();
+        all_top_loc_coated_pmt_dots_.clear();
     }
-    if (top_loc_inside_detector_radius_xy_.size() > 0){
-        for(size_t i = 0; i < top_loc_inside_detector_radius_xy_.size(); i++){
-            top_loc_inside_detector_radius_xy_[i].clear();
+    if (all_bottom_loc_valid_dots_.size() > 0){
+        for (size_t i = 0; i < all_bottom_loc_valid_dots_.size(); i++){
+            all_bottom_loc_valid_dots_[i].clear();
         }
-        top_loc_inside_detector_radius_xy_.clear();
+        all_bottom_loc_valid_dots_.clear();
     }
-    if (top_loc_outside_detector_radius_xy_.size() > 0){
-        for(size_t i = 0; i < top_loc_outside_detector_radius_xy_.size(); i++){
-            top_loc_outside_detector_radius_xy_[i].clear();
+    if (all_bottom_loc_invalid_dots_.size() > 0){
+        for (size_t i = 0; i < all_bottom_loc_invalid_dots_.size(); i++){
+            all_bottom_loc_invalid_dots_[i].clear();
         }
-        top_loc_outside_detector_radius_xy_.clear();
+        all_bottom_loc_invalid_dots_.clear();
     }
-
-    //std::cout << "locations_to_check_information_.size() = " << locations_to_check_information_.size() << std::endl;
-    //std::cout << "locations_to_check_to_pmt_yield_.size() = " << locations_to_check_to_pmt_yield_.size() << std::endl;
-    //std::cout << "locations_to_check_to_pmt_travel_time_.size() = " << locations_to_check_to_pmt_travel_time_.size() << std::endl;
+    if (all_bottom_loc_coated_pmt_dots_.size() > 0){
+        for (size_t i = 0; i < all_bottom_loc_coated_pmt_dots_.size(); i++){
+            all_bottom_loc_coated_pmt_dots_[i].clear();
+        }
+        all_bottom_loc_coated_pmt_dots_.clear();
+    }
+    if (all_side_loc_valid_dots_.size() > 0){
+        for (size_t i = 0; i < all_side_loc_valid_dots_.size(); i++){
+            all_side_loc_valid_dots_[i].clear();
+        }
+        all_side_loc_valid_dots_.clear();
+    }
+    if (all_side_loc_invalid_dots_.size() > 0){
+        for (size_t i = 0; i < all_side_loc_invalid_dots_.size(); i++){
+            all_side_loc_invalid_dots_[i].clear();
+        }
+        all_side_loc_invalid_dots_.clear();
+    }
+    if (all_side_loc_coated_pmt_dots_.size() > 0){
+        for (size_t i = 0; i < all_side_loc_coated_pmt_dots_.size(); i++){
+            all_side_loc_coated_pmt_dots_[i].clear();
+        }
+        all_side_loc_coated_pmt_dots_.clear();
+    }
 
     std::vector<double> this_loc_info (9);
     std::vector<double> loc_to_pmt_photon_yields;
@@ -1004,21 +1140,15 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     size_t n_chunks_c = (size_t) cylinder_circumference / desired_chunk_width_;
     size_t n_chunks_z = (size_t) cylinder_height / desired_chunk_height_;
 
-    //n_chunks_c += 1;
-    //n_chunks_z += 1;
-
     std::vector<double> possible_circumference_positions(n_chunks_c);
     for (size_t i = 0; i < n_chunks_c; i++){
-        //double this_circ = cylinder_circumference * ((double)i / (double)n_chunks_c);
         double this_circ = -(cylinder_circumference / 2.0) + ((cylinder_circumference) * (double)i / (double)n_chunks_c);
-        //this_circ += (desired_chunk_width_/2);
         possible_circumference_positions.at(i) = this_circ;
     }
 
     std::vector<double> possible_z_positions(n_chunks_z);
     for (size_t i = 0; i < n_chunks_z; i++){
         double this_z = (-cylinder_height / 2.0) + ((cylinder_height) * (double)i / (double)n_chunks_z);
-        //this_z += (desired_chunk_height_ / 2);
         possible_z_positions[i] = this_z;
     }
 
@@ -1028,8 +1158,7 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
 
     double chunk_theta = (M_PI / 4.0); // half angle of corner of chunk in radians (should always be pi/4 or ~0.78)
     double chunk_diagonal_distance = actual_chunk_height / std::sin(chunk_theta);
-    double max_radius_fully_enclosed = cylinder_radius - (chunk_diagonal_distance / 2);
-    double max_radius_partially_enclosed = cylinder_radius + (chunk_diagonal_distance/ 2);
+    double chunk_half_diagonal_distance = chunk_diagonal_distance / 2.0;
 
     for (size_t i = 0; i < possible_circumference_positions.size(); i++){
         possible_circumference_positions[i] += (actual_chunk_width / 2.0);
@@ -1038,8 +1167,20 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
         possible_z_positions[i] += (actual_chunk_height / 2.0);
     }
 
+
+    // setting up some variables we will need
     double small_percent_pmt_occluded = 0.0;
-    bool top_locs_question = false;
+    I3Vector<I3Vector<double>> this_chunk_valid_points;
+    I3Vector<I3Vector<double>> this_chunk_invalid_points;
+    I3Vector<I3Vector<double>> this_chunk_coated_pmt_points;
+
+    bool top_bottom_flag = false;
+    size_t total_valid_points;
+    size_t total_invalid_points;
+    size_t total_coated_pmt_points;
+    double ratio_valid;
+    double ratio_coated;
+
     // now let's calculate x and y from these circumference positions
     for (size_t i = 0; i < possible_circumference_positions.size(); i++){
         double loc_c = possible_circumference_positions.at(i);
@@ -1047,80 +1188,76 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
         double loc_x = cylinder_radius * std::cos(loc_theta);
         double loc_y = -cylinder_radius * std::sin(loc_theta);
 
-        //std::cout << "given loc_c = " << loc_c << ", calculated loc_x, loc_y = " << loc_x << ", " << loc_y << std::endl;
-        //// let's also calculate the circumference from these x, y just to make sure
-        //loc_theta = -atan2(loc_y, loc_x);
-        //loc_theta = fmod(M_PI + loc_theta, 2.0 * M_PI) - M_PI;
-        //double double_check_loc_c = cylinder_radius * loc_theta;
-        //std::cout << "double check loc_c = " << double_check_loc_c << std::endl;
-
         // now let's iterate over possible z positions
-        for (size_t j = 0; j <possible_z_positions.size(); j++){
+        for (size_t j = 0; j < possible_z_positions.size(); j++){
+            area_sides += area_side_chunks;
             double loc_z = possible_z_positions.at(j);
 
-            double area_penalty_factor = 1.0;
-            double percent_inside_circle;
-            double percent_inside_circle_pmt_portion;
             // let's also get the edges of our chunks for calculating overlap
             double x0 = loc_c - (actual_chunk_width / 2);
             double x1 = loc_c + (actual_chunk_width / 2);
             double y0 = loc_z + (actual_chunk_height / 2);
             double y1 = loc_z - (actual_chunk_height / 2);
 
-            // now we need to check if we're on an uncoated pmt...if so we do NOT save
-            bool save_this_loc = true;
-            double pmt_portion = portion_light_reflected_by_tpb_;
-            for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
-                std::vector<double> this_pmt_info = pmt_parsed_information_.at(pmt_it);
-                double pmt_coating_flag = this_pmt_info.at(6);
+            // let's call our combined_area_penalty function
+            // first clear out some vectors
+            if (this_chunk_valid_points.size() > 0){
+                for(size_t i = 0; i < this_chunk_valid_points.size(); i++){
+                    this_chunk_valid_points[i].clear();
+                }
+                this_chunk_valid_points.clear();
+            }
+            if (this_chunk_invalid_points.size() > 0){
+                for(size_t i = 0; i < this_chunk_invalid_points.size(); i++){
+                    this_chunk_invalid_points[i].clear();
+                }
+                this_chunk_invalid_points.clear();
+            }
+            if (this_chunk_coated_pmt_points.size() > 0){
+                for(size_t i = 0; i < this_chunk_coated_pmt_points.size(); i++){
+                    this_chunk_coated_pmt_points[i].clear();
+                }
+                this_chunk_coated_pmt_points.clear();
+            }
 
-                double pmt_x = this_pmt_info.at(0);
-                double pmt_y = this_pmt_info.at(1);
-                double pmt_z = this_pmt_info.at(2);
+            // now call combined_area_penalty, passing the appropriate pmts
+            combined_area_penalty(loc_c, loc_z, x0, x1, y0, y1, top_bottom_flag, coated_pmt_locs_side_, uncoated_pmt_locs_side_, cylinder_radius,
+                                  pmt_radius, chunk_half_diagonal_distance, this_chunk_valid_points, this_chunk_invalid_points, this_chunk_coated_pmt_points);
 
-                if (pmt_z > -58.0 and pmt_z < 58.0){
-                    // make sure we are only considering pmts on the sides of the detector
-                    double pmt_theta = -atan2(pmt_y, pmt_x);
-                    pmt_theta = fmod(M_PI + pmt_theta, 2.0 * M_PI) - M_PI;
-                    double pmt_c = cylinder_radius * pmt_theta;
-
-                    // now let's calculate distance from this location to this pmt
-                    double loc_dist_to_pmt = std::sqrt(std::pow(pmt_c - loc_c, 2) + std::pow(pmt_z - loc_z, 2));
-
-                    // now check if we're on top a pmt
-                    if (loc_dist_to_pmt < (pmt_radius + (chunk_diagonal_distance / 2))){
-                        // oops! we're on a pmt! if it's an uncoated pmt, we apply a penalty term to the area, if it's a coated pmt, TPB portion = 0.5
-                        // if our pmt is entirely overlapping the chunk, save_top_loc = false
-                        if (pmt_coating_flag == 1.0){
-                            // now get rough idea of overlap
-                            double circle_center_x = pmt_c;
-                            double circle_center_y = pmt_z;
-                            double circle_radius = pmt_radius;
-                            area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_pmt_portion,
-                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
-                            // in this case, the percent inside circle gets the pmt portion penalty
-                            pmt_portion *= (0.5 * percent_inside_circle_pmt_portion);
-                        }
-                        else{
-                            // now get rough idea of overlap
-                            double circle_center_x = pmt_c;
-                            double circle_center_y = pmt_z;
-                            double circle_radius = pmt_radius;
-                            area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle,
-                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
-                            // in this case, we want our chunks to be outside the uncoated pmts... so area pentalty factor  = 1 - percent_inside
-                            area_penalty_factor = (1.0 - percent_inside_circle);
-                            if (area_penalty_factor <= small_percent_pmt_occluded){
-                                // our chunk is entirely inside an uncoated pmt! bad news
-                                save_this_loc = false;
-                            }
-                        }
-                    }
+            // now save for debugging
+            if (this_chunk_valid_points.size() > 0){
+                for(size_t i = 0; i < this_chunk_valid_points.size(); i++){
+                    all_side_loc_valid_dots_.push_back(this_chunk_valid_points[i]);
                 }
             }
-            // so we have a possible loc and we've finished check if it's on top an uncoated pmt...let's save (maybe)!
-            if (save_this_loc){
-                //std::cout << "[" << loc_c << ", " << loc_z << ", " << area_penalty_factor << "]," << std::endl;
+            if (this_chunk_invalid_points.size() > 0){
+                for(size_t i = 0; i < this_chunk_invalid_points.size(); i++){
+                    all_side_loc_invalid_dots_.push_back(this_chunk_invalid_points[i]);
+                }
+            }
+            if (this_chunk_coated_pmt_points.size() > 0){
+                for(size_t i = 0; i < this_chunk_coated_pmt_points.size(); i++){
+                    all_side_loc_coated_pmt_dots_.push_back(this_chunk_coated_pmt_points[i]);
+                }
+            }
+            // now go through our lists of valid and invalid points and tally up
+            total_valid_points = this_chunk_valid_points.size();
+            total_invalid_points = this_chunk_invalid_points.size();
+            total_coated_pmt_points = this_chunk_coated_pmt_points.size();
+
+            ratio_valid = (double)total_valid_points / ((double)total_valid_points + (double)total_invalid_points);
+            ratio_coated = (double)total_coated_pmt_points / (double)total_valid_points;
+
+            // now let's save if enough of this chunk is valid
+            if (ratio_valid > small_percent_pmt_occluded){
+                double valid_area = area_side_chunks * ratio_valid;
+                double pmt_portion = portion_light_reflected_by_tpb_;
+                if (ratio_coated > 0.0){
+                    pmt_portion *= (0.5 * ratio_coated);
+                }
+                area_sides_valid += valid_area;
+
+                // calculate facing direction
                 double facing_radius = std::pow(loc_x, 2) + std::pow(loc_y, 2);
                 double facing_r_x = - loc_x / facing_radius;
                 double facing_r_y = - loc_y / facing_radius;
@@ -1139,10 +1276,8 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                 this_loc_info.push_back(facing_dir_y);
                 this_loc_info.push_back(facing_dir_z);
                 this_loc_info.push_back(pmt_portion);
-                area_sides += area_side_chunks;
-                area_sides_penalties += (area_side_chunks * area_penalty_factor);
-                this_loc_info.push_back(area_side_chunks * area_penalty_factor);
-                this_loc_info.push_back(area_side_chunks * area_penalty_factor * chunk_side_area_factor);
+                this_loc_info.push_back(valid_area);
+                this_loc_info.push_back(valid_area * chunk_side_area_factor);
                 locations_to_check_information_.push_back(this_loc_info);
 
                 // we are also going to pre-compute the light yield from 1 visible photon from this loc to every pmt
@@ -1156,7 +1291,6 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                 locations_to_check_to_pmt_travel_time_.push_back(loc_to_pmt_photon_propagation_times);
             }
         }
-
     }
 
 
@@ -1164,20 +1298,15 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     size_t n_chunks_x = (size_t) (cylinder_max_x - cylinder_min_x) / desired_chunk_width_;
     size_t n_chunks_y = (size_t) (cylinder_max_y - cylinder_min_y) / desired_chunk_height_;
 
-    //n_chunks_x += 1;
-    //n_chunks_y += 1;
-
     std::vector<double> possible_x_positions(n_chunks_x);
     for (size_t i = 0; i < n_chunks_x; i++){
         double x = cylinder_min_x + ((cylinder_max_x - cylinder_min_x) * (double)i / (double)n_chunks_x);
-        //x += (desired_chunk_width_ / 2);
         possible_x_positions[i] = x;
     }
 
     std::vector<double> possible_y_positions(n_chunks_y);
     for (size_t i = 0; i < n_chunks_y; i++){
         double y = cylinder_min_y + ((cylinder_max_y - cylinder_min_y) * (double)i / (double)n_chunks_y);
-        //y += (desired_chunk_height_ / 2);
         possible_y_positions[i] = y;
     }
 
@@ -1185,15 +1314,11 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     actual_chunk_height = std::abs(possible_y_positions.at(1) - possible_y_positions.at(0));
     double area_face_chunks = actual_chunk_width * actual_chunk_height;
 
-    final_top_loc_width_ = actual_chunk_width;
-    final_top_loc_height_ = actual_chunk_height;
-
     chunk_theta = (M_PI / 4.0); // half angle of corner of chunk in radians (should always be pi/4 or ~0.78)
     chunk_diagonal_distance = actual_chunk_height / std::sin(chunk_theta);
-    max_radius_fully_enclosed = cylinder_radius - (chunk_diagonal_distance / 2);
-    max_radius_partially_enclosed = cylinder_radius + (chunk_diagonal_distance/ 2);
+    chunk_half_diagonal_distance = chunk_diagonal_distance / 2.0;
+    double max_radius_partially_enclosed = cylinder_radius + chunk_half_diagonal_distance;
 
-    //std::cout << "actual_chunk_width = " << actual_chunk_width << " and actual_chunk_height = " << actual_chunk_height << std::endl;
     for(size_t i = 0; i < possible_x_positions.size(); i++){
         possible_x_positions[i] += (actual_chunk_width / 2.0);
     }
@@ -1201,10 +1326,35 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
         possible_y_positions[i] += (actual_chunk_height / 2.0);
     }
 
+    // define some things we will need
+    // first clear out some vectors
+    if (this_chunk_valid_points.size() > 0){
+        for(size_t i = 0; i < this_chunk_valid_points.size(); i++){
+            this_chunk_valid_points[i].clear();
+        }
+        this_chunk_valid_points.clear();
+    }
+    if (this_chunk_invalid_points.size() > 0){
+        for(size_t i = 0; i < this_chunk_invalid_points.size(); i++){
+            this_chunk_invalid_points[i].clear();
+        }
+        this_chunk_invalid_points.clear();
+    }
+    if (this_chunk_coated_pmt_points.size() > 0){
+        for(size_t i = 0; i < this_chunk_coated_pmt_points.size(); i++){
+            this_chunk_coated_pmt_points[i].clear();
+        }
+        this_chunk_coated_pmt_points.clear();
+    }
+
+    double z_top = cylinder_max_z;
+    double z_bottom = cylinder_min_z;
+    std::vector<double> possible_z = {z_top, z_bottom};
+    top_bottom_flag = true;
+
     for (size_t x_it = 0; x_it < possible_x_positions.size(); x_it ++){
         for (size_t y_it = 0; y_it < possible_y_positions.size(); y_it ++){
             // now let's make the sure this x, y combination is on the circle
-            // if it's not completely on the circle, we need to get ratio of how much is off to multiply our area by
             double this_x = possible_x_positions.at(x_it);
             double this_y = possible_y_positions.at(y_it);
             double radius = std::sqrt(std::pow(this_x, 2) + std::pow(this_y, 2));
@@ -1212,196 +1362,140 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                 // these chunks are definitely outside our circle
                 continue;
             }
-            double area_penalty_factor = 1.0;
-            double area_penalty_factor_top_pmts = 1.0;
-            double area_penalty_factor_bottom_pmts = 1.0;
-            double percent_inside_circle;
-            double percent_inside_circle_top_pmts;
-            double percent_inside_circle_bottom_pmts;
-            double percent_inside_circle_pmt_portion_top;
-            double percent_inside_circle_pmt_portion_bottom;
+
             // let's also get the edges of our chunks for calculating overlap
             double x0 = this_x - (actual_chunk_width / 2);
             double x1 = this_x + (actual_chunk_width / 2);
             double y0 = this_y + (actual_chunk_height / 2);
             double y1 = this_y - (actual_chunk_height / 2);
-            top_locs_question = true;
-            if (radius > max_radius_fully_enclosed and radius <= max_radius_partially_enclosed){
-                // ok these chunks are near the edges of the circle... we need to calculate how much of the chunk is actually on our circle
-                // we need to loop over the four sides of our chunks and check for intersections with the circle
-                double circle_center_x = 0.0;
-                double circle_center_y = 0.0;
-                double circle_radius = cylinder_radius;
-                double percent_inside_circle;
-                area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle,
-                             top_locs_question, top_loc_inside_detector_radius_xy_, top_loc_outside_detector_radius_xy_);
-                // in this case, we want our chunks to be inside the detector...so area penality factor = percent_inside_circle
-                area_penalty_factor = percent_inside_circle;
-            }
-            //std::cout << "[" << this_x << ", " << this_y << ", " << area_penalty_factor * area_penalty_factor_top_pmts << "]," << std::endl;
 
-            // ok so this is a valid position on the face of the detector!
-            // let's check if either the top or bottom pos is on a PMT
-            double z_top = cylinder_max_z;
-            double z_bottom = cylinder_min_z;
+            // now let's loop over the two possibilties of being on top or bottom of the detector
+            for(size_t z_it = 0; z_it < possible_z.size(); z_it ++){
+                double this_z = possible_z[z_it];
+                // let's call our combined_area_penalty function
+                // first clear out some vectors
+                if (this_chunk_valid_points.size() > 0){
+                    for(size_t i = 0; i < this_chunk_valid_points.size(); i++){
+                        this_chunk_valid_points[i].clear();
+                    }
+                    this_chunk_valid_points.clear();
+                }
+                if (this_chunk_invalid_points.size() > 0){
+                    for(size_t i = 0; i < this_chunk_invalid_points.size(); i++){
+                        this_chunk_invalid_points[i].clear();
+                    }
+                    this_chunk_invalid_points.clear();
+                }
+                if (this_chunk_coated_pmt_points.size() > 0){
+                    for(size_t i = 0; i < this_chunk_coated_pmt_points.size(); i++){
+                        this_chunk_coated_pmt_points[i].clear();
+                    }
+                    this_chunk_coated_pmt_points.clear();
+                }
 
-            bool save_top_loc = true;
-            double pmt_portion_top = portion_light_reflected_by_tpb_;
-            bool save_bottom_loc = true;
-            double pmt_portion_bottom = portion_light_reflected_by_tpb_;
-
-            for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
-                std::vector<double> & this_pmt_info = pmt_parsed_information_.at(pmt_it);
-                double pmt_coating_flag = this_pmt_info.at(6);
-
-                double pmt_x = this_pmt_info.at(0);
-                double pmt_y = this_pmt_info.at(1);
-                double pmt_z = this_pmt_info.at(2);
-
-                if (pmt_z == 58.0 or pmt_z == -58.0){
-                    // selecting out only top or bottom pmts
-                    // now let's calculate distance from this location to this pmt
-                    double loc_dist_to_pmt = std::sqrt(std::pow(pmt_x - this_x, 2) + std::pow(pmt_y - this_y, 2));
-                    // now check if we're on top a pmt
-                    if (loc_dist_to_pmt < (pmt_radius + (chunk_diagonal_distance / 2)) and pmt_z == 58.0){
-                        // oops! we're on a pmt! if it's an uncoated pmt, we apply a penalty term to the area, if it's a coated pmt, TPB portion = 0.5
-                        // if our pmt is entirely overlapping the chunk, save_top_loc = false
-                        if (pmt_coating_flag == 1.0){
-                            top_locs_question = false;
-                            // now get rough idea of overlap
-                            double circle_center_x = pmt_x;
-                            double circle_center_y = pmt_y;
-                            double circle_radius = pmt_radius;
-                            area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_pmt_portion_top,
-                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
-                            // in this case, the percent inside circle gets the pmt portion penalty
-                            pmt_portion_top *= (0.5 * percent_inside_circle_pmt_portion_top);
-                        }
-                        else{
-                            top_locs_question = true;
-                            // now get rough idea of overlap
-                            double circle_center_x = pmt_x;
-                            double circle_center_y = pmt_y;
-                            double circle_radius = pmt_radius;
-                            area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_top_pmts,
-                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
-                            // in this case, we want our chunks to be outside the uncoate pmts... so area pentalty factor  = 1 - percent_inside
-                            area_penalty_factor_top_pmts = (1.0 - percent_inside_circle_top_pmts);
+                // now call combined_area_penalty, passing the appropriate pmts
+                if (this_z == z_top){
+                    area_top += area_face_chunks;
+                    combined_area_penalty(this_x, this_y, x0, x1, y0, y1, top_bottom_flag, coated_pmt_locs_top_, uncoated_pmt_locs_top_, cylinder_radius,
+                                          pmt_radius, chunk_half_diagonal_distance, this_chunk_valid_points, this_chunk_invalid_points, this_chunk_coated_pmt_points);
+                    // now save for debugging
+                    if (this_chunk_valid_points.size() > 0){
+                        for(size_t i = 0; i < this_chunk_valid_points.size(); i++){
+                            all_top_loc_valid_dots_.push_back(this_chunk_valid_points[i]);
                         }
                     }
-                    // now check if we're on bottom a pmt
-                    if (loc_dist_to_pmt < (pmt_radius + (chunk_diagonal_distance / 2)) and pmt_z == -58.0){
-                        // oops! we're on a pmt! if it's an uncoated pmt, we apply a penalty term to the area, if it's a coated pmt, TPB portion = 0.5
-                        // if our pmt is entirely overlapping the chunk, save_top_loc = false
-                        top_locs_question = false;
-                        if (pmt_coating_flag == 1.0){
-                            // now get rough idea of overlap
-                            double circle_center_x = pmt_x;
-                            double circle_center_y = pmt_y;
-                            double circle_radius = pmt_radius;
-                            area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_pmt_portion_bottom,
-                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
-                            // in this case, the percent inside circle gets the pmt portion penalty
-                            pmt_portion_bottom *= (0.5 * percent_inside_circle_pmt_portion_bottom);
+                    if (this_chunk_invalid_points.size() > 0){
+                        for(size_t i = 0; i < this_chunk_invalid_points.size(); i++){
+                            all_top_loc_invalid_dots_.push_back(this_chunk_invalid_points[i]);
                         }
-                        else{
-                            // now get rough idea of overlap
-                            double circle_center_x = pmt_x;
-                            double circle_center_y = pmt_y;
-                            double circle_radius = pmt_radius;
-                            area_penalty(x0, x1, y0, y1, circle_center_x, circle_center_y, circle_radius, percent_inside_circle_bottom_pmts,
-                                         top_locs_question, top_loc_inside_uncoated_pmt_xy_, top_loc_outside_uncoated_pmt_xy_);
-                            // in this case, we want our chunks to be outside the uncoate pmts... so area pentalty factor  = 1 - percent_inside
-                            area_penalty_factor_bottom_pmts = (1.0 - percent_inside_circle_bottom_pmts);
+                    }
+                    if (this_chunk_coated_pmt_points.size() > 0){
+                        for(size_t i = 0; i < this_chunk_coated_pmt_points.size(); i++){
+                            all_top_loc_coated_pmt_dots_.push_back(this_chunk_coated_pmt_points[i]);
+                        }
+                    }
+                }
+                if (this_z == z_bottom){
+                    area_bottom += area_face_chunks;
+                    combined_area_penalty(this_x, this_y, x0, x1, y0, y1, top_bottom_flag, coated_pmt_locs_bottom_, uncoated_pmt_locs_bottom_, cylinder_radius,
+                                          pmt_radius, chunk_half_diagonal_distance, this_chunk_valid_points, this_chunk_invalid_points, this_chunk_coated_pmt_points);
+                    // now save for debugging
+                    if (this_chunk_valid_points.size() > 0){
+                        for(size_t i = 0; i < this_chunk_valid_points.size(); i++){
+                            all_bottom_loc_valid_dots_.push_back(this_chunk_valid_points[i]);
+                        }
+                    }
+                    if (this_chunk_invalid_points.size() > 0){
+                        for(size_t i = 0; i < this_chunk_invalid_points.size(); i++){
+                            all_bottom_loc_invalid_dots_.push_back(this_chunk_invalid_points[i]);
+                        }
+                    }
+                    if (this_chunk_coated_pmt_points.size() > 0){
+                        for(size_t i = 0; i < this_chunk_coated_pmt_points.size(); i++){
+                            all_bottom_loc_coated_pmt_dots_.push_back(this_chunk_coated_pmt_points[i]);
                         }
                     }
                 }
 
+                // now go through our lists of valid and invalid points and tally up
+                total_valid_points = this_chunk_valid_points.size();
+                total_invalid_points = this_chunk_invalid_points.size();
+                total_coated_pmt_points = this_chunk_coated_pmt_points.size();
+
+                ratio_valid = (double)total_valid_points / ((double)total_valid_points + (double)total_invalid_points);
+                ratio_coated = (double)total_coated_pmt_points / (double)total_valid_points;
+
+                // now let's save if enough of this chunk is valid
+                if (ratio_valid > small_percent_pmt_occluded){
+                    double valid_area = area_face_chunks * ratio_valid;
+                    double pmt_portion = portion_light_reflected_by_tpb_;
+                    if (ratio_coated > 0.0){
+                        pmt_portion *= (0.5 * ratio_coated);
+                    }
+
+                    double facing_dir_x = 0.0;
+                    double facing_dir_y = 0.0;
+                    double facing_dir_z;
+                    if (this_z == z_top){
+                        facing_dir_z = -1.0;
+                        area_top_valid += valid_area;
+                    }
+                    if (this_z == z_bottom){
+                        facing_dir_z = 1.0;
+                        area_bottom_valid += valid_area;
+                    }
+
+                    // now a vector to save things to
+                    face_chunks_counter += 1;
+                    this_loc_info.clear();
+                    this_loc_info.push_back(this_x);
+                    this_loc_info.push_back(this_y);
+                    this_loc_info.push_back(this_z);
+                    this_loc_info.push_back(facing_dir_x);
+                    this_loc_info.push_back(facing_dir_y);
+                    this_loc_info.push_back(facing_dir_z);
+                    this_loc_info.push_back(pmt_portion);
+                    this_loc_info.push_back(valid_area);
+                    this_loc_info.push_back(valid_area * chunk_side_area_factor);
+                    locations_to_check_information_.push_back(this_loc_info);
+
+                    // we are also going to pre-compute the light yield from 1 visible photon from this loc to every pmt
+                    // as well as the travel time for that 1 photon to go from this loc to every pmt
+                    loc_to_pmt_photon_yields.clear();
+                    loc_to_pmt_photon_propagation_times.clear();
+                    secondary_loc_to_pmt_propagation(full_acceptance, c_cm_per_nsec, vis_index_of_refraction, pmt_quantum_efficiency,
+                                                     visible_absorption_length_, pmt_parsed_information_, this_x, this_y, this_z,
+                                                     loc_to_pmt_photon_yields, loc_to_pmt_photon_propagation_times);
+                    locations_to_check_to_pmt_yield_.push_back(loc_to_pmt_photon_yields);
+                    locations_to_check_to_pmt_travel_time_.push_back(loc_to_pmt_photon_propagation_times);
+                }
             }
-            // ok we've finished checking if we're on pmts...let's save
-            if ((area_penalty_factor * area_penalty_factor_top_pmts) <= small_percent_pmt_occluded){
-                save_top_loc = false;
-            }
-            if ((area_penalty_factor * area_penalty_factor_bottom_pmts) <= small_percent_pmt_occluded){
-                save_bottom_loc = false;
-            }
-            //std::cout << "[" << this_x << ", " << this_y << ", " << area_penalty_factor * area_penalty_factor_top_pmts << "]," << std::endl;
-            if (save_top_loc){
-                I3Vector<double> this_top_loc;
-                this_top_loc.push_back(this_x);
-                this_top_loc.push_back(this_y);
-                top_loc_xy_.push_back(this_top_loc);
-                double facing_dir_x = 0.0;
-                double facing_dir_y = 0.0;
-                double facing_dir_z = -1.0;
-
-                // now a vector to save things to
-                face_chunks_counter += 1;
-                this_loc_info.clear();
-                this_loc_info.push_back(this_x);
-                this_loc_info.push_back(this_y);
-                this_loc_info.push_back(z_top);
-                this_loc_info.push_back(facing_dir_x);
-                this_loc_info.push_back(facing_dir_y);
-                this_loc_info.push_back(facing_dir_z);
-                this_loc_info.push_back(pmt_portion_top);
-                area_top += area_side_chunks;
-                area_top_penalties += (area_side_chunks * area_penalty_factor * area_penalty_factor_top_pmts);
-                this_loc_info.push_back(area_face_chunks * area_penalty_factor * area_penalty_factor_top_pmts);
-                this_loc_info.push_back(area_face_chunks * area_penalty_factor * area_penalty_factor_top_pmts * chunk_side_area_factor);
-                locations_to_check_information_.push_back(this_loc_info);
-
-                // we are also going to pre-compute the light yield from 1 visible photon from this loc to every pmt
-                // as well as the travel time for that 1 photon to go from this loc to every pmt
-                loc_to_pmt_photon_yields.clear();
-                loc_to_pmt_photon_propagation_times.clear();
-                secondary_loc_to_pmt_propagation(full_acceptance, c_cm_per_nsec, vis_index_of_refraction, pmt_quantum_efficiency,
-                                                 visible_absorption_length_, pmt_parsed_information_, this_x, this_y, z_top,
-                                                 loc_to_pmt_photon_yields, loc_to_pmt_photon_propagation_times);
-                locations_to_check_to_pmt_yield_.push_back(loc_to_pmt_photon_yields);
-                locations_to_check_to_pmt_travel_time_.push_back(loc_to_pmt_photon_propagation_times);
-            }
-
-            if (save_bottom_loc){
-                //std::cout << "[" << this_x << ", " << this_y << ", " << area_penalty_factor * area_penalty_factor_bottom_pmts << "]," << std::endl;
-                double facing_dir_x = 0.0;
-                double facing_dir_y = 0.0;
-                double facing_dir_z = 1.0;
-
-                // now a vector to save things to
-                face_chunks_counter += 1;
-                this_loc_info.clear();
-                this_loc_info.push_back(this_x);
-                this_loc_info.push_back(this_y);
-                this_loc_info.push_back(z_bottom);
-                this_loc_info.push_back(facing_dir_x);
-                this_loc_info.push_back(facing_dir_y);
-                this_loc_info.push_back(facing_dir_z);
-                this_loc_info.push_back(pmt_portion_bottom);
-                area_bottom += area_side_chunks;
-                area_bottom_penalties += (area_side_chunks * area_penalty_factor * area_penalty_factor_bottom_pmts);
-                this_loc_info.push_back(area_face_chunks * area_penalty_factor * area_penalty_factor_bottom_pmts);
-                this_loc_info.push_back(area_face_chunks * area_penalty_factor * area_penalty_factor_bottom_pmts * chunk_side_area_factor);
-                locations_to_check_information_.push_back(this_loc_info);
-
-                // we are also going to pre-compute the light yield from 1 visible photon from this loc to every pmt
-                // as well as the travel time for that 1 photon to go from this loc to every pmt
-                loc_to_pmt_photon_yields.clear();
-                loc_to_pmt_photon_propagation_times.clear();
-                secondary_loc_to_pmt_propagation(full_acceptance, c_cm_per_nsec, vis_index_of_refraction, pmt_quantum_efficiency,
-                                                 visible_absorption_length_, pmt_parsed_information_, this_x, this_y, z_bottom,
-                                                 loc_to_pmt_photon_yields, loc_to_pmt_photon_propagation_times);
-                locations_to_check_to_pmt_yield_.push_back(loc_to_pmt_photon_yields);
-                locations_to_check_to_pmt_travel_time_.push_back(loc_to_pmt_photon_propagation_times);
-            }
-
-
         }
     }
-    std::cout << "total area on top face = " << area_top << " and after penalties = " << area_top_penalties << std::endl;
-    std::cout << "total area on bottom face = " << area_bottom << " and after penalties = " << area_bottom_penalties << std::endl;
-    std::cout << "total area on sides face = " << area_sides << " and after penalties = " << area_sides_penalties << std::endl;
-    std::cout << "total area = " << area_top + area_bottom + area_sides << " and after penalties = " << area_top_penalties + area_bottom_penalties + area_sides_penalties << std::endl;
+    std::cout << "total area on top face = " << area_top << " and valid area = " << area_top_valid << std::endl;
+    std::cout << "total area on bottom face = " << area_bottom << " and valid area = " << area_bottom_valid << std::endl;
+    std::cout << "total area on sides face = " << area_sides << " and valid area = " << area_sides_valid << std::endl;
+    std::cout << "total area = " << area_top + area_bottom + area_sides << " and valid area = " << area_top_valid + area_bottom_valid + area_sides_valid << std::endl;
 }
 
 void LAr_scintillation_timing(double const & time, double const & R_s, double const & R_t, double const & tau_s, double const & tau_t, double const & tau_rec, double & resulting_light){
