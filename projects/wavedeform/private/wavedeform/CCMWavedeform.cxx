@@ -1131,8 +1131,8 @@ struct FrameWorkspace {
         if(remove_waveforms) {
             frame->Delete(waveforms_name_);
         }
-        frame->Put("OriginalDataBins", output_data_times);
-        frame->Put("RebinnedDataBins", output_rebin_data_times);
+        frame->Put(output_name_ + "OriginalDataBins", output_data_times);
+        frame->Put(output_name_ + "RebinnedDataBins", output_rebin_data_times);
         frame->Put(output_name_, output);
     }
 };

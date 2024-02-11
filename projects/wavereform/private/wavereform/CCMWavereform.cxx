@@ -41,8 +41,8 @@ CCMWavereform::CCMWavereform(const I3Context &ctx) : I3ConditionalModule(ctx)
     pulse_name_ = "WavedeformPulses";
 	AddParameter("Pulses", "Name of the pulse series in the frame", pulse_name_);
 
-	chi_name_ = "RecoPulseChi";
-	AddParameter("Chi", "Where to store the chi^2 between waveform and pulses", chi_name_);
+	chi_name_ = "RecoPulse";
+	AddParameter("Output", "Where to store the chi^2 between waveform and pulses", chi_name_);
 
 	chi_threshold_ = 2e3;
 	AddParameter("ChiThreshold", "Flag any PMT with a waveform/pulse chi^2 greater than this.", chi_threshold_);
@@ -59,7 +59,7 @@ void CCMWavereform::Configure(){
     GetParameter("CCMGeometryName", geometry_name_);
 	GetParameter("Waveforms", waveform_name_);
 	GetParameter("Pulses", pulse_name_);
-	GetParameter("Chi", chi_name_);
+	GetParameter("Output", chi_name_);
 	GetParameter("ChiThreshold", chi_threshold_);
 	GetParameter("Flag", flag_name_);
 }
@@ -299,8 +299,7 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
     const CCMCalibration& calibration_ = frame->Get<CCMCalibration>("CCMCalibration");
     I3Map<CCMPMTKey, BaselineEstimate> const & baselines= frame->Get<I3Map<CCMPMTKey, BaselineEstimate> const>("BaselineEstimates");
 	CCMRecoPulseSeriesMapConstPtr pulse_map = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulse_name_);
-    boost::shared_ptr<const CCMWaveformUInt16Series> waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(waveform_name_);
-    boost::shared_ptr<const CCMWaveformDoubleSeries> corrected_waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>("CCMCalibratedWaveforms");
+    boost::shared_ptr<const CCMWaveformDoubleSeries> waveform_map = frame->Get<boost::shared_ptr<const CCMWaveformDoubleSeries>>(waveform_name_);
 
     // let's make places to store our chis, refolded wfs, and our bad pmts
     boost::shared_ptr<I3Map<CCMPMTKey, double>> chi_map = boost::make_shared<I3Map<CCMPMTKey, double>>();
@@ -337,21 +336,11 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
             return;
         }
 
-        CCMWaveformUInt16 const & waveform = waveform_map->at(channel);
-        std::vector<short unsigned int> const & samples = waveform.GetWaveform();
-
-        CCMWaveformDouble const & electronics_corrected_wf = corrected_waveform_map->at(channel);
-        std::vector<double> corrected_wf = electronics_corrected_wf.GetWaveform();
-
-        // let's invert and subtract the baseline off our wf
-        std::vector<double> inv_wf_minus_baseline(samples.size());
-        for(size_t i = 0; i < samples.size(); ++i){
-            inv_wf_minus_baseline[i] = -1 * ((double)samples[i] + baseline);
-        }
-
+        CCMWaveformDouble const & electronics_corrected_wf = waveform_map->at(channel);
+        std::vector<double> const & corrected_wf = electronics_corrected_wf.GetWaveform();
 
 		// first let's get our refolded wf
-        std::vector<double> refolded_wf(waveform.GetWaveform().size(), 0.0);
+        std::vector<double> refolded_wf(corrected_wf.size(), 0.0);
         GetRefoldedWf(refolded_wf, pulse_series, key);
 
         // now let's get our chi^2
@@ -359,10 +348,7 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
         double dof = 0;
 		bool borked = false;
 
-
         GetChi(chi, dof, refolded_wf, corrected_wf);
-        // std::cout << "for " << key << " chi/dof = " << chi/dof << std::endl;
-        //GetChi(chi, refolded_wf, inv_wf_minus_baseline);
         // let's see if this is a big chi^2
         if (chi > chi_threshold_){
             borked = true;
@@ -375,9 +361,9 @@ void CCMWavereform::DAQ(I3FramePtr frame) {
         refolded_wf_map->emplace(key, refolded_wf);
     }
 
-	frame->Put(chi_name_, chi_map);
-	frame->Put("DegreesofFreedom", dof_map);
-	frame->Put("RefoldedWaveforms", refolded_wf_map);
+	frame->Put(chi_name_ + "Chi2", chi_map);
+	frame->Put(chi_name_ + "DegreesofFreedom", dof_map);
+	frame->Put(chi_name_ + "RefoldedWaveforms", refolded_wf_map);
 
 	PushFrame(frame);
 }
