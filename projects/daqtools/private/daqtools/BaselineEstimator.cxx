@@ -197,8 +197,8 @@ double Average(Iterator begin, Iterator end) {
     return total / count;
 }
 
-template<typename Iterator>
-void OutlierFilter(double starting_estimate, std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end, Iterator result_begin) {
+template<typename InputIterator, typename OutputIterator>
+void OutlierFilter(double starting_estimate, InputIterator begin, InputIterator end, OutputIterator result_begin) {
     double delta_tau = 20;
     double prev_tau = 2.0;
     double next_tau = 2.0;
@@ -324,7 +324,7 @@ void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int
     size_t N = std::min(samples.size(), target_num_samples);
     std::vector<double> outlier_filter_results;
     outlier_filter_results.reserve(N);
-    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(800), N));
+    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), N));
     std::sort(starting_samples.begin(), starting_samples.end());
     double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
     OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
@@ -398,17 +398,40 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
         return;
     }
 
+    std::vector<double> smoothed_samples(samples.size());
+    WaveformSmoother smoother(samples.begin(), samples.end(), 2, 10);
+    for(size_t i=0; i<samples.size(); ++i) {
+        smoothed_samples[i] = smoother.Value();
+        smoother.Next();
+    }
+
     // vector to store results of outlier filter
-    size_t N = samples.size();
+    size_t N = smoothed_samples.size();
     std::vector<double> outlier_filter_results;
     outlier_filter_results.reserve(N);
-    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(400), N));
+    std::vector<uint16_t> starting_samples(smoothed_samples.begin(), smoothed_samples.begin() + std::min(size_t(100), N));
     std::sort(starting_samples.begin(), starting_samples.end());
     double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
-    OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
+    OutlierFilter(starting_value, smoothed_samples.begin(), smoothed_samples.begin() + N, std::back_inserter(outlier_filter_results));
     starting_value = outlier_filter_results.back();
 
-    {
+    double flat_mean = 0;
+    double flat_sigma = 0;
+    double linear_intercept = 0;
+    double linear_slope = 0;
+    double linear_sigma = 0;
+    LinearFlatFit(outlier_filter_results.begin(), outlier_filter_results.begin() + 1000, linear_intercept, linear_slope, linear_sigma, flat_mean, flat_sigma);
+
+    double flat_chi2_per_dof_threshold = 1.0;
+    double flat_sigma_threshold = 35.0;
+    double flat_chi2_per_dof = FlatChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.begin() + 1000, flat_mean, flat_sigma);
+
+    bool bad_flat_fit = isnan(flat_mean) or isnan(flat_sigma);
+    bool good_flat_fit = flat_chi2_per_dof < flat_chi2_per_dof_threshold and flat_sigma < flat_sigma_threshold;
+
+    if(bad_flat_fit or good_flat_fit) {
+        // Do nothing
+    } else {
         // initializing the exponential fit params
         double a;
         double b;
@@ -420,7 +443,7 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
         bool bad_exp_fit = isnan(a) or isnan(b) or isnan(c);
         if(not bad_exp_fit and c < 0 and b > 0 and c > -1.0/1000.0 and exp_chi2_per_dof < 35.0) {
             // Subtract off the exponential component from the outlier filter
-            for (size_t exp_it = 0; exp_it < outlier_filter_results.size(); ++exp_it){
+            for (size_t exp_it = 0; exp_it < outlier_filter_results.size(); ++exp_it) {
                 outlier_filter_results[exp_it] -= b * std::exp(c * (exp_it * 2.0));
             }
         }
@@ -428,21 +451,21 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
 
     // vector to store results of outlier filter
     N = std::min(N, window_size);
-    size_t N_for_variance = std::min(samples.size(), std::max(size_t(samples.size() * variance_percentile), size_t(3)));
+    size_t N_for_variance = std::min(smoothed_samples.size(), std::max(size_t(smoothed_samples.size() * variance_percentile), size_t(3)));
     size_t N_for_variance_half = N_for_variance / 2;
     size_t N_for_variance_opposite_half = N_for_variance - N_for_variance_half;
     std::vector<std::tuple<double, double>> variance_and_values;
     variance_and_values.reserve(N+1);
     WindowedStats stats;
     for(size_t i=0; i<N; ++i) {
-        stats.AddValue(samples.at(i));
+        stats.AddValue(smoothed_samples.at(i));
     }
     std::function<bool(std::tuple<double, double>, std::tuple<double, double>)> comp = [](std::tuple<double, double> const & a, std::tuple<double, double> const & b) {
         return std::get<0>(a) < std::get<0>(b);
     };
     for(size_t i=0; i<N_for_variance_half; ++i) {
         double const var = stats.Variance();
-        double const val = samples.at(i);
+        double const val = smoothed_samples.at(i);
 
         if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
             std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
@@ -452,11 +475,11 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
             }
         }
     }
-    for(size_t i=N_for_variance_half; i<samples.size()-N_for_variance_opposite_half; ++i) {
-        stats.AddValue(samples[i+N_for_variance_opposite_half]);
+    for(size_t i=N_for_variance_half; i<smoothed_samples.size()-N_for_variance_opposite_half; ++i) {
+        stats.AddValue(smoothed_samples[i+N_for_variance_opposite_half]);
         stats.RemoveValue();
         double const var = stats.Variance();
-        double const val = samples.at(i);
+        double const val = smoothed_samples.at(i);
         if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
             std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
             variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
@@ -465,9 +488,9 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
             }
         }
     }
-    for(size_t i=samples.size()-N_for_variance_opposite_half; i<samples.size(); ++i) {
+    for(size_t i=smoothed_samples.size()-N_for_variance_opposite_half; i<smoothed_samples.size(); ++i) {
         double const var = stats.Variance();
-        double const val = samples.at(i);
+        double const val = smoothed_samples.at(i);
         if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
             std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
             variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
@@ -486,7 +509,7 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
     std::sort(selected_samples.begin(), selected_samples.end());
     double baseline_mode_val = robust_stats::Mode(selected_samples.begin(), selected_samples.end());
     double baseline_std = robust_stats::MedianAbsoluteDeviation(selected_samples.begin(), selected_samples.end(), baseline_mode_val);
-    baseline.baseline = -1 * baseline_mode_val;
+    baseline.baseline = baseline_mode_val;
     baseline.stddev = baseline_std;
     baseline.num_frames = 1;
     baseline.num_samples = selected_samples.size();
@@ -674,10 +697,10 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
             num_exp_samples
         );
         ProcessWaveformVariance(
-            baseline_estimates[i],
+            baseline_estimates_variance[i],
             std::cref(waveforms->at(channel).GetWaveform()),
-            num_samples,
-            num_exp_samples
+            10,
+            0.1
         );
     }
 
