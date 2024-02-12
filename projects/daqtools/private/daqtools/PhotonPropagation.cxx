@@ -587,21 +587,29 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocXY(){
     return top_loc_xy_;
 }
 
-I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocInsideCoatedPMTXY(){
-    return top_loc_inside_uncoated_pmt_xy_;
+double PhotonPropagation::GetBottomLocWidth(){
+    return final_bottom_loc_width_;
 }
 
-I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocOutsideCoatedPMTXY(){
-    return top_loc_outside_uncoated_pmt_xy_;
+double PhotonPropagation::GetBottomLocHeight(){
+    return final_bottom_loc_height_;
 }
 
-I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocInsideDetectorRadiusXY(){
-    return top_loc_inside_detector_radius_xy_;
+I3Vector<I3Vector<double>> PhotonPropagation::GetBottomLocXY(){
+    return bottom_loc_xy_;
+}
+double PhotonPropagation::GetSideLocWidth(){
+    return final_side_loc_width_;
 }
 
-I3Vector<I3Vector<double>> PhotonPropagation::GetTopLocOutsideDetectorRadiusXY(){
-    return top_loc_outside_detector_radius_xy_;
+double PhotonPropagation::GetSideLocHeight(){
+    return final_side_loc_height_;
 }
+
+I3Vector<I3Vector<double>> PhotonPropagation::GetSideLocXY(){
+    return side_loc_xy_;
+}
+
 
 I3Vector<I3Vector<double>> PhotonPropagation::GetAllTopLocValidDots(){
     return all_top_loc_valid_dots_;
@@ -635,6 +643,16 @@ I3Vector<I3Vector<double>> PhotonPropagation::GetAllSideLocInvalidDots(){
 
 I3Vector<I3Vector<double>> PhotonPropagation::GetAllSideLocCoatedPMTDots(){
     return all_side_loc_coated_pmt_dots_;
+}
+
+I3Vector<double> PhotonPropagation::GetTopPMTPortion(){
+    return top_loc_pmt_portion_;
+}
+I3Vector<double> PhotonPropagation::GetBottomPMTPortion(){
+    return bottom_loc_pmt_portion_;
+}
+I3Vector<double> PhotonPropagation::GetSidePMTPortion(){
+    return side_loc_pmt_portion_;
 }
 
 void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
@@ -1039,7 +1057,6 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
 
 }
 
-
 void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) {
     // set our chunk vars
     desired_chunk_width_ = desired_chunk_width;
@@ -1132,6 +1149,29 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
         all_side_loc_coated_pmt_dots_.clear();
     }
 
+    if (top_loc_xy_.size() > 0){
+        for (size_t i = 0; i < top_loc_xy_.size(); i++){
+            top_loc_xy_[i].clear();
+        }
+        top_loc_xy_.clear();
+    }
+    if (bottom_loc_xy_.size() > 0){
+        for (size_t i = 0; i < bottom_loc_xy_.size(); i++){
+            bottom_loc_xy_[i].clear();
+        }
+        bottom_loc_xy_.clear();
+    }
+    if (side_loc_xy_.size() > 0){
+        for (size_t i = 0; i < side_loc_xy_.size(); i++){
+            side_loc_xy_[i].clear();
+        }
+        side_loc_xy_.clear();
+    }
+
+    top_loc_pmt_portion_.clear();
+    bottom_loc_pmt_portion_.clear();
+    side_loc_pmt_portion_.clear();
+
     std::vector<double> this_loc_info (9);
     std::vector<double> loc_to_pmt_photon_yields;
     std::vector<double> loc_to_pmt_photon_propagation_times;
@@ -1155,6 +1195,9 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     double actual_chunk_width = std::abs(possible_circumference_positions.at(1) - possible_circumference_positions.at(0));
     double actual_chunk_height = std::abs(possible_z_positions.at(1) - possible_z_positions.at(0));
     double area_side_chunks = actual_chunk_width * actual_chunk_height;
+
+    final_side_loc_width_ = actual_chunk_width;
+    final_side_loc_height_ = actual_chunk_height;
 
     double chunk_theta = (M_PI / 4.0); // half angle of corner of chunk in radians (should always be pi/4 or ~0.78)
     double chunk_diagonal_distance = actual_chunk_height / std::sin(chunk_theta);
@@ -1250,13 +1293,18 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
 
             // now let's save if enough of this chunk is valid
             if (ratio_valid > small_percent_pmt_occluded){
+                I3Vector<double> side_chunk_xy;
+                side_chunk_xy.push_back(loc_c);
+                side_chunk_xy.push_back(loc_z);
+                side_loc_xy_.push_back(side_chunk_xy);
+
                 double valid_area = area_side_chunks * ratio_valid;
                 double pmt_portion = portion_light_reflected_by_tpb_;
                 if (ratio_coated > 0.0){
                     pmt_portion *= (0.5 * ratio_coated);
                 }
                 area_sides_valid += valid_area;
-
+                side_loc_pmt_portion_.push_back(pmt_portion);
                 // calculate facing direction
                 double facing_radius = std::pow(loc_x, 2) + std::pow(loc_y, 2);
                 double facing_r_x = - loc_x / facing_radius;
@@ -1313,6 +1361,11 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     actual_chunk_width = std::abs(possible_x_positions.at(1) - possible_x_positions.at(0));
     actual_chunk_height = std::abs(possible_y_positions.at(1) - possible_y_positions.at(0));
     double area_face_chunks = actual_chunk_width * actual_chunk_height;
+
+    final_top_loc_width_ = actual_chunk_width;
+    final_bottom_loc_width_ = actual_chunk_width;
+    final_top_loc_height_ = actual_chunk_height;
+    final_bottom_loc_height_ = actual_chunk_height;
 
     chunk_theta = (M_PI / 4.0); // half angle of corner of chunk in radians (should always be pi/4 or ~0.78)
     chunk_diagonal_distance = actual_chunk_height / std::sin(chunk_theta);
@@ -1457,13 +1510,24 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
                     double facing_dir_y = 0.0;
                     double facing_dir_z;
                     if (this_z == z_top){
+                        I3Vector<double> top_chunk_xy;
+                        top_chunk_xy.push_back(this_x);
+                        top_chunk_xy.push_back(this_y);
+                        top_loc_xy_.push_back(top_chunk_xy);
+                        top_loc_pmt_portion_.push_back(pmt_portion);
                         facing_dir_z = -1.0;
                         area_top_valid += valid_area;
                     }
                     if (this_z == z_bottom){
+                        I3Vector<double> bottom_chunk_xy;
+                        bottom_chunk_xy.push_back(this_x);
+                        bottom_chunk_xy.push_back(this_y);
+                        bottom_loc_xy_.push_back(bottom_chunk_xy);
+                        bottom_loc_pmt_portion_.push_back(pmt_portion);
                         facing_dir_z = 1.0;
                         area_bottom_valid += valid_area;
                     }
+
 
                     // now a vector to save things to
                     face_chunks_counter += 1;

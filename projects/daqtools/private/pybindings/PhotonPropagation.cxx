@@ -64,10 +64,12 @@ void register_PhotonPropagation() {
         .def("GetTopLocWidth", &PhotonPropagation::GetTopLocWidth)
         .def("GetTopLocHeight", &PhotonPropagation::GetTopLocHeight)
         .def("GetTopLocXY", &PhotonPropagation::GetTopLocXY)
-        .def("GetTopLocInsideCoatedPMTXY", &PhotonPropagation::GetTopLocInsideCoatedPMTXY)
-        .def("GetTopLocOutsideCoatedPMTXY", &PhotonPropagation::GetTopLocOutsideCoatedPMTXY)
-        .def("GetTopLocInsideDetectorRadiusXY", &PhotonPropagation::GetTopLocInsideDetectorRadiusXY)
-        .def("GetTopLocOutsideDetectorRadiusXY", &PhotonPropagation::GetTopLocOutsideDetectorRadiusXY)
+        .def("GetBottomLocWidth", &PhotonPropagation::GetBottomLocWidth)
+        .def("GetBottomLocHeight", &PhotonPropagation::GetBottomLocHeight)
+        .def("GetBottomLocXY", &PhotonPropagation::GetBottomLocXY)
+        .def("GetSideLocWidth", &PhotonPropagation::GetSideLocWidth)
+        .def("GetSideLocHeight", &PhotonPropagation::GetSideLocHeight)
+        .def("GetSideLocXY", &PhotonPropagation::GetSideLocXY)
         .def("GetAllTopLocValidDots", &PhotonPropagation::GetAllTopLocValidDots)
         .def("GetAllTopLocInvalidDots", &PhotonPropagation::GetAllTopLocInvalidDots)
         .def("GetAllTopLocCoatedPMTDots", &PhotonPropagation::GetAllTopLocCoatedPMTDots)
@@ -77,6 +79,9 @@ void register_PhotonPropagation() {
         .def("GetAllSideLocValidDots", &PhotonPropagation::GetAllSideLocValidDots)
         .def("GetAllSideLocInvalidDots", &PhotonPropagation::GetAllSideLocInvalidDots)
         .def("GetAllSideLocCoatedPMTDots", &PhotonPropagation::GetAllSideLocCoatedPMTDots)
+        .def("GetTopPMTPortion", &PhotonPropagation::GetTopPMTPortion)
+        .def("GetBottomPMTPortion", &PhotonPropagation::GetBottomPMTPortion)
+        .def("GetSidePMTPortion", &PhotonPropagation::GetSidePMTPortion)
         .def("GetSimulation", &PhotonPropagation::GetSimulation);
 
 }

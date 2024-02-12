@@ -386,11 +386,16 @@ class PhotonPropagation {
     double final_top_loc_width_;
     double final_top_loc_height_;
     I3Vector<I3Vector<double>> top_loc_xy_;
-    I3Vector<I3Vector<double>> top_loc_inside_uncoated_pmt_xy_;
-    I3Vector<I3Vector<double>> top_loc_outside_uncoated_pmt_xy_;
-    I3Vector<I3Vector<double>> top_loc_inside_detector_radius_xy_;
-    I3Vector<I3Vector<double>> top_loc_outside_detector_radius_xy_;
-    
+    double final_bottom_loc_width_;
+    double final_bottom_loc_height_;
+    I3Vector<I3Vector<double>> bottom_loc_xy_;
+    double final_side_loc_width_;
+    double final_side_loc_height_;
+    I3Vector<I3Vector<double>> side_loc_xy_;
+    I3Vector<double> top_loc_pmt_portion_;
+    I3Vector<double> bottom_loc_pmt_portion_;
+    I3Vector<double> side_loc_pmt_portion_;
+
     I3Vector<I3Vector<double>> all_top_loc_valid_dots_;
     I3Vector<I3Vector<double>> all_top_loc_invalid_dots_;
     I3Vector<I3Vector<double>> all_top_loc_coated_pmt_dots_;
@@ -422,10 +427,12 @@ public:
     double GetTopLocWidth();
     double GetTopLocHeight();
     I3Vector<I3Vector<double>> GetTopLocXY();
-    I3Vector<I3Vector<double>> GetTopLocInsideCoatedPMTXY();
-    I3Vector<I3Vector<double>> GetTopLocOutsideCoatedPMTXY();
-    I3Vector<I3Vector<double>> GetTopLocInsideDetectorRadiusXY();
-    I3Vector<I3Vector<double>> GetTopLocOutsideDetectorRadiusXY();
+    double GetBottomLocWidth();
+    double GetBottomLocHeight();
+    I3Vector<I3Vector<double>> GetBottomLocXY();
+    double GetSideLocWidth();
+    double GetSideLocHeight();
+    I3Vector<I3Vector<double>> GetSideLocXY();
     I3Vector<I3Vector<double>> GetAllTopLocValidDots();
     I3Vector<I3Vector<double>> GetAllTopLocInvalidDots();
     I3Vector<I3Vector<double>> GetAllTopLocCoatedPMTDots();
@@ -435,6 +442,9 @@ public:
     I3Vector<I3Vector<double>> GetAllSideLocValidDots();
     I3Vector<I3Vector<double>> GetAllSideLocInvalidDots();
     I3Vector<I3Vector<double>> GetAllSideLocCoatedPMTDots();
+    I3Vector<double> GetTopPMTPortion();
+    I3Vector<double> GetBottomPMTPortion();
+    I3Vector<double> GetSidePMTPortion();
     I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
     //double GetSimulation(double const & singlet_ratio_,
