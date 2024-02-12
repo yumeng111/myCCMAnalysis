@@ -528,6 +528,43 @@ void PhotonPropagation::SetDataSampleSize(size_t n_data_samples){
     n_data_samples_ = n_data_samples;
 }
 
+void PhotonPropagation::SetBlankData(I3Vector<I3Vector<double>> blank_data_series){
+    blank_data_series_ = blank_data_series;
+    // blank_data_series_ is index by n_pmts x n_time_bins
+    // while we are setting the data, let's also set the time
+    // we want the peak of the data time to be at 0 and 2 nsec binning
+
+    times_of_blank_data_points_.clear();
+    for (size_t second_dim_it = 0; second_dim_it < blank_data_series_.at(0).size(); second_dim_it ++ ){
+        times_of_blank_data_points_.push_back((double)second_dim_it * 2.0);
+    }
+
+    max_blank_data_value_ = 0;
+    time_of_max_blank_data_value_ = 0;
+
+    // let's first find the time of max, then set that equal to zero
+    double total_charge_per_time_bin;
+    for (size_t time_bin_it = 0; time_bin_it < times_of_blank_data_points_.size(); time_bin_it ++){
+        total_charge_per_time_bin = 0;
+        for (size_t pmt_it = 0; pmt_it < blank_data_series_.size(); pmt_it ++){
+            total_charge_per_time_bin += blank_data_series_.at(pmt_it).at(time_bin_it);
+        }
+        if (total_charge_per_time_bin > max_blank_data_value_){
+            max_blank_data_value_ = total_charge_per_time_bin;
+            time_of_max_blank_data_value_ = times_of_blank_data_points_.at(time_bin_it);
+        }
+    }
+
+    // ok now we can subtract time_of_max_data_value_ from times_of_data_points_s
+    for (size_t time_bin_it = 0; time_bin_it < times_of_blank_data_points_.size(); time_bin_it ++){
+        times_of_blank_data_points_.at(time_bin_it) -= time_of_max_blank_data_value_;
+    }
+}
+
+void PhotonPropagation::SetBlankDataSampleSize(size_t n_blank_data_samples){
+    n_blank_data_samples_ = n_blank_data_samples;
+}
+
 void PhotonPropagation::SetNThreads(size_t const & n_threads){
     if (n_threads == 0){
         num_threads = std::thread::hardware_concurrency();
@@ -655,6 +692,38 @@ I3Vector<double> PhotonPropagation::GetSidePMTPortion(){
     return side_loc_pmt_portion_;
 }
 
+void EmptyThreeDimensionVectors(std::vector<std::vector<std::vector<double>>> & vector_to_empty){
+    if (vector_to_empty.size() > 0){
+        for (size_t i = 0; i < vector_to_empty.size(); i++){
+            if (vector_to_empty[i].size() > 0){
+                for (size_t j = 0; j < vector_to_empty[i].size(); j++){
+                    vector_to_empty[i][j].clear();
+                }
+            }
+            vector_to_empty[i].clear();
+        }
+        vector_to_empty.clear();
+    }
+}
+
+void EmptyTwoDimensionVectors(std::vector<std::vector<double>> & vector_to_empty){
+    if (vector_to_empty.size() > 0){
+        for (size_t i = 0; i < vector_to_empty.size(); i++){
+            vector_to_empty[i].clear();
+        }
+        vector_to_empty.clear();
+    }
+}
+
+void EmptyTwoDimensionI3Vectors(I3Vector<I3Vector<double>> & vector_to_empty){
+    if (vector_to_empty.size() > 0){
+        for (size_t i = 0; i < vector_to_empty.size(); i++){
+            vector_to_empty[i].clear();
+        }
+        vector_to_empty.clear();
+    }
+}
+
 void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
     // set our events parameter
     n_events_to_simulate_ = n_events_to_simulate;
@@ -662,45 +731,11 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
     equivalent_events_in_data = 0;
 
     // now let's empty out some vectors
-    if (verticies_to_simuate_1275_.size() > 0){
-        for (size_t i = 0; i < verticies_to_simuate_1275_.size(); i++){
-            verticies_to_simuate_1275_[i].clear();
-        }
-        verticies_to_simuate_1275_.clear();
-    }
-    if (verticies_to_simuate_511_.size() > 0){
-        for (size_t i = 0; i < verticies_to_simuate_511_.size(); i++){
-            verticies_to_simuate_511_[i].clear();
-        }
-        verticies_to_simuate_511_.clear();
-    }
-    if (thread_1275_verticies_.size() > 0){
-        for(size_t i = 0; i < thread_1275_verticies_.size(); i++){
-            for (size_t j = 0; j < thread_1275_verticies_[i].size(); j++){
-                thread_1275_verticies_[i][j].clear();
-            }
-            thread_1275_verticies_[i].clear();
-        }
-        thread_1275_verticies_.clear();
-    }
-    if (thread_511_verticies_.size() > 0){
-        for(size_t i = 0; i < thread_511_verticies_.size(); i++){
-            for (size_t j = 0; j < thread_511_verticies_[i].size(); j++){
-                thread_511_verticies_[i][j].clear();
-            }
-            thread_511_verticies_[i].clear();
-        }
-        thread_511_verticies_.clear();
-    }
-    if (thread_verticies_.size() > 0){
-        for(size_t i = 0; i < thread_verticies_.size(); i++){
-            for (size_t j = 0; j < thread_verticies_[i].size(); j++){
-                thread_verticies_[i][j].clear();
-            }
-            thread_verticies_[i].clear();
-        }
-        thread_verticies_.clear();
-    }
+    EmptyTwoDimensionVectors(verticies_to_simuate_1275_);
+    EmptyTwoDimensionVectors(verticies_to_simuate_511_);
+    EmptyThreeDimensionVectors(thread_1275_verticies_);
+    EmptyThreeDimensionVectors(thread_511_verticies_);
+    EmptyThreeDimensionVectors(thread_verticies_);
 
     // while we're pre-computing things, let's also pre-compute verticies for our ensemble of sodium events
     // let's make some random number generators that we will pass to our functions
@@ -1073,101 +1108,21 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
     double area_sides_valid = 0;
     double area_bottom_valid = 0;
     // finally, let's reset some vectors that we're saving info to
-    if (locations_to_check_information_.size() > 0){
-        // our secondary loc vectors are already filled! let's empty!
-        for (size_t i = 0; i < locations_to_check_information_.size(); i++){
-            locations_to_check_information_[i].clear();
-        }
-        locations_to_check_information_.clear();
-    }
-
-    if (locations_to_check_to_pmt_yield_.size() > 0){
-       for (size_t i = 0; i < locations_to_check_to_pmt_yield_.size(); i++){
-            locations_to_check_to_pmt_yield_[i].clear();
-        }
-        locations_to_check_to_pmt_yield_.clear();
-    }
-
-    if (locations_to_check_to_pmt_travel_time_.size() > 0){
-       for (size_t i = 0; i < locations_to_check_to_pmt_travel_time_.size(); i++){
-            locations_to_check_to_pmt_travel_time_[i].clear();
-        }
-        locations_to_check_to_pmt_travel_time_.clear();
-    }
-    if (all_top_loc_valid_dots_.size() > 0){
-        for (size_t i = 0; i < all_top_loc_valid_dots_.size(); i++){
-            all_top_loc_valid_dots_[i].clear();
-        }
-        all_top_loc_valid_dots_.clear();
-    }
-    if (all_top_loc_invalid_dots_.size() > 0){
-        for (size_t i = 0; i < all_top_loc_invalid_dots_.size(); i++){
-            all_top_loc_invalid_dots_[i].clear();
-        }
-        all_top_loc_invalid_dots_.clear();
-    }
-    if (all_top_loc_coated_pmt_dots_.size() > 0){
-        for (size_t i = 0; i < all_top_loc_coated_pmt_dots_.size(); i++){
-            all_top_loc_coated_pmt_dots_[i].clear();
-        }
-        all_top_loc_coated_pmt_dots_.clear();
-    }
-    if (all_bottom_loc_valid_dots_.size() > 0){
-        for (size_t i = 0; i < all_bottom_loc_valid_dots_.size(); i++){
-            all_bottom_loc_valid_dots_[i].clear();
-        }
-        all_bottom_loc_valid_dots_.clear();
-    }
-    if (all_bottom_loc_invalid_dots_.size() > 0){
-        for (size_t i = 0; i < all_bottom_loc_invalid_dots_.size(); i++){
-            all_bottom_loc_invalid_dots_[i].clear();
-        }
-        all_bottom_loc_invalid_dots_.clear();
-    }
-    if (all_bottom_loc_coated_pmt_dots_.size() > 0){
-        for (size_t i = 0; i < all_bottom_loc_coated_pmt_dots_.size(); i++){
-            all_bottom_loc_coated_pmt_dots_[i].clear();
-        }
-        all_bottom_loc_coated_pmt_dots_.clear();
-    }
-    if (all_side_loc_valid_dots_.size() > 0){
-        for (size_t i = 0; i < all_side_loc_valid_dots_.size(); i++){
-            all_side_loc_valid_dots_[i].clear();
-        }
-        all_side_loc_valid_dots_.clear();
-    }
-    if (all_side_loc_invalid_dots_.size() > 0){
-        for (size_t i = 0; i < all_side_loc_invalid_dots_.size(); i++){
-            all_side_loc_invalid_dots_[i].clear();
-        }
-        all_side_loc_invalid_dots_.clear();
-    }
-    if (all_side_loc_coated_pmt_dots_.size() > 0){
-        for (size_t i = 0; i < all_side_loc_coated_pmt_dots_.size(); i++){
-            all_side_loc_coated_pmt_dots_[i].clear();
-        }
-        all_side_loc_coated_pmt_dots_.clear();
-    }
-
-    if (top_loc_xy_.size() > 0){
-        for (size_t i = 0; i < top_loc_xy_.size(); i++){
-            top_loc_xy_[i].clear();
-        }
-        top_loc_xy_.clear();
-    }
-    if (bottom_loc_xy_.size() > 0){
-        for (size_t i = 0; i < bottom_loc_xy_.size(); i++){
-            bottom_loc_xy_[i].clear();
-        }
-        bottom_loc_xy_.clear();
-    }
-    if (side_loc_xy_.size() > 0){
-        for (size_t i = 0; i < side_loc_xy_.size(); i++){
-            side_loc_xy_[i].clear();
-        }
-        side_loc_xy_.clear();
-    }
-
+    EmptyTwoDimensionVectors(locations_to_check_information_);
+    EmptyTwoDimensionVectors(locations_to_check_to_pmt_yield_);
+    EmptyTwoDimensionVectors(locations_to_check_to_pmt_travel_time_);
+    EmptyTwoDimensionI3Vectors(all_top_loc_valid_dots_);
+    EmptyTwoDimensionI3Vectors(all_top_loc_invalid_dots_);
+    EmptyTwoDimensionI3Vectors(all_top_loc_coated_pmt_dots_);
+    EmptyTwoDimensionI3Vectors(all_bottom_loc_valid_dots_);
+    EmptyTwoDimensionI3Vectors(all_bottom_loc_invalid_dots_);
+    EmptyTwoDimensionI3Vectors(all_bottom_loc_coated_pmt_dots_);
+    EmptyTwoDimensionI3Vectors(all_side_loc_valid_dots_);
+    EmptyTwoDimensionI3Vectors(all_side_loc_invalid_dots_);
+    EmptyTwoDimensionI3Vectors(all_side_loc_coated_pmt_dots_);
+    EmptyTwoDimensionI3Vectors(top_loc_xy_);
+    EmptyTwoDimensionI3Vectors(bottom_loc_xy_);
+    EmptyTwoDimensionI3Vectors(side_loc_xy_);
     top_loc_pmt_portion_.clear();
     bottom_loc_pmt_portion_.clear();
     side_loc_pmt_portion_.clear();

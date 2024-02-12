@@ -47,6 +47,8 @@ void register_PhotonPropagation() {
         .def(init<>())
         .def("SetData", &PhotonPropagation::SetData)
         .def("SetDataSampleSize", &PhotonPropagation::SetDataSampleSize)
+        .def("SetBlankData", &PhotonPropagation::SetBlankData)
+        .def("SetBlankDataSampleSize", &PhotonPropagation::SetBlankDataSampleSize)
         .def("SetNThreads", &PhotonPropagation::SetNThreads)
         .def("GetNFaceChunks", &PhotonPropagation::GetNFaceChunks)
         .def("GetNSideChunks", &PhotonPropagation::GetNSideChunks)

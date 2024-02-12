@@ -374,6 +374,11 @@ class PhotonPropagation {
     double time_of_max_data_value_;
     std::vector<double> times_of_data_points_;
 
+    I3Vector<I3Vector<double>> blank_data_series_;
+    size_t n_blank_data_samples_;
+    double max_blank_data_value_;
+    double time_of_max_blank_data_value_;
+    std::vector<double> times_of_blank_data_points_;
 
     // some things for debugging
     I3Vector<I3Vector<double>> uncoated_pmt_locs_top_;
@@ -410,6 +415,8 @@ public:
     PhotonPropagation();
     void SetData(I3Vector<I3Vector<double>> data_series);
     void SetDataSampleSize(size_t n_data_samples);
+    void SetBlankData(I3Vector<I3Vector<double>> blank_data_series);
+    void SetBlankDataSampleSize(size_t n_blank_data_samples);
     void SetNThreads(size_t const & n_threads);
     size_t GetNFaceChunks();
     size_t GetNSideChunks();
