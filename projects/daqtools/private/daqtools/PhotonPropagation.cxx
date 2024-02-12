@@ -25,6 +25,7 @@
 #include <icetray/ctpl.h>
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
+#include <icetray/I3Units.h>
 #include <icetray/I3TrayInfo.h>
 #include <icetray/I3Module.h>
 #include <icetray/I3Logging.h>
@@ -994,9 +995,9 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
         }
         // now let's compute our facing direction
         I3Position position = it.second.position;
-        double pos_x = position.GetX();
-        double pos_y = position.GetY();
-        double pos_z = position.GetZ();
+        double pos_x = position.GetX() / I3Units::cm;
+        double pos_y = position.GetY() / I3Units::cm;
+        double pos_z = position.GetZ() / I3Units::cm;
 
         double facing_dir_x;
         double facing_dir_y;
@@ -1511,10 +1512,10 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
             }
         }
     }
-    std::cout << "total area on top face = " << area_top << " and valid area = " << area_top_valid << std::endl;
-    std::cout << "total area on bottom face = " << area_bottom << " and valid area = " << area_bottom_valid << std::endl;
-    std::cout << "total area on sides face = " << area_sides << " and valid area = " << area_sides_valid << std::endl;
-    std::cout << "total area = " << area_top + area_bottom + area_sides << " and valid area = " << area_top_valid + area_bottom_valid + area_sides_valid << std::endl;
+    //std::cout << "total area on top face = " << area_top << " and valid area = " << area_top_valid << std::endl;
+    //std::cout << "total area on bottom face = " << area_bottom << " and valid area = " << area_bottom_valid << std::endl;
+    //std::cout << "total area on sides face = " << area_sides << " and valid area = " << area_sides_valid << std::endl;
+    //std::cout << "total area = " << area_top + area_bottom + area_sides << " and valid area = " << area_top_valid + area_bottom_valid + area_sides_valid << std::endl;
 }
 
 void LAr_scintillation_timing(double const & time, double const & R_s, double const & R_t, double const & tau_s, double const & tau_t, double const & tau_rec, double & resulting_light){
@@ -2273,8 +2274,8 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
             summed_over_squared_events_binned_charges[pmt_it][time_bin_it] = this_pmt_this_time_summed_across_events_squared;
         }
     }
-    return events_binned_charges;
 
+    return events_binned_charges;
     //return summed_over_events_binned_charges;
     //return events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();

@@ -27,6 +27,7 @@
 #include <icetray/ctpl.h>
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
+#include <icetray/I3Units.h>
 #include <icetray/I3TrayInfo.h>
 #include <icetray/I3Module.h>
 #include <icetray/I3Logging.h>
@@ -305,8 +306,8 @@ class PhotonPropagation {
 
     // defining some geomtry things for modelling the detector...not the most elegant
     double pmt_radius = 10.16; //radius in cm^2
-    double pmt_facing_area = M_PI * std::pow(pmt_radius, 2);
-    double pmt_side_area_factor = 0.217549;
+    double pmt_facing_area = M_PI * std::pow(pmt_radius, 2.0); // units of cm^2
+    double pmt_side_area_factor = 0.217549; // unitless
     double pmt_side_area = pmt_facing_area * pmt_side_area_factor;
     //double cylinder_max_x = 96.0;
     //double cylinder_min_x = - cylinder_max_x;
@@ -325,18 +326,18 @@ class PhotonPropagation {
     double cylinder_min_y = - cylinder_max_y;
     double cylinder_max_z = cylinder_height / 2.0;
     double cylinder_min_z = - cylinder_max_z;
-    double chunk_side_area_factor = 0.05; // this number is a guess..maybe model it one day
+    double chunk_side_area_factor = 0.1; // this number is a guess..maybe model it one day
 
     // now some geometry things for throwing source events
     double rod_diameter = 1.0;
     double source_diameter = 0.8;
-    double rod_width = (rod_diameter - source_diameter)/2;
+    double rod_width = (rod_diameter - source_diameter ) / 2;
     double source_inset = -0.25;
     double decay_constant = 10.0;
     double source_rod_lower_end_cap = - source_inset;
     double detector_lower_end_cap = cylinder_min_z;
     double detector_radius = cylinder_radius;
-    double pos_rad = source_diameter / 2;
+    double pos_rad = source_diameter / 2.0;
     size_t total_events_that_escaped = 0;
     size_t equivalent_events_in_data = 0;
     double source_z_offset_ = 0.0;
@@ -344,13 +345,13 @@ class PhotonPropagation {
     // pmt noise rate
     double noise_photons = 1.0;
     double noise_triggers = 5.0;
-    double digitization_time = 16 * std::pow(10, 3); //16 usec in nsec
+    double digitization_time = 16.0 * std::pow(10.0, 3.0); //16 usec in nsec
     double noise_rate = noise_photons / (noise_triggers * digitization_time); // units of photons/nsec
     double noise_rate_per_time_bin = 2.0 * noise_rate; // 2nsec binning
 
     // some constants we use for the simulation
-    double c = 2.998 * std::pow(10, 8); // speed of light in m/s
-    double c_cm_per_nsec = c * std::pow(10, -7); // speed of light in cm/nsec
+    double c = 2.998 * std::pow(10.0, 8.0); // speed of light in m/s
+    double c_cm_per_nsec = c * std::pow(10.0, -7.0); // speed of light in cm/nsec
     double uv_index_of_refraction = 1.358;
     double vis_index_of_refraction = 1.23;
     double pmt_quantum_efficiency = 0.25;
