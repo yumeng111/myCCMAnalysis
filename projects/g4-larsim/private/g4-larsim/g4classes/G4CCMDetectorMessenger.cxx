@@ -128,13 +128,6 @@ G4CCMDetectorMessenger::G4CCMDetectorMessenger(G4CCMDetectorConstruction* detect
     fCleanCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
     fCleanCmd->SetToBeBroadcasted(false);
 
-    fRootCmd = new G4UIcmdWithAString( "/ccm/detector/root", this );
-    fRootCmd->SetGuidance( "File name for the ROOT output" );
-    fRootCmd->SetGuidance( " Include '.root' " );
-    fRootCmd->SetParameterName( "outFileName", false );
-    fRootCmd->SetDefaultValue( "output.root" );
-    fRootCmd->AvailableForStates(G4State_PreInit,G4State_Idle);
-
     fOrCmd = new G4UIcmdWithAnInteger("/ccm/detector/onerand",this);
     fOrCmd->SetGuidance("Set the one OM parameter to be randomized.");
     fOrCmd->SetParameterName("om",false);
@@ -164,7 +157,6 @@ G4CCMDetectorMessenger::~G4CCMDetectorMessenger()
     delete f200Cmd;
     delete fTPBfoilCmd;
     delete fReflectorCmd;
-    delete fRootCmd;
     delete fOrCmd;
 }
 
@@ -211,10 +203,6 @@ void G4CCMDetectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue
     }
     else if (command == fReflectorCmd){
         fdetector->SetReflectorOn(fReflectorCmd->GetNewBoolValue(newValue));
-    }
-    else if (command == fRootCmd){
-        G4String filename = newValue;
-        fdetector->SetRootFile(filename);
     }
     else if (command == fDefaultsCmd){
         fdetector->SetDefaults();

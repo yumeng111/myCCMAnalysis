@@ -2068,9 +2068,7 @@ void G4CCMDetectorConstruction::SetDefaults() {
     foilEff = .45548;
     tpbAbs = 0.8735;
     randomized = false;
-    rootset = false;
     variableString = "Random: All Mean Values";
-    rootfile = "defaultfile.root";
 
 }
 
@@ -2144,7 +2142,7 @@ Other: Abs = 0.90, rin = 1.67
 
     std::ostringstream oss;
 
-    oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t scaleRay \t" << scaleRay << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtThick \t" << conehigh << "\t plasAbs \t" << plasAbs << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t larRin \t" << larRin << "\t pmtHeight \t" << topthick  << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\n";
+    oss << "Randoms_" << "\t abs100s \t" << base << "\t scaleRay \t" << scaleRay << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtThick \t" << conehigh << "\t plasAbs \t" << plasAbs << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t larRin \t" << larRin << "\t pmtHeight \t" << topthick  << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\n";
 
     randomized = true;
 
@@ -2283,12 +2281,6 @@ void G4CCMDetectorConstruction::SetTPBfoilOn(G4bool b) {
 void G4CCMDetectorConstruction::SetReflectorOn(G4bool b) {
     fReflectorOn=b;
     G4RunManager::GetRunManager()->ReinitializeGeometry();
-}
-
-// method to set the rootfilename
-void G4CCMDetectorConstruction::SetRootFile (G4String b) {
-    rootfile = b;
-    rootset = false;
 }
 
 // method to modulate a single random variable a defined sigma away from mean
@@ -2433,7 +2425,7 @@ void G4CCMDetectorConstruction::CorrelateRandom() {
         DefineTpb(foilEff, tpbEff, tpbAbs, tpbRin, randwide, scatter);
         DefinePlastic(plasAbs,plasRefl,plasRin);
 
-        oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t scaleRay \t" << scaleRay << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtThick \t" << conehigh << "\t plasAbs \t" << plasAbs << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t larRin \t" << larRin << "\t pmtHeight \t" << topthick  << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\n";
+        oss << "Randoms_" << "\t abs100s \t" << base << "\t scaleRay \t" << scaleRay << "\t ray128 \t" << ray128 << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtThick \t" << conehigh << "\t plasAbs \t" << plasAbs << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t larRin \t" << larRin << "\t pmtHeight \t" << topthick  << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\n";
     } else {
         conewide = variables[0];
         conehigh = variables[1];
@@ -2530,7 +2522,7 @@ void G4CCMDetectorConstruction::OneRandom(G4int var) {
 
     std::ostringstream oss;
 
-    oss << "Randoms_" << rootfile << "\t abs100s \t" << base << "\t larRin \t" << larRin << "\t scaleRay \t" << scaleRay << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtHeight \t" << topthick  << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t ray128 \t" << ray128 << "\t pmtThick \t" << conehigh << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasAbs \t" << plasAbs << "\n";
+    oss << "Randoms_" << "\t abs100s \t" << base << "\t larRin \t" << larRin << "\t scaleRay \t" << scaleRay << "\t rodShift \t" << fifth << "\t pmtEff \t" << tpbEff << "\t tpbAbs \t" << tpbAbs << "\t tpbRin \t" << tpbRin << "\t pmtHeight \t" << topthick  << "\t plasRin \t" << plasRin << "\t plasRefl \t" << plasRefl << "\t abs200s \t" << ultra << "\t abs300s \t" << threehun << "\t abs400s \t" << mult << "\t scaleRin \t" << scaleRin << "\t ray128 \t" << ray128 << "\t pmtThick \t" << conehigh << "\t foilEff \t" << foilEff << "\t pmtScatter \t" << scatter << "\t foilScatter \t" << randwide << "\t foilThick \t" << conewide << "\t plasAbs \t" << plasAbs << "\n";
 
     randomized = true;
 

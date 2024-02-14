@@ -52,7 +52,6 @@ public:
     void SetInverseBeta( G4bool ); //turns the Inverse Beta flag on
     void SetDarkMatter( G4bool ); //turns the DarkMatter flag on
     void SetALP( G4bool ); //turns the alp flag on
-    void SetRootFile ( G4String ); //sets the ROOT output filename
     int ModulateRandom( G4int var, G4double sigma ); //modulate the OM random values
     void CorrelateRandom(); // Method for setting MultiSim Variables according to covariance matrix
     void OneRandom( G4int var );
@@ -70,8 +69,6 @@ public:
     G4bool GetfInvBeta() const {return fInvBeta;}; // method to obtain fInvBeta
     G4bool GetDarkMatter() const {return darkMatter;}; // method to obtain LDM
     G4bool GetALP() const {return alp;}; // method to obtain ALP
-    G4String GetRootFile () const { return rootfile;};  
-    G4bool GetRootSet() const { return rootset; };
     G4double GetUnsmooth() const { return randwide; };
 
 private:
@@ -187,8 +184,6 @@ private:
 
     G4bool randomized;
     G4String variableString;
-    G4bool rootset;
-    G4String rootfile;
 
 };
 

@@ -22,14 +22,12 @@
 
 G4CCMUserEventAction::G4CCMUserEventAction(G4CCMUserRunAction* runaction)
     : G4UserEventAction(), fRunAction(runaction),
-    mctruth(new MCTruth()), rootIO(std::make_shared<CCMRootIO>()) {
-    rootSet = false;
+    mctruth(new MCTruth()) {
 }
 
 G4CCMUserEventAction::~G4CCMUserEventAction() {
     // clear data and root file structures
     delete mctruth;
-    rootIO->Close();
 }
 
 // Within this function define things to be done at the start of an event (example: the debugging line currently commented out).
@@ -39,21 +37,6 @@ void G4CCMUserEventAction::BeginOfEventAction(const G4Event* event) {
     const G4int eventID = event->GetEventID();
 
     mctruth->Reset(eventID);
-    rootSet = fRunAction->GetRootSet();
-
-    // if rootSet is false, pull the root file name and use it to open a new root file and rootIO structure
-    if (!rootSet) {
-        const detectorConstruction* detector = static_cast<const detectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
-        G4String filename = detector->GetRootFile();
-        std::ostringstream oss;
-        oss << filename << "thread" << eventID << ".root";
-        filename = oss.str();
-
-        rootIO->SetParameter("SaveBranches","mcTruth");
-        rootIO->SetOutFileName(filename);
-        rootIO->SetupOutputFile();
-        fRunAction->SetRootSet(true);
-    }
 }
 
 // Same as BeginOfEventAction, but for end of event.
@@ -80,8 +63,6 @@ void G4CCMUserEventAction::EndOfEventAction(G4Event const * event) {
     mctruth->SetTotalEnergyDeposited(partEneg);
     mctruth->SetQuenchingFactor(1.0);
 
-    rootIO->SetMCTruth(*mctruth);
-    rootIO->WriteTrigger();
 }
 
 // Method to AddHitInformation to the root output (used in steppingAction).

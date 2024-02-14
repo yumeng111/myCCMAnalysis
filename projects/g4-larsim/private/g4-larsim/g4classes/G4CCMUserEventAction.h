@@ -11,8 +11,6 @@
 
 #include "globals.hh"
 
-#include "CCMAnalysis/CCMIO/CCMRootIO.h"
-
 #include "G4UserEventAction.hh"
 
 class TObjArray;
@@ -39,9 +37,6 @@ private:
     G4CCMUserRunAction * fRunAction;
 
     MCTruth * mctruth;
-    std::shared_ptr<CCMRootIO> rootIO;
-
-    G4bool rootSet;
 };
 
 #endif

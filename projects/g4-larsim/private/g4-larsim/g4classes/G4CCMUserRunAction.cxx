@@ -26,7 +26,6 @@ G4CCMUserRunAction::~G4CCMUserRunAction() {}
 void G4CCMUserRunAction::BeginOfRunAction(const G4Run*) {
   // calls the detector and obtains the root file name.
   const G4CCMDetectorConstruction* detector = static_cast<const G4CCMDetectorConstruction*> (G4RunManager::GetRunManager()->GetUserDetectorConstruction());
-  rootSet = detector->GetRootSet();
 
   // determines if the detector OM is randomized and prints the variable list if it is
   if (detector->IsRandom()) {
