@@ -9,8 +9,6 @@ class G4VisManager;
 #endif
 
 class I3Particle;
-class G4IceTopTank;
-class G4IceScintStation;
 class G4CCMDetectorConstruction;
 
 /**
@@ -26,10 +24,10 @@ public:
     static G4Interface* GetInstance() {return g4Interface_;}
 
     /// Add a tank to the geometry. Should not be called after initialized.
-    void InstallTank(G4IceTopTank* tank);
+    //void InstallTank(G4IceTopTank* tank);
 
     /// Add a scintillator to the geometry. Should not be called after initialized.
-    void InstallScintillator(G4IceScintStation* scint);
+    //void InstallScintillator(G4IceScintStation* scint);
 
     /// Initialize event. Most Geant4 global things are initialized the first time this is called.
     void InitializeEvent();
@@ -52,9 +50,9 @@ private:
     G4CCMDetectorConstruction* detector_;
     bool initialized_;
     bool eventInitialized_;
-    std::string visMacro_;
-    bool triangulatedSnow_;
-    bool useScintillator_;
+    std::string visMacro_; 
+    //bool triangulatedSnow_;
+    //bool useScintillator_;
 
     SET_LOGGER("G4Interface");
 };

@@ -49,7 +49,7 @@ G4Interface::~G4Interface()
 }
 
 
-void G4Interface::InstallTank(G4IceTopTank* tank) {
+/*void G4Interface::InstallTank(G4IceTopTank* tank) {
     if(initialized_)
     {
         log_fatal("G4Interface already initialized. Cannot install tank!");
@@ -73,7 +73,7 @@ void G4Interface::InstallScintillator(G4IceScintStation* scint) {
         detector_ = new G4CCMDetectorConstruction();
     }
     //detector_->InstallStation(scint);
-}
+}*/
 
 void G4Interface::InitializeEvent() {
     ///
