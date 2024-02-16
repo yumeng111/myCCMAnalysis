@@ -18,7 +18,8 @@ class G4UIcommand;
 class G4UIcmdWithABool;
 class G4UIcmdWithAString;
 
-class G4CCMDetectorMessenger: public G4UImessenger {
+class G4CCMDetectorMessenger: public G4UImessenger
+{
   public:
 
     G4CCMDetectorMessenger(G4CCMDetectorConstruction*);
@@ -48,6 +49,7 @@ class G4CCMDetectorMessenger: public G4UImessenger {
     G4UIcmdWithABool*            f200Cmd;
     G4UIcmdWithABool*            fTPBfoilCmd;
     G4UIcmdWithABool*            fReflectorCmd;
+    G4UIcmdWithAString*          fRootCmd;
     G4UIcmdWithAnInteger*        fOrCmd;
 
 };

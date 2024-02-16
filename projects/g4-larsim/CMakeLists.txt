@@ -15,18 +15,9 @@ if (GEANT4_FOUND AND CLHEP_FOUND)
     )
 
     i3_add_library(${PROJECT_NAME}
-        private/g4-larsim/g4classes/G4CCMDetectorConstruction.h
-        private/g4-larsim/g4classes/G4CCMDetectorMessenger.h
-        private/g4-larsim/g4classes/G4CCMPhysicsList.h
-        private/g4-larsim/g4classes/G4CCMRunManager.h
-        private/g4-larsim/g4classes/G4CCMUserSteppingAction.h
-        private/g4-larsim/g4classes/G4Interface.h
-        private/g4-larsim/g4classes/G4CCMDetectorConstruction.cxx
-        private/g4-larsim/g4classes/G4CCMDetectorMessenger.cxx
-        private/g4-larsim/g4classes/G4CCMPhysicsList.cxx
-        private/g4-larsim/g4classes/G4CCMRunManager.cxx
-        private/g4-larsim/g4classes/G4CCMUserSteppingAction.cxx
-        private/g4-larsim/g4classes/G4Interface.cxx
+        private/g4-larsim/g4classes/*.hh
+        private/g4-larsim/g4classes/*.cxx
+        private/g4-larsim/g4classes/*.cc
         USE_TOOLS boost python clhep geant4 gsl
         USE_PROJECTS serialization icetray dataclasses phys-services
     )

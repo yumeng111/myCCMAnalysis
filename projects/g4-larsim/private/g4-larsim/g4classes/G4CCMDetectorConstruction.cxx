@@ -9,8 +9,8 @@
    This version is the current best fit for the calibration data I have. It includes the layered detector that clouds the outer edges of the upper portions of the Fiducial volume, the lower absorption lengths near the bottom, the bottom 'foil cone' that helps match data and represents the LED and foil distortions in the area, the less effective TPB for the foils as opposed to the PMTs. It also uses a number of tricks that the other versions don't to make it easier to change a number of variables without messing up their relations (as the best fit is not yet a perfect fit, I am continuing to improve it constantly and thus this version will not likely stay the best for long). 
 */
 
-#include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
-#include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
+#include "g4-larsim/g4classes/G4CCMDetectorConstruction.hh"
+#include "g4-larsim/g4classes/G4CCMDetectorMessenger.hh"
 
 #include <G4SDManager.hh>
 #include <G4RunManager.hh>

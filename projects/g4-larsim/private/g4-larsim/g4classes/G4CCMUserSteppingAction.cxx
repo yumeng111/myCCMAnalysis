@@ -7,9 +7,9 @@
 
    Current active functions:
 */
-#include "g4-larsim/g4classes/G4CCMUserSteppingAction.h"
-#include "g4-larsim/g4classes/G4CCMUserEventAction.h"
-#include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include "g4-larsim/g4classes/G4CCMUserSteppingAction.hh"
+#include "g4-larsim/g4classes/G4CCMUserEventAction.hh"
+#include "g4-larsim/g4classes/G4CCMDetectorConstruction.hh"
 
 #include "G4Step.hh"
 #include "G4Event.hh"

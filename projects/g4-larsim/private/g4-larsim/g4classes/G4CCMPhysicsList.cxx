@@ -1,7 +1,7 @@
 #include <globals.hh>
 #include <G4Version.hh>
 
-#include "G4CCMPhysicsList.h"
+#include "G4CCMPhysicsList.hh"
 
 #include "G4EmStandardPhysics_option4.hh"
 #include "G4EmExtraPhysics.hh"

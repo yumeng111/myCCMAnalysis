@@ -1,7 +1,7 @@
 #ifndef _TOPSIM_G4INTERFACE_H_
 #define _TOPSIM_G4INTERFACE_H_
 
-#include <g4-larsim/g4classes/G4CCMRunManager.h>
+#include <g4-larsim/g4classes/G4CCMRunManager.hh>
 #include <icetray/I3Logging.h>
 
 #ifdef G4VIS_USE

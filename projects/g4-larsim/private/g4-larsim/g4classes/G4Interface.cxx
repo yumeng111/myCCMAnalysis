@@ -1,11 +1,11 @@
 #include <dataclasses/physics/I3Particle.h>
 
-#include <g4-larsim/g4classes/G4Interface.h>
-#include <g4-larsim/g4classes/G4CCMDetectorConstruction.h>
-#include <g4-larsim/g4classes/G4CCMPhysicsList.h>
-#include <g4-larsim/g4classes/G4CCMUserSteppingAction.h>
-#include <g4-larsim/g4classes/G4CCMUserEventAction.h>
-#include <g4-larsim/g4classes/G4CCMUserRunAction.h>
+#include <g4-larsim/g4classes/G4Interface.hh>
+#include <g4-larsim/g4classes/G4CCMDetectorConstruction.hh>
+#include <g4-larsim/g4classes/G4CCMPhysicsList.hh>
+#include <g4-larsim/g4classes/G4CCMUserSteppingAction.hh>
+#include <g4-larsim/g4classes/G4CCMUserEventAction.hh>
+#include <g4-larsim/g4classes/G4CCMUserRunAction.hh>
 
 #include <icetray/I3Logging.h>
 

@@ -6,8 +6,8 @@ Currently it prints an event number every 1000 runs.
 Also does a few variable translations and print statements
  */
 
-#include "g4-larsim/g4classes/G4CCMUserRunAction.h"
-#include "g4-larsim/g4classes/G4CCMUserDetectorConstruction.h"
+#include "g4-larsim/g4classes/G4CCMUserRunAction.hh"
+#include "g4-larsim/g4classes/G4CCMDetectorConstruction.hh"
 
 #include "G4Run.hh"
 #include "G4RunManager.hh"

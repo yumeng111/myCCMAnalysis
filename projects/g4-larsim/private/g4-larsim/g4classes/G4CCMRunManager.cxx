@@ -2,7 +2,7 @@
 // loaded *before* globals.hh...
 #include "G4Timer.hh"
 
-#include <g4-larsim/g4classes/G4CCMRunManager.h>
+#include <g4-larsim/g4classes/G4CCMRunManager.hh>
 #include <G4ParticleGun.hh>
 #include <G4Run.hh>
 

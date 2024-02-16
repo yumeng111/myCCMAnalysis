@@ -20,7 +20,7 @@ class G4Sphere;
 #include <G4VUserDetectorConstruction.hh>
 #include <G4Cache.hh>
 
-#include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
+#include "g4-larsim/g4classes/G4CCMDetectorMessenger.hh"
 
 class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 public:
