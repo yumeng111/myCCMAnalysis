@@ -11,6 +11,7 @@
 
 #include "dataclasses/I3TimeWindow.h"
 
+#include <boost/next_prior.hpp>
 #include <boost/foreach.hpp>
 #include <serialization/list.hpp>
 

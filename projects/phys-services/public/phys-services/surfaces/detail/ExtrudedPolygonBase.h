@@ -13,6 +13,7 @@
 #include <phys-services/surfaces/detail/polygon.h>
 #include <phys-services/I3RandomService.h>
 
+#include <boost/next_prior.hpp>
 #include <boost/foreach.hpp>
 #include <cmath>
 

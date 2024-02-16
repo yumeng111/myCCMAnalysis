@@ -14,6 +14,7 @@
 #include <cassert>
 
 #include <serialization/binary_object.hpp>
+#include <boost/next_prior.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/utility.hpp>
 #include <boost/foreach.hpp>

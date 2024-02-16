@@ -175,7 +175,7 @@ std::vector<double> BeamCurrentMonitorSummary::ComputeDerviative(std::vector<dou
 
 void BeamCurrentMonitorSummary::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     geo_seen = true;
