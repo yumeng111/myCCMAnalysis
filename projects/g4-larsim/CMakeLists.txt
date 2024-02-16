@@ -19,7 +19,7 @@ if (GEANT4_FOUND AND CLHEP_FOUND)
         private/g4-larsim/g4classes/*.cxx
         private/g4-larsim/g4classes/*.cc
         USE_TOOLS boost python clhep geant4 gsl
-        USE_PROJECTS serialization icetray dataclasses phys-services
+        USE_PROJECTS serialization icetray dataclasses phys-services simclasses
     )
 
     include(FindG4VisDrivers.cmake)
