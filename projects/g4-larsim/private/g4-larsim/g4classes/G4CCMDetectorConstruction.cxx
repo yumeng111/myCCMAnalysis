@@ -297,11 +297,11 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // wavelengths: 1200, 1000, 500, 400, 350, 200, 120, 100
     G4int plasticnum = sizeof(plastic_Energy) / sizeof(G4double);
     G4double plastic_reflect[]={0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
-    assert(sizeof(plastic_RIND) == sizeof(plastic_Energy));
     G4double plastic_AbsLength[]={ 10.0*cm, 10.0*cm, 10.0*cm, 10.0*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm};
+    assert(sizeof(plastic_AbsLength) == sizeof(plastic_Energy));
     G4double blackplastic_AbsLength[]={ 1e-9*cm, 1e-9*cm, 1e-9*cm, 1e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm};
     G4double plastic_RIND[] = { 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4 };
-    assert(sizeof(plastic_AbsLength) == sizeof(plastic_Energy));
+    assert(sizeof(plastic_RIND) == sizeof(plastic_Energy));
     G4MaterialPropertiesTable *plastic_mt = new G4MaterialPropertiesTable();
     plastic_mt->AddProperty("ABSLENGTH",plastic_Energy,plastic_AbsLength,plasticnum);
     plastic_mt->AddProperty("REFLECTIVITY",plastic_Energy,plastic_reflect,plasticnum);
@@ -518,14 +518,15 @@ void G4CCMDetectorConstruction::DefinePlastic(G4double abs, G4double refl, G4dou
     G4double refl2 = refl*2.5;
     G4double refl3 = refl*3.0;
     G4double plastic_reflect[]={refl, refl, refl2, refl3, refl, uvr, uvr, uvr};
-    assert(sizeof(plastic_RIND) == sizeof(plastic_Energy));
+    assert(sizeof(plastic_reflect) == sizeof(plastic_Energy));
 
     G4double absl = abs*cm;
     G4double plastic_AbsLength[]={ absl, absl, absl, absl, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm};
     G4double blackplastic_AbsLength[]={ 1e-9*cm, 1e-9*cm, 1e-9*cm, 1e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm};
+    assert(sizeof(plastic_AbsLength) == sizeof(plastic_Energy));
 
     G4double plastic_RIND[] = { rin, rin, rin, rin, rin, rin, rin, rin };
-    assert(sizeof(plastic_AbsLength) == sizeof(plastic_Energy));
+    assert(sizeof(plastic_RIND) == sizeof(plastic_Energy));
 
     G4MaterialPropertiesTable *plastic_mt = new G4MaterialPropertiesTable();
     plastic_mt->AddProperty("ABSLENGTH",plastic_Energy,plastic_AbsLength,plasticnum);
