@@ -7,27 +7,26 @@
 
 using namespace boost::python;
 
-void register_CCMMCPESeries()
-{  
-  {
-    scope mcpe_scope = 
-      class_<CCMMCPE, boost::shared_ptr<CCMMCPE> >("CCMMCPE")
-      .def(dataclass_suite<CCMMCPE>())
-	  .def(init<>())
-	  .def(init<uint32_t>())
-	  .def(init<uint32_t,double>())
-      .def_readwrite("time",&CCMMCPE::time)
-      .def_readwrite("npe",&CCMMCPE::npe)
-      .def_readonly("ID",&CCMMCPE::ID)
-      ;
-  }
+void register_CCMMCPE() {
+{
+    scope mcpe_scope =
+        class_<CCMMCPE, boost::shared_ptr<CCMMCPE> >("CCMMCPE")
+        .def(dataclass_suite<CCMMCPE>())
+        .def(init<>())
+        .def(init<uint32_t>())
+        .def(init<uint32_t,double>())
+        .def_readwrite("time",&CCMMCPE::time)
+        .def_readwrite("npe",&CCMMCPE::npe)
+        .def_readonly("ID",&CCMMCPE::ID)
+        ;
+}
 
-  class_<CCMMCPESeries, CCMMCPESeriesPtr>("CCMMCPESeries")
-    .def(dataclass_suite<CCMMCPESeries>())
-  ;
+    class_<CCMMCPESeries, CCMMCPESeriesPtr>("CCMMCPESeries")
+        .def(dataclass_suite<CCMMCPESeries>())
+        ;
 
-  class_<CCMMCPESeriesMap, CCMMCPESeriesMapPtr, bases<I3FrameObject> >("CCMMCPESeriesMap")
-    .def(dataclass_suite<CCMMCPESeriesMap>())
-  ;
-  register_pointer_conversions<CCMMCPESeriesMap>();
+    class_<CCMMCPESeriesMap, CCMMCPESeriesMapPtr, bases<I3FrameObject> >("CCMMCPESeriesMap")
+        .def(dataclass_suite<CCMMCPESeriesMap>())
+        ;
+    register_pointer_conversions<CCMMCPESeriesMap>();
 }
