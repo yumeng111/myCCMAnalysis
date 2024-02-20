@@ -15,6 +15,7 @@
 #include <exception>
 //#include <boost/assert.hpp>
 #include <string>
+#include <cstring>
 
 #define I3_ARCHIVE_SOURCE
 #include <archive/archive_exception.hpp>
@@ -39,7 +40,7 @@ archive_exception::archive_exception(
     exception_code c, 
     const char * e1,
     const char * e2
-) : 
+) noexcept :
     code(c)
 {
     unsigned int length = 0;
@@ -113,6 +114,13 @@ archive_exception::archive_exception(
 }
 I3_ARCHIVE_DECL(BOOST_PP_EMPTY())
 archive_exception::~archive_exception() throw() {}
+archive_exception::archive_exception(archive_exception const & oth) noexcept :
+  std::exception(oth),
+  code(oth.code)
+{
+  std::memcpy(m_buffer,oth.m_buffer,sizeof m_buffer);
+}
+
 
 I3_ARCHIVE_DECL(const char *)
 archive_exception::what( ) const throw()

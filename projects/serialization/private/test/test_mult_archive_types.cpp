@@ -42,7 +42,7 @@ private:
         ar & I3_SERIALIZATION_NVP(x);
     }
 public:
-    static int count;
+    [[maybe_unused]] static int count;
     A(){++count;}    // default constructor
     virtual ~A(){--count;}   // default destructor
 };
