@@ -156,7 +156,7 @@ class portable_binary_iarchive :
 		#define ld_override(a, b, c, d) \
 			void load_override(a& t, int) { \
 				d x = 0; (*this) >> x; \
-				t = a((b)(c)(x)); \
+				t = (a)((b)(c)(x)); \
 			}
 
 		// make these as small as possible, even if they lose precision
