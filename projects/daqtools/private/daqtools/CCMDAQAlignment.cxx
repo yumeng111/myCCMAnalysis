@@ -783,7 +783,7 @@ void MergedSource::Configure() {
         ss << "]";
     }
     ss << "\n";
-    log_notice(ss.str().c_str());
+    log_notice("%s", ss.str().c_str());
 
     // Set up all the data structures
     n_daqs = file_lists.size();
