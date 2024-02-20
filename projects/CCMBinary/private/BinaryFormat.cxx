@@ -173,6 +173,8 @@ void CCMDAQMachineConfig::load(Archive& ar, unsigned version) {
 
 template <class Archive>
 void CCMDAQMachineConfig::save(Archive& ar, unsigned version) const {
+    if(version != ccmdaqmachineconfig_version_)
+        log_fatal("Attempting to save version %u from file but running version %u of CCMDAQMachineConfig class.", version, ccmdaqmachineconfig_version_);
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("machine_identifier", machine_identifier);
     ar & make_nvp("num_digitizer_boards", num_digitizer_boards);
