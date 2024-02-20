@@ -176,41 +176,84 @@ inline std::istream & read_binary(std::istream & is, DigitizerBoard & board) {
 }
 
 inline std::ostream & write_binary(std::ostream & os, CCMDAQMachineConfig const & config) {
-    if(config.version == 0) {
-        write_binary(os, config.version);
-        write_binary(os, config.machine_identifier);
-        write_binary(os, config.num_digitizer_boards);
-        write_binary(os, config.num_channels);
-        write_binary(os, config.num_samples);
-        write_binary(os, config.trigger_percent_after);
-        write_binary(os, config.trigger_time_tolerance);
-        write_binary(os, config.missed_trigger_tolerance);
-        write_binary(os, config.offset_estimate_min_triggers);
-        write_binary(os, config.offset_estimate_abs_error_threshold);
-        write_binary(os, config.offset_estimate_rel_error_threshold);
-        write_binary(os, config.offset_estimate_tau);
-    } else {
+    if(config.version > ccmdaqmachineconfig_version_) {
         throw std::runtime_error("Can only write CCMDAQMachineConfig version <= 0");
+    }
+    write_binary(os, config.version);
+    write_binary(os, config.machine_identifier);
+    write_binary(os, config.num_digitizer_boards);
+    write_binary(os, config.num_channels);
+    write_binary(os, config.num_samples);
+    write_binary(os, config.trigger_percent_after);
+
+    if(config.version == 0) {
+        uint32_t trigger_time_tolerance = 0;
+        uint32_t missed_trigger_tolerance = 0;
+        uint32_t offset_estimate_min_triggers = 0;
+
+        write_binary(os, trigger_time_tolerance);
+        write_binary(os, missed_trigger_tolerance);
+        write_binary(os, offset_estimate_min_triggers);
+
+        constexpr size_t ld_size = sizeof(long double);
+        constexpr size_t expected_ld_size = 16;
+        if(ld_size == expected_ld_size) {
+            long double offset_estimate_abs_error_threshold = 0;
+            long double offset_estimate_rel_error_threshold = 0;
+            long double offset_estimate_tau = 0;
+
+            write_binary(os, offset_estimate_abs_error_threshold);
+            write_binary(os, offset_estimate_rel_error_threshold);
+            write_binary(os, offset_estimate_tau);
+        } else {
+            constexpr size_t size = expected_ld_size;
+            std::array<unsigned char, size> x;
+            x.fill(0);
+            os.write((char*)x.data(), size); // offset_estimate_abs_error_threshold
+            os.write((char*)x.data(), size); // offset_estimate_rel_error_threshold
+            os.write((char*)x.data(), size); // offset_estimate_tau
+        }
     }
     return os;
 }
 
 inline std::istream & read_binary(std::istream & is, CCMDAQMachineConfig & config) {
     read_binary(is, config.version);
-    if(config.version == 0) {
-        read_binary(is, config.machine_identifier);
-        read_binary(is, config.num_digitizer_boards);
-        read_binary(is, config.num_channels);
-        read_binary(is, config.num_samples);
-        read_binary(is, config.trigger_percent_after);
-        read_binary(is, config.trigger_time_tolerance);
-        read_binary(is, config.missed_trigger_tolerance);
-        read_binary(is, config.offset_estimate_min_triggers);
-        read_binary(is, config.offset_estimate_abs_error_threshold);
-        read_binary(is, config.offset_estimate_rel_error_threshold);
-        read_binary(is, config.offset_estimate_tau);
-    } else {
+    if(config.version > ccmdaqmachineconfig_version_) {
         throw std::runtime_error("Can only read CCMDAQMachineConfig version <= 0");
+    }
+    read_binary(is, config.machine_identifier);
+    read_binary(is, config.num_digitizer_boards);
+    read_binary(is, config.num_channels);
+    read_binary(is, config.num_samples);
+    read_binary(is, config.trigger_percent_after);
+
+    if(config.version == 0) {
+        uint32_t trigger_time_tolerance = 0;
+        uint32_t missed_trigger_tolerance = 0;
+        uint32_t offset_estimate_min_triggers = 0;
+
+        read_binary(is, trigger_time_tolerance);
+        read_binary(is, missed_trigger_tolerance);
+        read_binary(is, offset_estimate_min_triggers);
+
+        constexpr size_t ld_size = sizeof(long double);
+        constexpr size_t expected_ld_size = 16;
+        if(ld_size == expected_ld_size) {
+            long double offset_estimate_abs_error_threshold = 0;
+            long double offset_estimate_rel_error_threshold = 0;
+            long double offset_estimate_tau = 0;
+
+            read_binary(is, offset_estimate_abs_error_threshold);
+            read_binary(is, offset_estimate_rel_error_threshold);
+            read_binary(is, offset_estimate_tau);
+        } else {
+            constexpr size_t size = expected_ld_size;
+            std::array<unsigned char, size> x;
+            is.read((char*)x.data(), size); // offset_estimate_abs_error_threshold
+            is.read((char*)x.data(), size); // offset_estimate_rel_error_threshold
+            is.read((char*)x.data(), size); // offset_estimate_tau
+        }
     }
     return is;
 }
