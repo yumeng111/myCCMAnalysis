@@ -59,11 +59,11 @@ public:
         buffer.push_back(x);
         sorted_samples.insert(x);
 
-        w_sum += 1;
-        w_sum2 += 1;
+        w_sum += 1.0;
+        w_sum2 += 1.0;
         double const mean_old = mean;
-        mean += (1 / w_sum) * (x - mean_old);
-        S += 1 * (x - mean_old) * (x - mean);
+        mean += (1.0 / w_sum) * (x - mean_old);
+        S += 1.0 * (x - mean_old) * (x - mean);
     }
 
     void RemoveValue() {
@@ -72,11 +72,11 @@ public:
         {
             double const & to_remove = buffer.front();
             sorted_samples.erase(to_remove);
-            w_sum -= 1;
-            w_sum2 -= 1;
+            w_sum -= 1.0;
+            w_sum2 -= 1.0;
             double const mean_old = mean;
-            mean -= (1 / w_sum) * (to_remove - mean_old);
-            S -= 1 * (to_remove - mean_old) * (to_remove - mean);
+            mean -= (1.0 / w_sum) * (to_remove - mean_old);
+            S -= 1.0 * (to_remove - mean_old) * (to_remove - mean);
         }
         buffer.pop_front();
     }
