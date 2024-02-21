@@ -82,9 +82,11 @@ public:
         exception_code c, 
         const char * e1 = NULL,
         const char * e2 = NULL
-    );
-    virtual ~archive_exception() throw();
-    virtual const char *what() const throw();
+    ) noexcept;
+
+    archive_exception(archive_exception const &) noexcept;
+    virtual ~archive_exception() noexcept override;
+    virtual const char *what() const noexcept override;
 protected:
     unsigned int
     append(unsigned int l, const char * a);

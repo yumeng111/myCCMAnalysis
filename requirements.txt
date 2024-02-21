@@ -1,0 +1,60 @@
+## python3 requirements.txt for icetray
+## see: https://pip.pypa.io/en/stable/reference/requirements-file-format/
+##
+## to install all the packages in this file do:
+##    pip3 install -r requirements.txt
+##
+## all of the following packages could be cosidered optional. for
+## instance, if you don't care about building documentation you don't
+## have to install sphinx.
+##
+## when adding new packages to this file, please leave a comment as to
+## what the package is used for, and whether it's optional or required
+
+# qtconsole  - steamshovel
+# matplotlib - plotting via python, steamshovel, icetop viewer
+# tables     - MuonGun, hdfwriter, icetop_Level3_scripts, tableio,
+#              ml_suite, tpx_vemcal
+# pandas     - ml_suite
+# pymongo    - gcdserver, filterscripts
+# pyyaml     - simprod_scripts, ml_suite
+# sphinx     - documentation
+# breathe    - documentation
+# healpy     - dst
+# iminuit    - lilliput, millipede
+# uproot     - genie-reader
+# h5py       - NuRadioMCInterface
+# particle   - tests in dataclasses and corsika-reader
+# pre-commit - needed for testing commits
+
+# PyTables may require a source install via:
+#
+#   pip3 install -v --force-reinstall --no-binary tables tables
+
+# The following packages have niche uses in icetray. The average user doesn't
+# need them, so they are not enabled below.
+#
+# MySQLdb - gcdserver
+# ROOT    - vemcal
+# cma     - segmented_spline_reco
+# jax     - segmented_spline_reco
+# pyUSB   - steamshovel LED display driver
+# serial  - steamshovel LED display driver
+# sklearn - finallevel_filter_diffusenumu
+
+qtconsole
+numpy
+matplotlib
+# pytables currently lacks wheels for Apple Silicon, and depends on recent unreleased changes to build everywhere
+tables
+pandas
+pymongo<4.0  # see #3134
+pyyaml
+sphinx>=2.4.0
+breathe
+healpy
+iminuit
+uproot
+h5py
+particle
+pre-commit

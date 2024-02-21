@@ -668,7 +668,7 @@ void CCMGeometryGenerator::Process() {
                     } else {
                         std::stringstream ss;
                         ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map, assuming the PMT ID is the position";
-                        log_warn(ss.str().c_str());
+                        log_warn("%s", ss.str().c_str());
                         //throw std::runtime_error(ss.str());
                         position_string = id;
                     }
@@ -692,7 +692,7 @@ void CCMGeometryGenerator::Process() {
                     } else {
                         std::stringstream ss;
                         ss << "PMT ID \"" << id << "\" not found in supplied PMTPositionByID map, assuming the PMT ID is the position";
-                        log_warn(ss.str().c_str());
+                        log_warn("%s", ss.str().c_str());
                         position_string = id;
                         //throw std::runtime_error(ss.str());
                     }
@@ -707,12 +707,12 @@ void CCMGeometryGenerator::Process() {
                 if(expect_coated and (omtype != CCMOMGeo::OMType::CCM8inCoated)) {
                     std::stringstream ss;
                     ss << "PMT ID \"" << id << "\": Mapping file indicates this is a coated PMT, but the position parsing indicates it should not be";
-                    log_warn(ss.str().c_str());
+                    log_warn("%s", ss.str().c_str());
                 }
                 if(expect_uncoated and (omtype != CCMOMGeo::OMType::CCM8inUncoated)) {
                     std::stringstream ss;
                     ss << "PMT ID \"" << id << "\": Mapping file indicates this is a uncoated PMT, but the position parsing indicates it should not be";
-                    log_warn(ss.str().c_str());
+                    log_warn("%s", ss.str().c_str());
                 }
             } else if(type == detail::tolower("EJ")
                    or type == detail::tolower("EJ301")) {
@@ -804,7 +804,7 @@ void CCMGeometryGenerator::Process() {
             } else if(type == detail::tolower("")) {
                 continue;
             } else {
-                log_fatal(("Unknown channel type: \"" + channel.physical_channel_type + "\"").c_str());
+                log_fatal("%s", ("Unknown channel type: \"" + channel.physical_channel_type + "\"").c_str());
             }
 
             if(is_trigger) {
@@ -831,7 +831,7 @@ void CCMGeometryGenerator::Process() {
                 geometry->trigger_to_trigger_copy_map.insert({k, board_trigger_copy});
             }
         } else {
-            log_fatal(("Board " + board.physical_board_id + " does not have a trigger copy!").c_str());
+            log_fatal("%s", ("Board " + board.physical_board_id + " does not have a trigger copy!").c_str());
         }
     }
 

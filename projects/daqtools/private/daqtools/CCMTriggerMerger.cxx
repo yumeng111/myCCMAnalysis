@@ -208,9 +208,9 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
 
 void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
     if(not frame->Has(daq_config_name_))
-        log_fatal(("Frame does not contain daq config" + daq_config_name_).c_str());
+        log_fatal("%s", ("Frame does not contain daq config" + daq_config_name_).c_str());
     if(not frame->Has(geometry_name_))
-        log_fatal(("Frame does not contain geometry: " + geometry_name_).c_str());
+        log_fatal("%s", ("Frame does not contain geometry: " + geometry_name_).c_str());
     last_daq_config_ = frame->Get<boost::shared_ptr<const CCMAnalysis::Binary::CCMDAQConfig>>(daq_config_name_);
     last_geometry_ = frame->Get<boost::shared_ptr<const CCMGeometry>>(geometry_name_);
     last_board_time_offsets_ = frame->Get<boost::shared_ptr<const I3Vector<I3Vector<int64_t>>>>(board_time_offsets_name_);
@@ -247,14 +247,13 @@ void CCMTriggerMerger::CacheGeometryFrame(I3FramePtr frame) {
             channel_idx += num_channels;
         }
     }
-    last_daq_config_->machine_configurations;
 }
 
 void CCMTriggerMerger::CacheDAQFrame(I3FramePtr frame) {
     if(not frame->Has(digital_readout_name_))
-        log_fatal(("Frame does not contain digital readout: " + digital_readout_name_).c_str());
+        log_fatal("%s", ("Frame does not contain digital readout: " + digital_readout_name_).c_str());
     if(not frame->Has(triggers_name_))
-        log_fatal(("Frame does not contain triggers: " + triggers_name_).c_str());
+        log_fatal("%s", ("Frame does not contain triggers: " + triggers_name_).c_str());
     daq_frame_cache_.push_back(frame);
 }
 

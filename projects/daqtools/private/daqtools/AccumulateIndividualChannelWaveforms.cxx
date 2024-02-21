@@ -185,7 +185,7 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesTrigger(I3Fram
                             << trigger_key->second.GetType() << ", "
                             << trigger_key->second.GetNumber() << ") in '"
                             << nim_pulses_key_ << "'";
-                        log_fatal(ss.str().c_str());
+                        log_fatal("%s", ss.str().c_str());
                     }
                 } else {
                     double nim_pulse_time = 0.0;
@@ -344,7 +344,7 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesBCM(I3FramePtr
                             << trigger_key->second.GetType() << ", "
                             << trigger_key->second.GetNumber() << ") in '"
                             << nim_pulses_key_ << "'";
-                        log_fatal(ss.str().c_str());
+                        log_fatal("%s", ss.str().c_str());
                     }
                 } else {
                     double nim_pulse_time = 0.0;
@@ -523,7 +523,7 @@ bool AccumulateIndividualChannelWaveforms::ComputeReferenceIndicesUser(I3FramePt
                             << trigger_key->second.GetType() << ", "
                             << trigger_key->second.GetNumber() << ") in '"
                             << nim_pulses_key_ << "'";
-                        log_fatal(ss.str().c_str());
+                        log_fatal("%s", ss.str().c_str());
                     }
                 } else {
                     double nim_pulse_time = 0.0;
@@ -738,7 +738,7 @@ void AccumulateIndividualChannelWaveforms::Configure() {
         ss << "TriggerReferenceTime == " << (trigger_reference_time_ ? "true" : "false") << ", ";
         ss << "BCMReferenceTime == " << (bcm_reference_time_ ? "true" : "false") << ", ";
         ss << "ReferenceTimeKey == \"" << reference_time_key_ << "\"";
-        log_fatal(ss.str().c_str());
+        log_fatal("%s", ss.str().c_str());
     }
 }
 
@@ -805,7 +805,7 @@ void AccumulateIndividualChannelWaveforms::Geometry(I3FramePtr frame) {
             ss << "Some specified channels are not present in the geometry: ";
             for(uint32_t const & channel : allowed_channels_)
                 ss << " " << channel;
-            log_warn(ss.str().c_str());
+            log_warn("%s", ss.str().c_str());
         }
     }
 

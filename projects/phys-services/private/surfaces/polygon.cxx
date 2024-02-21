@@ -7,6 +7,7 @@
  */
 
 #include <phys-services/surfaces/detail/polygon.h>
+#include <boost/next_prior.hpp>
 #include <boost/utility.hpp>
 
 namespace I3Surfaces { namespace polygon {

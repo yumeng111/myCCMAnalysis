@@ -52,8 +52,8 @@ nnls_lawson_hanson(cholmod_sparse *A, cholmod_dense *y, double tolerance,
 {
 	cholmod_dense *x, *w, *p, *yp;
 	cholmod_sparse *Ap;
-	long *P = static_cast<long*>(malloc(A->ncol * sizeof(long)));
-	long *Z = static_cast<long*>(malloc(A->ncol * sizeof(long)));
+	SuiteSparse_long *P = static_cast<SuiteSparse_long*>(malloc(A->ncol * sizeof(SuiteSparse_long)));
+	SuiteSparse_long *Z = static_cast<SuiteSparse_long*>(malloc(A->ncol * sizeof(SuiteSparse_long)));
 	int nP, nZ;
 	double wmax, wpmin, alpha, qtemp;
 	unsigned n;
@@ -136,7 +136,7 @@ nnls_lawson_hanson(cholmod_sparse *A, cholmod_dense *y, double tolerance,
 
 		/* Step 5: Move coefficient Z[t] into the passive set P */
 		if (verbose)
-			printf("Freeing coefficient %ld (active: %d, "
+			printf("Freeing coefficient %" SuiteSparse_long_idd " (active: %d, "
 			    "passive: %d, wmax: %e)\n", Z[t], nZ, nP, wmax);
 		last_freed = Z[t];
 		alpha = -1;
@@ -256,7 +256,7 @@ nnls_lawson_hanson(cholmod_sparse *A, cholmod_dense *y, double tolerance,
 					continue;
 
 				if (verbose)
-					printf("\tConstraining coefficient %ld "
+					printf("\tConstraining coefficient %" SuiteSparse_long_idd " "
 					    "(active: %d, passive: %d, "
 					    "value: %e)\n", P[i], nZ, nP,
 					    ((double *)(x->x))[P[i]]);

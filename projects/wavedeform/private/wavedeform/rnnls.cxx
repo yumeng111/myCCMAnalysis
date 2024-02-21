@@ -22,8 +22,6 @@
 
 #include "rnnls.h"
 
-#include "timer.h"
-
 double SD_ONE[2] = {1., 0.};
 double SD_ZERO[2] = {0., 0.};
 double SD_MINUS_ONE[2] = {-1., 0.};
@@ -35,7 +33,7 @@ typedef struct {
   cholmod_dense *x, *Aty, *rowwork, *colwork;
   cholmod_factor *L;
   cholmod_sparse *update;
-  long *P, *Z;
+  SuiteSparse_long *P, *Z;
 
   /* Simple data */
   long nP, nZ;
@@ -46,20 +44,6 @@ typedef struct {
   cholmod_dense *y;
   cholmod_common *c;
 
-  //double rnnls_allocate_context_u = 0.0;
-  //double rnnls_allocate_context_s = 0.0;
-  //double rnnls_next_free_u = 0.0;
-  //double rnnls_next_free_s = 0.0;
-  //double rnnls_set_passive_u = 0.0;
-  //double rnnls_set_passive_s = 0.0;
-  //double rnnls_set_active_u = 0.0;
-  //double rnnls_set_active_s = 0.0;
-  //double rnnls_solve_u = 0.0;
-  //double rnnls_solve_s = 0.0;
-  //double rnnls_sort_P_by_amplitude_u = 0.0;
-  //double rnnls_sort_P_by_amplitude_s = 0.0;
-  //double rnnls_iterate_u = 0.0;
-  //double rnnls_iterate_s = 0.0;
 } rnnls_context;
 
 
@@ -68,21 +52,6 @@ rnnls_allocate_context(cholmod_sparse *A,
                        cholmod_dense *y,
                        cholmod_common *c) {
   rnnls_context *cxt = (rnnls_context*)malloc(sizeof(rnnls_context));
-  //cxt->rnnls_allocate_context_u = 0.0;
-  //cxt->rnnls_allocate_context_s = 0.0;
-  //cxt->rnnls_next_free_u = 0.0;
-  //cxt->rnnls_next_free_s = 0.0;
-  //cxt->rnnls_set_passive_u = 0.0;
-  //cxt->rnnls_set_passive_s = 0.0;
-  //cxt->rnnls_set_active_u = 0.0;
-  //cxt->rnnls_set_active_s = 0.0;
-  //cxt->rnnls_solve_u = 0.0;
-  //cxt->rnnls_solve_s = 0.0;
-  //cxt->rnnls_sort_P_by_amplitude_u = 0.0;
-  //cxt->rnnls_sort_P_by_amplitude_s = 0.0;
-  //cxt->rnnls_iterate_u = 0.0;
-  //cxt->rnnls_iterate_s = 0.0;
-  //NNLSTimer timer("RNNLSAllocateContext", cxt->rnnls_allocate_context_u, cxt->rnnls_allocate_context_s, false, false);
   cxt->x = cholmod_l_zeros(A->ncol, 1, CHOLMOD_REAL, c);
 
   /* Precompute Aty: This is the RHS if the system we're solving */
@@ -97,8 +66,8 @@ rnnls_allocate_context(cholmod_sparse *A,
 
   cxt->L = cholmod_l_allocate_factor(A->ncol, c);
 
-  cxt->P = static_cast<long*>(malloc(A->ncol * sizeof(long)));
-  cxt->Z = static_cast<long*>(malloc(A->ncol * sizeof(long)));
+  cxt->P = static_cast<SuiteSparse_long*>(malloc(A->ncol * sizeof(SuiteSparse_long)));
+  cxt->Z = static_cast<SuiteSparse_long*>(malloc(A->ncol * sizeof(SuiteSparse_long)));
   cxt->A = A;
   cxt->y = y;
   cxt->c = c;
@@ -155,8 +124,8 @@ rnnls_next_free(double tolerance,
   }
 
   double *wx = ((double *)((cxt->rowwork)->x));
-  long *Z = cxt->Z;
-  long *P = cxt->P;
+  SuiteSparse_long *Z = cxt->Z;
+  SuiteSparse_long *P = cxt->P;
 
   // Find the active member with the largest gradient
   double wmax = wx[Z[0]];
@@ -204,8 +173,8 @@ rnnls_set_passive(long zidx,
 
   cholmod_sparse *A = cxt->A;
   cholmod_sparse *update = cxt->update;
-  long *P = cxt->P;
-  long *Z = cxt->Z;
+  SuiteSparse_long *P = cxt->P;
+  SuiteSparse_long *Z = cxt->Z;
 
   /* Move coefficient Z[zidx] into the passive set P */
   cxt->last_free = Z[zidx];
@@ -253,8 +222,8 @@ rnnls_set_active(long pidx,
                  rnnls_context *cxt) {
   //NNLSTimer timer("RNNLSSetActive", cxt->rnnls_set_active_u, cxt->rnnls_set_active_s, false, false);
 
-  long *P = cxt->P;
-  long *Z = cxt->Z;
+  SuiteSparse_long *P = cxt->P;
+  SuiteSparse_long *Z = cxt->Z;
 
   /* Move coefficient P[pidx] into the active set Z */
   long kcol = P[pidx];
@@ -273,7 +242,7 @@ rnnls_solve(rnnls_context *cxt) {
 
   cholmod_dense *x = cxt->x;
   double *xx = (double *)(x->x);
-  long *P = cxt->P;
+  SuiteSparse_long *P = cxt->P;
 
   for (;;) {
 
@@ -393,12 +362,12 @@ rnnls_sort_P_by_amplitude(rnnls_context *cxt) {
   //NNLSTimer timer("RNNLSSortPByAmplitude", cxt->rnnls_sort_P_by_amplitude_u, cxt->rnnls_sort_P_by_amplitude_s, false, false);
   std::vector<std::pair<double, long> > pNew;
   double *xx = (double *)((cxt->x)->x);
-  long *P = cxt->P;
-  for (long i = 0; i < cxt->nP; ++i) {
-    pNew.push_back(std::pair<double, long>(xx[P[i]], P[i]));
+  SuiteSparse_long *P = cxt->P;
+  for (SuiteSparse_long i = 0; i < cxt->nP; ++i) {
+    pNew.push_back(std::pair<double, SuiteSparse_long>(xx[P[i]], P[i]));
   }
   std::sort(pNew.begin(), pNew.end());
-  for (long i = 0; i < cxt->nP; ++i) {
+  for (SuiteSparse_long i = 0; i < cxt->nP; ++i) {
     P[i] = (pNew[i]).second;
   }
 }

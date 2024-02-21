@@ -212,9 +212,9 @@ void FitExponential(std::vector<double> const & y, double & a, double & b, doubl
 
     // now fitting
     std::vector<double> S(y.size());
-    double S2_sum;
+    double S2_sum = 0;
     S[0] = 0;
-    double sum_S;
+    double sum_S = 0;
 
     for (size_t result_it = 1; result_it < S.size(); ++result_it){
         sum_S += 0.5 * (y[result_it] + y[result_it-1]) * (x[result_it] - x[result_it-1]);
@@ -478,7 +478,7 @@ void BaselineEstimator::Geometry(I3FramePtr frame) {
                 ss << "Some specified channels are not present in the geometry: ";
                 for(uint32_t const & channel : allowed_channels_)
                     ss << " " << channel;
-                log_warn(ss.str().c_str());
+                log_warn("%s", ss.str().c_str());
             }
         }
     } else {
@@ -505,7 +505,7 @@ void BaselineEstimator::Geometry(I3FramePtr frame) {
                 ss << "Some specified CCMPMTKeys are not present in the geometry:";
                 for(CCMPMTKey const & key : missing_keys)
                     ss << " " << key;
-                log_warn(ss.str().c_str());
+                log_warn("%s", ss.str().c_str());
             }
         }
     }

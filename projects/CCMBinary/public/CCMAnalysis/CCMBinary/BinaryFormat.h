@@ -47,7 +47,7 @@ struct DigitizerBoard : public I3FrameObject{
     std::ostream & Print(std::ostream & os) const override;
 };
 
-static const unsigned ccmdaqmachineconfig_version_ = 0;
+static const unsigned ccmdaqmachineconfig_version_ = 1;
 struct CCMDAQMachineConfig : public I3FrameObject{
     uint32_t version = ccmdaqmachineconfig_version_;
     std::string machine_identifier;
@@ -55,17 +55,18 @@ struct CCMDAQMachineConfig : public I3FrameObject{
     uint32_t num_channels;
     uint32_t num_samples;
     uint32_t trigger_percent_after;
-    uint32_t trigger_time_tolerance;
-    uint32_t missed_trigger_tolerance;
-    uint32_t offset_estimate_min_triggers;
-    long double offset_estimate_abs_error_threshold;
-    long double offset_estimate_rel_error_threshold;
-    long double offset_estimate_tau;
+
     template <class Archive>
-    void serialize(Archive& ar, unsigned version);
+    void save(Archive& ar, unsigned version) const;
+
+    template <class Archive>
+    void load(Archive& ar, unsigned version);
+
     bool operator==(CCMDAQMachineConfig const & other) const;
     bool operator!=(CCMDAQMachineConfig const & other) const;
     std::ostream & Print(std::ostream & os) const override;
+
+    I3_SERIALIZATION_SPLIT_MEMBER();
 };
 
 static const unsigned ccmdaqconfig_version_ = 0;

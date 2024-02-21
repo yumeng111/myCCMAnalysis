@@ -55,13 +55,7 @@ I3_PYTHON_MODULE(CCMBinary)
     .def_readwrite("num_digitizer_boards",&CCMAnalysis::Binary::CCMDAQMachineConfig::num_digitizer_boards)
     .def_readwrite("num_channels",&CCMAnalysis::Binary::CCMDAQMachineConfig::num_channels)
     .def_readwrite("num_samples",&CCMAnalysis::Binary::CCMDAQMachineConfig::num_samples)
-    .def_readwrite("trigger_percent_after",&CCMAnalysis::Binary::CCMDAQMachineConfig::trigger_percent_after)
-    .def_readwrite("trigger_time_tolerance",&CCMAnalysis::Binary::CCMDAQMachineConfig::trigger_time_tolerance)
-    .def_readwrite("missed_trigger_tolerance",&CCMAnalysis::Binary::CCMDAQMachineConfig::missed_trigger_tolerance)
-    .def_readwrite("offset_estimate_min_triggers",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_min_triggers)
-    .def_readwrite("offset_estimate_abs_error_threshold",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_abs_error_threshold)
-    .def_readwrite("offset_estimate_rel_error_threshold",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_rel_error_threshold)
-    .def_readwrite("offset_estimate_tau",&CCMAnalysis::Binary::CCMDAQMachineConfig::offset_estimate_tau);
+    .def_readwrite("trigger_percent_after",&CCMAnalysis::Binary::CCMDAQMachineConfig::trigger_percent_after);
 
   class_<std::vector<CCMAnalysis::Binary::CCMDAQMachineConfig> >("vector_CCMDAQMachineConfig")
   .def(dataclass_suite<std::vector<CCMAnalysis::Binary::CCMDAQMachineConfig> >());

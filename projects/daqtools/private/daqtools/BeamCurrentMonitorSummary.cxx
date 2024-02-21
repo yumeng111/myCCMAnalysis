@@ -175,7 +175,7 @@ std::vector<double> BeamCurrentMonitorSummary::ComputeDerviative(std::vector<dou
 
 void BeamCurrentMonitorSummary::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
-        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_);
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     geo_seen = true;
@@ -360,17 +360,17 @@ CCMBCMSummary BeamCurrentMonitorSummary::GetBCMSummary(CCMWaveformUInt16 const &
 
 bool BeamCurrentMonitorSummary::IsBeamFrame(I3FramePtr frame) {
     if(not frame->Has(nim_pulses_name_)) {
-        log_warn(("No key named " + nim_pulses_name_ + " present in frame").c_str());
+        log_warn("%s", ("No key named " + nim_pulses_name_ + " present in frame").c_str());
         return false;
     }
     boost::shared_ptr<NIMLogicPulseSeriesMap const> nim_pulses = frame->Get<boost::shared_ptr<NIMLogicPulseSeriesMap const>>(nim_pulses_name_);
     if(not nim_pulses) {
-        log_warn(("No NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " present in frame").c_str());
+        log_warn("%s", ("No NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " present in frame").c_str());
         return false;
     }
     NIMLogicPulseSeriesMap::const_iterator it = nim_pulses->find(beam_trigger_key);
     if(it == nim_pulses->end()) {
-        log_warn(("NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " does not contain the BeamTrigger key").c_str());
+        log_warn("%s", ("NIMLogicPulseSeriesMap named " + nim_pulses_name_ + " does not contain the BeamTrigger key").c_str());
         return false;
     }
     if(it->second.size() < 1) {

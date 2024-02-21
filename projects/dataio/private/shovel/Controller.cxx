@@ -266,6 +266,7 @@ int main (int argc, char *argv[])
 
   try_load_project("simclasses");
   try_load_project("recclasses");
+  try_load_project("CCMBinary");
   
   if (vm.count("projects"))
     {

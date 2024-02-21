@@ -18,6 +18,7 @@
 #include "dataclasses/status/I3DetectorStatus.h"
 #include "dataclasses/physics/I3Trigger.h"
 
+#include <boost/next_prior.hpp>
 #include <boost/foreach.hpp>
 #include <boost/utility.hpp>
 

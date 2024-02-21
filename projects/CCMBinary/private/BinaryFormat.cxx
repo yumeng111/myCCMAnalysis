@@ -13,6 +13,7 @@
 
 #include <icetray/I3Logging.h>
 #include <icetray/serialization.h>
+#include <serialization/array.hpp>
 
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 
@@ -132,8 +133,7 @@ std::ostream & DigitizerBoard::Print(std::ostream & os) const {
 }
 
 template <class Archive>
-void
-CCMDAQMachineConfig::serialize(Archive& ar, unsigned version) {
+void CCMDAQMachineConfig::load(Archive& ar, unsigned version) {
     if(version > ccmdaqmachineconfig_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMDAQMachineConfig class.", version, ccmdaqmachineconfig_version_);
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
@@ -142,12 +142,45 @@ CCMDAQMachineConfig::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("num_channels", num_channels);
     ar & make_nvp("num_samples", num_samples);
     ar & make_nvp("trigger_percent_after", trigger_percent_after);
-    ar & make_nvp("trigger_time_tolerance", trigger_time_tolerance);
-    ar & make_nvp("missed_trigger_tolerance", missed_trigger_tolerance);
-    ar & make_nvp("offset_estimate_min_triggers", offset_estimate_min_triggers);
-    ar & make_nvp("offset_estimate_abs_error_threshold", offset_estimate_abs_error_threshold);
-    ar & make_nvp("offset_estimate_rel_error_threshold", offset_estimate_rel_error_threshold);
-    ar & make_nvp("offset_estimate_tau", offset_estimate_tau);
+    if(version == 0) {
+        uint32_t trigger_time_tolerance;
+        uint32_t missed_trigger_tolerance;
+        uint32_t offset_estimate_min_triggers;
+        long double offset_estimate_abs_error_threshold;
+        long double offset_estimate_rel_error_threshold;
+        long double offset_estimate_tau;
+
+        constexpr size_t ld_size = sizeof(long double);
+        constexpr size_t expected_ld_size = 16;
+
+        ar & make_nvp("trigger_time_tolerance", trigger_time_tolerance);
+        ar & make_nvp("missed_trigger_tolerance", missed_trigger_tolerance);
+        ar & make_nvp("offset_estimate_min_triggers", offset_estimate_min_triggers);
+
+        if(ld_size == expected_ld_size) {
+            ar & make_nvp("offset_estimate_abs_error_threshold", offset_estimate_abs_error_threshold);
+            ar & make_nvp("offset_estimate_rel_error_threshold", offset_estimate_rel_error_threshold);
+            ar & make_nvp("offset_estimate_tau", offset_estimate_tau);
+        } else {
+            constexpr size_t size = expected_ld_size;
+            std::array<unsigned char, size> x;
+            ar.load_binary(x.data(), size);
+            ar.load_binary(x.data(), size);
+            ar.load_binary(x.data(), size);
+        }
+    }
+}
+
+template <class Archive>
+void CCMDAQMachineConfig::save(Archive& ar, unsigned version) const {
+    if(version != ccmdaqmachineconfig_version_)
+        log_fatal("Attempting to save version %u from file but running version %u of CCMDAQMachineConfig class.", version, ccmdaqmachineconfig_version_);
+    ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
+    ar & make_nvp("machine_identifier", machine_identifier);
+    ar & make_nvp("num_digitizer_boards", num_digitizer_boards);
+    ar & make_nvp("num_channels", num_channels);
+    ar & make_nvp("num_samples", num_samples);
+    ar & make_nvp("trigger_percent_after", trigger_percent_after);
 }
 
 bool CCMDAQMachineConfig::operator==(CCMDAQMachineConfig const & other) const {
@@ -156,25 +189,13 @@ bool CCMDAQMachineConfig::operator==(CCMDAQMachineConfig const & other) const {
     num_digitizer_boards,
     num_channels,
     num_samples,
-    trigger_percent_after,
-    trigger_time_tolerance,
-    missed_trigger_tolerance,
-    offset_estimate_min_triggers,
-    offset_estimate_abs_error_threshold,
-    offset_estimate_rel_error_threshold,
-    offset_estimate_tau)
+    trigger_percent_after)
         == std::tie(
     other.machine_identifier,
     other.num_digitizer_boards,
     other.num_channels,
     other.num_samples,
-    other.trigger_percent_after,
-    other.trigger_time_tolerance,
-    other.missed_trigger_tolerance,
-    other.offset_estimate_min_triggers,
-    other.offset_estimate_abs_error_threshold,
-    other.offset_estimate_rel_error_threshold,
-    other.offset_estimate_tau);
+    other.trigger_percent_after);
 }
 
 bool CCMDAQMachineConfig::operator!=(CCMDAQMachineConfig const & other) const {
@@ -187,12 +208,6 @@ std::ostream & CCMDAQMachineConfig::Print(std::ostream & os) const {
     os << "NChannels:" << num_channels << ",\n";
     os << "NSamples:" << num_samples << ",\n";
     os << "TriggerPercentAfter:" << trigger_percent_after << ",\n";
-    os << "TriggerTimeTolerance:" << trigger_time_tolerance << ",\n";
-    os << "MissedTriggerTolerance:" << missed_trigger_tolerance << ",\n";
-    os << "OffsetEstimateMinTriggers:" << offset_estimate_min_triggers << ",\n";
-    os << "OffsetEstimateAbsErrorThreshold:" << offset_estimate_abs_error_threshold << ",\n";
-    os << "OffsetEstimateRelErrorThreshold:" << offset_estimate_rel_error_threshold << ",\n";
-    os << "OffsetEstimateTau:" << offset_estimate_tau << '\n';
     os << ']';
     return os;
 }
@@ -446,7 +461,7 @@ std::ostream& operator<<(std::ostream& os, const CCMAnalysis::Binary::CCMTrigger
 
 I3_SERIALIZABLE(CCMAnalysis::Binary::ChannelHeader);
 I3_SERIALIZABLE(CCMAnalysis::Binary::DigitizerBoard);
-I3_SERIALIZABLE(CCMAnalysis::Binary::CCMDAQMachineConfig);
+I3_SPLIT_SERIALIZABLE(CCMAnalysis::Binary::CCMDAQMachineConfig);
 I3_SERIALIZABLE(CCMAnalysis::Binary::CCMDAQConfig);
 I3_SERIALIZABLE(CCMAnalysis::Binary::CCMTrigger);
 I3_SERIALIZABLE(CCMAnalysis::Binary::CCMTriggerReadout);
