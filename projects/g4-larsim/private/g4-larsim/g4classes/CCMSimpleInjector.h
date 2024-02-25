@@ -9,6 +9,7 @@
 #include "phys-services/I3RandomService.h"
 
 #include <icetray/I3Frame.h>
+#include <icetray/I3FrameObject.h>
 #include <icetray/I3Units.h>
 #include <icetray/I3Module.h>
 #include <icetray/I3Logging.h>
@@ -17,36 +18,32 @@
 #include <dataclasses/physics/I3MCTreeUtils.h>
 #include <dataclasses/physics/I3Particle.h>
 #include <icetray/I3ServiceBase.h>
-#include "g4-larsim/g4classes/CCMParticleInjector.h"
+#include "CCMParticleInjector.h"
 
-class CCMSimpleInjector : public I3ServiceBase, public CCMParticleInjector
-{
-    private:
-        CCMSimpleInjector();
-        CCMSimpleInjector( const CCMSimpleInjector& );
-        CCMSimpleInjector operator= (const CCMSimpleInjector& rhs);
+class CCMSimpleInjector : public CCMParticleInjector {
+private:
+    CCMSimpleInjector operator= (const CCMSimpleInjector& rhs);
 
-        double energy_;    
-        I3Vector<double> location_;    
-        I3ParticleID particle_type_;    
-        std::string mcPrimaryName_;
-        SET_LOGGER( "CCMSimpleInjector" );
+    double energy_;
+    I3Vector<double> location_;
+    I3Particle::ParticleType particle_type_;
+    std::string mcPrimaryName_;
+    std::string output_mc_tree_name_;
 
-    public:
+    SET_LOGGER("CCMSimpleInjector");
 
-        CCMSimpleInjector(const I3Context& context);
-        virtual ~CCMSimpleInjector();
-        void Configure();
-        void FillI3MCTree(I3FramePtr frame);
-        I3MCTreePtr GetI3MCTree();
-        I3FramePtr GetI3ConfigurationFrame(){
+public:
 
-        double default_energy_ = 1.0 * I3Units::MeV;    
-        I3Vector<double> default_location_ = {0.0, 0.0, 0.0};    
-        I3ParticleID default_particle_type_ = "e-";    
-        std::string default_mcPrimaryName_ = "MCPrimary";
+    CCMSimpleInjector(const I3Context& context);
+    virtual ~CCMSimpleInjector() override = default;
+
+    void Configure();
+
+    virtual void FillMCTree(I3FramePtr frame);
+    virtual I3MCTreePtr GetMCTree() override;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 };
 
-#endif
+#endif // CCMSIMPLEINJECTOR_H
 
 

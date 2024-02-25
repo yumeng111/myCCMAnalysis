@@ -11,27 +11,23 @@
 #include <icetray/I3SingleServiceFactory.h>
 
 class CCMParticleInjector : public I3ServiceBase {
- private: 
- public:
+public:
+    // construct self & declare configuration parameters
+    CCMParticleInjector(const I3Context &context): I3ServiceBase(context) {}
 
+    // cleanup
+    virtual ~CCMParticleInjector() = default;
 
-  // construct self & declare configuration parameters
-  CCMParticleInjector(const I3Context &context): I3ServiceBase(context) {}
+    // get configuration parameters
+    virtual void Configure() = 0;
 
-  // cleanup
-  virtual ~CCMParticleInjector() {}
+    // get I3MCTree and Configuration for simulation
+    virtual I3MCTreePtr GetMCTree() = 0;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
 
-  // get configuration parameters
-  virtual void Configure() {}
-
-  // get IMCTree and Configuration for simulation  
-  I3MCTreePtr GetI3MCTree() {return 0;}
-  I3FramePtr GetI3ConfigurationFrame() {return 0;}
-
-  SET_LOGGER("CCMParticleInjector");
+    SET_LOGGER("CCMParticleInjector");
 };
 
-
-//I3_POINTER_TYPEDEFS(CCMParticleInjector);
+I3_POINTER_TYPEDEFS(CCMParticleInjector);
 
 #endif
