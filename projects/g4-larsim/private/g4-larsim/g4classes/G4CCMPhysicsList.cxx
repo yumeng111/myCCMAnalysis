@@ -48,19 +48,42 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)
 
     G4OpticalPhysics* opticalPhysics = new G4OpticalPhysics(ver);
 
-    //The Following lines set more specific parameters for scintillation.
-    opticalPhysics->SetWLSTimeProfile("delta");
-    opticalPhysics->SetScintillationYieldFactor(1.0);//for e/m
-    //opticalPhysics->SetScintillationYieldFactor(.25);//for nucleon
-    opticalPhysics->SetScintillationExcitationRatio(0.0);
-
-    opticalPhysics->SetMaxNumPhotonsPerStep(100);
-    opticalPhysics->SetMaxBetaChangePerStep(10.0);
-
-    opticalPhysics->SetTrackSecondariesFirst(kCerenkov, true);
-    opticalPhysics->SetTrackSecondariesFirst(kScintillation, true);
-
+#if G4VERSION_NUMBER >= 1100
     RegisterPhysics(opticalPhysics);
+    G4OpticalParameters* params = G4OpticalParameters::Instance();
+#elif G4VERSION_NUMBER >= 1000
+    G4OpticalPhysics* params = opticalPhysics;
+#endif
+
+    //The Following lines set more specific parameters for scintillation.
+    params->SetWLSTimeProfile("delta");
+#if G4VERSION_NUMBER >= 1100
+#else
+    // In geant4.11.1 and beyond, this needs to be set in the material properties table
+    // These can also be set on a per-particle basis and a per-component basis
+    params->SetScintillationYieldFactor(1.0);//for e/m
+    //params->SetScintillationYieldFactor(.25);//for nucleon
+    params->SetScintillationExcitationRatio(0.0);
+#endif
+
+#if G4VERSION_NUMBER >= 1100
+    params->SetCerenkovMaxPhotonsPerStep(100);
+    params->SetCerenkovMaxBetaChange(10.0);
+
+    params->SetCerenkovTrackSecondariesFirst(true);
+    params->SetScintTrackSecondariesFirst(true);
+#else
+    params->SetMaxNumPhotonsPerStep(100);
+    params->SetMaxBetaChangePerStep(10.0);
+
+    params->SetTrackSecondariesFirst(kCerenkov, true);
+    params->SetTrackSecondariesFirst(kScintillation, true);
+#endif
+
+#if G4VERSION_NUMBER >= 1100
+#elif G4VERSION_NUMBER >= 1000
+    RegisterPhysics(opticalPhysics);
+#endif
 }
 
 G4CCMPhysicsList::~G4CCMPhysicsList() {
