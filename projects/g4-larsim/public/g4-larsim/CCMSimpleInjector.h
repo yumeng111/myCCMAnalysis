@@ -18,7 +18,7 @@
 #include <dataclasses/physics/I3MCTreeUtils.h>
 #include <dataclasses/physics/I3Particle.h>
 #include <icetray/I3ServiceBase.h>
-#include "CCMParticleInjector.h"
+#include "g4-larsim/CCMParticleInjector.h"
 
 class CCMSimpleInjector : public CCMParticleInjector {
 private:

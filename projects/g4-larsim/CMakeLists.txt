@@ -15,6 +15,7 @@ if (GEANT4_FOUND AND CLHEP_FOUND)
     )
 
     i3_add_library(${PROJECT_NAME}
+        private/g4-larsim/CCMSimpleInjector.cxx
         private/g4-larsim/g4classes/*.hh
         private/g4-larsim/g4classes/*.cxx
         private/g4-larsim/g4classes/*.cc
