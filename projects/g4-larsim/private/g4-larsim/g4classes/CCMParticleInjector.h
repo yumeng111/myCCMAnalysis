@@ -10,30 +10,28 @@
 #include <icetray/I3PointerTypedefs.h>
 #include <icetray/I3SingleServiceFactory.h>
 
-class CCMParticleInjector : public I3ServiceBase
-{
+class CCMParticleInjector : public I3ServiceBase {
+ private: 
  public:
 
-  CCMParticleInjector(I3Configuration& config, const I3Context& context):
-    context_(context),
-    configuration_(config)
-  {}
 
+  // construct self & declare configuration parameters
+  CCMParticleInjector(const I3Context &context): I3ServiceBase(context) {}
+
+  // cleanup
   virtual ~CCMParticleInjector() {}
 
+  // get configuration parameters
   virtual void Configure() {}
-  virtual I3MCTreePtr GetI3MCTree() {}
-  virtual I3FramePtr GetI3ConfigurationFrame() {}
 
- private:
-
-  const I3Context& context_;
-  I3Configuration& configuration_;
+  // get IMCTree and Configuration for simulation  
+  I3MCTreePtr GetI3MCTree() {return 0;}
+  I3FramePtr GetI3ConfigurationFrame() {return 0;}
 
   SET_LOGGER("CCMParticleInjector");
 };
 
 
-I3_POINTER_TYPEDEFS(CCMParticleInjector);
+//I3_POINTER_TYPEDEFS(CCMParticleInjector);
 
 #endif
