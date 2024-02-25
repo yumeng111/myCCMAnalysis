@@ -39,6 +39,8 @@
 
 using namespace boost::python;
 
+namespace {
+
 template<typename theType>
 std::string to_str(const theType& theStr){
     std::ostringstream oss;
@@ -48,12 +50,12 @@ std::string to_str(const theType& theStr){
 
 std::string to_str_CCMSPETemplate(const CCMSPETemplate& self){
     return to_str<CCMSPETemplate>(self); };
+std::string to_str_CCMPMTCalibration(const CCMPMTCalibration& self){
+    return to_str<CCMPMTCalibration>(self); };
 std::string to_str_CCMPMTCalibrationMap(const CCMPMTCalibrationMap& self){
     return to_str<CCMPMTCalibrationMap>(self); };
-
-namespace {
-    std::string to_str_SPEChargeDistribution(const SPEChargeDistribution& self){
-        return to_str<SPEChargeDistribution>(self); };
+std::string to_str_SPEChargeDistribution(const SPEChargeDistribution& self){
+    return to_str<SPEChargeDistribution>(self); };
 };
 
 void register_CCMPMTCalibration() {
@@ -65,10 +67,10 @@ void register_CCMPMTCalibration() {
         .def_readwrite("duration", &CCMSinglePulseParameters::duration)
         .def(dataclass_suite<CCMSinglePulseParameters>());
 
-    class_<CCMSinglePulseParametersSeries, 
-        CCMSinglePulseParametersSeriesPtr>("CCMSinglePulseParametersSeries")
-            .def(dataclass_suite<CCMSinglePulseParametersSeries>())
-            ;
+    class_<CCMSinglePulseParametersSeries, CCMSinglePulseParametersSeriesPtr>("CCMSinglePulseParametersSeries")
+        .def("__str__", to_str_SPEChargeDistribution)
+        .def(dataclass_suite<CCMSinglePulseParametersSeries>())
+        ;
 
     class_<CCMSPETemplate, boost::shared_ptr<CCMSPETemplate>>("CCMSPETemplate")
 #define CCMSPETemplatePROPS (PulseParameters)
@@ -78,6 +80,7 @@ void register_CCMPMTCalibration() {
         .staticmethod("EvaluateSinglePulse")
         .def("Evaluate", &CCMSPETemplate::Evaluate)
         .def("GetTemplatePeak", &CCMSPETemplate::GetTemplatePeak)
+        .def("__str__", to_str_CCMSPETemplate)
         .def(dataclass_suite<CCMSPETemplate>());
 
     scope outer = 
@@ -88,15 +91,13 @@ void register_CCMPMTCalibration() {
 #define I3DOMCALPROPS (SPEChargeDistribution)(SPETemplate)
         BOOST_PP_SEQ_FOR_EACH(WRAP_PROP_INTERNAL_REFERENCE, CCMPMTCalibration, I3DOMCALPROPS)
 #undef I3DOMCALPROPS
-        .def("__str__", to_str_CCMSPETemplate)
-        .def("__str__", to_str_SPEChargeDistribution)
-        .def("__str__", to_str_CCMPMTCalibrationMap)
+        .def("__str__", to_str_CCMPMTCalibration)
         .def(dataclass_suite<CCMPMTCalibration>())
         ;
 
-    class_<CCMPMTCalibrationMap, 
-        CCMPMTCalibrationMapPtr>("CCMPMTCalibrationMap")
-            .def(dataclass_suite<CCMPMTCalibrationMap>())
-            ;
+    class_<CCMPMTCalibrationMap, CCMPMTCalibrationMapPtr>("CCMPMTCalibrationMap")
+        .def("__str__", to_str_CCMPMTCalibrationMap)
+        .def(dataclass_suite<CCMPMTCalibrationMap>())
+        ;
 }
 }
