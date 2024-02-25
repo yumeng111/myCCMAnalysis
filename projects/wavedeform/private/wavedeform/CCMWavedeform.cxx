@@ -1144,6 +1144,7 @@ public:
     size_t num_threads;
     size_t max_cached_frames;
     std::string geometry_name_;
+    std::string pmt_channel_map_name_;
     bool geo_seen;
     std::string nim_pulses_name_;
     I3Vector<CCMPMTKey> allowed_pmt_keys_;
@@ -1194,6 +1195,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     geometry_name_(""), geo_seen(false) {
     AddParameter("NumThreads", "Number of worker threads to use for pulse fitting", (size_t)(0));
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("PMTChannelMapName", "Key for PMTChannelMap", std::string(""));
     AddParameter("NIMPulsesName", "Key for NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("SPEsPerBin", "Number of basis functions to unfold per waveform bin", 1.);
     AddParameter("Tolerance", "Stopping tolerance, in units of bin ADC^2/PE", 49.);
@@ -1221,6 +1223,7 @@ void CCMWavedeform::Configure() {
         num_threads = processor_count;
     }
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("PMTChannelMapName", pmt_channel_map_name_);
     GetParameter("NIMPulsesName", nim_pulses_name_);
     GetParameter("Waveforms", waveforms_name_);
     GetParameter("Output", output_name_);
@@ -1248,7 +1251,26 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-    pmt_channel_map_ = geo.pmt_channel_map;
+
+    if(pmt_channel_map_name_ != "") {
+        if(not frame->Has(pmt_channel_map_name_)) {
+            log_fatal("Could not find PMTChannelMap object with the key named \"%s\" in the Geometry frame.", pmt_channel_map_name_.c_str());
+        }
+        boost::shared_ptr<const I3Map<CCMPMTKey, uint32_t>> pmt_channel_map = frame->Get<boost::shared_ptr<const I3Map<CCMPMTKey, uint32_t>>>(pmt_channel_map_name_);
+        boost::shared_ptr<const I3Map<CCMPMTKey, int>> pmt_channel_map_alt = frame->Get<boost::shared_ptr<const I3Map<CCMPMTKey, int>>>(pmt_channel_map_name_);
+        if(pmt_channel_map) {
+            pmt_channel_map_ = *pmt_channel_map;
+        } else if(pmt_channel_map_alt) {
+            for(std::pair<CCMPMTKey const, int> const & p : *pmt_channel_map_alt) {
+                pmt_channel_map_[p.first] = int32_t(p.second);
+            }
+        } else {
+            log_fatal("Could not find PMTChannelMap object with the key named \"%s\" in the Geometry frame.", pmt_channel_map_name_.c_str());
+        }
+    } else {
+        pmt_channel_map_ = geo.pmt_channel_map;
+    }
+
     geo_seen = true;
     templates_.clear();
     for(auto pmt_channel_pair : pmt_channel_map_) {
@@ -1261,6 +1283,9 @@ void CCMWavedeform::Geometry(I3FramePtr frame) {
     bool filter_pmts = allowed_pmt_keys.size() > 0;
     for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : pmt_geo_) {
         if(filter_pmts and allowed_pmt_keys.find(p.first) == allowed_pmt_keys.end()) {
+            continue;
+        }
+        if(pmt_channel_map_.find(p.first) == pmt_channel_map_.end()) {
             continue;
         }
         if(p.second.omtype == CCMOMGeo::OMType::CCM8inCoated or p.second.omtype == CCMOMGeo::OMType::CCM8inUncoated or p.second.omtype == CCMOMGeo::OMType::CCM1in) {
@@ -1323,7 +1348,7 @@ void CCMWavedeform::Calibration(I3FramePtr frame) {
             FillTemplate(templates_.at(key), calib->second, start_time, template_bins, template_bin_spacing, frame);
             std::stringstream ss;
             ss << key << " Template(" << templates_.at(key).start_time << ", " << templates_.at(key).end_time << ") FWHM(" << templates_.at(key).digitizerStart << ", " << templates_.at(key).digitizerStop << ")" << std::endl;
-            log_info(ss.str().c_str());
+            log_info("%s", ss.str().c_str());
         }
     }
 
