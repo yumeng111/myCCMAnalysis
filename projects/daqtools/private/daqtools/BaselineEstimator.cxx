@@ -179,7 +179,6 @@ class BaselineEstimator: public I3Module {
 public:
     BaselineEstimator(const I3Context&);
     void Configure();
-    void Process();
     void Finish();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
@@ -550,36 +549,6 @@ void BaselineEstimator::Configure() {
     GetParameter("MaxCachedFrames", max_cached_frames);
 }
 
-void BaselineEstimator::Process() {
-  if (inbox_)
-    log_trace("%zu frames in inbox", inbox_->size());
-
-  I3FramePtr frame = PopFrame();
-
-  if(!frame or frame->GetStop() == I3Frame::DAQ) {
-    DAQ(frame);
-    return;
-  }
-
-  if(frame->GetStop() == I3Frame::Physics && ShouldDoPhysics(frame))
-    {
-      Physics(frame);
-    }
-  else if(frame->GetStop() == I3Frame::Geometry && ShouldDoGeometry(frame))
-    Geometry(frame);
-  else if(frame->GetStop() == I3Frame::Calibration && ShouldDoCalibration(frame))
-    Calibration(frame);
-  else if(frame->GetStop() == I3Frame::DetectorStatus && ShouldDoDetectorStatus(frame))
-    DetectorStatus(frame);
-  else if(frame->GetStop() == I3Frame::Simulation && ShouldDoSimulation(frame))
-    Simulation(frame);
-  else if(frame->GetStop() == I3Frame::DAQ && ShouldDoDAQ(frame)) {
-    DAQ(frame);
-  } else if(ShouldDoOtherStops(frame))
-    OtherStops(frame);
-}
-
-
 void BaselineEstimator::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_key_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_key_.c_str());
@@ -630,6 +599,7 @@ void BaselineEstimator::Geometry(I3FramePtr frame) {
                     ss << " " << channel;
                 log_warn("%s", ss.str().c_str());
             }
+            log_info("Using %zu channels", channels_.size());
         }
     } else {
         // Copy and sort the pmt keys from the geometry
@@ -759,20 +729,25 @@ void RunFrameThread(BaselineEstimatorJob * job,
 }
 
 void BaselineEstimator::DAQ(I3FramePtr frame) {
-	while(true) {
-		// Check if any jobs have finished
-		for(int i=int(running_jobs.size())-1; i>=0; --i) {
-			if (teptr) {
-				try{
-					std::rethrow_exception(teptr);
-				}
-				catch(const std::exception &ex)
-				{
-					std::cerr << "Thread exited with exception: " << ex.what() << "\n";
-				}
-			}
-			if(not running_jobs[i]->running.load()) {
-				BaselineEstimatorJob * job = running_jobs[i];
+    if(not geo_seen_) {
+        log_fatal("No geometry seen before first DAQ frame");
+        PushFrame(frame);
+        return;
+    }
+    while(true) {
+        // Check if any jobs have finished
+        for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            if (teptr) {
+                try{
+                    std::rethrow_exception(teptr);
+                }
+                catch(const std::exception &ex)
+                {
+                    std::cerr << "Thread exited with exception: " << ex.what() << "\n";
+                }
+            }
+            if(not running_jobs[i]->running.load()) {
+                BaselineEstimatorJob * job = running_jobs[i];
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
@@ -824,14 +799,14 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
             results.back().done = false;
             frame_index += 1;
             RunFrameThread(job,
-                ccm_waveforms_key_,
-                output_key_,
-                geo_,
-                pmt_keys_,
-                channels_,
-                output_channels_,
-                num_samples,
-                num_exp_samples);
+                    ccm_waveforms_key_,
+                    output_key_,
+                    geo_,
+                    pmt_keys_,
+                    channels_,
+                    output_channels_,
+                    num_samples,
+                    num_exp_samples);
             break;
         } else if(job != nullptr) {
             free_jobs.push_back(job);
