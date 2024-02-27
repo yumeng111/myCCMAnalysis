@@ -376,6 +376,7 @@ class PhotonPropagation {
     std::vector<double> times_of_data_points_;
 
     I3Vector<I3Vector<double>> blank_data_series_;
+    I3Vector<I3Vector<double>> blank_data_sigma_squared_;
     size_t n_blank_data_samples_;
     double max_blank_data_value_;
     double time_of_max_blank_data_value_;
@@ -388,7 +389,7 @@ class PhotonPropagation {
     I3Vector<I3Vector<double>> coated_pmt_locs_bottom_;
     I3Vector<I3Vector<double>> uncoated_pmt_locs_side_;
     I3Vector<I3Vector<double>> coated_pmt_locs_side_;
-    
+ 
     double final_top_loc_width_;
     double final_top_loc_height_;
     I3Vector<I3Vector<double>> top_loc_xy_;
@@ -416,7 +417,7 @@ public:
     PhotonPropagation();
     void SetData(I3Vector<I3Vector<double>> data_series);
     void SetDataSampleSize(size_t n_data_samples);
-    void SetBlankData(I3Vector<I3Vector<double>> blank_data_series);
+    void SetBlankData(I3Vector<I3Vector<double>> blank_data_series, I3Vector<I3Vector<double>> blank_data_sigma_squared_);
     void SetBlankDataSampleSize(size_t n_blank_data_samples);
     void SetNThreads(size_t const & n_threads);
     size_t GetNFaceChunks();
@@ -453,9 +454,9 @@ public:
     I3Vector<double> GetTopPMTPortion();
     I3Vector<double> GetBottomPMTPortion();
     I3Vector<double> GetSidePMTPortion();
-    I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
+    //I3Vector<I3Vector<I3Vector<double>>> GetSimulation(double const & singlet_ratio_,
     //I3Vector<I3Vector<double>> GetSimulation(double const & singlet_ratio_,
-    //double GetSimulation(double const & singlet_ratio_,
+    double GetSimulation(double const & singlet_ratio_,
                          double const & triplet_ratio_,
                          double const & singlet_tau_,
                          double const & triplet_tau_,
@@ -463,6 +464,7 @@ public:
                          double const & TPB_ratio_,
                          double const & TPB_tau_,
                          double const & UV_absorption_length_,
-                         double const & n_photons_produced_);
+                         double const & n_photons_produced_,
+                         double const & ratio_blank_to_signal);
 };
 #endif

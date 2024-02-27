@@ -67,6 +67,181 @@ void get_ray_intersections(double const & x,
     return_z = zz;
 
 }
+void get_pmt_efficiency(double const & incident_angel,
+                        double & eff){
+
+    // incident_angel should be in radians so let's convert to degrees bc our data is in degrees
+    double incident_angel_deg = incident_angel * (180.0 / M_PI);
+
+    // let's first hard code in some values for various incident angles and the PMT efficiency
+    // these numbers are the results of digitizing fig 13 in : https://arxiv.org/pdf/1005.3525.pdf
+    std::vector<double> pmt_eff = {0.0034722090890164647,
+                                   0.004797601199398871,
+                                   0.005632590403361615,
+                                   0.005712672154569276,
+                                   0.005997001499248977,
+                                   0.007150491739774445,
+                                   0.01023251749505727,
+                                   0.015479920616752851,
+                                   0.022788605697150244,
+                                   0.03230830358345416,
+                                   0.04706656157357281,
+                                   0.06596701649175274,
+                                   0.08790393934953111,
+                                   0.1163418290854561,
+                                   0.14923947669153903,
+                                   0.18695551745658157,
+                                   0.2261795591982163,
+                                   0.26681317665299276,
+                                   0.3118771972129495,
+                                   0.3544006922641807,
+                                   0.40256188221153033,
+                                   0.4526042646692843,
+                                   0.5017268877522957,
+                                   0.5556498497162897,
+                                   0.6073444371457467,
+                                   0.6570606734419564,
+                                   0.7063237394745323,
+                                   0.7551049833934707,
+                                   0.8046100481729557,
+                                   0.8458521500450298,
+                                   0.8873344971707275,
+                                   0.9220179156263747,
+                                   0.9477161375814922,
+                                   0.9706524409246735,
+                                   0.9867978581392213,
+                                   0.9928058154480832,
+                                   0.9979010494752627,
+                                   0.9938432262772489,
+                                   0.9883058470764621,
+                                   0.972582225633595,
+                                   0.952594222824792,
+                                   0.9221492466343728,
+                                   0.888675074629466,
+                                   0.8482756571133436,
+                                   0.806098974804096,
+                                   0.7601314995270648,
+                                   0.7130111772548448,
+                                   0.6667360427783372,
+                                   0.6169187774533783,
+                                   0.5664389780502773,
+                                   0.5186132651377655,
+                                   0.4693888969976484,
+                                   0.4239970613090267,
+                                   0.3795918361924826,
+                                   0.33706243876756625,
+                                   0.2956850413418771,
+                                   0.25283049976492633,
+                                   0.21359166243566052,
+                                   0.1833927693250652,
+                                   0.14489747151942245,
+                                   0.11164276235088089,
+                                   0.08298493496473336,
+                                   0.05894347426423363,
+                                   0.04301287952514854,
+                                   0.03053071115594741,
+                                   0.02038980509745003,
+                                   0.014457760866660285,
+                                   0.008397347149022627,
+                                   0.005997001499248977,
+                                   0.005232181647321976,
+                                   0.004797601199398871,
+                                   0.005232181647321976,
+                                   0.005550682683884922};
+
+    std::vector<double> incident_angle = {-180.29791845581332,
+                                          -175.21367521367534,
+                                          -170.4013822434876, 
+                                          -165.63305115936706,
+                                          -160.2564102564104, 
+                                          -155.47495876443253,
+                                          -150.54083343557036,
+                                          -145.3451519240994, 
+                                          -139.7435897435899, 
+                                          -135.56209871999357,
+                                          -130.64939830867823,
+                                          -125.6410256410258, 
+                                          -120.20917678812432,
+                                          -114.95726495726518,
+                                          -110.44067268763652,
+                                          -105.66024618656229,
+                                          -100.3473267827338, 
+                                          -95.55371529055776, 
+                                          -90.53183658446858, 
+                                          -85.5099578783794,
+                                          -80.4953144021975,
+                                          -75.19094715451041, 
+                                          -70.1473234367977,
+                                          -65.09405798879544, 
+                                          -60.487465750624324,
+                                          -55.448678626816985,
+                                          -50.46142940879861, 
+                                          -45.07877821275031, 
+                                          -40.48424993401156, 
+                                          -35.462371227922375,
+                                          -30.21222530792005, 
+                                          -25.04702899439843, 
+                                          -19.940200681828514,
+                                          -14.952562057826242,
+                                          -10.208358892570516,
+                                          -5.012677381099536, 
+                                          -1.0800249583553523e-12,
+                                          4.883858831226178,
+                                          10.256410256409197, 
+                                          15.101419048786454, 
+                                          19.83601194127408,
+                                          24.902728850096253, 
+                                          30.05912216438435,
+                                          35.215515478672444, 
+                                          40.285681480012556, 
+                                          45.011275274432364, 
+                                          50.06624953993298,
+                                          55.31509426246191,
+                                          60.32490900911887,
+                                          65.07637099742294,
+                                          70.48214942951722,
+                                          75.16635411372192,
+                                          80.383239833,
+                                          84.92005070952382,
+                                          90.19873003126543,
+                                          95.22060873735467,
+                                          99.94084862505878,
+                                          105.58298913562032, 
+                                          110.02944423997019, 
+                                          115.30241688136397, 
+                                          120.32429558745321, 
+                                          125.36549707602325, 
+                                          130.34115007799198, 
+                                          135.04948268106136, 
+                                          140.42142068457838, 
+                                          145.72649572649556, 
+                                          150.78737052421246, 
+                                          155.22627395097004, 
+                                          160.2564102564101,
+                                          165.5573958205535,
+                                          170.51282051282033, 
+                                          175.0265816055288,
+                                          180.22226311699978};
+
+    auto it_below = std::lower_bound(incident_angle.begin(), incident_angle.end(), incident_angel_deg);
+
+    if (it_below == incident_angle.begin()) {
+        eff = pmt_eff.front();
+    }
+    else if (it_below == incident_angle.end()) {
+        eff = pmt_eff.back();
+    }
+    else {
+        int idx_below = std::distance(incident_angle.begin(), it_below) - 1;
+        double time_below = incident_angle.at(idx_below);
+        double data_value_below = pmt_eff.at(idx_below);
+
+        double time_above = incident_angle.at(idx_below + 1);
+        double data_value_above = pmt_eff.at(idx_below + 1);
+
+        eff = data_value_below + (incident_angel_deg - time_below) * (data_value_above - data_value_below) / (time_above - time_below);
+    }
+}
 
 void combined_area_penalty(double const & chunk_center_x,
                            double const & chunk_center_y,
@@ -529,9 +704,12 @@ void PhotonPropagation::SetDataSampleSize(size_t n_data_samples){
     n_data_samples_ = n_data_samples;
 }
 
-void PhotonPropagation::SetBlankData(I3Vector<I3Vector<double>> blank_data_series){
+void PhotonPropagation::SetBlankData(I3Vector<I3Vector<double>> blank_data_series, I3Vector<I3Vector<double>> blank_data_sigma_squared){
     blank_data_series_ = blank_data_series;
+    blank_data_sigma_squared_ = blank_data_sigma_squared;
     // blank_data_series_ is index by n_pmts x n_time_bins
+    // (charge summed over events)
+    // blank_data_series_ should be the same size as blank_data_sigma_squared_
     // while we are setting the data, let's also set the time
     // we want the peak of the data time to be at 0 and 2 nsec binning
 
@@ -2037,9 +2215,9 @@ size_t findNearestIndex(std::vector<double> const & vec, double targetValue) {
     return nearestIndex;
 }
 
-I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+//I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
 //I3Vector<I3Vector<double>> PhotonPropagation::GetSimulation(double const & singlet_ratio_,
-//double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
+double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                         double const & triplet_ratio_,
                                         double const & singlet_tau_,
                                         double const & triplet_tau_,
@@ -2047,7 +2225,8 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
                                         double const & TPB_ratio_,
                                         double const & TPB_tau_,
                                         double const & UV_absorption_length_,
-                                        double const & n_photons_produced_) {
+                                        double const & n_photons_produced_,
+                                        double const & ratio_blank_to_signal) {
     // will be used for multi-threading our simulation jobs
     std::deque<PhotonPropagationJob *> free_jobs;
     std::deque<PhotonPropagationJob *> running_jobs;
@@ -2275,23 +2454,23 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
         }
     }
 
-    return events_binned_charges;
+    //return events_binned_charges;
     //return summed_over_events_binned_charges;
     //return events_binned_charges;
     //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     //std::cout << "finished simulating " << total_events_that_escaped << " events in " << std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() << ".at(ms)" << std::endl;
 
     // let's print out the averaged summed wf just to make sure i didnt fuck anything up
-    double total_charge_in_this_time_bin;
-    std::cout << "for " << total_events_that_escaped << " total events, or " << equivalent_events_in_data << " equivalent events in data, avg summed wf = " << std::endl;
-    for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
-        total_charge_in_this_time_bin = 0;
-        for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
-            total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
-        }
-        total_charge_in_this_time_bin /= total_events_that_escaped;
-        std::cout << total_charge_in_this_time_bin << ", " << std::endl;
-    }
+    //double total_charge_in_this_time_bin;
+    //std::cout << "for " << total_events_that_escaped << " total events, or " << equivalent_events_in_data << " equivalent events in data, avg summed wf = " << std::endl;
+    //for (size_t time_bin_it = 0; time_bin_it < bin_centers.size(); time_bin_it ++){
+    //    total_charge_in_this_time_bin = 0;
+    //    for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
+    //        total_charge_in_this_time_bin += summed_over_events_binned_charges.at(pmt_it).at(time_bin_it);
+    //    }
+    //    total_charge_in_this_time_bin /= total_events_that_escaped;
+    //    std::cout << total_charge_in_this_time_bin << ", " << std::endl;
+    //}
 
     // instead of just returning the averaged_all_events_binned_charges, we are going to compute the liklihood quickly
     // we are computing the liklihood on a per-pmt basis on a per-time bin basis
@@ -2336,8 +2515,12 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
     double total_nllh = 0.0;
 
     // now we can loop over our simulation, check that we are within the time bands to calculate the nllh, then calculate it!
-    double mu;
-    double sigma_squared;
+    double mu_signal;
+    double mu_background;
+    double mu_total;
+    double sigma_squared_signal;
+    double sigma_squared_background;
+    double sigma_squared_total;
     double k;
     size_t this_time_bin_in_data_idx;
     bool simulation_data_present;
@@ -2360,14 +2543,18 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
         for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
             // so now we are looping over each pmt, we need to calculate the nllh for each time bin for each pmt
             k = data_series_[pmt_it][this_time_data_idx];
+            mu_background = blank_data_series_[pmt_it][this_time_data_idx] * (ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_));
+            sigma_squared_background = blank_data_sigma_squared_[pmt_it][this_time_data_idx] * std::pow(ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_), 2.0); 
             if (simulation_data_present){
-                mu = summed_over_events_binned_charges[pmt_it][this_time_simulation_idx] * (n_data_samples_ / equivalent_events_in_data);
-                sigma_squared = summed_over_squared_events_binned_charges[pmt_it][this_time_simulation_idx] * std::pow((n_data_samples_ / equivalent_events_in_data), 2);
+                mu_signal = summed_over_events_binned_charges[pmt_it][this_time_simulation_idx] * ((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data));
+                sigma_squared_signal = summed_over_squared_events_binned_charges[pmt_it][this_time_simulation_idx] * std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2);
             } else {
-                mu = (noise_rate_per_time_bin * equivalent_events_in_data) * (n_data_samples_ / equivalent_events_in_data);
-                sigma_squared = std::pow(noise_rate_per_time_bin * equivalent_events_in_data, 2) * std::pow((n_data_samples_ / equivalent_events_in_data), 2);
+                mu_signal = (noise_rate_per_time_bin * equivalent_events_in_data) * ((1.0 - ratio_blank_to_signal) * n_data_samples_ / equivalent_events_in_data);
+                sigma_squared_signal = std::pow(noise_rate_per_time_bin * equivalent_events_in_data, 2.0) * std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2.0);
             }
-            total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+            mu_total = mu_background + mu_signal;
+            sigma_squared_total = sigma_squared_background + sigma_squared_signal;
+            total_nllh += MCLLH::LEff()(k, mu_total, sigma_squared_total);
         }
 
     }
@@ -2380,6 +2567,6 @@ I3Vector<I3Vector<I3Vector<double>>> PhotonPropagation::GetSimulation(double con
     }
 
 
-    //return total_nllh;
+    return total_nllh;
 
 }
