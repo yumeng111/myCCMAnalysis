@@ -97,7 +97,7 @@ I3_POINTER_TYPEDEFS(I3MapI3ParticleIDDouble);
 std::ostream& operator<<(std::ostream &, const I3ParticleID &);
 
 #ifndef __CINT__
-#include <I3/hash_map.h>
+#include <icetray/hash_map.h>
 
 #ifdef USING_GCC_EXT_HASH_MAP
 

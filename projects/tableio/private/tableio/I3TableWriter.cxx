@@ -15,7 +15,7 @@
 #include "tableio/I3TableWriter.h"
 #include "tableio/I3TableService.h"
 #include "tableio/converter/I3IndexColumnsGenerator.h"
-#include <I3/name_of.h>
+#include <icetray/name_of.h>
 
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>

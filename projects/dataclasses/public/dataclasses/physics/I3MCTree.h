@@ -28,7 +28,7 @@
 #include <icetray/serialization.h>
 #include <icetray/I3Logging.h>
 
-#include <I3/hash_map.h>
+#include <icetray/hash_map.h>
 #include "dataclasses/physics/I3Particle.h"
 #include "dataclasses/physics/I3ParticleID.h"
 #include "dataclasses/physics/detail/I3MCTree_fwd.h"

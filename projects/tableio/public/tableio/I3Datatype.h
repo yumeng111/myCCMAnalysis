@@ -20,7 +20,7 @@
 #include <string>
 #include <cctype>
 
-#include <I3/name_of.h>
+#include <icetray/name_of.h>
 
 /**
  * \brief Represents an atomic datatype
