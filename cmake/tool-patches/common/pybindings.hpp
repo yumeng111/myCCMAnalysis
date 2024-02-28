@@ -5,7 +5,7 @@
 #include <cctype>
 #include <boost/shared_ptr.hpp>
 #include "icetray/I3FrameObject.h"
-#include "I3/name_of.h"
+#include "icetray/name_of.h"
 
 class freeze : public boost::python::def_visitor< freeze >{
   friend class boost::python::def_visitor_access;

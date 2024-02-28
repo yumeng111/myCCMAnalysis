@@ -1,3 +1,7 @@
+#ifndef I3_NAME_OF_H_INCLUDED
+#define I3_NAME_OF_H_INCLUDED
+
+#ifndef __CINT__
 #ifndef ICETRAY_NAME_OF_H_INCLUDED
 #define ICETRAY_NAME_OF_H_INCLUDED
 
@@ -18,3 +22,12 @@ namespace icetray
 
 #endif
 #endif
+
+namespace I3 {
+
+  using icetray::name_of;
+
+}
+#endif
+#endif
+

@@ -41,8 +41,8 @@
 #include <icetray/I3DefaultName.h>
 
 #include <icetray/is_shared_ptr.h>
-#include <I3/name_of.h>
-#include <I3/hash_map.h>
+#include <icetray/name_of.h>
+#include <icetray/hash_map.h>
 
 #include <boost/any.hpp>
 #include <boost/python.hpp>

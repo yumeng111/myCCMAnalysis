@@ -4,7 +4,7 @@
 #  include <boost/thread/locks.hpp>
 #  include <boost/thread/mutex.hpp>
 
-#include <I3/hash_map.h>
+#include <icetray/hash_map.h>
 #include <icetray/Utility.h>
 
 

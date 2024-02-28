@@ -35,7 +35,7 @@
 #include <deque>
 #include <string>
 #include <vector>
-#include <I3/hash_map.h>
+#include <icetray/hash_map.h>
 #include <stdint.h>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/utility/enable_if.hpp>
@@ -47,7 +47,7 @@
 #include <icetray/I3Logging.h>
 #include <icetray/IcetrayFwd.h>
 #include <icetray/is_shared_ptr.h>
-#include <I3/name_of.h>
+#include <icetray/name_of.h>
 
 /**
    The I3Frame is the container that I3Modules use to communicate with
