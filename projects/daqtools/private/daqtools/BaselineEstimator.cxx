@@ -450,9 +450,17 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
 
     // vector to store results of outlier filter
     N = std::min(N, window_size);
+    if(N == 0) {
+        baseline.baseline = std::numeric_limits<double>::quiet_NaN();
+        baseline.stddev = 0;
+        baseline.num_frames = 1;
+        baseline.num_samples = 0;
+        return;
+    }
+
     size_t N_for_variance = std::min(smoothed_samples.size(), std::max(size_t(smoothed_samples.size() * variance_percentile), size_t(3)));
-    size_t N_for_variance_half = N_for_variance / 2;
-    size_t N_for_variance_opposite_half = N_for_variance - N_for_variance_half;
+    size_t N_half = N_for_variance / 2;
+    size_t N_opposite_half = N - std::min(N, N_half);
     std::vector<std::tuple<double, double>> variance_and_values;
     variance_and_values.reserve(N+1);
     WindowedStats stats;
@@ -462,11 +470,11 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
     std::function<bool(std::tuple<double, double>, std::tuple<double, double>)> comp = [](std::tuple<double, double> const & a, std::tuple<double, double> const & b) {
         return std::get<0>(a) < std::get<0>(b);
     };
-    for(size_t i=0; i<N_for_variance_half; ++i) {
+    for(size_t i=0; i<N_half; ++i) {
         double const var = stats.Variance();
         double const val = smoothed_samples.at(i);
 
-        if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
+        if(variance_and_values.size() < N_for_variance or var < std::get<0>(variance_and_values.back())) {
             std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
             variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
             if(variance_and_values.size() > N_for_variance) {
@@ -474,12 +482,12 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
             }
         }
     }
-    for(size_t i=N_for_variance_half; i<smoothed_samples.size()-N_for_variance_opposite_half; ++i) {
-        stats.AddValue(smoothed_samples[i+N_for_variance_opposite_half]);
+    for(size_t i=N_half; i + N_opposite_half<smoothed_samples.size(); ++i) {
+        stats.AddValue(smoothed_samples[i+N_opposite_half]);
         stats.RemoveValue();
         double const var = stats.Variance();
         double const val = smoothed_samples.at(i);
-        if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
+        if(variance_and_values.size() < N_for_variance or var < std::get<0>(variance_and_values.back())) {
             std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
             variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
             if(variance_and_values.size() > N_for_variance) {
@@ -487,10 +495,10 @@ void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsi
             }
         }
     }
-    for(size_t i=smoothed_samples.size()-N_for_variance_opposite_half; i<smoothed_samples.size(); ++i) {
+    for(size_t i=smoothed_samples.size()-N_opposite_half; i<smoothed_samples.size(); ++i) {
         double const var = stats.Variance();
         double const val = smoothed_samples.at(i);
-        if(variance_and_values.size() == 0 or var < std::get<0>(variance_and_values.back())) {
+        if(variance_and_values.size() < N_for_variance or var < std::get<0>(variance_and_values.back())) {
             std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
             variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
             if(variance_and_values.size() > N_for_variance) {
@@ -669,7 +677,7 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
         ProcessWaveformVariance(
             baseline_estimates_variance[i],
             std::cref(waveforms->at(channel).GetWaveform()),
-            10,
+            5,
             0.1
         );
     }
