@@ -309,85 +309,7 @@ void FitExponential(std::vector<double> const & y, double & a, double & b, doubl
     b = double(m_inv01 * v0 + m_inv11 * v1);
 }
 
-void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int> const & samples, size_t target_num_samples, size_t target_exp_samples) {
-    baseline.target_num_frames = 1;
-    if (samples.size() == 0) {
-        baseline.baseline = std::numeric_limits<double>::quiet_NaN();
-        baseline.stddev = std::numeric_limits<double>::quiet_NaN();
-        baseline.num_frames = 1;
-        baseline.num_samples = 0;
-        return;
-    }
-
-    // vector to store results of outlier filter
-    size_t N = std::min(samples.size(), target_num_samples);
-    std::vector<double> outlier_filter_results;
-    outlier_filter_results.reserve(N);
-    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), N));
-    std::sort(starting_samples.begin(), starting_samples.end());
-    double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
-    OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
-    starting_value = outlier_filter_results.back();
-
-    double flat_mean = 0;
-    double flat_sigma = 0;
-    double linear_intercept = 0;
-    double linear_slope = 0;
-    double linear_sigma = 0;
-    LinearFlatFit(outlier_filter_results.begin(), outlier_filter_results.end(), linear_intercept, linear_slope, linear_sigma, flat_mean, flat_sigma);
-
-    double flat_chi2_per_dof_threshold = 1.0;
-    double flat_sigma_threshold = 35.0;
-    double flat_chi2_per_dof = FlatChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), flat_mean, flat_sigma);
-
-    bool bad_flat_fit = isnan(flat_mean) or isnan(flat_sigma);
-    bool good_flat_fit = flat_chi2_per_dof < flat_chi2_per_dof_threshold and flat_sigma < flat_sigma_threshold;
-
-    if(bad_flat_fit) {
-        // Extend the outlier filter to the whole waveform
-        OutlierFilter(starting_value, samples.begin() + N, samples.end(), std::back_inserter(outlier_filter_results));
-    }
-
-    if(bad_flat_fit or good_flat_fit) {
-        // Do nothing
-    } else {
-        // Flat fit is not good enough, let's try an exponential
-        // initializing the exponential fit params
-        double a;
-        double b;
-        double c;
-
-        // Run the outlier filter on the rest of the waveform
-        OutlierFilter(starting_value, samples.begin() + N, samples.begin() + std::min(std::max(N, target_exp_samples - target_num_samples), samples.size()), std::back_inserter(outlier_filter_results));
-        starting_value = outlier_filter_results.back();
-        FitExponential(outlier_filter_results, a, b, c);
-
-        bool bad_exp_fit = isnan(a) or isnan(b) or isnan(c);
-        if(bad_exp_fit) {
-            OutlierFilter(starting_value, samples.begin() + outlier_filter_results.size(), samples.end(), std::back_inserter(outlier_filter_results));
-            // Use the outlier filter result of the whole waveform as is
-            // i.e. do nothing
-        } else {
-            // Subtract off the exponential component from the outlier filter
-            for (size_t exp_it = 0; exp_it < outlier_filter_results.size(); ++exp_it){
-                outlier_filter_results[exp_it] -= b * std::exp(c * (exp_it * 2.0));
-            }
-        }
-    }
-
-    std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
-    double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
-    double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
-    baseline.baseline = -1 * baseline_mode_val;
-    baseline.stddev = baseline_std;
-    baseline.num_frames = 1;
-    baseline.num_samples = outlier_filter_results.size();
-    outlier_filter_results.clear();
-    outlier_filter_results.shrink_to_fit();
-    return;
-}
-
-void ProcessWaveformVariance(BaselineEstimate & baseline, std::vector<short unsigned int> const & samples, size_t window_size, double variance_percentile) {
+void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int> const & samples, size_t window_size, double variance_percentile) {
     baseline.target_num_frames = 1;
     if (samples.size() == 0) {
         baseline.baseline = std::numeric_limits<double>::quiet_NaN();
@@ -656,8 +578,6 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
     }
     std::vector<BaselineEstimate> baseline_estimates;
     baseline_estimates.resize(num_baselines);
-    std::vector<BaselineEstimate> baseline_estimates_variance;
-    baseline_estimates_variance.resize(num_baselines);
 
     // loop over each channel in waveforms
     for(size_t i=0; i<num_baselines; ++i) {
@@ -671,12 +591,6 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
         ProcessWaveform(
             baseline_estimates[i],
             std::cref(waveforms->at(channel).GetWaveform()),
-            num_samples,
-            num_exp_samples
-        );
-        ProcessWaveformVariance(
-            baseline_estimates_variance[i],
-            std::cref(waveforms->at(channel).GetWaveform()),
             5,
             0.1
         );
@@ -688,11 +602,6 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
             baselines->emplace(channels_[i], baseline_estimates[i]);
         }
         frame->Put(output_key_, baselines);
-        boost::shared_ptr<I3Map<uint32_t, BaselineEstimate>> baselines_variance = boost::make_shared<I3Map<uint32_t, BaselineEstimate>>();
-        for(size_t i = 0; i < num_baselines; ++i) {
-            baselines_variance->emplace(channels_[i], baseline_estimates_variance[i]);
-        }
-        frame->Put(output_key_ + "Variance", baselines_variance);
     } else {
         // I3Map to store pmt key and baselines
         boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
@@ -700,11 +609,6 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
             baselines->emplace(pmt_keys_[i], baseline_estimates[i]);
         }
         frame->Put(output_key_, baselines);
-        boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate>> baselines_variance = boost::make_shared<I3Map<CCMPMTKey, BaselineEstimate>>();
-        for(size_t i = 0; i < num_baselines; ++i) {
-            baselines_variance->emplace(pmt_keys_[i], baseline_estimates_variance[i]);
-        }
-        frame->Put(output_key_ + "Variance", baselines_variance);
     }
 
     running.store(false);
