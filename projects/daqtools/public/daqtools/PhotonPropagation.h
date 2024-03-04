@@ -285,6 +285,12 @@ class PhotonPropagation {
     double desired_chunk_width_ = 20.0; // use 5 for finer binning
     double desired_chunk_height_ = 20.0; // use 5 for finer binning
     size_t n_events_to_simulate_ = 1000;
+    bool blank_flag_ = false;
+    bool all_coated_pmt_flag_ = false;
+    bool side_coated_pmt_flag_ = false;
+    std::vector<double> pmt_nllh_status_;
+    bool first_time_applying_z_offset_ = true;
+    std::vector<double> original_z_vertices_;
 
     // place to store relevant information about our pmts!!!
     // pmt_x_loc, pmt_y_loc, pmt_z_loc, facing direction_x, facing_direction_y, facing_direction_z, coating flag, pmt facing area, pmt side area
@@ -415,8 +421,11 @@ class PhotonPropagation {
 
 public:
     PhotonPropagation();
+    void OnlySideCoatedPMTs(bool side_coated_pmt_flag);
+    void OnlyAllCoatedPMTs(bool all_coated_pmt_flag);
     void SetData(I3Vector<I3Vector<double>> data_series);
     void SetDataSampleSize(size_t n_data_samples);
+    void SetBlankDataFlag(bool blank_flag);
     void SetBlankData(I3Vector<I3Vector<double>> blank_data_series, I3Vector<I3Vector<double>> blank_data_sigma_squared_);
     void SetBlankDataSampleSize(size_t n_blank_data_samples);
     void SetNThreads(size_t const & n_threads);
@@ -425,6 +434,7 @@ public:
     size_t GetNSimulatedEvents();
     void SetZOffset(double source_z_offset);
     void GetEventVertices(size_t const & n_events_to_simulate);
+    void ApplyZOffsetToEvents();
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height);
     I3Vector<I3Vector<double>> GetTopCoatedPMTLocs();

@@ -67,11 +67,11 @@ void get_ray_intersections(double const & x,
     return_z = zz;
 
 }
-void get_pmt_efficiency(double const & incident_angel,
-                        double & eff){
+void pmt_eff_linear_interpolation(double const & desired_incident_angle,
+                                  double & eff){
 
-    // incident_angel should be in radians so let's convert to degrees bc our data is in degrees
-    double incident_angel_deg = incident_angel * (180.0 / M_PI);
+    // incident_angle should be in radians so let's convert to degrees bc our data is in degrees
+    double desired_incident_angel_deg = desired_incident_angle * (180.0 / M_PI);
 
     // let's first hard code in some values for various incident angles and the PMT efficiency
     // these numbers are the results of digitizing fig 13 in : https://arxiv.org/pdf/1005.3525.pdf
@@ -223,7 +223,7 @@ void get_pmt_efficiency(double const & incident_angel,
                                           175.0265816055288,
                                           180.22226311699978};
 
-    auto it_below = std::lower_bound(incident_angle.begin(), incident_angle.end(), incident_angel_deg);
+    auto it_below = std::lower_bound(incident_angle.begin(), incident_angle.end(), desired_incident_angel_deg);
 
     if (it_below == incident_angle.begin()) {
         eff = pmt_eff.front();
@@ -239,7 +239,7 @@ void get_pmt_efficiency(double const & incident_angel,
         double time_above = incident_angle.at(idx_below + 1);
         double data_value_above = pmt_eff.at(idx_below + 1);
 
-        eff = data_value_below + (incident_angel_deg - time_below) * (data_value_above - data_value_below) / (time_above - time_below);
+        eff = data_value_below + (desired_incident_angel_deg - time_below) * (data_value_above - data_value_below) / (time_above - time_below);
     }
 }
 
@@ -569,6 +569,40 @@ void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
     }
 }
 
+void get_pmt_efficiency(double const & vertex_x,
+                        double const & vertex_y,
+                        double const & vertex_z,
+                        double const & loc_x,
+                        double const & loc_y,
+                        double const & loc_z,
+                        double const & facing_dir_x,
+                        double const & facing_dir_y,
+                        double const & facing_dir_z,
+                        double & pmt_eff){
+
+    double v_to_loc_dir_x = loc_x - vertex_x;
+    double v_to_loc_dir_y = loc_y - vertex_y;
+    double v_to_loc_dir_z = loc_z - vertex_z;
+
+    double v_to_loc_dir_norm = std::sqrt(std::pow(v_to_loc_dir_x, 2) + std::pow(v_to_loc_dir_y, 2) + std::pow(v_to_loc_dir_z, 2));
+    v_to_loc_dir_x /= v_to_loc_dir_norm;
+    v_to_loc_dir_y /= v_to_loc_dir_norm;
+    v_to_loc_dir_z /= v_to_loc_dir_norm;
+
+    double dot = std::abs((v_to_loc_dir_x * facing_dir_x) + (v_to_loc_dir_y * facing_dir_y) + (v_to_loc_dir_z * facing_dir_z));
+
+    // pretty sure both v_to_loc_dir and facing_dir are normalized, but just in case, let's check
+    double v_to_loc_norm = std::sqrt(std::pow(v_to_loc_dir_x, 2) + std::pow(v_to_loc_dir_y, 2) + std::pow(v_to_loc_dir_z, 2));
+    double facing_dir_norm = std::sqrt(std::pow(facing_dir_x, 2) + std::pow(facing_dir_y, 2) + std::pow(facing_dir_z, 2));
+   
+    // now we can get angle between our vertex and pmt
+    double incident_angle = acos(dot / (v_to_loc_norm * facing_dir_norm)); 
+
+    // now time to get pmt eff based on incident angle
+    pmt_eff_linear_interpolation(incident_angle, pmt_eff);
+    
+}
+
 void get_light_yield(double const & omega,
                      double const & total_omega,
                      double const & distance_travelled,
@@ -702,6 +736,19 @@ void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
 
 void PhotonPropagation::SetDataSampleSize(size_t n_data_samples){
     n_data_samples_ = n_data_samples;
+}
+
+void PhotonPropagation::OnlyAllCoatedPMTs(bool all_coated_pmt_flag){
+    all_coated_pmt_flag_ = all_coated_pmt_flag;
+}
+
+void PhotonPropagation::OnlySideCoatedPMTs(bool side_coated_pmt_flag){
+    side_coated_pmt_flag_ = side_coated_pmt_flag;
+}
+
+void PhotonPropagation::SetBlankDataFlag(bool blank_flag){
+    // true if using blank data!
+    blank_flag_ = blank_flag;
 }
 
 void PhotonPropagation::SetBlankData(I3Vector<I3Vector<double>> blank_data_series, I3Vector<I3Vector<double>> blank_data_sigma_squared){
@@ -981,14 +1028,10 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
         if (escaped and escaped_photon_1 and escaped_photon_2){
             total_events_that_escaped += 3;
             equivalent_events_in_data += 1;
-            // let's save this vertex!
-            //std::cout << "[" << final_x << ", " << final_y << ", " << final_z  << "]," << std::endl;
-            //std::cout << "[" << final_x_photon_1 << ", " << final_y_photon_1 << ", " << final_z_photon_1  << "]," << std::endl;
-            //std::cout << "[" << final_x_photon_2 << ", " << final_y_photon_2 << ", " << final_z_photon_2  << "]," << std::endl;
             // first we need to apply our z offset! if not set, the default value is zero
-            final_z += source_z_offset_;
-            final_z_photon_1 += source_z_offset_;
-            final_z_photon_2 += source_z_offset_;
+            //final_z += source_z_offset_;
+            //final_z_photon_1 += source_z_offset_;
+            //final_z_photon_2 += source_z_offset_;
             // now we can save
             this_vertex.clear();
             this_vertex.push_back(final_x);
@@ -1137,19 +1180,36 @@ void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
            thread_verticies_.push_back(thread_511_verticies_.at(vert_511_it));
         }
 
-        // last check, go through thread_verticies_ and count how many events there
-        //size_t event_counter_double_check = 0;
-        //size_t thread_counter_double_check = 0;
-        //for (size_t thread_it = 0; thread_it < thread_verticies_.size(); thread_it++){
-        //    thread_counter_double_check += 1;
-        //    for (size_t vert_it = 0; vert_it < thread_verticies_[thread_it].size(); vert_it++){
-        //        event_counter_double_check += 1;
-        //    }
-        //}
-        //std::cout << "thread_counter_double_check = " << thread_counter_double_check << std::endl;
-        //std::cout << "event_counter_double_check = " << event_counter_double_check << std::endl;
     }
 }
+
+void PhotonPropagation::ApplyZOffsetToEvents(){
+    // you must call the function to set the z offset and function to generate event verticies before this one
+    // this function takes event vertices and adds z offset
+
+    // first let's save our original z positions for each vertex
+    if (first_time_applying_z_offset_){
+        for (size_t vert_it = 0; vert_it < thread_verticies_.size(); vert_it ++){
+            // now loop over all verticies for this thread
+            for (size_t this_thread_vert_it = 0; this_thread_vert_it < thread_verticies_[vert_it].size(); this_thread_vert_it++){
+                original_z_vertices_.push_back(thread_verticies_[vert_it][this_thread_vert_it][2]);
+            }
+        }
+        first_time_applying_z_offset_ = false;
+    }
+
+    size_t vertex_counter = 0;
+    for (size_t vert_it = 0; vert_it < thread_verticies_.size(); vert_it ++){
+        // now loop over all verticies for this thread
+        for (size_t this_thread_vert_it = 0; this_thread_vert_it < thread_verticies_[vert_it].size(); this_thread_vert_it++){
+            // now add our offset
+            thread_verticies_[vert_it][this_thread_vert_it][2] = original_z_vertices_[vertex_counter] + source_z_offset_;
+            vertex_counter += 1;
+        }
+    }
+
+}
+
 
 void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
     if(not frame->Has(geometry_name_)) {
@@ -1160,6 +1220,10 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
     std::vector<double> this_pmt_info (9);
 
     for(std::pair<CCMPMTKey const, CCMOMGeo> const & it : pmt_geo) {
+        bool this_pmt_status = true;
+        bool coating_status = true;
+        bool side_status = false;
+
         CCMPMTType omtype = it.second.omtype;
         double coating_flag;
         if (omtype == coated_omtype){
@@ -1167,6 +1231,7 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
         }
         else if (omtype == uncoated_omtype){
             coating_flag = 0.0; // uncoated pmt!
+            coating_status = false;
         }
         else{
             continue; // this pmt is not an 8in! we dont need it!
@@ -1181,19 +1246,19 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
         double facing_dir_y;
         double facing_dir_z;
 
-        if (pos_z == 58.0){
+        if (pos_z > 50.0){
             // region 0 pmts!
             facing_dir_x = 0.0;
             facing_dir_y = 0.0;
             facing_dir_z = -1.0;
         }
-        else if (pos_z == -58.0){
+        if (pos_z < -50.0){
             // region 6 pmts!
             facing_dir_x = 0.0;
             facing_dir_y = 0.0;
             facing_dir_z = 1.0;
         }
-        else{
+        if (pos_z < 50.0 and pos_z > -50.0){
             double facing_radius = std::pow(pos_x, 2) + std::pow(pos_y, 2);
             double facing_r_x = - pos_x / facing_radius;
             double facing_r_y = - pos_y / facing_radius;
@@ -1201,6 +1266,7 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
             facing_dir_x = facing_r_x / facing_dir_norm_factor;
             facing_dir_y = facing_r_y / facing_dir_norm_factor;
             facing_dir_z = 0.0;
+            side_status = true;
         }
 
         // now time save!!!
@@ -1217,7 +1283,28 @@ void PhotonPropagation::GetPMTInformation(I3FramePtr frame){
         pmt_parsed_information_.push_back(this_pmt_info);
         n_pmts_to_simulate += (size_t) 1;
 
+        // let's also save approprate flag to pmt_nllh_status_
+        if (all_coated_pmt_flag_){
+            // ok we want to flag all uncoated PMTs as false
+            if (coating_status == false){
+                this_pmt_status = false;
+            }
+        }
+
+        if (side_coated_pmt_flag_){
+            // ok we want to flag all uncoated PMTs and coated top/bottom PMTs as false
+            if (coating_status == false){
+                this_pmt_status = false;
+            }
+            if (coating_status == true and side_status == false){
+                this_pmt_status = false;
+            }
+        }
+        //std::cout << "coating_status = " << coating_status << ", side_status = " << side_status << ", and this_pmt_status = " << this_pmt_status << std::endl;
+        pmt_nllh_status_.push_back(this_pmt_status);
+
     }
+
 
     // let's save some pmt locs for debugging
     I3Vector<double> this_pmt_loc;
@@ -1920,6 +2007,14 @@ void vertex_to_pmt_propagation(double const & full_acceptance,
                 efficiency = 0.5;
             }
 
+            // let's also get pmt eff based on incident angle
+            double pmt_ang_eff;
+            get_pmt_efficiency(vertex_x, vertex_y, vertex_z,
+                               pmt_x_loc, pmt_y_loc, pmt_z_loc,
+                               facing_dir_x, facing_dir_y, facing_dir_z, pmt_ang_eff);
+ 
+            efficiency *= pmt_ang_eff;
+
             // now call function to get light yields
             get_light_yield(omega, full_acceptance, distance_travelled, n_photons_produced, absorption_length, efficiency, photons_in_this_pmt);
             photons_in_this_pmt *= quantum_efficiency;
@@ -2541,16 +2636,27 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
         }
         this_time_data_idx = findNearestIndex(times_of_data_points_, time_roi_it);
         for (size_t pmt_it = 0; pmt_it < n_pmts_to_simulate; pmt_it ++){
+            if (pmt_nllh_status_[pmt_it] == false){
+                continue; // we don't want to include this pmt in the fit!!! move on!!!
+            }
             // so now we are looping over each pmt, we need to calculate the nllh for each time bin for each pmt
             k = data_series_[pmt_it][this_time_data_idx];
-            mu_background = blank_data_series_[pmt_it][this_time_data_idx] * (ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_));
-            sigma_squared_background = blank_data_sigma_squared_[pmt_it][this_time_data_idx] * std::pow(ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_), 2.0); 
+            if (blank_flag_){
+                mu_background = blank_data_series_[pmt_it][this_time_data_idx] * (ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_));
+                sigma_squared_background = blank_data_sigma_squared_[pmt_it][this_time_data_idx] * std::pow(ratio_blank_to_signal * (n_data_samples_ / n_blank_data_samples_), 2.0); 
+            }
+            else{
+                mu_background = 0;
+                sigma_squared_background = 0;
+            }
             if (simulation_data_present){
                 mu_signal = summed_over_events_binned_charges[pmt_it][this_time_simulation_idx] * ((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data));
-                sigma_squared_signal = summed_over_squared_events_binned_charges[pmt_it][this_time_simulation_idx] * std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2);
+                sigma_squared_signal = summed_over_squared_events_binned_charges[pmt_it][this_time_simulation_idx] *
+                    std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2);
             } else {
                 mu_signal = (noise_rate_per_time_bin * equivalent_events_in_data) * ((1.0 - ratio_blank_to_signal) * n_data_samples_ / equivalent_events_in_data);
-                sigma_squared_signal = std::pow(noise_rate_per_time_bin * equivalent_events_in_data, 2.0) * std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2.0);
+                sigma_squared_signal = std::pow(noise_rate_per_time_bin * equivalent_events_in_data, 2.0) *
+                    std::pow((1.0 - ratio_blank_to_signal) * (n_data_samples_ / equivalent_events_in_data), 2.0);
             }
             mu_total = mu_background + mu_signal;
             sigma_squared_total = sigma_squared_background + sigma_squared_signal;
