@@ -1,5 +1,5 @@
-#ifndef g4_larsim_G4CCMPhysicsList_H
-#define g4_larsim_G4CCMPhysicsList_H
+#ifndef G4CCMPhysicsList_H
+#define G4CCMPhysicsList_H
 
 #include <G4VModularPhysicsList.hh>
 

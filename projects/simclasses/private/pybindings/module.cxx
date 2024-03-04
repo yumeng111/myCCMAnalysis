@@ -25,7 +25,7 @@
 #include <boost/python/import.hpp>
 
 #define REGISTER_THESE_THINGS                       \
-    (CCMMCPE)
+    (CCMMCPE)(I3TopInjectorInfo)
 
 #define I3_REGISTRATION_FN_DECL(r, data, t) void BOOST_PP_CAT(register_,t)();
 #define I3_REGISTER(r, data, t) BOOST_PP_CAT(register_,t)();
@@ -33,6 +33,7 @@
 BOOST_PP_SEQ_FOR_EACH(I3_REGISTRATION_FN_DECL, ~, REGISTER_THESE_THINGS)
 
 void register_CCMMCPE();
+void register_I3TopInjectorInfo();
 
 I3_PYTHON_MODULE(simclasses) {
     load_project("simclasses", false);

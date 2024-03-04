@@ -23,7 +23,9 @@ class J4PMTSolidMaker {
 
 
     static void Create8inchPMTSolid();
+
     static G4VSolid * Get8inchPMTSolid();
+
     static G4double Get8inchPMTRadius() { return f8inchPMTRadius; }
 
   private:
