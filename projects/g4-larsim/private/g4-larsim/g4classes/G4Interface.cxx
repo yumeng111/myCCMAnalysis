@@ -56,12 +56,6 @@ void G4Interface::InstallDetector() {
     
 }
 
-//void G4Interface::InstallPMT(std::vector<std::vector<double>> & pmt_positions){
-//
-//    // let's install PMTs in our detector (ie construct sensitive detector)
-//    detector_->ConstructSD(pmt_positions);
-//}
-
 void G4Interface::InitializeEvent()
 {
     if(!initialized_) {
