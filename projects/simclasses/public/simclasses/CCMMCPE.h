@@ -7,14 +7,18 @@
 #ifndef CCMMCPE_H_INCLUDED
 #define CCMMCPE_H_INCLUDED
 
-#include <vector>
-#include <icetray/I3Logging.h>
-#include <icetray/serialization.h>
-#include <dataclasses/I3Map.h>
-#include <dataclasses/physics/I3ParticleID.h>
-#include <ostream>
+#include "dataclasses/I3Position.h"
+#include "dataclasses/I3Direction.h"
+#include "dataclasses/Utility.h"
+#include "dataclasses/I3Map.h"
 
-static const unsigned i3mcpe_version_ = 1;
+#include <string>
+#include <iostream>
+#include <sstream>
+
+#include <icetray/CCMPMTKey.h>
+
+static const unsigned ccmmcpe_version_ = 0;
 
 /**
  * @brief CCMMCPE struct that stores the photon arrival time
@@ -23,80 +27,62 @@ static const unsigned i3mcpe_version_ = 1;
  */
 
 struct CCMMCPE {
+    enum class PhotonSource : int8_t {
+        Unknown = 0,
+        Scintillation = 1,
+        Cherenkov = 2
+    };
 
-    /**
-     * ID of the I3Particle that created this PE
-     */
-    I3ParticleID ID;
+    //static const std::map<PhotonSource, std::string> PhotonSourceNames = {
+    //#define X(a, b) {CCMMCPE::PhotonSource::a , #a },
+    //#undef X
+    //};
+    //static const std::map<PhotonSource, std::string> PhotonSourceNames = {{CCMMCPE::PhotonSource::Unknown, "Unknown"}, 
+    //                                                                      {CCMMCPE::PhotonSource::Scintillation, "Scintillation"},
+    //                                                                      {CCMMCPE::PhotonSource::Cherenkov, "Cherenkov"}}; 
 
-    /**
-     * Creation time of PE (photon arrival time)
-     */
-    double time;
-
-    /**
-     * Number of PEs this object represents.
-     * Used for binning.
-     */
-    uint32_t npe;
+    // things we want to save about a photon hitting our pmts in simulation
+    float time; // photon hit time
+    float wavelength; // wavelength of photon
+    I3Position position; // hit position on PMT
+    I3Direction direction; // hit direction on PMT
+    PhotonSource photon_source; // true if photon produced from scintillation, false if photon produced via cherenkov radiation 
 
     SET_LOGGER("CCMMCPE");
 
     bool operator==(const CCMMCPE& rhs) const {
         return time == rhs.time
-            && npe == rhs.npe
-            && ID == rhs.ID;
+            && wavelength == rhs.wavelength
+            && position == rhs.position
+            && direction == rhs.direction
+            && photon_source == rhs.photon_source;
     }
 
-    // default constructor for noise generators
-    // CCMMCPE():npe(0)
-    // {
-    //   ID.majorID = 0;
-    //   ID.minorID = 0;
-    // }
 
-    CCMMCPE(const uint32_t npe_ = 0, const double time_ = 0):
-        time(time_), npe(npe_) {
-        ID.majorID = 0;
-        ID.minorID = 0;
+  CCMMCPE(float time_ = 0, float wavelength_ = 0, I3Position position_ = I3Position(0.0, 0.0, 0.0), I3Direction direction_ = I3Direction(0.0, 0.0, 0.0), PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
+        time(time_), wavelength(wavelength_), position(position_), direction(direction_), photon_source(photon_source_) {
     }
 
-    // constructor for hit makers
-    // this just sets the major and minor IDs accordingly
-    CCMMCPE(const I3ParticleID& p, const uint32_t n_pe = 0, const double pe_time = 0):
-        ID(p),time(pe_time),npe(n_pe){}
-
-    CCMMCPE(const uint64_t major_ID, const int32_t minor_ID, const uint32_t n_pe = 0, const double pe_time = 0):
-        time(pe_time), npe(n_pe) {
-        ID.majorID = major_ID;
-        ID.minorID = minor_ID;
-    }
-
-    operator I3ParticleID() const{ return ID; }
 
     std::ostream& Print(std::ostream&) const;
 
     private:
+    
     friend class icecube::serialization::access;
     template <class Archive> void serialize(Archive & ar, const unsigned version) {
-        if (version>i3mcpe_version_)
+        if (version>ccmmcpe_version_)
             log_fatal("Attempting to read version %u from file but running version %u of CCMMCPE class.",
-                    version,i3mcpe_version_);
-        if(version == 0){
-            float t(0.);
-            ar & make_nvp("time",t);
-            time = t;
-        }else{
-            ar & make_nvp("time",time);
-        }
-        ar & make_nvp("npe",npe);
-        ar & make_nvp("major_ID",ID.majorID);
-        ar & make_nvp("minor_ID",ID.minorID);
+                    version,ccmmcpe_version_);
+        ar & make_nvp("time",time);
+        ar & make_nvp("wavelength",wavelength);
+        ar & make_nvp("position",position);
+        ar & make_nvp("direction",direction);
+        ar & make_nvp("photon_source",photon_source);
     }
 
 };
 
-I3_CLASS_VERSION(CCMMCPE,i3mcpe_version_);
+I3_CLASS_VERSION(CCMMCPE,ccmmcpe_version_);
 
 typedef std::vector<CCMMCPE> CCMMCPESeries;
 typedef I3Map<CCMPMTKey, CCMMCPESeries > CCMMCPESeriesMap;

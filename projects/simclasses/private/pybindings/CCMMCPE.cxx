@@ -8,18 +8,26 @@
 using namespace boost::python;
 
 void register_CCMMCPE() {
-{
+    {
     scope mcpe_scope =
         class_<CCMMCPE, boost::shared_ptr<CCMMCPE> >("CCMMCPE")
         .def(dataclass_suite<CCMMCPE>())
-        .def(init<>())
-        .def(init<uint32_t>())
-        .def(init<uint32_t,double>())
+        .def(init<float, float, I3Position, I3Direction, CCMMCPE::PhotonSource >())
         .def_readwrite("time",&CCMMCPE::time)
-        .def_readwrite("npe",&CCMMCPE::npe)
-        .def_readonly("ID",&CCMMCPE::ID)
+        .def_readwrite("wavelength",&CCMMCPE::wavelength)
+        .def_readwrite("position",&CCMMCPE::position)
+        .def_readwrite("direction",&CCMMCPE::direction)
+        .def_readwrite("photon_source",&CCMMCPE::photon_source)
         ;
-}
+    enum_<CCMMCPE::PhotonSource>("PhotonSource")
+      .value("Unknown", CCMMCPE::PhotonSource::Unknown)
+      .value("Scintillation", CCMMCPE::PhotonSource::Scintillation)
+      .value("Cherenkov", CCMMCPE::PhotonSource::Cherenkov)
+      .export_values()
+      ;
+        
+    }
+
 
     class_<CCMMCPESeries, CCMMCPESeriesPtr>("CCMMCPESeries")
         .def(dataclass_suite<CCMMCPESeries>())
