@@ -1,0 +1,38 @@
+#**************
+#**
+#** Demonstrates the basic functionality of this example
+#**
+#**************
+
+/run/verbose 1
+/control/verbose 1
+/tracking/verbose 0
+/process/optical/verbose 1
+/LAr/detector/MainScintYield 10000
+#/process/optical/processActivation Cerenkov false
+
+/run/initialize
+
+/gun/particle gamma
+/gun/energy 511 keV
+
+/run/printProgress 10
+
+/vis/disable
+/random/setSavingFlag true
+/LAr/saveThreshold 1400
+/LAr/pmtThreshold 4
+/LAr/forceDrawNoPhotons true
+/run/beamOn 200
+
+/vis/enable
+/LAr/eventVerbose 1
+/process/optical/scintillation/setTrackSecondariesFirst false
+/run/beamOn 5
+#
+/tracking/verbose 1
+/LAr/forceDrawPhotons true
+/LAr/detector/MainScintYield 100
+/process/optical/scintillation/setTrackSecondariesFirst true
+/run/beamOn 1
+

@@ -1,5 +1,6 @@
 set(PROJECT_NAME g4-larsim)
 
+
 if (GEANT4_CONFIG_ERROR OR NOT DEFINED GEANT4_CONFIG_ERROR)
     include(FindGeant4.cmake)
     include(FindCLHEP.cmake)
@@ -23,6 +24,14 @@ if (GEANT4_FOUND AND CLHEP_FOUND)
     )
 
     include(FindG4VisDrivers.cmake)
+
+i3_executable(CCMG4Simulation
+    apps/*.cc
+    apps/*.mac
+    USE_TOOLS clhep geant4
+    USE_PROJECTS serialization icetray dataclasses phys-services simclasses 
+    NO_PREFIX
+)
 
 else (GEANT4_FOUND AND CLHEP_FOUND)
     message(STATUS "  - Geant4 and/or CLHEP not found - Skipping build of g4-larsim")
