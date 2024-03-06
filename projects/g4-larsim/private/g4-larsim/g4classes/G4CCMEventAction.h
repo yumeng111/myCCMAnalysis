@@ -1,7 +1,7 @@
 #ifndef G4CCMEventAction_h
 #define G4CCMEventAction_h 1
 
-#include "G4CCMEventMessenger.h"
+#include "g4-larsim/g4classes/G4CCMEventMessenger.h"
 
 #include "globals.hh"
 #include "G4ThreeVector.hh"

@@ -20,4 +20,3 @@ class G4CCMActionInitialization : public G4VUserActionInitialization
 
 #endif
 
-}
