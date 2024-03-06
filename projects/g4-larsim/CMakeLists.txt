@@ -27,9 +27,8 @@ if (GEANT4_FOUND AND CLHEP_FOUND)
 
 i3_executable(CCMG4Simulation
     apps/*.cc
-    apps/*.mac
     USE_TOOLS clhep geant4
-    USE_PROJECTS serialization icetray dataclasses phys-services simclasses 
+    USE_PROJECTS serialization icetray dataclasses phys-services simclasses g4-larsim
     NO_PREFIX
 )
 
