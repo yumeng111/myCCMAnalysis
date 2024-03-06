@@ -10,7 +10,7 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4CCMActionInitialization::G4CCMActionInitialization(
-    const G4CCMDetectorConstruction* det)
+    G4CCMDetectorConstruction const * det)
     : G4VUserActionInitialization()
     , fDetector(det)
 {}
