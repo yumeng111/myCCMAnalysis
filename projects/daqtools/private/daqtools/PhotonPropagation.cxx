@@ -5,6 +5,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/math/special_functions.hpp>
 
 #include <set>
 #include <tuple>
@@ -1781,24 +1782,8 @@ void PhotonPropagation::GetSecondaryLocs(double const & desired_chunk_width, dou
             }
         }
     }
-    //std::cout << "total area on top face = " << area_top << " and valid area = " << area_top_valid << std::endl;
-    //std::cout << "total area on bottom face = " << area_bottom << " and valid area = " << area_bottom_valid << std::endl;
-    //std::cout << "total area on sides face = " << area_sides << " and valid area = " << area_sides_valid << std::endl;
-    //std::cout << "total area = " << area_top + area_bottom + area_sides << " and valid area = " << area_top_valid + area_bottom_valid + area_sides_valid << std::endl;
 }
 
-void LAr_scintillation_timing(double const & time, double const & R_s, double const & R_t, double const & tau_s, double const & tau_t, double const & tau_rec, double & resulting_light){
-    double singlet = (R_s /tau_s) * std::exp(- time / tau_s);
-    double triplet = (R_t /tau_t) * std::exp(- time / tau_t);
-    double recombination = (1 - R_s - R_t) / (tau_rec * std::pow((1 + time / tau_rec), 2));
-    resulting_light = singlet + triplet + recombination;
-
-}
-
-void TPB_emission(double const & time, double const & R_TPB, double const & tau_TPB, double & resulting_light){
-    double prompt = ((1 - R_TPB) / tau_TPB) * std::exp(- time / tau_TPB);
-    resulting_light = prompt;
-}
 
 void generalized_extreme_value_pdf(double const & time, double const & sigma, double const & mu, double const & xi, double & resulting_value){
     resulting_value = 0;
@@ -1811,82 +1796,11 @@ void generalized_extreme_value_pdf(double const & time, double const & sigma, do
     }
 }
 
-void linear_interpolation(double const & desired_time,
-                        std::vector<double> const & all_times,
-                        std::vector<double> const & all_data,
-                        double & desired_value){
-    auto it_below = std::lower_bound(all_times.begin(), all_times.end(), desired_time);
 
-    if (it_below == all_times.begin()) {
-        desired_value = all_data.front();
-    }
-    else if (it_below == all_times.end()) {
-        desired_value = all_data.back();
-    }
-    else {
-        int idx_below = std::distance(all_times.begin(), it_below) - 1;
-        double time_below = all_times.at(idx_below);
-        double data_value_below = all_data.at(idx_below);
+double gamma_m1(double const & x){
 
-        double time_above = all_times.at(idx_below + 1);
-        double data_value_above = all_data.at(idx_below + 1);
-
-        desired_value = data_value_below + (desired_time - time_below) * (data_value_above - data_value_below) / (time_above - time_below);
-    }
-}
-
-void convolve_light_with_gev(double const & this_time_step,
-                            std::vector<double> const & light_profile,
-                            std::vector<double> const & light_times,
-                            double const & delta,
-                            size_t const & n_convolution_chunks,
-                            double const & sigma,
-                            double const & mu,
-                            double const & xi,
-                            double & result){
-    double total_val = 0;
-    double delta_convolution_time_step = this_time_step / n_convolution_chunks;
-
-    for (size_t i = 0; i <= n_convolution_chunks; i++){
-        double t2 = this_time_step * i / n_convolution_chunks;
-        double gev_result;
-        generalized_extreme_value_pdf(this_time_step - t2, sigma, mu, xi, gev_result);
-        double interpolated_light_value;
-        linear_interpolation(t2, light_times, light_profile, interpolated_light_value);
-        double this_val = gev_result * interpolated_light_value * delta_convolution_time_step;
-        total_val += this_val;
-    }
-
-    result = total_val * delta;
-
-}
-
-void LAr_scintillation_light_integration(double const & this_time_step,
-                                        double const & delta,
-                                        size_t const & n_convolution_chunks,
-                                        double const & R_s,
-                                        double const & R_t,
-                                        double const & tau_s,
-                                        double const & tau_t,
-                                        double const & tau_rec,
-                                        double const & R_TPB,
-                                        double const & tau_TPB,
-                                        double & result){
-
-    double total_val = 0;
-    double delta_convolution_time_step = this_time_step / n_convolution_chunks;
-
-    for (size_t i = 0; i <= n_convolution_chunks; i++){
-        double t2 = this_time_step * i / n_convolution_chunks;
-        double TPB_result;
-        TPB_emission(this_time_step - t2, R_TPB, tau_TPB, TPB_result);
-        double LAr_scint_result;
-        LAr_scintillation_timing(t2, R_s, R_t, tau_s, tau_t, tau_rec, LAr_scint_result);
-        double light_val = TPB_result * LAr_scint_result * delta_convolution_time_step;
-        total_val += light_val;
-    }
-
-    result = total_val * delta;
+    double E1 = -boost::math::expint(-x);
+    return std::pow(x, -1.0) * std::exp(-x) - E1;
 
 }
 
@@ -1895,45 +1809,42 @@ void get_total_light_profile(double const & R_s,
                             double const & tau_s,
                             double const & tau_t,
                             double const & tau_rec,
-                            double const & R_TPB,
                             double const & tau_TPB,
-                            double const & sigma,
-                            double const & mu,
-                            double const & xi,
-                            size_t const & n_convolution_chunks,
                             std::vector<double> const & times,
                             std::vector<double> & final_light_profile){
-    // times is a vector of times that we are integrating over
-    double delta = times.at(1) - times.at(0);
-    std::vector<double> LAr_light_profile (times.size());
-    for (size_t t = 0; t < times.size(); t++){
-        LAr_scintillation_light_integration(times.at(t), delta, n_convolution_chunks, R_s, R_t, tau_s, tau_t, tau_rec, R_TPB, tau_TPB, LAr_light_profile.at(t));
-    }
-    // let's normalize our light profile
-    double total_light_profile_value = 0;
-    for (size_t i = 0; i < LAr_light_profile.size(); i++){
-        total_light_profile_value += LAr_light_profile.at(i);
-    }
 
-    std::vector<double> normalized_LAr_light_profile (LAr_light_profile.size());
-    for (size_t i = 0; i < LAr_light_profile.size(); i++){
-        normalized_LAr_light_profile.at(i) = LAr_light_profile.at(i) / total_light_profile_value;
-    }
+    // times is a vector of times to calculate the light profile for
+    double fraction_recombination = (1.0 - R_s - R_t);
+    double exp_singlet;
+    double exp_triplet;
+    double exp_recombination;
+    double exp_prompt_TPB;
+    double gamma_const;
+    double gamma_t;
+    double log_t;
+    double one;
+    double two;
+    double three;
+    double t;
 
-    // now let's convolve our light profile with a gev
-    std::vector<double> light_convolved_with_gev (times.size());
-    for (size_t t = 0; t < times.size(); t++){
-        convolve_light_with_gev(times.at(t), normalized_LAr_light_profile, times, delta, n_convolution_chunks, sigma, mu, xi, light_convolved_with_gev.at(t));
-    }
+    // let's loop over times and calculate the light profile at each time
+    for (size_t time_it = 0; time_it < times.size(); time_it++){
 
-    // let's normalize our final light profile
-    double total_light_convolved_with_gev_value = 0;
-    for (size_t i = 0; i < light_convolved_with_gev.size(); i++){
-        total_light_convolved_with_gev_value += light_convolved_with_gev.at(i);
-    }
+        t = times.at(time_it);
+        exp_singlet = std::exp(-t / tau_s);
+        exp_triplet = std::exp(-t / tau_t);
+        exp_recombination = std::exp(-(t+tau_rec) / tau_TPB);
+        exp_prompt_TPB = std::exp(-t / tau_TPB);
 
-    for (size_t i = 0; i < light_convolved_with_gev.size(); i++){
-        final_light_profile.at(i) = light_convolved_with_gev.at(i) / total_light_convolved_with_gev_value;
+        gamma_const = gamma_m1(tau_rec / tau_TPB);
+        gamma_t = gamma_m1((t + tau_rec)/tau_TPB);
+        log_t = 2.0 * std::log(t / tau_rec + 1.0);
+
+        one = R_s * (exp_singlet - exp_prompt_TPB) / (tau_s - tau_TPB);
+        two = R_t * (exp_triplet - exp_prompt_TPB) / (tau_t - tau_TPB);
+        three = fraction_recombination * exp_recombination * tau_rec * (gamma_t - gamma_const + log_t) / (tau_TPB * tau_TPB);
+
+        final_light_profile.at(time_it) = one + two + three;
     }
 
 }
@@ -2321,7 +2232,6 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                                         double const & singlet_tau_,
                                         double const & triplet_tau_,
                                         double const & recombination_tau_,
-                                        double const & TPB_ratio_,
                                         double const & TPB_tau_,
                                         double const & UV_absorption_length_,
                                         double const & n_photons_produced_,
@@ -2357,16 +2267,12 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                             singlet_tau_,
                             triplet_tau_,
                             recombination_tau_,
-                            TPB_ratio_,
                             TPB_tau_,
-                            smearing_sigma_,
-                            smearing_mu_,
-                            smearing_xi_,
-                            n_convolution_chunks_,
                             times,
                             light_profile);
 
-
+    std::cout << "times = " << times << std::endl;
+    std::cout << "light_profile = " << light_profile << std::endl;
     // ok so we've seen our geometry file, pre-computed the lists of pmt info and locations to check for light propagation
     // we've also pre-compute the verticies of each event we want to simulate
     // and we just computed our light profile....all that's left to do is propagate our light!

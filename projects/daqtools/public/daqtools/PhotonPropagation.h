@@ -471,7 +471,6 @@ public:
                          double const & singlet_tau_,
                          double const & triplet_tau_,
                          double const & recombination_tau_,
-                         double const & TPB_ratio_,
                          double const & TPB_tau_,
                          double const & UV_absorption_length_,
                          double const & n_photons_produced_,
