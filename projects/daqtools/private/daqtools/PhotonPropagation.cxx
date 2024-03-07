@@ -687,10 +687,21 @@ void secondary_loc_to_pmt_propagation(double const & full_acceptance,
     }
 
 }
+void EmptyTwoDimensionI3Vectors(I3Vector<I3Vector<double>> & vector_to_empty){
+    if (vector_to_empty.size() > 0){
+        for (size_t i = 0; i < vector_to_empty.size(); i++){
+            vector_to_empty[i].clear();
+        }
+        vector_to_empty.clear();
+    }
+}
 PhotonPropagation::PhotonPropagation() {}
 
 void PhotonPropagation::SetData(I3Vector<I3Vector<double>> data_series){
+    // let's clear out data_series_ then set to given data
+    EmptyTwoDimensionI3Vectors(data_series_);
     data_series_ = data_series;
+
     // data_series_ is index by n_pmts x n_time_bins
     // while we are setting the data, let's also set the time
     // we want the peak of the data time to be at 0 and 2 nsec binning
@@ -941,14 +952,7 @@ void EmptyTwoDimensionVectors(std::vector<std::vector<double>> & vector_to_empty
     }
 }
 
-void EmptyTwoDimensionI3Vectors(I3Vector<I3Vector<double>> & vector_to_empty){
-    if (vector_to_empty.size() > 0){
-        for (size_t i = 0; i < vector_to_empty.size(); i++){
-            vector_to_empty[i].clear();
-        }
-        vector_to_empty.clear();
-    }
-}
+
 
 void PhotonPropagation::GetEventVertices(size_t const & n_events_to_simulate){
     // set our events parameter
