@@ -56,6 +56,7 @@ struct ElectronicsCorrectionResult {
 class  ElectronicsCorrection: public I3Module {
     std::exception_ptr teptr = nullptr;
     std::string geometry_name_;
+    std::string pmt_channel_map_name_;
     bool geo_seen;
     bool calib_seen;
     std::string ccm_calibration_name_;
@@ -96,6 +97,7 @@ I3_MODULE( ElectronicsCorrection);
 ElectronicsCorrection:: ElectronicsCorrection(const I3Context& context) : I3Module(context),
     geometry_name_(""), geo_seen(false), calib_seen(false) {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+        AddParameter("PMTChannelMapName", "Key for PMTChannelMap", std::string(""));
         AddParameter("CCMCalibrationName", "Key for CCMCalibration", std::string("CCMCalibration"));
         AddParameter("CCMWaveformsName", "Key for input CCMWaveforms", std::string("CCMWaveforms"));
         AddParameter("BaselineEstimatesName", "Key for input BaselineEstimates", std::string("BaselineEstimates"));
@@ -109,6 +111,7 @@ ElectronicsCorrection:: ElectronicsCorrection(const I3Context& context) : I3Modu
 
 void  ElectronicsCorrection::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("PMTChannelMapName", pmt_channel_map_name_);
     GetParameter("CCMCalibrationName", ccm_calibration_name_);
     GetParameter("CCMWaveformsName", ccm_waveforms_name_);
     GetParameter("BaselineEstimatesName", baseline_estimates_name_);
@@ -129,8 +132,25 @@ void  ElectronicsCorrection::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
-    CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-    pmt_channel_map_ = geo.pmt_channel_map;
+    if(pmt_channel_map_name_ != "") {
+        if(not frame->Has(pmt_channel_map_name_)) {
+            log_fatal("Could not find I3Map<CCMPMTKey, uint32_t> object with the key named \"%s\" in the Geometry frame.", pmt_channel_map_name_.c_str());
+        }
+        boost::shared_ptr<I3Map<CCMPMTKey, uint32_t> const> pmt_channel_map = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, uint32_t> const>>(pmt_channel_map_name_);
+        boost::shared_ptr<I3Map<CCMPMTKey, int> const> pmt_channel_map_alt = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, int> const>>(pmt_channel_map_name_);
+        if(pmt_channel_map != nullptr) {
+            pmt_channel_map_ = *pmt_channel_map;
+        } else if(pmt_channel_map_alt != nullptr) {
+            for(std::pair<CCMPMTKey const, int> const & it : *pmt_channel_map_alt) {
+                pmt_channel_map_[it.first] = uint32_t(it.second);
+            }
+        } else {
+            log_fatal("Could not find I3Map<CCMPMTKey, uint32_t> object with the key named \"%s\" in the Geometry frame.", pmt_channel_map_name_.c_str());
+        }
+    } else {
+        CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
+        pmt_channel_map_ = geo.pmt_channel_map;
+    }
     geo_seen = true;
     PushFrame(frame);
 }
@@ -335,36 +355,55 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, CCMCalibration co
 
     boost::shared_ptr<CCMWaveformUInt16Series const> waveforms = frame->Get<boost::shared_ptr<const CCMWaveformUInt16Series>>(ccm_waveforms_name_);
     boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const> baseline_mode = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, BaselineEstimate> const>>(baseline_estimates_name_);
+    boost::shared_ptr<I3Map<uint32_t, BaselineEstimate> const> baseline_mode_by_channel = frame->Get<boost::shared_ptr<I3Map<uint32_t, BaselineEstimate> const>>(baseline_estimates_name_);
     if(waveforms == nullptr) {
         log_fatal("No CCMWaveformUInt16Series under key name \"%s\"", ccm_waveforms_name_.c_str());
     }
-    if(baseline_mode == nullptr) {
-        log_fatal("No I3Map<CCMPMTKey, BaselineEstimate> under key name \"%s\"", baseline_estimates_name_.c_str());
-    }
 
     size_t size = waveforms->size();
-
     // a vector storing the electronics-corrected wfs for each channel
     boost::shared_ptr<CCMWaveformDoubleSeries> electronics_corrected_wf = boost::make_shared<CCMWaveformDoubleSeries>(size);
-
-    std::vector<std::future<int>> results;
-    results.reserve(baseline_mode->size());
-
-    // loop over each pmt
-    // We loop over pmt keys in baseline_estimates because a baseline estimate is required for the electronics correction
-    // and the baseline_estimates object should have its pmt keys derived from the same geometry
-    for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : *baseline_mode) {
-        ProcessWaveform(
-            it,
-            pmt_channel_map_,
-            calibration,
-            std::cref(*waveforms),
-            std::ref(*electronics_corrected_wf),
-            default_calib_,
-            default_droop_tau_,
-            delta_t
-        );
+    if(baseline_mode != nullptr) {
+        // loop over each pmt
+        // We loop over pmt keys in baseline_estimates because a baseline estimate is required for the electronics correction
+        // and the baseline_estimates object should have its pmt keys derived from the same geometry
+        for(std::pair<CCMPMTKey const, BaselineEstimate> const & it : *baseline_mode) {
+            ProcessWaveform(
+                it,
+                pmt_channel_map_,
+                calibration,
+                std::cref(*waveforms),
+                std::ref(*electronics_corrected_wf),
+                default_calib_,
+                default_droop_tau_,
+                delta_t
+            );
+        }
+    } else if(baseline_mode_by_channel != nullptr) {
+        std::map<uint32_t, CCMPMTKey> reverse_channel_map;
+        for(std::pair<CCMPMTKey const, uint32_t> const & it : pmt_channel_map_) {
+            reverse_channel_map[it.second] = it.first;
+        }
+        // loop over each pmt
+        // We loop over pmt keys in baseline_estimates because a baseline estimate is required for the electronics correction
+        // and the baseline_estimates object should have its pmt keys derived from the same geometry
+        for(std::pair<uint32_t const, BaselineEstimate> const & it : *baseline_mode_by_channel) {
+            std::pair<CCMPMTKey const, BaselineEstimate> fake_it = std::make_pair(reverse_channel_map.at(it.first), it.second);
+            ProcessWaveform(
+                fake_it,
+                pmt_channel_map_,
+                calibration,
+                std::cref(*waveforms),
+                std::ref(*electronics_corrected_wf),
+                default_calib_,
+                default_droop_tau_,
+                delta_t
+            );
+        }
+    } else {
+        log_fatal("No I3Map<CCMPMTKey, BaselineEstimate> or I3Vector<BaselineEstimate> under key name \"%s\"", baseline_estimates_name_.c_str());
     }
+
     double total_adc_count = 0.0;
     for(size_t i=0; i<electronics_corrected_wf->size(); ++i) {
         std::vector<double> const & wf = electronics_corrected_wf->at(i).GetWaveform();

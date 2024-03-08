@@ -39,6 +39,7 @@
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 #include "icetray/robust_statistics.h"
 #include "daqtools/WaveformSmoother.h"
+#include "daqtools/WindowedStats.h"
 #include <dataclasses/calibration/BaselineEstimate.h>
 
 struct BaselineEstimatorJob {
@@ -126,6 +127,27 @@ double LinearChi2PerDOF(
     return chi2 /= DOF;
 }
 
+double ExponentialChi2PerDOF(
+        std::vector<double>::const_iterator begin,
+        std::vector<double>::const_iterator end,
+        double a,
+        double b,
+        double c) {
+    size_t N = std::distance(begin, end);
+    size_t DOF = std::max(N, size_t(4)) - 3;
+    double stddev = b;
+    double chi2 = 0.0;
+    size_t t = 0;
+    for(; begin != end; ++begin, t += 2) {
+        double pred = a + b * std::exp(c * t);
+        double z = ((*begin) - pred) / stddev;
+        chi2 += z * z;
+    }
+    chi2 /= 2.0;
+    chi2 += log(stddev) + log(sqrt(2.0 * M_PI));
+    return chi2 /= DOF;
+}
+
 class BaselineEstimator: public I3Module {
     std::exception_ptr teptr = nullptr;
     std::string geometry_key_;
@@ -157,7 +179,6 @@ class BaselineEstimator: public I3Module {
 public:
     BaselineEstimator(const I3Context&);
     void Configure();
-    void Process();
     void Finish();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
@@ -175,8 +196,8 @@ double Average(Iterator begin, Iterator end) {
     return total / count;
 }
 
-template<typename Iterator>
-void OutlierFilter(double starting_estimate, std::vector<uint16_t>::const_iterator begin, std::vector<uint16_t>::const_iterator end, Iterator result_begin) {
+template<typename InputIterator, typename OutputIterator>
+void OutlierFilter(double starting_estimate, InputIterator begin, InputIterator end, OutputIterator result_begin) {
     double delta_tau = 20;
     double prev_tau = 2.0;
     double next_tau = 2.0;
@@ -288,7 +309,7 @@ void FitExponential(std::vector<double> const & y, double & a, double & b, doubl
     b = double(m_inv01 * v0 + m_inv11 * v1);
 }
 
-void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int> const & samples, size_t target_num_samples, size_t target_exp_samples) {
+void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int> const & samples, size_t window_size, double variance_percentile) {
     baseline.target_num_frames = 1;
     if (samples.size() == 0) {
         baseline.baseline = std::numeric_limits<double>::quiet_NaN();
@@ -298,14 +319,21 @@ void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int
         return;
     }
 
+    std::vector<double> smoothed_samples(samples.size());
+    WaveformSmoother smoother(samples.begin(), samples.end(), 2, 10);
+    for(size_t i=0; i<samples.size(); ++i) {
+        smoothed_samples[i] = smoother.Value();
+        smoother.Next();
+    }
+
     // vector to store results of outlier filter
-    size_t N = std::min(samples.size(), target_num_samples);
+    size_t N = smoothed_samples.size();
     std::vector<double> outlier_filter_results;
     outlier_filter_results.reserve(N);
-    std::vector<uint16_t> starting_samples(samples.begin(), samples.begin() + std::min(size_t(100), N));
+    std::vector<uint16_t> starting_samples(smoothed_samples.begin(), smoothed_samples.begin() + std::min(size_t(100), N));
     std::sort(starting_samples.begin(), starting_samples.end());
     double starting_value = robust_stats::Mode(starting_samples.begin(), starting_samples.end());
-    OutlierFilter(starting_value, samples.begin(), samples.begin() + N, std::back_inserter(outlier_filter_results));
+    OutlierFilter(starting_value, smoothed_samples.begin(), smoothed_samples.begin() + N, std::back_inserter(outlier_filter_results));
     starting_value = outlier_filter_results.back();
 
     double flat_mean = 0;
@@ -313,56 +341,107 @@ void ProcessWaveform(BaselineEstimate & baseline, std::vector<short unsigned int
     double linear_intercept = 0;
     double linear_slope = 0;
     double linear_sigma = 0;
-    LinearFlatFit(outlier_filter_results.begin(), outlier_filter_results.end(), linear_intercept, linear_slope, linear_sigma, flat_mean, flat_sigma);
+    LinearFlatFit(outlier_filter_results.begin(), outlier_filter_results.begin() + 1000, linear_intercept, linear_slope, linear_sigma, flat_mean, flat_sigma);
 
     double flat_chi2_per_dof_threshold = 1.0;
     double flat_sigma_threshold = 35.0;
-    double flat_chi2_per_dof = FlatChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.end(), flat_mean, flat_sigma);
+    double flat_chi2_per_dof = FlatChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.begin() + 1000, flat_mean, flat_sigma);
 
     bool bad_flat_fit = isnan(flat_mean) or isnan(flat_sigma);
     bool good_flat_fit = flat_chi2_per_dof < flat_chi2_per_dof_threshold and flat_sigma < flat_sigma_threshold;
 
-    if(bad_flat_fit) {
-        // Extend the outlier filter to the whole waveform
-        OutlierFilter(starting_value, samples.begin() + N, samples.end(), std::back_inserter(outlier_filter_results));
-    }
-
     if(bad_flat_fit or good_flat_fit) {
         // Do nothing
     } else {
-        // Flat fit is not good enough, let's try an exponential
         // initializing the exponential fit params
         double a;
         double b;
         double c;
 
-        // Run the outlier filter on the rest of the waveform
-        OutlierFilter(starting_value, samples.begin() + N, samples.begin() + std::min(std::max(N, target_exp_samples - target_num_samples), samples.size()), std::back_inserter(outlier_filter_results));
-        starting_value = outlier_filter_results.back();
         FitExponential(outlier_filter_results, a, b, c);
+        double exp_chi2_per_dof = ExponentialChi2PerDOF(outlier_filter_results.begin(), outlier_filter_results.begin() + std::min(size_t(1000), N), a, b, c);
 
         bool bad_exp_fit = isnan(a) or isnan(b) or isnan(c);
-        if(bad_exp_fit) {
-            OutlierFilter(starting_value, samples.begin() + outlier_filter_results.size(), samples.end(), std::back_inserter(outlier_filter_results));
-            // Use the outlier filter result of the whole waveform as is
-            // i.e. do nothing
-        } else {
+        if(not bad_exp_fit and c < 0 and b > 0 and c > -1.0/1000.0 and exp_chi2_per_dof < 35.0) {
             // Subtract off the exponential component from the outlier filter
-            for (size_t exp_it = 0; exp_it < outlier_filter_results.size(); ++exp_it){
+            for (size_t exp_it = 0; exp_it < outlier_filter_results.size(); ++exp_it) {
                 outlier_filter_results[exp_it] -= b * std::exp(c * (exp_it * 2.0));
             }
         }
     }
 
-    std::sort(outlier_filter_results.begin(), outlier_filter_results.end());
-    double baseline_mode_val = robust_stats::Mode(outlier_filter_results.begin(), outlier_filter_results.end());
-    double baseline_std = robust_stats::MedianAbsoluteDeviation(outlier_filter_results.begin(), outlier_filter_results.end(), baseline_mode_val);
-    baseline.baseline = -1 * baseline_mode_val;
+    // vector to store results of outlier filter
+    N = std::min(N, window_size);
+    if(N == 0) {
+        baseline.baseline = std::numeric_limits<double>::quiet_NaN();
+        baseline.stddev = 0;
+        baseline.num_frames = 1;
+        baseline.num_samples = 0;
+        return;
+    }
+
+    size_t N_for_variance = std::min(smoothed_samples.size(), std::max(size_t(smoothed_samples.size() * variance_percentile), size_t(3)));
+    size_t N_half = N_for_variance / 2;
+    size_t N_opposite_half = N - std::min(N, N_half);
+    std::vector<std::tuple<double, double>> variance_and_values;
+    variance_and_values.reserve(N+1);
+    WindowedStats stats;
+    for(size_t i=0; i<N; ++i) {
+        stats.AddValue(smoothed_samples.at(i));
+    }
+    std::function<bool(std::tuple<double, double>, std::tuple<double, double>)> comp = [](std::tuple<double, double> const & a, std::tuple<double, double> const & b) {
+        return std::get<0>(a) < std::get<0>(b);
+    };
+    for(size_t i=0; i<N_half; ++i) {
+        double const var = stats.Variance();
+        double const val = smoothed_samples.at(i);
+
+        if(variance_and_values.size() < N_for_variance or var < std::get<0>(variance_and_values.back())) {
+            std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
+            variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
+            if(variance_and_values.size() > N_for_variance) {
+                variance_and_values.pop_back();
+            }
+        }
+    }
+    for(size_t i=N_half; i + N_opposite_half<smoothed_samples.size(); ++i) {
+        stats.AddValue(smoothed_samples[i+N_opposite_half]);
+        stats.RemoveValue();
+        double const var = stats.Variance();
+        double const val = smoothed_samples.at(i);
+        if(variance_and_values.size() < N_for_variance or var < std::get<0>(variance_and_values.back())) {
+            std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
+            variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
+            if(variance_and_values.size() > N_for_variance) {
+                variance_and_values.pop_back();
+            }
+        }
+    }
+    for(size_t i=smoothed_samples.size()-N_opposite_half; i<smoothed_samples.size(); ++i) {
+        double const var = stats.Variance();
+        double const val = smoothed_samples.at(i);
+        if(variance_and_values.size() < N_for_variance or var < std::get<0>(variance_and_values.back())) {
+            std::vector<std::tuple<double, double>>::iterator it = std::lower_bound(variance_and_values.begin(), variance_and_values.end(), std::make_tuple(var, val), comp);
+            variance_and_values.insert(it, std::make_tuple(var, val)); // insert before iterator it
+            if(variance_and_values.size() > N_for_variance) {
+                variance_and_values.pop_back();
+            }
+        }
+    }
+
+    std::vector<double> selected_samples;
+    selected_samples.reserve(variance_and_values.size());
+    for(std::tuple<double, double> const & var_and_val : variance_and_values) {
+        selected_samples.push_back(std::get<1>(var_and_val));
+    }
+
+    std::sort(selected_samples.begin(), selected_samples.end());
+    double baseline_mode_val = robust_stats::Mode(selected_samples.begin(), selected_samples.end());
+    double baseline_std = robust_stats::MedianAbsoluteDeviation(selected_samples.begin(), selected_samples.end(), baseline_mode_val);
+    baseline.baseline = baseline_mode_val;
     baseline.stddev = baseline_std;
     baseline.num_frames = 1;
-    baseline.num_samples = outlier_filter_results.size();
-    outlier_filter_results.clear();
-    outlier_filter_results.shrink_to_fit();
+    baseline.num_samples = selected_samples.size();
     return;
 }
 
@@ -399,36 +478,6 @@ void BaselineEstimator::Configure() {
     GetParameter("OutputName", output_key_);
     GetParameter("MaxCachedFrames", max_cached_frames);
 }
-
-void BaselineEstimator::Process() {
-  if (inbox_)
-    log_trace("%zu frames in inbox", inbox_->size());
-
-  I3FramePtr frame = PopFrame();
-
-  if(!frame or frame->GetStop() == I3Frame::DAQ) {
-    DAQ(frame);
-    return;
-  }
-
-  if(frame->GetStop() == I3Frame::Physics && ShouldDoPhysics(frame))
-    {
-      Physics(frame);
-    }
-  else if(frame->GetStop() == I3Frame::Geometry && ShouldDoGeometry(frame))
-    Geometry(frame);
-  else if(frame->GetStop() == I3Frame::Calibration && ShouldDoCalibration(frame))
-    Calibration(frame);
-  else if(frame->GetStop() == I3Frame::DetectorStatus && ShouldDoDetectorStatus(frame))
-    DetectorStatus(frame);
-  else if(frame->GetStop() == I3Frame::Simulation && ShouldDoSimulation(frame))
-    Simulation(frame);
-  else if(frame->GetStop() == I3Frame::DAQ && ShouldDoDAQ(frame)) {
-    DAQ(frame);
-  } else if(ShouldDoOtherStops(frame))
-    OtherStops(frame);
-}
-
 
 void BaselineEstimator::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_key_)) {
@@ -480,6 +529,7 @@ void BaselineEstimator::Geometry(I3FramePtr frame) {
                     ss << " " << channel;
                 log_warn("%s", ss.str().c_str());
             }
+            log_info("Using %zu channels", channels_.size());
         }
     } else {
         // Copy and sort the pmt keys from the geometry
@@ -541,8 +591,8 @@ void FrameThread(std::atomic<bool> & running, I3Frame * frame, std::string const
         ProcessWaveform(
             baseline_estimates[i],
             std::cref(waveforms->at(channel).GetWaveform()),
-            num_samples,
-            num_exp_samples
+            5,
+            0.1
         );
     }
 
@@ -591,20 +641,25 @@ void RunFrameThread(BaselineEstimatorJob * job,
 }
 
 void BaselineEstimator::DAQ(I3FramePtr frame) {
-	while(true) {
-		// Check if any jobs have finished
-		for(int i=int(running_jobs.size())-1; i>=0; --i) {
-			if (teptr) {
-				try{
-					std::rethrow_exception(teptr);
-				}
-				catch(const std::exception &ex)
-				{
-					std::cerr << "Thread exited with exception: " << ex.what() << "\n";
-				}
-			}
-			if(not running_jobs[i]->running.load()) {
-				BaselineEstimatorJob * job = running_jobs[i];
+    if(not geo_seen_) {
+        log_fatal("No geometry seen before first DAQ frame");
+        PushFrame(frame);
+        return;
+    }
+    while(true) {
+        // Check if any jobs have finished
+        for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            if (teptr) {
+                try{
+                    std::rethrow_exception(teptr);
+                }
+                catch(const std::exception &ex)
+                {
+                    std::cerr << "Thread exited with exception: " << ex.what() << "\n";
+                }
+            }
+            if(not running_jobs[i]->running.load()) {
+                BaselineEstimatorJob * job = running_jobs[i];
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
@@ -656,14 +711,14 @@ void BaselineEstimator::DAQ(I3FramePtr frame) {
             results.back().done = false;
             frame_index += 1;
             RunFrameThread(job,
-                ccm_waveforms_key_,
-                output_key_,
-                geo_,
-                pmt_keys_,
-                channels_,
-                output_channels_,
-                num_samples,
-                num_exp_samples);
+                    ccm_waveforms_key_,
+                    output_key_,
+                    geo_,
+                    pmt_keys_,
+                    channels_,
+                    output_channels_,
+                    num_samples,
+                    num_exp_samples);
             break;
         } else if(job != nullptr) {
             free_jobs.push_back(job);
