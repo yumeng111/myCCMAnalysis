@@ -8,7 +8,7 @@
 /control/verbose 1
 /tracking/verbose 0
 /process/optical/verbose 1
-/LAr/detector/MainScintYield 10000
+/G4CCM/detector/MainScintYield 10000
 #/process/optical/processActivation Cerenkov false
 
 /run/initialize
@@ -20,19 +20,19 @@
 
 /vis/disable
 /random/setSavingFlag true
-/LAr/saveThreshold 1400
-/LAr/pmtThreshold 4
-/LAr/forceDrawNoPhotons true
+/G4CCM/saveThreshold 1400
+/G4CCM/pmtThreshold 4
+/G4CCM/forceDrawNoPhotons true
 /run/beamOn 200
 
 /vis/enable
-/LAr/eventVerbose 1
+/G4CCM/eventVerbose 1
 /process/optical/scintillation/setTrackSecondariesFirst false
 /run/beamOn 5
 #
 /tracking/verbose 1
-/LAr/forceDrawPhotons true
-/LAr/detector/MainScintYield 100
+/G4CCM/forceDrawPhotons true
+/G4CCM/detector/MainScintYield 100
 /process/optical/scintillation/setTrackSecondariesFirst true
 /run/beamOn 1
 

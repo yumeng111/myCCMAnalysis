@@ -24,8 +24,8 @@
 // ********************************************************************
 //
 //
-/// \file optical/LXe/LXe.cc
-/// \brief Main program of the optical/LXe example
+/// \file optical/G4CCM/G4CCM.cc
+/// \brief Main program of the optical/G4CCM example
 //
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 

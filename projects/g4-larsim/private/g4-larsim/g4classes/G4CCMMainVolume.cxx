@@ -377,6 +377,13 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     // now let's build PMTs using J4SolidMaker
     fPMT = J4PMTSolidMaker::Get8inchPMTSolid();  
     fPMT_log = new G4LogicalVolume(fPMT, G4Material::GetMaterial("Glass"), "pmt_log");
+    
+    // now let's build also PMT photocathods using J4SolidMaker (fix at some point)
+    fPhotocath = J4PMTSolidMaker::Get8inchPMTSolid();  
+    fPhotocath_log = new G4LogicalVolume(fPhotocath, G4Material::GetMaterial("Alum"), "photocath_log");
+    G4double height_pmt = 10.16; // idk, fix
+    new G4PVPlacement(nullptr, G4ThreeVector(0., 0., -height_pmt / 2.), fPhotocath_log, "photocath", fPMT_log, false, 0);
+
 
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
@@ -418,6 +425,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         G4String pmt_name = std::to_string(row) + "_" + std::to_string(pmt_number);
         new G4PVPlacement(0, G4ThreeVector(position.GetX()/I3Units::cm, position.GetY()/I3Units::cm, position.GetZ()/I3Units::cm), fPMT_log, pmt_name, fFiducialAr_log, false, k);
         ++k;
+        fPMTPositions.push_back(G4ThreeVector(position.GetX()/I3Units::cm, position.GetY()/I3Units::cm, position.GetZ()/I3Units::cm));
     }
 
     VisAttributes();
@@ -475,6 +483,22 @@ void G4CCMMainVolume::SurfaceProperties()
 
     // create logical skin surfaces
     new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBfoilOS);
+
+    //**Photocathode surface properties
+    std::vector<G4double> ephoton = { 7.0 * eV, 7.14 * eV };
+    std::vector<G4double> photocath_EFF     = { 1., 1. };
+    std::vector<G4double> photocath_ReR     = { 1.92, 1.92 };
+    std::vector<G4double> photocath_ImR     = { 1.69, 1.69 };
+    auto photocath_mt = new G4MaterialPropertiesTable();
+    photocath_mt->AddProperty("EFFICIENCY", ephoton, photocath_EFF);
+    photocath_mt->AddProperty("REALRINDEX", ephoton, photocath_ReR);
+    photocath_mt->AddProperty("IMAGINARYRINDEX", ephoton, photocath_ImR);
+    auto photocath_opsurf = new G4OpticalSurface(
+    "photocath_opsurf", glisur, polished, dielectric_metal);
+    photocath_opsurf->SetMaterialPropertiesTable(photocath_mt);
+
+    //**Create logical skin surfaces
+    new G4LogicalSkinSurface("photocath_surf", fPhotocath_log, photocath_opsurf);
 
 }
 

@@ -41,15 +41,11 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4VPhysicalVolume* Construct() override;
 
     // Add SD
-    void ConstructSD(std::vector<std::vector<double>> & pmt_positions);
+    void ConstructSD();
 
     //Functions to modify the geometry
     void SetDefaults();//Method to set the default values of all geometry modifications
-    void SetPMTRadius(G4double );//defines the radius of the PMTs (currently 4 inches ~ 10.2 cm)
 
-
-    //Get values
-    G4double GetPMTRadius() const {return fOuterRadius_pmt;}//method to obtain the PMT radiu entered in the previous method (or the default, if unchanged)
     
     //Construct main volume
     void SetMainVolumeOn(G4bool b);
@@ -88,7 +84,6 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* fTPBFoil;
 
     // Geometry
-    G4double fOuterRadius_pmt = 10.16 * CLHEP::cm;
     G4bool fMainVolumeOn = true;
 
     G4CCMMainVolume* fMainVolume = nullptr;

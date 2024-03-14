@@ -85,6 +85,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4double z;  // atomic number
     G4double density;
 
+    G4cout << "in define materials" << G4endl;
     //***Elements
     fH = new G4Element("H", "H", z = 1., a = 1.01 * g / mole);
     fC = new G4Element("C", "C", z = 6., a = 12.01 * g / mole);
@@ -328,6 +329,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fPTFE_mt->AddProperty("REFLECTIVITY", TefEnergy, TefReflect, TefEnergy_size);
     fPTFE->SetMaterialPropertiesTable(fPTFE_mt);
 
+    G4cout << "done in define materials" << G4endl;
 
 
 }
@@ -356,44 +358,38 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 
-// construct our pmts
-void G4CCMDetectorConstruction::ConstructSD(std::vector<std::vector<double>> & pmt_positions){
+// construct our pmts SD
+void G4CCMDetectorConstruction::ConstructSD(){
     if(!fMainVolume)
         return;
 
-    // first let's convert our vector of vectors into a vector of G4ThreeVectors
-    //std::vector<G4ThreeVectors> g4_pmt_positions_;
-    //for (size_t i = 0; i < pmt_positions.size(); i++){
-    //    G4ThreeVector g4Vec = G4ThreeVector(pmt_positions[i][0], pmt_positions[i][1], pmt_positions[i][2]);
-    //    g4_pmt_positions_.push_back(g4Vec);
-    //}
-   
-    //// now we can place pmts 
-    //G4CCMPMTSD* pmt = fPmt_SD.Get();
-    //if(!pmt) {
-    //    // Created here so it exists as pmts are being placed
-    //    G4cout << "Construction /CCMDet/pmtSD" << G4endl;
-    //    auto pmt_SD = new G4CCMPMTSD("/CCMDet/pmtSD");
-    //    fPmt_SD.Put(pmt_SD);
+    // PMT SD
+    G4CCMPMTSD* pmt = fPMT_SD.Get();
+    if(!pmt)
+    {
+    // Created here so it exists as pmts are being placed
+    G4cout << "Construction /LAr/pmtSD" << G4endl;
+    auto pmt_SD = new G4CCMPMTSD("/LAr/pmtSD");
+    fPMT_SD.Put(pmt_SD);
 
-    //    pmt_SD->InitPMTs();
-    //    pmt_SD->SetPmtPositions(pmt_positions);
-    //}
-    //else {
-    //    pmt->InitPMTs();
-    //    pmt->SetPmtPositions(pmt_positions);
-    //}
-    //G4SDManager::GetSDMpointer()->AddNewDetector(fPmt_SD.Get());
-    //
-    //// sensitive detector is not actually on the photocathode.
-    //// processHits gets done manually by the stepping action.
-    //// It is used to detect when photons hit and get absorbed & detected at the
-    //// boundary to the photocathode (which doesn't get done by attaching it to a
-    //// logical volume.
-    //// It does however need to be attached to something or else it doesn't get
-    //// reset at the begining of events
+    pmt_SD->InitPMTs();
+    pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+    }
+    else
+    {
+    pmt->InitPMTs();
+    pmt->SetPmtPositions(fMainVolume->GetPMTPositions());
+    }
+    G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
+    // sensitive detector is not actually on the photocathode.
+    // processHits gets done manually by the stepping action.
+    // It is used to detect when photons hit and get absorbed & detected at the
+    // boundary to the photocathode (which doesn't get done by attaching it to a
+    // logical volume.
+    // It does however need to be attached to something or else it doesn't get
+    // reset at the begining of events
 
-    //SetSensitiveDetector(fMainVolume->GetLogPhotoCath(), fPmt_SD.Get());
+    SetSensitiveDetector(fMainVolume->GetLogPhotoCath(), fPMT_SD.Get());
 
 }
 
@@ -401,7 +397,6 @@ void G4CCMDetectorConstruction::ConstructSD(std::vector<std::vector<double>> & p
 
 void G4CCMDetectorConstruction::SetDefaults() {
     //Resets to default values
-    fOuterRadius_pmt = 10.2*cm;
     fMainVolumeOn = true;
 
 }

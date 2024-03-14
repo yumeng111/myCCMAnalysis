@@ -25,7 +25,7 @@ G4CCMDetectorMessenger::G4CCMDetectorMessenger(G4CCMDetectorConstruction* detect
   fVolumesDir = new G4UIdirectory("/G4CCM/detector/volumes/");
   fVolumesDir->SetGuidance("Enable/disable volumes");
 
-  fLArCmd = new G4UIcmdWithABool("/G4CCM/detector/volumes/lxe", this);
+  fLArCmd = new G4UIcmdWithABool("/G4CCM/detector/volumes/lar", this);
   fLArCmd->SetGuidance("Enable/Disable the main detector volume.");
   fLArCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
   fLArCmd->SetToBeBroadcasted(false);

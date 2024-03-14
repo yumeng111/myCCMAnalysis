@@ -26,6 +26,9 @@ class G4CCMMainVolume : public G4PVPlacement
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
                 G4CCMDetectorConstruction* c);
 
+    G4LogicalVolume* GetLogPhotoCath() { return fPhotocath_log; }
+    std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
+
   private:
     void VisAttributes();
     void SurfaceProperties();
@@ -40,6 +43,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fTPBFoil = nullptr;
     G4Tubs* fFiducialAr = nullptr;
     G4VSolid* fPMT = nullptr; 
+    G4VSolid* fPhotocath = nullptr; 
 
     // Logical volumes
     G4LogicalVolume* fCryoVessel_log = nullptr;
@@ -50,6 +54,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fTPBFoil_log = nullptr;
     G4LogicalVolume* fFiducialAr_log = nullptr;
     G4LogicalVolume* fPMT_log = nullptr;
+    G4LogicalVolume* fPhotocath_log= nullptr;
 
     // Sensitive Detectors positions
     std::vector<G4ThreeVector> fPMTPositions;
