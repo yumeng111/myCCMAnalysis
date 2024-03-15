@@ -85,7 +85,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4double z;  // atomic number
     G4double density;
 
-    G4cout << "in define materials" << G4endl;
     //***Elements
     fH = new G4Element("H", "H", z = 1., a = 1.01 * g / mole);
     fC = new G4Element("C", "C", z = 6., a = 12.01 * g / mole);
@@ -150,31 +149,31 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     //***Material properties tables
 
-    G4double LAr_Energy_Scint[] = { 3.87*eV , 4.51*eV , 4.74*eV , 5.03*eV , 5.36*eV , 5.55*eV , 5.82*eV , 6.06*eV , 6.54*eV , 6.79*eV ,
+    std::vector<G4double> LAr_Energy_Scint = { 3.87*eV , 4.51*eV , 4.74*eV , 5.03*eV , 5.36*eV , 5.55*eV , 5.82*eV , 6.06*eV , 6.54*eV , 6.79*eV ,
                                                7.03*eV , 7.36*eV , 7.76*eV , 7.98*eV , 8.33*eV , 8.71*eV , 8.96*eV , 9.33*eV , 9.91*eV , 10.31*eV ,
                                                10.61*eV , 10.88*eV , 11.27*eV , 11.81*eV , 12.40*eV , 13.05*eV , 13.78*eV , 14.59*eV , 15.50*eV }; // energies for scintillation spectrum
 
-    G4double LAr_Energy_RIn[] = {1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV ,
+    std::vector<G4double> LAr_Energy_RIn = {1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV ,
                                             4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV , 
                                             8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 
                                             10.33206*eV , 11.27134*eV , 12.39847*eV }; // energies for refractive index and Rayleigh scattering lengths
 
-    G4double LAr_SCINT[] = {0.00006, 0.00007, 0.00008, 0.00011, 0.00020, 0.00030, 0.00048, 0.00082, 0.00126, 0.00084, 0.00043, 0.00030,
+    std::vector<G4double> LAr_SCINT = {0.00006, 0.00007, 0.00008, 0.00011, 0.00020, 0.00030, 0.00048, 0.00082, 0.00126, 0.00084, 0.00043, 0.00030,
                                        0.00106, 0.00298, 0.00175, 0.00351, 0.01493, 0.12485, 0.49332, 0.20644, 0.07477, 0.04496, 0.01804, 0.00576,
                                        0.00184, 0.00059, 0.00019, 0.00006, 0.00002 }; // liquid Argon scintillation spectrum. this one is centered at 128 nm (as it should be). 
 
-    G4double LAr_RIND[] = {1.22 , 1.222 , 1.225 , 1.23 ,
+    std::vector<G4double> LAr_RIND = {1.22 , 1.222 , 1.225 , 1.23 ,
                                       1.24 , 1.255 , 1.263 , 1.28 , 
                                       1.315, 1.335 , 1.358 , 1.403, 
                                       1.45 , 1.62  , 1.79 }; // index of refraction spectrum.
 
-    G4double LAr_RSL[] = {327028.6808*cm, 172560.2267*cm, 80456.5339*cm, 31177.44642*cm, 
+    std::vector<G4double> LAr_RSL = {327028.6808*cm, 172560.2267*cm, 80456.5339*cm, 31177.44642*cm, 
                                      8854.144327*cm, 1496.876298*cm, 906.5011168*cm, 480.2538294*cm, 
                                      205.3758714*cm, 145.6326111*cm, 100.7813004*cm, 63.2898117*cm, 
                                      40.07450411*cm, 11.43903548*cm, 3.626432195*cm }; // spectrum of rayleigh scattering lengths.
 
     // LAr absorption length...plz change at some point
-    G4double LAr_Energy_Abs[] = {1.239847*eV, 1.26515*eV, 1.2915072916666666*eV, 1.3189861702127659*eV, 1.3476597826086956*eV, 1.3776077777777778*eV,
+    std::vector<G4double> LAr_Energy_Abs = {1.239847*eV, 1.26515*eV, 1.2915072916666666*eV, 1.3189861702127659*eV, 1.3476597826086956*eV, 1.3776077777777778*eV,
                                             1.4089170454545454*eV, 1.441682558139535*eV, 1.4760083333333334*eV, 1.512008536585366*eV, 1.54980875*eV, 1.589547435897436*eV,
                                             1.6313776315789474*eV, 1.675468918918919*eV, 1.7220097222222222*eV, 1.77121*eV, 1.823304411764706*eV, 1.8785560606060605*eV,
                                             1.9372609375*eV, 1.9997532258064517*eV, 2.0664116666666668*eV, 2.1376672413793103*eV, 2.2140125*eV, 2.296012962962963*eV,
@@ -183,26 +182,25 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                             4.768642307692308*eV, 5.166029166666666*eV, 5.635668181818182*eV, 6.199235*eV, 6.888038888888889*eV, 7.74904375*eV, 8.85605*eV,
                                             10.332058333333332*eV, 12.39847*eV, 15.4980875*eV};
         
-    G4double LAr_ABS[] = {2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
+    std::vector<G4double> LAr_ABS = {2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
                                      2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
                                      2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 1310.0*cm, 1310.0*cm, 1310.0*cm, 1310.0*cm, 1310.0*cm, 100.0*cm, 100.0*cm, 100.0*cm,
                                      100.0*cm, 100.0*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm};
 
     // Takes the defined values above and uses them to define a materials properties table.
-    const G4int LAr_Energy_Scint_Size = sizeof(LAr_Energy_Scint)/sizeof(G4double);
-    const G4int LAr_Energy_Abs_Size = sizeof(LAr_Energy_Abs)/sizeof(G4double);
     
-    fLAr_mt->AddProperty("FASTCOMPONENT", LAr_Energy_Scint, LAr_SCINT, LAr_Energy_Scint_Size); // adds a property; this is the fast component of the scinitillation.
-    fLAr_mt->AddProperty("SLOWCOMPONENT", LAr_Energy_Scint, LAr_SCINT, LAr_Energy_Scint_Size);
-    fLAr_mt->AddProperty("RINDEX",        LAr_Energy_RIn,   LAr_RIND, LAr_Energy_Scint_Size);
-    fLAr_mt->AddProperty("RAYLEIGH",      LAr_Energy_RIn,  LAr_RSL, LAr_Energy_Scint_Size);
-    G4double scint_yeild=1.0/(19.5*eV); // scintillation yeild: 50 per keV.
-    fLAr_mt->AddConstProperty("SCINTILLATIONYIELD",scint_yeild);
+    G4MaterialPropertiesTable* fLAr_mt = new G4MaterialPropertiesTable();
+    fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", LAr_Energy_Scint, LAr_SCINT); 
+    fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT2", LAr_Energy_Scint, LAr_SCINT);
+    fLAr_mt->AddProperty("RINDEX",        LAr_Energy_RIn,   LAr_RIND);
+    fLAr_mt->AddProperty("RAYLEIGH",      LAr_Energy_RIn,  LAr_RSL);
+    fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
+    G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
+    fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE",0.11); 
-    fLAr_mt->AddConstProperty("FASTTIMECONSTANT",7.*ns);
-    fLAr_mt->AddConstProperty("SLOWTIMECONSTANT",1400.*ns);
-    fLAr_mt->AddConstProperty("YIELDRATIO",0.25); // for e/m scintillation
-    fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS, LAr_Energy_Abs_Size);
+    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1",7.*ns);
+    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2",1400.*ns);
+    fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",0.25); // for e/m scintillation
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 
 
@@ -210,45 +208,43 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
 
     // Set PMT glass constants
-    G4double glass_energy[] = {7.0*eV, 7.07*eV, 7.14*eV};
-    G4double glass_AbsLength[] = { 420. * cm, 420. * cm, 420. * cm };
-    G4double glass_RIND[] = {1.49,1.49,1.49};
-    
-    const G4int glass_energy_size = sizeof(glass_energy)/sizeof(G4double);
+    std::vector<G4double> glass_energy = {7.0*eV, 7.07*eV, 7.14*eV};
+    std::vector<G4double> glass_AbsLength = { 420. * cm, 420. * cm, 420. * cm };
+    std::vector<G4double> glass_RIND = {1.49,1.49,1.49};
 
-    fGlass_mt->AddProperty("ABSLENGTH", glass_energy, glass_AbsLength, glass_energy_size);
-    fGlass_mt->AddProperty("RINDEX", glass_energy, glass_RIND, glass_energy_size);
+    G4MaterialPropertiesTable* fGlass_mt = new G4MaterialPropertiesTable();
+    fGlass_mt->AddProperty("ABSLENGTH", glass_energy, glass_AbsLength);
+    fGlass_mt->AddProperty("RINDEX", glass_energy, glass_RIND);
     fGlass->SetMaterialPropertiesTable(fGlass_mt);
 
-    G4double Vacuum_Energy[] = {2.0*eV,7.0*eV,7.14*eV};
-    G4double Vacuum_RIND[]={1.,1.,1.};
-    
-    const G4int Vaccum_Size = sizeof(Vacuum_Energy)/sizeof(G4double);
-    
-    fVacuum_mt->AddProperty("RINDEX", Vacuum_Energy, Vacuum_RIND, Vaccum_Size);
+    std::vector<G4double> Vacuum_Energy = {2.0*eV,7.0*eV,7.14*eV};
+    std::vector<G4double> Vacuum_RIND={1.,1.,1.};
+   
+    G4MaterialPropertiesTable* fVacuum_mt = new G4MaterialPropertiesTable(); 
+    fVacuum_mt->AddProperty("RINDEX", Vacuum_Energy, Vacuum_RIND);
     fVacuum->SetMaterialPropertiesTable(fVacuum_mt);
 
     // Definition of MPT for Plastic frills
-    G4double plastic_Energy[] = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.0*eV };
-    G4double plastic_reflect[] = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
-    G4double plastic_AbsLength[] = { 10.0*cm, 10.0*cm, 10.0*cm, 10.0*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm};
-    G4double blackplastic_AbsLength[] = { 1e-9*cm, 1e-9*cm, 1e-9*cm, 1e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm};
-    G4double plastic_RIND[] = { 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4 };
-    
-    const G4int plastic_energy_size = sizeof(plastic_Energy)/sizeof(G4double);
-    
-    fPlastic_mt->AddProperty("ABSLENGTH", plastic_Energy, plastic_AbsLength, plastic_energy_size);
-    fPlastic_mt->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect, plastic_energy_size);
-    fPlastic_mt->AddProperty("RINDEX", plastic_Energy, plastic_RIND, plastic_energy_size);
+    std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.0*eV };
+    std::vector<G4double> plastic_reflect = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
+    std::vector<G4double> plastic_AbsLength = { 10.0*cm, 10.0*cm, 10.0*cm, 10.0*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm, 1.0e-3*cm};
+    std::vector<G4double> blackplastic_AbsLength = { 1e-9*cm, 1e-9*cm, 1e-9*cm, 1e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm, 1.0e-9*cm};
+    std::vector<G4double> plastic_RIND = { 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4 };
+   
+    G4MaterialPropertiesTable* fPlastic_mt = new G4MaterialPropertiesTable(); 
+    fPlastic_mt->AddProperty("ABSLENGTH", plastic_Energy, plastic_AbsLength);
+    fPlastic_mt->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
+    fPlastic_mt->AddProperty("RINDEX", plastic_Energy, plastic_RIND);
     fPlastic->SetMaterialPropertiesTable(fPlastic_mt);
-    
-    fBlackPlastic_mt->AddProperty("ABSLENGTH", plastic_Energy, blackplastic_AbsLength, plastic_energy_size);
-    fBlackPlastic_mt->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect, plastic_energy_size);
-    fBlackPlastic_mt->AddProperty("RINDEX", plastic_Energy, plastic_RIND, plastic_energy_size);
+   
+    G4MaterialPropertiesTable* fBlackPlastic_mt = new G4MaterialPropertiesTable();  
+    fBlackPlastic_mt->AddProperty("ABSLENGTH", plastic_Energy, blackplastic_AbsLength);
+    fBlackPlastic_mt->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
+    fBlackPlastic_mt->AddProperty("RINDEX", plastic_Energy, plastic_RIND);
     fBlackPlastic->SetMaterialPropertiesTable(fBlackPlastic_mt);
 
     // Aluminum
-    G4double alum_energy[] = { 1.53353916299*eV, 1.55836885306*eV, 1.58716054918*eV, 1.61709864659*eV, 1.65046713174*eV,    
+    std::vector<G4double> alum_energy = { 1.53353916299*eV, 1.55836885306*eV, 1.58716054918*eV, 1.61709864659*eV, 1.65046713174*eV,    
                                           1.6817136839*eV,  1.71786713359*eV, 1.75433728722*eV, 1.79106381297*eV, 1.83220935967*eV, 
                                           1.87670110428*eV, 1.92033477064*eV, 1.96440460941*eV, 2.01566223496*eV, 2.06248774244*eV, 
                                           2.1191459895*eV,  2.17704608625*eV,  2.23198006977*eV, 2.29412813935*eV,2.37159279237*eV, 
@@ -256,7 +252,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           2.88535232931*eV, 2.97955997826*eV, 3.08041053689*eV, 3.18832742402*eV, 3.26833943848*eV, 
                                           3.36191419687*eV, 3.46107669506*eV, 3.52980225748*eV, 3.60084752681*eV, 3.70923697374*eV, 
                                           3.75238245064*eV, 3.82680283055*eV, 3.9042347515*eV,  3.9111734511*eV, 20.6640330667*eV };
-    G4double alum_reflect[] = {0.8866682, 0.8975349, 0.9091666, 0.9176283, 0.9260717, 
+    std::vector<G4double> alum_reflect = {0.8866682, 0.8975349, 0.9091666, 0.9176283, 0.9260717, 
                                           0.9329575, 0.9398158, 0.9458907, 0.9511823, 0.9548705, 
                                           0.9609272, 0.9662096, 0.9722937, 0.9775578, 0.9836511, 
                                           0.9865376, 0.9886408, 0.9891864, 0.9905061, 0.9909877, 
@@ -265,71 +261,70 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           0.9058671, 0.8866637, 0.862769,  0.8436296, 0.8228502, 
                                           0.8005955, 0.7798801, 0.7591648, 0.001,     0.001 };    
 
-    G4double alum_abslen[] = { 1.0e-3*cm, 1.0e-3*cm};
-    G4double alum_abseneg[] = { 20.664*eV, 1.5498*eV };
+    std::vector<G4double> alum_abslen = { 1.0e-3*cm, 1.0e-3*cm};
+    std::vector<G4double> alum_abseneg = { 1.5498*eV, 20.664*eV};
 
-    const G4int alum_energy_size = sizeof(alum_energy)/sizeof(G4double); 
-
-    fAlum_mt->AddProperty("REFLECTIVITY", alum_energy, alum_reflect, alum_energy_size);
-    fAlum_mt->AddProperty("ABSLENGTH", alum_abseneg, alum_abslen, alum_energy_size);
+    G4MaterialPropertiesTable* fAlum_mt = new G4MaterialPropertiesTable();
+    fAlum_mt->AddProperty("REFLECTIVITY", alum_energy, alum_reflect);
+    fAlum_mt->AddProperty("ABSLENGTH", alum_abseneg, alum_abslen);
     fAlum->SetMaterialPropertiesTable(fAlum_mt);
 
     // TPB
-    G4double TPBEnergy[] = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
+    std::vector<G4double> TPBEnergy = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
                                         2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
                                         2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
                                         3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
                                         6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
 
     // Emission spectrum for TPB; basically probabilities of photon being reemitted in the various energy bins.
-    G4double TPBEmission[] = { 0.0000, 0.0000, 0.0000, 0.0000, 0.0005,
+    std::vector<G4double> TPBEmission = { 0.0000, 0.0000, 0.0000, 0.0000, 0.0005,
                                           0.0015, 0.0030, 0.0050, 0.0070, 0.0110,
                                           0.0110, 0.0060, 0.0020, 0.0000, 0.0000,
                                           0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
                                           0.0000, 0.0000, 0.0000, 0.0000, 0.0000 };
 
     // Refractive index of the TPB.
-    G4double TPBRIndex[] = { 1.4, 1.4, 1.4, 1.4, 1.4,
+    std::vector<G4double> TPBRIndex = { 1.4, 1.4, 1.4, 1.4, 1.4,
                                         1.4, 1.4, 1.4, 1.4, 1.4,
                                         1.4, 1.4, 1.4, 1.4, 1.4,
                                         1.4, 1.4, 1.4, 1.4, 1.4,
                                         1.4, 1.4, 1.4, 1.4, 1.4 };
 
-    const G4int TPBEnergy_size = sizeof(TPBEnergy)/sizeof(G4double); 
 
+    G4MaterialPropertiesTable* fTPBCoating_mt = new G4MaterialPropertiesTable();
     //fTPBCoating_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
-    fTPBCoating_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, TPBEnergy_size);
+    fTPBCoating_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
     fTPBCoating_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
     fTPBCoating_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
     fTPBCoating->SetMaterialPropertiesTable(fTPBCoating_mt);
     
+    G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
     //fTPBFoil_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
-    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission, TPBEnergy_size);
+    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
     fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
     fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
 
     // Defines properties of the PTFE reflectors.
-    G4double TefEnergy[] = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV,
+    std::vector<G4double> TefEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV,
                                        2.138*eV, 2.25*eV,  2.38*eV,  2.48*eV, 
                                        2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV, 
                                        3.124*eV, 3.457*eV, 3.643*eV, 3.812*eV, 4.086*eV,
                                        4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                        7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
-    G4double TefReflect[] = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+    std::vector<G4double> TefReflect = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
                                         1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 0.99};
     
-    G4double TefRIndex[] = {10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
+    std::vector<G4double> TefRIndex = {10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
                                        10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
                                         10., 10., 10., 10., 10.};
     
-    const G4int TefEnergy_size = sizeof(TefEnergy)/sizeof(G4double); 
     
-    fPTFE_mt->AddProperty("RINDEX", TefEnergy, TefRIndex, TefEnergy_size);
-    fPTFE_mt->AddProperty("REFLECTIVITY", TefEnergy, TefReflect, TefEnergy_size);
+    G4MaterialPropertiesTable* fPTFE_mt = new G4MaterialPropertiesTable();
+    fPTFE_mt->AddProperty("RINDEX", TefEnergy, TefRIndex);
+    fPTFE_mt->AddProperty("REFLECTIVITY", TefEnergy, TefReflect);
     fPTFE->SetMaterialPropertiesTable(fPTFE_mt);
 
-    G4cout << "done in define materials" << G4endl;
 
 
 }

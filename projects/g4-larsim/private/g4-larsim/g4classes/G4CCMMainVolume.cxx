@@ -449,29 +449,28 @@ void G4CCMMainVolume::SurfaceProperties()
     // now it's time to define optical surface properties
     // let's start with the TPB foils
     
-    G4double TPBEnergy[] = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
+    std::vector<G4double> TPBEnergy = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
                                         2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
                                         2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
                                         3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
                                         6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
     
-    G4double TPBfoilOSTransmit[] = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+    std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
                                                1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
 
-    G4double TPBfoilOSReflect[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                               0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                               0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
 
-    G4double TPBfoilOSEff[] = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+    std::vector<G4double> TPBfoilOSEff = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                                           1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
                                           1., 1., 1., 1., 1.};
 
-    const G4int TPBEnergy_size = sizeof(TPBEnergy)/sizeof(G4double); 
     // define our TPB foil material properties table
     G4MaterialPropertiesTable *TPBfoilMPT = new G4MaterialPropertiesTable();
-    TPBfoilMPT->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect, TPBEnergy_size);
-    TPBfoilMPT->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit, TPBEnergy_size);
-    TPBfoilMPT->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff, TPBEnergy_size);
+    TPBfoilMPT->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
+    TPBfoilMPT->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
+    TPBfoilMPT->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
     
     // now define our optical surface
     G4OpticalSurface *TPBfoilOS = new G4OpticalSurface("TPBFoilsSurface");
