@@ -2271,8 +2271,8 @@ double PhotonPropagation::GetSimulation(double const & singlet_ratio_,
                             times,
                             light_profile);
 
-    std::cout << "times = " << times << std::endl;
-    std::cout << "light_profile = " << light_profile << std::endl;
+    //std::cout << "times = " << times << std::endl;
+    //std::cout << "light_profile = " << light_profile << std::endl;
     // ok so we've seen our geometry file, pre-computed the lists of pmt info and locations to check for light propagation
     // we've also pre-compute the verticies of each event we want to simulate
     // and we just computed our light profile....all that's left to do is propagate our light!
