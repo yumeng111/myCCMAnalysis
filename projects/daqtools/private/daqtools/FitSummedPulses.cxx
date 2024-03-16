@@ -35,7 +35,6 @@
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 #include "icetray/robust_statistics.h"
-#include "daqtools/WaveformSmoother.h"
 #include <dataclasses/calibration/BaselineEstimate.h>
 
 // struct to hold peak data when fitting

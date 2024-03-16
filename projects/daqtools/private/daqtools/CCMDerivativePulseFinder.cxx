@@ -318,8 +318,8 @@ void CCMDerivativePulseFinder::FindPulsesThread(
         }
         double nim_pulse_time = trigger_nim_pulses[0].GetNIMPulseTime();
         if(use_raw_waveforms) {
-            WaveformSmoother smoother = WaveformSmoother(raw_waveforms->at(channel).GetWaveform().begin(), raw_waveforms->at(channel).GetWaveform().end(), 2.0, 12.0);
-            CCMDerivativePulseFinder::FindPulses<WaveformSmoother>(output_pulses_references.at(i),
+            WaveformSmootherDerivativeAndBaseline smoother = WaveformSmootherDerivativeAndBaseline(raw_waveforms->at(channel).GetWaveform().begin(), raw_waveforms->at(channel).GetWaveform().end(), 2.0, 12.0);
+            CCMDerivativePulseFinder::FindPulses<WaveformSmootherDerivativeAndBaseline>(output_pulses_references.at(i),
                     smoother,
                     pulse_initial_deriv_threshold,
                     pulse_max_width,

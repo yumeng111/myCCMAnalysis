@@ -43,7 +43,7 @@ std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, RandomFunc&
     return result;
 }
 
-size_t CheckForPulse(WaveformSmoother smoother, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, double baseline) {
+size_t CheckForPulse(WaveformSmootherDerivative smoother, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, double baseline) {
     smoother.Reset(start_idx);
     // 0 before start of pulse checking [checking for positive derivative]
     // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
@@ -87,7 +87,7 @@ size_t CheckForPulse(WaveformSmoother smoother, size_t start_idx, size_t max_sam
     }
 }
 
-double EstimateBaseline(WaveformSmoother smoother, size_t samples_for_baseline) {
+double EstimateBaseline(WaveformSmootherDerivative smoother, size_t samples_for_baseline) {
     smoother.Reset();
     size_t N = smoother.Size();
     N = std::min(N, samples_for_baseline);
@@ -103,7 +103,7 @@ double EstimateBaseline(WaveformSmoother smoother, size_t samples_for_baseline) 
     return baseline;
 }
 
-std::pair<size_t, size_t> FindFirstPulse(WaveformSmoother & smoother, double baseline, size_t pulse_max_start_sample, double deriv_threshold, size_t max_pulse_width, size_t min_pulse_width, double min_pulse_height, double min_deriv_magnitude, double min_integral) {
+std::pair<size_t, size_t> FindFirstPulse(WaveformSmootherDerivative & smoother, double baseline, size_t pulse_max_start_sample, double deriv_threshold, size_t max_pulse_width, size_t min_pulse_width, double min_pulse_height, double min_deriv_magnitude, double min_integral) {
     size_t N = smoother.Size();
     N = std::min(N, pulse_max_start_sample);
     if(N > 5)
@@ -177,14 +177,14 @@ I3_MODULE(FirstPulseFinder);
 void FirstPulseFinder::ProcessFrame(I3FramePtr frame) {
     CCMWaveformUInt16Series const & waveforms = frame->Get<CCMWaveformUInt16Series const>(waveforms_name_);
     boost::shared_ptr<I3Map<CCMPMTKey, std::pair<size_t, size_t>>> pulse_positions = boost::make_shared<I3Map<CCMPMTKey, std::pair<size_t, size_t>>>();
-    boost::shared_ptr<I3Map<CCMPMTKey, WaveformSmoother>> smooth_waveforms = boost::make_shared<I3Map<CCMPMTKey, WaveformSmoother>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, WaveformSmootherDerivative>> smooth_waveforms = boost::make_shared<I3Map<CCMPMTKey, WaveformSmootherDerivative>>();
     for(std::pair<CCMPMTKey const, uint32_t> const & p : pmt_channel_map_) {
         CCMPMTKey const & key = p.first;
         uint32_t const & channel = p.second;
         CCMWaveformUInt16 const & waveform = waveforms[channel];
         if(waveform.GetWaveform().size() > 0) {
-            smooth_waveforms->insert({key, WaveformSmoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau)});
-            WaveformSmoother & smoother = smooth_waveforms->at(key);
+            smooth_waveforms->insert({key, WaveformSmootherDerivative(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau)});
+            WaveformSmootherDerivative & smoother = smooth_waveforms->at(key);
             double baseline = EstimateBaseline(smoother, samples_for_baseline);
             pulse_positions->operator[](key) =
                 FindFirstPulse(smoother,

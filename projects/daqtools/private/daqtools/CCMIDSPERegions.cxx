@@ -64,9 +64,9 @@ class CCMIDSPERegions: public I3Module {
     bool geo_seen;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
     void Geometry(I3FramePtr frame);
-    std::tuple<size_t, double, double> CheckForPulse(WaveformSmoother & smoother, double const & mode, size_t start_idx);
-    void ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<double> & amp_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit);
-    void FindRegions(WaveformSmoother & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit);
+    std::tuple<size_t, double, double> CheckForPulse(WaveformSmootherDerivative & smoother, double const & mode, size_t start_idx);
+    void ProcessWaveform(WaveformSmootherDerivative & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<double> & amp_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit);
+    void FindRegions(WaveformSmootherDerivative & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit);
     void GetPeakInfo(I3Vector<short unsigned int> & SPE_wf_to_fit, I3Vector<int> & window_amplitude, I3Vector<int64_t>& window_length, I3Vector<int64_t> &window_time);
     static double GetPred(double & c, double & t0, double & b1, double & b2, double &t);
     static std::pair<double, double> GetGradTwoParams(double & amp, double & data, double & pred, double & c, double & t0, double & b1, double & b2, double &t);
@@ -161,7 +161,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
         I3Vector<int64_t> length_per_channel;
         I3Vector<double> amp_per_channel;
         I3Vector<short unsigned int> SPE_wf_to_fit(waveform.GetWaveform().size(), 0);
-        WaveformSmoother smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
+        WaveformSmootherDerivative smoother(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
 
         ProcessWaveform(smoother, waveform, mode, template_per_channel, time_per_channel, length_per_channel, amp_per_channel, SPE_wf_to_fit);
         channel_templates->operator[](channel) = template_per_channel;
@@ -180,7 +180,7 @@ void CCMIDSPERegions::DAQ(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-std::tuple<size_t, double, double> CCMIDSPERegions::CheckForPulse(WaveformSmoother & smoother, double const & mode, size_t start_idx){
+std::tuple<size_t, double, double> CCMIDSPERegions::CheckForPulse(WaveformSmootherDerivative & smoother, double const & mode, size_t start_idx){
     // 0 before start of pulse checking [checking for positive derivative]
     // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
     // 2 derivative is negative (in falling edge of pulse) [checking for positive derivative]
@@ -238,7 +238,7 @@ std::tuple<size_t, double, double> CCMIDSPERegions::CheckForPulse(WaveformSmooth
 }
 
 
-void CCMIDSPERegions::FindRegions(WaveformSmoother & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit){
+void CCMIDSPERegions::FindRegions(WaveformSmootherDerivative & smoother, std::vector<short unsigned int> const & samples, double const & mode, I3Vector<short unsigned int> & SPE_wf_to_fit){
     // let's loop over derivs to find regions that might have SPEs
     // also good time to implement some cuts
     // cut on ADC counts above the baseline
@@ -612,7 +612,7 @@ SPETemplate CCMIDSPERegions::FitPeak(double peak_amplitude, int64_t length, int6
     return SPETemplate(c, t0, b1, b2);
 }
 
-void CCMIDSPERegions::ProcessWaveform(WaveformSmoother & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<double> & amp_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit){
+void CCMIDSPERegions::ProcessWaveform(WaveformSmootherDerivative & smoother,  CCMWaveformUInt16 const & waveform, double const & mode, I3Vector<SPETemplate> & template_per_channel, I3Vector<int64_t> & time_per_channel, I3Vector<int64_t> & length_per_channel, I3Vector<double> & amp_per_channel, I3Vector<short unsigned int> & SPE_wf_to_fit){
 
 
 

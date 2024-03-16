@@ -33,7 +33,6 @@
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 #include "icetray/robust_statistics.h"
-#include "daqtools/WaveformSmoother.h"
 #include "daqtools/WaveformAccumulator.h"
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/CCMBCMSummary.h>
