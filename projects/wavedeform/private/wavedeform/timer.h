@@ -80,7 +80,7 @@ public:
     }
 
     double elapsed() {
-        fail = (getrusage(RUSAGE_SELF, &start) == -1);
+        fail = (getrusage(RUSAGE_SELF, &stop) == -1);
         double elapsed_time = (stop.ru_utime.tv_sec - start.ru_utime.tv_sec)
             + (stop.ru_stime.tv_sec - start.ru_stime.tv_sec)
             + double(stop.ru_utime.tv_usec - start.ru_utime.tv_usec) / 1E+06
