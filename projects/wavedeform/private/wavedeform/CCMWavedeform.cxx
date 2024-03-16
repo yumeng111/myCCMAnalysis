@@ -187,7 +187,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, DurationTimer & timer, I3Frame * frame) {
+bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, DurationTimer & timer, size_t & chunk_iterations, I3Frame * frame) {
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
     cholmod_dense *data, *unfolded;
@@ -776,10 +776,10 @@ bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
 
     // Solve for SPE heights
     if (reduce) {
-        unfolded = rnnls(basis, data, tolerance, 1000, 0, &chol_common, timer);
+        unfolded = rnnls(basis, data, tolerance, 1000, 0, &chol_common, timer, chunk_iterations);
     } else {
         unfolded = nnls_lawson_hanson(basis, data, tolerance,
-            0, 1000, nspes, 0, 1, 0, &chol_common, timer);
+            0, 1000, nspes, 0, 1, 0, &chol_common, timer, chunk_iterations);
     }
 
     cholmod_l_free_sparse(&basis, &chol_common);
@@ -806,7 +806,7 @@ bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     return true;
 }
 
-bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, DurationTimer & timer, I3Frame * frame) {
+bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, DurationTimer & timer, I3Vector<unsigned int> & channel_iterations, I3Frame * frame) {
     output.clear();
     std::vector<double> const & w = wf.GetWaveform();
     if(w.size() == 0)
@@ -867,7 +867,9 @@ bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         CCMRecoPulseSeries region_output;
         std::vector<double> region_output_data_times;
         std::vector<double> region_output_rebin_data_times;
-        bool success = GetPulses(wf, start_idx, end_idx, wfTemplate, calibration, spe_charge, wf_bin_width, noise_threshold, basis_threshold, spes_per_bin, reduce, tolerance, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, timer, frame);
+        size_t chunk_iterations = 0;
+        bool success = GetPulses(wf, start_idx, end_idx, wfTemplate, calibration, spe_charge, wf_bin_width, noise_threshold, basis_threshold, spes_per_bin, reduce, tolerance, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, timer, chunk_iterations, frame);
+        channel_iterations.push_back(chunk_iterations);
         if(not success) {
             return false;
         }
@@ -907,10 +909,11 @@ void RunPulsesThread(
         double tolerance,
         bool & success,
         double time_limit_seconds,
+        double & elapsed_time,
+        I3Vector<I3Vector<unsigned int>> & iterations,
         I3Frame * frame
         ) {
     running.store(true);
-    double elapsed_time = 0.0;
     DurationTimer timer(elapsed_time, time_limit_seconds);
     success = true;
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
@@ -926,6 +929,7 @@ void RunPulsesThread(
 
         double placeholder = 1.0;
 
+        I3Vector<unsigned int> channel_iterations;
         bool channel_success = GetPulses(
                 waveform,
                 templates.at(pmt_key),
@@ -942,8 +946,10 @@ void RunPulsesThread(
                 output_data_times_references[i].get(),
                 output_rebin_data_times_references[i].get(),
                 timer,
+                channel_iterations,
                 frame
                 );
+        iterations.push_back(channel_iterations);
         if(not channel_success) {
             success = false;
             break;
@@ -1037,11 +1043,14 @@ struct FrameWorkspace {
     size_t jobs_done = 0;
 
     bool success = false;
+    double elapsed_time = 0.0;
 
     I3FramePtr frame;
 
     boost::shared_ptr<CCMWaveformDoubleSeries const> waveforms;
     boost::shared_ptr<I3Double const> total_adc_count;
+
+    boost::shared_ptr<I3Vector<I3Vector<unsigned int>>> iterations;
 
     // place to store pulses
     boost::shared_ptr<CCMRecoPulseSeriesMap> output;
@@ -1100,6 +1109,8 @@ struct FrameWorkspace {
             }
             job_ranges.push_back(std::tuple<size_t, size_t>(max_size*(total_jobs-1), pmt_keys_.size()));
         }
+
+        iterations = boost::make_shared<I3Vector<I3Vector<unsigned int>>>();
     }
 
     void StartJob(WavedeformJob * job,
@@ -1144,12 +1155,16 @@ struct FrameWorkspace {
             tolerance,
             std::ref(success),
             time_limit_seconds,
+            std::ref(elapsed_time),
+            std::ref(*iterations),
             job->frame.get()
         );
         jobs_queued += 1;
     }
 
     void Finish(bool remove_waveforms, std::string const & waveforms_name_, std::string const & output_name_) {
+        frame->Put(output_name_ + "RuntimeInSeconds", boost::make_shared<I3Double>(elapsed_time));
+        frame->Put(output_name_ + "Iterations", iterations);
         if(not success)
             return;
         if(remove_waveforms) {

@@ -706,11 +706,12 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
     double max_time = 1000;
     DurationTimer timer(elapsed_time, max_time);
 	// Solve for SPE heights
+    size_t iterations = 0;
 	if (reduce_) {
-	    unfolded = rnnls(basis, data, tolerance_, 1000, 0, &c, timer);
+	    unfolded = rnnls(basis, data, tolerance_, 1000, 0, &c, timer, iterations);
 	} else {
 	    unfolded = nnls_lawson_hanson(basis, data, tolerance_,
-	            0, 1000, nspes, 0, 1, 0, &c, timer);
+	            0, 1000, nspes, 0, 1, 0, &c, timer, iterations);
 	}
 
 	cholmod_l_free_sparse(&basis, &c);

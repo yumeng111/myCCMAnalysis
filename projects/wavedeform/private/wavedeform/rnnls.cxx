@@ -423,7 +423,7 @@ rnnls_iterate(double tolerance,
  */
 cholmod_dense*
 rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
-      unsigned max_iterations, int verbose, cholmod_common *c, DurationTimer & timer) {
+      unsigned max_iterations, int verbose, cholmod_common *c, DurationTimer & timer, size_t & iterations) {
   double rnnls_u = 0.0;
   double rnnls_s = 0.0;
   //NNLSTimer timer("RNNLSInternal", rnnls_u, rnnls_s, false, true);
@@ -447,6 +447,7 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
     if (rnnls_iterate(tol, cxt) == -1) {
       break;
     }
+    iterations = n;
     if(timer.timeout()) {
         rnnls_free_context(cxt);
         return nullptr;

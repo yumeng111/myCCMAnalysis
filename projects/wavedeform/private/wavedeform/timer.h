@@ -85,7 +85,8 @@ public:
             + (stop.ru_stime.tv_sec - start.ru_stime.tv_sec)
             + double(stop.ru_utime.tv_usec - start.ru_utime.tv_usec) / 1E+06
             + double(stop.ru_stime.tv_usec - start.ru_stime.tv_usec) / 1E+06;
-        return elapsed_time + total;
+        total = elapsed_time;
+        return elapsed_time;
     }
 
     bool timeout() {
