@@ -69,4 +69,32 @@ public:
     }
 };
 
+class DurationTimer {
+    double & total;
+    struct rusage stop, start;
+    double max_time;
+    bool fail;
+public:
+    DurationTimer(double & total, double max_time) : total(total), max_time(max_time) {
+        fail = (getrusage(RUSAGE_SELF, &start) == -1);
+    }
+
+    double elapsed() {
+        fail = (getrusage(RUSAGE_SELF, &start) == -1);
+        double elapsed_time = (stop.ru_utime.tv_sec - start.ru_utime.tv_sec)
+            + (stop.ru_stime.tv_sec - start.ru_stime.tv_sec)
+            + double(stop.ru_utime.tv_usec - start.ru_utime.tv_usec) / 1E+06
+            + double(stop.ru_stime.tv_usec - start.ru_stime.tv_usec) / 1E+06;
+        return elapsed_time + total;
+    }
+
+    bool timeout() {
+        return this->elapsed() > max_time;
+    }
+
+    ~DurationTimer() {
+        total += this->elapsed();
+    }
+};
+
 #endif // wavedeform_timer_H

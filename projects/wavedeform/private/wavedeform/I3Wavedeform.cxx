@@ -20,6 +20,7 @@
 
 #include "nnls.h"
 #include "rnnls.h"
+#include "timer.h"
 
 /* Simple class to hold together ATWD and FADC
  * templates along with a validity flag and waveform features */
@@ -701,12 +702,15 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 	}
 	cholmod_l_free_triplet(&basis_trip, &c);
 
+    double elapsed_time = 0;
+    double max_time = 1000;
+    DurationTimer timer(elapsed_time, max_time);
 	// Solve for SPE heights
 	if (reduce_) {
-	    unfolded = rnnls(basis, data, tolerance_, 1000, 0, &c);
+	    unfolded = rnnls(basis, data, tolerance_, 1000, 0, &c, timer);
 	} else {
 	    unfolded = nnls_lawson_hanson(basis, data, tolerance_,
-	            0, 1000, nspes, 0, 1, 0, &c);
+	            0, 1000, nspes, 0, 1, 0, &c, timer);
 	}
 
 	cholmod_l_free_sparse(&basis, &c);
