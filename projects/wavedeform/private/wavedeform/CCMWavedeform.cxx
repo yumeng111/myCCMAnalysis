@@ -907,6 +907,7 @@ void RunPulsesThread(
         double spes_per_bin,
         double tolerance,
         bool & success,
+        double time_limit_seconds,
         I3Frame * frame
         ) {
     running.store(true);
@@ -1119,6 +1120,7 @@ struct FrameWorkspace {
         double tolerance,
         size_t num_threads,
         bool remove_waveforms,
+        double time_limit_seconds,
         std::exception_ptr & teptr) {
 
         job->running.store(true);
@@ -1143,6 +1145,7 @@ struct FrameWorkspace {
             spes_per_bin,
             tolerance,
             std::ref(success),
+            time_limit_seconds,
             job->frame.get()
         );
         jobs_queued += 1;
@@ -1164,6 +1167,7 @@ class CCMWavedeform : public I3ConditionalModule {
     std::exception_ptr teptr;
 public:
     bool remove_waveforms;
+    double time_limit_seconds;
     size_t num_threads;
     size_t max_cached_frames;
     std::string geometry_name_;
@@ -1236,6 +1240,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
     AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(3000));
     AddParameter("RemoveWaveforms", "Remove the input waveforms?", bool(false));
+    AddParameter("TimeLimitSeconds", "Time limit for each thread", (double)(60.0 * 10));
 
 }
 
@@ -1258,6 +1263,7 @@ void CCMWavedeform::Configure() {
     GetParameter("PMTKeys", allowed_pmt_keys_);
     GetParameter("MaxCachedFrames", max_cached_frames);
     GetParameter("RemoveWaveforms", remove_waveforms);
+    GetParameter("TimeLimitSeconds", time_limit_seconds);
     teptr = nullptr;
 }
 
@@ -1498,6 +1504,7 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 tolerance_,
                 num_threads,
                 remove_waveforms,
+                time_limit_seconds,
                 teptr);
             if(workspace->jobs_queued == workspace->total_jobs) {
                 break;
