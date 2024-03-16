@@ -912,7 +912,6 @@ void RunPulsesThread(
         ) {
     running.store(true);
     double elapsed_time = 0.0;
-    double max_time = 60.0;
     success = true;
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
@@ -943,7 +942,7 @@ void RunPulsesThread(
                 output_data_times_references[i].get(),
                 output_rebin_data_times_references[i].get(),
                 elapsed_time,
-                max_time,
+                time_limit_seconds,
                 frame
                 );
         if(not channel_success) {
