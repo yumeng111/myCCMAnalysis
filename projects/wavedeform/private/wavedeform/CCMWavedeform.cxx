@@ -783,12 +783,12 @@ bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
             0, 1000, nspes, 0, 1, 0, &chol_common, timer);
     }
 
+    cholmod_l_free_sparse(&basis, &chol_common);
+    cholmod_l_free_dense(&data, &chol_common);
+
     if(unfolded == nullptr) {
         return false;
     }
-
-    cholmod_l_free_sparse(&basis, &chol_common);
-    cholmod_l_free_dense(&data, &chol_common);
 
     // Convert to pulse series
     for(size_t i = 0; i < merged_spe_start_times.size(); i++) {

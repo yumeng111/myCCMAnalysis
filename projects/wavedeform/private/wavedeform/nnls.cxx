@@ -280,6 +280,9 @@ nnls_lawson_hanson(cholmod_sparse *A, cholmod_dense *y, double tolerance,
 			break;
         if(timer.timeout()) {
             cholmod_l_free_dense(&x, c);
+            cholmod_l_free_dense(&w, c);
+            free(P);
+            free(Z);
             return nullptr;
         }
 	}

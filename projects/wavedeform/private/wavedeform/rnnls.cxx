@@ -448,6 +448,7 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
       break;
     }
     if(timer.timeout()) {
+        rnnls_free_context(cxt);
         return nullptr;
     }
   }
