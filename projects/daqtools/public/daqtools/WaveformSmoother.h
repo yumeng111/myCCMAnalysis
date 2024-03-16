@@ -72,18 +72,23 @@ public:
         current_value = smoothed_wf[index];
     }
 
+    void ComputeTo(size_t idx) {
+        size_t orig_index = index;
+        while(max_computed < idx) {
+            Next();
+            if(max_computed == N-1)
+                break;
+        }
+        index = orig_index;
+    }
+
     void Reset() {
         index = 0;
     }
 
     void Reset(size_t reset_index) {
         if(reset_index > max_computed) {
-            Reset(max_computed);
-            while(max_computed < reset_index) {
-                Next();
-                if(max_computed == N-1)
-                    break;
-            }
+            ComputeTo(reset_index);
         }
         index = std::min(reset_index, max_computed);
     }
@@ -114,6 +119,12 @@ public:
 
     double Value() const {
         return smoothed_wf[index];
+    }
+
+    double Value(size_t idx) {
+        ComputeTo(idx);
+        idx = std::min(idx, max_computed);
+        return smoothed_wf[idx];
     }
 
     void Next() {
@@ -216,18 +227,23 @@ public:
         current_derivative = derivative[index];
     }
 
+    void ComputeTo(size_t idx) {
+        size_t orig_index = index;
+        while(max_computed < idx) {
+            Next();
+            if(max_computed == N-1)
+                break;
+        }
+        index = orig_index;
+    }
+
     void Reset() {
         index = 0;
     }
 
     void Reset(size_t reset_index) {
         if(reset_index > max_computed) {
-            Reset(max_computed);
-            while(max_computed < reset_index) {
-                Next();
-                if(max_computed == N-1)
-                    break;
-            }
+            ComputeTo(reset_index);
         }
         index = std::min(reset_index, max_computed);
     }
@@ -268,8 +284,24 @@ public:
         return smoothed_wf[index];
     }
 
+    double Value(size_t idx) {
+        if(idx > max_computed) {
+            ComputeTo(idx);
+        }
+        idx = std::min(idx, max_computed);
+        return smoothed_wf[idx];
+    }
+
     double Derivative() const {
         return derivative[index];
+    }
+
+    double Derivative(size_t idx) {
+        if(idx > max_computed) {
+            ComputeTo(idx);
+        }
+        idx = std::min(idx, max_computed);
+        return derivative[idx];
     }
 
     void Next() {
@@ -393,18 +425,23 @@ public:
         current_baseline = baselines[index];
     }
 
+    void ComputeTo(size_t idx) {
+        size_t orig_index = index;
+        while(max_computed < idx) {
+            Next();
+            if(max_computed == N-1)
+                break;
+        }
+        index = orig_index;
+    }
+
     void Reset() {
         index = 0;
     }
 
     void Reset(size_t reset_index) {
         if(reset_index > max_computed) {
-            Reset(max_computed);
-            while(max_computed < reset_index) {
-                Next();
-                if(max_computed == N-1)
-                    break;
-            }
+            ComputeTo(reset_index);
         }
         index = std::min(reset_index, max_computed);
     }
@@ -445,12 +482,28 @@ public:
         return smoothed_wf[index];
     }
 
+    double Value(size_t idx) {
+        if(idx > max_computed) {
+            ComputeTo(idx);
+        }
+        idx = std::min(idx, max_computed);
+        return smoothed_wf[idx];
+    }
+
     double Baseline() const {
         return baselines[index];
     }
 
     double Derivative() const {
         return derivative[index];
+    }
+
+    double Derivative(size_t idx) {
+        if(idx > max_computed) {
+            ComputeTo(idx);
+        }
+        idx = std::min(idx, max_computed);
+        return derivative[idx];
     }
 
     void Next() {
