@@ -91,10 +91,6 @@ public:
     bool timeout() {
         return this->elapsed() > max_time;
     }
-
-    ~DurationTimer() {
-        total += this->elapsed();
-    }
 };
 
 #endif // wavedeform_timer_H
