@@ -804,6 +804,7 @@ bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
         }
     }
     cholmod_l_free_dense(&unfolded, &chol_common);
+    return true;
 }
 
 bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, double & elapsed_time, double max_time, I3Frame * frame) {
@@ -884,6 +885,7 @@ bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         for(size_t j=0; j<region_output_rebin_data_times.size(); ++j)
             output_rebin_data_times.push_back(region_output_rebin_data_times[j] + start_time);
     }
+    return true;
 }
 
 void RunPulsesThread(
