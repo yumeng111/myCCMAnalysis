@@ -187,8 +187,7 @@ void CCMFillFWHM(double& start, double& stop, const std::vector<double>& data, d
  *  7.  Solve the above for x using NNLS, yielding the pulse amplitudes.
  */
 
-bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, double & elapsed_time, double max_time, I3Frame * frame) {
-    DurationTimer timer(elapsed_time, max_time);
+bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, DurationTimer & timer, I3Frame * frame) {
     cholmod_triplet *basis_trip;
     cholmod_sparse *basis;
     cholmod_dense *data, *unfolded;
@@ -807,7 +806,7 @@ bool GetPulses(CCMWaveformDouble const & wf, size_t wf_begin, size_t wf_end, CCM
     return true;
 }
 
-bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, double & elapsed_time, double max_time, I3Frame * frame) {
+bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTemplate, CCMPMTCalibration const & calibration, double spe_charge, double wf_bin_width, double noise_threshold, double basis_threshold, double spes_per_bin, bool reduce, double tolerance, cholmod_common & chol_common, CCMRecoPulseSeries & output, std::vector<double> & output_data_times, std::vector<double> & output_rebin_data_times, DurationTimer & timer, I3Frame * frame) {
     output.clear();
     std::vector<double> const & w = wf.GetWaveform();
     if(w.size() == 0)
@@ -868,7 +867,7 @@ bool GetPulses(CCMWaveformDouble const & wf, CCMWaveformTemplate const & wfTempl
         CCMRecoPulseSeries region_output;
         std::vector<double> region_output_data_times;
         std::vector<double> region_output_rebin_data_times;
-        bool success = GetPulses(wf, start_idx, end_idx, wfTemplate, calibration, spe_charge, wf_bin_width, noise_threshold, basis_threshold, spes_per_bin, reduce, tolerance, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, elapsed_time, max_time, frame);
+        bool success = GetPulses(wf, start_idx, end_idx, wfTemplate, calibration, spe_charge, wf_bin_width, noise_threshold, basis_threshold, spes_per_bin, reduce, tolerance, chol_common, region_output, region_output_data_times, region_output_rebin_data_times, timer, frame);
         if(not success) {
             return false;
         }
@@ -912,6 +911,7 @@ void RunPulsesThread(
         ) {
     running.store(true);
     double elapsed_time = 0.0;
+    DurationTimer timer(elapsed_time, time_limit_seconds);
     success = true;
     for(size_t i=std::get<0>(thread_range); i<std::get<1>(thread_range); ++i) {
         CCMPMTKey pmt_key = pmt_keys.at(i);
@@ -941,8 +941,7 @@ void RunPulsesThread(
                 output_pulses_references[i].get(),
                 output_data_times_references[i].get(),
                 output_rebin_data_times_references[i].get(),
-                elapsed_time,
-                time_limit_seconds,
+                timer,
                 frame
                 );
         if(not channel_success) {
