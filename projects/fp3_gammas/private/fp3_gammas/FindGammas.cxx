@@ -22,10 +22,9 @@
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
-#include <daqtools/WaveformSmoother.h>
+#include "daqtools/WaveformSmoother.h"
 
 #include "daqtools/OnlineRobustStats.h"
-#include "daqtools/WaveformSmoother.h"
 
 // Start an anonymous namespace to keep the functions local to this file
 namespace {
@@ -42,7 +41,7 @@ size_t FindNeutronPeakIndex(std::vector<uint16_t> const & raw_waveform) {
     return std::distance(raw_waveform.begin(), std::max_element(raw_waveform.begin(), raw_waveform.end()));
 }
 
-double EstimateBaseline(WaveformSmoother & smoother, size_t samples_for_baseline) {
+double EstimateBaseline(WaveformSmootherDerivative & smoother, size_t samples_for_baseline) {
     smoother.Reset();
     size_t N = smoother.Size();
     N = std::min(N, samples_for_baseline);
@@ -57,7 +56,7 @@ double EstimateBaseline(WaveformSmoother & smoother, size_t samples_for_baseline
     return baseline;
 }
 
-double ComputeSecondDerivative(WaveformSmoother & smoother, size_t position, double bin_width) {
+double ComputeSecondDerivative(WaveformSmootherDerivative & smoother, size_t position, double bin_width) {
     size_t index = smoother.CurrentIndex();
     double result = 0;
     smoother.Reset(position+1);
@@ -76,7 +75,7 @@ double ComputeSecondDerivative(WaveformSmoother & smoother, size_t position, dou
     return result;
 }
 
-std::vector<Extreme> ComputeExtrema(WaveformSmoother & smoother, double baseline, size_t neutron_peak_index) {
+std::vector<Extreme> ComputeExtrema(WaveformSmootherDerivative & smoother, double baseline, size_t neutron_peak_index, double bin_width) {
     size_t index = smoother.CurrentIndex();
     smoother.Reset();
     std::vector<Extreme> extrema;
@@ -87,9 +86,9 @@ std::vector<Extreme> ComputeExtrema(WaveformSmoother & smoother, double baseline
         smoother.Next();
         double next_derivative = smoother.Derivative();
         if(derivative == 0 or (derivative > 0 and next_derivative < 0) or (derivative < 0 and next_derivative > 0)) {
-            double second_derivative = ComputeSecondDerivative(smoother, i, smoother.DeltaT());
-            std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_its = smoother.GetFullSmoothedWaveform();
-            std::vector<double> local_average_samples(smoother_its.first + (std::max(i, 2) - 2), smoother_its.first + std::min(i+2, N));
+            double second_derivative = ComputeSecondDerivative(smoother, i, bin_width);
+            std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoother_its = smoother.GetFullSmoothedWaveform();
+            std::vector<double> local_average_samples(smoother_its.first + (std::max(i, size_t(2)) - 2), smoother_its.first + std::min(i+2, N));
             double local_average = std::accumulate(local_average_samples.begin(), local_average_samples.end(), 0.0) / local_average_samples.size();
             extrema.push_back({i, value, derivative, second_derivative, local_average});
         }
@@ -97,7 +96,7 @@ std::vector<Extreme> ComputeExtrema(WaveformSmoother & smoother, double baseline
         derivative = next_derivative;
     }
     smoother.Reset(index);
-    return extrema_positions;
+    return extrema;
 }
 
 void SortExtrema(std::vector<Extreme> & extrema) {
@@ -133,10 +132,10 @@ double MaxNoise(std::vector<Extreme> const & noise_extrema) {
     return max_noise;
 }
 
-size_t FindStartIndex(WaveformSmoother & smoother, size_t peak_index, double noise_threshold, double baseline) {
+size_t FindStartIndex(WaveformSmootherDerivative & smoother, size_t peak_index, double noise_threshold, double baseline) {
     size_t index = smoother.CurrentIndex();
     smoother.Reset(peak_index);
-    size_t N = std::max(1, std::min(smoother.Size(), peak_index + 1)) - 1;
+    size_t N = std::max(size_t(1), std::min(smoother.Size(), peak_index + 1)) - 1;
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_its = smoother.GetFullSmoothedWaveform();
     size_t start_index = 0;
     for(std::vector<double>::const_iterator it=smoothed_its.first+N; it!=smoothed_its.first; --it) {
@@ -150,7 +149,7 @@ size_t FindStartIndex(WaveformSmoother & smoother, size_t peak_index, double noi
     return start_index;
 }
 
-size_t FindEndIndex(WaveformSmoother & smoother, size_t peak_index, double noise_threshold, double baseline) {
+size_t FindEndIndex(WaveformSmootherDerivative & smoother, size_t peak_index, double noise_threshold, double baseline) {
     size_t index = smoother.CurrentIndex();
     smoother.Reset(peak_index);
     size_t N = smoother.Size() - std::min(smoother.Size(), peak_index + 1);
@@ -167,7 +166,7 @@ size_t FindEndIndex(WaveformSmoother & smoother, size_t peak_index, double noise
     return end_index;
 }
 
-double SumBetweenIndicesInclusive(WaveformSmoother & smoother, size_t start_index, size_t end_index, double baseline) {
+double SumBetweenIndicesInclusive(WaveformSmootherDerivative & smoother, size_t start_index, size_t end_index, double baseline) {
     size_t index = smoother.CurrentIndex();
     smoother.Reset(end_index);
     size_t N = std::min(smoother.Size(), end_index + 1);
@@ -252,11 +251,4 @@ void FindGammas::DAQ(I3FramePtr frame) {
         log_fatal("Could not find CCMWaveforms object with the key named \"%s\" in the DAQ frame.", waveforms_name_.c_str());
     }
     PushFrame(frame);
-}
-
-void FindGammas::Flush() {
-}
-
-void FindGammas::Finish() {
-    Flush();
 }
