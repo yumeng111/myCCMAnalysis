@@ -704,7 +704,8 @@ I3RecoPulseSeriesPtr I3Wavedeform::GetPulses(
 
     double elapsed_time = 0;
     double max_time = 1000;
-    DurationTimer timer(elapsed_time, max_time);
+    std::atomic<bool> success = true;
+    DurationTimer timer(success, elapsed_time, max_time);
 	// Solve for SPE heights
     size_t iterations = 0;
 	if (reduce_) {
