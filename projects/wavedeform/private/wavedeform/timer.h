@@ -90,6 +90,8 @@ public:
     }
 
     bool timeout() {
+        if(max_time <= 0)
+            return false;
         return this->elapsed() > max_time;
     }
 };
