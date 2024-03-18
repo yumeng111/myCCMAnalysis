@@ -20,6 +20,7 @@ i3_add_library(${PROJECT_NAME}
     private/daqtools/BaselineEstimator.cxx
     private/daqtools/SumWaveforms.cxx
     private/daqtools/BeamCurrentMonitorSummary.cxx
+    private/daqtools/FlightPathThreeSummary.cxx
     private/daqtools/NIMLogicPulseFinder.cxx
     private/daqtools/PulseCollector.cxx
     private/daqtools/SumPulses.cxx
