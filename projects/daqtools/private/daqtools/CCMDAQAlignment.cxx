@@ -29,6 +29,7 @@ std::vector<uint8_t> empty_mask(I3FramePtr frame) {
 
     CCMAnalysis::Binary::CCMDAQConfig const & config = frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
     std::vector<uint16_t> const & channel_sizes = frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].channel_sizes;
+    std::vector<uint16_t> const & channel_masks = frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].channel_masks;
     size_t n_boards = config.digitizer_boards.size();
     std::vector<uint8_t> mask(n_boards, 0);
     size_t last_idx = 0;
@@ -36,8 +37,9 @@ std::vector<uint8_t> empty_mask(I3FramePtr frame) {
         size_t n_channels = config.digitizer_boards[i].channels.size();
         size_t next_idx = last_idx + n_channels;
         for(size_t j=last_idx; j<next_idx; ++j) {
-            // An empty trigger is marked by having a channel size of zero
-            mask[i] |= channel_sizes[j] > 0;
+            // An empty trigger is marked by having a channel size of zero or a channel mask of zero
+            bool empty = channel_sizes[j] == 0 or channel_masks[j] == 0;
+            mask[i] |= empty;
         }
         last_idx = next_idx;
     }
