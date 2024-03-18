@@ -63,6 +63,7 @@ i3_add_pybindings(dataclasses
   private/pybindings/NIMLogicPulse.cxx
   private/pybindings/CCMWaveform/*.cxx
   private/pybindings/CCMBCMSummary.cxx
+  private/pybindings/CCMFP3Summary.cxx
   private/pybindings/I3Waveform/*.cxx
   private/pybindings/I3Vectors/*.cxx
   private/pybindings/I3Maps/*.cxx
