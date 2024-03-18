@@ -29,6 +29,7 @@ i3_add_library(${PROJECT_NAME}
     private/daqtools/AccumulateSummedWaveforms.cxx
     private/daqtools/AccumulateIndividualPMTWaveforms.cxx
     private/daqtools/AccumulateIndividualChannelWaveforms.cxx
+    private/daqtools/SumPulsesSPEShapeCalibration.cxx
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services
