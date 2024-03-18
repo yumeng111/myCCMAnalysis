@@ -22,6 +22,7 @@
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/NIMLogicPulse.h>
 #include <dataclasses/physics/CCMBCMSummary.h>
+#include <dataclasses/physics/CCMFP3Summary.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include "daqtools/WaveformSmoother.h"
 
@@ -38,32 +39,11 @@ struct Extreme {
     double local_average;
 };
 
-struct GammaEntry {
-    double baseline;
-    double average_noise_level;
-    double max_noise_level;
-    size_t num_noise_peaks;
-    size_t waveform_length;
-    double gamma_start_time;
-    double gamma_end_time;
-    double gamma_charge_sum;
-    double gamma_height;
-    double gamma_derivative;
-    double gamma_second_derivative;
-    double gamma_local_average;
-    size_t gamma_peak_time;
-    double neutron_height;
-    double neutron_derivative;
-    double neutron_second_derivative;
-    double neutron_local_average;
-    size_t neutron_peak_time;
-};
-
 size_t FindNeutronPeakIndex(std::vector<uint16_t> const & raw_waveform) {
     return std::distance(raw_waveform.begin(), std::max_element(raw_waveform.begin(), raw_waveform.end()));
 }
 
-double EstimateBaseline(WaveformSmootherDerivative & smoother, size_t samples_for_baseline) {
+std::tuple<double, double> EstimateBaseline(WaveformSmootherDerivative & smoother, size_t samples_for_baseline) {
     smoother.Reset();
     size_t N = smoother.Size();
     N = std::min(N, samples_for_baseline);
@@ -75,7 +55,8 @@ double EstimateBaseline(WaveformSmootherDerivative & smoother, size_t samples_fo
     }
     std::sort(baseline_samples.begin(), baseline_samples.end());
     double baseline = robust_stats::Mode(baseline_samples.begin(), baseline_samples.end());
-    return baseline;
+    double baseline_stddev = robust_stats::MedianAbsoluteDeviation(baseline_samples.begin(), baseline_samples.end(), baseline);
+    return {baseline, baseline_stddev};
 }
 
 double ComputeSecondDerivative(WaveformSmootherDerivative & smoother, size_t position, double bin_width) {
@@ -240,31 +221,42 @@ double ComputeTimeOffset(bool & valid_time_offset, NIMLogicPulseSeriesMap const 
     return time_offset;
 }
 
-std::vector<GammaEntry> ComputeGammaEntries(std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width) {
-    double neutron_height = smoother.Value(neutron_peak_index) - baseline;
-    double neutron_derivative = smoother.Derivative(neutron_peak_index);
-    double neutron_second_derivative = ComputeSecondDerivative(smoother, neutron_peak_index, bin_width);
-    double neutron_local_average = ComputeLocalAverage(smoother, neutron_peak_index, 5);
-    double neutron_time = neutron_peak_index * bin_width;
+CCMFP3Summary ComputeGammaSummary(std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double baseline_stddev, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width) {
+    CCMFP3Summary summary;
+    summary.fp3_waveform_length = smoother.Size();
+    summary.fp3_baseline = baseline;
+    summary.fp3_baseline_stddev = 0;
+    summary.fp3_num_noise_peaks = num_noise_peaks;
+    summary.fp3_average_noise_level = noise_average;
+    summary.fp3_max_noise_level = noise_max;
+    size_t neutron_end_index = FindEndIndex(smoother, neutron_peak_index, noise_max, baseline);
+    summary.fp3_neutron_start_time = neutron_start_index * bin_width;
+    summary.fp3_neutron_end_time = neutron_end_index * bin_width;
+    summary.fp3_neutron_derivative = smoother.Derivative(neutron_peak_index);
+    summary.fp3_neutron_second_derivative = ComputeSecondDerivative(smoother, neutron_peak_index, bin_width);
+    summary.fp3_neutron_local_average = ComputeLocalAverage(smoother, neutron_peak_index, 5);
+    summary.fp3_neutron_peak_time = neutron_peak_index * bin_width;
+    summary.fp3_neutron_peak_value = smoother.Value(neutron_peak_index) - baseline;
+    summary.fp3_neutron_integral = SumBetweenIndicesInclusive(smoother, neutron_start_index, neutron_end_index, baseline) * bin_width;
 
-    std::vector<GammaEntry> gamma_entries;
+    std::vector<CCMFP3Gamma> & gamma_entries = summary.fp3_gammas;
+
     for(size_t i=0; i<gamma_extrema.size(); ++i) {
         Extreme const & gamma = gamma_extrema[i];
+        CCMFP3Gamma gamma_entry;
         size_t start_index = FindStartIndex(smoother, gamma.position, noise_max, baseline);
         size_t end_index = FindEndIndex(smoother, gamma.position, noise_max, baseline);
-        double start_time = start_index * bin_width;
-        double end_time = end_index * bin_width;
-        double peak_time = gamma.position * bin_width;
-        double integral = SumBetweenIndicesInclusive(smoother, start_index, end_index, baseline) * bin_width;
-        double height = gamma.value - baseline;
-        double derivative = gamma.derivative;
-        double second_derivative = gamma.second_derivative;
-        double local_average = gamma.local_average;
-
-        gamma_entries.push_back({baseline, noise_average, noise_max, num_noise_peaks, smoother.Size(), start_time, end_time, integral, height, derivative, second_derivative, local_average, peak_time, neutron_height, neutron_derivative, neutron_second_derivative, neutron_local_average, neutron_time});
-
+        gamma_entry.gamma_start_time = start_index * bin_width;
+        gamma_entry.gamma_end_time = end_index * bin_width;
+        gamma_entry.gamma_peak_time = gamma.position * bin_width;
+        gamma_entry.gamma_peak_value = gamma.value - baseline;
+        gamma_entry.gamma_integral = SumBetweenIndicesInclusive(smoother, start_index, end_index, baseline) * bin_width;
+        gamma_entry.gamma_derivative = gamma.derivative;
+        gamma_entry.gamma_second_derivative = gamma.second_derivative;
+        gamma_entry.gamma_local_average = gamma.local_average;
+        gamma_entries.push_back(gamma_entry);
     }
-    return gamma_entries;
+    return summary;
 }
 
 
@@ -401,7 +393,9 @@ void FindGammas::DAQ(I3FramePtr frame) {
     size_t neutron_peak_index = FindNeutronPeakIndex(waveform);
 
     // Estimate the baseline
-    double baseline = EstimateBaseline(smoother, samples_for_baseline_);
+    std::tuple<double, double> bb = EstimateBaseline(smoother, samples_for_baseline_);
+    double baseline = std::get<0>(bb);
+    double baseline_stddev = std::get<1>(bb);
 
     // Compute the extrema
     std::vector<Extreme> extrema = ComputeExtrema(smoother, baseline, neutron_peak_index, smoother_delta_t);
@@ -419,7 +413,7 @@ void FindGammas::DAQ(I3FramePtr frame) {
     std::vector<Extreme> gamma_extrema = SelectGammaExtrema(extrema, neutron_start_index, gamma_threshold_, noise_average);
 
     // Compute the gamma entries
-    std::vector<GammaEntry> gamma_entries = ComputeGammaEntries(gamma_extrema, smoother, baseline, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t);
+    CCMFP3Summary summary = ComputeGammaSummary(gamma_extrema, smoother, baseline, baseline_stddev, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t);
 
     PushFrame(frame);
 }
