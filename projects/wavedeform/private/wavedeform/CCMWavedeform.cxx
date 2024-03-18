@@ -1433,12 +1433,8 @@ void CCMWavedeform::Process() {
 void CCMWavedeform::DAQ(I3FramePtr frame) {
     FrameWorkspace * workspace = new FrameWorkspace(frame, pmt_keys_, waveforms_name_);
     frame_workspaces[frame_index] = workspace;
-    std::cout << "Adding frame " << frame_index << std::endl;
 	while(true) {
-        std::cout << "\tStatus: frame_workspaces(" << frame_workspaces.size() << ") results(" << results.size() << ") running_jobs(" << running_jobs.size() << ") free_jobs(" << free_jobs.size() << ")" << std::endl;
-        std::cout << "\tChecking for finished jobs" << std::endl;
 
-        std::cout << "\tRunning jobs: " << running_jobs.size() << std::endl;
 		// Check if any jobs have finished
 		for(int i=int(running_jobs.size())-1; i>=0; --i) {
 			if (teptr) {
@@ -1451,29 +1447,22 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
 				}
 			}
 			if(not running_jobs[i]->running.load()) {
-                std::cout << "\t\tJob " << i << " finished" << std::endl;
 				WavedeformJob * job = running_jobs[i];
                 running_jobs.erase(running_jobs.begin() + i);
                 free_jobs.push_back(job);
                 job->thread.join();
                 frame_workspaces[job->frame_index]->jobs_done += 1;
-                std::cout << "\t\tFrame " << job->frame_index << "has jobs done: " << frame_workspaces[job->frame_index]->jobs_done << " / " << frame_workspaces[job->frame_index]->total_jobs << std::endl;
                 if(frame_workspaces[job->frame_index]->jobs_done == frame_workspaces[job->frame_index]->total_jobs) {
-                    std::cout << "\t\tFrame " << job->frame_index << " done" << std::endl;
                     results[job->frame_index - min_frame_idx].done = true;
                 }
             } else {
-                std::cout << "\t\tJob " << i << " still running" << std::endl;
             }
         }
 
-        std::cout << "\tResults size: " << results.size() << std::endl;
         // Check for any done results and push the corresponding frames
         size_t results_done = 0;
         for(size_t i=0; i<results.size(); ++i) {
             if(results[i].done) {
-                std::cout << "\t\tResult " << i << " done" << std::endl;
-                std::cout << "\t\tFrame " << results[i].frame_index << " done" << std::endl;
                 FrameWorkspace * workspace_ptr = frame_workspaces[results[i].frame_index];
                 workspace_ptr->Finish(remove_waveforms, waveforms_name_, output_name_);
                 PushFrame(results[i].frame);
@@ -1482,13 +1471,10 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 results[i].frame = nullptr;
                 results_done += 1;
             } else {
-                std::cout << "\t\tResult " << i << " not done; breaking..." << std::endl;
                 break;
             }
         }
-        std::cout << "\tResults done: " << results_done << std::endl;
         if(results_done > 0) {
-            std::cout << "\t\tErasing results" << std::endl;
             results.erase(results.begin(), results.begin() + results_done);
             min_frame_idx += results_done;
         }
@@ -1496,32 +1482,25 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
         if(not frame)
             break;
 
-        std::cout << "\tAttempting to queue frame " << frame_index << std::endl;
         // Attempt to queue up a new job for the frame
         WavedeformJob * job = nullptr;
 
         if(free_jobs.size() > 0) {
-            std::cout << "\t\tReusing a free job" << std::endl;
             job = free_jobs.front();
             job->running.store(false);
             free_jobs.pop_front();
         } else if(running_jobs.size() < num_threads) {
-            std::cout << "\t\tCreating a new job" << std::endl;
             job = new WavedeformJob();
             job->running.store(false);
             job->thread_index = running_jobs.size();
         }
 
         if(job != nullptr and results.size() < max_cached_frames) {
-            std::cout << "\t\tResult queue is not full" << std::endl;
-            std::cout << "\t\tStarting a new job" << std::endl;
             job->running.store(true);
             running_jobs.push_back(job);
             job->frame = frame;
             job->frame_index = frame_index;
-            std::cout << "\t\tFrame index: " << frame_index << " Total jobs: " << workspace->total_jobs << " Jobs queued: " << workspace->jobs_queued << std::endl;
             if(workspace->jobs_queued == 0) {
-                std::cout << "\t\tCreating a new result" << std::endl;
                 results.emplace_back();
                 results.back().frame = frame;
                 results.back().frame_index = frame_index;
@@ -1547,16 +1526,13 @@ void CCMWavedeform::DAQ(I3FramePtr frame) {
                 time_limit_seconds,
                 teptr);
             if(workspace->jobs_queued == workspace->total_jobs) {
-                std::cout << "\t\tFrame " << frame_index << " has all jobs queued" << std::endl;
                 break;
             }
         } else if(job != nullptr) {
-            std::cout << "\t\tResult queue is full" << std::endl;
             sleep(1);
             free_jobs.push_back(job);
         }
     }
-    std::cout << "Frame " << frame_index << " is queued" << std::endl;
     frame_index += 1;
 }
 
