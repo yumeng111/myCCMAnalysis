@@ -221,8 +221,7 @@ double ComputeTimeOffset(bool & valid_time_offset, NIMLogicPulseSeriesMap const 
     return time_offset;
 }
 
-CCMFP3Summary ComputeGammaSummary(std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double baseline_stddev, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width) {
-    CCMFP3Summary summary;
+void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double baseline_stddev, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width) {
     summary.fp3_waveform_length = smoother.Size();
     summary.fp3_baseline = baseline;
     summary.fp3_baseline_stddev = 0;
@@ -256,18 +255,19 @@ CCMFP3Summary ComputeGammaSummary(std::vector<Extreme> const & gamma_extrema, Wa
         gamma_entry.gamma_local_average = gamma.local_average;
         gamma_entries.push_back(gamma_entry);
     }
-    return summary;
 }
 
 
 } // namespace
 
-class FindGammas : public I3Module {
+class FlightPathThreeSummary : public I3Module {
     // Names for keys in the frame
     std::string geometry_name_;
     std::string waveforms_name_;
     std::string nim_pulses_name_;
     std::string bcm_summary_name_;
+
+    std::string output_name_;
 
     // Internal state
     bool geo_seen;
@@ -288,20 +288,21 @@ class FindGammas : public I3Module {
     double smoother_tau;
     double smoother_delta_t;
 public:
-    FindGammas(const I3Context&);
+    FlightPathThreeSummary(const I3Context&);
     void Configure();
     void Geometry(I3FramePtr frame);
     void DAQ(I3FramePtr frame);
 };
 
-I3_MODULE(FindGammas);
+I3_MODULE(FlightPathThreeSummary);
 
-FindGammas::FindGammas(const I3Context& context) : I3Module(context),
+FlightPathThreeSummary::FlightPathThreeSummary(const I3Context& context) : I3Module(context),
     geometry_name_(""), waveforms_name_(""), nim_pulses_name_(""), geo_seen(false) {
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("NIMPulsesName", "Key to input NIMLogicPulseSeriesMap", std::string("NIMPulses"));
     AddParameter("BCMSummaryName", "Key to input CCMBCMSummary", std::string("CCMBCMSummary"));
+    AddParameter("OutputName", "Key to output CCMFP3Summary", std::string("CCMFP3Summary"));
     AddParameter("FlightPath3Key", "CCMPMTKey for the flight path 3", CCMPMTKey(9, 1, 0));
     AddParameter("BCMKey", "CCMPMTKey for the BCM", CCMPMTKey(10, 1, 0));
     AddParameter("NumSamplesForBaseline", "Number of samples to use for initial baseline estimate", size_t(1000));
@@ -312,11 +313,12 @@ FindGammas::FindGammas(const I3Context& context) : I3Module(context),
     AddParameter("SmoothingDeltaT", "Bin width in ns for smoothing", double(2.0));
 }
 
-void FindGammas::Configure() {
+void FlightPathThreeSummary::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("CCMWaveformsName", waveforms_name_);
     GetParameter("NIMPulsesName", nim_pulses_name_);
     GetParameter("BCMSummaryName", bcm_summary_name_);
+    GetParameter("OutputName", output_name_);
     GetParameter("FlightPath3Key", fp3_key_);
     GetParameter("BCMKey", bcm_board_key);
     GetParameter("NumSamplesForBaseline", samples_for_baseline_);
@@ -327,7 +329,7 @@ void FindGammas::Configure() {
     GetParameter("SmoothingDeltaT", smoother_delta_t);
 }
 
-void FindGammas::Geometry(I3FramePtr frame) {
+void FlightPathThreeSummary::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
@@ -350,7 +352,7 @@ void FindGammas::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void FindGammas::DAQ(I3FramePtr frame) {
+void FlightPathThreeSummary::DAQ(I3FramePtr frame) {
     // Check if we have the prerequisite information
     if(not geo_seen) {
         log_fatal("Geometry not seen yet!");
@@ -413,7 +415,10 @@ void FindGammas::DAQ(I3FramePtr frame) {
     std::vector<Extreme> gamma_extrema = SelectGammaExtrema(extrema, neutron_start_index, gamma_threshold_, noise_average);
 
     // Compute the gamma entries
-    CCMFP3Summary summary = ComputeGammaSummary(gamma_extrema, smoother, baseline, baseline_stddev, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t);
+    boost::shared_ptr<CCMFP3Summary> summary = boost::make_shared<CCMFP3Summary>();
+    ComputeGammaSummary(*summary, gamma_extrema, smoother, baseline, baseline_stddev, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t);
+
+    frame->Put(output_name_, summary);
 
     PushFrame(frame);
 }
