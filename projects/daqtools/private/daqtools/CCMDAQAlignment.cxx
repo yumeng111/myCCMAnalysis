@@ -29,7 +29,6 @@ std::vector<uint8_t> empty_mask(I3FramePtr frame) {
 
     CCMAnalysis::Binary::CCMDAQConfig const & config = frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
     std::vector<uint16_t> const & channel_sizes = frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].channel_sizes;
-    std::vector<uint16_t> const & channel_masks = frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].channel_masks;
     size_t n_boards = config.digitizer_boards.size();
     std::vector<uint8_t> mask(n_boards, 0);
     size_t last_idx = 0;
@@ -38,8 +37,7 @@ std::vector<uint8_t> empty_mask(I3FramePtr frame) {
         size_t next_idx = last_idx + n_channels;
         for(size_t j=last_idx; j<next_idx; ++j) {
             // An empty trigger is marked by having a channel size of zero or a channel mask of zero
-            bool empty = channel_sizes[j] == 0 or channel_masks[j] == 0;
-            mask[i] |= empty;
+            mask[i] |= channel_sizes[j] == 0;
         }
         last_idx = next_idx;
     }
@@ -711,8 +709,16 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
             } else {
                 // Fill the trigger output from the appropriate input
                 CCMAnalysis::Binary::CCMTriggerReadoutConstPtr tr = frame_cache[daq_idx][frame_idx]->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
+                std::vector<uint16_t> const & channel_masks = tr->triggers[0].channel_masks;
+                bool trigger_empty = false;
+                for(size_t i=last_idx; i<next_idx; ++i) {
+                    if(not channel_masks[i]) {
+                        trigger_empty = true;
+                        break;
+                    }
+                }
                 merge_triggers(output_samples, output_triggers, tr, board_idx, last_idx, next_idx, fill_computer_time);
-                output_times->emplace_back(true, times[daq_idx][board_idx]);
+                output_times->emplace_back(not trigger_empty, times[daq_idx][board_idx]);
                 // Grab the next trigger
                 bool res = NextTrigger(daq_idx, board_idx);
                 if(not res) {
