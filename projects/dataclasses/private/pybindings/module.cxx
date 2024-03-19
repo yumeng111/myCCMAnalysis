@@ -51,7 +51,7 @@ namespace bp = boost::python;
   (I3Time)(I3Position)(I3Direction)(I3Geometry)(I3MCTree)               \
   (CCMRecoPulse)                                                        \
   (I3Particle)(I3RecoPulse)(I3LinearizedMCTree)(I3TimeWindow)           \
-  (CCMWaveform)(CCMBCMSummary)(NIMLogicPulse)                           \
+  (CCMWaveform)(CCMBCMSummary)(CCMFP3Summary)(NIMLogicPulse)            \
   (VectorCCMWaveformStatusCompound)                                     \
   (I3Waveform)(I3WaveformSeries)(I3WaveformSeriesMap)                   \
   (VectorI3WaveformStatusCompound)(I3DOMLaunch)(I3DOMLaunchSeries)      \

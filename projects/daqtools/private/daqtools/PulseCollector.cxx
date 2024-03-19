@@ -44,7 +44,7 @@ std::vector<U> ChooseNRandom(size_t N, RandomIt begin, RandomIt end, RandomFunc&
     return result;
 }
 
-size_t CheckForPulse(WaveformSmoother & smoother, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, double baseline) {
+size_t CheckForPulse(WaveformSmootherDerivative & smoother, size_t start_idx, size_t max_samples, size_t min_length, double value_threshold, double derivative_threshold, double integral_threshold, double baseline) {
     smoother.Reset(start_idx);
     // 0 before start of pulse checking [checking for positive derivative]
     // 1 derivative is positive (in rising edge of pulse) [checking for negative derivative]
@@ -89,7 +89,7 @@ size_t CheckForPulse(WaveformSmoother & smoother, size_t start_idx, size_t max_s
     }
 }
 
-double EstimateBaseline(WaveformSmoother & smoother, size_t samples_for_baseline) {
+double EstimateBaseline(WaveformSmootherDerivative & smoother, size_t samples_for_baseline) {
     smoother.Reset();
     size_t N = smoother.Size();
     N = std::min(N, samples_for_baseline);
@@ -105,7 +105,7 @@ double EstimateBaseline(WaveformSmoother & smoother, size_t samples_for_baseline
     return baseline;
 }
 
-std::vector<std::pair<size_t, size_t>> FindPulses(WaveformSmoother & smoother, double baseline, size_t pulse_max_start_sample, double deriv_threshold, size_t max_pulse_width, size_t min_pulse_width, double min_pulse_height, double min_deriv_magnitude, double min_integral) {
+std::vector<std::pair<size_t, size_t>> FindPulses(WaveformSmootherDerivative & smoother, double baseline, size_t pulse_max_start_sample, double deriv_threshold, size_t max_pulse_width, size_t min_pulse_width, double min_pulse_height, double min_deriv_magnitude, double min_integral) {
     // Determine the maximum starting sample for a pulse
     // We need at least 5 samples after the starting pulse
     size_t N = smoother.Size();
@@ -179,7 +179,7 @@ class PulseCollector : public I3Module {
     // Internal state
     bool geo_seen;
     I3Map<CCMPMTKey, uint32_t> pmt_channel_map_;
-    std::map<CCMPMTKey, std::deque<WaveformSmoother>> smooth_waveform_cache;
+    std::map<CCMPMTKey, std::deque<WaveformSmootherDerivative>> smooth_waveform_cache;
 
     size_t samples_for_baseline;
 
@@ -226,7 +226,7 @@ std::vector<std::tuple<size_t, size_t, double>> PulseCollector::ProcessWaveform(
     size_t nearby_charge_window = 300;
     // Initialize the waveform smoother
     smooth_waveform_cache[key].emplace_back(waveform.GetWaveform().cbegin(), waveform.GetWaveform().cend(), smoother_delta_t, smoother_tau);
-    WaveformSmoother & smoother = smooth_waveform_cache[key].back();
+    WaveformSmootherDerivative & smoother = smooth_waveform_cache[key].back();
 
     // Get an initial baseline estimate
     double baseline = EstimateBaseline(smoother, samples_for_baseline);
@@ -305,7 +305,7 @@ void PulseCollector::ProcessFrame(I3FramePtr frame) {
             // std::cout << "length of pulses = " << wf_result.size() << std::endl;
             // now looping over this vector of pulse information
             std::vector<std::vector<double>> vector_of_results;
-            WaveformSmoother const & smoother = smooth_waveform_cache[key].back();
+            WaveformSmootherDerivative const & smoother = smooth_waveform_cache[key].back();
             std::pair<std::vector<uint16_t>::const_iterator, std::vector<uint16_t>::const_iterator> iterators = smoother.GetRawWaveform();
             for (size_t wf_it = 0; wf_it < wf_result.size(); ++wf_it){
                 size_t first_pulse_sample = std::get<0>(wf_result[wf_it]);
