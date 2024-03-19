@@ -416,7 +416,12 @@ void FlightPathThreeSummary::DAQ(I3FramePtr frame) {
     size_t neutron_start_index = FindStartIndex(smoother, neutron_peak_index, noise_max, baseline);
 
     // Find the gamma extrema
-    std::vector<Extreme> gamma_extrema = SelectGammaExtrema(extrema, neutron_start_index, gamma_threshold_, noise_average);
+    std::vector<Extreme> gamma_extrema;
+    if(noise_average == 0 and noise_max == 0) {
+        log_warn("Noise average and noise max are both zero. Skipping gamma peak search.");
+    } else {
+        gamma_extrema = SelectGammaExtrema(extrema, neutron_start_index, gamma_threshold_, noise_average);
+    }
 
     // Compute the gamma entries
     boost::shared_ptr<CCMFP3Summary> summary = boost::make_shared<CCMFP3Summary>();
