@@ -222,7 +222,7 @@ double ComputeTimeOffset(bool & valid_time_offset, NIMLogicPulseSeriesMap const 
     return time_offset;
 }
 
-void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double baseline_stddev, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width) {
+void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double baseline_stddev, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width, double bcm_time_offset) {
     summary.fp3_waveform_length = smoother.Size();
     summary.fp3_baseline = baseline;
     summary.fp3_baseline_stddev = 0;
@@ -238,6 +238,7 @@ void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & g
     summary.fp3_neutron_peak_time = neutron_peak_index * bin_width / I3Units::ns;
     summary.fp3_neutron_peak_value = smoother.Value(neutron_peak_index) - baseline;
     summary.fp3_neutron_integral = SumBetweenIndicesInclusive(smoother, neutron_start_index, neutron_end_index, baseline) * bin_width / I3Units::ns;
+    summary.bcm_time_offset = bcm_time_offset;
 
     std::vector<CCMFP3Gamma> & gamma_entries = summary.fp3_gammas;
 
@@ -425,7 +426,7 @@ void FlightPathThreeSummary::DAQ(I3FramePtr frame) {
 
     // Compute the gamma entries
     boost::shared_ptr<CCMFP3Summary> summary = boost::make_shared<CCMFP3Summary>();
-    ComputeGammaSummary(*summary, gamma_extrema, smoother, baseline, baseline_stddev, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t);
+    ComputeGammaSummary(*summary, gamma_extrema, smoother, baseline, baseline_stddev, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t, time_offset);
 
     frame->Put(output_name_, summary);
 

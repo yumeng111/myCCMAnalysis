@@ -39,6 +39,7 @@ std::ostream & CCMFP3Summary::Print(std::ostream& oss) const {
         << "     NeutronPeakTime : " << fp3_neutron_peak_time << '\n'
         << "    NeutronPeakValue : " << fp3_neutron_peak_value << '\n'
         << "     NeutronIntegral : " << fp3_neutron_integral << '\n'
+        << "       BCMTimeOffset : " << bcm_time_offset << '\n'
         << "              Gammas :\n"
         << "              [\n";
         for(CCMFP3Gamma const & gamma : fp3_gammas) {

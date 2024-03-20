@@ -56,6 +56,7 @@ void register_CCMFP3Summary() {
     .def_readwrite("neutron_peak_time", &CCMFP3Summary::fp3_neutron_peak_time)
     .def_readwrite("neutron_peak_value", &CCMFP3Summary::fp3_neutron_peak_value)
     .def_readwrite("neutron_integral", &CCMFP3Summary::fp3_neutron_integral)
+    .def_readwrite("bcm_time_offset", &CCMFP3Summary::bcm_time_offset)
     .def_readwrite("gammas", &CCMFP3Summary::fp3_gammas)
     .def(bp::dataclass_suite<CCMFP3Summary>())
     ;
