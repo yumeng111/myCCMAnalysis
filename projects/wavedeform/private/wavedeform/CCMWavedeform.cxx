@@ -1257,7 +1257,7 @@ CCMWavedeform::CCMWavedeform(const I3Context& context) : I3ConditionalModule(con
     AddParameter("PMTKeys", "PMTKeys to run over", I3Vector<CCMPMTKey>());
     AddParameter("MaxCachedFrames", "The maximum number of frames this module is allowed to have cached", (size_t)(3000));
     AddParameter("RemoveWaveforms", "Remove the input waveforms?", bool(false));
-    AddParameter("TimeLimitSeconds", "Time limit for each thread", (double)(60.0 * 10));
+    AddParameter("TimeLimitSeconds", "Time limit for each thread", (double)(0.0));
 
 }
 
