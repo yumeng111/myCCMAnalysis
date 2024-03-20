@@ -47,7 +47,7 @@ make_shared(T *ptr, cholmod_common *c)
 std::vector<double>
 nnls_lawson_hanson_wrapper(const I3Matrix &A, const std::vector<double> &y,
     double tolerance, unsigned min_iterations, unsigned max_iterations,
-    unsigned npos, bool normaleq, bool solve_with_normaleq, bool verbose)
+    unsigned npos, bool normaleq, bool solve_with_normaleq, bool verbose, DurationTimer & timer, size_t & iterations)
 {
 	if (python_common == NULL) {
 		python_common.reset(new cholmod_common, &cholmod_l_finish);
@@ -81,7 +81,7 @@ nnls_lawson_hanson_wrapper(const I3Matrix &A, const std::vector<double> &y,
 	
 	cholmod_dense *dense_x = nnls_lawson_hanson(sparseA, &dense_y,
 	    tolerance, min_iterations, max_iterations, npos,
-	    normaleq, solve_with_normaleq, verbose, python_common.get());
+	    normaleq, solve_with_normaleq, verbose, python_common.get(), timer, iterations);
 	if (dense_x == NULL)
 		log_fatal("nnls_lawson_hanson() failed");
 	

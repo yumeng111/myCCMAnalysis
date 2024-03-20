@@ -153,8 +153,8 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
     bool merge_needed = false;
     bool merge_possible = true;
     for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
-        bool trigger0_empty = (*trigger_times0)[board_idx].first;
-        bool trigger1_empty = (*trigger_times1)[board_idx].first;
+        bool trigger0_empty = not (*trigger_times0)[board_idx].first;
+        bool trigger1_empty = not (*trigger_times1)[board_idx].first;
         bool triggers_overlap = false;
         if((not trigger0_empty) and (not trigger1_empty))
             triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx);
@@ -168,8 +168,8 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
         // Check that triggers that would exclude a merge are at least close to overlapping
         bool merge_allowed = true;
         for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
-            bool trigger0_empty = (*trigger_times0)[board_idx].first;
-            bool trigger1_empty = (*trigger_times1)[board_idx].first;
+            bool trigger0_empty = not (*trigger_times0)[board_idx].first;
+            bool trigger1_empty = not (*trigger_times1)[board_idx].first;
             bool triggers_overlap = false;
             if((not trigger0_empty) and (not trigger1_empty))
                 triggers_overlap = TriggersOverlap(trigger_times0, trigger_times1, board_idx, num_extra_samples_allowed_);
@@ -180,8 +180,8 @@ bool CCMTriggerMerger::TriggersOverlap(boost::shared_ptr<const I3Vector<std::pai
             std::cerr << "Issue merging triggers. Triggers from some boards overlap, but others do not" << std::endl;
             std::cerr << "Trigger times:" << std::endl;
             for(size_t board_idx=0; board_idx<board_idx_to_machine_idx.size(); ++board_idx) {
-                bool trigger0_empty = (*trigger_times0)[board_idx].first;
-                bool trigger1_empty = (*trigger_times1)[board_idx].first;
+                bool trigger0_empty = not (*trigger_times0)[board_idx].first;
+                bool trigger1_empty = not (*trigger_times1)[board_idx].first;
                 int64_t trigger0_time = (*trigger_times0)[board_idx].second;
                 int64_t trigger1_time = (*trigger_times1)[board_idx].second;
                 std::cerr << "Board " << board_idx << ": (" <<
@@ -254,6 +254,9 @@ void CCMTriggerMerger::CacheDAQFrame(I3FramePtr frame) {
         log_fatal("%s", ("Frame does not contain digital readout: " + digital_readout_name_).c_str());
     if(not frame->Has(triggers_name_))
         log_fatal("%s", ("Frame does not contain triggers: " + triggers_name_).c_str());
+    if(frame->Has("BoardsExhausted")) {
+
+    }
     daq_frame_cache_.push_back(frame);
 }
 

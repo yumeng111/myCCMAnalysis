@@ -43,12 +43,13 @@
 #include <complex>
 #include <SuiteSparseQR_C.h>
 
+#include "timer.h"
 #include "nnls.h"
 
 cholmod_dense *
 nnls_lawson_hanson(cholmod_sparse *A, cholmod_dense *y, double tolerance,
     unsigned min_iterations, unsigned max_iterations, unsigned npos,
-    int normaleq, int solve_with_normaleq, int verbose, cholmod_common *c)
+    int normaleq, int solve_with_normaleq, int verbose, cholmod_common *c, DurationTimer & timer, size_t & iterations)
 {
 	cholmod_dense *x, *w, *p, *yp;
 	cholmod_sparse *Ap;
@@ -277,6 +278,14 @@ nnls_lawson_hanson(cholmod_sparse *A, cholmod_dense *y, double tolerance,
 		/* Exit to the caller in equilibrium */
 		if (alpha == 0)
 			break;
+        iterations = n;
+        if(timer.timeout()) {
+            cholmod_l_free_dense(&x, c);
+            cholmod_l_free_dense(&w, c);
+            free(P);
+            free(Z);
+            return nullptr;
+        }
 	}
 
 	/* Step 12: return */

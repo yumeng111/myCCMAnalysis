@@ -1,6 +1,8 @@
 
 #include <cholmod.h>
 
+#include "timer.h"
+
 /*
  * Lawson-Hanson NNLS
  *
@@ -10,7 +12,7 @@
 cholmod_dense *
 nnls_lawson_hanson(cholmod_sparse *A, cholmod_dense *y, double tolerance,
     unsigned min_iterations, unsigned max_iterations, unsigned npos,
-    int normaleq, int solve_with_normaleq, int verbose, cholmod_common *c);
+    int normaleq, int solve_with_normaleq, int verbose, cholmod_common *c, DurationTimer & timer, size_t & iterations);
 
 
 /* Solve Ap(x) = y by transforming to normal equations */

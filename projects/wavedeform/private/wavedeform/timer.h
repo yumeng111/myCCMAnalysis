@@ -1,6 +1,7 @@
 #ifndef wavedeform_timer_H
 #define wavedeform_timer_H
 
+#include <atomic>
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -66,6 +67,46 @@ public:
                     this->print();
             }
         }
+    }
+};
+
+class DurationTimer {
+    std::atomic<bool> & success;
+    double & total;
+    struct rusage stop, start;
+    double max_time;
+    bool fail;
+public:
+    DurationTimer(std::atomic<bool> & success, double & total, double max_time) : success(success), total(total), max_time(max_time) {
+        total = 0;
+        fail = true;
+        while(fail)
+            fail = (getrusage(RUSAGE_SELF, &start) == -1);
+    }
+
+    double elapsed() {
+        fail = (getrusage(RUSAGE_SELF, &stop) == -1);
+        if(fail) {
+            return total;
+        }
+        double elapsed_time = (stop.ru_utime.tv_sec - start.ru_utime.tv_sec)
+            + (stop.ru_stime.tv_sec - start.ru_stime.tv_sec)
+            + double(stop.ru_utime.tv_usec - start.ru_utime.tv_usec) / 1E+06
+            + double(stop.ru_stime.tv_usec - start.ru_stime.tv_usec) / 1E+06;
+        total = elapsed_time;
+        return elapsed_time;
+    }
+
+    bool timeout() {
+        if(not success.load())
+            return true;
+        if(max_time <= 0)
+            return false;
+        if(this->elapsed() > max_time) {
+            success.store(false);
+            return true;
+        }
+        return false;
     }
 };
 

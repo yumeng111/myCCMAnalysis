@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <SuiteSparseQR_C.h>
 
+#include "timer.h"
 #include "rnnls.h"
 
 double SD_ONE[2] = {1., 0.};
@@ -422,7 +423,7 @@ rnnls_iterate(double tolerance,
  */
 cholmod_dense*
 rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
-      unsigned max_iterations, int verbose, cholmod_common *c) {
+      unsigned max_iterations, int verbose, cholmod_common *c, DurationTimer & timer, size_t & iterations) {
   double rnnls_u = 0.0;
   double rnnls_s = 0.0;
   //NNLSTimer timer("RNNLSInternal", rnnls_u, rnnls_s, false, true);
@@ -445,6 +446,11 @@ rnnls(cholmod_sparse *A, cholmod_dense *y, double tolerance,
     // Do an iteration of NNLS
     if (rnnls_iterate(tol, cxt) == -1) {
       break;
+    }
+    iterations = n;
+    if(timer.timeout()) {
+        rnnls_free_context(cxt);
+        return nullptr;
     }
   }
     //std::cout << "RNNLS iterations: " << n_iterations << std::endl;

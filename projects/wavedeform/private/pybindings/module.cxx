@@ -3,10 +3,12 @@
 #include <icetray/I3Logging.h>
 #include <dataclasses/I3Matrix.h>
 
+#include <wavedeform/timer.h>
+
 std::vector<double>
 nnls_lawson_hanson_wrapper(const I3Matrix &A, const std::vector<double> &y,
     double tolerance, unsigned min_iterations, unsigned max_iterations,
-    unsigned npos, bool normaleq, bool solve_with_normaleq, bool verbose);
+    unsigned npos, bool normaleq, bool solve_with_normaleq, bool verbose, DurationTimer & timer, size_t & iterations);
 
 I3_PYTHON_MODULE(wavedeform) {
 	load_project("wavedeform", false);
