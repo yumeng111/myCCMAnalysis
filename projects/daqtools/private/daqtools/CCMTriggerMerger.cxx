@@ -257,15 +257,6 @@ void CCMTriggerMerger::CacheDAQFrame(I3FramePtr frame) {
     if(frame->Has("BoardsExhausted")) {
 
     }
-    std::cout << "Got DAQ frame" << std::endl;
-    // Print out trigger times
-    boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>> trigger_times = frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_);
-    for(size_t i=0; i<trigger_times->size(); ++i) {
-        std::cout << "Board " << i << ": ";
-        std::cout << ((*trigger_times)[i].first ? "True" : "False");
-        std::cout << " " << (*trigger_times)[i].second << std::endl;
-    }
-    std::cout << std::endl;
     daq_frame_cache_.push_back(frame);
 }
 
@@ -273,13 +264,8 @@ void CCMTriggerMerger::PushMergedTriggerFrames(bool last_frame) {
     // The last_frame parameter indicates if there are no more frames in the stream to be added
     // Do nothing if we have no frames cached
     // Do nothing if last_frame == false and we have less than two frames cached
-    if(daq_frame_cache_.size() == 0 or (daq_frame_cache_.size() < 2 and not last_frame)) {
-        std::cout << "No frames to merge" << std::endl;
-        std::cout << "Frames in cache: " << daq_frame_cache_.size() << std::endl;
-        std::cout << "Last frame: " << last_frame << std::endl;
-        std::cout << std::endl;
+    if(daq_frame_cache_.size() == 0 or (daq_frame_cache_.size() < 2 and not last_frame))
         return;
-    }
 
     // Create a vector of frame groups
     // The last entry indicates the group currently being assembled
@@ -288,33 +274,24 @@ void CCMTriggerMerger::PushMergedTriggerFrames(bool last_frame) {
 
     // Iterate over remaining frames and add to the last group or create a new group accordingly
     for(size_t frame_idx=1; frame_idx<daq_frame_cache_.size(); ++frame_idx) {
-        std::cout << "Frame " << frame_idx << std::endl;
         I3FramePtr current_frame = daq_frame_cache_[frame_idx];
         bool triggers_overlap = TriggersOverlap(
                 prev_frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_),
                 current_frame->Get<boost::shared_ptr<const I3Vector<std::pair<bool, int64_t>>>>(trigger_times_name_));
-        std::cout << "Triggers overlap: " << (triggers_overlap ? "True" : "False") << std::endl;
 
         if(triggers_overlap) {
             // Overlapping triggers belong in the current group
-            std::cout << "Adding to current group" << std::endl;
             grouped_frames.back().push_back(current_frame);
         } else {
             // Non-overlapping triggers start a new group
-            std::cout << "Starting new group" << std::endl;
             grouped_frames.emplace_back();
             grouped_frames.back().push_back(current_frame);
         }
         prev_frame = current_frame;
     }
-    std::cout << std::endl;
 
     // Merge the groups and push the newly created frames
     // Only process the last group if there are no more input frames expected
-    std::cout << "Merging groups" << std::endl;
-    std::cout << "Last frame: " << last_frame << std::endl;
-    std::cout << "Number of groups: " << grouped_frames.size() << std::endl;
-    std::cout << "Number of frames in last group: " << grouped_frames.back().size() << std::endl;
     for(size_t group_idx=0; group_idx + (1 - last_frame) < grouped_frames.size(); ++group_idx) {
         I3FramePtr frame = MergeTriggerFrames(grouped_frames[group_idx]);
         if(grouped_frames[group_idx].size() > 1)
@@ -322,19 +299,11 @@ void CCMTriggerMerger::PushMergedTriggerFrames(bool last_frame) {
         total_triggers_output += 1;
         PushFrame(frame);
     }
-    std::cout << std::endl;
 
     // Remove all the processed frames from the queue
-    std::cout << "Popping frames" << std::endl;
-    std::cout << "Number of frames in cache: " << daq_frame_cache_.size() << std::endl;
-    std::cout << "Number of frames in last group: " << grouped_frames.back().size() << std::endl;
-    std::cout << "Last frame: " << last_frame << std::endl;
     size_t num_to_pop = daq_frame_cache_.size() - (last_frame ? 0 : grouped_frames.back().size());
-    std::cout << "Popping " << num_to_pop << " frames" << std::endl;
     for(size_t i=0; i<num_to_pop; ++i)
         daq_frame_cache_.pop_front();
-    std::cout << "Number of frames in cache: " << daq_frame_cache_.size() << std::endl;
-    std::cout << std::endl;
 }
 
 std::vector<std::pair<bool, int64_t>> CCMTriggerMerger::GetStartTimes(std::vector<I3FramePtr> const & frames) {
