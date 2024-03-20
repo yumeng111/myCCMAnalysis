@@ -13,6 +13,7 @@
 #include <iostream>
 #include <algorithm>
 
+#include <icetray/I3Units.h>
 #include <icetray/I3Frame.h>
 #include <icetray/I3Module.h>
 #include <icetray/I3Logging.h>
@@ -221,7 +222,7 @@ double ComputeTimeOffset(bool & valid_time_offset, NIMLogicPulseSeriesMap const 
     return time_offset;
 }
 
-void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double baseline_stddev, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width) {
+void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & gamma_extrema, WaveformSmootherDerivative & smoother, double baseline, double baseline_stddev, double noise_average, double noise_max, size_t neutron_peak_index, size_t neutron_start_index, size_t num_noise_peaks, double bin_width, double bcm_time_offset) {
     summary.fp3_waveform_length = smoother.Size();
     summary.fp3_baseline = baseline;
     summary.fp3_baseline_stddev = 0;
@@ -229,14 +230,15 @@ void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & g
     summary.fp3_average_noise_level = noise_average;
     summary.fp3_max_noise_level = noise_max;
     size_t neutron_end_index = FindEndIndex(smoother, neutron_peak_index, noise_max, baseline);
-    summary.fp3_neutron_start_time = neutron_start_index * bin_width;
-    summary.fp3_neutron_end_time = neutron_end_index * bin_width;
-    summary.fp3_neutron_derivative = smoother.Derivative(neutron_peak_index);
-    summary.fp3_neutron_second_derivative = ComputeSecondDerivative(smoother, neutron_peak_index, bin_width);
+    summary.fp3_neutron_start_time = neutron_start_index * bin_width / I3Units::ns;
+    summary.fp3_neutron_end_time = neutron_end_index * bin_width / I3Units::ns;
+    summary.fp3_neutron_derivative = smoother.Derivative(neutron_peak_index) / (1.0 / I3Units::ns);
+    summary.fp3_neutron_second_derivative = ComputeSecondDerivative(smoother, neutron_peak_index, bin_width) / (1.0 / (I3Units::ns * I3Units::ns));
     summary.fp3_neutron_local_average = ComputeLocalAverage(smoother, neutron_peak_index, 5);
-    summary.fp3_neutron_peak_time = neutron_peak_index * bin_width;
+    summary.fp3_neutron_peak_time = neutron_peak_index * bin_width / I3Units::ns;
     summary.fp3_neutron_peak_value = smoother.Value(neutron_peak_index) - baseline;
-    summary.fp3_neutron_integral = SumBetweenIndicesInclusive(smoother, neutron_start_index, neutron_end_index, baseline) * bin_width;
+    summary.fp3_neutron_integral = SumBetweenIndicesInclusive(smoother, neutron_start_index, neutron_end_index, baseline) * bin_width / I3Units::ns;
+    summary.bcm_time_offset = bcm_time_offset;
 
     std::vector<CCMFP3Gamma> & gamma_entries = summary.fp3_gammas;
 
@@ -245,13 +247,13 @@ void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & g
         CCMFP3Gamma gamma_entry;
         size_t start_index = FindStartIndex(smoother, gamma.position, noise_max, baseline);
         size_t end_index = FindEndIndex(smoother, gamma.position, noise_max, baseline);
-        gamma_entry.gamma_start_time = start_index * bin_width;
-        gamma_entry.gamma_end_time = end_index * bin_width;
-        gamma_entry.gamma_peak_time = gamma.position * bin_width;
+        gamma_entry.gamma_start_time = start_index * bin_width / I3Units::ns;
+        gamma_entry.gamma_end_time = end_index * bin_width / I3Units::ns;
+        gamma_entry.gamma_peak_time = gamma.position * bin_width / I3Units::ns;
         gamma_entry.gamma_peak_value = gamma.value - baseline;
-        gamma_entry.gamma_integral = SumBetweenIndicesInclusive(smoother, start_index, end_index, baseline) * bin_width;
-        gamma_entry.gamma_derivative = gamma.derivative;
-        gamma_entry.gamma_second_derivative = gamma.second_derivative;
+        gamma_entry.gamma_integral = SumBetweenIndicesInclusive(smoother, start_index, end_index, baseline) * bin_width / I3Units::ns;
+        gamma_entry.gamma_derivative = gamma.derivative / (1.0 / I3Units::ns);
+        gamma_entry.gamma_second_derivative = gamma.second_derivative / (1.0 / (I3Units::ns * I3Units::ns));
         gamma_entry.gamma_local_average = gamma.local_average;
         gamma_entries.push_back(gamma_entry);
     }
@@ -327,6 +329,9 @@ void FlightPathThreeSummary::Configure() {
     GetParameter("GammaThreshold", gamma_threshold_);
     GetParameter("SmoothingTau", smoother_tau);
     GetParameter("SmoothingDeltaT", smoother_delta_t);
+
+    smoother_tau *= I3Units::ns;
+    smoother_delta_t *= I3Units::ns;
 }
 
 void FlightPathThreeSummary::Geometry(I3FramePtr frame) {
@@ -412,11 +417,16 @@ void FlightPathThreeSummary::DAQ(I3FramePtr frame) {
     size_t neutron_start_index = FindStartIndex(smoother, neutron_peak_index, noise_max, baseline);
 
     // Find the gamma extrema
-    std::vector<Extreme> gamma_extrema = SelectGammaExtrema(extrema, neutron_start_index, gamma_threshold_, noise_average);
+    std::vector<Extreme> gamma_extrema;
+    if(noise_average == 0 and noise_max == 0) {
+        log_warn("Noise average and noise max are both zero. Skipping gamma peak search.");
+    } else {
+        gamma_extrema = SelectGammaExtrema(extrema, neutron_start_index, gamma_threshold_, noise_average);
+    }
 
     // Compute the gamma entries
     boost::shared_ptr<CCMFP3Summary> summary = boost::make_shared<CCMFP3Summary>();
-    ComputeGammaSummary(*summary, gamma_extrema, smoother, baseline, baseline_stddev, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t);
+    ComputeGammaSummary(*summary, gamma_extrema, smoother, baseline, baseline_stddev, noise_average, noise_max, neutron_peak_index, neutron_start_index, noise_extrema.size(), smoother_delta_t, time_offset);
 
     frame->Put(output_name_, summary);
 

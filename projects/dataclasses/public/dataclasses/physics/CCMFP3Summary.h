@@ -104,6 +104,8 @@ public:
     double fp3_neutron_peak_value;
     double fp3_neutron_integral;
 
+    double bcm_time_offset;
+
     std::vector<CCMFP3Gamma> fp3_gammas;
 public:
     CCMFP3Summary() :
@@ -120,7 +122,8 @@ public:
         fp3_neutron_local_average(std::numeric_limits<double>::quiet_NaN()),
         fp3_neutron_peak_time(std::numeric_limits<double>::quiet_NaN()),
         fp3_neutron_peak_value(std::numeric_limits<double>::quiet_NaN()),
-        fp3_neutron_integral(std::numeric_limits<double>::quiet_NaN())
+        fp3_neutron_integral(std::numeric_limits<double>::quiet_NaN()),
+        bcm_time_offset(std::numeric_limits<double>::quiet_NaN())
     {}
 
     std::ostream& Print(std::ostream&) const;
@@ -141,6 +144,7 @@ public:
                 fp3_neutron_peak_time,
                 fp3_neutron_peak_value,
                 fp3_neutron_integral,
+                bcm_time_offset,
                 fp3_gammas
                 )
             == std::tie(
@@ -158,6 +162,7 @@ public:
                 rhs.fp3_neutron_peak_time,
                 rhs.fp3_neutron_peak_value,
                 rhs.fp3_neutron_integral,
+                rhs.bcm_time_offset,
                 rhs.fp3_gammas
                 );
     }
@@ -205,6 +210,7 @@ void CCMFP3Summary::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("fp3_neutron_peak_time", fp3_neutron_peak_time);
     ar & make_nvp("fp3_neutron_peak_value", fp3_neutron_peak_value);
     ar & make_nvp("fp3_neutron_integral", fp3_neutron_integral);
+    ar & make_nvp("bcm_time_offset", bcm_time_offset);
     ar & make_nvp("fp3_gammas", fp3_gammas);
 }
 
