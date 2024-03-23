@@ -303,7 +303,7 @@ FlightPathThreeSummary::FlightPathThreeSummary(const I3Context& context) : I3Mod
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("NIMPulsesName", "Key to input NIMLogicPulseSeriesMap", std::string("NIMPulses"));
-    AddParameter("BCMSummaryName", "Key to input CCMBCMSummary", std::string("CCMBCMSummary"));
+    AddParameter("BCMSummaryName", "Key to input CCMBCMSummary", std::string("BCMSummary"));
     AddParameter("OutputName", "Key to output CCMFP3Summary", std::string("CCMFP3Summary"));
     AddParameter("FlightPath3Key", "CCMPMTKey for the flight path 3", CCMPMTKey(9, 1, 0));
     AddParameter("BCMKey", "CCMPMTKey for the BCM", CCMPMTKey(10, 1, 0));
@@ -322,7 +322,7 @@ void FlightPathThreeSummary::Configure() {
     GetParameter("BCMSummaryName", bcm_summary_name_);
     GetParameter("OutputName", output_name_);
     GetParameter("FlightPath3Key", fp3_key_);
-    GetParameter("BCMKey", bcm_board_key);
+    GetParameter("BCMKey", bcm_key_);
     GetParameter("NumSamplesForBaseline", samples_for_baseline_);
     GetParameter("NumSamplesForLocalAverage", samples_for_local_average_);
     GetParameter("NoiseMaximum", noise_maximum_);
@@ -368,7 +368,7 @@ void FlightPathThreeSummary::DAQ(I3FramePtr frame) {
     if(not frame->Has(nim_pulses_name_)) {
         log_fatal("Could not find NIMLogicPulseSeriesMap object with the key named \"%s\" in the DAQ frame.", nim_pulses_name_.c_str());
     }
-    if(not frame->Has("CCMBCMSummary")) {
+    if(not frame->Has(bcm_summary_name_)) {
         log_fatal("Could not find CCMBCMSummary object with the key named \"CCMBCMSummary\" in the DAQ frame.");
     }
 
