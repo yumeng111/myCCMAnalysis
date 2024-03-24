@@ -41,7 +41,7 @@ struct Extreme {
 };
 
 size_t FindNeutronPeakIndex(std::vector<uint16_t> const & raw_waveform) {
-    return std::distance(raw_waveform.begin(), std::max_element(raw_waveform.begin(), raw_waveform.end()));
+    return std::distance(raw_waveform.begin(), std::min_element(raw_waveform.begin(), raw_waveform.end()));
 }
 
 std::tuple<double, double> EstimateBaseline(WaveformSmootherDerivative & smoother, size_t samples_for_baseline) {
@@ -77,7 +77,7 @@ double ComputeSecondDerivative(WaveformSmootherDerivative & smoother, size_t pos
     return result;
 }
 
-double ComputeLocalAverage(WaveformSmootherDerivative & smoother, size_t position, size_t samples_for_local_average) {
+double ComputeLocalAverage(WaveformSmootherDerivative & smoother, size_t position, size_t samples_for_local_average, double baseline) {
     size_t N = smoother.Size();
     size_t N_before = std::min(position, size_t(samples_for_local_average / 2));
     size_t N_after = std::min(N - position, samples_for_local_average - N_before);
@@ -86,6 +86,8 @@ double ComputeLocalAverage(WaveformSmootherDerivative & smoother, size_t positio
     size_t start = std::max(int(0), int(position) - int(N_before));
     size_t end = std::min(N, position + N_after);
     std::vector<double> local_average_samples(smoothed_its.first + start, smoothed_its.first + end);
+    for(double & v : local_average_samples)
+        v -= baseline;
     double local_average = std::accumulate(local_average_samples.begin(), local_average_samples.end(), 0.0) / local_average_samples.size();
     return local_average;
 }
@@ -102,7 +104,7 @@ std::vector<Extreme> ComputeExtrema(WaveformSmootherDerivative & smoother, doubl
         double next_derivative = smoother.Derivative();
         if(derivative == 0 or (derivative > 0 and next_derivative < 0) or (derivative < 0 and next_derivative > 0)) {
             double second_derivative = ComputeSecondDerivative(smoother, i, bin_width);
-            double local_average = ComputeLocalAverage(smoother, i, 5);
+            double local_average = ComputeLocalAverage(smoother, i, 5, baseline);
             extrema.push_back({i, value, derivative, second_derivative, local_average});
         }
         value = smoother.Value() - baseline;
@@ -157,6 +159,7 @@ size_t FindStartIndex(WaveformSmootherDerivative & smoother, size_t peak_index, 
             break;
         }
     }
+    start_index = std::min(start_index, peak_index);
     return start_index;
 }
 
@@ -174,14 +177,16 @@ size_t FindEndIndex(WaveformSmootherDerivative & smoother, size_t peak_index, do
         smoother.Next();
     }
     smoother.Reset(index);
+    end_index = std::max(end_index, peak_index);
     return end_index;
 }
 
 double SumBetweenIndicesInclusive(WaveformSmootherDerivative & smoother, size_t start_index, size_t end_index, double baseline) {
     smoother.ComputeTo(end_index);
-    size_t N = std::min(smoother.Size(), end_index + 1);
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_its = smoother.GetFullSmoothedWaveform();
+    size_t N = std::min(size_t(std::distance(smoothed_its.first, smoothed_its.second)), end_index + 1);
     double sum = std::accumulate(smoothed_its.first + start_index, smoothed_its.first + N, 0.0);
+    sum -= (N - start_index) * baseline;
     return sum;
 }
 
@@ -234,7 +239,7 @@ void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & g
     summary.fp3_neutron_end_time = neutron_end_index * bin_width / I3Units::ns;
     summary.fp3_neutron_derivative = smoother.Derivative(neutron_peak_index) / (1.0 / I3Units::ns);
     summary.fp3_neutron_second_derivative = ComputeSecondDerivative(smoother, neutron_peak_index, bin_width) / (1.0 / (I3Units::ns * I3Units::ns));
-    summary.fp3_neutron_local_average = ComputeLocalAverage(smoother, neutron_peak_index, 5);
+    summary.fp3_neutron_local_average = ComputeLocalAverage(smoother, neutron_peak_index, 5, baseline);
     summary.fp3_neutron_peak_time = neutron_peak_index * bin_width / I3Units::ns;
     summary.fp3_neutron_peak_value = smoother.Value(neutron_peak_index) - baseline;
     summary.fp3_neutron_integral = SumBetweenIndicesInclusive(smoother, neutron_start_index, neutron_end_index, baseline) * bin_width / I3Units::ns;
@@ -250,7 +255,7 @@ void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & g
         gamma_entry.gamma_start_time = start_index * bin_width / I3Units::ns;
         gamma_entry.gamma_end_time = end_index * bin_width / I3Units::ns;
         gamma_entry.gamma_peak_time = gamma.position * bin_width / I3Units::ns;
-        gamma_entry.gamma_peak_value = gamma.value - baseline;
+        gamma_entry.gamma_peak_value = gamma.value;
         gamma_entry.gamma_integral = SumBetweenIndicesInclusive(smoother, start_index, end_index, baseline) * bin_width / I3Units::ns;
         gamma_entry.gamma_derivative = gamma.derivative / (1.0 / I3Units::ns);
         gamma_entry.gamma_second_derivative = gamma.second_derivative / (1.0 / (I3Units::ns * I3Units::ns));
@@ -394,7 +399,7 @@ void FlightPathThreeSummary::DAQ(I3FramePtr frame) {
     std::vector<uint16_t> const & waveform = waveforms->at(fp3_channel_).GetWaveform();
 
     // Create a smoother that we can use for all the calculations
-    WaveformSmootherDerivative smoother(waveform.begin(), waveform.end(), smoother_tau, smoother_delta_t);
+    WaveformSmootherDerivative smoother(waveform.begin(), waveform.end(), smoother_delta_t, smoother_tau);
 
     // Find the neutron peak
     size_t neutron_peak_index = FindNeutronPeakIndex(waveform);
