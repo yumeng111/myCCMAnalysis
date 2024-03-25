@@ -24,8 +24,8 @@
 // ********************************************************************
 //
 //
-/// \file optical/G4CCM/G4CCM.cc
-/// \brief Main program of the optical/G4CCM example
+/// \file optical/LXe/LXe.cc
+/// \brief Main program of the optical/LXe example
 //
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -111,4 +111,3 @@ int main(int argc, char** argv)
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-

@@ -40,7 +40,7 @@
 G4CCMSteppingMessenger::G4CCMSteppingMessenger(G4CCMSteppingAction* step)
   : fStepping(step)
 {
-  fOneStepPrimariesCmd = new G4UIcmdWithABool("/G4CCM/oneStepPrimaries", this);
+  fOneStepPrimariesCmd = new G4UIcmdWithABool("/CCM/oneStepPrimaries", this);
   fOneStepPrimariesCmd->SetGuidance(
     "Only allows primaries to go one step before being killed.");
 }

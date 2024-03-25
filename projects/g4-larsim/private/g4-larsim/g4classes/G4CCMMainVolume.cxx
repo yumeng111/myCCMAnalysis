@@ -357,7 +357,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame",0*cm, 106*cm, 75*cm, 0*deg, 360*deg);
-    fInnerFrame_log= new G4LogicalVolume(fInnerFrame, G4Material::GetMaterial("Al"), "InnerFrame");
+    fInnerFrame_log= new G4LogicalVolume(fInnerFrame, G4Material::GetMaterial("Alum"), "InnerFrame");
     new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fArgonOuter_log, false, 0, true);
 
     // now let's place the TPB foils
@@ -378,10 +378,14 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fPMT = J4PMTSolidMaker::Get8inchPMTSolid();  
     fPMT_log = new G4LogicalVolume(fPMT, G4Material::GetMaterial("Glass"), "pmt_log");
     
-    // now let's build also PMT photocathods using J4SolidMaker (fix at some point)
-    fPhotocath = J4PMTSolidMaker::Get8inchPMTSolid();  
+    // now let's build also PMT photocathode, very rough approximation! fix at some points
+    G4double innerRadius_pmt = 8.0;
+    G4double fOuterRadius_pmt = 10.16;
+    G4double height_pmt = 10.0;
+    G4double startAngle_pmt    = 0.;
+    G4double spanningAngle_pmt = 360. * deg;
+    fPhotocath = new G4Tubs("photocath_tube", innerRadius_pmt, fOuterRadius_pmt, height_pmt / 2., startAngle_pmt, spanningAngle_pmt);
     fPhotocath_log = new G4LogicalVolume(fPhotocath, G4Material::GetMaterial("Alum"), "photocath_log");
-    G4double height_pmt = 10.16; // idk, fix
     new G4PVPlacement(nullptr, G4ThreeVector(0., 0., -height_pmt / 2.), fPhotocath_log, "photocath", fPMT_log, false, 0);
 
 
@@ -423,6 +427,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         // so we have our pmt info
         // let's make the string key to save it to
         G4String pmt_name = std::to_string(row) + "_" + std::to_string(pmt_number);
+        G4cout << "pmt name = " << pmt_name << G4endl;
         new G4PVPlacement(0, G4ThreeVector(position.GetX()/I3Units::cm, position.GetY()/I3Units::cm, position.GetZ()/I3Units::cm), fPMT_log, pmt_name, fFiducialAr_log, false, k);
         ++k;
         fPMTPositions.push_back(G4ThreeVector(position.GetX()/I3Units::cm, position.GetY()/I3Units::cm, position.GetZ()/I3Units::cm));
@@ -439,6 +444,10 @@ void G4CCMMainVolume::VisAttributes()
 {
     auto argon_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8));
     fFiducialAr_log->SetVisAttributes(argon_va);
+  
+    auto pmt_va = new G4VisAttributes();
+    pmt_va->SetForceSolid(true);
+    fPMT_log->SetVisAttributes(pmt_va);
 
 }
 

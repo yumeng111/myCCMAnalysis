@@ -9,6 +9,16 @@ else (GEANT4_CONFIG_ERROR OR NOT DEFINED GEANT4_CONFIG_ERROR)
     set(CLHEP_FOUND TRUE)
 endif (GEANT4_CONFIG_ERROR OR NOT DEFINED GEANT4_CONFIG_ERROR)
 
+
+option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" ON)
+if(WITH_GEANT4_UIVIS)
+  find_package(Geant4 REQUIRED ui_all vis_all)
+    message("found uivis")
+else()
+    message("could not find uivis")
+    find_package(Geant4 REQUIRED)
+endif()
+
 if (GEANT4_FOUND AND CLHEP_FOUND)
     i3_project(${PROJECT_NAME}
         PYTHON_DIR python
@@ -23,9 +33,9 @@ if (GEANT4_FOUND AND CLHEP_FOUND)
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses 
     )
 
-    include(FindG4VisDrivers.cmake)
+#include(FindG4VisDrivers.cmake)
 
-i3_executable(CCMG4Simulation
+i3_executable(CCM
     apps/*.cxx
     USE_TOOLS clhep geant4
     USE_PROJECTS serialization icetray dataclasses phys-services simclasses g4-larsim

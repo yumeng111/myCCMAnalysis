@@ -40,24 +40,24 @@
 G4CCMEventMessenger::G4CCMEventMessenger(G4CCMEventAction* event)
   : fG4CCMEvent(event)
 {
-  fVerboseCmd = new G4UIcmdWithAnInteger("/G4CCM/eventVerbose", this);
+  fVerboseCmd = new G4UIcmdWithAnInteger("/CCM/eventVerbose", this);
   fVerboseCmd->SetGuidance("Set the verbosity of event data.");
   fVerboseCmd->SetParameterName("verbose", true);
   fVerboseCmd->SetDefaultValue(1);
 
-  fPmtThresholdCmd = new G4UIcmdWithAnInteger("/G4CCM/pmtThreshold", this);
+  fPmtThresholdCmd = new G4UIcmdWithAnInteger("/CCM/pmtThreshold", this);
   fPmtThresholdCmd->SetGuidance("Set the pmtThreshold (in # of photons)");
 
-  fForceDrawPhotonsCmd = new G4UIcmdWithABool("/G4CCM/forceDrawPhotons", this);
+  fForceDrawPhotonsCmd = new G4UIcmdWithABool("/CCM/forceDrawPhotons", this);
   fForceDrawPhotonsCmd->SetGuidance("Force drawing of photons.");
   fForceDrawPhotonsCmd->SetGuidance(
-    "(Higher priority than /G4CCM/forceDrawNoPhotons)");
+    "(Higher priority than /CCM/forceDrawNoPhotons)");
 
   fForceDrawNoPhotonsCmd =
-    new G4UIcmdWithABool("/G4CCM/forceDrawNoPhotons", this);
+    new G4UIcmdWithABool("/CCM/forceDrawNoPhotons", this);
   fForceDrawNoPhotonsCmd->SetGuidance("Force no drawing of photons.");
   fForceDrawNoPhotonsCmd->SetGuidance(
-    "(Lower priority than /G4CCM/forceDrawPhotons)");
+    "(Lower priority than /CCM/forceDrawPhotons)");
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

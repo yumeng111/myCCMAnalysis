@@ -19,18 +19,18 @@ G4CCMDetectorMessenger::G4CCMDetectorMessenger(G4CCMDetectorConstruction* detect
   : fG4CCMDetector(detector)
 {
   // Setup a command directory for detector controls with guidance
-  fDetectorDir = new G4UIdirectory("/G4CCM/detector/");
+  fDetectorDir = new G4UIdirectory("/CCM/detector/");
   fDetectorDir->SetGuidance("Detector geometry control");
 
-  fVolumesDir = new G4UIdirectory("/G4CCM/detector/volumes/");
+  fVolumesDir = new G4UIdirectory("/CCM/detector/volumes/");
   fVolumesDir->SetGuidance("Enable/disable volumes");
 
-  fLArCmd = new G4UIcmdWithABool("/G4CCM/detector/volumes/lar", this);
+  fLArCmd = new G4UIcmdWithABool("/CCM/detector/volumes/lar", this);
   fLArCmd->SetGuidance("Enable/Disable the main detector volume.");
   fLArCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
   fLArCmd->SetToBeBroadcasted(false);
 
-  fDefaultsCmd = new G4UIcommand("/G4CCM/detector/defaults", this);
+  fDefaultsCmd = new G4UIcommand("/CCM/detector/defaults", this);
   fDefaultsCmd->SetGuidance("Set all detector geometry values to defaults.");
   fDefaultsCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
   fDefaultsCmd->SetToBeBroadcasted(false);

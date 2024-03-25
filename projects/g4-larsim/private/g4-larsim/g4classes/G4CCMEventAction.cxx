@@ -199,7 +199,7 @@ void G4CCMEventAction::EndOfEventAction(const G4Event* anEvent)
       reconPos /= fHitCount;
       if(fVerbose > 0)
       {
-        G4cout << "\tReconstructed position of hits in G4CCM : " << reconPos / mm
+        G4cout << "\tReconstructed position of hits in CCM : " << reconPos / mm
                << G4endl;
       }
       fReconPos = reconPos;

@@ -96,7 +96,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr = new G4Material("LAr", z=18., a=39.95*g/mole, density = 1.396*g/cm3, kStateLiquid,88*kelvin);
     
     // Aluminum
-    fAlum = new G4Material("Al", z=13., a=26.98*g/mole, density=2.7*g/cm3);
+    fAlum = new G4Material("Alum", z=13., a=26.98*g/mole, density=2.7*g/cm3);
     
     // Vacuum
     fVacuum = new G4Material("Vacuum", z=1., a=1.01*g/mole, density=universe_mean_density, kStateGas, 0.1*kelvin, 1.e-19*pascal);
@@ -333,9 +333,9 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 
     // Create a box 5x5x5 meters in which to place the detector. In theory is much larger than it needs to be.
-    G4double expHall_x = 5*m;
-    G4double expHall_y = 5*m;
-    G4double expHall_z = 5*m;
+    G4double expHall_x = 5.*m;
+    G4double expHall_y = 5.*m;
+    G4double expHall_z = 5.*m;
     fExperimentalHall_box = new G4Box("expHall",expHall_x,expHall_y,expHall_z);
     fExperimentalHall_log = new G4LogicalVolume(fExperimentalHall_box,fVacuum,"expHall_log");
     fExperimentalHall_phys = new G4PVPlacement(nullptr, G4ThreeVector(), fExperimentalHall_log, "expHall", nullptr, false, 0);
