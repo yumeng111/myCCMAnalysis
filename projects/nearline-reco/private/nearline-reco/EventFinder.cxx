@@ -30,7 +30,6 @@
 #include <icetray/I3Int.h>
 #include <CCMAnalysis/CCMBinary/BinaryFormat.h>
 #include <CCMAnalysis/CCMBinary/BinaryUtilities.h>
-#include <daqtools/WaveformAccumulator.h>
 #include <dataclasses/I3String.h>
 #include <dataclasses/I3Double.h>
 #include <dataclasses/physics/CCMWaveform.h>
@@ -73,7 +72,7 @@ class EventFinder: public I3Module {
 I3_MODULE(EventFinder);
 
 EventFinder::EventFinder(const I3Context& context) : I3Module(context),
-    geometry_name_(""), geo_seen(false) {
+    geo_seen(false), geometry_name_("") {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
         AddParameter("TimeWindow", "Size of sliding time window to examine.",
                 2 * I3Units::ns);
