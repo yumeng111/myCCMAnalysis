@@ -89,6 +89,9 @@ void IntervalChargeSum::Configure() {
     GetParameter("PMTTypes", pmt_types);
     GetParameter("ProcessPhysicsFrames", process_physics_frames_);
     GetParameter("ProcessDAQFrames", process_daq_frames_);
+    GetParameter("TimeWindow", timeWindow_);
+    GetParameter("InputPulsesMaskName", pulses_mask_name_);
+    GetParameter("InputRawPulsesName", raw_pulses_name_);
     GetParameter("InputEventPrefix", input_prefix_);
     GetParameter("OutputPrefix", output_prefix_);
 
@@ -181,10 +184,10 @@ void IntervalChargeSum::DAQ(I3FramePtr frame) {
 
     std::sort(pulse_list.begin(), pulse_list.end(), [](auto const & t0, auto const & t1){return std::get<1>(t0).GetTime() < std::get<1>(t1).GetTime();});
 
-    I3VectorDoublePtr event_charge = boost::make_shared<I3VectorDouble>(0.0, event_start_times->size());
+    I3VectorDoublePtr event_charge = boost::make_shared<I3VectorDouble>(event_start_times->size(), 0.0);
 
     size_t event_idx = 0;
-    for (PMTKeyPulseVector::const_iterator i = pulse_list.begin(); i != pulse_list.end(); ++i) {
+    for (PMTKeyPulseVector::const_iterator i = pulse_list.begin(); i != pulse_list.end() and event_idx < event_start_times->size(); ++i) {
         if(event_start_times->at(event_idx) > std::get<1>(*i).GetTime()) {
             continue;
         }
@@ -200,9 +203,6 @@ void IntervalChargeSum::DAQ(I3FramePtr frame) {
         }
         event_charge->at(event_idx) = total_charge;
         ++event_idx;
-        if(event_idx >= event_start_times->size()) {
-            break;
-        }
     }
 
     frame->Put(output_prefix_ + "EventCharges", event_charge);
