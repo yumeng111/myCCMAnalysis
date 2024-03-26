@@ -26,18 +26,22 @@
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
+#include <icetray/robust_statistics.h>
+#include <icetray/I3Int.h>
+#include <CCMAnalysis/CCMBinary/BinaryFormat.h>
+#include <CCMAnalysis/CCMBinary/BinaryUtilities.h>
+#include <daqtools/WaveformAccumulator.h>
+#include <dataclasses/I3String.h>
+#include <dataclasses/I3Double.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/calibration/CCMPMTCalibration.h>
 #include <dataclasses/calibration/I3DOMCalibration.h>
-#include "CCMAnalysis/CCMBinary/BinaryFormat.h"
-#include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
-#include "icetray/robust_statistics.h"
-#include "daqtools/WaveformAccumulator.h"
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/physics/CCMBCMSummary.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/geometry/CCMGeometry.h>
+#include <dataclasses/I3MapCCMPMTKeyMask.h>
 
 typedef std::tuple<CCMPMTKey, CCMRecoPulse> PMTKeyPulsePair;
 typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
@@ -51,6 +55,9 @@ class EventFinder: public I3Module {
     bool allow_overlapping_events_;
     std::string output_prefix_;
     std::string pulses_;
+
+    bool produce_physics_frames_;
+    bool output_pulses_;
 
     I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
     std::set<CCMPMTKey> pmt_keys;
@@ -74,8 +81,10 @@ EventFinder::EventFinder(const I3Context& context) : I3Module(context),
         AddParameter("Pulses", "Name of pulse series to use", "WavedeformPulses");
         AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
         AddParameter("AllowOverlappingEvents", "False -> merge overlapping event windows. True -> allow overlapping event windows", bool(false));
+        AddParameter("ProducePhysicsFrames", "Produce physics frames", bool(false));
+        AddParameter("OutputPulses", "Output pulses", bool(true));
         AddParameter("Output", "Prefix for the outputs", std::string(""));
-    }
+}
 
 
 void EventFinder::Configure() {
@@ -85,6 +94,8 @@ void EventFinder::Configure() {
     GetParameter("Pulses", pulses_);
     GetParameter("PMTTypes", pmt_types);
     GetParameter("AllowOverlappingEvents", allow_overlapping_events_);
+    GetParameter("ProducePhysicsFrames", produce_physics_frames_);
+    GetParameter("OutputPulses", output_pulses_);
     GetParameter("Output", output_prefix_);
 }
 
@@ -191,6 +202,28 @@ void EventFinder::DAQ(I3FramePtr frame) {
     frame->Put(output_prefix_ + "EventEndTimes", event_end_times);
     frame->Put(output_prefix_ + "MaxEventCharges", max_event_charges);
     frame->Put(output_prefix_ + "MaxEventChargeTimes", max_event_charge_times);
+
+    if(produce_physics_frames_) {
+        for(size_t i=0; i< events.size(); ++i) {
+            I3FramePtr physics_frame = boost::make_shared<I3Frame>(I3Frame::Physics);
+            physics_frame->Put("PhysicsFrameSource", boost::make_shared<I3String>("EventFinder_" + output_prefix_));
+            physics_frame->Put(output_prefix_ + "EventIndex", boost::make_shared<I3Int>(i));
+            physics_frame->Put(output_prefix_ + "EventStartTime", boost::make_shared<I3Double>(std::get<0>(events[i])));
+            physics_frame->Put(output_prefix_ + "EventEndTime", boost::make_shared<I3Double>(std::get<1>(events[i])));
+            physics_frame->Put(output_prefix_ + "MaxEventCharge", boost::make_shared<I3Double>(std::get<2>(events[i])));
+            physics_frame->Put(output_prefix_ + "MaxEventChargeTime", boost::make_shared<I3Double>(std::get<3>(events[i])));
+            if(output_pulses_) {
+                boost::function<bool (const CCMPMTKey&, size_t, const CCMRecoPulse&)> predicate = [this, &events, i] (const CCMPMTKey& pmt_key, size_t pulse_idx, const CCMRecoPulse & pulse) {
+                    if(pmt_keys.count(pmt_key) == 0)
+                        return false;
+                    return pulse.GetTime() >= std::get<0>(events[i]) and pulse.GetTime() <= std::get<1>(events[i]);
+                };
+                CCMRecoPulseSeriesMapMaskPtr mask = boost::make_shared<CCMRecoPulseSeriesMapMask>(*frame, pulses_, predicate);
+                physics_frame->Put(output_prefix_ + "EventPulses", mask->Apply(*frame));
+            }
+            PushFrame(physics_frame);
+        }
+    }
 
     PushFrame(frame);
 }
