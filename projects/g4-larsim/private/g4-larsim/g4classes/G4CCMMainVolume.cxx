@@ -3,12 +3,8 @@
 
 #include <map>
 #include <math.h> 
-
-#include "dataclasses/I3Position.h"
-#include "dataclasses/I3Orientation.h"
-#include "dataclasses/I3Map.h"
-#include "icetray/CCMPMTKey.h"
-#include "dataclasses/geometry/CCMGeometry.h"
+#include <set>
+#include <tuple>
 
 #include "globals.hh"
 #include "G4Box.hh"
@@ -228,39 +224,39 @@ std::vector<std::string> position_id = {"C101R0",
 
 // Z positions of the rows of pmts
 std::map<size_t, double> pmt_region_z_positions = {
-    {-2, 75.00 * I3Units::cm},
-    {-1, 65.00 * I3Units::cm},
-    {0,  58.00 * I3Units::cm},
-    {1,  46.22 * I3Units::cm},
-    {2,  23.11 * I3Units::cm},
-    {3,   0.00 * I3Units::cm},
-    {4, -23.11 * I3Units::cm},
-    {5, -46.22 * I3Units::cm},
-    {6, -58.00 * I3Units::cm},
-    {7, -65.00 * I3Units::cm},
-    {8, -75.00 * I3Units::cm},
+    {-2, 75.00},
+    {-1, 65.00},
+    {0,  58.00},
+    {1,  46.22},
+    {2,  23.11},
+    {3,   0.00},
+    {4, -23.11},
+    {5, -46.22},
+    {6, -58.00},
+    {7, -65.00},
+    {8, -75.00},
 };
 
 // The radii of rings of pmts
 std::map<size_t, double> ring_radii = {
-    {0,  96.0 * I3Units::cm}, // Outer wall
-    {1,  20.0 * I3Units::cm}, // Inner ring on top/bottom
-    {2,  42.0 * I3Units::cm}, //
-    {3,  64.2 * I3Units::cm}, //
-    {4,  85.5 * I3Units::cm}, // Outer ring on top/bottom
-    {5, 101.6 * I3Units::cm},  // Veto VT and VB rings
-    {6, 111.6 * I3Units::cm}  // Veto VCT and VCB rings
+    {0,  96.0}, // Outer wall
+    {1,  20.0}, // Inner ring on top/bottom
+    {2,  42.0}, //
+    {3,  64.2}, //
+    {4,  85.5}, // Outer ring on top/bottom
+    {5, 101.6},  // Veto VT and VB rings
+    {6, 111.6}  // Veto VCT and VCB rings
 };
 
 // The number of possible pmt positions in each ring (not all positions will be filled)
 std::map<size_t, size_t> ring_pmt_pos_count = {
-    {0, 24 * I3Units::cm}, // Outer wall
-    {1,  5 * I3Units::cm}, // Inner ring on top/bottom
-    {2, 10 * I3Units::cm}, //
-    {3, 15 * I3Units::cm}, //
-    {4, 20 * I3Units::cm}, // Outer ring on top/bottom
-    {5, 24 * I3Units::cm},  // Veto VT and VB rings
-    {6, 24 * I3Units::cm}  // Veto VCT and VCB rings
+    {0, 24}, // Outer wall
+    {1,  5}, // Inner ring on top/bottom
+    {2, 10}, //
+    {3, 15}, //
+    {4, 20}, // Outer ring on top/bottom
+    {5, 24},  // Veto VT and VB rings
+    {6, 24}  // Veto VCT and VCB rings
 };
 
 std::set<std::tuple<size_t, size_t, size_t>> cap_uncoated_pmts = {
@@ -305,7 +301,7 @@ std::pair<double, double> xy_position_from_cylinder_pmt_number(
     return {radius * cos(angle), radius * sin(angle)};
 }
 
-I3Position get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
+std::vector<double> get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
     double z = pmt_region_z_positions[pmt_row];
     std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
             pmt_number, 
@@ -313,11 +309,14 @@ I3Position get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, do
             starting_pmt_number, 
             ring_pmt_pos_count[ring_number],
             angular_offset);
-    I3Position pos(xy.first, xy.second, z);
+    std::vector<double> pos;
+    pos.push_back(xy.first);
+    pos.push_back(xy.second);
+    pos.push_back(z);
     return pos;
 }
 
-I3Position get_pmt_wall_position(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
+std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
     return get_pmt_cap_position(pmt_row, 0, pmt_number, starting_pmt_number, angular_offset);
 }
 
@@ -378,28 +377,27 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fPMT = J4PMTSolidMaker::Get8inchPMTSolid();  
     fPMT_log = new G4LogicalVolume(fPMT, G4Material::GetMaterial("Glass"), "pmt_log");
     
-    // now let's build also PMT photocathode, very rough approximation! fix at some points
-    G4double innerRadius_pmt = 8.0;
-    G4double fOuterRadius_pmt = 10.16;
-    G4double height_pmt = 10.0;
-    G4double startAngle_pmt    = 0.;
-    G4double spanningAngle_pmt = 360. * deg;
-    fPhotocath = new G4Tubs("photocath_tube", innerRadius_pmt, fOuterRadius_pmt, height_pmt / 2., startAngle_pmt, spanningAngle_pmt);
+    // let's also get tpb coating 
+    fTPBCoating = J4PMTSolidMaker::GetTPBCoatingSolid();  
+    fTPBCoating_log = new G4LogicalVolume(fTPBCoating, G4Material::GetMaterial("TPBCoating"), "TPBCoating_log");
+    
+    // now let's build also PMT photocathode!
+    fPhotocath = J4PMTSolidMaker::GetPhotcathodeSolid();  
     fPhotocath_log = new G4LogicalVolume(fPhotocath, G4Material::GetMaterial("Alum"), "photocath_log");
-    new G4PVPlacement(nullptr, G4ThreeVector(0., 0., -height_pmt / 2.), fPhotocath_log, "photocath", fPMT_log, false, 0);
+    new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocath_log, "photocath", fPMT_log, false, 0);
 
 
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
     for (size_t i = 0; i < position_id.size(); i++){
         std::string position_string = position_id[i]; 
-        size_t r_pos = position_string.find("r");
+        size_t r_pos = position_string.find("R");
         size_t n_row_chars = r_pos - 1;
         bool on_caps = n_row_chars > 2;
         int row;
-        I3Position position;
-        CCMOMGeo::OMType omtype = CCMOMGeo::OMType::CCM8inCoated;
+        std::vector<double> position;
         int pmt_number = 0;
+        bool coated = true;
         if(on_caps) {
             int col = std::atoi(position_string.substr(2, n_row_chars - 1).c_str());
             int ring = std::atoi(position_string.substr(1, 1).c_str());
@@ -411,7 +409,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             pmt_number += col;
             std::tuple<int, int, int> cap_coated_key = {ring, col, row};
             if(cap_uncoated_pmts.count(cap_coated_key) > 0)
-                omtype = CCMOMGeo::OMType::CCM8inUncoated;
+                coated = false;
         } else {
             int col = std::atoi(position_string.substr(1, r_pos - 1).c_str());
             row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
@@ -421,18 +419,73 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 (row ==  2 and col % 4 == 3) or
                 (row ==  4 and col % 4 == 0) or
                 (row ==  5 and col % 4 == 2)) {
-                omtype = CCMOMGeo::OMType::CCM8inUncoated;
+                coated = false;
             }
         }
         // so we have our pmt info
         // let's make the string key to save it to
         G4String pmt_name = std::to_string(row) + "_" + std::to_string(pmt_number);
-        G4cout << "pmt name = " << pmt_name << G4endl;
-        new G4PVPlacement(0, G4ThreeVector(position.GetX()/I3Units::cm, position.GetY()/I3Units::cm, position.GetZ()/I3Units::cm), fPMT_log, pmt_name, fFiducialAr_log, false, k);
-        ++k;
-        fPMTPositions.push_back(G4ThreeVector(position.GetX()/I3Units::cm, position.GetY()/I3Units::cm, position.GetZ()/I3Units::cm));
-    }
+        G4ThreeVector pmt_pos;
+        
+        // let's make appropriate rotation matrix
+        G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
+        double distance_to_translate = 10.0; // distance in cm to pull pmts back by
 
+        if (row == 0){
+            // top face pmts
+            // rotate so they are pointing downwards
+            G4double rotationAngle = M_PI;
+            rotationMatrix->rotateX(rotationAngle); // Rotate around the x axis
+            position[2] += distance_to_translate; // pulling pmts back a tad
+            pmt_pos.setX(position[0]*cm);
+            pmt_pos.setY(position[1]*cm);
+            pmt_pos.setZ(position[2]*cm);
+
+        }
+        if (row == 6){
+            // bottom face pmts
+            // note -- don't actually need to do a rotation for bottom face pmts
+            // but do need to adjust z position slightly
+            position[2] -= distance_to_translate;
+            pmt_pos.setX(position[0]*cm);
+            pmt_pos.setY(position[1]*cm);
+            pmt_pos.setZ(position[2]*cm);
+        }
+        if (row > 0 and row < 6){
+            // side pmts
+            // we want to calculate facing direction essentially
+            G4double facing_radius = std::pow(position[0], 2) + std::pow(position[1], 2);
+            G4double facing_r_x = position[0] / facing_radius;
+            G4double facing_r_y = position[1] / facing_radius;
+            G4double facing_dir_norm_factor = std::sqrt(std::pow(facing_r_x, 2) + std::pow(facing_r_y, 2));
+            G4double facing_dir_x = facing_r_x / facing_dir_norm_factor;
+            G4double facing_dir_y = facing_r_y / facing_dir_norm_factor;
+            G4double facing_dir_z = 0.0;
+
+            G4double phi = std::atan2(facing_dir_y, facing_dir_x);
+            G4double theta = std::acos(facing_dir_z);
+
+            rotationMatrix->rotateZ(-phi); // rotate rotate
+            rotationMatrix->rotateY(theta); // rotate rotate
+
+            // also need to pull the pmts back a touch
+            // we're going to change the magnitude of facing direction vector to equal distance_to_translate
+            G4double translation_x = facing_dir_x * distance_to_translate / 2 + position[0];
+            G4double translation_y = facing_dir_y * distance_to_translate / 2 + position[1];
+            pmt_pos.setX(translation_x*cm);
+            pmt_pos.setY(translation_y*cm);
+            pmt_pos.setZ(position[2]*cm);
+
+        }
+        new G4PVPlacement(rotationMatrix, pmt_pos, fPMT_log, pmt_name, fFiducialAr_log, false, k);
+        if (coated){
+            // place tpb coating before placing pmt
+            G4String coating_name = pmt_name + "_tpbcoating";
+            new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, coating_name, fFiducialAr_log, false, k);
+        }
+        ++k;
+        fPMTPositions.push_back(G4ThreeVector(position[0], position[1], position[2]));
+    }
     VisAttributes();
     SurfaceProperties();
     SetLogicalVolume(fFiducialAr_log);
@@ -442,12 +495,31 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
 void G4CCMMainVolume::VisAttributes()
 {
-    auto argon_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8));
+    auto argon_va = new G4VisAttributes(G4Colour(0., 0., 1.0)); //blue
     fFiducialAr_log->SetVisAttributes(argon_va);
-  
-    auto pmt_va = new G4VisAttributes();
-    pmt_va->SetForceSolid(true);
-    fPMT_log->SetVisAttributes(pmt_va);
+    
+    // let's make other layers of detector invisible
+    fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fArgonOuter_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPhotocath_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fTPBCoating_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPMT_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    
+    //auto pmt_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8)); //grey idk
+    //pmt_va->SetForceSolid(true);
+    //fPMT_log->SetVisAttributes(pmt_va);
+
+    //auto tpb_va = new G4VisAttributes(G4Colour(0., 1., 0.));
+    //pmt_va->SetForceSolid(true);
+    //fTPBCoating_log->SetVisAttributes(tpb_va);
+    
+    //auto photocathode_va = new G4VisAttributes(G4Colour(1., 0., 0.));
+    //pmt_va->SetForceSolid(true);
+    //fPhotocath_log->SetVisAttributes(photocathode_va);
 
 }
 

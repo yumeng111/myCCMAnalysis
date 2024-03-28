@@ -29,10 +29,9 @@
 #include "g4-larsim/g4classes/G4CCMEventAction.h"
 
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
-//#include "g4-larsim/g4classes/G4CCMHistoManager.h"
 #include "g4-larsim/g4classes/G4CCMPMTHit.h"
 #include "g4-larsim/g4classes/G4CCMRun.h"
-//#include "g4-larsim/g4classes/G4CCMScintHit.h"
+#include "g4-larsim/g4classes/G4CCMScintHit.h"
 #include "g4-larsim/g4classes/G4CCMTrajectory.h"
 
 #include "G4Event.hh"
@@ -63,7 +62,7 @@ G4CCMEventAction::~G4CCMEventAction() { delete fEventMessenger; }
 void G4CCMEventAction::BeginOfEventAction(const G4Event*)
 {
   fHitCount                = 0;
-  //fPhotonCount_Scint       = 0;
+  fPhotonCount_Scint       = 0;
   fPhotonCount_Ceren       = 0;
   fAbsorptionCount         = 0;
   fBoundaryAbsorptionCount = 0;
@@ -75,8 +74,8 @@ void G4CCMEventAction::BeginOfEventAction(const G4Event*)
   fPMTsAboveThreshold = 0;
 
   G4SDManager* SDman = G4SDManager::GetSDMpointer();
-  //if(fScintCollID < 0)
-  //  fScintCollID = SDman->GetCollectionID("scintCollection");
+  if(fScintCollID < 0)
+      fScintCollID = SDman->GetCollectionID("scintCollection");
   if(fPMTCollID < 0)
     fPMTCollID = SDman->GetCollectionID("pmtHitCollection");
 }
@@ -107,17 +106,17 @@ void G4CCMEventAction::EndOfEventAction(const G4Event* anEvent)
     }
   }
 
-  //G4CCMScintHitsCollection* scintHC = nullptr;
+  G4CCMScintHitsCollection* scintHC = nullptr;
   G4CCMPMTHitsCollection* pmtHC     = nullptr;
   G4HCofThisEvent* hitsCE         = anEvent->GetHCofThisEvent();
 
   // Get the hit collections
   if(hitsCE)
   {
-    //if(fScintCollID >= 0)
-    //{
-    //  scintHC = (G4CCMScintHitsCollection*) (hitsCE->GetHC(fScintCollID));
-    //}
+    if(fScintCollID >= 0)
+    {
+      scintHC = (G4CCMScintHitsCollection*) (hitsCE->GetHC(fScintCollID));
+    }
     if(fPMTCollID >= 0)
     {
       pmtHC = (G4CCMPMTHitsCollection*) (hitsCE->GetHC(fPMTCollID));
@@ -125,52 +124,52 @@ void G4CCMEventAction::EndOfEventAction(const G4Event* anEvent)
   }
 
   // Hits in scintillator
-  //if(scintHC)
-  //{
-  //  size_t n_hit = scintHC->entries();
-  //  G4ThreeVector eWeightPos(0.);
-  //  G4double edep;
-  //  G4double edepMax = 0;
+  if(scintHC)
+  {
+    size_t n_hit = scintHC->entries();
+    G4ThreeVector eWeightPos(0.);
+    G4double edep;
+    G4double edepMax = 0;
 
-  //  for(size_t i = 0; i < n_hit; ++i)
-  //  {  // gather info on hits in scintillator
-  //    edep = (*scintHC)[i]->GetEdep();
-  //    fTotE += edep;
-  //    eWeightPos +=
-  //      (*scintHC)[i]->GetPos() * edep;  // calculate energy weighted pos
-  //    if(edep > edepMax)
-  //    {
-  //      edepMax = edep;  // store max energy deposit
-  //      G4ThreeVector posMax = (*scintHC)[i]->GetPos();
-  //      fPosMax              = posMax;
-  //      fEdepMax             = edep;
-  //    }
-  //  }
+    for(size_t i = 0; i < n_hit; ++i)
+    {  // gather info on hits in scintillator
+      edep = (*scintHC)[i]->GetEdep();
+      fTotE += edep;
+      eWeightPos +=
+        (*scintHC)[i]->GetPos() * edep;  // calculate energy weighted pos
+      if(edep > edepMax)
+      {
+        edepMax = edep;  // store max energy deposit
+        G4ThreeVector posMax = (*scintHC)[i]->GetPos();
+        fPosMax              = posMax;
+        fEdepMax             = edep;
+      }
+    }
 
   //  G4AnalysisManager::Instance()->FillH1(7, fTotE);
 
-  //  if(fTotE == 0.)
-  //  {
-  //    if(fVerbose > 0)
-  //      G4cout << "No hits in the scintillator this event." << G4endl;
-  //  }
-  //  else
-  //  {
-  //    // Finish calculation of energy weighted position
-  //    eWeightPos /= fTotE;
-  //    fEWeightPos = eWeightPos;
-  //    if(fVerbose > 0)
-  //    {
-  //      G4cout << "\tEnergy weighted position of hits in G4CCM : "
-  //             << eWeightPos / mm << G4endl;
-  //    }
-  //  }
-  //  if(fVerbose > 0)
-  //  {
-  //    G4cout << "\tTotal energy deposition in scintillator : " << fTotE / keV
-  //           << " (keV)" << G4endl;
-  //  }
-  //}
+    if(fTotE == 0.)
+    {
+      if(fVerbose > 0)
+        G4cout << "No hits in the scintillator this event." << G4endl;
+    }
+    else
+    {
+      // Finish calculation of energy weighted position
+      eWeightPos /= fTotE;
+      fEWeightPos = eWeightPos;
+      if(fVerbose > 0)
+      {
+        G4cout << "\tEnergy weighted position of hits in G4CCM : "
+               << eWeightPos / mm << G4endl;
+      }
+    }
+    if(fVerbose > 0)
+    {
+      G4cout << "\tTotal energy deposition in scintillator : " << fTotE / keV
+             << " (keV)" << G4endl;
+    }
+  }
 
   if(pmtHC)
   {
@@ -219,8 +218,8 @@ void G4CCMEventAction::EndOfEventAction(const G4Event* anEvent)
            << G4endl;
     G4cout << "\tNumber of PMTs above threshold(" << fPMTThreshold
            << ") : " << fPMTsAboveThreshold << G4endl;
-    //G4cout << "\tNumber of photons produced by scintillation in this event : "
-    //       << fPhotonCount_Scint << G4endl;
+    G4cout << "\tNumber of photons produced by scintillation in this event : "
+           << fPhotonCount_Scint << G4endl;
     G4cout << "\tNumber of photons produced by cerenkov in this event : "
            << fPhotonCount_Ceren << G4endl;
     G4cout << "\tNumber of photons absorbed (OpAbsorption) in this event : "
@@ -238,7 +237,7 @@ void G4CCMEventAction::EndOfEventAction(const G4Event* anEvent)
     G4RunManager::GetRunManager()->GetNonConstCurrentRun());
 
   run->IncHitCount(fHitCount);
-  //run->IncPhotonCount_Scint(fPhotonCount_Scint);
+  run->IncPhotonCount_Scint(fPhotonCount_Scint);
   run->IncPhotonCount_Ceren(fPhotonCount_Ceren);
   run->IncEDep(fTotE);
   run->IncAbsorption(fAbsorptionCount);

@@ -10,6 +10,7 @@ Global variables include most of the important volumes and materials.
 
 class G4CCMMainVolume;
 class G4CCMPMTSD;
+class G4CCMScintSD;
 
 class G4Box;
 class G4Element;
@@ -101,6 +102,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
 
     // Sensitive Detector
     G4Cache<G4CCMPMTSD*> fPMT_SD;
+    G4Cache<G4CCMScintSD*> fScint_SD;
 
 };
 

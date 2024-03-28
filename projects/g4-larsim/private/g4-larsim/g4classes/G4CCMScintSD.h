@@ -24,61 +24,32 @@
 // ********************************************************************
 //
 //
-/// \file optical/G4CCM/include/G4CCMTrajectory.hh
-/// \brief Definition of the G4CCMTrajectory class
+/// \file optical/LXe/include/LXeScintSD.hh
+/// \brief Definition of the LXeScintSD class
 //
-#ifndef G4CCMTrajectory_h
-#define G4CCMTrajectory_h 1
+//
+#ifndef G4CCMScintSD_h
+#define G4CCMScintSD_h 1
 
-#include "G4Allocator.hh"
-#include "G4Track.hh"
-#include "G4Trajectory.hh"
-#include "G4VProcess.hh"
+#include "g4-larsim/g4classes/G4CCMScintHit.h"
 
-class G4Polyline;
-class G4ParticleDefinition;
+#include "G4VSensitiveDetector.hh"
 
-class G4CCMTrajectory : public G4Trajectory
+class G4Step;
+class G4HCofThisEvent;
+
+class G4CCMScintSD : public G4VSensitiveDetector
 {
  public:
-  G4CCMTrajectory() = default;
-  G4CCMTrajectory(const G4Track* aTrack);
-  G4CCMTrajectory(G4CCMTrajectory&);
-  ~G4CCMTrajectory() = default;
+  G4CCMScintSD(G4String name);
+  ~G4CCMScintSD() override = default;
 
-  void DrawTrajectory() const override;
-
-  inline void* operator new(size_t);
-  inline void operator delete(void*);
-
-  void SetDrawTrajectory(G4bool b) { fDrawit = b; }
-  void WLS() { fWls = true; }
-  void SetForceDrawTrajectory(G4bool b) { fForceDraw = b; }
-  void SetForceNoDrawTrajectory(G4bool b) { fForceNoDraw = b; }
+  void Initialize(G4HCofThisEvent*) override;
+  G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
 
  private:
-  G4bool fWls = false;
-  G4bool fDrawit = false;
-  G4bool fForceNoDraw = false;
-  G4bool fForceDraw = false;
-  G4ParticleDefinition* fParticleDefinition = nullptr;
-  G4String fParentProcess;
-  const G4VProcess* creatorProcess = nullptr; 
+  G4CCMScintHitsCollection* fScintCollection = nullptr;
+  G4int fHitsCID = -1;
 };
 
-extern G4ThreadLocal G4Allocator<G4CCMTrajectory>* G4CCMTrajectoryAllocator;
-
-inline void* G4CCMTrajectory::operator new(size_t)
-{
-  if(!G4CCMTrajectoryAllocator)
-    G4CCMTrajectoryAllocator = new G4Allocator<G4CCMTrajectory>;
-  return (void*) G4CCMTrajectoryAllocator->MallocSingle();
-}
-
-inline void G4CCMTrajectory::operator delete(void* aTrajectory)
-{
-  G4CCMTrajectoryAllocator->FreeSingle((G4CCMTrajectory*) aTrajectory);
-}
-
 #endif
-

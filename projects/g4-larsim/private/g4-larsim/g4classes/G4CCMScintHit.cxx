@@ -24,61 +24,51 @@
 // ********************************************************************
 //
 //
-/// \file optical/G4CCM/include/G4CCMTrajectory.hh
-/// \brief Definition of the G4CCMTrajectory class
+/// \file optical/LXe/src/LXeScintHit.cc
+/// \brief Implementation of the LXeScintHit class
 //
-#ifndef G4CCMTrajectory_h
-#define G4CCMTrajectory_h 1
+//
+#include "g4-larsim/g4classes/G4CCMScintHit.h"
 
-#include "G4Allocator.hh"
-#include "G4Track.hh"
-#include "G4Trajectory.hh"
-#include "G4VProcess.hh"
+#include "G4ios.hh"
+#include "G4Colour.hh"
+#include "G4LogicalVolume.hh"
+#include "G4VisAttributes.hh"
+#include "G4VPhysicalVolume.hh"
+#include "G4VVisManager.hh"
 
-class G4Polyline;
-class G4ParticleDefinition;
+G4ThreadLocal G4Allocator<G4CCMScintHit>* G4CCMScintHitAllocator = nullptr;
 
-class G4CCMTrajectory : public G4Trajectory
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4CCMScintHit::G4CCMScintHit(G4VPhysicalVolume* pVol)
+  : fPhysVol(pVol)
+{}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4CCMScintHit::G4CCMScintHit(const G4CCMScintHit& right)
+  : G4VHit()
 {
- public:
-  G4CCMTrajectory() = default;
-  G4CCMTrajectory(const G4Track* aTrack);
-  G4CCMTrajectory(G4CCMTrajectory&);
-  ~G4CCMTrajectory() = default;
-
-  void DrawTrajectory() const override;
-
-  inline void* operator new(size_t);
-  inline void operator delete(void*);
-
-  void SetDrawTrajectory(G4bool b) { fDrawit = b; }
-  void WLS() { fWls = true; }
-  void SetForceDrawTrajectory(G4bool b) { fForceDraw = b; }
-  void SetForceNoDrawTrajectory(G4bool b) { fForceNoDraw = b; }
-
- private:
-  G4bool fWls = false;
-  G4bool fDrawit = false;
-  G4bool fForceNoDraw = false;
-  G4bool fForceDraw = false;
-  G4ParticleDefinition* fParticleDefinition = nullptr;
-  G4String fParentProcess;
-  const G4VProcess* creatorProcess = nullptr; 
-};
-
-extern G4ThreadLocal G4Allocator<G4CCMTrajectory>* G4CCMTrajectoryAllocator;
-
-inline void* G4CCMTrajectory::operator new(size_t)
-{
-  if(!G4CCMTrajectoryAllocator)
-    G4CCMTrajectoryAllocator = new G4Allocator<G4CCMTrajectory>;
-  return (void*) G4CCMTrajectoryAllocator->MallocSingle();
+  fEdep    = right.fEdep;
+  fPos     = right.fPos;
+  fPhysVol = right.fPhysVol;
 }
 
-inline void G4CCMTrajectory::operator delete(void* aTrajectory)
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+const G4CCMScintHit& G4CCMScintHit::operator=(const G4CCMScintHit& right)
 {
-  G4CCMTrajectoryAllocator->FreeSingle((G4CCMTrajectory*) aTrajectory);
+  fEdep    = right.fEdep;
+  fPos     = right.fPos;
+  fPhysVol = right.fPhysVol;
+  return *this;
 }
 
-#endif
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+G4bool G4CCMScintHit::operator==(const G4CCMScintHit&) const
+{
+  return false;
+  // returns false because there currently isn't need to check for equality
+}

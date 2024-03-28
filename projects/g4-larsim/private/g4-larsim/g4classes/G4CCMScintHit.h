@@ -24,61 +24,62 @@
 // ********************************************************************
 //
 //
-/// \file optical/G4CCM/include/G4CCMTrajectory.hh
-/// \brief Definition of the G4CCMTrajectory class
+/// \file optical/LXe/include/LXeScintHit.hh
+/// \brief Definition of the LXeScintHit class
 //
-#ifndef G4CCMTrajectory_h
-#define G4CCMTrajectory_h 1
+//
+#ifndef G4CCMScintHit_h
+#define G4CCMScintHit_h 1
 
+#include "G4VHit.hh"
+#include "G4THitsCollection.hh"
 #include "G4Allocator.hh"
-#include "G4Track.hh"
-#include "G4Trajectory.hh"
-#include "G4VProcess.hh"
+#include "G4ThreeVector.hh"
+#include "G4VPhysicalVolume.hh"
 
-class G4Polyline;
-class G4ParticleDefinition;
-
-class G4CCMTrajectory : public G4Trajectory
+class G4CCMScintHit : public G4VHit
 {
  public:
-  G4CCMTrajectory() = default;
-  G4CCMTrajectory(const G4Track* aTrack);
-  G4CCMTrajectory(G4CCMTrajectory&);
-  ~G4CCMTrajectory() = default;
+  G4CCMScintHit() = default;
+  G4CCMScintHit(G4VPhysicalVolume* pVol);
+  ~G4CCMScintHit() override = default;
 
-  void DrawTrajectory() const override;
+  G4CCMScintHit(const G4CCMScintHit& right);
+  const G4CCMScintHit& operator=(const G4CCMScintHit& right);
+  G4bool operator==(const G4CCMScintHit& right) const;
 
   inline void* operator new(size_t);
-  inline void operator delete(void*);
+  inline void operator delete(void* aHit);
 
-  void SetDrawTrajectory(G4bool b) { fDrawit = b; }
-  void WLS() { fWls = true; }
-  void SetForceDrawTrajectory(G4bool b) { fForceDraw = b; }
-  void SetForceNoDrawTrajectory(G4bool b) { fForceNoDraw = b; }
+  inline void SetEdep(G4double de) { fEdep = de; }
+  inline void AddEdep(G4double de) { fEdep += de; }
+  inline G4double GetEdep() { return fEdep; }
+
+  inline void SetPos(G4ThreeVector xyz) { fPos = xyz; }
+  inline G4ThreeVector GetPos() { return fPos; }
+
+  inline const G4VPhysicalVolume* GetPhysV() { return fPhysVol; }
 
  private:
-  G4bool fWls = false;
-  G4bool fDrawit = false;
-  G4bool fForceNoDraw = false;
-  G4bool fForceDraw = false;
-  G4ParticleDefinition* fParticleDefinition = nullptr;
-  G4String fParentProcess;
-  const G4VProcess* creatorProcess = nullptr; 
+  G4double fEdep = 0.;
+  G4ThreeVector fPos;
+  const G4VPhysicalVolume* fPhysVol = nullptr;
 };
 
-extern G4ThreadLocal G4Allocator<G4CCMTrajectory>* G4CCMTrajectoryAllocator;
+typedef G4THitsCollection<G4CCMScintHit> G4CCMScintHitsCollection;
 
-inline void* G4CCMTrajectory::operator new(size_t)
+extern G4ThreadLocal G4Allocator<G4CCMScintHit>* G4CCMScintHitAllocator;
+
+inline void* G4CCMScintHit::operator new(size_t)
 {
-  if(!G4CCMTrajectoryAllocator)
-    G4CCMTrajectoryAllocator = new G4Allocator<G4CCMTrajectory>;
-  return (void*) G4CCMTrajectoryAllocator->MallocSingle();
+  if(!G4CCMScintHitAllocator)
+    G4CCMScintHitAllocator = new G4Allocator<G4CCMScintHit>;
+  return (void*) G4CCMScintHitAllocator->MallocSingle();
 }
 
-inline void G4CCMTrajectory::operator delete(void* aTrajectory)
+inline void G4CCMScintHit::operator delete(void* aHit)
 {
-  G4CCMTrajectoryAllocator->FreeSingle((G4CCMTrajectory*) aTrajectory);
+  G4CCMScintHitAllocator->FreeSingle((G4CCMScintHit*) aHit);
 }
 
 #endif
-

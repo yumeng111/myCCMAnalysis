@@ -23,16 +23,25 @@ class J4PMTSolidMaker {
 
 
     static void Create8inchPMTSolid();
+    static void CreateTPBCoatingSolid(); 
+    static void CreatePhotocathodeSolid(); 
 
     static G4VSolid * Get8inchPMTSolid();
+    static G4VSolid * GetTPBCoatingSolid();
+    static G4VSolid * GetPhotcathodeSolid();
 
     static G4double Get8inchPMTRadius() { return f8inchPMTRadius; }
+    static G4double GetTPBThickness() { return fTPBThickness; }
+    static G4double GetPhotocathodeThickness() { return fPhotocathodeDelta; }
 
   private:
 
     static G4VSolid * f8inchPMTSolid;
-
+    static G4VSolid * fTPBCoatingSolid;
+    static G4VSolid * fPhotocathodeSolid;
     static G4double f8inchPMTRadius;
+    static G4double fTPBThickness;
+    static G4double fPhotocathodeDelta;
 
 };
 

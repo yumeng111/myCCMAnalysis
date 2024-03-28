@@ -41,6 +41,7 @@
 #include "G4TrajectoryPoint.hh"
 #include "G4VisAttributes.hh"
 #include "G4VVisManager.hh"
+#include "G4VProcess.hh"
 
 G4ThreadLocal G4Allocator<G4CCMTrajectory>* G4CCMTrajectoryAllocator = nullptr;
 
@@ -50,6 +51,10 @@ G4CCMTrajectory::G4CCMTrajectory(const G4Track* aTrack)
   : G4Trajectory(aTrack)
 {
   fParticleDefinition = aTrack->GetDefinition();
+  creatorProcess = aTrack->GetCreatorProcess();
+  if (creatorProcess) {
+    fParentProcess = creatorProcess->GetProcessName();
+  }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -125,15 +130,23 @@ void G4CCMTrajectory::DrawTrajectory() const
         colour = G4Colour(1., 0., 0.);
       else
       {  // Scintillation and Cerenkov photons are green
-        colour = G4Colour(0., 1., 0.);
+        if (fParentProcess == "Cerenkov"){
+          colour = G4Colour(0., 1., 0.);
+        }
+        else if (fParentProcess == "Scintillation"){
+          //colour = G4Colour(0., 0., 1.);
+          trajectoryLine.SetVisAttributes(G4VisAttributes::GetInvisible());
+        }
       }
     }
     else  // All other particles are blue
       colour = G4Colour(0., 0., 1.);
 
-    G4VisAttributes trajectoryLineAttribs(colour);
-    trajectoryLine.SetVisAttributes(&trajectoryLineAttribs);
-    pVVisManager->Draw(trajectoryLine);
+    if (fParentProcess != "Scintillation"){
+      G4VisAttributes trajectoryLineAttribs(colour);
+      trajectoryLine.SetVisAttributes(&trajectoryLineAttribs);
+      pVVisManager->Draw(trajectoryLine);
+    }
   }
   if(markersRequired)
   {
