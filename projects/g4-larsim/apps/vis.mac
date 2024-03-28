@@ -8,7 +8,7 @@
 /run/initialize
 #
 # Open a viewer
-/vis/open
+/vis/open OGL 1000x1000-0+0
 # This opens the default viewer - see examples/basic/B1/vis.mac for a
 # more comprehensive overview of options. Also the documentation.
 #
@@ -41,11 +41,11 @@
 # (if too many tracks cause core dump => /tracking/storeTrajectory 0)
 #
 # Draw hits at end of event:
-#/vis/scene/add/hits
+/vis/scene/add/hits
 #
 # To draw only gammas:
-#/vis/filtering/trajectories/create/particleFilter
-#/vis/filtering/trajectories/particleFilter-0/add gamma
+/vis/filtering/trajectories/create/particleFilter
+/vis/filtering/trajectories/particleFilter-0/add gamma
 #
 # To invert the above, drawing all particles except gammas,
 # keep the above two lines but also add:

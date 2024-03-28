@@ -4,10 +4,10 @@
 #**
 #**************
 
-/run/verbose 1
-/control/verbose 1
+/run/verbose 0
+/control/verbose 0
 /tracking/verbose 0
-/process/optical/verbose 1
+/process/optical/verbose 0
 /CCM/detector/MainScintYield 10000
 #/process/optical/processActivation Cerenkov false
 
@@ -26,11 +26,11 @@
 /run/beamOn 200
 
 /vis/enable
-/CCM/eventVerbose 1
+/CCM/eventVerbose 0
 /process/optical/scintillation/setTrackSecondariesFirst false
 /run/beamOn 5
 #
-/tracking/verbose 1
+/tracking/verbose 0
 /CCM/forceDrawPhotons true
 /CCM/detector/MainScintYield 100
 /process/optical/scintillation/setTrackSecondariesFirst true
