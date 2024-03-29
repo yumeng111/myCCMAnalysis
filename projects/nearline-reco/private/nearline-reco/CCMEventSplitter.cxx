@@ -11,12 +11,15 @@
 #include <dataclasses/I3String.h>
 #include <dataclasses/I3Double.h>
 #include <dataclasses/I3Vector.h>
+#include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/I3MapOMKeyMask.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/I3MapCCMPMTKeyMask.h>
 #include <phys-services/CCMSplitter.h>
 
+#include <set>
 #include <string>
+#include <algorithm>
 
 class CCMEventSplitter : public I3ConditionalModule, public CCMSplitter {
 public:
@@ -25,12 +28,18 @@ public:
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
 private:
+    bool geo_seen;
+    std::string geometry_name_;
     std::string input_prefix_, output_prefix_;
     std::string input_pulses_, output_pulses_;
 
     I3Vector<CCMOMGeo::OMType> trim_pmt_types_ = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
-    I3Vector<CCMOMGeo::OMType> keep_pmt_types_ = {CCMOMGeo::OMType::CCM1in};
+    I3Vector<CCMOMGeo::OMType> keep_pmt_types_{{CCMOMGeo::OMType::CCM1in}};
     I3Vector<CCMOMGeo::OMType> exclude_pmt_types_ = {};
+
+    std::set<CCMPMTKey> pmt_keys_trim;
+    std::set<CCMPMTKey> pmt_keys_keep;
+    std::set<CCMPMTKey> pmt_keys_exclude;
 
     double pre_padding_;
     double post_padding_;
@@ -40,7 +49,9 @@ private:
 I3_MODULE(CCMEventSplitter);
 
 CCMEventSplitter::CCMEventSplitter(const I3Context& context) :
-  I3ConditionalModule(context), CCMSplitter(configuration_) {
+    I3ConditionalModule(context), CCMSplitter(configuration_),
+    geo_seen(false), geometry_name_("") {
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("PMTTypesToTrim", "List of PMT types to trim the pulse series of", trim_pmt_types_);
     AddParameter("PMTTypesToKeep", "List of PMT types to keep the full pulse series of", keep_pmt_types_);
     AddParameter("PMTTypesToExclude", "List of PMT types to exclude the pulse series of", exclude_pmt_types_);
@@ -58,6 +69,7 @@ CCMEventSplitter::CCMEventSplitter(const I3Context& context) :
 }
 
 void CCMEventSplitter::Configure() {
+    GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("PMTTypesToTrim", trim_pmt_types_);
     GetParameter("PMTTypesToKeep", keep_pmt_types_);
     GetParameter("PMTTypesToExclude", exclude_pmt_types_);
@@ -76,11 +88,56 @@ void CCMEventSplitter::Configure() {
         log_debug("Setting output_prefix_ equal to input_prefix_ with value \"%s\"", input_prefix_.c_str())
     }
 
-    //TODO check that the intersections of the pmt_type lists are empty
+    std::vector<CCMOMGeo::OMType> pmt_types_intersection;
+    std::set_intersection(trim_pmt_types_.begin(), trim_pmt_types_.end(),
+                          keep_pmt_types_.begin(), keep_pmt_types_.end(),
+                          std::back_inserter(pmt_types_intersection));
+    if(pmt_types_intersection.size() > 0)
+        log_fatal("The PMT types to trim and keep must be disjoint sets");
+    pmt_types_intersection.clear();
+    std::set_intersection(trim_pmt_types_.begin(), trim_pmt_types_.end(),
+                          exclude_pmt_types_.begin(), exclude_pmt_types_.end(),
+                          std::back_inserter(pmt_types_intersection));
+    if(pmt_types_intersection.size() > 0)
+        log_fatal("The PMT types to trim and exclude must be disjoint sets");
+    pmt_types_intersection.clear();
+    std::set_intersection(keep_pmt_types_.begin(), keep_pmt_types_.end(),
+                          exclude_pmt_types_.begin(), exclude_pmt_types_.end(),
+                          std::back_inserter(pmt_types_intersection));
+    if(pmt_types_intersection.size() > 0)
+        log_fatal("The PMT types to keep and exclude must be disjoint sets");
 }
 
 void CCMEventSplitter::Geometry(I3FramePtr frame) {
-    //TODO build lists of PMT keys
+    if(not frame->Has(geometry_name_)) {
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
+    }
+    CCMGeometryConstPtr geo = frame->Get<CCMGeometryConstPtr>(geometry_name_);
+    geo_seen = bool(geo);
+    pmt_keys_trim.clear();
+    pmt_keys_keep.clear();
+    pmt_keys_exclude.clear();
+    if(geo_seen) {
+        std::vector<
+            std::tuple<I3Vector<CCMOMGeo::OMType> const &,
+            std::set<CCMPMTKey> &>
+        > list = {
+            std::make_tuple(std::cref(trim_pmt_types_),    std::ref(pmt_keys_trim)),
+            std::make_tuple(std::cref(keep_pmt_types_),    std::ref(pmt_keys_keep)),
+            std::make_tuple(std::cref(exclude_pmt_types_), std::ref(pmt_keys_exclude))
+        };
+        for(std::tuple<I3Vector<CCMOMGeo::OMType> const &, std::set<CCMPMTKey> &> & p : list ) {
+            I3Vector<CCMOMGeo::OMType> const & pmt_types = std::get<0>(p);
+            std::set<CCMOMGeo::OMType> allowed_pmt_types(pmt_types.begin(), pmt_types.end());
+            std::set<CCMPMTKey> & pmt_keys = std::get<1>(p);
+            for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
+                if(allowed_pmt_types.count(p.second.omtype) == 0)
+                    continue;
+                pmt_keys.insert(p.first);
+            }
+        }
+    }
+    PushFrame(frame);
 }
 
 void CCMEventSplitter::DAQ(I3FramePtr frame) {
@@ -115,11 +172,15 @@ void CCMEventSplitter::DAQ(I3FramePtr frame) {
 
         start_time -= pre_padding_;
         end_time += post_padding_;
-        boost::function<bool (const CCMPMTKey&, size_t, const CCMRecoPulse&)> predicate = [this, &start_time, &end_time, i] (const CCMPMTKey& pmt_key, size_t pulse_idx, const CCMRecoPulse & pulse) {
-            //TODO add the appropriate behavior for the keep, trim, and exclude lists
-            if(pmt_keys.count(pmt_key) == 0)
+        boost::function<bool (const CCMPMTKey&, size_t, const CCMRecoPulse&)> predicate = [&] (const CCMPMTKey& pmt_key, size_t pulse_idx, const CCMRecoPulse & pulse) {
+            if(pmt_keys_exclude.count(pmt_key) > 0)
                 return false;
-            return pulse.GetTime() >= start_time and pulse.GetTime() <= end_time;
+            else if(pmt_keys_keep.count(pmt_key) > 0)
+                return true;
+            else if(pmt_keys_trim.count(pmt_key) > 0)
+                return pulse.GetTime() >= start_time and pulse.GetTime() <= end_time;
+            else
+                return false;
         };
         CCMRecoPulseSeriesMapMaskPtr mask = boost::make_shared<CCMRecoPulseSeriesMapMask>(*frame, pulses_name, predicate);
         physics_frame->Put(output_prefix_ + "EventPulses", mask);
