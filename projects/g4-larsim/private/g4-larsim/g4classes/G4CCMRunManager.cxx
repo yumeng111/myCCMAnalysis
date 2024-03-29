@@ -23,24 +23,28 @@ void G4CCMRunManager::InitializeRun()
 
 void G4CCMRunManager::InjectParticle(G4ParticleGun* particleGun)
 {
+    std::cout << "inject particle in g4ccm run manager" << std::endl;
     if(!currentRun){
         G4String text = "Run needs to be initialized before injecting a particle.";
         G4Exception("G4CCMRunManager::InjectParticle()", "G4CCMRunManager002", FatalException, text);
     }
     assert(currentRun); // the G4Exception() above calls abort(). This assert() silences the clang static analyzer
 
+    std::cout << "1" << std::endl;
     numberOfEventToBeProcessed++;
     currentRun->SetNumberOfEventToBeProcessed(numberOfEventToBeProcessed);
 
+    std::cout << "2" << std::endl;
     currentEvent = GenerateEvent(numberOfEventToBeProcessed);
     particleGun->GeneratePrimaryVertex(currentEvent);
 
-    eventManager->ProcessOneEvent(currentEvent);
-    AnalyzeEvent(currentEvent);
+    //eventManager->ProcessOneEvent(currentEvent);
+    //AnalyzeEvent(currentEvent);
     Update_Scoring();
-    StackPreviousEvent(currentEvent);
-    currentEvent = 0;
+    //StackPreviousEvent(currentEvent);
+    //currentEvent = 0;
 
+    std::cout << "3, runAborted = " << runAborted << std::endl;
     if(runAborted) TerminateRun();
 }
 

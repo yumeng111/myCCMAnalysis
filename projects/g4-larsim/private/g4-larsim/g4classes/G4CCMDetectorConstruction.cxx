@@ -394,8 +394,8 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
         auto scint_SD = new G4CCMScintSD("/LArDet/scintSD");
         fScint_SD.Put(scint_SD);
     }
-    G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
-    SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
+    //G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
+    //SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
 
 }
 

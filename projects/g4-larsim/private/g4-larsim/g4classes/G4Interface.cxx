@@ -18,6 +18,10 @@
 #include <G4ParticleDefinition.hh>
 #include <G4UImanager.hh>
 #include <G4SDManager.hh>
+#include "FTFP_BERT.hh"
+#include "G4EmStandardPhysics_option4.hh"
+#include "G4OpticalParameters.hh"
+#include "G4OpticalPhysics.hh"
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
@@ -54,7 +58,8 @@ void G4Interface::InstallDetector() {
     if(!detector_) {
         detector_ = new G4CCMDetectorConstruction();
     }
-    
+
+    G4cout << "installed detector!" << G4endl;    
 }
 
 void G4Interface::InitializeEvent()
@@ -67,11 +72,13 @@ void G4Interface::InitializeEvent()
         runManager_.InitializeRun();
         eventInitialized_ = true;
     }
+    G4cout << "initialized run!" << G4endl;
 }
 
 
 void G4Interface::InjectParticle(const I3Particle& particle)
 {
+    std::cout << "at beginning of InjectParticle " << std::endl;
     if(!eventInitialized_) {
         log_fatal("No event initialized. Cannot inject particle!");
         return;
@@ -239,6 +246,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
               gun.GetParticleEnergy() / CLHEP::MeV);
 
     runManager_.InjectParticle(&gun);
+    G4cout << "injected particle! " << G4endl;
 }
 
 
@@ -271,7 +279,22 @@ void G4Interface::Initialize()
     runManager_.SetUserInitialization(detector_);
 
     log_debug("Init physics list ...");
-    //runManager_.SetUserInitialization(new G4CCMPhysicsList(useScintillator_));
+    G4VModularPhysicsList* physicsList = new FTFP_BERT;
+    physicsList->ReplacePhysics(new G4EmStandardPhysics_option4());
+
+    auto opticalPhysics = new G4OpticalPhysics();
+    auto opticalParams  = G4OpticalParameters::Instance();
+
+    opticalParams->SetWLSTimeProfile("delta");
+
+    opticalParams->SetScintTrackSecondariesFirst(true);
+
+    opticalParams->SetCerenkovMaxPhotonsPerStep(100);
+    opticalParams->SetCerenkovMaxBetaChange(10.0);
+    opticalParams->SetCerenkovTrackSecondariesFirst(true);
+
+    physicsList->RegisterPhysics(opticalPhysics);
+    runManager_.SetUserInitialization(physicsList);
 
     log_debug("Init UserTrackingAction ...");
     runManager_.SetUserAction(new G4CCMUserTrackingAction());
@@ -325,4 +348,5 @@ void G4Interface::Initialize()
     }
 
     initialized_ = true;
+    G4cout << "finished initializing!" << G4endl;
 }
