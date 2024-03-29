@@ -29,6 +29,8 @@ class G4VPhysicalVolume;
 #include "G4VUserDetectorConstruction.hh"
 #include "G4Cache.hh"
 #include <CLHEP/Units/SystemOfUnits.h>
+#include <icetray/CCMPMTKey.h>
+#include <dataclasses/I3Map.h>
 
 class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
 {
@@ -42,7 +44,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4VPhysicalVolume* Construct() override;
 
     // Add SD
-    void ConstructSD();
+    void ConstructSDandField() override;
 
     //Functions to modify the geometry
     void SetDefaults();//Method to set the default values of all geometry modifications
@@ -51,7 +53,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     //Construct main volume
     void SetMainVolumeOn(G4bool b);
     G4bool GetMainVolumeOn() const { return fMainVolumeOn; }
-
+    
   private:
     
     void DefineMaterials();

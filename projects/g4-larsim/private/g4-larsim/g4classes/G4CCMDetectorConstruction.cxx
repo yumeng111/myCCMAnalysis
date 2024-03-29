@@ -355,7 +355,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 
 
 // construct our pmts SD
-void G4CCMDetectorConstruction::ConstructSD(){
+void G4CCMDetectorConstruction::ConstructSDandField(){
     if(!fMainVolume)
         return;
 

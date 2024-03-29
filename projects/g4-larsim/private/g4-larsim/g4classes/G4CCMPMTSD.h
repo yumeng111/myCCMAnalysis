@@ -32,52 +32,71 @@
 #define G4CCMPMTSD_h 1
 
 #include "g4-larsim/g4classes/G4CCMPMTHit.h"
+#include "g4-larsim/g4classes/G4CCMMainVolume.h"
 
 #include "G4VSensitiveDetector.hh"
+#include "G4SystemOfUnits.hh"
 
 #include <vector>
+#include <sstream>
+#include <string>
+#include <simclasses/CCMMCPE.h>
+#include <icetray/CCMPMTKey.h>
+#include <dataclasses/I3Map.h>
+#include <dataclasses/I3Position.h>
+#include <dataclasses/I3Direction.h>
 
 class G4DataVector;
 class G4HCofThisEvent;
 class G4Step;
+class G4CCMMainVolume;
 
-class G4CCMPMTSD : public G4VSensitiveDetector
-{
- public:
-  G4CCMPMTSD(G4String name);
-  ~G4CCMPMTSD() override;
+class G4CCMPMTSD : public G4VSensitiveDetector {
+    public:
+        G4CCMPMTSD(G4String name);
+        ~G4CCMPMTSD() override;
 
-  void Initialize(G4HCofThisEvent*) override;
-  G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
+        void Initialize(G4HCofThisEvent*) override;
+        G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
 
-  // A version of processHits active on boundary
-  G4bool ProcessHits_boundary(const G4Step*, G4TouchableHistory*);
+        // A version of processHits active on boundary
+        G4bool ProcessHits_boundary(const G4Step*, G4TouchableHistory*);
 
-  // Initialize the arrays to store pmt possitions
-  inline void InitPMTs()
-  {
-    if(fPMTPositionsX)
-      delete fPMTPositionsX;
-    if(fPMTPositionsY)
-      delete fPMTPositionsY;
-    if(fPMTPositionsZ)
-      delete fPMTPositionsZ;
-    fPMTPositionsX = new G4DataVector();
-    fPMTPositionsY = new G4DataVector();
-    fPMTPositionsZ = new G4DataVector();
-  }
+        // Initialize the arrays to store pmt positions
+        inline void InitPMTs() {
+            if(fPMTPositionsX)
+                delete fPMTPositionsX;
+            if(fPMTPositionsY)
+                delete fPMTPositionsY;
+            if(fPMTPositionsZ)
+                delete fPMTPositionsZ;
+            fPMTPositionsX = new G4DataVector();
+            fPMTPositionsY = new G4DataVector();
+            fPMTPositionsZ = new G4DataVector();
+        }
 
-  // Store a pmt position
-  void SetPmtPositions(const std::vector<G4ThreeVector>& positions);
+        // Store a pmt position
+        void SetPmtPositions(const std::vector<G4ThreeVector>& positions);
 
- private:
-  G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
+        // return CCMMCPEMap
+        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetCCMMCPEMap(){ return CCMMCPEMap; }
+        
+    private:
+        G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
 
-  G4DataVector* fPMTPositionsX = nullptr;
-  G4DataVector* fPMTPositionsY = nullptr;
-  G4DataVector* fPMTPositionsZ = nullptr;
+        G4DataVector* fPMTPositionsX = nullptr;
+        G4DataVector* fPMTPositionsY = nullptr;
+        G4DataVector* fPMTPositionsZ = nullptr;
 
-  G4int fHitCID = -1;
+        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+
+        // define a few things for converting energy to wavelength
+        const G4double h_Planck = 6.62607015e-34 * joule * second;
+        const G4double c_light = 2.99792458e8 * meter / second;
+
+        G4int fHitCID = -1;
+    
+        static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
 };
 
 #endif

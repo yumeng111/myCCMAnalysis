@@ -61,6 +61,7 @@ class G4CCMMainVolume : public G4PVPlacement
 
     // Sensitive Detectors positions
     std::vector<G4ThreeVector> fPMTPositions;
+
 };
 
 #endif

@@ -483,8 +483,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             G4String coating_name = pmt_name + "_tpbcoating";
             new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, coating_name, fFiducialAr_log, false, k);
         }
-        ++k;
+        // now save positions and increment counter
         fPMTPositions.push_back(G4ThreeVector(position[0], position[1], position[2]));
+        ++k;
     }
     VisAttributes();
     SurfaceProperties();
