@@ -32,7 +32,7 @@ public:
     virtual void EndEvent() = 0;
 
     // get map between CCMMCPE and CCMPMTKey
-    virtual CCMMCPESeriesMap GetHitsMap(I3MCTreePtr mc_tree) = 0;
+    virtual boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap() = 0;
 
     SET_LOGGER("CCMDetectorResponse");
 };

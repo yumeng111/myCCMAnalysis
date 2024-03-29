@@ -50,31 +50,21 @@ void CCM200Response::Initialize() {
 
 }
 
-void CCM200Response::BeginEvent(const I3Particle& primary)
-{
+void CCM200Response::BeginEvent(const I3Particle& primary) {
     g4Interface_->InitializeEvent();
-    
+
     // inject our particle
     g4Interface_->InjectParticle(particle);
+
 }
 
-
 void CCM200Response::EndEvent() {
-    // let's grab the photon hits from our event and then save
 
-    g4Interface_->TerminateEvent();
+    g4Interface_->TerminateEvent(); // this ends event and grabs salient information from geant4
 
-    std::map<OMKey, double>::const_iterator pePerVEM_iter;
-    for (pePerVEM_iter = pePerVEM_.begin(); pePerVEM_iter != pePerVEM_.end(); ++pePerVEM_iter) {
-        hitHC.GetHitHisto(pePerVEM_iter->first).Scale(scalingFactor);
-        cherHitCollection.GetHitHisto(pePerVEM_iter->first).Scale(scalingFactor);
-    }
+    // now let's call function in G4Interface to grab the map between CCMPMTKey and std::vector<CCMMCPE>
+    CCMMCPEMap = g4Interface_->GetCCMMCPEMap();  
 
-    log_trace_stream(tankKey_ << " reached VEM-threshold, particles before: "
-                              << particlesBeforeThreshold_ << ", after: "
-                              << particlesAfterThreshold_ << ", scaling-factor: "
-                              << scalingFactor);
-    }
 }
 
 typedef I3SingleServiceFactory<CCM200Response,CCMDetectorResponse> CCM200ResponseFactory;

@@ -31,6 +31,9 @@ private:
     std::string visMacroFile_;
 
     G4Interface* g4Interface_;
+        
+    // return CCMMCPEMap
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap(){ return CCMMCPEMap; }
 
     SET_LOGGER("CCM200Response");
 
@@ -43,8 +46,8 @@ public:
     virtual void Initialize() override;
     virtual void BeginEvent(const I3Particle& primary) override;
     virtual void EndEvent() override;
-    //bool TrackParticles(I3Particle& particle);
-    virtual CCMMCPESeriesMap GetHitsMap(I3MCTreePtr mc_tree) override;
+    virtual boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap() override;
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
 };
 
 #endif // CCM200RESPONSE_H
