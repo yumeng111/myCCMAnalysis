@@ -22,14 +22,14 @@
 
 
 CCM200Response::CCM200Response(const I3Context& context) :
-    CCMDetectorResponse(context), geometry_name_("CCMGeometry"), mc_tree_name_("I3MCTree"), output_reco_pulse_name_("SimulationRecoPulses") {
+    CCMDetectorResponse(context), mc_tree_name_("CCMMCTree"), output_hits_map_name_("SimulationHitsMap") {
     AddParameter("InputMCTreeName", "Name of the MCTree in the frame.", mc_tree_name_);
-    AddParameter("OutputRecoPulseMapName", "Name of the CCMRecoPulse series to save to the frame.", output_reco_pulse_name_);
+    AddParameter("OutputHitsMapName", "Name of the output map between CCMPMTKey and vector of CCMMCPE to save to the frame.", output_hits_map_name_);
 }
 
 void CCM200Response::Configure() {
     GetParameter("InputMCTreeName", mc_tree_name_);
-    GetParameter("OutputRecoPulseMapName", output_reco_pulse_name_);
+    GetParameter("OutputHitsMapName", output_hits_map_name_);
 }
 
 CCM200Response::~CCM200Response() {
@@ -54,7 +54,7 @@ void CCM200Response::BeginEvent(const I3Particle& primary) {
     g4Interface_->InitializeEvent();
 
     // inject our particle
-    g4Interface_->InjectParticle(particle);
+    g4Interface_->InjectParticle(primary);
 
 }
 
@@ -70,3 +70,5 @@ void CCM200Response::EndEvent() {
 typedef I3SingleServiceFactory<CCM200Response,CCMDetectorResponse> CCM200ResponseFactory;
 
 I3_SERVICE_FACTORY(CCM200ResponseFactory);
+
+

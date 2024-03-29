@@ -8,6 +8,8 @@
 #include "icetray/I3ServiceBase.h"
 #include "phys-services/I3RandomService.h"
 
+#include <g4-larsim/g4classes/G4Interface.h>
+
 #include <icetray/I3Frame.h>
 #include <icetray/I3FrameObject.h>
 #include <icetray/I3Units.h>
@@ -25,16 +27,12 @@ class CCM200Response : public CCMDetectorResponse {
 private:
     CCM200Response operator= (const CCM200Response& rhs);
 
-    std::string geometry_name_;
     std::string mc_tree_name_;
-    std::string pulse_series_output_name_;
+    std::string output_hits_map_name_;
     std::string visMacroFile_;
 
     G4Interface* g4Interface_;
         
-    // return CCMMCPEMap
-    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap(){ return CCMMCPEMap; }
-
     SET_LOGGER("CCM200Response");
 
 public:
@@ -42,11 +40,11 @@ public:
     CCM200Response(const I3Context& context);
     virtual ~CCM200Response() override;
 
-    void Configure();
+    virtual void Configure() override;
     virtual void Initialize() override;
     virtual void BeginEvent(const I3Particle& primary) override;
     virtual void EndEvent() override;
-    virtual boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap() override;
+    virtual boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap() override {return CCMMCPEMap;};
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
 };
 
