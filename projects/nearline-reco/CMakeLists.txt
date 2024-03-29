@@ -11,7 +11,8 @@ i3_add_library(${PROJECT_NAME}
     private/nearline-reco/EventFinder.cxx
     private/nearline-reco/CountPulses.cxx
     private/nearline-reco/BaselineCheck.cxx
+    private/nearline-reco/CCMEventSplitter.cxx
     IWYU
     USE_TOOLS boost python
-    USE_PROJECTS icetray serialization dataio dataclasses
+    USE_PROJECTS icetray serialization dataio dataclasses phys-services
 )
