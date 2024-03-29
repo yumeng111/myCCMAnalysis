@@ -26,7 +26,6 @@ i3_add_library(${PROJECT_NAME}
     private/daqtools/SumPulses.cxx
     private/daqtools/FirstPulseFinder.cxx
     private/daqtools/CCMDerivativePulseFinder.cxx
-    private/daqtools/EventFinder.cxx
     private/daqtools/AccumulateSummedWaveforms.cxx
     private/daqtools/AccumulateIndividualPMTWaveforms.cxx
     private/daqtools/AccumulateIndividualChannelWaveforms.cxx
