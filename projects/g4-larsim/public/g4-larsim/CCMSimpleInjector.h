@@ -37,7 +37,7 @@ public:
     CCMSimpleInjector(const I3Context& context);
     virtual ~CCMSimpleInjector() override = default;
 
-    void Configure();
+    virtual void Configure() override;
 
     virtual void FillMCTree(I3FramePtr frame);
     virtual I3MCTreePtr GetMCTree() override;
