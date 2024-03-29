@@ -1,12 +1,13 @@
-#include <dataclasses/physics/I3Particle.h>
 
 #include <g4-larsim/g4classes/G4Interface.h>
 #include <g4-larsim/g4classes/G4CCMDetectorConstruction.h>
 #include <g4-larsim/g4classes/G4CCMPhysicsList.h>
 #include <g4-larsim/g4classes/G4CCMUserTrackingAction.h>
 #include <g4-larsim/g4classes/G4CCMUserSteppingAction.h>
+#include <g4-larsim/g4classes/G4CCMPMTSD.h>
 
 #include <icetray/I3Logging.h>
+#include <dataclasses/physics/I3Particle.h>
 
 #ifdef G4VIS_USE
 #include <G4VisExecutive.hh>
@@ -16,7 +17,7 @@
 #include <G4ParticleTable.hh>
 #include <G4ParticleDefinition.hh>
 #include <G4UImanager.hh>
-
+#include <G4SDManager.hh>
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
@@ -226,7 +227,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
 
     G4ParticleGun gun(1);
     gun.SetParticleDefinition(particleDef);
-    gun.SetParticleEnergy((particle.GetEnergy() / I3Units::GeV) * CLHEP::GeV);
+    gun.SetParticleEnergy((particle.GetEnergy() / I3Units::MeV) * CLHEP::MeV);
     gun.SetParticlePosition(position);
     gun.SetParticleMomentumDirection(direction);
 
@@ -243,7 +244,16 @@ void G4Interface::InjectParticle(const I3Particle& particle)
 
 void G4Interface::TerminateEvent()
 {
+    // call sd function to get vector of ccmmmcpe
     if(eventInitialized_) {
+        // ok so we are done with this event
+        // let's grab the map between CCMPMTKey and std::vector<CCMMCPE> from out sensitve detector to save to the frame
+        G4SDManager* sdManager = G4SDManager::GetSDMpointer();
+        G4CCMPMTSD* PMTSD = dynamic_cast<G4CCMPMTSD*>(sdManager->FindSensitiveDetector("/LAr/pmtSD"));
+        if (PMTSD) {
+            CCMMCPEMap = PMTSD->GetCCMMCPEMap();
+        }
+
         runManager_.TerminateRun();
         eventInitialized_ = false;
     }
