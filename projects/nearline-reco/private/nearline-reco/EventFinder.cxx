@@ -22,6 +22,7 @@
 #include <icetray/I3Frame.h>
 #include <icetray/I3TrayInfo.h>
 #include <icetray/I3Module.h>
+#include <icetray/I3ConditionalModule.h>
 #include <icetray/I3Logging.h>
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
@@ -68,7 +69,7 @@ class EventFinder: public I3ConditionalModule {
 
 I3_MODULE(EventFinder);
 
-EventFinder::EventFinder(const I3Context& context) : I3Module(context),
+EventFinder::EventFinder(const I3Context& context) : I3ConditionalModule(context),
     geo_seen(false), geometry_name_("") {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
         AddParameter("TimeWindow", "Size of sliding time window to examine.",
@@ -190,7 +191,7 @@ void EventFinder::DAQ(I3FramePtr frame) {
         max_event_charge_times->at(i) = std::get<3>(events[i]);
     }
 
-    frame->Put(output_prefix_ + "EventsPulsesName", boost::make_shared<I3String>(pulses));
+    frame->Put(output_prefix_ + "EventsPulsesName", boost::make_shared<I3String>(pulses_));
     frame->Put(output_prefix_ + "EventStartTimes", event_start_times);
     frame->Put(output_prefix_ + "EventEndTimes", event_end_times);
     frame->Put(output_prefix_ + "MaxEventCharges", max_event_charges);
