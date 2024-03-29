@@ -72,6 +72,8 @@ class CountPulses: public I3Module {
     size_t n_edges_;
     double base_;
 
+    bool output_per_pmt_;
+
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> charge_hists_;
     boost::shared_ptr<I3Map<CCMPMTKey, unsigned int>> num_triggers_;
 
@@ -110,6 +112,7 @@ CountPulses::CountPulses(const I3Context& context) : I3Module(context),
         AddParameter("LogHigh", "High edge of the log binning", double(9.0));
         AddParameter("NEdges", "Number of edges in the log binning", size_t(10*11+1));
         AddParameter("Base", "Base of the log binning", double(10.0));
+        AddParameter("OutputPerPMT", "Output one file per PMT", bool(false));
 }
 
 void CountPulses::Configure() {
@@ -120,6 +123,7 @@ void CountPulses::Configure() {
     GetParameter("LogHigh", log_high_);
     GetParameter("NEdges", n_edges_);
     GetParameter("Base", base_);
+    GetParameter("OutputPerPMT", output_per_pmt_);
 
     charge_hists_ = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     num_triggers_ = boost::make_shared<I3Map<CCMPMTKey, unsigned int>>();
@@ -167,9 +171,39 @@ void CountPulses::Finish() {
     }
 
     std::vector<double> bin_edges = np_logspace(log_low_, log_high_, n_edges_, base_);
+
+    std::stringstream ss;
+    ss << output_prefix << ".txt";
+    std::string output_name = ss.str();
+    std::ofstream output_file(output_name.c_str());
+    if(not output_file) {
+        log_fatal("Could not open file \"%s\" for writing.", output_name.c_str());
+    }
+    output_file << bin_edges.at(0);
+    for(size_t bin_idx=1; bin_idx<n_edges_; ++bin_idx) {
+        output_file << " " << bin_edges.at(bin_idx);
+    }
+    output_file << std::endl;
+
+    std::vector<double> total_charge_hist(n_edges_, 0.0);
+    for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *charge_hists_) {
+        for(size_t bin_idx=0; bin_idx<n_edges_; ++bin_idx) {
+            total_charge_hist.at(bin_idx) += p.second.at(bin_idx);
+        }
+    }
+    output_file << total_charge_hist.at(0);
+    for(size_t bin_idx=1; (bin_idx + 1) <n_edges_; ++bin_idx) {
+        output_file << " " << total_charge_hist.at(bin_idx);
+    }
+    output_file << std::endl;
+
+    if(not output_per_pmt_)
+        return;
+
     for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *charge_hists_) {
         std::stringstream ss;
-        ss << output_prefix << "_pmt_" << p.first.GetRegion() << " " << p.first.GetSensor() << " " << p.first.GetSubsensor() << ".txt";
+        ss << output_prefix << "_pmt_" << p.first.GetRegion() << "_" << p.first.GetSensor();
+        ss << "_" << static_cast<uint64_t>(p.first.GetSubsensor()) << ".txt";
         std::string output_name = ss.str();
         std::ofstream output_file(output_name.c_str());
         if(not output_file) {
@@ -180,6 +214,7 @@ void CountPulses::Finish() {
         for(size_t bin_idx=1; bin_idx<n_edges_; ++bin_idx) {
             output_file << " " << bin_edges.at(bin_idx);
         }
+        output_file << std::endl;
 
         output_file << charge_hist.at(0);
         for(size_t bin_idx=1; (bin_idx + 1) <n_edges_; ++bin_idx) {
