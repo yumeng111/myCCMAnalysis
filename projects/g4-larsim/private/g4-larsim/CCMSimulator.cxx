@@ -17,40 +17,22 @@ I3_MODULE(CCMSimulator);
 const std::string CCMSimulator::INC_ID_NAME = "MCTimeIncEventID";
 
 CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
-    injector_ = CCMSimpleInjectorPtr();
-    response_ = CCM200ResponsePtr();
+    injector_ = CCMParticleInjectorPtr();
+    response_ = CCMDetectorResponsePtr();
 
-    responseServiceName_ = I3DefaultName<CCM200Response>::value();
-    AddParameter("ResponseServiceName",
-         "Name of the detector response service.", 
-         responseServiceName_);
+    responseServiceName_ = "CCM200Response";
+    AddParameter("ResponseServiceName", "Name of the detector response service.", responseServiceName_);
 
-    injectorServiceName_ = I3DefaultName<CCMSimpleInjector>::value();
-    AddParameter("InjectorServiceName",
-         "Name of the injector service.", 
-         injectorServiceName_);
+    injectorServiceName_ = "CCMSimpleInjector"; 
+    AddParameter("InjectorServiceName", "Name of the injector service.", injectorServiceName_);
 
     mcPrimaryName_ = "MCPrimary";
-    AddParameter("PrimaryName",
-         "Name of the primary particle in the frame.",
-         mcPrimaryName_);
+    AddParameter("PrimaryName", "Name of the primary particle in the frame.", mcPrimaryName_);
 
     hitSeriesName_ = "CCMMCHits";
-    AddParameter("CCMHitSeriesName",
-         "Name of the resulting detector hit series in the frame.",
-         hitSeriesName_);
-
-    writeEvtHeader_ = true;
-    AddParameter("WriteEventHeader",
-         "Create an event header to store the run and event numbers.",
-         writeEvtHeader_);
-
-    createSframe_ = true;
-    AddParameter("CreateSFrame", "Create an SFrame for CCM simulator.", createSframe_);
+    AddParameter("CCMHitSeriesName", "Name of the resulting detector hit series in the frame.", hitSeriesName_);
 
     AddOutBox("OutBox");
-
-    sampleCount_ = 0;
 }
 
 
@@ -62,12 +44,12 @@ void CCMSimulator::Configure() {
 
   GetParameter("InjectorServiceName", injectorServiceName_);
   log_info("+ Injector Service: %s", injectorServiceName_.c_str());
-  injector_ = GetContext().Get<CCMSimpleInjectorPtr>(injectorServiceName_);
+  injector_ = GetContext().Get<CCMParticleInjectorPtr>(injectorServiceName_);
   if(!injector_) log_fatal("No injector service \"%s\" in context", injectorServiceName_.c_str());
   
   GetParameter("ResponseServiceName", responseServiceName_);
   log_info("+ Response Service: %s", responseServiceName_.c_str());
-  response_ = GetContext().Get<CCM200ResponseServicePtr>(responseServiceName_);
+  response_ = GetContext().Get<CCMDetectorResponsePtr>(responseServiceName_);
   if(!response_) log_fatal("No response service \"%s\" in context", responseServiceName_.c_str());
   
   GetParameter("PrimaryName", mcPrimaryName_);
@@ -96,30 +78,31 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     log_debug("   Simulating CCM");
     
     // let's initialize our response and injector services 
+    injector_->Configure();
     response_->Configure();
     response_->Initialize();
-    injector_->Configure();
-    injector_->Initialize();
     
-    // let's grab the mcPrimary from the frame
-    I3MCTreePtr mcTree = frame->Get<I3MCTreePtr>(mcPrimaryName_); 
+    // let's grab the mcPrimary from the injector
+    I3MCTreePtr mcTree = injector_->GetMCTree();
 
-    // Tell the response service of a new event
-    response_->BeginEvent(mcTree);
-
-    // Tell the response service that the event has ended
-    response_->EndEvent();
-
-    // Now grab the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
-    CCMMCPEMap response_->GetHitsMap(); 
-
-    // now save everything into S frame
+    std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree);
     
-    I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
-    // Put primary to the frame (if it is valid)
-    if((!mcPrimaryName_.empty()) && (mcPrimary->GetType()!=I3Particle::unknown)) {
-        simframe->Put(mcPrimaryName_, mcPrimary);
+    for (size_t p = 0; p < primary_particles.size(); p++){
+        // Tell the response service of a new event
+        response_->BeginEvent(*primary_particles[p]);
+
+        // Tell the response service that the event has ended
+        response_->EndEvent();
+
+        // Now grab the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
+        CCMMCPEMap = response_->GetHitsMap(); 
     }
+    
+    // now save everything into S frame
+    I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
+    
+    // put mcTree into frame
+    simframe->Put(mcPrimaryName_, mcTree);
 
     // Put the hits to the frame 
     if (!hitSeriesName_.empty()) {

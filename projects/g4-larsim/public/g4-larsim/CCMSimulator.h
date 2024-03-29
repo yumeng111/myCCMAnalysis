@@ -4,7 +4,7 @@
 
 #include <icetray/I3Module.h>
 #include <g4-larsim/CCMParticleInjector.h>
-#include <g4-larsim/CCM200Response.h>
+#include <g4-larsim/CCMDetectorResponse.h>
 #include <dataclasses/physics/I3Particle.h>
 #include <simclasses/CCMMCPE.h>
 /**
@@ -28,8 +28,8 @@ class CCMSimulator : public I3Module  {
         std::string mcPrimaryName_;
         std::string hitSeriesName_;
 
-        CCMSimpleInjectorPtr injector_;
-        CCM200ResponsePtr response_;
+        CCMParticleInjectorPtr injector_;
+        CCMDetectorResponsePtr response_;
         boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
   
         static const std::string INC_ID_NAME;
