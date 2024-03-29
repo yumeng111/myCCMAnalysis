@@ -50,6 +50,7 @@ i3_add_library(phys-services
   private/phys-services/I3CutValues.cxx
   private/phys-services/I3ScaleCalculator.cxx
   private/phys-services/I3Splitter.cxx
+  private/phys-services/CCMSplitter.cxx
   private/phys-services/I3NullSplitter.cxx
   private/phys-services/I3OrphanQDropper.cxx
   private/phys-services/I3VEMCalManipulator.cxx
