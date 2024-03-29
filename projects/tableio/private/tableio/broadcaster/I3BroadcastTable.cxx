@@ -20,7 +20,7 @@ void I3BroadcastTable::WriteRows(I3TableRowConstPtr rows) {
     log_fatal("I should never have been called!");
 };
  
-void I3BroadcastTable::AddRow(I3EventHeaderConstPtr header, I3TableRowConstPtr row) {
+void I3BroadcastTable::AddRow(CCMEventHeaderConstPtr header, I3TableRowConstPtr row) {
     std::vector<I3TablePtr>::iterator iter;
     for(iter = clients_.begin(); iter != clients_.end(); ++iter ) {
         (*iter)->AddRow(header,row);

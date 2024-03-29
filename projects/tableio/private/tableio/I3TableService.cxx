@@ -64,8 +64,8 @@ I3TablePtr I3TableService::CreateTable(std::string tableName,
 
 /******************************************************************************/
         
-bool I3TableService::EventHeadersEqual(const I3EventHeader& header1,
-                                       const I3EventHeader& header2) {
+bool I3TableService::EventHeadersEqual(const CCMEventHeader& header1,
+                                       const CCMEventHeader& header2) {
     return ( (header1.GetRunID() == header2.GetRunID()) &&
              (header1.GetEventID() == header2.GetEventID()) &&
              (header1.GetSubEventID() == header2.GetSubEventID()) &&
@@ -75,7 +75,7 @@ bool I3TableService::EventHeadersEqual(const I3EventHeader& header1,
 /******************************************************************************/
 
 // A table phones home to report that it has written a new event
-void I3TableService::HeaderWritten(I3EventHeaderConstPtr lastHeader, size_t nrows) {
+void I3TableService::HeaderWritten(CCMEventHeaderConstPtr lastHeader, size_t nrows) {
    if (lastHeader == NULL) return;
    else {
       if (eventHeaderCache_.size() == 0) {
@@ -91,8 +91,8 @@ void I3TableService::HeaderWritten(I3EventHeaderConstPtr lastHeader, size_t nrow
 /******************************************************************************/
 
 // Get the last header the service has seen
-I3EventHeaderConstPtr I3TableService::GetLastHeader() {
-   if (!eventHeaderCache_.size()) return I3EventHeaderConstPtr();
+CCMEventHeaderConstPtr I3TableService::GetLastHeader() {
+   if (!eventHeaderCache_.size()) return CCMEventHeaderConstPtr();
    return eventHeaderCache_.back();
 }
 
@@ -109,7 +109,7 @@ void I3TableService::SetIndexConverter(I3ConverterPtr gen) {
     ticConverter_ = gen;
     // My house, my rules.
     I3TableRowDescriptionPtr desc =
-        boost::const_pointer_cast<I3TableRowDescription>(ticConverter_->GetDescription(I3EventHeader()));
+        boost::const_pointer_cast<I3TableRowDescription>(ticConverter_->GetDescription(CCMEventHeader()));
     desc->AddField<tableio_size_t>("start", "", "Offset at which the rows for this event start");
     desc->AddField<tableio_size_t>("stop", "", "Offset at which the rows for the next event start");
     indexDescription_ = desc;
@@ -117,8 +117,8 @@ void I3TableService::SetIndexConverter(I3ConverterPtr gen) {
 
 /******************************************************************************/
         
-I3TableRowConstPtr I3TableService::GetPaddingRows(I3EventHeaderConstPtr lastHeader,
-                                                  I3EventHeaderConstPtr newHeader,
+I3TableRowConstPtr I3TableService::GetPaddingRows(CCMEventHeaderConstPtr lastHeader,
+                                                  CCMEventHeaderConstPtr newHeader,
                                              I3TableRowDescriptionConstPtr description){
    // catch the cases where padding is not necessary 
    if (eventHeaderCache_.size() == 0) { // first call, first event 
@@ -127,7 +127,7 @@ I3TableRowConstPtr I3TableService::GetPaddingRows(I3EventHeaderConstPtr lastHead
    }
 
    size_t nrows = 0;
-   std::vector<I3EventHeaderConstPtr>::reverse_iterator rit;
+   std::vector<CCMEventHeaderConstPtr>::reverse_iterator rit;
 
    if (!lastHeader) { // this table is reporting for the first time
       if (!newHeader) {

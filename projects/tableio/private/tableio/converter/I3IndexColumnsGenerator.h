@@ -13,24 +13,24 @@
 #define TABLEIO_I3INDEXCOLUMNSGENERATOR_H_INCLUDED
 
 #include "tableio/I3Converter.h"
-#include "dataclasses/physics/I3EventHeader.h"
+#include "dataclasses/physics/CCMEventHeader.h"
 #include <icetray/hash_map.h>
 
-class I3IndexColumnsGenerator : public I3ConverterImplementation<I3EventHeader> {
+class I3IndexColumnsGenerator : public I3ConverterImplementation<CCMEventHeader> {
     public:
 	I3IndexColumnsGenerator();
 	I3IndexColumnsGenerator(const std::vector<std::string> &streams);
 	I3IndexColumnsGenerator(I3TableRowDescriptionConstPtr desc);
     private:
-	I3TableRowDescriptionPtr CreateDescription(const I3EventHeader& object);
-	size_t FillRows(const I3EventHeader& header, I3TableRowPtr rows);
+	I3TableRowDescriptionPtr CreateDescription(const CCMEventHeader& object);
+	size_t FillRows(const CCMEventHeader& header, I3TableRowPtr rows);
 	
 	typedef hash_map<std::string,int> stream_map_t;
 	typedef std::vector<stream_map_t::key_type> istream_t;
 	stream_map_t streams_;
 	istream_t istreams_;
     public:
-	I3EventHeaderPtr Resurrect(I3TableRowPtr rows);
+	CCMEventHeaderPtr Resurrect(I3TableRowPtr rows);
 };
 
 #endif // TABLEIO_I3INDEXCOLUMNSGENERATOR_H_INCLUDED

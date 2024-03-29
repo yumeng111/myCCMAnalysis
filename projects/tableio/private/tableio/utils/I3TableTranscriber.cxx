@@ -13,7 +13,7 @@
 #include <tableio/I3TableRowDescription.h>
 #include <tableio/I3TableRow.h>
 
-#include <dataclasses/physics/I3EventHeader.h>
+#include <dataclasses/physics/CCMEventHeader.h>
 
 #include <boost/make_shared.hpp>
 
@@ -75,7 +75,7 @@ void I3TableTranscriber::Execute(size_t nframes) {
     size_t i;
     std::vector<std::pair<I3TablePtr,I3TablePtr> >::iterator pair_it;
     I3TablePtr in,out;
-    I3EventHeaderPtr header;
+    CCMEventHeaderPtr header;
     I3TableRowPtr rows;
 
     // loop over the given number of row-groups

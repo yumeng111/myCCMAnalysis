@@ -44,7 +44,7 @@ I3IndexColumnsGenerator::I3IndexColumnsGenerator(I3TableRowDescriptionConstPtr d
 }
 
 I3TableRowDescriptionPtr
-I3IndexColumnsGenerator::CreateDescription(const I3EventHeader& object) {
+I3IndexColumnsGenerator::CreateDescription(const CCMEventHeader& object) {
             I3TableRowDescriptionPtr desc = 
                 I3TableRowDescriptionPtr(new I3TableRowDescription() );
 
@@ -73,7 +73,7 @@ I3IndexColumnsGenerator::CreateDescription(const I3EventHeader& object) {
         }
 
         size_t
-I3IndexColumnsGenerator::FillRows(const I3EventHeader& header, I3TableRowPtr rows) {
+I3IndexColumnsGenerator::FillRows(const CCMEventHeader& header, I3TableRowPtr rows) {
             rows->Set<uint32_t>("Run", header.GetRunID());
             rows->Set<uint32_t>("Event", header.GetEventID());
             rows->Set<uint32_t>("SubEvent", header.GetSubEventID());
@@ -84,9 +84,9 @@ I3IndexColumnsGenerator::FillRows(const I3EventHeader& header, I3TableRowPtr row
             return 1;
         }
 
-I3EventHeaderPtr
+CCMEventHeaderPtr
 I3IndexColumnsGenerator::Resurrect(I3TableRowPtr rows) {
-	I3EventHeaderPtr header(new I3EventHeader());
+	CCMEventHeaderPtr header(new CCMEventHeader());
 	header->SetRunID(rows->Get<uint32_t>("Run"));
 	header->SetEventID(rows->Get<uint32_t>("Event"));
 	header->SetSubEventID(rows->Get<uint32_t>("SubEvent"));

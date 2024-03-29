@@ -22,7 +22,7 @@
 #include "dataclasses/physics/I3MCTree.h"
 #include "tableio/converter/I3WaveformConverter.h"
 #include "tableio/converter/PODConverter.h"
-#include "tableio/converter/I3EventHeaderConverter.h"
+#include "tableio/converter/CCMEventHeaderConverter.h"
 #include "tableio/converter/I3WaveformSeriesMapConverter.h"
 #include "tableio/converter/I3FilterResultMapConverter.h"
 
@@ -69,7 +69,7 @@ void register_dataclasses_converters() {
     I3CONVERTER_NAMESPACE(dataclasses);
 
     // typdef the template into a legal Python identifier
-    I3CONVERTER_EXPORT_DEFAULT(I3EventHeaderConverter,"Dumps I3EventHeader objects");
+    I3CONVERTER_EXPORT_DEFAULT(CCMEventHeaderConverter,"Dumps CCMEventHeader objects");
 
     typedef I3MapOMKeyVectorConverter< convert::I3DOMLaunch > I3DOMLaunchSeriesMapConverter;
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3DOMLaunchSeriesMapConverter,"Dumps all DOMLaunches verbatim.");
