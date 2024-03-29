@@ -42,6 +42,7 @@
 #include "icetray/Utility.h"
 #include "icetray/open.h"
 #include <dataclasses/physics/I3EventHeader.h>
+#include <dataclasses/physics/CCMEventHeader.h>
 #include <dataclasses/physics/I3RecoPulse.h>
 #include "shovel/View.h"
 
@@ -172,10 +173,14 @@ void Model::ProgressManager::StopShowingProgress(){
 
 Model::FrameInfo::FrameInfo(const I3Frame& f):stream(f.GetStop()){
   if(stream==I3Frame::Physics){
-    boost::shared_ptr<const I3EventHeader> header =
+    boost::shared_ptr<const I3EventHeader> i3header =
     f.Get<boost::shared_ptr<const I3EventHeader>>(I3DefaultName<I3EventHeader>::value());
-    if((header) && (f.GetStop(I3DefaultName<I3EventHeader>::value())==stream))
-      sub_event_stream=header->GetSubEventStream();
+    if((i3header) && (f.GetStop(I3DefaultName<I3EventHeader>::value())==stream))
+      sub_event_stream=i3header->GetSubEventStream();
+    boost::shared_ptr<const CCMEventHeader> ccmheader =
+    f.Get<boost::shared_ptr<const CCMEventHeader>>(I3DefaultName<CCMEventHeader>::value());
+    if((ccmheader) && (f.GetStop(I3DefaultName<CCMEventHeader>::value())==stream))
+      sub_event_stream=ccmheader->GetSubEventStream();
   }
 }
 
@@ -423,15 +428,23 @@ Model::do_find_event()
     frame=get_frame(x_index_);
     if(!frame)
       break;
-    boost::shared_ptr<const I3EventHeader> header =
+    boost::shared_ptr<const I3EventHeader> i3header =
     frame->Get<boost::shared_ptr<const I3EventHeader>>(I3DefaultName<I3EventHeader>::value());
-    if(!header){
+    boost::shared_ptr<const CCMEventHeader> ccmheader =
+    frame->Get<boost::shared_ptr<const CCMEventHeader>>(I3DefaultName<CCMEventHeader>::value());
+    if((!i3header) and (!ccmheader)){
       x_index_++;
       continue;
-    }
-    if((!exact_run || header->GetRunID()==run) && (header->GetEventID()==event)){
-      found=true;
-      break;
+    } else if(i3header) {
+      if((!exact_run || i3header->GetRunID()==run) && (i3header->GetEventID()==event)){
+        found=true;
+        break;
+      }
+    } else if(ccmheader) {
+      if((!exact_run || ccmheader->GetRunID()==run) && (ccmheader->GetEventID()==event)){
+        found=true;
+        break;
+      }
     }
     x_index_++;
   } while (x_index_<totalframes() || !totalframes_exact());
@@ -443,15 +456,23 @@ Model::do_find_event()
     frame=get_frame(x_index_);
     if(!frame)
       break;
-    boost::shared_ptr<const I3EventHeader> header =
+    boost::shared_ptr<const I3EventHeader> i3header =
     frame->Get<boost::shared_ptr<const I3EventHeader>>(I3DefaultName<I3EventHeader>::value());
-    if(!header){
+    boost::shared_ptr<const CCMEventHeader> ccmheader =
+    frame->Get<boost::shared_ptr<const CCMEventHeader>>(I3DefaultName<CCMEventHeader>::value());
+    if((!i3header) and (!ccmheader)){
       x_index_++;
       continue;
-    }
-    if((!exact_run || header->GetRunID()==run) && (header->GetEventID()==event)){
-      found=true;
-      break;
+    } else if(i3header) {
+      if((!exact_run || i3header->GetRunID()==run) && (i3header->GetEventID()==event)){
+        found=true;
+        break;
+      }
+    } else if(ccmheader) {
+      if((!exact_run || ccmheader->GetRunID()==run) && (ccmheader->GetEventID()==event)){
+        found=true;
+        break;
+      }
     }
     x_index_++;
   }
