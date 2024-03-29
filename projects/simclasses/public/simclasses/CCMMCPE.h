@@ -30,7 +30,7 @@ struct CCMMCPE {
     enum class PhotonSource : int8_t {
         Unknown = 0,
         Scintillation = 1,
-        Cherenkov = 2
+        Cerenkov = 2
     };
 
     //static const std::map<PhotonSource, std::string> PhotonSourceNames = {
@@ -59,7 +59,11 @@ struct CCMMCPE {
     }
 
 
-  CCMMCPE(float time_ = 0, float wavelength_ = 0, I3Position position_ = I3Position(0.0, 0.0, 0.0), I3Direction direction_ = I3Direction(0.0, 0.0, 0.0), PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
+  CCMMCPE(float time_ = 0,
+          float wavelength_ = 0,
+          I3Position position_ = I3Position(0.0, 0.0, 0.0),
+          I3Direction direction_ = I3Direction(0.0, 0.0, 0.0),
+          PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
         time(time_), wavelength(wavelength_), position(position_), direction(direction_), photon_source(photon_source_) {
     }
 

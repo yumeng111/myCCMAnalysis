@@ -22,7 +22,7 @@ void register_CCMMCPE() {
     enum_<CCMMCPE::PhotonSource>("PhotonSource")
       .value("Unknown", CCMMCPE::PhotonSource::Unknown)
       .value("Scintillation", CCMMCPE::PhotonSource::Scintillation)
-      .value("Cherenkov", CCMMCPE::PhotonSource::Cherenkov)
+      .value("Cerenkov", CCMMCPE::PhotonSource::Cerenkov)
       .export_values()
       ;
         
