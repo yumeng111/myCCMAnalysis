@@ -27,7 +27,9 @@ if (GEANT4_FOUND AND CLHEP_FOUND)
 
     i3_add_library(${PROJECT_NAME}
         private/g4-larsim/CCMSimpleInjector.cxx
-        private/g4-larsim/g4classes/*.hh
+        private/g4-larsim/CCM200Response.cxx
+        private/g4-larsim/CCMSimulator.cxx
+        private/g4-larsim/g4classes/*.h
         private/g4-larsim/g4classes/*.cxx
         USE_TOOLS boost python clhep geant4 gsl
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses 
