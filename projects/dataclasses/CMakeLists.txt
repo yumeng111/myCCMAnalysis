@@ -38,6 +38,7 @@ i3_add_pybindings(dataclasses
   private/pybindings/I3PODHolder/I3UInt64.cxx
   private/pybindings/I3PODHolder/I3UInt32.cxx
   private/pybindings/I3EventHeader.cxx
+  private/pybindings/CCMEventHeader.cxx
   private/pybindings/I3FlasherInfo.cxx
   private/pybindings/I3FilterResult.cxx
   private/pybindings/I3Geometry.cxx
