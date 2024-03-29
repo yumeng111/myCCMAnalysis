@@ -26,9 +26,12 @@ private:
 
     double energy_;
     I3Vector<double> location_;
-    I3Particle::ParticleType particle_type_;
+    I3Vector<double> direction_;
+    std::string typeName_;
     std::string mcPrimaryName_;
     std::string output_mc_tree_name_;
+    I3Particle::ParticleType particleType_;
+    I3Particle::ParticleType GetParticleType(const std::string& typeName);
 
     SET_LOGGER("CCMSimpleInjector");
 
@@ -38,10 +41,9 @@ public:
     virtual ~CCMSimpleInjector() override = default;
 
     virtual void Configure() override;
-
     virtual void FillMCTree(I3FramePtr frame);
     virtual I3MCTreePtr GetMCTree() override;
-    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
+    //virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 };
 
 #endif // CCMSIMPLEINJECTOR_H
