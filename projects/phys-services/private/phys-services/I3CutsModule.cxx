@@ -136,22 +136,22 @@ void I3CutsModule::Physics(I3FramePtr frame)
     log_debug(" ---> calculating cuts for I3Particle '%s'...", name.c_str());
 
     I3CutValuesBasePtr cuts;
-    if(particle->IsTrack()){
-      log_debug(" ---> I3Particle '%s' is a track, so proceeding accordingly...", 
-                name.c_str());
-      cuts = I3CutValuesPtr(new I3CutValues());
-    }else if(particle->IsCascade()){
-      log_debug(" ---> I3Particle '%s' is a cascade, so proceeding accordingly...", 
-                name.c_str());
-      cuts = I3CascadeCutValuesPtr(new I3CascadeCutValues());
-    } else {
+    //if(particle->IsTrack()){
+    //  log_debug(" ---> I3Particle '%s' is a track, so proceeding accordingly...", 
+    //            name.c_str());
+    //  cuts = I3CutValuesPtr(new I3CutValues());
+    //}else if(particle->IsCascade()){
+    //  log_debug(" ---> I3Particle '%s' is a cascade, so proceeding accordingly...", 
+    //            name.c_str());
+    //  cuts = I3CascadeCutValuesPtr(new I3CascadeCutValues());
+    //} else {
       //this is probably just a failed fit; if not, something is really screwy...
-      if(particle->GetFitStatusString()=="OK"){
-        log_debug("This I3Particle is neither a track nor a cascade!!");
-      } else {
-        log_debug("Looks like the fit for this I3Particle failed...");
-      }
-    }
+      //if(particle->GetFitStatusString()=="OK"){
+        //log_debug("This I3Particle is neither a track nor a cascade!!");
+      //} else {
+    log_debug("Looks like the fit for this I3Particle failed...");
+      //}
+    //}
 
     if(cuts){
       cuts->Calculate(*particle,geometry,*pulsemap,timeRange_[0],timeRange_[1]);

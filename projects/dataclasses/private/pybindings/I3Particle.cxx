@@ -73,15 +73,11 @@ void register_I3Particle()
     class_<I3Particle, bases<I3FrameObject>, boost::shared_ptr<I3Particle> > particle =
       class_<I3Particle, bases<I3FrameObject>, boost::shared_ptr<I3Particle> >("I3Particle")
       #define RO_PROPERTIES (MajorID)(MinorID)(ID)(Mass)
-      #define PROPERTIES (Time)(Energy)(TotalEnergy)(KineticEnergy)(Shape)(Type)(PdgEncoding)(Length)(Speed)(FitStatus)(LocationType) \
-                         (ShapeString)(TypeString)(FitStatusString)(LocationTypeString)
-      #define CONVENIENCE_BOOLS (IsTrack)(IsCascade)(IsTopShower)(IsNeutrino)(HasMass)
+      #define PROPERTIES (Time)(Energy)(TotalEnergy)(KineticEnergy)(Type)(PdgEncoding)(Length)(Speed)(TypeString)
       BOOST_PP_SEQ_FOR_EACH(WRAP_PROP_RO, I3Particle, RO_PROPERTIES)
       BOOST_PP_SEQ_FOR_EACH(WRAP_PROP, I3Particle, PROPERTIES)
-      BOOST_PP_SEQ_FOR_EACH(WRAP_PROP_BOOL, I3Particle, CONVENIENCE_BOOLS)
       #undef RO_PROPERTIES
       #undef PROPERTIES
-      #undef CONVENIENCE_BOOLS
       
       .add_property("pos", make_function( (const I3Position& (I3Particle::*)()) &I3Particle::GetPos, return_internal_reference<1>() ),
                                           (void (I3Particle::*)(const I3Position&)) &I3Particle::SetPos )
@@ -102,16 +98,6 @@ void register_I3Particle()
     {
     scope particle_scope(particle);
 
-    enum_<I3Particle::FitStatus>("FitStatus")
-      BOOST_PP_SEQ_FOR_EACH(ENUM_DEF,I3Particle,I3PARTICLE_H_I3Particle_FitStatus)
-      .export_values()
-      ;
-
-    enum_<I3Particle::LocationType>("LocationType")
-      BOOST_PP_SEQ_FOR_EACH(ENUM_DEF,I3Particle,I3PARTICLE_H_I3Particle_LocationType)
-      .export_values()
-      ;
-
     enum_<I3Particle::ParticleType>("ParticleType")
       BOOST_PP_SEQ_FOR_EACH(ENUM_DEF,I3Particle,I3PARTICLE_H_I3Particle_ParticleType)
       .export_values()
@@ -120,23 +106,12 @@ void register_I3Particle()
     class_<std::vector<I3Particle::ParticleType> >("ParticleTypeVect")
       .def(dataclass_suite<std::vector<I3Particle::ParticleType> >());
 
-    enum_<I3Particle::ParticleShape>("ParticleShape")
-      BOOST_PP_SEQ_FOR_EACH(ENUM_DEF,I3Particle,I3PARTICLE_H_I3Particle_ParticleShape)
-      .export_values()
-      ;
   }
-  particle.def(init<I3Particle::ParticleShape, 
-                    I3Particle::ParticleType>((arg("shape")=I3Particle::Null, arg("type")=I3Particle::unknown), 
-    "Constructor for a simple particle with generated ID"));
-
-  particle.def(init<const I3Position, const I3Direction, const double, I3Particle::ParticleShape, double>((arg("pos"), 
-    arg("dir"), arg("vertextime"), arg("shape")=I3Particle::Null, arg("length")=NAN), 
+  particle.def(init<const I3Position, const I3Direction, const double, double>((arg("pos"), 
+    arg("dir"), arg("vertextime"), arg("length")=NAN), 
     "Constructor for a track or ray"));
   
-  bp::def("identity", identity_<I3Particle::FitStatus>);
-  bp::def("identity", identity_<I3Particle::LocationType>);
   bp::def("identity", identity_<I3Particle::ParticleType>);
-  bp::def("identity", identity_<I3Particle::ParticleShape>);
   
   bp::implicitly_convertible<I3Particle,I3ParticleID>();
 

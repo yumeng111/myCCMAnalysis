@@ -93,49 +93,40 @@ void I3Particle::generateID(){
 }
 
 I3Particle::~I3Particle() { }
-I3Particle::I3Particle(ParticleShape shape, ParticleType type) : 
+I3Particle::I3Particle(ParticleType type) : 
   pdgEncoding_(type),
-  shape_(shape),
   pos_(),
   dir_(),
   time_(NAN),
   energy_(NAN),
   length_(NAN),
-  speed_(I3Constants::c),
-  status_(NotSet),
-  locationType_(Anywhere)
+  speed_(I3Constants::c)
 {
   generateID();
   
-  log_trace_stream("Calling I3Particle::I3Particle(ParticleShape " << shape << ", ParticleType " << type << ").");
+  log_trace_stream("Calling I3Particle::I3Particle(ParticleType " << type << ").");
 }
 
-I3Particle::I3Particle(const I3Position pos, const I3Direction dir, const double vertextime, ParticleShape shape, double length) : 
+I3Particle::I3Particle(const I3Position pos, const I3Direction dir, const double vertextime, double length) : 
   pdgEncoding_(unknown),
-  shape_(shape),
   pos_(pos),
   dir_(dir),
   time_(vertextime),
   energy_(NAN),
   length_(length),
-  speed_(I3Constants::c),
-  status_(NotSet),
-  locationType_(Anywhere)
+  speed_(I3Constants::c)
 {
   generateID();
 }
 
 I3Particle::I3Particle(const uint64_t major, const int32_t minor) :
   pdgEncoding_(unknown),
-  shape_(Null),
   pos_(),
   dir_(),
   time_(NAN),
   energy_(NAN),
   length_(NAN),
-  speed_(I3Constants::c),
-  status_(NotSet),
-  locationType_(Anywhere)
+  speed_(I3Constants::c)
 {
   ID_.majorID = major;
   ID_.minorID = minor;
@@ -144,15 +135,12 @@ I3Particle::I3Particle(const uint64_t major, const int32_t minor) :
 I3Particle I3Particle::Clone() const {
   I3Particle p;
   p.SetPdgEncoding(pdgEncoding_);
-  p.SetShape(shape_);
   p.SetPos(pos_);
   p.SetDir(dir_);
   p.SetTime(time_);
   p.SetEnergy(energy_);
   p.SetLength(length_);
   p.SetSpeed(speed_);
-  p.SetFitStatus(status_);
-  p.SetLocationType(locationType_);
   return p;
 }
 
@@ -384,31 +372,6 @@ std::string I3Particle::GetTypeString() const
   return i3particle_type_string(pdgEncoding_);
 }
 
-std::string I3Particle::GetShapeString() const
-{
-  switch (shape_) {
-    BOOST_PP_SEQ_FOR_EACH(MAKE_ENUM_TO_STRING_CASE_LINE, ~, I3PARTICLE_H_I3Particle_ParticleShape)
-  }
-  return(boost::lexical_cast<std::string>( shape_ ));
-}
-
-std::string I3Particle::GetFitStatusString() const
-{
-  switch (status_) {
-    BOOST_PP_SEQ_FOR_EACH(MAKE_ENUM_TO_STRING_CASE_LINE, ~, I3PARTICLE_H_I3Particle_FitStatus)
-  }
-  return(boost::lexical_cast<std::string>( status_ ));
-}
-
-std::string I3Particle::GetLocationTypeString() const
-{
-  switch (locationType_) {
-    BOOST_PP_SEQ_FOR_EACH(MAKE_ENUM_TO_STRING_CASE_LINE, ~, I3PARTICLE_H_I3Particle_LocationType)
-  }
-  return(boost::lexical_cast<std::string>( locationType_ ));
-}
-
-
 #define MAKE_STRING_TO_ENUM_IF_LINE(r, data, t) else if ( str == BOOST_PP_STRINGIZE(t) ) { data = t; }
 
 void I3Particle::SetTypeString(const std::string &str)
@@ -428,104 +391,6 @@ void I3Particle::SetTypeString(const std::string &str)
   SetType(type);
 }
 
-void I3Particle::SetShapeString(const std::string &str)
-{
-  if (false) { }
-  BOOST_PP_SEQ_FOR_EACH(MAKE_STRING_TO_ENUM_IF_LINE, shape_, I3PARTICLE_H_I3Particle_ParticleShape)
-  else {
-    try {
-      shape_ = static_cast<ParticleShape>( boost::lexical_cast<int>(str) );
-    } catch(boost::bad_lexical_cast &bad) {
-      log_fatal("\"%s\" is not a valid ParticleShape.", str.c_str());
-    }
-  }
-}
-
-void I3Particle::SetFitStatusString(const std::string &str)
-{
-  if (false) { }
-  BOOST_PP_SEQ_FOR_EACH(MAKE_STRING_TO_ENUM_IF_LINE, status_, I3PARTICLE_H_I3Particle_FitStatus)
-  else {
-    try {
-      status_ = static_cast<FitStatus>( boost::lexical_cast<int>(str) );
-    } catch(boost::bad_lexical_cast &bad) {
-      log_fatal("\"%s\"is not a valid FitStatus.", str.c_str());
-    }
-  }
-}
-
-void I3Particle::SetLocationTypeString(const std::string &str)
-{
-  if (false) { }
-  BOOST_PP_SEQ_FOR_EACH(MAKE_STRING_TO_ENUM_IF_LINE, locationType_, I3PARTICLE_H_I3Particle_LocationType)
-  else {
-    try {
-      locationType_ = static_cast<LocationType>( boost::lexical_cast<int>(str) );
-    } catch(boost::bad_lexical_cast &bad) {
-      log_fatal("\"%s\" is not a valid LocationType.", str.c_str());
-    }
-  }
-}
-
-bool I3Particle::IsNucleus() const
-{
-  return (abs(pdgEncoding_) >= 1000000000 && abs(pdgEncoding_) <= 1099999999);
-}
-
-bool I3Particle::IsTrack() const 
-{
-  if (shape_==InfiniteTrack || shape_==StartingTrack ||
-      shape_==StoppingTrack || shape_==ContainedTrack ||
-      pdgEncoding_==MuPlus || pdgEncoding_==MuMinus ||
-      pdgEncoding_==TauPlus || pdgEncoding_==TauMinus ||
-      pdgEncoding_==STauPlus || pdgEncoding_==STauMinus ||
-      pdgEncoding_==SMPPlus || pdgEncoding_==SMPMinus ||
-      pdgEncoding_==Monopole || pdgEncoding_==Qball||
-      (shape_ == Primary && 
-       ( pdgEncoding_ == PPlus       ||
-	 pdgEncoding_ == PMinus      ||
-         IsNucleus() ||
-	 pdgEncoding_ == Gamma )
-       )
-      ) return true;    
-  else return false;
-}
-
-bool I3Particle::IsCascade() const
-{
-  const int32_t type = pdgEncoding_;
-
-  if (shape_ == Cascade || shape_ == CascadeSegment ||
-      type == EPlus    || type == EMinus   ||
-      type == Brems    || type == DeltaE  ||
-      type == PairProd || type == NuclInt ||
-      type == Hadrons  || type == Pi0     ||
-      type == PiPlus   || type == PiMinus ||      
-      (shape_ != Primary && 
-       ( type == PPlus       ||
-	 type == PMinus      ||
-	 IsNucleus()         ||
-	 type == Gamma )
-       )
-      ) return true;    
-  else return false;
-}
-
-bool I3Particle::IsNeutrino() const
-{
-  const ParticleType type = ParticleType(pdgEncoding_);
-    
-  if( type==NuE ||
-      type==NuEBar ||
-      type==NuMu ||
-      type==NuMuBar ||
-      type==NuTau||
-      type==NuTauBar||
-      type==Nu )
-    return true;
-  else
-    return false;
-}
 
 bool I3Particle::HasPosition() const
 {
@@ -545,12 +410,6 @@ bool I3Particle::HasEnergy() const
   else return true; 
 }
 
-bool I3Particle::IsTopShower() const
-{
-  if (shape_==TopShower) return true;
-  else return false;
-}
-
 I3Position I3Particle::ShiftTimeTrack(const double time) const
 {
   if (std::isfinite(speed_) && speed_>0.){
@@ -563,53 +422,23 @@ I3Position I3Particle::ShiftTimeTrack(const double time) const
 }
 
 I3Position I3Particle::GetStartPos() const 
-{ 
-  if (shape_ == StartingTrack || 
-      shape_ == ContainedTrack || 
-      shape_ == MCTrack) return pos_;
-  else {
-    log_warn("GetStartPos undefined for a particle that is neither starting "
-	     "nor contained.");
-    return I3Position();
-  }
+{
+  return pos_; 
 }
 
 double I3Particle::GetStartTime() const 
 {
-  if (shape_ == StartingTrack || 
-      shape_ == ContainedTrack ||
-      shape_ == MCTrack ) return time_;
-  else{
-    log_warn("GetStartTime undefined for a particle that is neither starting "
-	     "nor contained.");
-    return NAN;
-  }
+  return time_;
 }
 
 I3Position I3Particle::GetStopPos() const 
 {
-  if (shape_==StoppingTrack) return pos_;
-  else if (shape_ == ContainedTrack || shape_ == MCTrack){
-    return pos_ + length_*dir_;
-  }
-  else {
-    log_warn("GetStopPos undefined for a particle that is neither stopping "
-	     "nor contained.");
-    I3Position nullpos;
-    return nullpos;
-  }
+  return pos_ + length_*dir_;
 }
 
 double I3Particle::GetStopTime() const 
 { 
-  if (shape_==StoppingTrack) return time_;
-  else if (shape_ == ContainedTrack || shape_ == MCTrack){ 
-    return time_ + length_/speed_; 
-  }else{  
-    log_warn("GetStopTime undefined for a particle that is neither stopping "
-	     "nor contained.");
-    return NAN;
-  }
+  return time_ + length_/speed_;
 }
 
 // XXX: These don't need to be bimaps. The look is only one way and they could
@@ -839,21 +668,18 @@ boost::assign::list_of<std::pair<int, I3Particle::ParticleType> >
 (3026, I3Particle::Fe56Nucleus);
 
 
-#ifndef __CINT__
-I3Particle::I3Particle(const boost::optional<I3Particle>& p) :
-  ID_(p->ID_),
-  pdgEncoding_(p->pdgEncoding_),
-  shape_(p->shape_),
-  pos_(p->pos_),
-  dir_(p->dir_),
-  time_(p->time_),
-  energy_(p->energy_),
-  length_(p->length_),
-  speed_(p->speed_),
-  status_(p->status_),
-  locationType_(p->locationType_)
-{}
-#endif
+//#ifndef __CINT__
+//I3Particle::I3Particle(const boost::optional<I3Particle>& p) :
+//  ID_(p->ID_),
+//  pdgEncoding_(p->pdgEncoding_),
+//  pos_(p->pos_),
+//  dir_(p->dir_),
+//  time_(p->time_),
+//  energy_(p->energy_),
+//  length_(p->length_),
+//  speed_(p->speed_),
+//{}
+//#endif
 
 
 template <class Archive>
@@ -863,8 +689,6 @@ template <class Archive>
     ar & make_nvp("ID",ID_.minorID);
     ar & make_nvp("MajorID",ID_.majorID);
     ar & make_nvp("pdgEncoding",pdgEncoding_);
-    ar & make_nvp("shape",shape_);
-    ar & make_nvp("fitStatus",status_);
 
     ar & make_nvp("pos",pos_);
     ar & make_nvp("dir",dir_);
@@ -873,7 +697,6 @@ template <class Archive>
     ar & make_nvp("energy",energy_);
     ar & make_nvp("length",length_);
     ar & make_nvp("speed",speed_);
-    ar & make_nvp("LocationType",locationType_);
   }
 
 template <class Archive>
@@ -923,8 +746,6 @@ template <class Archive>
   } else { // version >= 5
     ar &make_nvp("pdgEncoding", pdgEncoding_);
   }
-  ar &make_nvp("shape", shape_);
-  ar &make_nvp("fitStatus", status_);
 
   ar &make_nvp("pos", pos_);
   ar &make_nvp("dir", dir_);
@@ -937,9 +758,6 @@ template <class Archive>
   if (version == 0) {
     std::vector<I3Particle> junk;
     ar &make_nvp("composite", junk);
-  }
-  if (version > 0){
-    ar &make_nvp("LocationType", locationType_);
   }
   if (version == 4) {
     // obscure version in use by Antares, contains bjorken x and y.
@@ -965,9 +783,6 @@ std::ostream& I3Particle::Print(std::ostream& oss) const{
       << "              Length : " << GetLength() << std::endl
       << "                Type : " << GetTypeString() << std::endl
       << "        PDG encoding : " << GetPdgEncoding() << std::endl
-      << "               Shape : " << GetShapeString() << std::endl
-      << "              Status : " << GetFitStatusString() <<  std::endl
-      << "            Location : " << GetLocationTypeString() << std::endl 
       << "]" ;
   return oss;
 }

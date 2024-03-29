@@ -377,12 +377,12 @@ void I3ScaleCalculator::CalcOuterStationPositions (std::vector<double > &x,
 
 double I3ScaleCalculator::ScaleInIce (I3Particle part) const {
   if (iceConf_ > IC_EMPTY) {
-    if (part.IsCascade ()) {
-      return ScaleInIceCascade (part,false);
-    }
-    else {
-      return ScaleInIceMuon (part);
-    }
+    //if (part.IsCascade ()) {
+    //  return ScaleInIceCascade (part,false);
+    //}
+    //else {
+    return ScaleInIceMuon (part);
+    //}
   }
   else {
     log_error ("Unknown or empty IceCube Configuration.");
@@ -392,13 +392,13 @@ double I3ScaleCalculator::ScaleInIce (I3Particle part) const {
 
 double I3ScaleCalculator::ScaleIceCubeDetectorPolygon (I3Particle part) const {
   if (iceConf_ > IC_EMPTY) {
-    if (part.IsCascade ()) {
-      return ScaleInIceCascade (part,true);
-    }
-    else {
-      log_error ("Particle must be of shape Cascade to calculate IceCube detector polygon scaling factor");
-      return std::numeric_limits<double >::signaling_NaN ();
-    }
+    //if (part.IsCascade ()) {
+    //  return ScaleInIceCascade (part,true);
+    //}
+    //else {
+    log_error ("Particle must be of shape Cascade to calculate IceCube detector polygon scaling factor");
+    return std::numeric_limits<double >::signaling_NaN ();
+    //}
   }
   else {
     log_error ("Unknown or empty IceCube Configuration.");
@@ -444,7 +444,7 @@ double I3ScaleCalculator::ScaleInIceCascade (I3Particle part,bool areaonly) cons
 
   // replace cascade with a directly upgoing muon
   I3Particle referenceTrack (part);
-  referenceTrack.SetShape (I3Particle::InfiniteTrack); // convert to muon
+  //referenceTrack.SetShape (I3Particle::InfiniteTrack); // convert to muon
   referenceTrack.SetDir (0, 0); // change to zenith 0
 
   // calculate the AreaSize

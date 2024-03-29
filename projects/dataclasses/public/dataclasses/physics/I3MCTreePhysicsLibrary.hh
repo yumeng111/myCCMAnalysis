@@ -24,29 +24,8 @@ namespace I3MCTreePhysicsLibrary
   I3MCTree::optional_value GetMostEnergeticPrimary(const I3MCTree& t, bool safe_mode = true );
   I3MCTree::optional_value GetMostEnergeticPrimary(I3MCTreeConstPtr t, bool safe_mode = true );
 
-  I3MCTree::optional_value GetMostEnergeticInIce(const I3MCTree& t, bool safe_mode = true );
-  I3MCTree::optional_value GetMostEnergeticInIce(I3MCTreeConstPtr t, bool safe_mode = true );
-
   I3MCTree::optional_value GetMostEnergetic(const I3MCTree& t, I3Particle::ParticleType pt, bool safe_mode = true );
   I3MCTree::optional_value GetMostEnergetic(I3MCTreeConstPtr t, I3Particle::ParticleType pt, bool safe_mode = true );
-
-  I3MCTree::optional_value GetMostEnergeticTrack(const I3MCTree& t, bool safe_mode = true );
-  I3MCTree::optional_value GetMostEnergeticTrack(I3MCTreeConstPtr t, bool safe_mode = true );
-
-  I3MCTree::optional_value GetMostEnergeticCascade(const I3MCTree& t, bool safe_mode = true );
-  I3MCTree::optional_value GetMostEnergeticCascade(I3MCTreeConstPtr t, bool safe_mode = true );
-
-  I3MCTree::optional_value GetMostEnergeticInIceCascade(const I3MCTree& t, bool safe_mode = true );
-  I3MCTree::optional_value GetMostEnergeticInIceCascade(I3MCTreeConstPtr t, bool safe_mode = true );
-
-  I3MCTree::optional_value GetMostEnergeticNeutrino(const I3MCTree& t, bool safe_mode = true );
-  I3MCTree::optional_value GetMostEnergeticNeutrino(I3MCTreeConstPtr t, bool safe_mode = true );
-
-  I3MCTree::optional_value GetMostEnergeticMuon(const I3MCTree& t, bool safe_mode = true );
-  I3MCTree::optional_value GetMostEnergeticMuon(I3MCTreeConstPtr t, bool safe_mode = true );
-
-  I3MCTree::optional_value GetMostEnergeticNucleus(const I3MCTree& t, bool safe_mode = true );
-  I3MCTree::optional_value GetMostEnergeticNucleus(I3MCTreeConstPtr t, bool safe_mode = true );
 }
 
 #endif

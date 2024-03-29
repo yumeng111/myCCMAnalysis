@@ -144,68 +144,68 @@ size_t I3RecoInfoConverter::FillRows(const I3Particle& reco, I3TableRowPtr rows)
 
     // call different functions for cascades and muons
     if (pulsemap) {
-      if (reco.IsCascade()){
-        // cascades ------------------------------------------------------
-        BOOST_FOREACH (TimeWindowPair win, timeWindows_) {
-            int nDir;
-            int nChan;  // not used (for output)
-            int nHit;   // not used
-            int n1hit;  // not used
-            int nString;  // not used
-            // do this calculation for all time windows
-            // (this is not worse than calling NDir etc, 
-            // because this only calls CutsCalc)
-            I3Cuts::CascadeCutsCalc(reco, *geometry, *pulsemap, // input
-                    win.second.first,     // timewindows
-                    win.second.second,    
-                    nChan, nHit, n1hit, nString, // unused buffers
-                    nDir, nEarly, nLate); // intersting stuff
+      //if (reco.IsCascade()){
+      //  // cascades ------------------------------------------------------
+      //  BOOST_FOREACH (TimeWindowPair win, timeWindows_) {
+      //      int nDir;
+      //      int nChan;  // not used (for output)
+      //      int nHit;   // not used
+      //      int n1hit;  // not used
+      //      int nString;  // not used
+      //      // do this calculation for all time windows
+      //      // (this is not worse than calling NDir etc, 
+      //      // because this only calls CutsCalc)
+      //      I3Cuts::CascadeCutsCalc(reco, *geometry, *pulsemap, // input
+      //              win.second.first,     // timewindows
+      //              win.second.second,    
+      //              nChan, nHit, n1hit, nString, // unused buffers
+      //              nDir, nEarly, nLate); // intersting stuff
 
-            nDirs[win.first] = nDir;
-            lDirs[win.first] = 0;  // no ldir for cascades
-        }
-      } else {
+      //      nDirs[win.first] = nDir;
+      //      lDirs[win.first] = 0;  // no ldir for cascades
+      //  }
+      //} else {
         // track ---------------------------------------------------------
-        int nChan;  // not used (for output)
-        int nHit;   // not used
-        int nString;  // not used
-        double sDir; // not used
-        double sAll; // not used
-        double lDir; // also needed as a buffer
+      int nChan;  // not used (for output)
+      int nHit;   // not used
+      int nString;  // not used
+      double sDir; // not used
+      double sAll; // not used
+      double lDir; // also needed as a buffer
 
-        BOOST_FOREACH (TimeWindowPair win, timeWindows_) {
-            int nDir;
-            // see comment above for efficiency
-            I3Cuts::CutsCalc(reco, *geometry, *pulsemap,
-                    win.second.first,
-                    win.second.second,
-                    nChan, nHit, nString,
-                    nDir, lDir,
-                    sDir, sAll); // not used yet
+      BOOST_FOREACH (TimeWindowPair win, timeWindows_) {
+          int nDir;
+          // see comment above for efficiency
+          I3Cuts::CutsCalc(reco, *geometry, *pulsemap,
+                  win.second.first,
+                  win.second.second,
+                  nChan, nHit, nString,
+                  nDir, lDir,
+                  sDir, sAll); // not used yet
 
-            nDirs[win.first] = nDir;
-            lDirs[win.first] = lDir;
-        }
-        const std::pair<double, double>& earlyWindow = 
-            muonTimeWindows_["early"];
-        const std::pair<double, double>& lateWindow = 
-            muonTimeWindows_["late"];
-        // separatly calculate nEarly/nLate for muons
-        I3Cuts::CutsCalc(reco, *geometry, *pulsemap,
-                earlyWindow.first,
-                earlyWindow.second,
-                nChan, nHit, nString,
-                nEarly,             // <- calculate this
-                lDir, sDir, sAll);
-
-        I3Cuts::CutsCalc(reco, *geometry, *pulsemap,
-                lateWindow.first,
-                lateWindow.second,
-                nChan, nHit, nString,
-                nLate,             // <- calculate this
-                lDir, sDir, sAll);
-
+          nDirs[win.first] = nDir;
+          lDirs[win.first] = lDir;
       }
+      const std::pair<double, double>& earlyWindow = 
+          muonTimeWindows_["early"];
+      const std::pair<double, double>& lateWindow = 
+          muonTimeWindows_["late"];
+      // separatly calculate nEarly/nLate for muons
+      I3Cuts::CutsCalc(reco, *geometry, *pulsemap,
+              earlyWindow.first,
+              earlyWindow.second,
+              nChan, nHit, nString,
+              nEarly,             // <- calculate this
+              lDir, sDir, sAll);
+
+      I3Cuts::CutsCalc(reco, *geometry, *pulsemap,
+              lateWindow.first,
+              lateWindow.second,
+              nChan, nHit, nString,
+              nLate,             // <- calculate this
+              lDir, sDir, sAll);
+
+      
     } else {
       nDirs["A"] = nDirs["B"] = nDirs["C"] = nDirs["D"] = nDirs["E"] = 0;
       lDirs["A"] = lDirs["B"] = lDirs["C"] = lDirs["D"] = lDirs["E"] = NAN;
@@ -219,10 +219,10 @@ size_t I3RecoInfoConverter::FillRows(const I3Particle& reco, I3TableRowPtr rows)
             (icetopConf_));
 
     rows->Set<double>("icecube_scale", scaleCalc.ScaleInIce (reco) );
-    if (reco.IsTrack())
-        rows->Set<double>("icetop_scale", scaleCalc.ScaleIceTop (reco) );
-    else
-        rows->Set<double>("icetop_scale", -1 );
+    //if (reco.IsTrack())
+    //    rows->Set<double>("icetop_scale", scaleCalc.ScaleIceTop (reco) );
+    //else
+    rows->Set<double>("icetop_scale", -1 );
 
     rows->Set<int8_t>("contained", scaleCalc.VertexIsInside (reco) ? -1 : 0);
     

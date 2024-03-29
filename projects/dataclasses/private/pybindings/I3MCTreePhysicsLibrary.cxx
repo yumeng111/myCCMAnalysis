@@ -38,13 +38,6 @@ namespace bp = boost::python;
 void register_I3MCTreePhysicsLibrary()
 {
   bp::def("get_most_energetic_primary", get_most_energetic_primary, "Returns the most energetic primary.");
-  bp::def("get_most_energetic_inice", &get_most_energetic_inice, "Returns the more energetic InIce primary.");
   bp::def("get_most_energetic", &get_most_energetic, "Returns the most energetic I3Particle.");
-  bp::def("get_most_energetic_track", &get_most_energetic_track, "Returns the most energetic track.");
-  bp::def("get_most_energetic_cascade", &get_most_energetic_cascade, "Returns the most energetic cascade.");
-  bp::def("get_most_energetic_inice_cascade", &get_most_energetic_inice_cascade, "Returns the most energetic InIce cascade.");
-  bp::def("get_most_energetic_neutrino", &get_most_energetic_neutrino, "Returns the most energetic neutrino.");
-  bp::def("get_most_energetic_muon", &get_most_energetic_muon, "Returns the most energetic muon.");
-  bp::def("get_most_energetic_nucleus", &get_most_energetic_nucleus, "Returns the most energetic nucleus.");
 }
 
