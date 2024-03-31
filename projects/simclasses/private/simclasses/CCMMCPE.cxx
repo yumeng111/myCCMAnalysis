@@ -10,7 +10,7 @@ std::ostream& operator<<(std::ostream& os, const CCMMCPE& pe) {
 std::ostream& CCMMCPE::Print(std::ostream& os) const{
     os << "[ CCMMCPE::"
         << "\n  Time :" << time
-        << "\n  Wavelngth :" << wavelength
+        << "\n  Wavelength :" << wavelength
         << "\n  Position :" << position 
         << "\n  Direction :" << direction 
         //std::ostream & operator<<(std::ostream & os, CCMMCPE::PhotonSource const & p) {

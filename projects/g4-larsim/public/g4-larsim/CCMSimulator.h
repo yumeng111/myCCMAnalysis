@@ -27,6 +27,7 @@ class CCMSimulator : public I3Module  {
         std::string responseServiceName_;
         std::string mcPrimaryName_;
         std::string hitSeriesName_;
+        I3MCTreePtr mcTree_;
 
         CCMParticleInjectorPtr injector_;
         CCMDetectorResponsePtr response_;

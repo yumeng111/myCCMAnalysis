@@ -1,6 +1,7 @@
 
 #include <g4-larsim/g4classes/G4Interface.h>
 #include <g4-larsim/g4classes/G4CCMDetectorConstruction.h>
+#include "g4-larsim/g4classes/G4CCMActionInitialization.h"
 #include <g4-larsim/g4classes/G4CCMPhysicsList.h>
 #include <g4-larsim/g4classes/G4CCMUserTrackingAction.h>
 #include <g4-larsim/g4classes/G4CCMUserSteppingAction.h>
@@ -59,7 +60,6 @@ void G4Interface::InstallDetector() {
         detector_ = new G4CCMDetectorConstruction();
     }
 
-    G4cout << "installed detector!" << G4endl;    
 }
 
 void G4Interface::InitializeEvent()
@@ -72,13 +72,11 @@ void G4Interface::InitializeEvent()
         runManager_.InitializeRun();
         eventInitialized_ = true;
     }
-    G4cout << "initialized run!" << G4endl;
 }
 
 
 void G4Interface::InjectParticle(const I3Particle& particle)
 {
-    std::cout << "at beginning of InjectParticle " << std::endl;
     if(!eventInitialized_) {
         log_fatal("No event initialized. Cannot inject particle!");
         return;
@@ -246,7 +244,6 @@ void G4Interface::InjectParticle(const I3Particle& particle)
               gun.GetParticleEnergy() / CLHEP::MeV);
 
     runManager_.InjectParticle(&gun);
-    G4cout << "injected particle! " << G4endl;
 }
 
 
@@ -256,12 +253,13 @@ void G4Interface::TerminateEvent()
     if(eventInitialized_) {
         // ok so we are done with this event
         // let's grab the map between CCMPMTKey and std::vector<CCMMCPE> from out sensitve detector to save to the frame
-        G4SDManager* sdManager = G4SDManager::GetSDMpointer();
-        G4CCMPMTSD* PMTSD = dynamic_cast<G4CCMPMTSD*>(sdManager->FindSensitiveDetector("/LAr/pmtSD"));
-        if (PMTSD) {
-            CCMMCPEMap = PMTSD->GetCCMMCPEMap();
-        }
-
+        //G4SDManager* sdManager = G4SDManager::GetSDMpointer();
+        //G4CCMPMTSD* PMTSD = dynamic_cast<G4CCMPMTSD*>(sdManager->FindSensitiveDetector("/LAr/pmtSD"));
+        //CCMMCPEMap = PMTSD->GetCCMMCPEMap();
+        //if (PMTSD) {
+        //    CCMMCPEMap = PMTSD->GetCCMMCPEMap();
+        //}
+        CCMMCPEMap = runManager_.GetCCMMCPEMap();
         runManager_.TerminateRun();
         eventInitialized_ = false;
     }
@@ -295,12 +293,13 @@ void G4Interface::Initialize()
 
     physicsList->RegisterPhysics(opticalPhysics);
     runManager_.SetUserInitialization(physicsList);
+    runManager_.SetUserInitialization(new G4CCMActionInitialization(detector_));
 
-    log_debug("Init UserTrackingAction ...");
-    runManager_.SetUserAction(new G4CCMUserTrackingAction());
+    //log_debug("Init UserTrackingAction ...");
+    //runManager_.SetUserAction(new G4CCMUserTrackingAction());
 
-    log_debug("Init UserSteppingAction ...");
-    runManager_.SetUserAction(new G4CCMUserSteppingAction());
+    //log_debug("Init UserSteppingAction ...");
+    //runManager_.SetUserAction(new G4CCMUserSteppingAction());
 
     // Initialize G4 kernel
     log_debug("Init run manager ...");
@@ -348,5 +347,4 @@ void G4Interface::Initialize()
     }
 
     initialized_ = true;
-    G4cout << "finished initializing!" << G4endl;
 }

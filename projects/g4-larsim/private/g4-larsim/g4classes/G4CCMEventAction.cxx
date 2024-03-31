@@ -178,6 +178,8 @@ void G4CCMEventAction::EndOfEventAction(const G4Event* anEvent)
     // Gather info from all PMTs
     for(size_t i = 0; i < pmts; ++i)
     {
+      int pmt_row = static_cast<int>((*pmtHC)[i]->GetCCMPMTKeyRow());
+      int pmt_number = static_cast<int>((*pmtHC)[i]->GetCCMPMTKeyNumber());
       fHitCount += (*pmtHC)[i]->GetPhotonCount();
       reconPos += (*pmtHC)[i]->GetPMTPos() * (*pmtHC)[i]->GetPhotonCount();
       if((*pmtHC)[i]->GetPhotonCount() >= fPMTThreshold)

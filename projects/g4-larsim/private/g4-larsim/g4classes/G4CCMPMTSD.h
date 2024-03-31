@@ -36,6 +36,7 @@
 
 #include "G4VSensitiveDetector.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4DataVector.hh"
 
 #include <vector>
 #include <sstream>
@@ -78,17 +79,12 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         // Store a pmt position
         void SetPmtPositions(const std::vector<G4ThreeVector>& positions);
 
-        // return CCMMCPEMap
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetCCMMCPEMap(){ return CCMMCPEMap; }
-        
     private:
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
 
         G4DataVector* fPMTPositionsX = nullptr;
         G4DataVector* fPMTPositionsY = nullptr;
         G4DataVector* fPMTPositionsZ = nullptr;
-
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
 
         // define a few things for converting energy to wavelength
         const G4double h_Planck = 6.62607015e-34 * joule * second;
@@ -97,6 +93,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         G4int fHitCID = -1;
     
         static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
+        static const std::unordered_map<std::string, G4double> processNameToG4double;
 };
 
 #endif

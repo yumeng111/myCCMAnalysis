@@ -54,8 +54,9 @@ G4ClassificationOfNewTrack G4CCMStackingAction::ClassifyNewTrack(
     if(aTrack->GetParentID() > 0)
     {
       // particle is secondary
-      if(aTrack->GetCreatorProcess()->GetProcessName() == "Scintillation")
-        fEventAction->IncPhotonCount_Scint();
+      if(aTrack->GetCreatorProcess()->GetProcessName() == "Scintillation"){
+          fEventAction->IncPhotonCount_Scint();
+      }
       else if(aTrack->GetCreatorProcess()->GetProcessName() == "Cerenkov")
         fEventAction->IncPhotonCount_Ceren();
     }

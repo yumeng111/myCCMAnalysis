@@ -41,31 +41,49 @@ G4ThreadLocal G4Allocator<G4CCMPMTHit>* G4CCMPMTHitAllocator = nullptr;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPMTHit::G4CCMPMTHit(const G4CCMPMTHit& right)
-  : G4VHit()
-{
-  fPmtNumber = right.fPmtNumber;
-  fPhotons   = right.fPhotons;
-  fPhysVol   = right.fPhysVol;
-  fDrawit    = right.fDrawit;
+G4CCMPMTHit::G4CCMPMTHit(const G4CCMPMTHit& right) : G4VHit() {
+    fPmtNumber = right.fPmtNumber;
+    fPhotons = right.fPhotons;
+    fPhysVol = right.fPhysVol;
+    fDrawit = right.fDrawit;
+    fCCMPMTKeyRow = right.fCCMPMTKeyRow;
+    fCCMPMTKeyNumber = right.fCCMPMTKeyNumber;
+    photonTime = right.photonTime;
+    photonEnergy = right.photonEnergy;
+    photonPositionX = right.photonPositionX;
+    photonPositionY = right.photonPositionY;
+    photonPositionZ = right.photonPositionZ;
+    photonDirectionX = right.photonDirectionX;
+    photonDirectionY = right.photonDirectionY;
+    photonDirectionZ = right.photonDirectionZ;
+    photonCreationProcess = right.photonCreationProcess;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-const G4CCMPMTHit& G4CCMPMTHit::operator=(const G4CCMPMTHit& right)
-{
-  fPmtNumber = right.fPmtNumber;
-  fPhotons   = right.fPhotons;
-  fPhysVol   = right.fPhysVol;
-  fDrawit    = right.fDrawit;
-  return *this;
+const G4CCMPMTHit& G4CCMPMTHit::operator=(const G4CCMPMTHit& right) {
+    fPmtNumber = right.fPmtNumber;
+    fPhotons = right.fPhotons;
+    fPhysVol = right.fPhysVol;
+    fDrawit = right.fDrawit;
+    fCCMPMTKeyRow = right.fCCMPMTKeyRow;
+    fCCMPMTKeyNumber = right.fCCMPMTKeyNumber;
+    photonTime = right.photonTime;
+    photonEnergy = right.photonEnergy;
+    photonPositionX = right.photonPositionX;
+    photonPositionY = right.photonPositionY;
+    photonPositionZ = right.photonPositionZ;
+    photonDirectionX = right.photonDirectionX;
+    photonDirectionY = right.photonDirectionY;
+    photonDirectionZ = right.photonDirectionZ;
+    photonCreationProcess = right.photonCreationProcess;
+    return *this;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4bool G4CCMPMTHit::operator==(const G4CCMPMTHit& right) const
-{
-  return (fPmtNumber == right.fPmtNumber);
+G4bool G4CCMPMTHit::operator==(const G4CCMPMTHit& right) const {
+    return (fPmtNumber == right.fPmtNumber);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

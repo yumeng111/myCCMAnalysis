@@ -346,6 +346,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
     // Place the main volume
     if(fMainVolumeOn) {
         fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this);
+        G4cout << "just made main volume" << G4endl;
     }
 
     return fExperimentalHall_phys;
@@ -391,8 +392,8 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
 
     if(!fScint_SD.Get()) {
         G4cout << "Construction /LAr/scintSD" << G4endl;
-        auto scint_SD = new G4CCMScintSD("/LArDet/scintSD");
-        fScint_SD.Put(scint_SD);
+        //auto scint_SD = new G4CCMScintSD("/LArDet/scintSD");
+        //fScint_SD.Put(scint_SD);
     }
     //G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
     //SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());

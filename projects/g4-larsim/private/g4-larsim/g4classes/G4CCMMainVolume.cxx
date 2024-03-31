@@ -562,8 +562,9 @@ void G4CCMMainVolume::SurfaceProperties()
     TPBfoilOS->SetSigmaAlpha(0.05);
     TPBfoilOS->SetMaterialPropertiesTable(TPBfoilMPT);
 
-    // create logical skin surfaces
+    // create logical skin surfaces for TPB on walls of detector and on PMTs
     new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBfoilOS);
+    new G4LogicalSkinSurface("TPBCoating_Surface", fTPBCoating_log, TPBfoilOS);
 
     //**Photocathode surface properties
     std::vector<G4double> ephoton = { 7.0 * eV, 7.14 * eV };

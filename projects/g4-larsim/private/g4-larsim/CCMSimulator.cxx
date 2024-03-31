@@ -40,24 +40,24 @@ CCMSimulator::~CCMSimulator() { }
 
  
 void CCMSimulator::Configure() {
-  log_info("Configuring the CCMSimulator:");
+    log_info("Configuring the CCMSimulator:");
 
-  GetParameter("InjectorServiceName", injectorServiceName_);
-  log_info("+ Injector Service: %s", injectorServiceName_.c_str());
-  injector_ = GetContext().Get<CCMParticleInjectorPtr>(injectorServiceName_);
-  if(!injector_) log_fatal("No injector service \"%s\" in context", injectorServiceName_.c_str());
-  
-  GetParameter("ResponseServiceName", responseServiceName_);
-  log_info("+ Response Service: %s", responseServiceName_.c_str());
-  response_ = GetContext().Get<CCMDetectorResponsePtr>(responseServiceName_);
-  if(!response_) log_fatal("No response service \"%s\" in context", responseServiceName_.c_str());
-  
-  GetParameter("PrimaryName", mcPrimaryName_);
-  log_info("+ MC primary: %s", mcPrimaryName_.c_str());
-  
-  GetParameter("CCMHitSeriesName", hitSeriesName_);
-  log_info("+ CCM hit series : %s", hitSeriesName_.c_str());
-  
+    GetParameter("InjectorServiceName", injectorServiceName_);
+    log_info("+ Injector Service: %s", injectorServiceName_.c_str());
+    injector_ = GetContext().Get<CCMParticleInjectorPtr>(injectorServiceName_);
+    if(!injector_) log_fatal("No injector service \"%s\" in context", injectorServiceName_.c_str());
+
+    GetParameter("ResponseServiceName", responseServiceName_);
+    log_info("+ Response Service: %s", responseServiceName_.c_str());
+    response_ = GetContext().Get<CCMDetectorResponsePtr>(responseServiceName_);
+    if(!response_) log_fatal("No response service \"%s\" in context", responseServiceName_.c_str());
+
+    GetParameter("PrimaryName", mcPrimaryName_);
+    log_info("+ MC primary: %s", mcPrimaryName_.c_str());
+
+    GetParameter("CCMHitSeriesName", hitSeriesName_);
+    log_info("+ CCM hit series : %s", hitSeriesName_.c_str());
+
 }
 
 
@@ -73,19 +73,18 @@ void CCMSimulator::DetectorStatus(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-
 void CCMSimulator::DAQ(I3FramePtr frame) {
     log_debug("   Simulating CCM");
     
-    // let's initialize our response and injector services 
+    // initialize injector and response services
     injector_->Configure();
     response_->Configure();
     response_->Initialize();
     
     // let's grab the mcPrimary from the injector
-    I3MCTreePtr mcTree = injector_->GetMCTree();
-
-    std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree);
+    mcTree_ = injector_->GetMCTree();
+    
+    std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
     
     for (size_t p = 0; p < primary_particles.size(); p++){
         // Tell the response service of a new event
@@ -98,20 +97,20 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         CCMMCPEMap = response_->GetHitsMap(); 
     }
     
-    // now save everything into S frame
+    // now save simulation set up info (just MC tree for now) into S frame
     I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
     
     // put mcTree into frame
-    simframe->Put(mcPrimaryName_, mcTree);
-
-    // Put the hits to the frame 
-    if (!hitSeriesName_.empty()) {
-        simframe->Put(hitSeriesName_, CCMMCPEMap);
-    }
+    simframe->Put(mcPrimaryName_, mcTree_);
 
     // push simframe
     PushFrame(simframe);
     
+    // Put the hits to the DAQ frame 
+    if (!hitSeriesName_.empty()) {
+        frame->Put(hitSeriesName_, CCMMCPEMap);
+    }
+
     // push daq frame
     PushFrame(frame);
 }
