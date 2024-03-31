@@ -160,7 +160,6 @@ void G4CCMRunManager::GetFinalScores(const G4Event* anEvent) {
             int pmt_row = static_cast<int>((*pmtHC)[i]->GetCCMPMTKeyRow());
             int pmt_number = static_cast<int>((*pmtHC)[i]->GetCCMPMTKeyNumber());
             fKey = CCMPMTKey(pmt_row, pmt_number);
-            std::cout << "on pmt " << fKey << std::endl;
             // now let's grab information necessary to make a CCMMCPE
             std::vector<CCMMCPE> all_CCMMCPE;
 

@@ -97,14 +97,16 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         CCMMCPEMap = response_->GetHitsMap(); 
     }
     
-    // now save simulation set up info (just MC tree for now) into S frame
-    I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
-    
-    // put mcTree into frame
-    simframe->Put(mcPrimaryName_, mcTree_);
-
-    // push simframe
-    PushFrame(simframe);
+    if (!saved_simulation_setup_) {
+        // now save simulation set up info (just MC tree for now) into S frame
+        I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
+        // put mcTree into frame
+        simframe->Put(mcPrimaryName_, mcTree_);
+        // push simframe
+        PushFrame(simframe);
+        
+        saved_simulation_setup_ = true; 
+    }
     
     // Put the hits to the DAQ frame 
     if (!hitSeriesName_.empty()) {
