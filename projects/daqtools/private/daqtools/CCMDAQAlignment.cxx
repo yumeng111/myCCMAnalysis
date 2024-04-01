@@ -617,7 +617,7 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
         std::vector<int64_t> time_diffs;
         for(size_t j=0; j<n_daqs; ++j) {
             for(size_t k=0; k<cached_times.at(j).size(); ++k) {
-                int64_t time_diff = CCMAnalysis::Binary::subtract_times(cached_times.at(k).at(k).at(upper), cached_times.at(k).at(k).at(lower));
+                int64_t time_diff = CCMAnalysis::Binary::subtract_times(cached_times.at(j).at(k).at(upper), cached_times.at(j).at(k).at(lower));
                 time_diffs.push_back(time_diff);
             }
         }
