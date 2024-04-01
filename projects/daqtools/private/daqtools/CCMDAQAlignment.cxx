@@ -553,6 +553,26 @@ struct timespec add_ns_to_timespec(struct timespec spec, int64_t ns) {
     return result;
 }
 
+struct timespec min_timespecs(std::vector<struct timespec> specs) {
+    size_t N = specs.size();
+
+    int64_t min_tv_sec = specs.at(0).tv_sec;
+    int64_t min_tv_nsec = specs.at(0).tv_nsec;
+
+    for(size_t i=1; i<N; ++i) {
+        if(int64_t(specs.at(i).tv_sec) < min_tv_sec or ((int64_t(specs.at(i).tv_sec) == min_tv_sec) and (int64_t(specs.at(i).tv_nsec) < min_tv_nsec))) {
+            min_tv_sec = int64_t(specs.at(i).tv_sec);
+            min_tv_nsec = int64_t(specs.at(i).tv_nsec);
+        }
+    }
+
+    struct timespec result;
+    result.tv_sec = min_tv_sec;
+    result.tv_nsec = min_tv_nsec;
+
+    return result;
+}
+
 struct timespec average_timespecs(std::vector<struct timespec> specs) {
     size_t N = specs.size();
 
@@ -762,7 +782,7 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
             }
         }
 
-        struct timespec reference_time = average_timespecs(timespec_samples);
+        struct timespec reference_time = min_timespecs(timespec_samples);
         for(size_t i=min_size-1; i>0; --i) {
             size_t upper = i;
             size_t lower = i-1;
