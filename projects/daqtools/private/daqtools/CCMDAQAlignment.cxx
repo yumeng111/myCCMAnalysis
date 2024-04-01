@@ -755,7 +755,10 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
         std::vector<struct timespec> timespec_samples;
         for(size_t i=0; i<n_daqs; ++i) {
             for(size_t j=0; j<cached_times.at(i).size(); ++j) {
-                timespec_samples.push_back(cached_computer_times.at(i).at(j).back());
+                struct timespec sample = cached_computer_times.at(i).at(j).back();
+                if(sample.tv_sec > 0 or sample.tv_nsec > 0) {
+                    timespec_samples.push_back(cached_computer_times.at(i).at(j).back());
+                }
             }
         }
 
@@ -767,7 +770,8 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
             for(size_t j=0; j<n_daqs; ++j) {
                 for(size_t k=0; k<cached_times.at(j).size(); ++k) {
                     int64_t time_diff = CCMAnalysis::Binary::subtract_times(cached_times.at(j).at(k).at(upper), cached_times.at(j).at(k).at(lower));
-                    time_diffs.push_back(time_diff);
+                    if(time_diff > 0)
+                        time_diffs.push_back(time_diff);
                 }
             }
             int64_t ns = average_timediffs_in_ns(time_diffs);
