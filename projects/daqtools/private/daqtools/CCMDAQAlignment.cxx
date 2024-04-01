@@ -712,6 +712,11 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
 
     std::vector<std::vector<std::deque<int64_t>>> cached_times;
     std::vector<std::vector<std::deque<struct timespec>>> cached_computer_times;
+    for(size_t i=0; i<n_daqs; ++i) {
+        cached_times.push_back(readers[i].GetAllTimes());
+        cached_computer_times.push_back(readers[i].GetAllComputerTimes());
+    }
+
     bool have_computer_times;
     if(cached_computer_times.size() > 0) {
         have_computer_times = true;
@@ -732,11 +737,6 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
     }
 
     if(have_computer_times) {
-        for(size_t i=0; i<n_daqs; ++i) {
-            cached_times.push_back(readers[i].GetAllTimes());
-            cached_computer_times.push_back(readers[i].GetAllComputerTimes());
-        }
-
         size_t min_size = cached_times.at(0).at(0).size();
         for(size_t i=0; i<n_daqs; ++i) {
             for(size_t j=0; j<cached_times.at(i).size(); ++j) {
