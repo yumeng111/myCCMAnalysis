@@ -51,6 +51,11 @@ std::vector<uint32_t> read_times(I3FramePtr frame) {
     return frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].board_times;
 }
 
+std::vector<struct timespec> read_computer_times(I3FramePtr frame) {
+    // Get the computer times from the frame
+    return frame->Get<CCMAnalysis::Binary::CCMTriggerReadout>("CCMTriggerReadout").triggers[0].board_computer_times;
+}
+
 class TimeReader {
     // Frame sequence to read from
     dataio::I3FrameSequence frame_seq;
@@ -60,6 +65,7 @@ class TimeReader {
     size_t n_boards;
     // Cache of read times
     std::vector<std::deque<int64_t>> time_cache;
+    std::vector<std::deque<struct timespec>> computer_time_cache;
     // Last raw time read
     std::vector<uint32_t> last_raw_time;
 
@@ -90,6 +96,7 @@ class TimeReader {
         if(not result)
             return false;
         std::vector<uint32_t> time_read = read_times(current_frame);
+        std::vector<struct timespec> computer_time_read = read_computer_times(current_frame);
         std::vector<uint8_t> mask = empty_mask(current_frame);
         for(size_t i=0; i<n_boards; ++i) {
             if(not mask[i]) // Empty triggers have no time associated so we can skip placing anything in the cache
@@ -97,6 +104,7 @@ class TimeReader {
             uint32_t raw_time = time_read[i];
             int64_t abs_time = time_cache[i].back() + CCMAnalysis::Binary::subtract_times(raw_time, last_raw_time[i]);
             time_cache[i].push_back(abs_time);
+            computer_time_cache[i].push_back(computer_time_read[i]);
             last_raw_time[i] = raw_time;
         }
         return true;
@@ -113,14 +121,17 @@ public:
         // Set up the containers and fill the cache
         this->n_boards = config.digitizer_boards.size();
         time_cache.resize(n_boards);
+        computer_time_cache.resize(n_boards);
         last_raw_time.resize(n_boards);
         std::vector<uint32_t> time_read = read_times(current_frame);
+        std::vector<struct timespec> computer_time_read = read_computer_times(current_frame);
         std::vector<uint8_t> mask = empty_mask(current_frame);
         std::fill(last_raw_time.begin(), last_raw_time.end(), 0);
         for(size_t i=0; i< n_boards; ++i) {
             if(not mask[i])
                 continue;
             time_cache[i].push_back(time_read[i]);
+            computer_time_cache[i].push_back(computer_time_read[i]);
             last_raw_time[i] = time_read[i];
         }
 
@@ -162,6 +173,14 @@ public:
         std::vector<int64_t> result(N);
         std::copy(std::begin(time_cache[board_idx]), std::begin(time_cache[board_idx]) + N, std::begin(result));
         return result;
+    }
+
+    std::vector<std::deque<int64_t>> & GetAllTimes() {
+        return time_cache;
+    }
+
+    std::vector<std::deque<struct timespec>> & GetAllComputerTimes() {
+        return computer_time_cache;
     }
 
     size_t NBoards() const {
@@ -303,6 +322,142 @@ int64_t get_time_delta(std::vector<int64_t> times0, std::vector<int64_t> times1,
         return times0[delta_trigger] - times1[0];
 }
 
+struct timespec subtract_trigger_timediff_from_timespec(struct timespec spec, int64_t delta_trigger) {
+    constexpr long double ns_per_cycle = 8;
+    if(delta_trigger < 0)
+        return spec;
+    struct timespec result = spec;
+    for(size_t i=0; i<ns_per_cycle; ++i) {
+        int64_t remaining = delta_trigger;
+
+        if(remaining > 1e9) {
+            int64_t diff = delta_trigger / 1e9;
+            result.tv_nsec -= diff;
+            remaining -= diff * 1e9;
+        }
+
+        if(remaining < result.tv_nsec) {
+            result.tv_nsec -= remaining;
+            remaining = 0;
+        } else {
+            int64_t nsec = 1e9 + result.tv_nsec - remaining;
+            result.tv_sec -= 1;
+            result.tv_nsec = nsec;
+            remaining = 0;
+        }
+    }
+
+    if(ns_per_cycle - size_t(ns_per_cycle) > 0) {
+        int64_t remaining = delta_trigger * (ns_per_cycle - size_t(ns_per_cycle));
+
+        if(remaining > 1e9) {
+            int64_t diff = delta_trigger / 1e9;
+            result.tv_nsec -= diff;
+            remaining -= diff * 1e9;
+        }
+
+        if(remaining < result.tv_nsec) {
+            result.tv_nsec -= remaining;
+            remaining = 0;
+        } else {
+            int64_t nsec = 1e9 + result.tv_nsec - remaining;
+            result.tv_sec -= 1;
+            result.tv_nsec = nsec;
+            remaining = 0;
+        }
+    }
+
+    return result;
+}
+
+struct timespec subtract_ns_from_timespec(struct timespec spec, int64_t ns) {
+    if(ns < 0)
+        return spec;
+
+    struct timespec result = spec;
+    int64_t remaining = ns;
+
+    if(remaining > 1e9) {
+        int64_t diff = ns / 1e9;
+        result.tv_nsec -= diff;
+        remaining -= diff * 1e9;
+    }
+
+    if(remaining < result.tv_nsec) {
+        result.tv_nsec -= remaining;
+        remaining = 0;
+    } else {
+        int64_t nsec = 1e9 + result.tv_nsec - remaining;
+        result.tv_sec -= 1;
+        result.tv_nsec = nsec;
+        remaining = 0;
+    }
+
+    return result;
+}
+
+struct timespec average_timespecs(std::vector<struct timespec> specs) {
+    size_t N = specs.size();
+
+    int64_t min_tv_sec = specs.at(0).tv_sec;
+
+    for(size_t i=1; i<N; ++i) {
+        min_tv_sec = std::min(min_tv_sec, int64_t(specs.at(i).tv_sec));
+    }
+
+    int64_t total_tv_sec = 0;
+    int64_t total_tv_nsec = 0;
+    for(size_t i=0; i<N; ++i) {
+        total_tv_sec += specs.at(i).tv_sec - min_tv_sec;
+        total_tv_nsec += specs.at(i).tv_nsec;
+        if(total_tv_nsec > 1e9) {
+            int64_t diff = total_tv_nsec / 1e9;
+            total_tv_sec += diff;
+            total_tv_nsec -= diff * 1e9;
+        }
+    }
+
+    long double total_tv_sec_int = int64_t(total_tv_sec / N);
+    long double total_tv_sec_fraction = ((long double)(total_tv_sec) / (long double)(N)) - total_tv_sec_int;
+    total_tv_sec = total_tv_sec_int;
+    total_tv_nsec /= N;
+    total_tv_nsec += total_tv_sec_fraction * 1e9;
+    if(total_tv_nsec > 1e9) {
+        int64_t diff = total_tv_nsec / 1e9;
+        total_tv_sec += diff;
+        total_tv_nsec -= diff * 1e9;
+    }
+
+    total_tv_sec += min_tv_sec;
+
+    struct timespec result;
+    result.tv_sec = total_tv_sec;
+    result.tv_nsec = total_tv_nsec;
+    return result;
+}
+
+int64_t average_timediffs_in_ns(std::vector<int64_t> times) {
+    constexpr long double ns_per_cycle = 8;
+
+    size_t N = times.size();
+
+    int64_t min_time = times.at(0);
+
+    for(size_t i=1; i<N; ++i) {
+        min_time = std::min(min_time, times.at(i));
+    }
+
+    int64_t total_time = 0;
+    for(size_t i=0; i<N; ++i) {
+        total_time += times.at(i) - min_time;
+    }
+
+    total_time /= N;
+    total_time += min_time;
+
+    return total_time * ns_per_cycle;
+}
+
 int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeReader & reader1, size_t board_idx1, std::vector<int64_t> jitter_tests={-2, 2}, int64_t max_delta=2, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
     // Compute the time offset by testing various offsets and selecting the offset that results the the most valid time pairs
 
@@ -380,7 +535,7 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
     return std::get<1>(best_pair_result);
 }
 
-std::vector<std::vector<int64_t>> compute_offsets(std::vector<std::vector<std::string>> file_lists, int64_t max_delta=2, std::vector<int64_t> jitter_tests={-2, 2}, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
+std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(std::vector<std::vector<std::string>> file_lists, int64_t max_delta=2, std::vector<int64_t> jitter_tests={-2, 2}, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
     // Compute offsets for all boards
     size_t n_daqs = file_lists.size();
     std::vector<std::vector<int64_t>> offsets(n_daqs);
@@ -397,7 +552,52 @@ std::vector<std::vector<int64_t>> compute_offsets(std::vector<std::vector<std::s
     for(size_t i=0; i<n_daqs; ++i)
         for(size_t j=1; j<n_boards[i]; ++j)
             offsets[i][j] = compute_trigger_offset(readers[0], 0, readers[i], j, jitter_tests, max_delta, min_triggers, max_triggers, increment, threshold);
-    return offsets;
+
+    std::vector<std::vector<std::deque<int64_t>>> cached_times;
+    std::vector<std::vector<std::deque<struct timespec>>> cached_computer_times;
+    for(size_t i=0; i<n_daqs; ++i) {
+        cached_times.push_back(readers[i].GetAllTimes());
+        cached_computer_times.push_back(readers[i].GetAllComputerTimes());
+    }
+
+    size_t min_size = cached_times.at(0).at(0).size();
+    for(size_t i=0; i<n_daqs; ++i) {
+        for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+            min_size = std::min(min_size, cached_times.at(i).at(j).size());
+            min_size = std::min(min_size, cached_computer_times.at(i).at(j).size());
+        }
+    }
+
+    for(size_t i=0; i<n_daqs; ++i) {
+        for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+            cached_times.at(i).at(j).resize(min_size);
+            cached_computer_times.at(i).at(j).resize(min_size);
+        }
+    }
+
+    std::vector<struct timespec> timespec_samples;
+    for(size_t i=0; i<n_daqs; ++i) {
+        for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+            timespec_samples.push_back(cached_computer_times.at(i).at(j).back());
+        }
+    }
+
+    struct timespec reference_time = average_timespecs(timespec_samples);
+    for(size_t i=min_size-1; i>0; --i) {
+        size_t upper = i;
+        size_t lower = i-1;
+        std::vector<int64_t> time_diffs;
+        for(size_t j=0; j<n_daqs; ++j) {
+            for(size_t k=0; k<cached_times.at(j).size(); ++k) {
+                int64_t time_diff = CCMAnalysis::Binary::subtract_times(cached_times.at(k).at(k).at(upper), cached_times.at(k).at(k).at(lower));
+                time_diffs.push_back(time_diff);
+            }
+        }
+        int64_t ns = average_timediffs_in_ns(time_diffs);
+        reference_time = subtract_ns_from_timespec(reference_time, ns);
+    }
+
+    return {offsets, reference_time};
 }
 
 class MergedSource : public I3Module {
@@ -752,7 +952,8 @@ void MergedSource::Configure() {
     max_delta = std::ceil(max_time_diff / ns_per_cycle);
 
     // Compute the offsets to use for trigger alignment
-    offsets = compute_offsets(file_lists, max_delta);
+    std::tuple<std::vector<std::vector<int64_t>>, struct timespec> offset_results = compute_offsets(file_lists, max_delta);
+    offsets = std::get<0>(offset_results);
     int64_t max_offset = 0;
     int64_t min_offset = 0;
     for(size_t daq_idx=0; daq_idx < offsets.size(); ++daq_idx) {
