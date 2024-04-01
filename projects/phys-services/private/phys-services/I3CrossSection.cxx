@@ -22,7 +22,7 @@ namespace
 {
     double particleMass(I3Particle::ParticleType type)
     {
-        I3Particle p(I3Particle::Null, type);
+        I3Particle p(type);
         if (!p.HasMass())
         {
             log_debug_stream(
