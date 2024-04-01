@@ -84,13 +84,23 @@ struct timespec ParseISO8601(std::string const & input) {
 bool ParseFileName(std::string fname, int & run_number, int & file_number, struct timespec & spec) {
     std::string parse = fname;
 
-    std::string delimiter = "_";
+    std::string delimiter = "/";
     size_t char_pos = parse.find(delimiter);
+    size_t size = char_pos;
+    if(char_pos == std::string::npos) {
+        log_warn("Filename \"%s\" folder could not be parsed.", fname.c_str());
+    } else {
+        size = char_pos;
+        parse = parse.substr(size + delimiter.size(), std::string::npos);
+    }
+
+    delimiter = "_";
+    char_pos = parse.find(delimiter);
     if(char_pos == std::string::npos) {
         log_warn("Filename \"%s\" prefix could not be parsed.", fname.c_str());
         return false;
     }
-    size_t size = char_pos;
+    size = char_pos;
     std::string prefix = parse.substr(0, size);
     parse = parse.substr(size + delimiter.size(), std::string::npos);
 
