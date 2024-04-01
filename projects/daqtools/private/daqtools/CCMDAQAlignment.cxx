@@ -35,6 +35,14 @@
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
 
+namespace {
+std::string GetTimeStringToSecond(time_t now) {
+    char buf[sizeof "2011-10-08T07:07:09Z"];
+    std::strftime(buf, sizeof buf, "%FT%TZ", gmtime(&now));
+    return std::string(buf);
+}
+}
+
 inline int ParseInt(const char* value) {
     return std::strtol(value, nullptr, 10);
 }
@@ -560,9 +568,9 @@ struct timespec min_timespecs(std::vector<struct timespec> specs) {
     int64_t min_tv_nsec = specs.at(0).tv_nsec;
 
     for(size_t i=1; i<N; ++i) {
-        if(int64_t(specs.at(i).tv_sec) < min_tv_sec or ((int64_t(specs.at(i).tv_sec) == min_tv_sec) and (int64_t(specs.at(i).tv_nsec) < min_tv_nsec))) {
-            min_tv_sec = int64_t(specs.at(i).tv_sec);
-            min_tv_nsec = int64_t(specs.at(i).tv_nsec);
+        if((specs.at(i).tv_sec < min_tv_sec) or ((specs.at(i).tv_sec == min_tv_sec) and (specs.at(i).tv_nsec < min_tv_nsec))) {
+            min_tv_sec = specs.at(i).tv_sec;
+            min_tv_nsec = specs.at(i).tv_nsec;
         }
     }
 
@@ -777,7 +785,7 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
             for(size_t j=0; j<cached_times.at(i).size(); ++j) {
                 struct timespec sample = cached_computer_times.at(i).at(j).back();
                 if(sample.tv_sec > 0 or sample.tv_nsec > 0) {
-                    timespec_samples.push_back(cached_computer_times.at(i).at(j).back());
+                    timespec_samples.push_back(sample);
                 }
             }
         }
@@ -787,15 +795,24 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
             size_t upper = i;
             size_t lower = i-1;
             std::vector<int64_t> time_diffs;
+            timespec_samples.clear();
             for(size_t j=0; j<n_daqs; ++j) {
                 for(size_t k=0; k<cached_times.at(j).size(); ++k) {
                     int64_t time_diff = cached_times.at(j).at(k).at(upper) - cached_times.at(j).at(k).at(lower);
                     if(time_diff > 0)
                         time_diffs.push_back(time_diff);
+
+                    struct timespec sample = cached_computer_times.at(j).at(k).at(lower);
+                    if(sample.tv_sec > 0 or sample.tv_nsec > 0) {
+                        timespec_samples.push_back(sample);
+                    }
                 }
             }
             int64_t ns = average_timediffs_in_ns(time_diffs);
             reference_time = subtract_ns_from_timespec(reference_time, ns);
+
+            timespec_samples.push_back(reference_time);
+            reference_time = min_timespecs(timespec_samples);
         }
 
         return {offsets, reference_time};
@@ -1222,8 +1239,13 @@ void MergedSource::Configure() {
     offsets = std::get<0>(offset_results);
     start_time = std::get<1>(offset_results);
 
-    if(start_time.tv_sec == 0 and start_time.tv_nsec == 0 and parse_successful) {
-        start_time = parsed_time;
+    if(start_time.tv_sec == 0 and start_time.tv_nsec == 0) {
+        if(parse_successful) {
+            log_warn("Start time cannot be determined from i3 file. Defaulting to file timestamp.");
+            start_time = parsed_time;
+        } else {
+            log_warn("Start time cannot be determined from i3 file or file timestamp. Defaulting to zero");
+        }
     }
 
     if(run_number == -1) {
