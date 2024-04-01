@@ -85,7 +85,7 @@ bool ParseFileName(std::string fname, int & run_number, int & file_number, struc
     std::string parse = fname;
 
     std::string delimiter = "/";
-    size_t char_pos = parse.find(delimiter);
+    size_t char_pos = parse.rfind(delimiter);
     size_t size = char_pos;
     if(char_pos == std::string::npos) {
         log_warn("Filename \"%s\" folder could not be parsed.", fname.c_str());
