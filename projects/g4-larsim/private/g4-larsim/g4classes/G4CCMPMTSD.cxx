@@ -171,7 +171,6 @@ G4bool G4CCMPMTSD::ProcessHits_boundary(const G4Step* aStep, G4TouchableHistory*
         hit = new G4CCMPMTHit();  // so create new hit
         hit->SetCCMPMTKeyRow(static_cast<G4int>(row));
         hit->SetCCMPMTKeyNumber(static_cast<G4int>(pmt_number));
-        std::cout << "setting pmt row, number = " << row << ", " << pmt_number << std::endl;
         hit->SetPMTNumber(pmtNumber);
         hit->SetPMTPhysVol(physVol);
         fPMTHitCollection->insert(hit);

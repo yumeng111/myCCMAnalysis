@@ -17,8 +17,11 @@ parser.add_argument("-p", dest="particle", default="e-", help="particle type")
 parser.add_argument("-e", dest="energy", default=1.0*I3Units.MeV, help="particle energy")
 parser.add_argument("-l", dest="location", default=I3VectorDouble([0.0, 0.0, 0.0]), help="particle location")
 parser.add_argument("-d", dest="direction", default=I3VectorDouble([0.0, 0.0, 1.0]), help="particle direction")
+parser.add_argument("-n", dest="Nevents", default=1, help = "number of events to process")
+#parser.add_argument("--gcd", dest="gcd", type=str, help="GCD file", default=expandvars('./test.i3.gz'))
 
 args = parser.parse_args()
+#gcd_file = args.gcd
 
 tray = I3Tray()
 tray.AddModule("I3InfiniteSource", "source", Stream=icetray.I3Frame.DAQ)
@@ -26,5 +29,5 @@ tray.AddService("CCMSimpleInjectorFactory", "injector", ParticleType=args.partic
 tray.AddService("CCM200ResponseFactory", "response")
 tray.AddModule("CCMSimulator", "ccm simulator", InjectorServiceName="injector", ResponseServiceName="response")
 tray.AddModule("I3Writer", "i3-writer", filename = "g4-larsim-test.i3", streams = [icetray.I3Frame.DAQ, icetray.I3Frame.Simulation])
-tray.Execute(1)
+tray.Execute(args.Nevents)
 

@@ -346,7 +346,6 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
     // Place the main volume
     if(fMainVolumeOn) {
         fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this);
-        G4cout << "just made main volume" << G4endl;
     }
 
     return fExperimentalHall_phys;

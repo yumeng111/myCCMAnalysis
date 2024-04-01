@@ -38,24 +38,23 @@ class G4CCMEventAction;
 class G4CCMTrackingAction;
 class G4CCMSteppingMessenger;
 
-class G4CCMSteppingAction : public G4UserSteppingAction
-{
- public:
-  G4CCMSteppingAction(G4CCMEventAction*);
-  ~G4CCMSteppingAction() override;
+class G4CCMSteppingAction : public G4UserSteppingAction {
+    public:
+        G4CCMSteppingAction(G4CCMEventAction*);
+        ~G4CCMSteppingAction() override;
 
-  void UserSteppingAction(const G4Step*) override;
+        void UserSteppingAction(const G4Step*) override;
 
-  void SetOneStepPrimaries(G4bool b) { fOneStepPrimaries = b; }
-  G4bool GetOneStepPrimaries() { return fOneStepPrimaries; }
+        void SetOneStepPrimaries(G4bool b) { fOneStepPrimaries = b; }
+        G4bool GetOneStepPrimaries() { return fOneStepPrimaries; }
 
- private:
-  G4bool fOneStepPrimaries = false;
-  G4CCMSteppingMessenger* fSteppingMessenger = nullptr;
-  G4CCMEventAction* fEventAction = nullptr;
-  G4OpBoundaryProcess* fBoundary = nullptr;
+    private:
+        G4bool fOneStepPrimaries = false;
+        G4CCMSteppingMessenger* fSteppingMessenger = nullptr;
+        G4CCMEventAction* fEventAction = nullptr;
+        G4OpBoundaryProcess* fBoundary = nullptr;
 
-  G4OpBoundaryProcessStatus fExpectedNextStatus = Undefined;
+        G4OpBoundaryProcessStatus fExpectedNextStatus = Undefined;
 };
 
 #endif
