@@ -85,7 +85,7 @@ void CCMEventSplitter::Configure() {
         log_fatal("You must specify an \"InputPrefix\" parameter for CCMEventSplitter");
     if(output_prefix_.empty()) {
         output_prefix_ = input_prefix_;
-        log_debug("Setting output_prefix_ equal to input_prefix_ with value \"%s\"", input_prefix_.c_str())
+        log_debug("Setting output_prefix_ equal to input_prefix_ with value \"%s\"", input_prefix_.c_str());
     }
 
     std::vector<CCMOMGeo::OMType> pmt_types_intersection;
