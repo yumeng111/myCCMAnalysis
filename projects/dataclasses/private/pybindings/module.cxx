@@ -48,7 +48,7 @@ namespace bp = boost::python;
 //
 #define REGISTER_THESE_THINGS                                           \
   (CCMGeometry)(CCMOMGeo)                                               \
-  (I3Time)(I3Position)(I3Direction)(I3Geometry)(I3MCTree)               \
+  (I3Time)(I3Position)(I3Direction)(I3Geometry)(I3MCTree)(CCMTime)      \
   (CCMRecoPulse)                                                        \
   (I3Particle)(I3RecoPulse)(I3LinearizedMCTree)(I3TimeWindow)           \
   (CCMWaveform)(CCMBCMSummary)(CCMFP3Summary)(NIMLogicPulse)            \
