@@ -13,6 +13,13 @@
 #include <iostream>
 #include <algorithm>
 
+#include <ctime>
+#include <cstdio>
+#include <string>
+#include <time.h>
+#include <cstdlib>
+#include <cstring>
+
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
 #include <icetray/I3TrayInfo.h>
@@ -27,6 +34,118 @@
 
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
+
+inline int ParseInt(const char* value) {
+    return std::strtol(value, nullptr, 10);
+}
+
+struct timespec ParseISO8601(std::string const & input) {
+    struct timespec precision_time;
+    precision_time.tv_sec = 0;
+    precision_time.tv_nsec = 0;
+    constexpr const size_t expected_length = sizeof("1234-12-12T12:12:12Z") - 1;
+    static_assert(expected_length == 20, "Unexpected ISO 8601 date/time length");
+
+    if (input.size() < expected_length) {
+        return precision_time;
+    }
+
+    size_t size = input.size();
+    char * c_str = new char[size + 1];
+    std::memcpy(c_str, input.c_str(), size + 1);
+
+    std::tm time = { 0 };
+    time.tm_year = ParseInt(&c_str[0]) - 1900;
+    time.tm_mon = ParseInt(&c_str[5]) - 1;
+    time.tm_mday = ParseInt(&c_str[8]);
+    time.tm_hour = ParseInt(&c_str[11]);
+    time.tm_min = ParseInt(&c_str[14]);
+    time.tm_sec = ParseInt(&c_str[17]);
+    time.tm_isdst = 0;
+    precision_time.tv_sec = timegm(&time);
+    if(input.size() > expected_length) {
+        char * start = &c_str[20];
+        char * end_pos;
+        long sub_second_count = std::strtol(start, &end_pos, 10);
+        size_t sub_second_len = std::distance(start, end_pos);
+        if(sub_second_count > 9) {
+            for(unsigned int i=0; i<sub_second_len-9; ++i)
+                sub_second_count /= 10;
+        } else if(sub_second_count < 9) {
+            for(unsigned int i=0; i<9-sub_second_len; ++i)
+                sub_second_count *= 10;
+        }
+        precision_time.tv_nsec = sub_second_count;
+    }
+    delete[] c_str;
+    return precision_time;
+}
+
+bool ParseFileName(std::string fname, int & run_number, int & file_number, struct timespec & spec) {
+    std::string parse = fname;
+
+    std::string delimiter = "_";
+    size_t char_pos = parse.find(delimiter);
+    if(char_pos == std::string::npos) {
+        log_warn("Filename \"%s\" prefix could not be parsed.", fname.c_str());
+        return false;
+    }
+    size_t size = char_pos;
+    std::string prefix = parse.substr(0, size);
+    parse = parse.substr(size + delimiter.size(), std::string::npos);
+
+    char_pos = parse.find(delimiter);
+    if(char_pos == std::string::npos) {
+        log_warn("Filename \"%s\" run_number could not be parsed.", fname.c_str());
+        return false;
+    }
+    size = char_pos;
+    std::string run_string = parse.substr(0, size);
+    parse = parse.substr(size + delimiter.size(), std::string::npos);
+
+    delimiter = "run";
+    char_pos = run_string.find(delimiter);
+    if(char_pos == std::string::npos) {
+        log_warn("Filename \"%s\" run_number could not be parsed.", fname.c_str());
+        return false;
+    }
+    size = char_pos;
+    run_string = run_string.substr(size + delimiter.size(), std::string::npos);
+    run_number = std::atoi(run_string.c_str());
+
+    delimiter = "_";
+    char_pos = parse.find(delimiter);
+    if(char_pos == std::string::npos) {
+        log_warn("Filename \"%s\" file_number could not be parsed.", fname.c_str());
+        return false;
+    }
+    size = char_pos;
+    std::string file_string = parse.substr(0, size);
+    parse = parse.substr(size + delimiter.size(), std::string::npos);
+
+    delimiter = "file";
+    char_pos = file_string.find(delimiter);
+    if(char_pos == std::string::npos) {
+        log_warn("Filename \"%s\" file_number could not be parsed.", fname.c_str());
+        return false;
+    }
+    size = char_pos;
+    file_string = file_string.substr(size + delimiter.size(), std::string::npos);
+    file_number = std::atoi(file_string.c_str());
+
+    delimiter = ".";
+    char_pos = parse.find(delimiter);
+    if(char_pos == std::string::npos) {
+        log_warn("Filename \"%s\" time could not be parsed.", fname.c_str());
+        return false;
+    }
+    size = char_pos;
+    std::string iso_string = parse.substr(0, size);
+    parse = parse.substr(size + delimiter.size(), std::string::npos);
+    spec = ParseISO8601(iso_string);
+
+    return true;
+}
 
 std::vector<uint8_t> empty_mask(I3FramePtr frame) {
     // Create a mask that ignores empty triggers
@@ -583,49 +702,76 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
 
     std::vector<std::vector<std::deque<int64_t>>> cached_times;
     std::vector<std::vector<std::deque<struct timespec>>> cached_computer_times;
-    for(size_t i=0; i<n_daqs; ++i) {
-        cached_times.push_back(readers[i].GetAllTimes());
-        cached_computer_times.push_back(readers[i].GetAllComputerTimes());
-    }
-
-    size_t min_size = cached_times.at(0).at(0).size();
-    for(size_t i=0; i<n_daqs; ++i) {
-        for(size_t j=0; j<cached_times.at(i).size(); ++j) {
-            min_size = std::min(min_size, cached_times.at(i).at(j).size());
-            min_size = std::min(min_size, cached_computer_times.at(i).at(j).size());
-        }
-    }
-
-    for(size_t i=0; i<n_daqs; ++i) {
-        for(size_t j=0; j<cached_times.at(i).size(); ++j) {
-            cached_times.at(i).at(j).resize(min_size);
-            cached_computer_times.at(i).at(j).resize(min_size);
-        }
-    }
-
-    std::vector<struct timespec> timespec_samples;
-    for(size_t i=0; i<n_daqs; ++i) {
-        for(size_t j=0; j<cached_times.at(i).size(); ++j) {
-            timespec_samples.push_back(cached_computer_times.at(i).at(j).back());
-        }
-    }
-
-    struct timespec reference_time = average_timespecs(timespec_samples);
-    for(size_t i=min_size-1; i>0; --i) {
-        size_t upper = i;
-        size_t lower = i-1;
-        std::vector<int64_t> time_diffs;
-        for(size_t j=0; j<n_daqs; ++j) {
-            for(size_t k=0; k<cached_times.at(j).size(); ++k) {
-                int64_t time_diff = CCMAnalysis::Binary::subtract_times(cached_times.at(j).at(k).at(upper), cached_times.at(j).at(k).at(lower));
-                time_diffs.push_back(time_diff);
+    bool have_computer_times;
+    if(cached_computer_times.size() > 0) {
+        have_computer_times = true;
+        for(size_t i=0; i<n_daqs; ++i) {
+            bool daq_has_times = true;
+            for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+                if(cached_times.at(i).at(j).size() == 0) {
+                    daq_has_times = false;
+                }
+            }
+            if(not daq_has_times) {
+                have_computer_times = false;
+                break;
             }
         }
-        int64_t ns = average_timediffs_in_ns(time_diffs);
-        reference_time = subtract_ns_from_timespec(reference_time, ns);
+    } else {
+        have_computer_times = false;
     }
 
-    return {offsets, reference_time};
+    if(have_computer_times) {
+        for(size_t i=0; i<n_daqs; ++i) {
+            cached_times.push_back(readers[i].GetAllTimes());
+            cached_computer_times.push_back(readers[i].GetAllComputerTimes());
+        }
+
+        size_t min_size = cached_times.at(0).at(0).size();
+        for(size_t i=0; i<n_daqs; ++i) {
+            for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+                min_size = std::min(min_size, cached_times.at(i).at(j).size());
+                min_size = std::min(min_size, cached_computer_times.at(i).at(j).size());
+            }
+        }
+
+        for(size_t i=0; i<n_daqs; ++i) {
+            for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+                cached_times.at(i).at(j).resize(min_size);
+                cached_computer_times.at(i).at(j).resize(min_size);
+            }
+        }
+
+        std::vector<struct timespec> timespec_samples;
+        for(size_t i=0; i<n_daqs; ++i) {
+            for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+                timespec_samples.push_back(cached_computer_times.at(i).at(j).back());
+            }
+        }
+
+        struct timespec reference_time = average_timespecs(timespec_samples);
+        for(size_t i=min_size-1; i>0; --i) {
+            size_t upper = i;
+            size_t lower = i-1;
+            std::vector<int64_t> time_diffs;
+            for(size_t j=0; j<n_daqs; ++j) {
+                for(size_t k=0; k<cached_times.at(j).size(); ++k) {
+                    int64_t time_diff = CCMAnalysis::Binary::subtract_times(cached_times.at(j).at(k).at(upper), cached_times.at(j).at(k).at(lower));
+                    time_diffs.push_back(time_diff);
+                }
+            }
+            int64_t ns = average_timediffs_in_ns(time_diffs);
+            reference_time = subtract_ns_from_timespec(reference_time, ns);
+        }
+
+        return {offsets, reference_time};
+    } else {
+        struct timespec reference_time;
+        reference_time.tv_sec = 0;
+        reference_time.tv_nsec = 0;
+
+        return {offsets, reference_time};
+    }
 }
 
 class MergedSource : public I3Module {
@@ -647,6 +793,11 @@ class MergedSource : public I3Module {
     std::vector<std::vector<int64_t>> offsets;
     struct timespec start_time;
     int run_number;
+
+    bool parse_successful = false;
+    int parsed_run_number = 0;
+    int parsed_file_number = 0;
+    struct timespec parsed_time;
 
     size_t counter = 0;
     size_t incomplete_counter = 0;
@@ -964,16 +1115,16 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
     struct timespec current_time = add_ns_to_timespec(start_time, avg_time_in_ns);
 
     boost::shared_ptr<CCMEventHeader> header = boost::make_shared<CCMEventHeader>();
-    I3Time start_time;
-    start_time.SetUnixTime(current_time.tv_sec, current_time.tv_nsec);
-    I3Time end_time = start_time + max_wf_size * 2;
+    I3Time event_start_time;
+    event_start_time.SetUnixTime(current_time.tv_sec, current_time.tv_nsec);
+    I3Time event_end_time = event_start_time + max_wf_size * 2;
 
     header->SetRunID(run_number);
     header->SetSubRunID(0);
     header->SetEventID(counter);
     header->SetSubEventID(0);
-    header->SetStartTime(start_time);
-    header->SetEndTime(end_time);
+    header->SetStartTime(event_start_time);
+    header->SetEndTime(event_end_time);
 
     if(is_incomplete)
         ++incomplete_counter;
@@ -1005,10 +1156,51 @@ void MergedSource::Configure() {
 
     GetParameter("RunNumber", run_number);
 
+    parse_successful = false;
+    parsed_run_number = 0;
+    parsed_file_number = 0;
+    parsed_time.tv_sec = 0;
+    parsed_time.tv_nsec = 0;
+
+    for(size_t i=0; i<file_lists.size(); ++i) {
+        std::string fname = file_lists.at(i).front();
+        int this_parsed_run_number;
+        int this_parsed_file_number;
+        struct timespec this_parsed_time;
+        bool okay = ParseFileName(fname, this_parsed_run_number, this_parsed_file_number, this_parsed_time);
+        if(not okay)
+            continue;
+        if(parse_successful) {
+            parsed_file_number = std::min(parsed_file_number, this_parsed_file_number);
+            if(parsed_time.tv_sec > this_parsed_time.tv_sec or ((parsed_time.tv_sec == this_parsed_time.tv_sec) and (parsed_time.tv_nsec > this_parsed_time.tv_nsec))) {
+                parsed_time = this_parsed_time;
+            }
+        } else {
+            parsed_run_number = this_parsed_run_number;
+            parsed_file_number = this_parsed_file_number;
+            parsed_time = this_parsed_time;
+        }
+        parse_successful = true;
+    }
+
     // Compute the offsets to use for trigger alignment
     std::tuple<std::vector<std::vector<int64_t>>, struct timespec> offset_results = compute_offsets(file_lists, max_delta);
     offsets = std::get<0>(offset_results);
     start_time = std::get<1>(offset_results);
+
+    if(start_time.tv_sec == 0 and start_time.tv_nsec == 0 and parse_successful) {
+        start_time = parsed_time;
+    }
+
+    if(run_number == -1) {
+        if(parse_successful) {
+            run_number = parsed_run_number;
+        } else {
+            run_number = 0;
+            log_warn("Run number is not set by Module Parameter or by parsed filename. Defaulting to zero.");
+        }
+    }
+
     int64_t max_offset = 0;
     int64_t min_offset = 0;
     for(size_t daq_idx=0; daq_idx < offsets.size(); ++daq_idx) {
