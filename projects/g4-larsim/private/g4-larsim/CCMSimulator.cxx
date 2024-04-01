@@ -58,6 +58,11 @@ void CCMSimulator::Configure() {
     GetParameter("CCMHitSeriesName", hitSeriesName_);
     log_info("+ CCM hit series : %s", hitSeriesName_.c_str());
 
+    // initialize injector and response services
+    injector_->Configure();
+    response_->Configure();
+    response_->Initialize();
+
 }
 
 
@@ -75,11 +80,6 @@ void CCMSimulator::DetectorStatus(I3FramePtr frame) {
 
 void CCMSimulator::DAQ(I3FramePtr frame) {
     log_debug("   Simulating CCM");
-    
-    // initialize injector and response services
-    injector_->Configure();
-    response_->Configure();
-    response_->Initialize();
     
     // let's grab the mcPrimary from the injector
     mcTree_ = injector_->GetMCTree();
