@@ -73,8 +73,14 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // let's make sure this is an optical photon
     if(aStep->GetTrack()->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
         return false;
+    
+    // if we don't care about PMTs, then we can kill any non-primary particle tracks
+    if(aStep->GetTrack()->GetParentID() > 1 and !PMTSDStatus_) {
+        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+        return false;
+    }
 
-    // we also need to check that this is a primary photon produced
+    // regardless of saving PMT hits or not, we only want to save ParentID = 1 in the LAr
     if(aStep->GetTrack()->GetParentID() != 1) {
         return false;
     }
@@ -124,11 +130,6 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     scintHit->SetPos(pos);
 
     fScintCollection->insert(scintHit);
-
-    if (!PMTSDStatus_){
-        // we are not tracking hits to PMTs --> safe to kill tracks!
-        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-    }
 
     return true;
 }

@@ -166,9 +166,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
     }   
 
-
-    
-    // now kill photon
+    // now kill photon after registering hit
     aStep->GetTrack()->SetTrackStatus(fStopAndKill); 
 
     return true;
