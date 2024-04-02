@@ -58,7 +58,6 @@ i3_add_pybindings(dataclasses
   private/pybindings/I3String.cxx
   private/pybindings/I3Matrix.cxx
   private/pybindings/I3Time.cxx
-  private/pybindings/CCMTime.cxx
   private/pybindings/I3TimeWindow.cxx
   private/pybindings/I3Trigger.cxx
   private/pybindings/I3TriggerHierarchy.cxx

@@ -452,14 +452,14 @@ View::display_frame(I3FramePtr frame, unsigned index, unsigned y_selected)
       statuslen = std::max(oss.str().size(), statuslen);
     }
       
-    CCMTime startTime;
-    CCMTime endTime;
+    I3Time startTime;
+    I3Time endTime;
     bool has_start_time=false;
     bool has_end_time=false;
       
     if(i3header) {
-      startTime = CCMTime(i3header->GetStartTime().GetUnixTime(), i3header->GetStartTime().GetUTCNanoSec());
-      endTime = CCMTime(i3header->GetEndTime().GetUnixTime(), i3header->GetEndTime().GetUTCNanoSec());
+      startTime = i3header->GetStartTime();
+      endTime = i3header->GetEndTime();
       has_start_time=true;
       has_end_time=true;
     } else if (ccmheader) {
@@ -475,12 +475,12 @@ View::display_frame(I3FramePtr frame, unsigned index, unsigned y_selected)
       if ((frameEndTime) && (frame->GetStop("EndTime") != frame->GetStop())) frameEndTime.reset();
         
       if (frameStartTime) {
-        startTime = CCMTime(frameStartTime->GetUnixTime(), frameStartTime->GetUTCNanoSec());
+        startTime = *frameStartTime;
         has_start_time=true;
       }
 
       if (frameEndTime) {
-        endTime = CCMTime(frameEndTime->GetUnixTime(), frameEndTime->GetUTCNanoSec());
+        endTime = *frameEndTime;
         has_end_time=true;
       }
     }

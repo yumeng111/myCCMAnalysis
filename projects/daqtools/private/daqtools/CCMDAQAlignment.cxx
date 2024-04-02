@@ -1167,8 +1167,9 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
     struct timespec current_time = add_ns_to_timespec(start_time, avg_time_in_ns);
 
     boost::shared_ptr<CCMEventHeader> header = boost::make_shared<CCMEventHeader>();
-    CCMTime event_start_time(current_time.tv_sec, current_time.tv_nsec);
-    CCMTime event_end_time = event_start_time + max_wf_size * 2;
+    I3Time event_start_time;
+    event_start_time.SetUnixTime(current_time.tv_sec, current_time.tv_nsec);
+    I3Time event_end_time = event_start_time + max_wf_size * 2;
 
     header->SetRunID(run_number);
     header->SetSubRunID(0);

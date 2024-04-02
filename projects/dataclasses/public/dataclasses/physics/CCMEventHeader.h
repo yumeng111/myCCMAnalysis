@@ -5,7 +5,7 @@
 
 #include <string>
 
-#include <dataclasses/CCMTime.h>
+#include <dataclasses/I3Time.h>
 #include <icetray/I3DefaultName.h>
 #include <icetray/I3FrameObject.h>
 #include <icetray/I3PointerTypedefs.h>
@@ -55,8 +55,8 @@ private:
      * @brief The 
      * 
      */
-    CCMTime startTime_;
-    CCMTime endTime_;
+    I3Time startTime_;
+    I3Time endTime_;
 
 public:
     CCMEventHeader();
@@ -78,19 +78,19 @@ public:
         return !operator==(other);
     }
 
-    CCMTime GetStartTime() const {
+    I3Time GetStartTime() const {
         return startTime_;
     }
 
-    void SetStartTime(CCMTime time) {
+    void SetStartTime(I3Time time) {
         startTime_ = time;
     }
 
-    CCMTime GetEndTime() const {
+    I3Time GetEndTime() const {
         return endTime_;
     }
 
-    void SetEndTime(CCMTime time) {
+    void SetEndTime(I3Time time) {
         endTime_ = time;
     }
 
