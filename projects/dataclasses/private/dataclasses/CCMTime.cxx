@@ -22,7 +22,7 @@ CCMTime::CCMTime(int64_t tv_sec, int64_t tv_nsec, double nsec_frac) :
 void CCMTime::SetUnixTime(time_t unixTime, double ns) {
     if(unixTime < 0) log_fatal("invalid Unix time");
     tv_sec_ = unixTime;
-    tv_nsec_frac_ = ns % 1.0;
+    tv_nsec_frac_ = ns = (int64_t)(ns);
     tv_nsec_ = ns - tv_nsec_frac_;
 }
 
@@ -32,11 +32,6 @@ time_t CCMTime::GetUnixTime() const {
 
 std::string CCMTime::GetUTCString(std::string format) const {
     time_t t=GetUnixTime();
-    if( IsLeapSecond())
-    {
-        t-=1;
-        boost::replace_all(format, "%S", "60");
-    }
     struct tm *tm=gmtime(&t);
     char datestring[256];
     strftime (datestring, sizeof(datestring), format.c_str(), tm);
@@ -92,8 +87,8 @@ bool CCMTime::operator>=(const CCMTime& rhs) const
 CCMTime CCMTime::operator+(const double second_term) const {
     CCMTime result;
     result.tv_sec_ = tv_sec_ + (int64_t)(second_term / 1e9);
-    result.tv_nsec_ = tv_nsec + (int64_t)(second_term % 1e9);
-    result.tv_nsec_frac_ = tv_nsec_frac_ + second_term % 1;
+    result.tv_nsec_ = tv_nsec_ + (int64_t)(second_term - tv_sec_ * 1e9);
+    result.tv_nsec_frac_ = tv_nsec_frac_ + (int64_t)(second_term);
     if(result.tv_nsec_frac_ >= 1) {
         result.tv_nsec_frac_ -= 1;
         result.tv_nsec_ += 1;

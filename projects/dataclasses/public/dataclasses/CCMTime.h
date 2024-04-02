@@ -79,6 +79,8 @@ public:
     CCMTime operator+(const double) const;
     CCMTime operator-(const double) const;
 
+    friend double operator-(const CCMTime t1,const CCMTime t2);
+
 private:
 
     int64_t tv_sec_;
