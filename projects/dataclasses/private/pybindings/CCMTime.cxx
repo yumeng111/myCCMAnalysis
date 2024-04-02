@@ -60,8 +60,7 @@ void set_unix_time_default(CCMTime& t, time_t unixTime, double ns) {
 void register_CCMTime() {
     scope i3time_scope = class_<CCMTime, bases<I3FrameObject>, 
           boost::shared_ptr<CCMTime> >("CCMTime")
-              .def(init<int64_t, int64_t, double>())
-              .def(init<int64_t, int64_t>())
+              .def(init<int64_t, double>())
               .def(init<const CCMTime&>())
               .def("__str__",&stream_to_string<CCMTime>)
               .def("__repr__",&repr)
@@ -75,6 +74,8 @@ void register_CCMTime() {
               .def(self>self)
               .def(self<=self)
               .def(self>=self)
+              .add_property("seconds", &CCMTime::GetSeconds, &CCMTime::SetSeconds)
+              .add_property("nano_seconds", &CCMTime::GetNanoSeconds, &CCMTime::SetNanoSeconds)
               .def(dataclass_suite<CCMTime>())
               ;
 
