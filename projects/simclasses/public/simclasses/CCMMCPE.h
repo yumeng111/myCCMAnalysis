@@ -11,6 +11,7 @@
 #include "dataclasses/I3Direction.h"
 #include "dataclasses/Utility.h"
 #include "dataclasses/I3Map.h"
+#include "dataclasses/I3Vector.h"
 
 #include <string>
 #include <iostream>
@@ -71,6 +72,7 @@ struct CCMMCPE {
     std::ostream& Print(std::ostream&) const;
 
     private:
+        static const std::unordered_map<CCMMCPE::PhotonSource, std::string> photonSourceToProcessName;
     
     friend class icecube::serialization::access;
     template <class Archive> void serialize(Archive & ar, const unsigned version) {
@@ -88,7 +90,7 @@ struct CCMMCPE {
 
 I3_CLASS_VERSION(CCMMCPE,ccmmcpe_version_);
 
-typedef std::vector<CCMMCPE> CCMMCPESeries;
+typedef I3Vector<CCMMCPE> CCMMCPESeries;
 typedef I3Map<CCMPMTKey, CCMMCPESeries > CCMMCPESeriesMap;
 
 std::ostream& operator<<(std::ostream&, const CCMMCPE&);

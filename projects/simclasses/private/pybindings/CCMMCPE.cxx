@@ -29,9 +29,10 @@ void register_CCMMCPE() {
     }
 
 
-    class_<CCMMCPESeries, CCMMCPESeriesPtr>("CCMMCPESeries")
+    class_<CCMMCPESeries, CCMMCPESeriesPtr, bases<I3FrameObject>>("CCMMCPESeries")
         .def(dataclass_suite<CCMMCPESeries>())
         ;
+    register_pointer_conversions<CCMMCPESeries>();
 
     class_<CCMMCPESeriesMap, CCMMCPESeriesMapPtr, bases<I3FrameObject> >("CCMMCPESeriesMap")
         .def(dataclass_suite<CCMMCPESeriesMap>())
