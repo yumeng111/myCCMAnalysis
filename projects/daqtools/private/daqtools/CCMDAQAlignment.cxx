@@ -837,6 +837,7 @@ class MergedSource : public I3Module {
     std::vector<std::vector<std::deque<long double>>> time_cache;
     std::vector<std::vector<uint32_t>> last_raw_time;
     std::vector<std::vector<int64_t>> last_time;
+    std::vector<std::vector<int64_t>> first_time;
     std::vector<CCMAnalysis::Binary::CCMDAQConfigConstPtr> configs;
     int fill_computer_time = -1;
     bool push_config = false;
@@ -1146,7 +1147,7 @@ std::tuple<boost::shared_ptr<I3Vector<I3Vector<uint16_t>>>, boost::shared_ptr<I3
                 CCMAnalysis::Binary::CCMTriggerReadoutConstPtr tr = frame_cache[daq_idx][frame_idx]->Get<CCMAnalysis::Binary::CCMTriggerReadoutConstPtr>("CCMTriggerReadout");
                 merge_triggers(output_samples, output_triggers, tr, board_idx, last_idx, next_idx, fill_computer_time);
                 output_times->emplace_back(true, times[daq_idx][board_idx]);
-                sample_times.push_back(times[daq_idx][board_idx]);
+                sample_times.push_back(times[daq_idx][board_idx] - first_time[daq_idx][board_idx]);
                 // Grab the next trigger
                 bool res = NextTrigger(daq_idx, board_idx);
                 if(not res) {
@@ -1320,6 +1321,13 @@ void MergedSource::Configure() {
 
     // Grab the first set of triggers
     NextTriggers();
+
+    for(size_t daq_idx=0; daq_idx<n_daqs; ++daq_idx) {
+        first_time.emplace_back(n_boards[daq_idx], 0);
+        for(size_t board_idx=0; board_idx<n_boards[daq_idx]; ++board_idx) {
+            first_time[daq_idx][board_idx] = time_cache[daq_idx][board_idx].front() + offsets[daq_idx][board_idx];
+        }
+    }
 }
 
 void MergedSource::Process() {
