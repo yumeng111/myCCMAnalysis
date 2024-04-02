@@ -44,12 +44,21 @@ void CCMTime::SetNanoSeconds(double nano_seconds) {
     tv_nsec_ = nano_seconds;
 }
 
-std::string CCMTime::GetUTCString(std::string format) const {
-    time_t t=GetUnixTime();
-    struct tm *tm=gmtime(&t);
-    char datestring[256];
-    strftime (datestring, sizeof(datestring), format.c_str(), tm);
-    return datestring;
+std::string GetTimeStringToSecond(time_t now) {
+}
+
+std::string CCMTime::GetUTCString(bool sub_second) const {
+    char buf[sizeof "2011-10-08T07:07:09Z"];
+    std::strftime(buf, sizeof buf, "%FT%T", gmtime(&tv_sec_));
+    std::string result(buf);
+
+    if(sub_second) {
+        std::stringstream ss;
+        ss << result << "." << std::setfill('0') << std::setw(9) << (int64_t)(tv_nsec_) % 1000000000l;
+        result = ss.str();
+    }
+
+    return result + "Z";
 }
 
 bool CCMTime::operator<(const CCMTime& rhs) const {
@@ -92,14 +101,16 @@ bool CCMTime::operator>=(const CCMTime& rhs) const
 
 CCMTime CCMTime::operator+(const double second_term) const {
     CCMTime result;
-    result.tv_sec_ = tv_sec_ + (int64_t)(second_term / 1e9);
-    result.tv_nsec_ = tv_nsec_ + second_term - tv_sec_ * 1e9;
+    int64_t diff = (int64_t)(second_term / 1e9);;
+    result.tv_sec_ = tv_sec_ + diff;
+    result.tv_nsec_ = tv_nsec_ + (second_term - (diff * 1e9));
+    if(result.tv_nsec_ < 0) {
+        result.tv_nsec_ += 1e9;
+        result.tv_sec_ -= 1;
+    }
     if(result.tv_nsec_ >= 1e9) {
         result.tv_nsec_ -= 1e9;
         result.tv_sec_ += 1;
-    } else if(result.tv_nsec_ < 0) {
-        result.tv_nsec_ += 1e9;
-        result.tv_sec_ -= 1;
     }
     return result;
 }
@@ -115,7 +126,9 @@ double operator-(const CCMTime t1,const CCMTime t2) {
 
 std::ostream& CCMTime::Print(std::ostream& oss) const {
     int64_t daqt = tv_nsec_;
-    oss << GetUTCString("%Y-%m-%d %H:%M:%S.");
+    std::string datetime = GetUTCString(false);
+    datetime = datetime.substr(0, datetime.find("Z"));
+    oss << datetime << ".";
     oss << std::setw(3) << std::setfill('0') << (daqt/1000000)%1000  << ',';
     oss << std::setw(3) << std::setfill('0') << (daqt/1000)%1000 << ',';
     oss << std::setw(3) << std::setfill('0') << (daqt)%1000 << " UTC";

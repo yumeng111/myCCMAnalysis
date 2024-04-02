@@ -39,7 +39,7 @@ public:
     /**
      * @brief Gets a string representing the time in UTC
      */
-    std::string GetUTCString(std::string format="%Y-%m-%d %H:%M:%S UTC")const;
+    std::string GetUTCString(bool sub_second=true) const;
 
     /**
      * equality operator.  
