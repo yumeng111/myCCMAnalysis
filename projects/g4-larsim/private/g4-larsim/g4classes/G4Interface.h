@@ -28,7 +28,7 @@ class G4Interface {
         static G4Interface* GetInstance() {return g4Interface_;}
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector();
+        void InstallDetector(bool PMTSDStatus, bool LArSDStatus);
         /// Initialize event. Most Geant4 global things are initialized the first time this is called.
         void InitializeEvent();
         /// To be called after simulating each IceTray event.
@@ -57,6 +57,10 @@ class G4Interface {
         std::string visMacro_;
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
         boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
+        
+        // controls to turn SD on/off (set by our response service)
+        bool PMTSDStatus_; // turn PMT SD on/off
+        bool LArSDStatus_; // turn fiducial LAr SD on/off
 
         SET_LOGGER("G4Interface");
 };

@@ -69,6 +69,9 @@ void CCMSimulator::Configure() {
     response_->Configure();
     response_->Initialize();
 
+    // set our controls over SD
+    PMTSDStatus_ = response_->GetPMTSDStatus();
+    LArSDStatus_ = response_->GetLArSDStatus();
 }
 
 
@@ -101,6 +104,7 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
 
         // Now grab the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
         // also grab hits in fiducial argon for voxelization
+        // note -- if SD not enabled, these will just be empty objects
         CCMMCPEMap = response_->GetHitsMap(); 
         CCMMCPEList = response_->GetVoxelHits();
     }
@@ -117,8 +121,12 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     }
     
     // Put the hits to the DAQ frame 
-    frame->Put(PMTHitSeriesName_, CCMMCPEMap);
-    frame->Put(LArHitSeriesName_, CCMMCPEList);
+    if (PMTSDStatus_){
+        frame->Put(PMTHitSeriesName_, CCMMCPEMap);
+    }
+    if (LArSDStatus_){
+        frame->Put(LArHitSeriesName_, CCMMCPEList);
+    }
 
     // push daq frame
     PushFrame(frame);

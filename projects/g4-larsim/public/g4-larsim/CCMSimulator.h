@@ -37,6 +37,9 @@ class CCMSimulator : public I3Module  {
         CCMDetectorResponsePtr response_;
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
         boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
+        
+        bool PMTSDStatus_; // turn PMT SD on/off
+        bool LArSDStatus_; // turn fiducial LAr SD on/off
   
         static const std::string INC_ID_NAME;
   

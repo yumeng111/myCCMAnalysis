@@ -3,6 +3,7 @@
 #include <g4-larsim/g4classes/G4CCMDetectorConstruction.h>
 #include <g4-larsim/g4classes/G4CCMPhysicsList.h>
 #include <g4-larsim/g4classes/G4CCMPMTSD.h>
+#include <g4-larsim/g4classes/G4CCMScintSD.h>
 
 #include <icetray/I3Logging.h>
 #include <dataclasses/physics/I3Particle.h>
@@ -20,6 +21,12 @@
 #include "G4EmStandardPhysics_option4.hh"
 #include "G4OpticalParameters.hh"
 #include "G4OpticalPhysics.hh"
+#include <G4Run.hh>
+#include "G4EventManager.hh"
+#include "G4Event.hh"
+#include <G4RunManager.hh>
+#include "G4SystemOfUnits.hh"
+
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
@@ -47,14 +54,22 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector() {
+void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
     }
 
+    PMTSDStatus_ = PMTSDStatus;
+    LArSDStatus_ = LArSDStatus;
+
     if(!detector_) {
         detector_ = new G4CCMDetectorConstruction();
+        // set SD status
+        detector_->SetPMTSDStatus(PMTSDStatus_);
+        detector_->SetLArSDStatus(LArSDStatus_);
+        // Force reinitializatiion
+        runManager_.ReinitializeGeometry(true);
     }
 
 }
@@ -248,10 +263,24 @@ void G4Interface::TerminateEvent()
 {
     // let's grab the CCMMCPE map from G4Interface
     if(eventInitialized_) {
+        // now let's grab SD information
+        G4SDManager* SDman = G4SDManager::GetSDMpointer();
+        if (PMTSDStatus_){
+            G4String sdNamePMT = "/LAr/pmtSD";
+            G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
+            CCMMCPEMap = pmtSD->GetCCMMCPEMap();
+        }
+
+        if (LArSDStatus_){
+            G4String sdNameScint = "/LAr/scintSD";
+            G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
+            CCMMCPEList = scintSD->GetCCMMCPEList();
+        }
+
         runManager_.TerminateRun();
         
-        CCMMCPEMap = runManager_.GetCCMMCPEMap();
-        CCMMCPEList = runManager_.GetCCMMCPEList();
+        //CCMMCPEMap = runManager_.GetCCMMCPEMap();
+        //CCMMCPEList = runManager_.GetCCMMCPEList();
         eventInitialized_ = false;
     }
 }

@@ -74,14 +74,14 @@ void G4CCMRunManager::TerminateRun()
     }
     
     // now let's grab SD information
-    G4SDManager* SDman = G4SDManager::GetSDMpointer();
-    G4String sdNamePMT = "/LAr/pmtSD";
-    G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
-    CCMMCPEMap = pmtSD->GetCCMMCPEMap();
+    //G4SDManager* SDman = G4SDManager::GetSDMpointer();
+    //G4String sdNamePMT = "/LAr/pmtSD";
+    //G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
+    //CCMMCPEMap = pmtSD->GetCCMMCPEMap();
 
-    G4String sdNameScint = "/LAr/scintSD";
-    G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-    CCMMCPEList = scintSD->GetCCMMCPEList();
+    //G4String sdNameScint = "/LAr/scintSD";
+    //G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
+    //CCMMCPEList = scintSD->GetCCMMCPEList();
 
     RunTermination();
 }

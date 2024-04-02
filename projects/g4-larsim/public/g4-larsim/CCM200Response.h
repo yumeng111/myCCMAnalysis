@@ -31,6 +31,9 @@ private:
     std::string output_hits_map_name_;
     std::string visMacroFile_;
 
+    bool PMTSDStatus_; // turn PMT SD on/off
+    bool LArSDStatus_; // turn fiducial LAr SD on/off
+
     G4Interface* g4Interface_;
         
     SET_LOGGER("CCM200Response");
@@ -46,7 +49,9 @@ public:
     virtual void EndEvent() override;
     virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() override {return CCMMCPEMap;};
     virtual boost::shared_ptr<CCMMCPESeries> GetVoxelHits() override { return CCMMCPEList; }
-    
+    virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }
+    virtual bool GetLArSDStatus() override { return LArSDStatus_; }
+
     boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
     boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
 

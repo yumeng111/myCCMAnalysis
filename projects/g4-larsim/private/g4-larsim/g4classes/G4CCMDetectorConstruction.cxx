@@ -356,33 +356,38 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
     if(!fMainVolume)
         return;
 
-    // PMT SD
-    G4CCMPMTSD* pmt = fPMT_SD.Get();
-    if(!pmt) {
-        // Created here so it exists as pmts are being placed
-        G4cout << "Construction /LAr/pmtSD" << G4endl;
-        auto pmt_SD = new G4CCMPMTSD("/LAr/pmtSD");
-        fPMT_SD.Put(pmt_SD);
+    if (PMTSDStatus_){
+        // PMT SD
+        G4CCMPMTSD* pmt = fPMT_SD.Get();
+        if(!pmt) {
+            // Created here so it exists as pmts are being placed
+            G4cout << "Construction /LAr/pmtSD" << G4endl;
+            auto pmt_SD = new G4CCMPMTSD("/LAr/pmtSD");
+            fPMT_SD.Put(pmt_SD);
 
-        pmt_SD->InitPMTs();
-        pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+            pmt_SD->InitPMTs();
+            pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+        }
+        else {
+            pmt->InitPMTs();
+            pmt->SetPmtPositions(fMainVolume->GetPMTPositions());
+        }
+        G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
+        SetSensitiveDetector(fMainVolume->GetLogPhotoCath(), fPMT_SD.Get());
     }
-    else {
-        pmt->InitPMTs();
-        pmt->SetPmtPositions(fMainVolume->GetPMTPositions());
-    }
-    G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
-    SetSensitiveDetector(fMainVolume->GetLogPhotoCath(), fPMT_SD.Get());
     
-    // Scint SD
-
-    if(!fScint_SD.Get()) {
-        G4cout << "Construction /LAr/scintSD" << G4endl;
-        auto scint_SD = new G4CCMScintSD("/LAr/scintSD");
-        fScint_SD.Put(scint_SD);
+    if (LArSDStatus_){
+        // Scint SD
+        if(!fScint_SD.Get()) {
+            G4cout << "Construction /LAr/scintSD" << G4endl;
+            auto scint_SD = new G4CCMScintSD("/LAr/scintSD");
+            scint_SD->SetPMTSDStatus(PMTSDStatus_);
+            fScint_SD.Put(scint_SD);
+        }
+        G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
+        SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
     }
-    G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
-    SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
+
 
 }
 

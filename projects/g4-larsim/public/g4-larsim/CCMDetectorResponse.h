@@ -31,11 +31,15 @@ class CCMDetectorResponse : public I3ServiceBase {
         // end events
         virtual void EndEvent() = 0;
 
-        // get map between CCMMCPE and CCMPMTKey
+        // get hits in PMTs 
         virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() = 0;
         
         // get hits in LAr for voxelization 
         virtual boost::shared_ptr<CCMMCPESeries> GetVoxelHits() = 0;
+
+        // get SD status
+        virtual bool GetPMTSDStatus() = 0;
+        virtual bool GetLArSDStatus() = 0;
 
     protected:
         template <class ParamType>

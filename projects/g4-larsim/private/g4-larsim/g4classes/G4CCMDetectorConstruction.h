@@ -47,12 +47,19 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
 
     //Functions to modify the geometry
     void SetDefaults();//Method to set the default values of all geometry modifications
-
     
     //Construct main volume
     void SetMainVolumeOn(G4bool b);
     G4bool GetMainVolumeOn() const { return fMainVolumeOn; }
+   
+    // set SD configuration
+    void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
+    void SetLArSDStatus(bool LArSDStatus) { LArSDStatus_ = LArSDStatus; }
     
+    // get SD configuration
+    bool GetPMTSDStatus() { return PMTSDStatus_; }
+    bool GetLArSDStatus() { return LArSDStatus_; }
+
   private:
     
     void DefineMaterials();
@@ -103,6 +110,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4Cache<G4CCMPMTSD*> fPMT_SD;
     G4Cache<G4CCMScintSD*> fScint_SD;
 
+    // controls to turn SD on/off (set via G4Interface)
+    bool PMTSDStatus_ = true; // turn PMT SD on/off
+    bool LArSDStatus_ = true; // turn fiducial LAr SD on/off
 };
 
 #endif

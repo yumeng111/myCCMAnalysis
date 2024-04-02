@@ -125,6 +125,11 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     fScintCollection->insert(scintHit);
 
+    if (!PMTSDStatus_){
+        // we are not tracking hits to PMTs --> safe to kill tracks!
+        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+    }
+
     return true;
 }
 

@@ -58,6 +58,9 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         
         // return list of CCMMCPE
         boost::shared_ptr<CCMMCPESeries> GetCCMMCPEList(){ return CCMMCPEList; }
+        
+        bool GetPMTSDStatus() { return PMTSDStatus_; }
+        void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
 
     private:
         G4CCMScintHitsCollection* fScintCollection = nullptr;
@@ -66,6 +69,10 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // define a few things for converting energy to wavelength
         const G4double h_Planck = 6.62607015e-34 * joule * second;
         const G4double c_light = 2.99792458e8 * meter / second;
+        
+        // controls to turn SD on/off (set by our response service)
+        // we just need to know if PMTSD is on --> if so, we do NOT kill tracks, but if it is off, we DO kill tracks after registering one hit
+        bool PMTSDStatus_; 
         
         boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
 };
