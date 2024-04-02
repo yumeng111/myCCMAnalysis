@@ -64,6 +64,7 @@ void CCM200Response::EndEvent() {
 
     // now let's call function in G4Interface to grab the map between CCMPMTKey and std::vector<CCMMCPE>
     CCMMCPEMap = g4Interface_->GetCCMMCPEMap();  
+    CCMMCPEList = g4Interface_->GetCCMMCPEList();
 
 }
 

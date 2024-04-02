@@ -7,6 +7,8 @@
 #include <g4-larsim/CCMDetectorResponse.h>
 #include <dataclasses/physics/I3Particle.h>
 #include <simclasses/CCMMCPE.h>
+#include <dataclasses/I3Map.h>
+#include <dataclasses/I3Vector.h>
 /**
  * \brief The CCMSimulator module handles the whole simulation and 
  * stores the results in the frame.
@@ -26,13 +28,15 @@ class CCMSimulator : public I3Module  {
         std::string injectorServiceName_;
         std::string responseServiceName_;
         std::string mcPrimaryName_;
-        std::string hitSeriesName_;
+        std::string PMTHitSeriesName_;
+        std::string LArHitSeriesName_; 
         I3MCTreePtr mcTree_;
         bool saved_simulation_setup_ = false;
 
         CCMParticleInjectorPtr injector_;
         CCMDetectorResponsePtr response_;
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+        boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
   
         static const std::string INC_ID_NAME;
   

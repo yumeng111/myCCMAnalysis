@@ -26,7 +26,6 @@ class G4CCMMainVolume : public G4PVPlacement
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
                 G4CCMDetectorConstruction* c);
 
-    //G4LogicalVolume* GetLogPhotoCath() { return fPMT_log; }
     G4LogicalVolume* GetLogPhotoCath() { return fPhotocath_log; }
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }

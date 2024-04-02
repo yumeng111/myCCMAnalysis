@@ -32,7 +32,10 @@ class CCMDetectorResponse : public I3ServiceBase {
         virtual void EndEvent() = 0;
 
         // get map between CCMMCPE and CCMPMTKey
-        virtual boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap() = 0;
+        virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() = 0;
+        
+        // get hits in LAr for voxelization 
+        virtual boost::shared_ptr<CCMMCPESeries> GetVoxelHits() = 0;
 
     protected:
         template <class ParamType>

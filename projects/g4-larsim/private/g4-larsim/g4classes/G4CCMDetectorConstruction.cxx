@@ -376,13 +376,13 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
     
     // Scint SD
 
-    //if(!fScint_SD.Get()) {
-        //G4cout << "Construction /LAr/scintSD" << G4endl;
-        //auto scint_SD = new G4CCMScintSD("/LArDet/scintSD");
-        //fScint_SD.Put(scint_SD);
-    //}
-    //G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
-    //SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
+    if(!fScint_SD.Get()) {
+        G4cout << "Construction /LAr/scintSD" << G4endl;
+        auto scint_SD = new G4CCMScintSD("/LAr/scintSD");
+        fScint_SD.Put(scint_SD);
+    }
+    G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
+    SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
 
 }
 

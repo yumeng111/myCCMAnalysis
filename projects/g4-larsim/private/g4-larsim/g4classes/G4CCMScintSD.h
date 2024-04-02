@@ -34,22 +34,40 @@
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 
 #include "G4VSensitiveDetector.hh"
+#include "G4SystemOfUnits.hh"
+
+#include <vector>
+#include <sstream>
+#include <string>
+#include <simclasses/CCMMCPE.h>
+#include <icetray/CCMPMTKey.h>
+#include <dataclasses/I3Map.h>
+#include <dataclasses/I3Position.h>
+#include <dataclasses/I3Direction.h>
 
 class G4Step;
 class G4HCofThisEvent;
 
-class G4CCMScintSD : public G4VSensitiveDetector
-{
- public:
-  G4CCMScintSD(G4String name);
-  ~G4CCMScintSD() override = default;
+class G4CCMScintSD : public G4VSensitiveDetector {
+    public:
+        G4CCMScintSD(G4String name);
+        ~G4CCMScintSD() override = default;
 
-  void Initialize(G4HCofThisEvent*) override;
-  G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
+        void Initialize(G4HCofThisEvent*) override;
+        G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
+        
+        // return list of CCMMCPE
+        boost::shared_ptr<CCMMCPESeries> GetCCMMCPEList(){ return CCMMCPEList; }
 
- private:
-  G4CCMScintHitsCollection* fScintCollection = nullptr;
-  G4int fHitsCID = -1;
+    private:
+        G4CCMScintHitsCollection* fScintCollection = nullptr;
+        G4int fHitsCID = -1;
+        static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
+        // define a few things for converting energy to wavelength
+        const G4double h_Planck = 6.62607015e-34 * joule * second;
+        const G4double c_light = 2.99792458e8 * meter / second;
+        
+        boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
 };
 
 #endif

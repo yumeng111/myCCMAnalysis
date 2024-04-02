@@ -9,6 +9,7 @@
 #include "phys-services/I3RandomService.h"
 
 #include <g4-larsim/g4classes/G4Interface.h>
+#include "g4-larsim/CCMDetectorResponse.h"
 
 #include <icetray/I3Frame.h>
 #include <icetray/I3FrameObject.h>
@@ -21,7 +22,6 @@
 #include <dataclasses/physics/I3Particle.h>
 #include <simclasses/CCMMCPE.h>
 #include <icetray/I3ServiceBase.h>
-#include "g4-larsim/CCMDetectorResponse.h"
 
 class CCM200Response : public CCMDetectorResponse {
 private:
@@ -44,8 +44,12 @@ public:
     virtual void Initialize() override;
     virtual void BeginEvent(const I3Particle& primary) override;
     virtual void EndEvent() override;
-    virtual boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetHitsMap() override {return CCMMCPEMap;};
-    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+    virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() override {return CCMMCPEMap;};
+    virtual boost::shared_ptr<CCMMCPESeries> GetVoxelHits() override { return CCMMCPEList; }
+    
+    boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+    boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
+
 };
 
 #endif // CCM200RESPONSE_H

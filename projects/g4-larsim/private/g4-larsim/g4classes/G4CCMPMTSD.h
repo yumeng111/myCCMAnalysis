@@ -36,7 +36,6 @@
 
 #include "G4VSensitiveDetector.hh"
 #include "G4SystemOfUnits.hh"
-#include "G4DataVector.hh"
 
 #include <vector>
 #include <sstream>
@@ -77,7 +76,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         void SetPmtPositions(const std::vector<G4ThreeVector>& positions);
 
         // return CCMMCPEMap
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetCCMMCPEMap(){ return CCMMCPEMap; }
+        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
 
     private:
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
@@ -94,7 +93,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
     
         static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
 
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
 };
 
 #endif

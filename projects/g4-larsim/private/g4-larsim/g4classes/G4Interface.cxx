@@ -246,18 +246,12 @@ void G4Interface::InjectParticle(const I3Particle& particle)
 
 void G4Interface::TerminateEvent()
 {
-    // call sd function to get vector of ccmmmcpe
+    // let's grab the CCMMCPE map from G4Interface
     if(eventInitialized_) {
-        // ok so we are done with this event
-        // let's grab the map between CCMPMTKey and std::vector<CCMMCPE> from out sensitve detector to save to the frame
-        //G4SDManager* sdManager = G4SDManager::GetSDMpointer();
-        //G4CCMPMTSD* PMTSD = dynamic_cast<G4CCMPMTSD*>(sdManager->FindSensitiveDetector("/LAr/pmtSD"));
-        //CCMMCPEMap = PMTSD->GetCCMMCPEMap();
-        //if (PMTSD) {
-        //    CCMMCPEMap = PMTSD->GetCCMMCPEMap();
-        //}
-        CCMMCPEMap = runManager_.GetCCMMCPEMap();
         runManager_.TerminateRun();
+        
+        CCMMCPEMap = runManager_.GetCCMMCPEMap();
+        CCMMCPEList = runManager_.GetCCMMCPEList();
         eventInitialized_ = false;
     }
 }
@@ -290,20 +284,13 @@ void G4Interface::Initialize()
 
     physicsList->RegisterPhysics(opticalPhysics);
     runManager_.SetUserInitialization(physicsList);
-    //runManager_.SetUserInitialization(new G4CCMActionInitialization(detector_));
-
-    //log_debug("Init UserTrackingAction ...");
-    //runManager_.SetUserAction(new G4CCMUserTrackingAction());
-
-    //log_debug("Init UserSteppingAction ...");
-    //runManager_.SetUserAction(new G4CCMUserSteppingAction());
 
     // Initialize G4 kernel
     log_debug("Init run manager ...");
     runManager_.Initialize();
 
     // Set verbosity
-    int32_t verboseLevel = 0;
+    int32_t verboseLevel = 1;
     switch (GetIcetrayLogger()->LogLevelForUnit("G4Interface"))
     {
     case I3LOG_FATAL:

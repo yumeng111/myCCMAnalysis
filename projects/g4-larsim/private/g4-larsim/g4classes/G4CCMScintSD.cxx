@@ -41,56 +41,91 @@
 #include "G4VPhysicalVolume.hh"
 #include "G4VProcess.hh"
 #include "G4VTouchable.hh"
+#include "G4ParticleTypes.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+const std::unordered_map<std::string, CCMMCPE::PhotonSource> G4CCMScintSD::processNameToPhotonSource = {{"Unknown", CCMMCPE::PhotonSource::Unknown},
+                                                                                                      {"Scintillation", CCMMCPE::PhotonSource::Scintillation},
+                                                                                                      {"Cerenkov", CCMMCPE::PhotonSource::Cerenkov}};
 
-G4CCMScintSD::G4CCMScintSD(G4String name)
-  : G4VSensitiveDetector(name)
-{
-  collectionName.insert("scintCollection");
+G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
+    collectionName.insert("scintCollection");
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE)
-{
-  fScintCollection =
-    new G4CCMScintHitsCollection(SensitiveDetectorName, collectionName[0]);
+void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
+    fScintCollection = new G4CCMScintHitsCollection(SensitiveDetectorName, collectionName[0]);
 
-  if(fHitsCID < 0)
-  {
-    fHitsCID = G4SDManager::GetSDMpointer()->GetCollectionID(fScintCollection);
-  }
-  hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
+    if(fHitsCID < 0) {
+        fHitsCID = G4SDManager::GetSDMpointer()->GetCollectionID(fScintCollection);
+    }
+    hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*)
-{
-  G4double edep = aStep->GetTotalEnergyDeposit();
-  if(edep == 0.)
-    return false;  // No edep so don't count as hit
+G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
-  G4StepPoint* thePrePoint = aStep->GetPreStepPoint();
-  auto theTouchable =
-    (G4TouchableHistory*) (aStep->GetPreStepPoint()->GetTouchable());
-  G4VPhysicalVolume* thePrePV = theTouchable->GetVolume();
+    // our scint SD is tracking scintillation photons produced in the fiducial argon
+    // this will be used for voxelization
+    
+    // let's make sure this is an optical photon
+    if(aStep->GetTrack()->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
+        return false;
 
-  G4StepPoint* thePostPoint = aStep->GetPostStepPoint();
+    // we also need to check that this is a primary photon produced
+    if(aStep->GetTrack()->GetParentID() != 1) {
+        return false;
+    }
 
-  // Get the average position of the hit
-  G4ThreeVector pos = thePrePoint->GetPosition() + thePostPoint->GetPosition();
-  pos /= 2.;
+    // let's also do some scint hits stuff idk
 
-  auto scintHit = new G4CCMScintHit(thePrePV);
+    G4double edep = aStep->GetTotalEnergyDeposit();
+    if(edep == 0.)
+        return false;  // No edep so don't count as hit
+    
+    // let's grab everything from our step
+    G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
+    I3Position position(photonPosition.x(), photonPosition.y(), photonPosition.z());
 
-  scintHit->SetEdep(edep);
-  scintHit->SetPos(pos);
+    G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
+    I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
-  fScintCollection->insert(scintHit);
+    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime();
+    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy();
+    G4double photonWavelength = h_Planck * c_light / photonEnergy;
+    const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
+    std::string creationProcessName = "Unknown";
+    if (creationProcess) {
+        creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
+    }
 
-  return true;
+    // now save to CCMMCPE!
+    CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
+
+    // now push back
+    CCMMCPEList->push_back(this_mc_pe);
+
+    // now back to scint hit things
+    G4StepPoint* thePrePoint = aStep->GetPreStepPoint(); 
+    auto theTouchable = (G4TouchableHistory*) (aStep->GetPreStepPoint()->GetTouchable());
+    G4VPhysicalVolume* thePrePV = theTouchable->GetVolume();
+
+    G4StepPoint* thePostPoint = aStep->GetPostStepPoint();
+
+    // Get the average position of the hit
+    G4ThreeVector pos = thePrePoint->GetPosition() + thePostPoint->GetPosition();
+    pos /= 2.;
+
+    auto scintHit = new G4CCMScintHit(thePrePV);
+
+    scintHit->SetEdep(edep);
+    scintHit->SetPos(pos);
+
+    fScintCollection->insert(scintHit);
+
+    return true;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

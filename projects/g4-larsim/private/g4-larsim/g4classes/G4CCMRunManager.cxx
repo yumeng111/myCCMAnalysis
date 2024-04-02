@@ -4,6 +4,7 @@
 
 #include <g4-larsim/g4classes/G4CCMRunManager.h>
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
+#include "g4-larsim/g4classes/G4CCMScintSD.h"
 #include <G4ParticleGun.hh>
 #include <G4Run.hh>
 #include "G4SDManager.hh"
@@ -45,13 +46,6 @@ void G4CCMRunManager::InjectParticle(G4ParticleGun* particleGun)
     //StackPreviousEvent(currentEvent);
     //currentEvent = 0;
 
-
-    // let's do one other thing
-    G4SDManager* SDman = G4SDManager::GetSDMpointer();
-    G4String sdName = "/LAr/pmtSD";
-    G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdName);
-    CCMMCPEMap = pmtSD->GetCCMMCPEMap();
-
     if(runAborted) TerminateRun();
 }
 
@@ -78,6 +72,16 @@ void G4CCMRunManager::TerminateRun()
 
     G4cout << "  "  << *timer << G4endl;
     }
+    
+    // now let's grab SD information
+    G4SDManager* SDman = G4SDManager::GetSDMpointer();
+    G4String sdNamePMT = "/LAr/pmtSD";
+    G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
+    CCMMCPEMap = pmtSD->GetCCMMCPEMap();
+
+    G4String sdNameScint = "/LAr/scintSD";
+    G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
+    CCMMCPEList = scintSD->GetCCMMCPEList();
 
     RunTermination();
 }

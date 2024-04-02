@@ -6,6 +6,7 @@
 #include <simclasses/CCMMCPE.h>
 #include <icetray/CCMPMTKey.h>
 #include <dataclasses/I3Map.h>
+#include <dataclasses/I3Vector.h>
 
 #ifdef G4VIS_USE
 class G4VisManager;
@@ -36,7 +37,8 @@ class G4Interface {
         void InjectParticle(const I3Particle& particle);
         
         // return CCMMCPEMap
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetCCMMCPEMap(){ return CCMMCPEMap; }
+        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
+        boost::shared_ptr<CCMMCPESeries> GetCCMMCPEList(){ return CCMMCPEList; }
 
     private:
         void Initialize();
@@ -53,7 +55,8 @@ class G4Interface {
         bool initialized_;
         bool eventInitialized_;
         std::string visMacro_;
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+        boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
 
         SET_LOGGER("G4Interface");
 };

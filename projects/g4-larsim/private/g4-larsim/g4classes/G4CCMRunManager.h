@@ -8,6 +8,7 @@
 #include "G4DataVector.hh"
 
 #include <simclasses/CCMMCPE.h>
+#include <dataclasses/I3Vector.h>
 #include <icetray/CCMPMTKey.h>
 #include <dataclasses/I3Map.h>
 #include <dataclasses/I3Position.h>
@@ -31,7 +32,8 @@ class G4CCMRunManager: public G4RunManager {
         void TerminateRun();
         void GetFinalScores(const G4Event* anEvent);
     
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetCCMMCPEMap() { return CCMMCPEMap; }
+        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap() { return CCMMCPEMap; }
+        boost::shared_ptr<CCMMCPESeries> GetCCMMCPEList(){ return CCMMCPEList; }
 
     protected:
         G4Event* GenerateEvent(G4int i_event);
@@ -68,7 +70,8 @@ class G4CCMRunManager: public G4RunManager {
 
         G4int fPMTsAboveThreshold = 0;
 
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+        boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
 };
 
 #endif

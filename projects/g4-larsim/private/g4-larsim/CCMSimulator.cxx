@@ -29,8 +29,11 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     mcPrimaryName_ = "MCPrimary";
     AddParameter("PrimaryName", "Name of the primary particle in the frame.", mcPrimaryName_);
 
-    hitSeriesName_ = "CCMMCHits";
-    AddParameter("CCMHitSeriesName", "Name of the resulting detector hit series in the frame.", hitSeriesName_);
+    PMTHitSeriesName_ = "PMTMCHitsMap";
+    AddParameter("PMTHitSeriesName", "Name of the resulting PMT hit map in the frame.", PMTHitSeriesName_);
+    
+    LArHitSeriesName_ = "LArMCHitsSeries";
+    AddParameter("LArHitSeriesName", "Name of the resulting LAr hit series in the frame.", LArHitSeriesName_);
 
     AddOutBox("OutBox");
 }
@@ -55,8 +58,11 @@ void CCMSimulator::Configure() {
     GetParameter("PrimaryName", mcPrimaryName_);
     log_info("+ MC primary: %s", mcPrimaryName_.c_str());
 
-    GetParameter("CCMHitSeriesName", hitSeriesName_);
-    log_info("+ CCM hit series : %s", hitSeriesName_.c_str());
+    GetParameter("PMTHitSeriesName", PMTHitSeriesName_);
+    log_info("+ PMT hit series : %s", PMTHitSeriesName_.c_str());
+    
+    GetParameter("LArHitSeriesName", LArHitSeriesName_);
+    log_info("+ LAr hit series : %s", LArHitSeriesName_.c_str());
 
     // initialize injector and response services
     injector_->Configure();
@@ -94,7 +100,9 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         response_->EndEvent();
 
         // Now grab the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
+        // also grab hits in fiducial argon for voxelization
         CCMMCPEMap = response_->GetHitsMap(); 
+        CCMMCPEList = response_->GetVoxelHits();
     }
     
     if (!saved_simulation_setup_) {
@@ -109,9 +117,8 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     }
     
     // Put the hits to the DAQ frame 
-    if (!hitSeriesName_.empty()) {
-        frame->Put(hitSeriesName_, CCMMCPEMap);
-    }
+    frame->Put(PMTHitSeriesName_, CCMMCPEMap);
+    frame->Put(LArHitSeriesName_, CCMMCPEList);
 
     // push daq frame
     PushFrame(frame);

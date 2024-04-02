@@ -152,6 +152,11 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     hit->IncPhotonCount();  // increment hit for the selected pmt
     hit->SetDrawit(true);
+    
+    // let's add this CCMPMTKey to CCMMCPEMap if it does not exist already
+    if (CCMMCPEMap->find(key) == CCMMCPEMap->end()) {
+        (*CCMMCPEMap)[key] = CCMMCPESeries ();
+    }
 
     // so we have the CCMPMTKey and we have the CCMMCPE, let's save!
     for (auto it = CCMMCPEMap->begin(); it != CCMMCPEMap->end(); ++it) {
@@ -161,10 +166,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
     }   
 
-    // let's also add the option for adding this CCMPMTKey to CCMMCPEMap if it does not exist already
-    if (CCMMCPEMap->find(key) == CCMMCPEMap->end()) {
-        (*CCMMCPEMap)[key] = std::vector<CCMMCPE>{this_mc_pe};
-    }
+
     
     // now kill photon
     aStep->GetTrack()->SetTrackStatus(fStopAndKill); 
