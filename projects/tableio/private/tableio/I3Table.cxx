@@ -77,7 +77,7 @@ bool I3Table::DoPadding(){
 
 /******************************************************************************/
 
-void I3Table::AddRow(I3EventHeaderConstPtr header, I3TableRowConstPtr row) {  
+void I3Table::AddRow(CCMEventHeaderConstPtr header, I3TableRowConstPtr row) {  
     // sanity check: padding behavior is different for ragged tables
     size_t nrows = row->GetNumberOfRows(); 
     if ((nrows != 1) && (!description_->GetIsMultiRow())) {
@@ -125,7 +125,7 @@ void I3Table::AddRow(I3EventHeaderConstPtr header, I3TableRowConstPtr row) {
               nevents_, nrows_, nrowsWithPadding_);
 
     if (header){
-      lastHeader_ = I3EventHeaderConstPtr(new I3EventHeader(*header));
+      lastHeader_ = CCMEventHeaderConstPtr(new CCMEventHeader(*header));
       service_.HeaderWritten(lastHeader_,row->GetNumberOfRows());
     }
 }
@@ -142,7 +142,7 @@ void I3Table::Align() {
     // Note: This function gets called on the "Master Tree" at the very end, which has no header.
     // But we *do* want to do this padding thing on that Master Tree, because it has no rows yet.
     if (DoPadding()) {
-        padding = service_.GetPaddingRows(lastHeader_, I3EventHeaderConstPtr(), description_);
+        padding = service_.GetPaddingRows(lastHeader_, CCMEventHeaderConstPtr(), description_);
         if (padding) {
             log_trace("(%s) Finalizing alignment with %zu padding rows",name_.c_str(),padding->GetNumberOfRows());
             for (size_t r = 0; r < padding->GetNumberOfRows(); ++r) {
@@ -154,7 +154,7 @@ void I3Table::Align() {
     
     // always pad the index table if it exists, since the index is alway a single row
     if (indexTable_) {
-        padding = service_.GetPaddingRows(lastHeader_, I3EventHeaderConstPtr(), service_.GetIndexDescription());
+        padding = service_.GetPaddingRows(lastHeader_, CCMEventHeaderConstPtr(), service_.GetIndexDescription());
         if (padding) indexTable_->WriteRows(padding);
         indexTable_->Flush();
     }

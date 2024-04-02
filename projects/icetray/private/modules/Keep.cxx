@@ -51,6 +51,11 @@ Keep::Keep(const I3Context& context)
   keysParam_.push_back("I3Geometry");
   keysParam_.push_back("DrivingTime");
   keysParam_.push_back("I3EventHeader");
+  keysParam_.push_back("CCMEventHeader");
+  keysParam_.push_back("CCMDAQConfig");
+  keysParam_.push_back("CCMTriggers");
+  keysParam_.push_back("NIMPulses");
+  keysParam_.push_back("TriggerTimes");
   AddParameter("Keys", 
                "Keep frame objects with names that match any of these keys", 
                keysParam_);

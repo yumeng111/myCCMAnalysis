@@ -31,6 +31,7 @@
  */
 
 #include <dataclasses/physics/I3EventHeader.h>
+#include <dataclasses/physics/CCMEventHeader.h>
 #include <dataclasses/I3Time.h>
 
 #include <limits>
@@ -413,32 +414,40 @@ View::display_frame(I3FramePtr frame, unsigned index, unsigned y_selected)
   statuslen = std::max(frame->GetStop().str().size(), statuslen);
 
   {
-    I3EventHeaderConstPtr header = frame->Get<I3EventHeaderConstPtr>(I3DefaultName<I3EventHeader>::value());
+    I3EventHeaderConstPtr i3header = frame->Get<I3EventHeaderConstPtr>(I3DefaultName<I3EventHeader>::value());
+    CCMEventHeaderConstPtr ccmheader = frame->Get<CCMEventHeaderConstPtr>(I3DefaultName<CCMEventHeader>::value());
     // no mixed-in items here:
-    if ((header) && (frame->GetStop(I3DefaultName<I3EventHeader>::value()) != frame->GetStop())) header.reset();
+    if ((i3header) && (frame->GetStop(I3DefaultName<I3EventHeader>::value()) != frame->GetStop())) i3header.reset();
+    if ((ccmheader) && (frame->GetStop(I3DefaultName<CCMEventHeader>::value()) != frame->GetStop())) ccmheader.reset();
     
     settext(hi_red);
     mvaddstr(LINES-3, 2, "Run/Event:");
-    if (!header) {
+    if ((!i3header) and (!ccmheader)) {
       settext(dim_white);
       mvaddstr(LINES-3, 13, "(n/a)");
     } else {
       settext(yellow);
       ostringstream oss;
-      oss << header->GetRunID() << "/" << header->GetEventID();
+      if(i3header)
+          oss << i3header->GetRunID() << "/" << i3header->GetEventID();
+      else
+          oss << ccmheader->GetRunID() << "/" << ccmheader->GetEventID();
       mvaddstr(LINES-3, 13, oss.str().c_str());
       statuslen = std::max(oss.str().size(), statuslen);
     }
 
     settext(hi_red);
     mvaddstr(LINES-2, 2, " SubEvent:");
-    if (!header || frame->GetStop() != I3Frame::Physics || header->GetSubEventStream() == "") {
+    if(frame->GetStop() != I3Frame::Physics || ((!ccmheader || ccmheader->GetSubEventStream() == "") && (!i3header || i3header->GetSubEventStream() == ""))) {
       settext(dim_white);
       mvaddstr(LINES-2, 13, "(n/a)");
     } else {
       settext(yellow);
       ostringstream oss;
-      oss << header->GetSubEventStream() << "/" << header->GetSubEventID();
+      if(i3header)
+          oss << i3header->GetSubEventStream() << "/" << i3header->GetSubEventID();
+      else
+          oss << ccmheader->GetSubEventStream() << "/" << ccmheader->GetSubEventID();
       mvaddstr(LINES-2, 13, oss.str().c_str());
       statuslen = std::max(oss.str().size(), statuslen);
     }
@@ -448,9 +457,14 @@ View::display_frame(I3FramePtr frame, unsigned index, unsigned y_selected)
     bool has_start_time=false;
     bool has_end_time=false;
       
-    if (header) {
-      startTime = header->GetStartTime();
-      endTime = header->GetEndTime();
+    if(i3header) {
+      startTime = i3header->GetStartTime();
+      endTime = i3header->GetEndTime();
+      has_start_time=true;
+      has_end_time=true;
+    } else if (ccmheader) {
+      startTime = ccmheader->GetStartTime();
+      endTime = ccmheader->GetEndTime();
       has_start_time=true;
       has_end_time=true;
     } else {

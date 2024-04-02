@@ -19,7 +19,7 @@
 
 I3_FORWARD_DECLARATION(I3TableRowDescription);
 I3_FORWARD_DECLARATION(I3TableRow);
-I3_FORWARD_DECLARATION(I3EventHeader);
+I3_FORWARD_DECLARATION(CCMEventHeader);
 I3_FORWARD_DECLARATION(I3TableService);
 
 /**
@@ -37,7 +37,7 @@ class I3Table {
         void SetConnectedToWriter(bool connected);
 
         I3TableRowPtr CreateRow(size_t nrows);
-        virtual void AddRow(I3EventHeaderConstPtr header, I3TableRowConstPtr row);
+        virtual void AddRow(CCMEventHeaderConstPtr header, I3TableRowConstPtr row);
         virtual void Align();
         
         // I3TableRowConstPtr GetRowForEvent(unsigned int RunID, unsigned int EventID);
@@ -67,7 +67,7 @@ class I3Table {
         bool connected_;       // connected to a writer
         bool tableCreated_;    // the table/tree has been created successfully
 
-        I3EventHeaderConstPtr lastHeader_;
+        CCMEventHeaderConstPtr lastHeader_;
         
         enum AlignmentType {
             MultiRow,   // Some objects can span multiple rows

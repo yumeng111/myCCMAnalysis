@@ -55,7 +55,7 @@ namespace bp = boost::python;
   (VectorCCMWaveformStatusCompound)                                     \
   (I3Waveform)(I3WaveformSeries)(I3WaveformSeriesMap)                   \
   (VectorI3WaveformStatusCompound)(I3DOMLaunch)(I3DOMLaunchSeries)      \
-  (I3DOMLaunchSeriesMap)(I3EventHeader)                                 \
+  (I3DOMLaunchSeriesMap)(I3EventHeader)(CCMEventHeader)                 \
   (I3RecoHit)(I3FlasherInfo)(I3Matrix)(I3ParticleID)                    \
   (I3MCHit)(vectorI3MCHit)(mapOMKeyI3MCHit)(I3MCHitSeriesMap)           \
   (CCMCalibration)(CCMPMTCalibration)(MapCCMPMTKeyCCMPMTCalibration)    \

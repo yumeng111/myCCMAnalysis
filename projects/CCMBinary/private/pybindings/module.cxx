@@ -132,6 +132,7 @@ I3_PYTHON_MODULE(CCMBinary)
   void (*merge1)(CCMAnalysis::Binary::CCMTriggerReadout &, CCMAnalysis::Binary::CCMTriggerReadout const &, size_t, size_t, size_t, bool) = &CCMAnalysis::Binary::merge_triggers;
   // CCMAnalysis::Binary::CCMTriggerReadout&(*merge2)(CCMAnalysis::Binary::CCMTriggerReadout &, CCMAnalysis::Binary::CCMTriggerReadout &&, size_t, size_t, size_t, bool) = &CCMAnalysis::Binary::merge_triggers;
   def("merge_triggers", merge1);
+  def("subtract_times", &CCMAnalysis::Binary::subtract_times);
 
   void (*merge_empty)(CCMAnalysis::Binary::CCMTriggerReadout &, size_t, bool) = &CCMAnalysis::Binary::merge_empty_trigger;
   def("merge_empty_trigger", merge_empty);
