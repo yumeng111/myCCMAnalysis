@@ -24,67 +24,51 @@
 // ********************************************************************
 //
 //
-/// \file optical/LXe/src/G4CCMPMTHit.cc
-/// \brief Implementation of the G4CCMPMTHit class
+/// \file optical/LXe/src/LXeScintHit.cc
+/// \brief Implementation of the LXeScintHit class
 //
 //
-#include "g4-larsim/g4classes/G4CCMPMTHit.h"
+#include "g4-larsim/g4classes/G4CCMScintHit.h"
 
-#include "G4Colour.hh"
 #include "G4ios.hh"
+#include "G4Colour.hh"
 #include "G4LogicalVolume.hh"
 #include "G4VisAttributes.hh"
 #include "G4VPhysicalVolume.hh"
 #include "G4VVisManager.hh"
 
-G4ThreadLocal G4Allocator<G4CCMPMTHit>* G4CCMPMTHitAllocator = nullptr;
+G4ThreadLocal G4Allocator<G4CCMScintHit>* G4CCMScintHitAllocator = nullptr;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPMTHit::G4CCMPMTHit(const G4CCMPMTHit& right) : G4VHit() {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
+G4CCMScintHit::G4CCMScintHit(G4VPhysicalVolume* pVol)
+  : fPhysVol(pVol)
+{}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4CCMScintHit::G4CCMScintHit(const G4CCMScintHit& right)
+  : G4VHit()
+{
+  fEdep    = right.fEdep;
+  fPos     = right.fPos;
+  fPhysVol = right.fPhysVol;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-const G4CCMPMTHit& G4CCMPMTHit::operator=(const G4CCMPMTHit& right) {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
-    return *this;
+const G4CCMScintHit& G4CCMScintHit::operator=(const G4CCMScintHit& right)
+{
+  fEdep    = right.fEdep;
+  fPos     = right.fPos;
+  fPhysVol = right.fPhysVol;
+  return *this;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4bool G4CCMPMTHit::operator==(const G4CCMPMTHit& right) const {
-    return (fPmtNumber == right.fPmtNumber);
+G4bool G4CCMScintHit::operator==(const G4CCMScintHit&) const
+{
+  return false;
+  // returns false because there currently isn't need to check for equality
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void G4CCMPMTHit::Draw() {
-    if(fDrawit && fPhysVol) {  
-        // Redraw only the PMTs that have hit counts > 0
-        // Also need a physical volume to be able to draw anything
-        G4VVisManager* pVVisManager = G4VVisManager::GetConcreteInstance();
-        if(pVVisManager) {  
-            // Make sure that the VisManager exists
-            G4VisAttributes attribs(G4Colour(0., 1., 0.)); // green!
-            attribs.SetForceSolid(true);
-            G4RotationMatrix rot;
-            if(fPhysVol->GetRotation())  // If a rotation is defined use it
-                rot = *(fPhysVol->GetRotation());
-            G4Transform3D trans(rot, fPhysVol->GetTranslation());  // Create transform
-            pVVisManager->Draw(*fPhysVol, attribs, trans);         // Draw it
-        }
-    }
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void G4CCMPMTHit::Print() {}
-

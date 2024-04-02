@@ -23,68 +23,84 @@
 // * acceptance of all terms of the Geant4 Software license.          *
 // ********************************************************************
 //
+/// \file optical/LXe/include/LXeRun.hh
+/// \brief Definition of the LXeRun class
 //
-/// \file optical/LXe/src/G4CCMPMTHit.cc
-/// \brief Implementation of the G4CCMPMTHit class
 //
-//
-#include "g4-larsim/g4classes/G4CCMPMTHit.h"
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-#include "G4Colour.hh"
-#include "G4ios.hh"
-#include "G4LogicalVolume.hh"
-#include "G4VisAttributes.hh"
-#include "G4VPhysicalVolume.hh"
-#include "G4VVisManager.hh"
+#ifndef G4CCMRun_h
+#define G4CCMRun_h 1
 
-G4ThreadLocal G4Allocator<G4CCMPMTHit>* G4CCMPMTHitAllocator = nullptr;
+#include "globals.hh"
+#include "G4Run.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPMTHit::G4CCMPMTHit(const G4CCMPMTHit& right) : G4VHit() {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
-}
+class G4CCMRun : public G4Run
+{
+ public:
+  G4CCMRun() = default;
+  ~G4CCMRun() override = default;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  void IncPhotonCount_Scint(G4int count)
+  {
+    fPhotonCount_Scint += count;
+    fPhotonCount_Scint2 += count * count;
+  }
+  void IncPhotonCount_Ceren(G4int count)
+  {
+    fPhotonCount_Ceren += count;
+    fPhotonCount_Ceren2 += count * count;
+  }
+  void IncEDep(G4double dep)
+  {
+    fTotE += dep;
+    fTotE2 += dep * dep;
+  }
+  void IncAbsorption(G4int count)
+  {
+    fAbsorptionCount += count;
+    fAbsorptionCount2 += count * count;
+  }
+  void IncBoundaryAbsorption(G4int count)
+  {
+    fBoundaryAbsorptionCount += count;
+    fBoundaryAbsorptionCount2 += count * count;
+  }
+  void IncHitCount(G4int count)
+  {
+    fHitCount += count;
+    fHitCount2 += count * count;
+  }
+  void IncHitsAboveThreshold(G4int count)
+  {
+    fPMTsAboveThreshold += count;
+    fPMTsAboveThreshold2 += count * count;
+  }
 
-const G4CCMPMTHit& G4CCMPMTHit::operator=(const G4CCMPMTHit& right) {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
-    return *this;
-}
+  void Merge(const G4Run* run) override;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  void EndOfRun();
 
-G4bool G4CCMPMTHit::operator==(const G4CCMPMTHit& right) const {
-    return (fPmtNumber == right.fPmtNumber);
-}
+ private:
+  G4int fHitCount = 0;
+  G4int fHitCount2 = 0;
+  G4int fPhotonCount_Scint = 0;
+  G4int fPhotonCount_Scint2 = 0;
+  G4int fPhotonCount_Ceren = 0;
+  G4int fPhotonCount_Ceren2 = 0;
+  G4int fAbsorptionCount = 0;
+  G4int fAbsorptionCount2 = 0;
+  G4int fBoundaryAbsorptionCount = 0;
+  G4int fBoundaryAbsorptionCount2 = 0;
+  G4int fPMTsAboveThreshold = 0;
+  G4int fPMTsAboveThreshold2 = 0;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  G4double fTotE = 0.;
+  G4double fTotE2 = 0.;
+};
 
-void G4CCMPMTHit::Draw() {
-    if(fDrawit && fPhysVol) {  
-        // Redraw only the PMTs that have hit counts > 0
-        // Also need a physical volume to be able to draw anything
-        G4VVisManager* pVVisManager = G4VVisManager::GetConcreteInstance();
-        if(pVVisManager) {  
-            // Make sure that the VisManager exists
-            G4VisAttributes attribs(G4Colour(0., 1., 0.)); // green!
-            attribs.SetForceSolid(true);
-            G4RotationMatrix rot;
-            if(fPhysVol->GetRotation())  // If a rotation is defined use it
-                rot = *(fPhysVol->GetRotation());
-            G4Transform3D trans(rot, fPhysVol->GetTranslation());  // Create transform
-            pVVisManager->Draw(*fPhysVol, attribs, trans);         // Draw it
-        }
-    }
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void G4CCMPMTHit::Print() {}
+#endif  // G4CCMRun_h
 

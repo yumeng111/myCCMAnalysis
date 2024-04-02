@@ -383,7 +383,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     
     // now let's build also PMT photocathode!
     fPhotocath = J4PMTSolidMaker::GetPhotcathodeSolid();  
-    fPhotocath_log = new G4LogicalVolume(fPhotocath, G4Material::GetMaterial("Vacuum"), "photocath_log");
+    fPhotocath_log = new G4LogicalVolume(fPhotocath, G4Material::GetMaterial("Alum"), "photocath_log");
     new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocath_log, "photocath", fPMT_log, false, 0);
 
 
@@ -478,7 +478,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
         }
         if (coated){
-            // place tpb coating
+            // place tpb coating before placing pmt
             G4String coating_name = pmt_name + "_tpbcoating";
             new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, coating_name, fFiducialAr_log, false, k);
         }
@@ -569,20 +569,20 @@ void G4CCMMainVolume::SurfaceProperties()
     new G4LogicalSkinSurface("TPBCoating_Surface", fTPBCoating_log, TPBfoilOS);
 
     //**Photocathode surface properties
-    //std::vector<G4double> ephoton = { 7.0 * eV, 7.14 * eV };
-    //std::vector<G4double> photocath_EFF     = { 1., 1. };
-    //std::vector<G4double> photocath_ReR     = { 1.92, 1.92 };
-    //std::vector<G4double> photocath_ImR     = { 1.69, 1.69 };
-    //auto photocath_mt = new G4MaterialPropertiesTable();
-    //photocath_mt->AddProperty("EFFICIENCY", ephoton, photocath_EFF);
-    //photocath_mt->AddProperty("REALRINDEX", ephoton, photocath_ReR);
-    //photocath_mt->AddProperty("IMAGINARYRINDEX", ephoton, photocath_ImR);
-    //auto photocath_opsurf = new G4OpticalSurface(
-    //"photocath_opsurf", glisur, polished, dielectric_metal);
-    //photocath_opsurf->SetMaterialPropertiesTable(photocath_mt);
+    std::vector<G4double> ephoton = { 7.0 * eV, 7.14 * eV };
+    std::vector<G4double> photocath_EFF     = { 1., 1. };
+    std::vector<G4double> photocath_ReR     = { 1.92, 1.92 };
+    std::vector<G4double> photocath_ImR     = { 1.69, 1.69 };
+    auto photocath_mt = new G4MaterialPropertiesTable();
+    photocath_mt->AddProperty("EFFICIENCY", ephoton, photocath_EFF);
+    photocath_mt->AddProperty("REALRINDEX", ephoton, photocath_ReR);
+    photocath_mt->AddProperty("IMAGINARYRINDEX", ephoton, photocath_ImR);
+    auto photocath_opsurf = new G4OpticalSurface(
+    "photocath_opsurf", glisur, polished, dielectric_metal);
+    photocath_opsurf->SetMaterialPropertiesTable(photocath_mt);
 
     //**Create logical skin surfaces
-    //new G4LogicalSkinSurface("photocath_surf", fPhotocath_log, photocath_opsurf);
+    new G4LogicalSkinSurface("photocath_surf", fPhotocath_log, photocath_opsurf);
 
 }
 

@@ -1,7 +1,10 @@
 
 #include <g4-larsim/g4classes/G4Interface.h>
 #include <g4-larsim/g4classes/G4CCMDetectorConstruction.h>
+#include "g4-larsim/g4classes/G4CCMActionInitialization.h"
 #include <g4-larsim/g4classes/G4CCMPhysicsList.h>
+#include <g4-larsim/g4classes/G4CCMUserTrackingAction.h>
+#include <g4-larsim/g4classes/G4CCMUserSteppingAction.h>
 #include <g4-larsim/g4classes/G4CCMPMTSD.h>
 
 #include <icetray/I3Logging.h>
@@ -290,7 +293,7 @@ void G4Interface::Initialize()
 
     physicsList->RegisterPhysics(opticalPhysics);
     runManager_.SetUserInitialization(physicsList);
-    //runManager_.SetUserInitialization(new G4CCMActionInitialization(detector_));
+    runManager_.SetUserInitialization(new G4CCMActionInitialization(detector_));
 
     //log_debug("Init UserTrackingAction ...");
     //runManager_.SetUserAction(new G4CCMUserTrackingAction());

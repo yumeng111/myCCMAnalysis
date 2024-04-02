@@ -24,67 +24,73 @@
 // ********************************************************************
 //
 //
-/// \file optical/LXe/src/G4CCMPMTHit.cc
-/// \brief Implementation of the G4CCMPMTHit class
+/// \file optical/LXe/src/LXeScintSD.cc
+/// \brief Implementation of the LXeScintSD class
 //
 //
-#include "g4-larsim/g4classes/G4CCMPMTHit.h"
+#include "g4-larsim/g4classes/G4CCMScintSD.h"
+#include "g4-larsim/g4classes/G4CCMScintHit.h"
 
-#include "G4Colour.hh"
 #include "G4ios.hh"
 #include "G4LogicalVolume.hh"
-#include "G4VisAttributes.hh"
+#include "G4ParticleDefinition.hh"
+#include "G4SDManager.hh"
+#include "G4Step.hh"
+#include "G4TouchableHistory.hh"
+#include "G4Track.hh"
 #include "G4VPhysicalVolume.hh"
-#include "G4VVisManager.hh"
-
-G4ThreadLocal G4Allocator<G4CCMPMTHit>* G4CCMPMTHitAllocator = nullptr;
+#include "G4VProcess.hh"
+#include "G4VTouchable.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPMTHit::G4CCMPMTHit(const G4CCMPMTHit& right) : G4VHit() {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
+G4CCMScintSD::G4CCMScintSD(G4String name)
+  : G4VSensitiveDetector(name)
+{
+  collectionName.insert("scintCollection");
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-const G4CCMPMTHit& G4CCMPMTHit::operator=(const G4CCMPMTHit& right) {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
-    return *this;
+void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE)
+{
+  fScintCollection =
+    new G4CCMScintHitsCollection(SensitiveDetectorName, collectionName[0]);
+
+  if(fHitsCID < 0)
+  {
+    fHitsCID = G4SDManager::GetSDMpointer()->GetCollectionID(fScintCollection);
+  }
+  hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4bool G4CCMPMTHit::operator==(const G4CCMPMTHit& right) const {
-    return (fPmtNumber == right.fPmtNumber);
+G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*)
+{
+  G4double edep = aStep->GetTotalEnergyDeposit();
+  if(edep == 0.)
+    return false;  // No edep so don't count as hit
+
+  G4StepPoint* thePrePoint = aStep->GetPreStepPoint();
+  auto theTouchable =
+    (G4TouchableHistory*) (aStep->GetPreStepPoint()->GetTouchable());
+  G4VPhysicalVolume* thePrePV = theTouchable->GetVolume();
+
+  G4StepPoint* thePostPoint = aStep->GetPostStepPoint();
+
+  // Get the average position of the hit
+  G4ThreeVector pos = thePrePoint->GetPosition() + thePostPoint->GetPosition();
+  pos /= 2.;
+
+  auto scintHit = new G4CCMScintHit(thePrePV);
+
+  scintHit->SetEdep(edep);
+  scintHit->SetPos(pos);
+
+  fScintCollection->insert(scintHit);
+
+  return true;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void G4CCMPMTHit::Draw() {
-    if(fDrawit && fPhysVol) {  
-        // Redraw only the PMTs that have hit counts > 0
-        // Also need a physical volume to be able to draw anything
-        G4VVisManager* pVVisManager = G4VVisManager::GetConcreteInstance();
-        if(pVVisManager) {  
-            // Make sure that the VisManager exists
-            G4VisAttributes attribs(G4Colour(0., 1., 0.)); // green!
-            attribs.SetForceSolid(true);
-            G4RotationMatrix rot;
-            if(fPhysVol->GetRotation())  // If a rotation is defined use it
-                rot = *(fPhysVol->GetRotation());
-            G4Transform3D trans(rot, fPhysVol->GetTranslation());  // Create transform
-            pVVisManager->Draw(*fPhysVol, attribs, trans);         // Draw it
-        }
-    }
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void G4CCMPMTHit::Print() {}
-

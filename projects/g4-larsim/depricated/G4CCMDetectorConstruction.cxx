@@ -1,5 +1,6 @@
 
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
 #include "g4-larsim/g4classes/G4CCMMainVolume.h"
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
 #include "g4-larsim/g4classes/G4CCMScintSD.h"
@@ -37,6 +38,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction()
 {
   SetDefaults();
   DefineMaterials();
+  fDetectorMessenger = new G4CCMDetectorMessenger(this);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -44,6 +46,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction()
 G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
 {
   delete fMainVolume;
+  delete fDetectorMessenger;
   delete fH;
   delete fC;
   delete fN;
@@ -358,29 +361,39 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
 
     // PMT SD
     G4CCMPMTSD* pmt = fPMT_SD.Get();
-    if(!pmt) {
-        // Created here so it exists as pmts are being placed
-        G4cout << "Construction /LAr/pmtSD" << G4endl;
-        auto pmt_SD = new G4CCMPMTSD("/LAr/pmtSD");
-        fPMT_SD.Put(pmt_SD);
+    if(!pmt)
+    {
+    // Created here so it exists as pmts are being placed
+    G4cout << "Construction /LAr/pmtSD" << G4endl;
+    auto pmt_SD = new G4CCMPMTSD("/LAr/pmtSD");
+    fPMT_SD.Put(pmt_SD);
 
-        pmt_SD->InitPMTs();
-        pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+    pmt_SD->InitPMTs();
+    pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
     }
-    else {
-        pmt->InitPMTs();
-        pmt->SetPmtPositions(fMainVolume->GetPMTPositions());
+    else
+    {
+    pmt->InitPMTs();
+    pmt->SetPmtPositions(fMainVolume->GetPMTPositions());
     }
     G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
+    // sensitive detector is not actually on the photocathode.
+    // processHits gets done manually by the stepping action.
+    // It is used to detect when photons hit and get absorbed & detected at the
+    // boundary to the photocathode (which doesn't get done by attaching it to a
+    // logical volume.
+    // It does however need to be attached to something or else it doesn't get
+    // reset at the begining of events
+
     SetSensitiveDetector(fMainVolume->GetLogPhotoCath(), fPMT_SD.Get());
     
     // Scint SD
 
-    //if(!fScint_SD.Get()) {
-        //G4cout << "Construction /LAr/scintSD" << G4endl;
+    if(!fScint_SD.Get()) {
+        G4cout << "Construction /LAr/scintSD" << G4endl;
         //auto scint_SD = new G4CCMScintSD("/LArDet/scintSD");
         //fScint_SD.Put(scint_SD);
-    //}
+    }
     //G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
     //SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
 

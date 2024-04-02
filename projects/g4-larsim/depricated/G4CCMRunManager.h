@@ -69,6 +69,7 @@ class G4CCMRunManager: public G4RunManager {
         G4int fPMTsAboveThreshold = 0;
 
         boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+        static const std::unordered_map<G4double, CCMMCPE::PhotonSource> G4doubletoPhotonSource;
 };
 
 #endif

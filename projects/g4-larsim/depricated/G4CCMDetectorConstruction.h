@@ -23,6 +23,7 @@ class G4VPhysicalVolume;
 
 
 #include "G4Material.hh"
+#include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
 #include "G4VisAttributes.hh"
 #include "G4RotationMatrix.hh"
 #include "G4VUserDetectorConstruction.hh"
@@ -56,6 +57,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
   private:
     
     void DefineMaterials();
+
+    G4CCMDetectorMessenger* fDetectorMessenger = nullptr;
 
     G4Box* fExperimentalHall_box = nullptr;
     G4LogicalVolume* fExperimentalHall_log = nullptr;

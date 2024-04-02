@@ -45,7 +45,19 @@ G4CCMPMTHit::G4CCMPMTHit(const G4CCMPMTHit& right) : G4VHit() {
     fPmtNumber = right.fPmtNumber;
     fPhotons = right.fPhotons;
     fPhysVol = right.fPhysVol;
+    fRotMatrix = right.fRotMatrix;
     fDrawit = right.fDrawit;
+    fCCMPMTKeyRow = right.fCCMPMTKeyRow;
+    fCCMPMTKeyNumber = right.fCCMPMTKeyNumber;
+    photonTime = right.photonTime;
+    photonEnergy = right.photonEnergy;
+    photonPositionX = right.photonPositionX;
+    photonPositionY = right.photonPositionY;
+    photonPositionZ = right.photonPositionZ;
+    photonDirectionX = right.photonDirectionX;
+    photonDirectionY = right.photonDirectionY;
+    photonDirectionZ = right.photonDirectionZ;
+    photonCreationProcess = right.photonCreationProcess;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -54,7 +66,19 @@ const G4CCMPMTHit& G4CCMPMTHit::operator=(const G4CCMPMTHit& right) {
     fPmtNumber = right.fPmtNumber;
     fPhotons = right.fPhotons;
     fPhysVol = right.fPhysVol;
+    fRotMatrix = right.fRotMatrix;
     fDrawit = right.fDrawit;
+    fCCMPMTKeyRow = right.fCCMPMTKeyRow;
+    fCCMPMTKeyNumber = right.fCCMPMTKeyNumber;
+    photonTime = right.photonTime;
+    photonEnergy = right.photonEnergy;
+    photonPositionX = right.photonPositionX;
+    photonPositionY = right.photonPositionY;
+    photonPositionZ = right.photonPositionZ;
+    photonDirectionX = right.photonDirectionX;
+    photonDirectionY = right.photonDirectionY;
+    photonDirectionZ = right.photonDirectionZ;
+    photonCreationProcess = right.photonCreationProcess;
     return *this;
 }
 
@@ -66,22 +90,24 @@ G4bool G4CCMPMTHit::operator==(const G4CCMPMTHit& right) const {
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMPMTHit::Draw() {
-    if(fDrawit && fPhysVol) {  
-        // Redraw only the PMTs that have hit counts > 0
-        // Also need a physical volume to be able to draw anything
-        G4VVisManager* pVVisManager = G4VVisManager::GetConcreteInstance();
-        if(pVVisManager) {  
-            // Make sure that the VisManager exists
-            G4VisAttributes attribs(G4Colour(0., 1., 0.)); // green!
-            attribs.SetForceSolid(true);
-            G4RotationMatrix rot;
-            if(fPhysVol->GetRotation())  // If a rotation is defined use it
-                rot = *(fPhysVol->GetRotation());
-            G4Transform3D trans(rot, fPhysVol->GetTranslation());  // Create transform
-            pVVisManager->Draw(*fPhysVol, attribs, trans);         // Draw it
-        }
+void G4CCMPMTHit::Draw()
+{
+  if(fDrawit && fPhysVol && fRotMatrix)
+  {  // Redraw only the PMTs that have hit counts > 0
+    // Also need a physical volume to be able to draw anything
+    G4VVisManager* pVVisManager = G4VVisManager::GetConcreteInstance();
+    if(pVVisManager)
+    {  // Make sure that the VisManager exists
+      G4VisAttributes attribs(G4Colour(0., 1., 0.)); // green!
+      attribs.SetForceSolid(true);
+      //G4RotationMatrix rot;
+      //if(fPhysVol->GetRotation())  // If a rotation is defined use it
+      //  G4cout << "!!!!! has a rotation! !!!" << G4endl;
+      //    rot = *(fPhysVol->GetRotation());
+      G4Transform3D trans(*fRotMatrix, fPhysVol->GetTranslation());  // Create transform
+      pVVisManager->Draw(*fPhysVol, attribs, trans);         // Draw it
     }
+  }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

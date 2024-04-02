@@ -60,6 +60,9 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         void Initialize(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
 
+        // A version of processHits active on boundary
+        G4bool ProcessHits_boundary(const G4Step*, G4TouchableHistory*);
+
         // Initialize the arrays to store pmt positions
         inline void InitPMTs() {
             if(fPMTPositionsX)
@@ -76,8 +79,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         // Store a pmt position
         void SetPmtPositions(const std::vector<G4ThreeVector>& positions);
 
-        // return CCMMCPEMap
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> GetCCMMCPEMap(){ return CCMMCPEMap; }
+        std::vector<CCMPMTKey> GetPMTKeys() { return pmt_keys; }
 
     private:
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
@@ -93,8 +95,9 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         G4int fHitCID = -1;
     
         static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
+        static const std::unordered_map<std::string, G4double> processNameToG4double;
 
-        boost::shared_ptr<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> CCMMCPEMap = boost::make_shared<I3Map<CCMPMTKey, std::vector<CCMMCPE>>> ();
+        std::vector<CCMPMTKey> pmt_keys;
 };
 
 #endif

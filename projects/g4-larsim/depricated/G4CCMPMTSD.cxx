@@ -31,6 +31,7 @@
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 #include "g4-larsim/g4classes/G4CCMPMTHit.h"
+#include "g4-larsim/g4classes/G4CCMUserTrackInformation.h"
 
 #include "G4ios.hh"
 #include "G4LogicalVolume.hh"
@@ -48,6 +49,9 @@
 const std::unordered_map<std::string, CCMMCPE::PhotonSource> G4CCMPMTSD::processNameToPhotonSource = {{"Unknown", CCMMCPE::PhotonSource::Unknown},
                                                                                                       {"Scintillation", CCMMCPE::PhotonSource::Scintillation},
                                                                                                       {"Cerenkov", CCMMCPE::PhotonSource::Cerenkov}};
+const std::unordered_map<std::string, G4double> G4CCMPMTSD::processNameToG4double = {{"Unknown", 0.},
+                                                                                     {"Scintillation", 1.},
+                                                                                     {"Cerenkov", 2.}};
 
 G4CCMPMTSD::G4CCMPMTSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("pmtHitCollection");
@@ -87,19 +91,26 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
-    
+G4bool G4CCMPMTSD::ProcessHits(G4Step*, G4TouchableHistory*) { return false; }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+// Generates a hit and uses the postStepPoint's mother volume replica number
+// PostStepPoint because the hit is generated manually when the photon is
+// absorbed by the photocathode
+
+G4bool G4CCMPMTSD::ProcessHits_boundary(const G4Step* aStep, G4TouchableHistory*) {
+
     // need to know if this is an optical photon
     if(aStep->GetTrack()->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
         return false;
 
     // User replica number 1 since photocathode is a daughter volume to the pmt which was replicated
     G4int pmtNumber = aStep->GetPostStepPoint()->GetTouchable()->GetReplicaNumber(1);
-    //G4VPhysicalVolume* physVol = aStep->GetPostStepPoint()->GetTouchable()->GetVolume(1);
-    G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(1);
+    G4VPhysicalVolume* physVol = aStep->GetPostStepPoint()->GetTouchable()->GetVolume(1);
     std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is row_pmtNumber 
 
-    // let's convert physVolName to a row and pmt number to make a CCMPMTKey
+    // let's convert physVolName to a row and pmt number to make aCCMPMTKey
     std::stringstream string_stream(physVolName);
     std::string segment;
     std::getline(string_stream, segment, '_');
@@ -108,16 +119,17 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     int pmt_number = std::stoi(segment);
 
     CCMPMTKey key = CCMPMTKey(row, pmt_number);
+
     // so now we need to save the info to a CCMMCPE
     // then we will save associated with correct PMT
     // we will be saving time, wavelength, positions, direction, and source
     
     // let's grab everything from our step
     G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(photonPosition.x(), photonPosition.y(), photonPosition.z());
+    //I3Position position(photonPosition.x(), photonPosition.y(), photonPosition.z());
 
     G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
-    I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
+    //I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
     G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime();
     G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy();
@@ -129,8 +141,21 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // now save to CCMMCPE!
-    CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
+    //CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
+    
+    //// so we have the CCMPMTKey and we have the CCMMCPE, let's save!
+    //for (auto it = CCMMCPEMap->begin(); it != CCMMCPEMap->end(); ++it) {
+    //    CCMPMTKey mc_pe_map_key = it->first;
+    //    if (mc_pe_map_key == key){
+    //        CCMMCPEMap->at(mc_pe_map_key).push_back(this_mc_pe);
+    //    }
+    //}   
 
+    //// let's also add the option for adding this CCMPMTKey to CCMMCPEMap if it does not exist already
+    //if (CCMMCPEMap->find(key) == CCMMCPEMap->end()) {
+    //    (*CCMMCPEMap)[key] = std::vector<CCMMCPE>{this_mc_pe};
+    //}
+    
 
     // Find the correct hit collection
     size_t n = fPMTHitCollection->entries();
@@ -144,30 +169,46 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     if(hit == nullptr) { // this pmt wasn't previously hit in this event
         hit = new G4CCMPMTHit();  // so create new hit
+        hit->SetCCMPMTKeyRow(static_cast<G4int>(row));
+        hit->SetCCMPMTKeyNumber(static_cast<G4int>(pmt_number));
         hit->SetPMTNumber(pmtNumber);
         hit->SetPMTPhysVol(physVol);
+        hit->SetPMTPhysVolRotMatrix(physVol->GetRotation());
         fPMTHitCollection->insert(hit);
         hit->SetPMTPos((*fPMTPositionsX)[pmtNumber], (*fPMTPositionsY)[pmtNumber], (*fPMTPositionsZ)[pmtNumber]);
+        pmt_keys.push_back(key); 
     }
 
     hit->IncPhotonCount();  // increment hit for the selected pmt
     hit->SetDrawit(true);
 
-    // so we have the CCMPMTKey and we have the CCMMCPE, let's save!
-    for (auto it = CCMMCPEMap->begin(); it != CCMMCPEMap->end(); ++it) {
-        CCMPMTKey mc_pe_map_key = it->first;
-        if (mc_pe_map_key == key){
-            CCMMCPEMap->at(mc_pe_map_key).push_back(this_mc_pe);
-        }
-    }   
+    // let's save everything necessary to make a CCMMCPE
+    hit->AppendPhotonTime(photonTime);
+    hit->AppendPhotonEnergy(photonEnergy);
+    hit->AppendPhotonPositionX(photonPosition.getX());
+    hit->AppendPhotonPositionY(photonPosition.getY());
+    hit->AppendPhotonPositionZ(photonPosition.getZ());
+    hit->AppendPhotonDirectionX(photonDirection.getX());
+    hit->AppendPhotonDirectionY(photonDirection.getY());
+    hit->AppendPhotonDirectionZ(photonDirection.getZ());
+    hit->AppendPhotonCreationProcess(processNameToG4double.at(creationProcessName));
 
-    // let's also add the option for adding this CCMPMTKey to CCMMCPEMap if it does not exist already
-    if (CCMMCPEMap->find(key) == CCMMCPEMap->end()) {
-        (*CCMMCPEMap)[key] = std::vector<CCMMCPE>{this_mc_pe};
-    }
-    
-    // now kill photon
-    aStep->GetTrack()->SetTrackStatus(fStopAndKill); 
+    // ok we got all the info we wanted, now time to kill this photon
+    aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+
+    //if(!G4CCMDetectorConstruction::GetSphereOn())
+    //{
+    //  hit->SetDrawit(true);
+    //  // If the sphere is disabled then this hit is automaticaly drawn
+    //}
+    //else
+    //{  // sphere enabled
+    //  auto trackInfo =
+    //    (G4CCMUserTrackInformation*) aStep->GetTrack()->GetUserInformation();
+    //  if(trackInfo->GetTrackStatus() & hitSphere)
+    //    // only draw this hit if the photon has hit the sphere first
+    //    hit->SetDrawit(true);
+    //}
 
     return true;
 }

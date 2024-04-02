@@ -101,6 +101,7 @@ void J4PMTSolidMaker::Create8inchPMTSolid()
     G4Polycone* polycone1 = new 
       G4Polycone("polycone1", 0, 2*M_PI, segment+1, zPlane, rInner, rOuter);
     
+    std::cout<<"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxpositive"<<std::endl;
     centerOfPolycone = G4ThreeVector(0, 0, 59.5 *mm);
     centerOfCons = G4ThreeVector(0, 0, (70.4284+33.8363/2-89.) *mm); 
     centerOfTubs = G4ThreeVector(0, 0, -(89.-70.4284/2) *mm); 
@@ -136,9 +137,11 @@ void J4PMTSolidMaker::Create8inchPMTSolid()
       
     // to create two PMTs
       
-    J4UnionSolid *solid1 = new J4UnionSolid("solid1", sphere, polycone1, 0, centerOfPolycone);
+    J4UnionSolid *solid1
+	= new J4UnionSolid("solid1", sphere, polycone1, 0, centerOfPolycone);
       
-    J4UnionSolid *solid2 = new J4UnionSolid("solid2", solid1, tubs, 0, centerOfTubs);
+    J4UnionSolid *solid2
+	= new J4UnionSolid("solid2", solid1, tubs, 0, centerOfTubs);
       
     f8inchPMTSolid = new J4UnionSolid("solid", solid2, cons, 0, centerOfCons);
 
@@ -199,6 +202,7 @@ void J4PMTSolidMaker::CreateTPBCoatingSolid()
     G4Polycone* polycone1 = new 
       G4Polycone("polycone1", 0, 2*M_PI, segment+1, zPlane, rInner, rOuter);
     
+    std::cout<<"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxpositive"<<std::endl;
     centerOfPolycone = G4ThreeVector(0, 0, 59.5 *mm);
     centerOfCons = G4ThreeVector(0, 0, (centerofConslb+33.8363/2-89.) *mm); 
     centerOfTubs = G4ThreeVector(0, 0, -(89.-centerofConslb/2) *mm); 
@@ -305,6 +309,7 @@ void J4PMTSolidMaker::CreatePhotocathodeSolid()
     G4Polycone* polycone1 = new 
       G4Polycone("polycone1", 0, 2*M_PI, segment+1, zPlane, rInner, rOuter);
     
+    std::cout<<"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxpositive"<<std::endl;
     centerOfPolycone = G4ThreeVector(0, 0, 59.5 *mm);
     centerOfCons = G4ThreeVector(0, 0, (centerofConslb+33.8363/2-89.) *mm); 
     centerOfTubs = G4ThreeVector(0, 0, -(89.-centerofConslb/2) *mm); 

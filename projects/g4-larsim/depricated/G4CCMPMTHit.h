@@ -65,16 +65,66 @@ class G4CCMPMTHit : public G4VHit {
         inline void SetPMTPhysVol(G4VPhysicalVolume* physVol) { fPhysVol = physVol; }
         inline G4VPhysicalVolume* GetPMTPhysVol() { return fPhysVol; }
 
+        inline void SetPMTPhysVolRotMatrix(G4RotationMatrix* rotMatrix) { fRotMatrix = rotMatrix; }
+        inline G4RotationMatrix* GetPMTPhysVolRotMatrix() { return fRotMatrix; }
+        
         inline void SetPMTPos(G4double x, G4double y, G4double z) { fPos = G4ThreeVector(x, y, z); }
 
         inline G4ThreeVector GetPMTPos() { return fPos; }
+
+        inline void SetCCMPMTKeyRow(G4int r) { fCCMPMTKeyRow = r; }        
+        inline void SetCCMPMTKeyNumber(G4int n) { fCCMPMTKeyNumber = n; }
+
+        inline G4int GetCCMPMTKeyRow() { return fCCMPMTKeyRow; }
+        inline G4int GetCCMPMTKeyNumber() { return fCCMPMTKeyNumber; }
+
+        inline void AppendPhotonTime(G4double t) { photonTime.push_back(t); }
+        inline void AppendPhotonEnergy(G4double w) { photonEnergy.push_back(w); }
+        inline void AppendPhotonPositionX(G4double x) { photonPositionX.push_back(x); }
+        inline void AppendPhotonPositionY(G4double y) { photonPositionY.push_back(y); }
+        inline void AppendPhotonPositionZ(G4double z) { photonPositionZ.push_back(z); }
+        inline void AppendPhotonDirectionX(G4double x) { photonDirectionX.push_back(x); }
+        inline void AppendPhotonDirectionY(G4double y) { photonDirectionY.push_back(y); }
+        inline void AppendPhotonDirectionZ(G4double z) { photonDirectionZ.push_back(z); }
+        inline void AppendPhotonCreationProcess(G4double c) { photonCreationProcess.push_back(c); }
+
+        inline G4DataVector GetPhotonTime() { return photonTime;} 
+        inline G4DataVector GetPhotonEnergy() { return photonEnergy; } 
+        inline G4DataVector GetPhotonPositionX() { return photonPositionX; }
+        inline G4DataVector GetPhotonPositionY() { return photonPositionY; }   
+        inline G4DataVector GetPhotonPositionZ() { return photonPositionZ; }   
+        inline G4DataVector GetPhotonDirectionX() { return photonDirectionX; }   
+        inline G4DataVector GetPhotonDirectionY() { return photonDirectionX; }   
+        inline G4DataVector GetPhotonDirectionZ() { return photonDirectionX; }   
+        inline G4DataVector GetPhotonCreationProcess() { return photonCreationProcess; } 
 
     private:
         G4int fPmtNumber = -1;
         G4int fPhotons = 0;
         G4ThreeVector fPos;
         G4VPhysicalVolume* fPhysVol = nullptr;
+        G4RotationMatrix* fRotMatrix = nullptr;
         G4bool fDrawit = false;
+        // we also need to keep track of things necessary to make a CCMPMTKey and information for CCMMCPE 
+        // ideally, I would like to have a std::vector<CCMMCPE> but type needs to be G4...
+        // there is a G4FastVector that is a template class so could have G4FastVector<CCMMCPE>
+        // but the issue I ran into was you need to initialize it containing a specific data type and of a certain size
+        // then you can add elements at a specific index (that's it, initialize, and add elements)
+        // so since we don't know the size, so to .push_back equivalent, i would have to make a new G4FastVector of size N+1 than previous size,
+        // add all previous elements, then add new element
+        // so instead I am using G4DataVector (which inherit from std::vector<double>) to keep track of all elements necessary to make CCMMCPE
+        // then the run manager will make the CCMMCPE objects and save appropriately
+        G4int fCCMPMTKeyRow;
+        G4int fCCMPMTKeyNumber;
+        G4DataVector photonTime; 
+        G4DataVector photonEnergy; 
+        G4DataVector photonPositionX; 
+        G4DataVector photonPositionY; 
+        G4DataVector photonPositionZ; 
+        G4DataVector photonDirectionX; 
+        G4DataVector photonDirectionY; 
+        G4DataVector photonDirectionZ; 
+        G4DataVector photonCreationProcess; 
 };
 
 typedef G4THitsCollection<G4CCMPMTHit> G4CCMPMTHitsCollection;
