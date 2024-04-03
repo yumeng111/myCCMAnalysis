@@ -12,11 +12,13 @@ if(GEANT4_FOUND)
         private/g4-larsim/CCMSimulator.cxx
         private/g4-larsim/g4classes/*.h
         private/g4-larsim/g4classes/*.cxx
+        visualization/*.cxx
+        visualization/*.h
         USE_TOOLS boost python clhep geant4 gsl
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses
     )
 
-    i3_executable(CCM
+    i3_executable(g4larsim
         apps/*.cxx
         USE_TOOLS clhep geant4
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses g4-larsim
