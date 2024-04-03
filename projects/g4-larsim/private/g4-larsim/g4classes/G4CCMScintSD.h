@@ -31,19 +31,18 @@
 #ifndef G4CCMScintSD_h
 #define G4CCMScintSD_h 1
 
+#include "icetray/I3Units.h"
+#include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/I3Particle.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
-
-#include "G4VSensitiveDetector.hh"
-#include "G4SystemOfUnits.hh"
+#include "dataclasses/physics/I3MCTreeUtils.h"
 
 #include <vector>
-#include <sstream>
 #include <string>
-#include <simclasses/CCMMCPE.h>
-#include <icetray/CCMPMTKey.h>
-#include <dataclasses/I3Map.h>
-#include <dataclasses/I3Position.h>
-#include <dataclasses/I3Direction.h>
+#include <sstream>
+
+#include <G4SystemOfUnits.hh>
+#include <G4VSensitiveDetector.hh>
 
 class G4Step;
 class G4HCofThisEvent;
@@ -56,25 +55,39 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         void Initialize(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
         
-        // return list of CCMMCPE
-        boost::shared_ptr<CCMMCPESeries> GetCCMMCPEList(){ return CCMMCPEList; }
+        // return updated MCTree
+        I3MCTreePtr GetUpdatedMCTree(){ return mcTree; }
         
         bool GetPMTSDStatus() { return PMTSDStatus_; }
         void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
 
+        I3Particle GetPrimaryParticle() { return primary_; }
+        void SetPrimaryParticle(I3Particle primary) {
+            // let's set the primary particle
+            primary_ = primary;
+            primaryParticleType_ = primary_.GetType();
+            primaryStartingEnergy_ = primary_.GetEnergy();
+        } 
+    
+
     private:
         G4CCMScintHitsCollection* fScintCollection = nullptr;
         G4int fHitsCID = -1;
-        static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
-        // define a few things for converting energy to wavelength
-        const G4double h_Planck = 6.62607015e-34 * joule * second;
-        const G4double c_light = 2.99792458e8 * meter / second;
         
         // controls to turn SD on/off (set by our response service)
         // we just need to know if PMTSD is on --> if so, we do NOT kill tracks, but if it is off, we DO kill tracks after registering one hit
         bool PMTSDStatus_; 
-        
-        boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
+
+        // let's also grab the primary particle information
+        I3Particle primary_;
+        I3Particle::ParticleType primaryParticleType_; 
+        double primaryStartingEnergy_;
+        I3ParticleID prev_parent_particle_id_;
+
+        // our mc tree we will save energy depositions to
+        I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
+
+        static const std::unordered_map<int, I3Particle::ParticleType> pdgCodeToI3ParticleType; 
 };
 
 #endif

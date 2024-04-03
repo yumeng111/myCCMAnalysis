@@ -31,23 +31,41 @@
 #include "g4-larsim/g4classes/G4CCMScintSD.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 
-#include "G4ios.hh"
-#include "G4LogicalVolume.hh"
-#include "G4ParticleDefinition.hh"
-#include "G4SDManager.hh"
-#include "G4Step.hh"
-#include "G4TouchableHistory.hh"
-#include "G4Track.hh"
-#include "G4VPhysicalVolume.hh"
-#include "G4VProcess.hh"
-#include "G4VTouchable.hh"
-#include "G4ParticleTypes.hh"
+#include <G4ios.hh>
+#include <G4Step.hh>
+#include <G4Track.hh>
+#include <G4VProcess.hh>
+#include <G4SDManager.hh>
+#include <G4VTouchable.hh>
+#include <G4ParticleTypes.hh>
+#include <G4LogicalVolume.hh>
+#include <G4VPhysicalVolume.hh>
+#include <G4TouchableHistory.hh>
+#include <G4ParticleDefinition.hh>
+
+const std::unordered_map<int, I3Particle::ParticleType> G4CCMScintSD::pdgCodeToI3ParticleType = {{0 , I3Particle::unknown},
+                                                                                                 {22 , I3Particle::Gamma},
+                                                                                                 {-11, I3Particle::EPlus},
+                                                                                                 {11, I3Particle::EMinus},
+                                                                                                 {-13, I3Particle::MuPlus},
+                                                                                                 {13 , I3Particle::MuMinus},
+                                                                                                 {111 , I3Particle::Pi0},
+                                                                                                 {211 , I3Particle::PiPlus},
+                                                                                                 {-211 , I3Particle::PiMinus},
+                                                                                                 {130 , I3Particle::K0_Long},
+                                                                                                 {321 , I3Particle::KPlus},
+                                                                                                 {-321 , I3Particle::KMinus},
+                                                                                                 {2112 , I3Particle::Neutron},
+                                                                                                 {2212 , I3Particle::PPlus},
+                                                                                                 {-2212 , I3Particle::PMinus},
+                                                                                                 {310, I3Particle::K0_Short},
+                                                                                                 {221 , I3Particle::Eta},
+                                                                                                 {3122 , I3Particle::Lambda},
+                                                                                                 {3222 , I3Particle::SigmaPlus},
+                                                                                                 {3212 , I3Particle::Sigma0},
+                                                                                                 {3112 , I3Particle::SigmaMinus}};
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-const std::unordered_map<std::string, CCMMCPE::PhotonSource> G4CCMScintSD::processNameToPhotonSource = {{"Unknown", CCMMCPE::PhotonSource::Unknown},
-                                                                                                      {"Scintillation", CCMMCPE::PhotonSource::Scintillation},
-                                                                                                      {"Cerenkov", CCMMCPE::PhotonSource::Cerenkov}};
-
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
 }
@@ -67,51 +85,84 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
 
 G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
-    // our scint SD is tracking scintillation photons produced in the fiducial argon
+    // our scint SD is tracking energy deposited in the fiducial argon 
     // this will be used for voxelization
     
-    // let's make sure this is an optical photon
-    if(aStep->GetTrack()->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
+    // we don't care about optical photons for getting energy deposited in LAr
+    // and if we don't care about PMTs, then we can kill any optical photon particle tracks
+    // (this will make the simulation faster)
+    if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
+        if (!PMTSDStatus_){
+            aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+        }
         return false;
+    }
+
     
-    // if we don't care about PMTs, then we can kill any non-primary particle tracks
-    if(aStep->GetTrack()->GetParentID() > 1 and !PMTSDStatus_) {
-        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-        return false;
-    }
-
-    // regardless of saving PMT hits or not, we only want to save ParentID = 1 in the LAr
-    if(aStep->GetTrack()->GetParentID() != 1) {
-        return false;
-    }
-
-    // let's also do some scint hits stuff idk
-
-    G4double edep = aStep->GetTotalEnergyDeposit();
+    // now let's check energy deposited
+    G4double edep = aStep->GetTotalEnergyDeposit()*eV * I3Units::eV;
     if(edep == 0.)
         return false;  // No edep so don't count as hit
-    
-    // let's grab everything from our step
-    G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(photonPosition.x(), photonPosition.y(), photonPosition.z());
 
+    // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
+
+    // position
+    G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
+    I3Position position(photonPosition.x()*mm * I3Units::mm, photonPosition.y()*mm * I3Units::mm, photonPosition.z()*mm * I3Units::mm);
+
+    // direction
     G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
     I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
+    // time
     G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime();
-    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy();
-    G4double photonWavelength = h_Planck * c_light / photonEnergy;
+
+    // process type
     const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
     std::string creationProcessName = "Unknown";
     if (creationProcess) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
 
-    // now save to CCMMCPE!
-    CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
+    // let's also grab parent id
+    // if parent id == 0, that's our primary injected particle
+    G4int parent_id = aStep->GetTrack()->GetParentID();
+  
+    G4ParticleDefinition* fParticleDefinition = aStep->GetTrack()->GetDefinition();
+    G4int pdg = fParticleDefinition->GetPDGEncoding();
 
-    // now push back
-    CCMMCPEList->push_back(this_mc_pe);
+    // now save to our MCTree!
+    if (parent_id == 0){
+        // let's create and fill our I3Particle
+        // since parent id = 0, this will also be a primary
+        I3Particle primary(primaryParticleType_);
+        primary.SetEnergy(edep);
+        primary.SetPos(position);
+        primary.SetDir(direction);
+ 
+        prev_parent_particle_id_ = primary.GetID(); 
+        I3MCTreeUtils::AddPrimary(*mcTree, primary);
+    }
+    else if (parent_id > 0) {
+        // this will be the daughter in our mcTree
+        // let's grab the particle id of the last I3Particle in previous parent id
+        I3ParticleID prev_parent_particle_id = prev_parent_particle_id_;
+        
+        // now let's get particle type for this daughter
+        I3Particle::ParticleType daughter_type = I3Particle::unknown;
+        for (auto it = pdgCodeToI3ParticleType.begin(); it != pdgCodeToI3ParticleType.end(); ++it) {
+            size_t this_pdg_code = it->first;
+            if (this_pdg_code == pdg){
+                daughter_type = pdgCodeToI3ParticleType.at(pdg);
+            }
+        }   
+        I3Particle daughter(daughter_type);
+        daughter.SetEnergy(edep);
+        daughter.SetPos(position);
+        daughter.SetDir(direction);
+
+        I3MCTreeUtils::AppendChild(*mcTree, prev_parent_particle_id , daughter);
+    }
 
     // now back to scint hit things
     G4StepPoint* thePrePoint = aStep->GetPreStepPoint(); 
