@@ -1,14 +1,15 @@
 #ifndef CCMPARTICLEINJECTOR_H
 #define CCMPARTICLEINJECTOR_H
 
-#include <dataclasses/physics/I3MCTree.h>
-#include <dataclasses/physics/I3MCTreeUtils.h>
-#include <dataclasses/physics/I3Particle.h>
-#include <icetray/I3Context.h>
-#include <icetray/I3Configuration.h>
-#include <icetray/I3ServiceBase.h>
-#include <icetray/I3PointerTypedefs.h>
-#include <icetray/I3SingleServiceFactory.h>
+#include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/I3Particle.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+
+#include "icetray/I3Context.h"
+#include "icetray/I3ServiceBase.h"
+#include "icetray/I3Configuration.h"
+#include "icetray/I3PointerTypedefs.h"
+#include "icetray/I3SingleServiceFactory.h"
 
 class CCMParticleInjector : public I3ServiceBase {
     public:

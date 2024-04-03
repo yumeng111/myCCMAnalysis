@@ -31,20 +31,24 @@
 #ifndef G4CCMPMTSD_h
 #define G4CCMPMTSD_h 1
 
+#include "dataclasses/I3Map.h"
+#include "dataclasses/I3Position.h"
+#include "dataclasses/I3Direction.h"
+
 #include "g4-larsim/g4classes/G4CCMPMTHit.h"
 #include "g4-larsim/g4classes/G4CCMMainVolume.h"
 
-#include "G4VSensitiveDetector.hh"
-#include "G4SystemOfUnits.hh"
+#include "icetray/CCMPMTKey.h"
+
+#include "simclasses/CCMMCPE.h"
 
 #include <vector>
-#include <sstream>
 #include <string>
-#include <simclasses/CCMMCPE.h>
-#include <icetray/CCMPMTKey.h>
-#include <dataclasses/I3Map.h>
-#include <dataclasses/I3Position.h>
-#include <dataclasses/I3Direction.h>
+#include <sstream>
+
+#include <G4SystemOfUnits.hh>
+#include <G4VSensitiveDetector.hh>
+
 
 class G4DataVector;
 class G4HCofThisEvent;

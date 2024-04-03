@@ -1,21 +1,20 @@
-#include <globals.hh>
-#include <G4Version.hh>
 
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 
-#include "G4EmStandardPhysics_option4.hh"
-#include "G4EmExtraPhysics.hh"
-#include "G4DecayPhysics.hh"
-#include "G4RadioactiveDecayPhysics.hh"
-#include "G4HadronElasticPhysicsHP.hh"
-#include "G4HadronPhysicsFTFP_BERT_HP.hh"
-#include "G4StoppingPhysics.hh"
-#include "G4IonPhysics.hh"
-#include "G4OpticalPhysics.hh"
-
-#include <G4ProcessManager.hh>
+#include <globals.hh>
+#include <G4Version.hh>
+#include <G4IonPhysics.hh>
+#include <G4DecayPhysics.hh>
 #include <G4ParticleTypes.hh>
+#include <G4OpticalPhysics.hh>
+#include <G4EmExtraPhysics.hh>
+#include <G4ProcessManager.hh>
 #include <G4UserSpecialCuts.hh>
+#include <G4StoppingPhysics.hh>
+#include <G4HadronElasticPhysicsHP.hh>
+#include <G4RadioactiveDecayPhysics.hh>
+#include <G4HadronPhysicsFTFP_BERT_HP.hh>
+#include <G4EmStandardPhysics_option4.hh>
 
 
 G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)

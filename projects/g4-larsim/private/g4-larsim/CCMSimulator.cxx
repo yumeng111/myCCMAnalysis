@@ -1,13 +1,16 @@
-#include <icetray/I3Context.h>
-#include <icetray/I3Frame.h>
-#include <icetray/I3Bool.h>
-#include <g4-larsim/CCMSimulator.h>
-#include <dataclasses/physics/I3Particle.h>
-#include <dataclasses/physics/I3EventHeader.h>
-#include <dataclasses/physics/I3MCTreeUtils.h>
-#include <dataclasses/physics/I3ScintRecoPulseSeriesMap.h>
-#include <dataclasses/I3Map.h>
-#include <dataclasses/I3Double.h>
+
+#include "dataclasses/I3Map.h"
+#include "dataclasses/I3Double.h"
+#include "dataclasses/physics/I3Particle.h"
+#include "dataclasses/physics/I3EventHeader.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+#include "dataclasses/physics/I3ScintRecoPulseSeriesMap.h"
+
+#include "g4-larsim/CCMSimulator.h"
+
+#include "icetray/I3Bool.h"
+#include "icetray/I3Frame.h"
+#include "icetray/I3Context.h"
 
 #include <stdexcept>
 
@@ -32,8 +35,8 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     PMTHitSeriesName_ = "PMTMCHitsMap";
     AddParameter("PMTHitSeriesName", "Name of the resulting PMT hit map in the frame.", PMTHitSeriesName_);
     
-    LArHitSeriesName_ = "LArMCHitsSeries";
-    AddParameter("LArHitSeriesName", "Name of the resulting LAr hit series in the frame.", LArHitSeriesName_);
+    LArMCTreeName_ = "LArMCTree";
+    AddParameter("LArMCTreeName", "Name of the MC tree containing energy depositions in LAr", LArMCTreeName_);
 
     AddOutBox("OutBox");
 }
@@ -61,8 +64,8 @@ void CCMSimulator::Configure() {
     GetParameter("PMTHitSeriesName", PMTHitSeriesName_);
     log_info("+ PMT hit series : %s", PMTHitSeriesName_.c_str());
     
-    GetParameter("LArHitSeriesName", LArHitSeriesName_);
-    log_info("+ LAr hit series : %s", LArHitSeriesName_.c_str());
+    GetParameter("LArMCTreeName", LArMCTreeName_);
+    log_info("+ LAr MC Tree : %s", LArMCTreeName_.c_str());
 
     // initialize injector and response services
     injector_->Configure();
@@ -106,7 +109,7 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         // also grab hits in fiducial argon for voxelization
         // note -- if SD not enabled, these will just be empty objects
         CCMMCPEMap = response_->GetHitsMap(); 
-        CCMMCPEList = response_->GetVoxelHits();
+        LArEnergyDep = response_->GetLArEnergyDep();
     }
     
     if (!saved_simulation_setup_) {
@@ -125,7 +128,7 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         frame->Put(PMTHitSeriesName_, CCMMCPEMap);
     }
     if (LArSDStatus_){
-        frame->Put(LArHitSeriesName_, CCMMCPEList);
+        frame->Put(LArMCTreeName_, LArEnergyDep);
     }
 
     // push daq frame

@@ -2,23 +2,23 @@
 #include "g4-larsim/g4classes/G4CCMMainVolume.h"
 
 #include <map>
-#include <math.h> 
 #include <set>
+#include <math.h> 
 #include <tuple>
 
-#include "globals.hh"
-#include "G4Box.hh"
-#include "G4Colour.hh"
-#include "G4LogicalSkinSurface.hh"
-#include "G4LogicalBorderSurface.hh"
-#include "G4LogicalVolume.hh"
-#include "G4Material.hh"
-#include "G4MaterialPropertiesTable.hh"
-#include "G4OpticalSurface.hh"
-#include "G4Sphere.hh"
-#include "G4SystemOfUnits.hh"
-#include "G4Tubs.hh"
-#include "G4VisAttributes.hh"
+#include <G4Box.hh>
+#include <G4Tubs.hh>
+#include <globals.hh>
+#include <G4Colour.hh>
+#include <G4Sphere.hh>
+#include <G4Material.hh>
+#include <G4VisAttributes.hh>
+#include <G4SystemOfUnits.hh>
+#include <G4LogicalVolume.hh>
+#include <G4OpticalSurface.hh>
+#include <G4LogicalSkinSurface.hh>
+#include <G4LogicalBorderSurface.hh>
+#include <G4MaterialPropertiesTable.hh>
 
 // let's define some things relevant for getting the geometry of our pmts
 std::vector<std::string> position_id = {"C101R0",

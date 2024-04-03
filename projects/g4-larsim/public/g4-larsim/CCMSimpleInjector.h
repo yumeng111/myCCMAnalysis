@@ -1,24 +1,27 @@
 #ifndef CCMSIMPLEINJECTOR_H
 #define CCMSIMPLEINJECTOR_H
 // standard library stuff
+
+#include "dataclasses/I3Double.h"
+#include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/I3Particle.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+
+#include "g4-larsim/CCMParticleInjector.h"
+
+#include "icetray/I3Frame.h"
+#include "icetray/I3Units.h"
+#include "icetray/I3Module.h"
+#include "icetray/I3Logging.h"
+#include "icetray/IcetrayFwd.h"
+#include "icetray/I3FrameObject.h"
+#include "icetray/I3ServiceBase.h"
+
+#include "phys-services/I3RandomService.h"
+
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "icetray/IcetrayFwd.h"
-#include "icetray/I3ServiceBase.h"
-#include "phys-services/I3RandomService.h"
-
-#include <icetray/I3Frame.h>
-#include <icetray/I3FrameObject.h>
-#include <icetray/I3Units.h>
-#include <icetray/I3Module.h>
-#include <icetray/I3Logging.h>
-#include <dataclasses/I3Double.h>
-#include <dataclasses/physics/I3MCTree.h>
-#include <dataclasses/physics/I3MCTreeUtils.h>
-#include <dataclasses/physics/I3Particle.h>
-#include <icetray/I3ServiceBase.h>
-#include "g4-larsim/CCMParticleInjector.h"
 
 class CCMSimpleInjector : public CCMParticleInjector {
 private:

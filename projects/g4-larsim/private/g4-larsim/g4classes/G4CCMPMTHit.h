@@ -31,12 +31,12 @@
 #ifndef G4CCMPMTHit_h
 #define G4CCMPMTHit_h 1
 
-#include "G4Allocator.hh"
-#include "G4LogicalVolume.hh"
-#include "G4THitsCollection.hh"
-#include "G4VHit.hh"
-#include "G4VPhysicalVolume.hh"
-#include "G4DataVector.hh"
+#include <G4VHit.hh>
+#include <G4Allocator.hh>
+#include <G4DataVector.hh>
+#include <G4LogicalVolume.hh>
+#include <G4THitsCollection.hh>
+#include <G4VPhysicalVolume.hh>
 
 class G4CCMPMTHit : public G4VHit {
     public:

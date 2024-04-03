@@ -31,11 +31,11 @@
 #ifndef G4CCMScintHit_h
 #define G4CCMScintHit_h 1
 
-#include "G4VHit.hh"
-#include "G4THitsCollection.hh"
-#include "G4Allocator.hh"
-#include "G4ThreeVector.hh"
-#include "G4VPhysicalVolume.hh"
+#include <G4VHit.hh>
+#include <G4Allocator.hh>
+#include <G4ThreeVector.hh>
+#include <G4VPhysicalVolume.hh>
+#include <G4THitsCollection.hh>
 
 class G4CCMScintHit : public G4VHit
 {

@@ -1,15 +1,16 @@
 // On Sun, to prevent conflict with ObjectSpace, G4Timer.hh has to be
 // loaded *before* globals.hh...
-#include "G4Timer.hh"
 
-#include <g4-larsim/g4classes/G4CCMRunManager.h>
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
 #include "g4-larsim/g4classes/G4CCMScintSD.h"
-#include <G4ParticleGun.hh>
+#include "g4-larsim/g4classes/G4CCMRunManager.h"
+
 #include <G4Run.hh>
-#include "G4SDManager.hh"
-#include "G4EventManager.hh"
-#include "G4Event.hh"
+#include <G4Timer.hh>
+#include <G4Event.hh>
+#include <G4SDManager.hh>
+#include <G4ParticleGun.hh>
+#include <G4EventManager.hh>
 
 G4CCMRunManager::G4CCMRunManager(): G4RunManager() {}
 
@@ -73,16 +74,6 @@ void G4CCMRunManager::TerminateRun()
     G4cout << "  "  << *timer << G4endl;
     }
     
-    // now let's grab SD information
-    //G4SDManager* SDman = G4SDManager::GetSDMpointer();
-    //G4String sdNamePMT = "/LAr/pmtSD";
-    //G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
-    //CCMMCPEMap = pmtSD->GetCCMMCPEMap();
-
-    //G4String sdNameScint = "/LAr/scintSD";
-    //G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-    //CCMMCPEList = scintSD->GetCCMMCPEList();
-
     RunTermination();
 }
 

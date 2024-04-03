@@ -7,8 +7,8 @@ Also initiates the methods needed for using the commands and the format of each 
 #ifndef G4CCMDetectorMessenger_h
 #define G4CCMDetectorMessenger_h 1
 
-#include "G4UImessenger.hh"
-#include "globals.hh"
+#include <globals.hh>
+#include <G4UImessenger.hh>
 
 class G4CCMDetectorConstruction;
 

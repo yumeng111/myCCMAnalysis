@@ -1,12 +1,18 @@
 #ifndef G4INTERFACE_H
 #define G4INTERFACE_H
 
-#include <g4-larsim/g4classes/G4CCMRunManager.h>
-#include <icetray/I3Logging.h>
-#include <simclasses/CCMMCPE.h>
-#include <icetray/CCMPMTKey.h>
 #include <dataclasses/I3Map.h>
 #include <dataclasses/I3Vector.h>
+#include <dataclasses/physics/I3MCTree.h>
+#include <dataclasses/physics/I3Particle.h>
+#include <dataclasses/physics/I3MCTreeUtils.h>
+
+#include <g4-larsim/g4classes/G4CCMRunManager.h>
+
+#include <icetray/I3Logging.h>
+#include <icetray/CCMPMTKey.h>
+
+#include <simclasses/CCMMCPE.h>
 
 #ifdef G4VIS_USE
 class G4VisManager;
@@ -36,9 +42,9 @@ class G4Interface {
         /// Simulate a single particle (InitializeEvent must be called first)
         void InjectParticle(const I3Particle& particle);
         
-        // return CCMMCPEMap
+        // return CCMMCPEMap and LAr energy deposition
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
-        boost::shared_ptr<CCMMCPESeries> GetCCMMCPEList(){ return CCMMCPEList; }
+        I3MCTreePtr GetLArEnergyDep() { return LArEnergyDep; }
 
     private:
         void Initialize();
@@ -56,7 +62,7 @@ class G4Interface {
         bool eventInitialized_;
         std::string visMacro_;
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
+        I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
         
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off

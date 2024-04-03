@@ -1,32 +1,33 @@
 
-#include <g4-larsim/g4classes/G4Interface.h>
-#include <g4-larsim/g4classes/G4CCMDetectorConstruction.h>
-#include <g4-larsim/g4classes/G4CCMPhysicsList.h>
-#include <g4-larsim/g4classes/G4CCMPMTSD.h>
-#include <g4-larsim/g4classes/G4CCMScintSD.h>
 
-#include <icetray/I3Logging.h>
-#include <dataclasses/physics/I3Particle.h>
+#include "icetray/I3Logging.h"
+#include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/I3Particle.h"
+#include "g4-larsim/g4classes/G4CCMPMTSD.h"
+#include "g4-larsim/g4classes/G4Interface.h"
+#include "g4-larsim/g4classes/G4CCMScintSD.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+#include "g4-larsim/g4classes/G4CCMPhysicsList.h"
+#include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 
 #ifdef G4VIS_USE
 #include <G4VisExecutive.hh>
 #endif
 
-#include <G4ParticleGun.hh>
-#include <G4ParticleTable.hh>
-#include <G4ParticleDefinition.hh>
+#include <G4Run.hh>
+#include <G4Event.hh>
+#include <FTFP_BERT.hh>
 #include <G4UImanager.hh>
 #include <G4SDManager.hh>
-#include "FTFP_BERT.hh"
-#include "G4EmStandardPhysics_option4.hh"
-#include "G4OpticalParameters.hh"
-#include "G4OpticalPhysics.hh"
-#include <G4Run.hh>
-#include "G4EventManager.hh"
-#include "G4Event.hh"
 #include <G4RunManager.hh>
-#include "G4SystemOfUnits.hh"
-
+#include <G4ParticleGun.hh>
+#include <G4EventManager.hh>
+#include <G4ParticleTable.hh>
+#include <G4SystemOfUnits.hh>
+#include <G4OpticalPhysics.hh>
+#include <G4OpticalParameters.hh>
+#include <G4ParticleDefinition.hh>
+#include <G4EmStandardPhysics_option4.hh>
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
@@ -92,6 +93,14 @@ void G4Interface::InjectParticle(const I3Particle& particle)
     if(!eventInitialized_) {
         log_fatal("No event initialized. Cannot inject particle!");
         return;
+    }
+    
+    // if we are tracking LAr energy deposition, let's pass on the primary particle information    
+    if (LArSDStatus_){
+        G4SDManager* SDman = G4SDManager::GetSDMpointer();
+        G4String sdNameScint = "/LAr/scintSD";
+        G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
+        scintSD->SetPrimaryParticle(particle);
     }
 
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
@@ -274,13 +283,11 @@ void G4Interface::TerminateEvent()
         if (LArSDStatus_){
             G4String sdNameScint = "/LAr/scintSD";
             G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-            CCMMCPEList = scintSD->GetCCMMCPEList();
+            LArEnergyDep = scintSD->GetUpdatedMCTree();
         }
 
         runManager_.TerminateRun();
         
-        //CCMMCPEMap = runManager_.GetCCMMCPEMap();
-        //CCMMCPEList = runManager_.GetCCMMCPEList();
         eventInitialized_ = false;
     }
 }

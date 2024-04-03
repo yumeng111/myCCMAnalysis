@@ -1,18 +1,19 @@
 #ifndef G4CCMMainVolume_h
 #define G4CCMMainVolume_h 1
 
-#include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include "dataclasses/I3Map.h"
+#include "dataclasses/I3Position.h"
+#include "dataclasses/I3Orientation.h"
+#include "dataclasses/geometry/CCMGeometry.h"
+
 #include "g4-larsim/g4classes/J4PMTSolidMaker.h"
+#include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+
+#include "icetray/CCMPMTKey.h"
 
 #include <map>
 
-#include "dataclasses/I3Position.h"
-#include "dataclasses/I3Orientation.h"
-#include "dataclasses/I3Map.h"
-#include "icetray/CCMPMTKey.h"
-#include "dataclasses/geometry/CCMGeometry.h"
-
-#include "G4PVPlacement.hh"
+#include <G4PVPlacement.hh>
 
 class G4Box;
 class G4LogicalVolume;

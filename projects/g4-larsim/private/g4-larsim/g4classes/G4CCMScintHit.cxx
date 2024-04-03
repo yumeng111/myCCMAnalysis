@@ -30,12 +30,12 @@
 //
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 
-#include "G4ios.hh"
-#include "G4Colour.hh"
-#include "G4LogicalVolume.hh"
-#include "G4VisAttributes.hh"
-#include "G4VPhysicalVolume.hh"
-#include "G4VVisManager.hh"
+#include <G4ios.hh>
+#include <G4Colour.hh>
+#include <G4VVisManager.hh>
+#include <G4LogicalVolume.hh>
+#include <G4VisAttributes.hh>
+#include <G4VPhysicalVolume.hh>
 
 G4ThreadLocal G4Allocator<G4CCMScintHit>* G4CCMScintHitAllocator = nullptr;
 

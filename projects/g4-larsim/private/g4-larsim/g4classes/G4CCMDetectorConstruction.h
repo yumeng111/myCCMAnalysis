@@ -8,6 +8,17 @@ Global variables include most of the important volumes and materials.
 #ifndef G4CCMDetectorConstruction_H
 #define G4CCMDetectorConstruction_H 1
 
+#include "icetray/CCMPMTKey.h"
+#include "dataclasses/I3Map.h"
+#include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
+
+#include <G4Cache.hh>
+#include <G4Material.hh>
+#include <G4VisAttributes.hh>
+#include <G4RotationMatrix.hh>
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <G4VUserDetectorConstruction.hh>
+
 class G4CCMMainVolume;
 class G4CCMPMTSD;
 class G4CCMScintSD;
@@ -20,17 +31,6 @@ class G4MaterialPropertiesTable;
 class G4Sphere;
 class G4Tubs;
 class G4VPhysicalVolume;
-
-
-#include "G4Material.hh"
-#include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
-#include "G4VisAttributes.hh"
-#include "G4RotationMatrix.hh"
-#include "G4VUserDetectorConstruction.hh"
-#include "G4Cache.hh"
-#include <CLHEP/Units/SystemOfUnits.h>
-#include <icetray/CCMPMTKey.h>
-#include <dataclasses/I3Map.h>
 
 class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
 {
@@ -60,7 +60,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     // get SD configuration
     bool GetPMTSDStatus() { return PMTSDStatus_; }
     bool GetLArSDStatus() { return LArSDStatus_; }
-
+  
   private:
     
     void DefineMaterials();
@@ -115,6 +115,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     // controls to turn SD on/off (set via G4Interface)
     bool PMTSDStatus_ = true; // turn PMT SD on/off
     bool LArSDStatus_ = true; // turn fiducial LAr SD on/off
+
 };
 
 #endif

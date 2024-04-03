@@ -1,15 +1,17 @@
 #ifndef CCMDETECTORRESPONSE_H
 #define CCMDETECTORRESPONSE_H
 
-#include <dataclasses/physics/I3MCTree.h>
-#include <dataclasses/physics/I3MCTreeUtils.h>
-#include <dataclasses/physics/I3Particle.h>
-#include <simclasses/CCMMCPE.h>
-#include <icetray/I3Context.h>
-#include <icetray/I3Configuration.h>
-#include <icetray/I3ServiceBase.h>
-#include <icetray/I3PointerTypedefs.h>
-#include <icetray/I3SingleServiceFactory.h>
+#include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/I3Particle.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+
+#include "icetray/I3Context.h"
+#include "icetray/I3ServiceBase.h"
+#include "icetray/I3Configuration.h"
+#include "icetray/I3PointerTypedefs.h"
+#include "icetray/I3SingleServiceFactory.h"
+
+#include "simclasses/CCMMCPE.h"
 
 class CCMDetectorResponse : public I3ServiceBase {
     public:
@@ -35,7 +37,7 @@ class CCMDetectorResponse : public I3ServiceBase {
         virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() = 0;
         
         // get hits in LAr for voxelization 
-        virtual boost::shared_ptr<CCMMCPESeries> GetVoxelHits() = 0;
+        virtual I3MCTreePtr GetLArEnergyDep() = 0;
 
         // get SD status
         virtual bool GetPMTSDStatus() = 0;

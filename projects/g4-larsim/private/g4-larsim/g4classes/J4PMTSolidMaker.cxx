@@ -8,18 +8,18 @@
 *	2021/04/11  K.Hoshina	collected functions from each detector classes
 */
 
-#include "g4-larsim/g4classes/J4PMTSolidMaker.h"
 #include "g4-larsim/g4classes/J4UnionSolid.h"
+#include "g4-larsim/g4classes/J4PMTSolidMaker.h"
 
-#include "G4Sphere.hh"
-#include "G4OpticalSurface.hh"
-#include "G4LogicalSkinSurface.hh"
-#include "G4UserLimits.hh"
-#include "G4Polycone.hh"
-#include "G4Cons.hh"
-#include "G4Tubs.hh"
-#include "G4SubtractionSolid.hh"
-#include "G4SystemOfUnits.hh"
+#include <G4Cons.hh>
+#include <G4Tubs.hh>
+#include <G4Sphere.hh>
+#include <G4Polycone.hh>
+#include <G4UserLimits.hh>
+#include <G4SystemOfUnits.hh>
+#include <G4OpticalSurface.hh>
+#include <G4SubtractionSolid.hh>
+#include <G4LogicalSkinSurface.hh>
 
 G4VSolid * J4PMTSolidMaker::f8inchPMTSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingSolid;

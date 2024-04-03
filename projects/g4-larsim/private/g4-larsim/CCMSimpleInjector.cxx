@@ -1,26 +1,30 @@
 // standard library stuff
+
+#include "dataclasses/I3Double.h"
+#include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/I3Particle.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+
+#include "g4-larsim/CCMSimpleInjector.h"
+#include "g4-larsim/CCMParticleInjector.h"
+
+#include "icetray/I3Frame.h"
+#include "icetray/I3Units.h"
+#include "icetray/I3Module.h"
+#include "icetray/I3Logging.h"
+#include "icetray/IcetrayFwd.h"
+#include "icetray/I3ServiceBase.h"
+#include "icetray/I3SingleServiceFactory.h"
+
+#include "phys-services/I3RandomService.h"
+
+#include <boost/preprocessor/stringize.hpp>
+#include <boost/preprocessor/seq/for_each.hpp>
+
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <sstream>
-
-#include "icetray/IcetrayFwd.h"
-#include "icetray/I3ServiceBase.h"
-#include "phys-services/I3RandomService.h"
-
-#include "g4-larsim/CCMSimpleInjector.h"
-#include "g4-larsim/CCMParticleInjector.h"
-#include <icetray/I3Frame.h>
-#include <icetray/I3Units.h>
-#include <icetray/I3Module.h>
-#include <icetray/I3Logging.h>
-#include <dataclasses/I3Double.h>
-#include <dataclasses/physics/I3MCTree.h>
-#include <dataclasses/physics/I3MCTreeUtils.h>
-#include <dataclasses/physics/I3Particle.h>
-#include <icetray/I3SingleServiceFactory.h>
-#include <boost/preprocessor/stringize.hpp>
-#include <boost/preprocessor/seq/for_each.hpp>
 
 #define PARTICLE_TYPE_MAP_APPEND(r, data, t) types[BOOST_PP_STRINGIZE(t)] = I3Particle::t;
 namespace {

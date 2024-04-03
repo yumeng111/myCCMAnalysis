@@ -1,20 +1,23 @@
 #ifndef G4CCMRUNMANAGER_H
 #define G4CCMRUNMANAGER_H
 
+#include <dataclasses/I3Map.h>
+#include <dataclasses/I3Vector.h>
+#include <dataclasses/I3Position.h>
+#include <dataclasses/I3Direction.h>
+
+#include <g4-larsim/g4classes/G4CCMPMTHit.h>
+#include <g4-larsim/g4classes/G4CCMScintHit.h>
+
+#include <icetray/CCMPMTKey.h>
+
+#include <simclasses/CCMMCPE.h>
+
 #include <vector>
 
 #include <G4RunManager.hh>
-#include "G4SystemOfUnits.hh"
-#include "G4DataVector.hh"
-
-#include <simclasses/CCMMCPE.h>
-#include <dataclasses/I3Vector.h>
-#include <icetray/CCMPMTKey.h>
-#include <dataclasses/I3Map.h>
-#include <dataclasses/I3Position.h>
-#include <dataclasses/I3Direction.h>
-#include "g4-larsim/g4classes/G4CCMPMTHit.h"
-#include "g4-larsim/g4classes/G4CCMScintHit.h"
+#include <G4DataVector.hh>
+#include <G4SystemOfUnits.hh>
 
 class G4ParticleGun;
 
@@ -32,9 +35,6 @@ class G4CCMRunManager: public G4RunManager {
         void TerminateRun();
         void GetFinalScores(const G4Event* anEvent);
     
-        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap() { return CCMMCPEMap; }
-        boost::shared_ptr<CCMMCPESeries> GetCCMMCPEList(){ return CCMMCPEList; }
-
     protected:
         G4Event* GenerateEvent(G4int i_event);
 
@@ -69,9 +69,6 @@ class G4CCMRunManager: public G4RunManager {
         G4double fEdepMax = 0.;
 
         G4int fPMTsAboveThreshold = 0;
-
-        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        boost::shared_ptr<CCMMCPESeries> CCMMCPEList = boost::make_shared<CCMMCPESeries> ();
 };
 
 #endif

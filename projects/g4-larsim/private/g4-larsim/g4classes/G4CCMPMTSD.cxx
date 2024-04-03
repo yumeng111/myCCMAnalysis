@@ -28,21 +28,22 @@
 /// \brief Implementation of the G4CCMPMTSD class
 //
 //
+#include "g4-larsim/g4classes/G4CCMPMTHit.h"
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
-#include "g4-larsim/g4classes/G4CCMPMTHit.h"
 
-#include "G4ios.hh"
-#include "G4LogicalVolume.hh"
-#include "G4ParticleDefinition.hh"
-#include "G4ParticleTypes.hh"
-#include "G4SDManager.hh"
-#include "G4Step.hh"
-#include "G4TouchableHistory.hh"
-#include "G4Track.hh"
-#include "G4VPhysicalVolume.hh"
-#include "G4VTouchable.hh"
-#include "G4VProcess.hh"
+#include <G4ios.hh>
+#include <G4Step.hh>
+#include <G4Track.hh>
+#include <G4VProcess.hh>
+#include <G4SDManager.hh>
+#include <G4VTouchable.hh>
+#include <G4ParticleTypes.hh>
+#include <G4LogicalVolume.hh>
+#include <G4VPhysicalVolume.hh>
+#include <G4TouchableHistory.hh>
+#include <G4ParticleDefinition.hh>
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 const std::unordered_map<std::string, CCMMCPE::PhotonSource> G4CCMPMTSD::processNameToPhotonSource = {{"Unknown", CCMMCPE::PhotonSource::Unknown},

@@ -1,24 +1,28 @@
 // standard library stuff
+
+#include "dataclasses/I3Double.h"
+#include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/I3Particle.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+
+#include "g4-larsim/CCM200Response.h"
+#include "g4-larsim/CCMDetectorResponse.h"
+#include "g4-larsim/g4classes/G4Interface.h"
+
+#include "icetray/I3Frame.h"
+#include "icetray/I3Units.h"
+#include "icetray/I3Module.h"
+#include "icetray/I3Logging.h"
+#include "icetray/IcetrayFwd.h"
+#include "icetray/I3ServiceBase.h"
+#include "icetray/I3SingleServiceFactory.h"
+
+#include "phys-services/I3RandomService.h"
+#include "simclasses/CCMMCPE.h"
+
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "icetray/IcetrayFwd.h"
-#include "icetray/I3ServiceBase.h"
-#include "phys-services/I3RandomService.h"
-
-#include "g4-larsim/CCMDetectorResponse.h"
-#include "g4-larsim/CCM200Response.h"
-#include <g4-larsim/g4classes/G4Interface.h>
-#include <icetray/I3Frame.h>
-#include <icetray/I3Units.h>
-#include <icetray/I3Module.h>
-#include <icetray/I3Logging.h>
-#include <dataclasses/I3Double.h>
-#include <dataclasses/physics/I3MCTree.h>
-#include <dataclasses/physics/I3MCTreeUtils.h>
-#include <dataclasses/physics/I3Particle.h>
-#include <simclasses/CCMMCPE.h>
-#include <icetray/I3SingleServiceFactory.h>
 
 
 CCM200Response::CCM200Response(const I3Context& context) :
@@ -72,7 +76,7 @@ void CCM200Response::EndEvent() {
 
     // now let's call function in G4Interface to grab the map between CCMPMTKey and std::vector<CCMMCPE>
     CCMMCPEMap = g4Interface_->GetCCMMCPEMap();  
-    CCMMCPEList = g4Interface_->GetCCMMCPEList();
+    LArEnergyDep = g4Interface_->GetLArEnergyDep();
 
 }
 

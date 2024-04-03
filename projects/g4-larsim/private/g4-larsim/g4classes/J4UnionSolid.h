@@ -11,7 +11,7 @@
 //*	2001/08/26  K.Hoshina	Original version.
 //*************************************************************************
 
-#include "G4UnionSolid.hh"
+#include <G4UnionSolid.hh>
 
 class J4UnionSolid : public G4UnionSolid
 {

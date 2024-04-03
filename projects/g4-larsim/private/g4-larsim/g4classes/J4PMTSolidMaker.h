@@ -12,7 +12,7 @@
 //*	2021/05/27  K.Hoshina	Original version.
 //*************************************************************************
 
-#include "G4VSolid.hh"
+#include <G4VSolid.hh>
 
 class J4PMTSolidMaker {
 
