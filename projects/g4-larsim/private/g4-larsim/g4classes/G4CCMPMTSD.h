@@ -31,6 +31,7 @@
 #ifndef G4CCMPMTSD_h
 #define G4CCMPMTSD_h 1
 
+#include "icetray/I3Units.h"
 #include "dataclasses/I3Map.h"
 #include "dataclasses/I3Position.h"
 #include "dataclasses/I3Direction.h"

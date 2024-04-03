@@ -115,14 +115,17 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     
     // let's grab everything from our step
     G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(photonPosition.x(), photonPosition.y(), photonPosition.z());
+    I3Position position(photonPosition.x()*mm * I3Units::mm, photonPosition.y()*mm * I3Units::mm, photonPosition.z()*mm * I3Units::mm);
 
     G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
     I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
-    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime();
-    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy();
-    G4double photonWavelength = h_Planck * c_light / photonEnergy;
+    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() * nanosecond * I3Units::nanosecond;
+    
+    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy()*eV * I3Units::eV;
+
+    G4double photonWavelength = h_Planck * c_light / photonEnergy * nm * I3Units::nanometer;
+    
     const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
     std::string creationProcessName = "Unknown";
     if (creationProcess) {
