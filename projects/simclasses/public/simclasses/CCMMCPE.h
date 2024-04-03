@@ -34,14 +34,6 @@ struct CCMMCPE {
         Cerenkov = 2
     };
 
-    //static const std::map<PhotonSource, std::string> PhotonSourceNames = {
-    //#define X(a, b) {CCMMCPE::PhotonSource::a , #a },
-    //#undef X
-    //};
-    //static const std::map<PhotonSource, std::string> PhotonSourceNames = {{CCMMCPE::PhotonSource::Unknown, "Unknown"}, 
-    //                                                                      {CCMMCPE::PhotonSource::Scintillation, "Scintillation"},
-    //                                                                      {CCMMCPE::PhotonSource::Cherenkov, "Cherenkov"}}; 
-
     // things we want to save about a photon hitting our pmts in simulation
     float time; // photon hit time
     float wavelength; // wavelength of photon
