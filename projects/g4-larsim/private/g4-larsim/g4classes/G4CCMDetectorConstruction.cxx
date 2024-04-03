@@ -1,5 +1,6 @@
 
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
 #include "g4-larsim/g4classes/G4CCMMainVolume.h"
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
 #include "g4-larsim/g4classes/G4CCMScintSD.h"
@@ -37,6 +38,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction()
 {
   SetDefaults();
   DefineMaterials();
+  fDetectorMessenger = new G4CCMDetectorMessenger(this);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -44,6 +46,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction()
 G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
 {
   delete fMainVolume;
+  delete fDetectorMessenger;
   delete fH;
   delete fC;
   delete fN;

@@ -175,11 +175,11 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
                                   // non-zero efficiency
                     // Trigger sensitive detector manually since photon is
                     // absorbed but status was Detection
-                    G4SDManager* SDman = G4SDManager::GetSDMpointer();
-                    G4String sdName    = "/LAr/pmtSD";
-                    G4CCMPMTSD* pmtSD    = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdName);
-                    if(pmtSD)
-                        pmtSD->ProcessHits_boundary(theStep, nullptr);
+                    //G4SDManager* SDman = G4SDManager::GetSDMpointer();
+                    //G4String sdName    = "/LAr/pmtSD";
+                    //G4CCMPMTSD* pmtSD    = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdName);
+                    //if(pmtSD)
+                    //    pmtSD->ProcessHits_boundary(theStep, nullptr);
                     trackInformation->AddTrackStatusFlag(hitPMT);
                     //theTrack->SetTrackStatus(fStopAndKill);
                     break;

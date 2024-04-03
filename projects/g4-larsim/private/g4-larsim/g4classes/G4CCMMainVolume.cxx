@@ -512,9 +512,9 @@ void G4CCMMainVolume::VisAttributes()
     fTPBCoating_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fPMT_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     
-    auto pmt_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8)); //grey idk
-    pmt_va->SetForceSolid(true);
-    fPMT_log->SetVisAttributes(pmt_va);
+    //auto pmt_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8)); //grey idk
+    //pmt_va->SetForceSolid(true);
+    //fPMT_log->SetVisAttributes(pmt_va);
 
     //auto tpb_va = new G4VisAttributes(G4Colour(0., 1., 0.));
     //tpb_va->SetForceSolid(true);

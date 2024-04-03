@@ -24,67 +24,57 @@
 // ********************************************************************
 //
 //
-/// \file optical/LXe/src/G4CCMPMTHit.cc
-/// \brief Implementation of the G4CCMPMTHit class
+/// \file optical/LXe/src/LXeRunAction.cc
+/// \brief Implementation of the LXeRunAction class
 //
 //
-#include "g4-larsim/g4classes/G4CCMPMTHit.h"
-
-#include "G4Colour.hh"
-#include "G4ios.hh"
-#include "G4LogicalVolume.hh"
-#include "G4VisAttributes.hh"
-#include "G4VPhysicalVolume.hh"
-#include "G4VVisManager.hh"
-
-G4ThreadLocal G4Allocator<G4CCMPMTHit>* G4CCMPMTHitAllocator = nullptr;
+#include "G4CCMRunAction.h"
+#include "G4CCMRun.h"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPMTHit::G4CCMPMTHit(const G4CCMPMTHit& right) : G4VHit() {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
+G4CCMRunAction::G4CCMRunAction()
+{
+  // Book predefined histograms
+  //fHistoManager = new G4CCMHistoManager();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-const G4CCMPMTHit& G4CCMPMTHit::operator=(const G4CCMPMTHit& right) {
-    fPmtNumber = right.fPmtNumber;
-    fPhotons = right.fPhotons;
-    fPhysVol = right.fPhysVol;
-    fDrawit = right.fDrawit;
-    return *this;
+//G4CCMRunAction::~G4CCMRunAction() { delete fHistoManager; }
+G4CCMRunAction::~G4CCMRunAction() { }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+G4Run* G4CCMRunAction::GenerateRun()
+{
+  fRun = new G4CCMRun();
+  return fRun;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4bool G4CCMPMTHit::operator==(const G4CCMPMTHit& right) const {
-    return (fPmtNumber == right.fPmtNumber);
+void G4CCMRunAction::BeginOfRunAction(const G4Run*)
+{
+  //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
+  //if(analysisManager->IsActive())
+  //{
+  //  analysisManager->OpenFile();
+  //}
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMPMTHit::Draw() {
-    //if(fDrawit && fPhysVol) {  
-    //    // Redraw only the PMTs that have hit counts > 0
-    //    // Also need a physical volume to be able to draw anything
-    //    G4VVisManager* pVVisManager = G4VVisManager::GetConcreteInstance();
-    //    if(pVVisManager) {  
-    //        // Make sure that the VisManager exists
-    //        G4VisAttributes attribs(G4Colour(0., 1., 0.)); // green!
-    //        attribs.SetForceSolid(true);
-    //        G4RotationMatrix rot;
-    //        if(fPhysVol->GetRotation())  // If a rotation is defined use it
-    //            rot = *(fPhysVol->GetRotation());
-    //        G4Transform3D trans(rot, fPhysVol->GetTranslation());  // Create transform
-    //        pVVisManager->Draw(*fPhysVol, attribs, trans);         // Draw it
-    //    }
-    //}
+void G4CCMRunAction::EndOfRunAction(const G4Run*)
+{
+  if(isMaster)
+    fRun->EndOfRun();
+
+  // save histograms
+  //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
+  //if(analysisManager->IsActive())
+  //{
+  //  analysisManager->Write();
+  //  analysisManager->CloseFile();
+  //}
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void G4CCMPMTHit::Print() {}
 

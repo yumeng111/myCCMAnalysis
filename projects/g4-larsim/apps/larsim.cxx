@@ -29,7 +29,7 @@
 //
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-//#include "g4-larsim/g4classes/G4CCMActionInitialization.h"
+#include "../visualization/G4CCMActionInitialization.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 
 #include "FTFP_BERT.hh"
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
   physicsList->RegisterPhysics(opticalPhysics);
   runManager->SetUserInitialization(physicsList);
 
-  //runManager->SetUserInitialization(new G4CCMActionInitialization(det));
+  runManager->SetUserInitialization(new G4CCMActionInitialization(det));
 
   // initialize visualization
   G4VisManager* visManager = new G4VisExecutive;
