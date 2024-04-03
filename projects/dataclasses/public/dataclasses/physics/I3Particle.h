@@ -199,6 +199,18 @@ class I3Particle : public I3FrameObject
     STauMinus = -2000009132,
     SMPPlus = -2000009500,
     SMPMinus = -2000009501,
+  
+    // adding some additonal codes for energy loss in LAr
+    phot = 2000000001,
+    compt = 2000000002,
+    conv = 2000000003,
+    Rayl = 2000000004,
+    msc = 2000000005,
+    eIoni = 2000000006,
+    eBrem = 2000000007,
+    ePairProd = 2000000008,
+    CoulombScat = 2000000009,
+    annihil = 2000000010,
   };
 
  public:
@@ -411,8 +423,9 @@ std::string i3particle_type_string(int32_t pdg_code);
     (Fe54Nucleus)(Fe55Nucleus)(Fe56Nucleus)(Fe57Nucleus)(Fe58Nucleus)(Qball)      \
     (CherenkovPhoton)(Nu)(Monopole)(Brems)(DeltaE)(PairProd)(NuclInt)(MuPair)     \
     (Hadrons)(ContinuousEnergyLoss)(FiberLaser)(N2Laser)(YAGLaser)                \
-    (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)
-
+    (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)                                      \
+    (phot)(compt)(conv)(Rayl)(msc)(eIoni)(eBrem)(ePairProd)(CoulombScat)(annihil) \
+ 
 std::ostream& operator<<(std::ostream& oss, const I3Particle& d);
 
 I3_POINTER_TYPEDEFS(I3Particle);
