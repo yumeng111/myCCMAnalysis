@@ -122,9 +122,9 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() * nanosecond * I3Units::nanosecond;
     
-    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy()*eV * I3Units::eV;
+    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() * eV;
 
-    G4double photonWavelength = h_Planck * c_light / photonEnergy * nm * I3Units::nanometer;
+    G4double photonWavelength = hc / photonEnergy * I3Units::nanometer; 
     
     const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
     std::string creationProcessName = "Unknown";

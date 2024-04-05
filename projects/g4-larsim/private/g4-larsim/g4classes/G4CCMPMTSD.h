@@ -91,8 +91,8 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         G4DataVector* fPMTPositionsZ = nullptr;
 
         // define a few things for converting energy to wavelength
-        const G4double h_Planck = 6.62607015e-34 * joule * second;
-        const G4double c_light = 2.99792458e8 * meter / second;
+        const G4double hbarc = 197.326; //eV * nm
+        const G4double hc =  hbarc * (2 * 3.14159265358979323846) * eV * nm; // eV * nm
 
         G4int fHitCID = -1;
     
