@@ -245,7 +245,8 @@ class TimeReader {
             uint32_t raw_time = time_read[i];
             int64_t abs_time = time_cache[i].back() + CCMAnalysis::Binary::subtract_times(raw_time, last_raw_time[i]);
             time_cache[i].push_back(abs_time);
-            computer_time_cache[i].push_back(computer_time_read[i]);
+            if(i < computer_time_read.size())
+                computer_time_cache[i].push_back(computer_time_read[i]);
             last_raw_time[i] = raw_time;
         }
         return true;
@@ -268,11 +269,13 @@ public:
         std::vector<struct timespec> computer_time_read = read_computer_times(current_frame);
         std::vector<uint8_t> mask = empty_mask(current_frame);
         std::fill(last_raw_time.begin(), last_raw_time.end(), 0);
-        for(size_t i=0; i< n_boards; ++i) {
+        for(size_t i=0; i<n_boards; ++i) {
             if(not mask[i])
                 continue;
             time_cache[i].push_back(time_read[i]);
-            computer_time_cache[i].push_back(computer_time_read[i]);
+            // Computer times are missing from some of the early data
+            if(i < computer_time_read.size())
+                computer_time_cache[i].push_back(computer_time_read[i]);
             last_raw_time[i] = time_read[i];
         }
 
@@ -746,14 +749,27 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
     }
 
     bool have_computer_times;
-    if(cached_computer_times.size() > 0) {
+    if(cached_computer_times.size() > 0 and cached_times.size() > 0) {
         have_computer_times = true;
         for(size_t i=0; i<n_daqs; ++i) {
             bool daq_has_times = true;
-            for(size_t j=0; j<cached_times.at(i).size(); ++j) {
-                if(cached_times.at(i).at(j).size() == 0) {
-                    daq_has_times = false;
+            if(cached_times.at(i).size() > 0) {
+                for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+                    if(cached_times.at(i).at(j).size() == 0) {
+                        daq_has_times = false;
+                    }
                 }
+            } else {
+                daq_has_times = false;
+            }
+            if(cached_computer_times.at(i).size() > 0) {
+                for(size_t j=0; j<cached_computer_times.at(i).size(); ++j) {
+                    if(cached_computer_times.at(i).at(j).size() == 0) {
+                        daq_has_times = false;
+                    }
+                }
+            } else {
+                daq_has_times = false;
             }
             if(not daq_has_times) {
                 have_computer_times = false;

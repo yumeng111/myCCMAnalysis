@@ -25,6 +25,7 @@
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
 #include <icetray/CCMTriggerKey.h>
+#include <dataclasses/physics/CCMEventHeader.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
@@ -390,16 +391,63 @@ I3FramePtr CCMTriggerMerger::TransformMultipleTriggerFrames(std::vector<I3FrameP
     output_waveforms->reserve(first_readout->size());
     boost::shared_ptr<I3Vector<CCMAnalysis::Binary::CCMTrigger>> output_triggers(new I3Vector<CCMAnalysis::Binary::CCMTrigger>());
     output_triggers->reserve(frames.size());
+    boost::shared_ptr<CCMEventHeader> output_event_header(new CCMEventHeader());
+
+    int64_t mod = std::pow(2, 32);
+    int64_t start_year_total = 0;
+    int64_t start_daqTime0_total = 0;
+    int64_t start_daqTime1_total = 0;
+
+    CCMEventHeader first_header = first_frame->Get<CCMEventHeader>("CCMEventHeader");
+
+    size_t run_number = first_header.GetRunID();
+    size_t sub_run_number = first_header.GetSubRunID();
+    size_t event_number = 0;
+    size_t sub_event_number = 0;
 
     std::vector<std::pair<bool, int64_t>> start_times = GetStartTimes(frames);
     std::tuple<std::vector<std::pair<bool, int64_t>>, int64_t> relative_start_times = ComputeRelativeStartTimes(start_times);
     start_times = std::get<0>(relative_start_times);
     int64_t absolute_start_time = std::get<1>(relative_start_times) * ns_per_cycle;
 
-    // Concatenate the output triggers
+    size_t max_wf_size = 0;
     for(size_t i=0; i<frames.size(); ++i) {
+        // Concatenate the output triggers
         output_triggers->emplace_back(frames[i]->Get<boost::shared_ptr<const I3Vector<CCMAnalysis::Binary::CCMTrigger>>>(triggers_name_)->operator[](0));
+        max_wf_size = std::max(max_wf_size, (size_t)(*std::max_element(output_triggers->back().channel_sizes.begin(), output_triggers->back().channel_sizes.end())));
+
+        CCMEventHeader header = frames[i]->Get<CCMEventHeader>("CCMEventHeader");
+
+        // Average the start times
+        I3Time start_time = header.GetStartTime();
+        int64_t year = start_time.GetUTCYear();
+        int64_t daqTime = start_time.GetUTCDaqTime();
+        start_year_total += year;
+        start_daqTime0_total += daqTime % mod;
+        start_daqTime1_total += daqTime / mod;
+
+        // Set the event number
+        if(i == 0)
+            event_number = header.GetEventID();
+        else
+            event_number = std::min(event_number, (size_t)(header.GetEventID()));
     }
+
+    int64_t start_year = start_year_total / frames.size();
+    int64_t start_daqTime0 = start_daqTime0_total / frames.size();
+    int64_t start_daqTime1 = start_daqTime1_total / frames.size();
+    start_daqTime0 += (start_daqTime1_total % frames.size()) * mod;
+    int64_t start_daqTime = start_daqTime0 + start_daqTime1 * mod;
+
+    I3Time start_time(start_year, start_daqTime);
+    I3Time end_time = start_time + max_wf_size * 2.0;
+
+    output_event_header->SetStartTime(start_time);
+    output_event_header->SetEndTime(end_time);
+    output_event_header->SetRunID(run_number);
+    output_event_header->SetSubRunID(sub_run_number);
+    output_event_header->SetEventID(event_number);
+    output_event_header->SetSubEventID(sub_event_number);
 
     for(size_t w_idx=0; w_idx<first_readout->size(); ++w_idx) {
         // Get the waveform to save things to
@@ -435,6 +483,7 @@ I3FramePtr CCMTriggerMerger::TransformMultipleTriggerFrames(std::vector<I3FrameP
     }
 
     I3FramePtr output_frame(new I3Frame(I3Frame::DAQ));
+    output_frame->Put("CCMEventHeader", output_event_header, I3Frame::DAQ);
     output_frame->Put(first_trigger_time_output_, boost::make_shared<I3PODHolder<int64_t>>(absolute_start_time), I3Frame::DAQ);
     output_frame->Put(waveforms_output_, output_waveforms, I3Frame::DAQ);
     output_frame->Put(triggers_name_, output_triggers, I3Frame::DAQ);
