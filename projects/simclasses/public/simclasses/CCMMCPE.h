@@ -31,7 +31,8 @@ struct CCMMCPE {
     enum class PhotonSource : int8_t {
         Unknown = 0,
         Scintillation = 1,
-        Cerenkov = 2
+        Cerenkov = 2,
+        OpWLS = 3
     };
 
     // things we want to save about a photon hitting our pmts in simulation
@@ -39,7 +40,7 @@ struct CCMMCPE {
     float wavelength; // wavelength of photon
     I3Position position; // hit position on PMT
     I3Direction direction; // hit direction on PMT
-    PhotonSource photon_source; // true if photon produced from scintillation, false if photon produced via cherenkov radiation 
+    PhotonSource photon_source; 
 
     SET_LOGGER("CCMMCPE");
 

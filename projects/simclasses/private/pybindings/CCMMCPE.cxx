@@ -23,6 +23,7 @@ void register_CCMMCPE() {
       .value("Unknown", CCMMCPE::PhotonSource::Unknown)
       .value("Scintillation", CCMMCPE::PhotonSource::Scintillation)
       .value("Cerenkov", CCMMCPE::PhotonSource::Cerenkov)
+      .value("OpWLS", CCMMCPE::PhotonSource::OpWLS)
       .export_values()
       ;
         

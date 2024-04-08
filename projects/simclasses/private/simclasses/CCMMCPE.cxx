@@ -6,7 +6,8 @@ I3_SERIALIZABLE(CCMMCPESeries);
 
 const std::unordered_map<CCMMCPE::PhotonSource, std::string> CCMMCPE::photonSourceToProcessName = {{CCMMCPE::PhotonSource::Unknown, "Unknown"},
                                                                                                       {CCMMCPE::PhotonSource::Scintillation, "Scintillation"},
-                                                                                                      {CCMMCPE::PhotonSource::Cerenkov, "Cerenkov"}};
+                                                                                                      {CCMMCPE::PhotonSource::Cerenkov, "Cerenkov"},
+                                                                                                      {CCMMCPE::PhotonSource::OpWLS, "OpWLS"}};
 std::ostream& operator<<(std::ostream& os, const CCMMCPE& pe) {
     return(pe.Print(os));
 }
