@@ -138,7 +138,7 @@ std::vector<std::string> position_id = {"C101R0",
                                         "C15R5",
                                         "C16R3",
                                         "C16R2",
-                                         "C16R5",
+                                        "C16R5",
                                         "C16R4",
                                         "C16R1",
                                         "C19R1",
@@ -374,18 +374,26 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
 
     // now let's build PMTs using J4SolidMaker
-    fPMT = J4PMTSolidMaker::Get8inchPMTSolid();  
-    fPMT_log = new G4LogicalVolume(fPMT, G4Material::GetMaterial("Glass"), "pmt_log");
+    // note -- we are construction coated PMTs and uncoated PMTs seperately
+    fPMTCoated = J4PMTSolidMaker::Get8inchPMTSolid();  
+    fPMTCoated_log = new G4LogicalVolume(fPMTCoated, G4Material::GetMaterial("Glass"), "PMTCoatedLog");
     
-    // let's also get tpb coating 
-    fTPBCoating = J4PMTSolidMaker::GetTPBCoatingSolid();  
-    fTPBCoating_log = new G4LogicalVolume(fTPBCoating, G4Material::GetMaterial("TPBCoating"), "TPBCoating_log");
-    
-    // now let's build also PMT photocathode!
-    fPhotocath = J4PMTSolidMaker::GetPhotcathodeSolid();  
-    fPhotocath_log = new G4LogicalVolume(fPhotocath, G4Material::GetMaterial("Vacuum"), "photocath_log");
-    new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocath_log, "photocath", fPMT_log, false, 0);
+    fPMTUncoated = J4PMTSolidMaker::Get8inchPMTSolid();  
+    fPMTUncoated_log = new G4LogicalVolume(fPMTUncoated, G4Material::GetMaterial("Glass"), "PMTUncoatedLog");
 
+    // now get TPB coating that is daughter volume of coated pmt logical volume
+    fTPBCoating = J4PMTSolidMaker::GetTPBCoatingSolid();
+    fTPBCoating_log = new G4LogicalVolume(fTPBCoating, G4Material::GetMaterial("TPBFoil"), "TPBCoatingLog");
+    new G4PVPlacement(nullptr,  G4ThreeVector(0., 0., 0.), fTPBCoating_log, "TPBCoating", fPMTCoated_log, false, 0);
+
+    // now let's also build PMT photocathode!
+    fPhotocathCoated = J4PMTSolidMaker::GetPhotcathodeSolid();  
+    fPhotocathCoated_log = new G4LogicalVolume(fPhotocathCoated, G4Material::GetMaterial("Vacuum"), "photocathCoated_log");
+    new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocathCoated_log, "photocathCoated", fPMTCoated_log, false, 0);
+
+    fPhotocathUncoated = J4PMTSolidMaker::GetPhotcathodeSolid();  
+    fPhotocathUncoated_log = new G4LogicalVolume(fPhotocathUncoated, G4Material::GetMaterial("Vacuum"), "photocathUncoated_log");
+    new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocathUncoated_log, "photocathUncoated", fPMTUncoated_log, false, 0);
 
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
@@ -478,12 +486,15 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
         }
         if (coated){
-            // place tpb coating
-            G4String coating_name = pmt_name + "_tpbcoating";
-            new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, coating_name, fFiducialAr_log, false, k);
+            // place coated pmts
+            G4String descriptive_name = "CoatedPMT_" + pmt_name;
+            new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoated_log, descriptive_name, fFiducialAr_log, false, k);
         }
-        // place pmts
-        new G4PVPlacement(rotationMatrix, pmt_pos, fPMT_log, pmt_name, fFiducialAr_log, false, k);
+        else {
+            // place uncoated pmts
+            G4String descriptive_name = "UncoatedPMT_" + pmt_name;
+            new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoated_log, descriptive_name, fFiducialAr_log, false, k);
+        }
         
         // now save positions and increment counter
         fPMTPositions.push_back(G4ThreeVector(position[0], position[1], position[2]));
@@ -508,21 +519,20 @@ void G4CCMMainVolume::VisAttributes()
     fArgonOuter_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fPhotocath_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPMTCoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPMTUncoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fTPBCoating_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fPMT_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPhotocathCoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPhotocathUncoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     
     //auto pmt_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8)); //grey idk
     //pmt_va->SetForceSolid(true);
-    //fPMT_log->SetVisAttributes(pmt_va);
-
-    //auto tpb_va = new G4VisAttributes(G4Colour(0., 1., 0.));
-    //tpb_va->SetForceSolid(true);
-    //fTPBCoating_log->SetVisAttributes(tpb_va);
-    
-    //auto photocathode_va = new G4VisAttributes(G4Colour(1., 0., 0.));
-    //photocathode_va->SetForceSolid(true);
-    //fPhotocath_log->SetVisAttributes(photocathode_va);
+    //fPMTCoated_log->SetVisAttributes(pmt_va);
+    //fPMTUncoated_log->SetVisAttributes(pmt_va);
+    //
+    //auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
+    //tpb_coating_va->SetForceSolid(true);
+    //fTPBCoating_log->SetVisAttributes(tpb_coating_va);
 
 }
 
@@ -531,58 +541,20 @@ void G4CCMMainVolume::VisAttributes()
 void G4CCMMainVolume::SurfaceProperties()
 {
     // now it's time to define optical surface properties
-    // let's start with the TPB foils
-    
-    std::vector<G4double> TPBEnergy = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
-                                        2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
-                                        2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
-                                        3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
-                                        6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
-    
-    std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-                                               1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
+    // define optical surface to TPB
 
-    std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
+    G4Material * TPB_material = G4Material::GetMaterial("TPBFoil");
 
-    std::vector<G4double> TPBfoilOSEff = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                                          1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
-                                          1., 1., 1., 1., 1.};
-
-    // define our TPB foil material properties table
-    G4MaterialPropertiesTable *TPBfoilMPT = new G4MaterialPropertiesTable();
-    TPBfoilMPT->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
-    TPBfoilMPT->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
-    TPBfoilMPT->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
-    
-    // now define our optical surface
-    G4OpticalSurface *TPBfoilOS = new G4OpticalSurface("TPBFoilsSurface");
-    TPBfoilOS->SetModel(unified); 
-    TPBfoilOS->SetType(dielectric_dielectric);
-    TPBfoilOS->SetFinish(ground);
-    TPBfoilOS->SetSigmaAlpha(0.05);
-    TPBfoilOS->SetMaterialPropertiesTable(TPBfoilMPT);
+    G4OpticalSurface *TPBOS = new G4OpticalSurface("TPBOpticalSurface");
+    TPBOS->SetModel(unified); 
+    TPBOS->SetType(dielectric_dielectric);
+    TPBOS->SetFinish(ground);
+    TPBOS->SetSigmaAlpha(0.05);
+    TPBOS->SetMaterialPropertiesTable(TPB_material->GetMaterialPropertiesTable());
 
     // create logical skin surfaces for TPB on walls of detector and on PMTs
-    new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBfoilOS);
-    new G4LogicalSkinSurface("TPBCoating_Surface", fTPBCoating_log, TPBfoilOS);
-
-    //**Photocathode surface properties
-    //std::vector<G4double> ephoton = { 7.0 * eV, 7.14 * eV };
-    //std::vector<G4double> photocath_EFF     = { 1., 1. };
-    //std::vector<G4double> photocath_ReR     = { 1.92, 1.92 };
-    //std::vector<G4double> photocath_ImR     = { 1.69, 1.69 };
-    //auto photocath_mt = new G4MaterialPropertiesTable();
-    //photocath_mt->AddProperty("EFFICIENCY", ephoton, photocath_EFF);
-    //photocath_mt->AddProperty("REALRINDEX", ephoton, photocath_ReR);
-    //photocath_mt->AddProperty("IMAGINARYRINDEX", ephoton, photocath_ImR);
-    //auto photocath_opsurf = new G4OpticalSurface(
-    //"photocath_opsurf", glisur, polished, dielectric_metal);
-    //photocath_opsurf->SetMaterialPropertiesTable(photocath_mt);
-
-    //**Create logical skin surfaces
-    //new G4LogicalSkinSurface("photocath_surf", fPhotocath_log, photocath_opsurf);
+    new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBOS);
+    new G4LogicalSkinSurface("TPBCoating_Surface", fPMTCoated_log, TPBOS);
 
 }
 

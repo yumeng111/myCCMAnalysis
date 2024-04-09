@@ -48,7 +48,8 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 const std::unordered_map<std::string, CCMMCPE::PhotonSource> G4CCMPMTSD::processNameToPhotonSource = {{"Unknown", CCMMCPE::PhotonSource::Unknown},
                                                                                                       {"Scintillation", CCMMCPE::PhotonSource::Scintillation},
-                                                                                                      {"Cerenkov", CCMMCPE::PhotonSource::Cerenkov}};
+                                                                                                      {"Cerenkov", CCMMCPE::PhotonSource::Cerenkov},
+                                                                                                      {"OpWLS", CCMMCPE::PhotonSource::OpWLS}};
 
 G4CCMPMTSD::G4CCMPMTSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("pmtHitCollection");
@@ -98,11 +99,12 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4int pmtNumber = aStep->GetPostStepPoint()->GetTouchable()->GetReplicaNumber(1);
     //G4VPhysicalVolume* physVol = aStep->GetPostStepPoint()->GetTouchable()->GetVolume(1);
     G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(1);
-    std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is row_pmtNumber 
+    std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber 
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
     std::stringstream string_stream(physVolName);
     std::string segment;
+    std::getline(string_stream, segment, '_');
     std::getline(string_stream, segment, '_');
     int row = std::stoi(segment);
     std::getline(string_stream, segment);
@@ -134,7 +136,6 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // now save to CCMMCPE!
     CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
-
 
     // Find the correct hit collection
     size_t n = fPMTHitCollection->entries();

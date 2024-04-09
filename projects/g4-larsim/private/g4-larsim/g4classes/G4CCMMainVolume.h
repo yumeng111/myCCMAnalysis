@@ -27,7 +27,8 @@ class G4CCMMainVolume : public G4PVPlacement
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
                 G4CCMDetectorConstruction* c);
 
-    G4LogicalVolume* GetLogPhotoCath() { return fPhotocath_log; }
+    G4LogicalVolume* GetLogPhotoCathCoated() { return fPhotocathCoated_log; }
+    G4LogicalVolume* GetLogPhotoCathUncoated() { return fPhotocathUncoated_log; }
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
@@ -44,9 +45,11 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fInnerFrame = nullptr;
     G4Tubs* fTPBFoil = nullptr;
     G4Tubs* fFiducialAr = nullptr;
-    G4VSolid* fPMT = nullptr; 
+    G4VSolid* fPMTCoated = nullptr; 
+    G4VSolid* fPMTUncoated = nullptr; 
     G4VSolid* fTPBCoating = nullptr; 
-    G4VSolid* fPhotocath = nullptr; 
+    G4VSolid* fPhotocathCoated = nullptr; 
+    G4VSolid* fPhotocathUncoated = nullptr; 
 
     // Logical volumes
     G4LogicalVolume* fCryoVessel_log = nullptr;
@@ -56,9 +59,11 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fInnerFrame_log = nullptr;
     G4LogicalVolume* fTPBFoil_log = nullptr;
     G4LogicalVolume* fFiducialAr_log = nullptr;
-    G4LogicalVolume* fPMT_log = nullptr;
-    G4LogicalVolume* fTPBCoating_log = nullptr;
-    G4LogicalVolume* fPhotocath_log= nullptr;
+    G4LogicalVolume* fPMTCoated_log = nullptr;
+    G4LogicalVolume* fPMTUncoated_log = nullptr;
+    G4LogicalVolume* fTPBCoating_log = nullptr; 
+    G4LogicalVolume* fPhotocathCoated_log = nullptr;
+    G4LogicalVolume* fPhotocathUncoated_log = nullptr;
 
     // Sensitive Detectors positions
     std::vector<G4ThreeVector> fPMTPositions;
