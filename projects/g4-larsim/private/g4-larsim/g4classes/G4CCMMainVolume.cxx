@@ -529,10 +529,15 @@ void G4CCMMainVolume::VisAttributes()
     //pmt_va->SetForceSolid(true);
     //fPMTCoated_log->SetVisAttributes(pmt_va);
     //fPMTUncoated_log->SetVisAttributes(pmt_va);
-    //
+    
     //auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     //tpb_coating_va->SetForceSolid(true);
     //fTPBCoating_log->SetVisAttributes(tpb_coating_va);
+    
+    //auto photocath_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
+    //photocath_va->SetForceSolid(true);
+    //fPhotocathCoated_log->SetVisAttributes(photocath_va);
+    //fPhotocathUncoated_log->SetVisAttributes(photocath_va);
 
 }
 

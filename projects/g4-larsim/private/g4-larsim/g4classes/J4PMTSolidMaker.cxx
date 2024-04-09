@@ -26,7 +26,7 @@ G4VSolid * J4PMTSolidMaker::fTPBCoatingSolid;
 G4VSolid * J4PMTSolidMaker::fPhotocathodeSolid;
 G4double   J4PMTSolidMaker::f8inchPMTRadius = 131.0 * mm;
 G4double   J4PMTSolidMaker::fTPBThickness = 0.002 * mm;
-G4double   J4PMTSolidMaker::fPhotocathodeDelta = 1.0 * mm; // idk just needs to be greater than the pmt glass thickness
+G4double   J4PMTSolidMaker::fPhotocathodeDelta = 3.0 * mm; // idk just needs to be greater than the pmt glass thickness
 
 //////////////////////////////////////////////////////////////////////////////////////
 G4VSolid* J4PMTSolidMaker::Get8inchPMTSolid()
@@ -262,8 +262,8 @@ void J4PMTSolidMaker::CreatePhotocathodeSolid()
     G4double centerofConslb;
     centerofConslb = 70.4284 + fPhotocathodeDelta / 2.1;
 
-    rSmin   = 0;
-    rSmax   = f8inchPMTRadius - fPhotocathodeDelta;
+    rSmin   = f8inchPMTRadius - fPhotocathodeDelta;
+    rSmax   = f8inchPMTRadius;
     dSphi   = 2*M_PI;
     dStheta = 37.6392 *degree;
      
@@ -331,9 +331,9 @@ void J4PMTSolidMaker::CreatePhotocathodeSolid()
     // to create two PMTs
       
     J4UnionSolid *solid1 = new J4UnionSolid("solid1", sphere, polycone1, 0, centerOfPolycone);
+    fPhotocathodeSolid = solid1; 
+    //J4UnionSolid *solid2 = new J4UnionSolid("solid2", solid1, tubs, 0, centerOfTubs);
       
-    J4UnionSolid *solid2 = new J4UnionSolid("solid2", solid1, tubs, 0, centerOfTubs);
-      
-    fPhotocathodeSolid = new J4UnionSolid("solid", solid2, cons, 0, centerOfCons);
+    //fPhotocathodeSolid = new J4UnionSolid("solid", solid2, cons, 0, centerOfCons);
 }
  
