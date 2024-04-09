@@ -41,6 +41,7 @@ namespace {
       types["p+"] = I3Particle::PPlus;
       types["p-"] = I3Particle::PMinus;
       types["n"] = I3Particle::Neutron;
+      types["nbar"] = I3Particle::NeutronBar;
       types["pi0"] = I3Particle::Pi0;
       types["pi+"] = I3Particle::PiPlus;
       types["pi-"] = I3Particle::PiMinus;

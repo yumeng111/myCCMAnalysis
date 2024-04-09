@@ -67,6 +67,9 @@ class G4CCMScintSD : public G4VSensitiveDetector {
             primary_ = primary;
             primaryParticleType_ = primary_.GetType();
             primaryStartingEnergy_ = primary_.GetEnergy();
+            
+            prev_parent_particle_id_ = primary_.GetID(); 
+            I3MCTreeUtils::AddPrimary(*mcTree, primary_);
         } 
     
 

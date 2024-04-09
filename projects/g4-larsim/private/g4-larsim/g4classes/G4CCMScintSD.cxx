@@ -98,7 +98,6 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         return false;
     }
 
-    
     // now let's check energy deposited
     G4double edep = aStep->GetTotalEnergyDeposit()*eV * I3Units::eV;
     if(edep == 0.)
