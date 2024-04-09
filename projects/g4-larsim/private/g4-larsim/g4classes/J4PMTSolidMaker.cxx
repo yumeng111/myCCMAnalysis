@@ -137,9 +137,8 @@ void J4PMTSolidMaker::Create8inchPMTSolid()
     // to create two PMTs
       
     J4UnionSolid *solid1 = new J4UnionSolid("solid1", sphere, polycone1, 0, centerOfPolycone);
-      
     J4UnionSolid *solid2 = new J4UnionSolid("solid2", solid1, tubs, 0, centerOfTubs);
-      
+
     f8inchPMTSolid = new J4UnionSolid("solid", solid2, cons, 0, centerOfCons);
 
 }
@@ -166,7 +165,8 @@ void J4PMTSolidMaker::CreateTPBCoatingSolid()
     G4double centerofConslb;
     centerofConslb = 70.4284 - fTPBThickness / 2.1;
 
-    rSmin   = 0;
+    rSmin   = f8inchPMTRadius;
+    //rSmin   = 0;
     rSmax   = f8inchPMTRadius + fTPBThickness;
     dSphi   = 2*M_PI;
     dStheta = 37.6392 *degree;
@@ -235,18 +235,8 @@ void J4PMTSolidMaker::CreateTPBCoatingSolid()
     // to create two PMTs
       
     J4UnionSolid *solid1 = new J4UnionSolid("solid1", sphere, polycone1, 0, centerOfPolycone);
-      
-    J4UnionSolid *solid2 = new J4UnionSolid("solid2", solid1, tubs, 0, centerOfTubs);
-      
-    G4VSolid * biggerPMT = new J4UnionSolid("solid", solid2, cons, 0, centerOfCons);
+    fTPBCoatingSolid = solid1;  
 
-    // now grab an 8in pmt
-    if (!f8inchPMTSolid) {
-        Create8inchPMTSolid();
-    }
-
-    // now subtract!
-    fTPBCoatingSolid = new G4SubtractionSolid("TPBShell", f8inchPMTSolid, biggerPMT);
 }
 
 ///////////////////////////////////////////////////////

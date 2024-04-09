@@ -39,6 +39,7 @@ class J4PMTSolidMaker {
     static G4VSolid * f8inchPMTSolid;
     static G4VSolid * fTPBCoatingSolid;
     static G4VSolid * fPhotocathodeSolid;
+    
     static G4double f8inchPMTRadius;
     static G4double fTPBThickness;
     static G4double fPhotocathodeDelta;
