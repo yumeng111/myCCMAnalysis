@@ -66,7 +66,6 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
   delete fSteel;
   delete fVacuum;
   delete fPTFE;
-  delete fTPBCoating;
   delete fTPBFoil;
   delete fGlass_mt;
   delete fPlastic_mt;
@@ -76,7 +75,6 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
   delete fSteel_mt;
   delete fVacuum_mt;
   delete fPTFE_mt;
-  delete fTPBCoating_mt;
   delete fTPBFoil_mt;
 }
 
@@ -128,11 +126,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fGlass->AddElement(fC, 91.533 * perCent);
     fGlass->AddElement(fH, 8.467 * perCent);
 
-    // TPB (one for coating on PMTs and one for foils)
-    fTPBCoating = new G4Material("TPBCoating", density= 1.079*g/cm3, 2);
-    fTPBCoating->AddElement(fC, 28);
-    fTPBCoating->AddElement(fH, 22);
-    
+    // TPB 
     fTPBFoil = new G4Material("TPBFoil", density= 1.079*g/cm3, 2);
     fTPBFoil->AddElement(fC, 28);
     fTPBFoil->AddElement(fH, 22);
@@ -271,7 +265,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fAlum_mt->AddProperty("ABSLENGTH", alum_abseneg, alum_abslen);
     fAlum->SetMaterialPropertiesTable(fAlum_mt);
 
-    // TPB
+    // TPB -- using same values for coating and foils at the moment
     std::vector<G4double> TPBEnergy = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
                                         2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
                                         2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
@@ -286,25 +280,46 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           0.0000, 0.0000, 0.0000, 0.0000, 0.0000 };
 
     // Refractive index of the TPB.
-    std::vector<G4double> TPBRIndex = { 1.4, 1.4, 1.4, 1.4, 1.4,
-                                        1.4, 1.4, 1.4, 1.4, 1.4,
-                                        1.4, 1.4, 1.4, 1.4, 1.4,
-                                        1.4, 1.4, 1.4, 1.4, 1.4,
-                                        1.4, 1.4, 1.4, 1.4, 1.4 };
+    std::vector<G4double> TPBRIndex = { 1.7, 1.7, 1.7, 1.7, 1.7,
+                                        1.7, 1.7, 1.7, 1.7, 1.7,
+                                        1.7, 1.7, 1.7, 1.7, 1.7,
+                                        1.7, 1.7, 1.7, 1.7, 1.7,
+                                        1.7, 1.7, 1.7, 1.7, 1.7 };
 
 
-    G4MaterialPropertiesTable* fTPBCoating_mt = new G4MaterialPropertiesTable();
-    //fTPBCoating_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
-    fTPBCoating_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
-    fTPBCoating_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
-    fTPBCoating_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
-    fTPBCoating->SetMaterialPropertiesTable(fTPBCoating_mt);
+    std::vector<G4double> TPBWLSAbsorption = { 0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+                                               1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+                                               10000.000*m, 10000.000*m, 10000.000*m, 10000.000*m, 100000.0*m,
+                                               100000.0*m, 100000.0*m, 100000.0*m, 0.*mm, 0.*mm,
+                                               0.*mm, 0.*mm, 0.*mm, 0.*mm, 0.*mm };
     
+    std::vector<G4double> TPBRayleigh = { 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
+                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
+                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
+                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
+                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm };
+    
+    std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+                                               1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
+
+    std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                              0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
+
+    std::vector<G4double> TPBfoilOSEff = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                                          1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
+                                          1., 1., 1., 1., 1.};
+
     G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
-    //fTPBFoil_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
+    fTPBFoil_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
+    fTPBFoil_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh);
     fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
+    fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption);
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
     fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
+    fTPBFoil_mt->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
+    fTPBFoil_mt->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
+    fTPBFoil_mt->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
     fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
 
     // Defines properties of the PTFE reflectors.
@@ -377,7 +392,8 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             pmt->SetPmtPositions(fMainVolume->GetPMTPositions());
         }
         G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
-        SetSensitiveDetector(fMainVolume->GetLogPhotoCath(), fPMT_SD.Get());
+        SetSensitiveDetector(fMainVolume->GetLogPhotoCathCoated(), fPMT_SD.Get());
+        SetSensitiveDetector(fMainVolume->GetLogPhotoCathUncoated(), fPMT_SD.Get());
     }
     
     if (LArSDStatus_){
