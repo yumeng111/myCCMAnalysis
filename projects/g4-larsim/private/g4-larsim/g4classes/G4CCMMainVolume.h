@@ -27,8 +27,8 @@ class G4CCMMainVolume : public G4PVPlacement
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
                 G4CCMDetectorConstruction* c);
 
-    G4LogicalVolume* GetLogPhotoCathCoated() { return fPhotocathCoated_log; }
-    G4LogicalVolume* GetLogPhotoCathUncoated() { return fPhotocathUncoated_log; }
+    G4LogicalVolume* GetLogPhotoCathCoated() { return fPMTCoated_log; }
+    G4LogicalVolume* GetLogPhotoCathUncoated() { return fPMTUncoated_log; }
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 

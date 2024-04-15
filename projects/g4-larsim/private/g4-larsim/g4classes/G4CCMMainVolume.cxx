@@ -381,10 +381,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fPMTUncoated = J4PMTSolidMaker::Get8inchPMTSolid();  
     fPMTUncoated_log = new G4LogicalVolume(fPMTUncoated, G4Material::GetMaterial("Glass"), "PMTUncoatedLog");
 
-    // now get TPB coating that is daughter volume of coated pmt logical volume
+    // now get TPB coating -- NOT a daughter volume of coated pmt logical volume
     fTPBCoating = J4PMTSolidMaker::GetTPBCoatingSolid();
     fTPBCoating_log = new G4LogicalVolume(fTPBCoating, G4Material::GetMaterial("TPBFoil"), "TPBCoatingLog");
-    new G4PVPlacement(nullptr,  G4ThreeVector(0., 0., 0.), fTPBCoating_log, "TPBCoating", fPMTCoated_log, false, 0);
 
     // now let's also build PMT photocathode!
     fPhotocathCoated = J4PMTSolidMaker::GetPhotcathodeSolid();  
@@ -489,6 +488,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             // place coated pmts
             G4String descriptive_name = "CoatedPMT_" + pmt_name;
             new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoated_log, descriptive_name, fFiducialAr_log, false, k);
+            G4String tpb_descriptive_name = "TPBCoating_" + pmt_name;
+            new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, tpb_descriptive_name, fFiducialAr_log, false, k);
         }
         else {
             // place uncoated pmts
@@ -529,7 +530,7 @@ void G4CCMMainVolume::VisAttributes()
     //pmt_va->SetForceSolid(true);
     //fPMTCoated_log->SetVisAttributes(pmt_va);
     //fPMTUncoated_log->SetVisAttributes(pmt_va);
-    
+    //
     //auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     //tpb_coating_va->SetForceSolid(true);
     //fTPBCoating_log->SetVisAttributes(tpb_coating_va);
@@ -559,7 +560,7 @@ void G4CCMMainVolume::SurfaceProperties()
 
     // create logical skin surfaces for TPB on walls of detector and on PMTs
     new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBOS);
-    new G4LogicalSkinSurface("TPBCoating_Surface", fPMTCoated_log, TPBOS);
+    new G4LogicalSkinSurface("TPBCoating_Surface", fTPBCoating_log, TPBOS);
 
 }
 
