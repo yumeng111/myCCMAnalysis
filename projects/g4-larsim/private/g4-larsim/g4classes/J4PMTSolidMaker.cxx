@@ -68,7 +68,7 @@ void J4PMTSolidMaker::Create8inchPMTSolid()
     G4double rmin, rmax, sphi, dphi, stheta, dtheta;
     G4double rSmin, rSmax, sSphi, dSphi, sStheta, dStheta;
 
-    rSmin   = 0;
+    rSmin   = 0.0;
     rSmax   = f8inchPMTRadius;
     dSphi   = 2*M_PI;
     dStheta = 37.6392 *degree;
@@ -262,8 +262,8 @@ void J4PMTSolidMaker::CreatePhotocathodeSolid()
     G4double centerofConslb;
     centerofConslb = 70.4284 + fPhotocathodeDelta / 2.1;
 
-    rSmin   = f8inchPMTRadius - fPhotocathodeDelta;
-    rSmax   = f8inchPMTRadius;
+    rSmin   = 0.0;
+    rSmax   = f8inchPMTRadius - fPhotocathodeDelta;
     dSphi   = 2*M_PI;
     dStheta = 37.6392 *degree;
      
