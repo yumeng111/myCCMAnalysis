@@ -63,7 +63,8 @@ const std::unordered_map<int, I3Particle::ParticleType> G4CCMScintSD::pdgCodeToI
                                                                                                  {3122 , I3Particle::Lambda},
                                                                                                  {3222 , I3Particle::SigmaPlus},
                                                                                                  {3212 , I3Particle::Sigma0},
-                                                                                                 {3112 , I3Particle::SigmaMinus}};
+                                                                                                 {3112 , I3Particle::SigmaMinus},
+                                                                                                 {1000170360, I3Particle::Cl36Nucleus}};
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
@@ -99,7 +100,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // now let's check energy deposited
-    G4double edep = aStep->GetTotalEnergyDeposit()*eV * I3Units::eV;
+    G4double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
     if(edep == 0.)
         return false;  // No edep so don't count as hit
 
@@ -107,14 +108,14 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // position
     G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(photonPosition.x()*mm * I3Units::mm, photonPosition.y()*mm * I3Units::mm, photonPosition.z()*mm * I3Units::mm);
+    I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
 
     // direction
     G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
     I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
     // time
-    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime();
+    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
 
     // process type
     const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
@@ -154,6 +155,9 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             if (this_pdg_code == pdg){
                 daughter_type = pdgCodeToI3ParticleType.at(pdg);
             }
+        }
+        if (daughter_type == I3Particle::unknown) {
+            std::cout << "oops! need conversion for pdg code = " << pdg << std::endl;
         }   
         I3Particle daughter(daughter_type);
         daughter.SetEnergy(edep);

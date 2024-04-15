@@ -98,7 +98,8 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // User replica number 1 since photocathode is a daughter volume to the pmt which was replicated
     G4int pmtNumber = aStep->GetPostStepPoint()->GetTouchable()->GetReplicaNumber(1);
     //G4VPhysicalVolume* physVol = aStep->GetPostStepPoint()->GetTouchable()->GetVolume(1);
-    G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(1);
+    G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(0);
+    //G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(1);
     std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber 
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
@@ -117,14 +118,14 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     
     // let's grab everything from our step
     G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(photonPosition.x()*mm * I3Units::mm, photonPosition.y()*mm * I3Units::mm, photonPosition.z()*mm * I3Units::mm);
+    I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
 
     G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
     I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
-    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() * nanosecond * I3Units::nanosecond;
+    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
     
-    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() * eV;
+    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() / electronvolt;
 
     G4double photonWavelength = hc / photonEnergy * I3Units::nanometer; 
     
@@ -133,7 +134,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if (creationProcess) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
-
+   
     // now save to CCMMCPE!
     CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
 

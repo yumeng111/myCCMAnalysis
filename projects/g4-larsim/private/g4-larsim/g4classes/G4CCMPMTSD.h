@@ -92,7 +92,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
 
         // define a few things for converting energy to wavelength
         const G4double hbarc = 197.326; //eV * nm
-        const G4double hc =  hbarc * (2 * 3.14159265358979323846) * eV * nm; // eV * nm
+        const G4double hc =  hbarc * (2 * 3.14159265358979323846); // eV * nm
 
         G4int fHitCID = -1;
     
