@@ -250,13 +250,12 @@ void G4Interface::InjectParticle(const I3Particle& particle)
         log_warn("You passed NULL particleDef \"%s\" ?!", particle.GetTypeString().c_str());
         return;
     }
-
     G4ParticleGun gun(1);
     gun.SetParticleDefinition(particleDef);
     gun.SetParticleEnergy((particle.GetEnergy() / I3Units::MeV) * CLHEP::MeV);
     gun.SetParticlePosition(position);
     gun.SetParticleMomentumDirection(direction);
-
+    
     log_trace("Injecting %s: x=%.2f m, y=%.2f m, z=%.2f m, E=%.3f MeV",
               particle.GetTypeString().c_str(),
               position.x() / CLHEP::m,
@@ -322,6 +321,7 @@ void G4Interface::Initialize()
     //opticalParams->SetCerenkovTrackSecondariesFirst(true);
 
     //physicsList->RegisterPhysics(opticalPhysics);
+    //runManager_.SetUserInitialization(physicsList);
     runManager_.SetUserInitialization(new G4CCMPhysicsList(verboseLevel));
 
     // Initialize G4 kernel
