@@ -312,11 +312,11 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
     fTPBFoil_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
-    fTPBFoil_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh);
+    //fTPBFoil_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh);
     fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
     fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption);
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
-    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.2);
+    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
     fTPBFoil_mt->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
     fTPBFoil_mt->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
     fTPBFoil_mt->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
