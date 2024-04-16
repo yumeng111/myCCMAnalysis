@@ -76,7 +76,7 @@ void G4CCMTrajectory::DrawTrajectory() const {
 
     const G4double markerSize = 0.05;
     G4bool lineRequired       = true;
-    G4bool markersRequired    = false;
+    G4bool markersRequired    = true;
 
     G4Polyline trajectoryLine;
     G4Polymarker stepPoints;
@@ -120,15 +120,18 @@ void G4CCMTrajectory::DrawTrajectory() const {
             colour = G4Colour(0., 1., 0.);
             }
             
+            if (fParentProcess == "OpWLS"){
+            colour = G4Colour(1., 0., 0.);
+            }
+            
             if (fParentProcess == "Scintillation"){
-                //colour = G4Colour(0., 0., 1.);
-                trajectoryLine.SetVisAttributes(G4VisAttributes::GetInvisible());
+                colour = G4Colour(0., 0., 1.);
             }
         }
 
-        if (fParticleDefinition == G4OpticalPhoton::OpticalPhotonDefinition() and fParentProcess != "Scintillation"){
+        if (fParticleDefinition == G4OpticalPhoton::OpticalPhotonDefinition() and fParentProcess == "Cerenkov"){
         //if (fParticleDefinition != G4OpticalPhoton::OpticalPhotonDefinition()) {
-            std::cout << "fParentProcess = " << fParentProcess << std::endl;    
+            //std::cout << "fParentProcess = " << fParentProcess << std::endl;    
             // only drawing non-optical photons for the moment
             G4VisAttributes trajectoryLineAttribs(colour);
             trajectoryLine.SetVisAttributes(&trajectoryLineAttribs);

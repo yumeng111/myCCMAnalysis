@@ -69,9 +69,13 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
 
     G4StepPoint* thePrePoint    = theStep->GetPreStepPoint();
     G4VPhysicalVolume* thePrePV = thePrePoint->GetPhysicalVolume();
+    std::string thePrePVName = static_cast<std::string>(thePrePV->GetName());
 
     G4StepPoint* thePostPoint    = theStep->GetPostStepPoint();
     G4VPhysicalVolume* thePostPV = thePostPoint->GetPhysicalVolume();
+    std::string thePostPVName = static_cast<std::string>(thePostPV->GetName());
+
+    std::string desired_str ("photocath");
 
     if(theTrack->GetParentID() == 0) {
         // This is a primary track
@@ -87,10 +91,16 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
     if(pdg == -22) {
 
         // grab photons on photcathode
-        if (thePrePV->GetName() == "photocath" or thePostPV->GetName() == "photocath"){
-            // draw anything in our pmts
+        if (thePrePVName.find(desired_str) != std::string::npos) {
             trackInformation->AddTrackStatusFlag(hitPMT);
-        }
+        } 
+        if (thePostPVName.find(desired_str) != std::string::npos) {
+            trackInformation->AddTrackStatusFlag(hitPMT);
+        } 
+        //if (thePrePV->GetName() == "photocath" or thePostPV->GetName() == "photocath"){
+            // draw anything in our pmts
+            //trackInformation->AddTrackStatusFlag(hitPMT);
+        //}
     }
 }
 
