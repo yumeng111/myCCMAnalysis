@@ -207,8 +207,10 @@ class TimeReader {
     // Cache of read times
     std::vector<std::deque<int64_t>> time_cache;
     std::vector<std::deque<struct timespec>> computer_time_cache;
+    std::vector<uint8_t> seen;
     // Last raw time read
     std::vector<uint32_t> last_raw_time;
+    std::vector<int64_t> last_abs_time;
 
     bool FrameMeetsRequirements(I3FramePtr frame) {
         // Check if the frame has the necessary information for merging
@@ -243,9 +245,18 @@ class TimeReader {
             if(not mask[i]) // Empty triggers have no time associated so we can skip placing anything in the cache
                 continue;
             uint32_t raw_time = time_read[i];
-            int64_t abs_time = time_cache[i].back() + CCMAnalysis::Binary::subtract_times(raw_time, last_raw_time[i]);
-            time_cache[i].push_back(abs_time);
-            computer_time_cache[i].push_back(computer_time_read[i]);
+            int64_t abs_time;
+            if(seen[i]) {
+                abs_time = last_abs_time[i] + CCMAnalysis::Binary::subtract_times(raw_time, last_raw_time[i]);
+                time_cache[i].push_back(abs_time);
+                last_abs_time[i] = abs_time;
+            } else {
+                time_cache[i].push_back(raw_time);
+                last_abs_time[i] = raw_time;
+                seen[i] = 1;
+            }
+            if(i < computer_time_read.size())
+                computer_time_cache[i].push_back(computer_time_read[i]);
             last_raw_time[i] = raw_time;
         }
         return true;
@@ -255,7 +266,11 @@ public:
     TimeReader(std::vector<std::string> const & file_names, size_t n_skip) :
     frame_seq(file_names) {
         // Get the first frame
-        PopFrame();
+        for(size_t i=0; i<n_skip+1; ++i) {
+            bool res = PopFrame();
+            if(not res)
+                log_fatal("Not enough frames to align data streams");
+        }
         // Assume we have the configuration from the first frame
         CCMAnalysis::Binary::CCMDAQConfig const & config = current_frame->Get<CCMAnalysis::Binary::CCMDAQConfig>("CCMDAQConfig");
 
@@ -264,42 +279,28 @@ public:
         time_cache.resize(n_boards);
         computer_time_cache.resize(n_boards);
         last_raw_time.resize(n_boards);
+        last_abs_time.resize(n_boards);
+        seen.resize(n_boards);
         std::vector<uint32_t> time_read = read_times(current_frame);
         std::vector<struct timespec> computer_time_read = read_computer_times(current_frame);
         std::vector<uint8_t> mask = empty_mask(current_frame);
         std::fill(last_raw_time.begin(), last_raw_time.end(), 0);
-        for(size_t i=0; i< n_boards; ++i) {
+        std::fill(last_abs_time.begin(), last_abs_time.end(), 0);
+        std::fill(seen.begin(), seen.end(), 0);
+        for(size_t i=0; i<n_boards; ++i) {
             if(not mask[i])
                 continue;
             time_cache[i].push_back(time_read[i]);
-            computer_time_cache[i].push_back(computer_time_read[i]);
+            last_abs_time[i] = time_read[i];
+            seen[i] = 1;
+            // Computer times are missing from some of the early data
+            if(i < computer_time_read.size())
+                computer_time_cache[i].push_back(computer_time_read[i]);
             last_raw_time[i] = time_read[i];
-        }
-
-        // Load more times until we have at least the number we intend to skip in each cache
-        while(true) {
-            bool all_skipped = true;
-            for(size_t i=0; i<n_boards; ++i) {
-                all_skipped &= time_cache[i].size() > n_skip;
-            }
-            if(all_skipped)
-                break;
-            bool res = PopTimes();
-            if(not res)
-                log_fatal("Not enough frames to align data streams");
-        }
-
-        // Skip times on each board
-        for(size_t i=0; i<n_boards; ++i) {
-            size_t size = time_cache[i].size();
-            size = std::min(size, n_skip);
-            for(size_t j=0; j<size; ++j)
-                time_cache[i].pop_front();
         }
     }
 
-    // By default we should not skip any timed
-    // Skipping is for testing purposes only
+    // By default we should not skip any times
     TimeReader(std::vector<std::string> const & file_names) : TimeReader(file_names, 0) {}
 
     std::vector<int64_t> GetTimes(size_t N, size_t board_idx) {
@@ -720,7 +721,7 @@ int64_t compute_trigger_offset(TimeReader & reader0, size_t board_idx0, TimeRead
     return std::get<1>(best_pair_result);
 }
 
-std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(std::vector<std::vector<std::string>> file_lists, int64_t max_delta=2, std::vector<int64_t> jitter_tests={-2, 2}, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9) {
+std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(std::vector<std::vector<std::string>> file_lists, int64_t max_delta=2, std::vector<int64_t> jitter_tests={-2, 2}, size_t min_triggers=500, size_t max_triggers=2000, size_t increment=25, double threshold=0.9, size_t n_skip=0) {
     // Compute offsets for all boards
     size_t n_daqs = file_lists.size();
     std::vector<std::vector<int64_t>> offsets(n_daqs);
@@ -728,7 +729,7 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
     std::vector<TimeReader> readers;
     readers.reserve(n_daqs);
     for(size_t i=0; i<n_daqs; ++i) {
-        readers.emplace_back(file_lists[i]);
+        readers.emplace_back(file_lists[i], n_skip);
         n_boards.emplace_back(readers.back().NBoards());
         offsets[i] = std::vector<int64_t>(n_boards.back(), 0);
     }
@@ -746,14 +747,27 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
     }
 
     bool have_computer_times;
-    if(cached_computer_times.size() > 0) {
+    if(cached_computer_times.size() > 0 and cached_times.size() > 0) {
         have_computer_times = true;
         for(size_t i=0; i<n_daqs; ++i) {
             bool daq_has_times = true;
-            for(size_t j=0; j<cached_times.at(i).size(); ++j) {
-                if(cached_times.at(i).at(j).size() == 0) {
-                    daq_has_times = false;
+            if(cached_times.at(i).size() > 0) {
+                for(size_t j=0; j<cached_times.at(i).size(); ++j) {
+                    if(cached_times.at(i).at(j).size() == 0) {
+                        daq_has_times = false;
+                    }
                 }
+            } else {
+                daq_has_times = false;
+            }
+            if(cached_computer_times.at(i).size() > 0) {
+                for(size_t j=0; j<cached_computer_times.at(i).size(); ++j) {
+                    if(cached_computer_times.at(i).at(j).size() == 0) {
+                        daq_has_times = false;
+                    }
+                }
+            } else {
+                daq_has_times = false;
             }
             if(not daq_has_times) {
                 have_computer_times = false;
@@ -827,6 +841,12 @@ std::tuple<std::vector<std::vector<int64_t>>, struct timespec> compute_offsets(s
 
 class MergedSource : public I3Module {
     size_t max_delta;
+    size_t min_triggers;
+    size_t max_triggers;
+    size_t increment;
+    double threshold;
+    size_t n_skip;
+
     size_t n_daqs;
     std::vector<size_t> n_boards;
     std::vector<dataio::I3FrameSequencePtr> frame_sequences;
@@ -1189,10 +1209,24 @@ MergedSource::MergedSource(const I3Context& context) : I3Module(context) {
     AddParameter("FileLists",
             "File lists to merge",
             std::vector<std::vector<std::string>>());
-
     AddParameter("MaxTimeDiff",
             "Maximum time difference between associated triggers (ns)",
             16);
+    AddParameter("MinTriggers",
+            "Minimum number of triggers to use for alignment",
+            size_t(500));
+    AddParameter("MaxTriggers",
+            "Maximum number of triggers to use for alignment",
+            size_t(2000));
+    AddParameter("Increment",
+            "Number of triggers to increment by",
+            size_t(25));
+    AddParameter("Threshold",
+            "Fraction of good pairs needed to accept alignment",
+            double(0.9));
+    AddParameter("NSkip",
+            "Number of frames to skip",
+            size_t(0));
     AddParameter("RunNumber",
             "Run numbner",
             int(-1));
@@ -1206,6 +1240,11 @@ void MergedSource::Configure() {
     GetParameter("MaxTimeDiff", max_time_diff);
     max_delta = std::ceil(max_time_diff / ns_per_cycle);
 
+    GetParameter("MinTriggers", min_triggers);
+    GetParameter("MaxTriggers", max_triggers);
+    GetParameter("Increment", increment);
+    GetParameter("Threshold", threshold);
+    GetParameter("NSkip", n_skip);
     GetParameter("RunNumber", run_number);
 
     parse_successful = false;
@@ -1236,7 +1275,9 @@ void MergedSource::Configure() {
     }
 
     // Compute the offsets to use for trigger alignment
-    std::tuple<std::vector<std::vector<int64_t>>, struct timespec> offset_results = compute_offsets(file_lists, max_delta);
+    std::vector<int64_t> jitter_tests={-2, 2};
+    std::tuple<std::vector<std::vector<int64_t>>, struct timespec> offset_results = compute_offsets(
+            file_lists, max_delta, jitter_tests, min_triggers, max_triggers, increment, threshold, n_skip);
     offsets = std::get<0>(offset_results);
     start_time = std::get<1>(offset_results);
 
