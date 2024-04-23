@@ -17,7 +17,7 @@
 #include <G4UImanager.hh>
 #include <G4SDManager.hh>
 #include <G4SolidStore.hh>
-#include <G4RunManager.hh>
+#include <G4MTRunManager.hh>
 #include <G4PVPlacement.hh>
 #include <G4ThreeVector.hh>
 #include <G4NistManager.hh>
@@ -421,7 +421,7 @@ void G4CCMDetectorConstruction::SetDefaults() {
 
 void G4CCMDetectorConstruction::SetMainVolumeOn(G4bool b) {
     fMainVolumeOn = b;
-    G4RunManager::GetRunManager()->ReinitializeGeometry();
+    G4MTRunManager::GetRunManager()->ReinitializeGeometry();
 }
 
 

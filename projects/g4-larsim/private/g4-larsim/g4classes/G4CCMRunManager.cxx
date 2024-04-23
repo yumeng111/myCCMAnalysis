@@ -12,7 +12,7 @@
 #include <G4ParticleGun.hh>
 #include <G4EventManager.hh>
 
-G4CCMRunManager::G4CCMRunManager(): G4MTRunManager() {}
+G4CCMRunManager::G4CCMRunManager(): G4RunManager() {}
 
 void G4CCMRunManager::InitializeRun()
 {

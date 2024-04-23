@@ -324,7 +324,6 @@ void G4Interface::Initialize()
     //physicsList->RegisterPhysics(opticalPhysics);
     //runManager_.SetUserInitialization(physicsList);
     runManager_.SetUserInitialization(new G4CCMPhysicsList(verboseLevel));
-    runManager_.SetUserInitialization(new G4CCMActionInitialization(detector_));
 
     // Initialize G4 kernel
     log_debug("Init run manager ...");
