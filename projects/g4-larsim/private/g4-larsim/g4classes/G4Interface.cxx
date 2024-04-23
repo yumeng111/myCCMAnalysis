@@ -9,6 +9,7 @@
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include <g4-larsim/g4classes/G4CCMActionInitialization.h>
 
 #ifdef G4VIS_USE
 #include <G4VisExecutive.hh>
@@ -108,7 +109,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
     switch(particle.GetType())
     {
     case I3Particle::Gamma:
-       particleDef = particleTable->FindParticle("gamma");
+       particleDef = particleTable->FindParticle("opticalphoton");
        break;
     case I3Particle::EMinus:
        particleDef = particleTable->FindParticle("e-");
@@ -323,6 +324,7 @@ void G4Interface::Initialize()
     //physicsList->RegisterPhysics(opticalPhysics);
     //runManager_.SetUserInitialization(physicsList);
     runManager_.SetUserInitialization(new G4CCMPhysicsList(verboseLevel));
+    runManager_.SetUserInitialization(new G4CCMActionInitialization(detector_));
 
     // Initialize G4 kernel
     log_debug("Init run manager ...");
