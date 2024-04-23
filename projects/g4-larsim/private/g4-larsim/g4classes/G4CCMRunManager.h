@@ -15,7 +15,7 @@
 
 #include <vector>
 
-#include <G4RunManager.hh>
+#include <G4MTRunManager.hh>
 #include <G4DataVector.hh>
 #include <G4SystemOfUnits.hh>
 
@@ -24,7 +24,7 @@ class G4ParticleGun;
 /**
  * Implementation of G4RunManager
  */
-class G4CCMRunManager: public G4RunManager {
+class G4CCMRunManager: public G4MTRunManager {
     public:
         G4CCMRunManager();
 
