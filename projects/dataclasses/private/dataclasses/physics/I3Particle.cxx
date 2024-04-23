@@ -391,6 +391,21 @@ void I3Particle::SetTypeString(const std::string &str)
   SetType(type);
 }
 
+bool I3Particle::IsNeutrino() const
+{
+  const ParticleType type = ParticleType(pdgEncoding_);
+
+  if( type==NuE ||
+      type==NuEBar ||
+      type==NuMu ||
+      type==NuMuBar ||
+      type==NuTau||
+      type==NuTauBar||
+      type==Nu )
+    return true;
+  else
+    return false;
+}
 
 bool I3Particle::HasPosition() const
 {

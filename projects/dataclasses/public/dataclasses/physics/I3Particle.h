@@ -225,6 +225,7 @@ class I3Particle : public I3FrameObject
   
   std::ostream& Print(std::ostream&) const override;
 
+  bool IsNeutrino() const;
   bool HasPosition() const;
   bool HasDirection() const;
   bool HasEnergy() const;
