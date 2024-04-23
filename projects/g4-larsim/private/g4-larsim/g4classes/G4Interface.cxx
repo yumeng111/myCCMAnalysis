@@ -9,7 +9,6 @@
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
-#include <g4-larsim/g4classes/G4CCMActionInitialization.h>
 
 #ifdef G4VIS_USE
 #include <G4VisExecutive.hh>
