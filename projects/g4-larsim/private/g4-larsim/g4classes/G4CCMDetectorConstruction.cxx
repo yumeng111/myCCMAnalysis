@@ -386,14 +386,11 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
 
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+            G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPhotoCathCoated(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPhotoCathUncoated(), fPMT_SD.Get());
         }
-        else {
-            pmt->InitPMTs();
-            pmt->SetPmtPositions(fMainVolume->GetPMTPositions());
-        }
-        G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
-        SetSensitiveDetector(fMainVolume->GetLogPhotoCathCoated(), fPMT_SD.Get());
-        SetSensitiveDetector(fMainVolume->GetLogPhotoCathUncoated(), fPMT_SD.Get());
+
     }
     
     if (LArSDStatus_){
@@ -403,9 +400,10 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             auto scint_SD = new G4CCMScintSD("/LAr/scintSD");
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             fScint_SD.Put(scint_SD);
+            G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
         }
-        G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
-        SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
+
     }
 
 
