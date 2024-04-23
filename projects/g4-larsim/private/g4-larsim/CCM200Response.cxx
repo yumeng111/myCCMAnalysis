@@ -26,16 +26,12 @@
 
 
 CCM200Response::CCM200Response(const I3Context& context) :
-    CCMDetectorResponse(context), mc_tree_name_("CCMMCTree"), output_hits_map_name_("SimulationHitsMap"), PMTSDStatus_(true), LArSDStatus_(true)   {
-    AddParameter("InputMCTreeName", "Name of the MCTree in the frame.", mc_tree_name_);
-    AddParameter("OutputHitsMapName", "Name of the output map between CCMPMTKey and vector of CCMMCPE to save to the frame.", output_hits_map_name_);
+    CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true)   {
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
 }
 
 void CCM200Response::Configure() {
-    GetParameter("InputMCTreeName", mc_tree_name_);
-    GetParameter("OutputHitsMapName", output_hits_map_name_);
     GetParameter("PMTSDStatus", PMTSDStatus_);
     GetParameter("LArSDStatus", LArSDStatus_);
 }

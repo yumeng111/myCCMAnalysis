@@ -30,8 +30,6 @@ class CCM200Response : public CCMDetectorResponse {
 private:
     CCM200Response operator= (const CCM200Response& rhs);
 
-    std::string mc_tree_name_;
-    std::string output_hits_map_name_;
     std::string visMacroFile_;
 
     bool PMTSDStatus_; // turn PMT SD on/off
