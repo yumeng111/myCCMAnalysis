@@ -13,7 +13,7 @@
 #include <G4StoppingPhysics.hh>
 #include <G4HadronElasticPhysicsHP.hh>
 #include <G4RadioactiveDecayPhysics.hh>
-#include <G4HadronPhysicsFTFP_BERT_HP.hh>
+#include <G4HadronPhysicsQGSP_BERT_HP.hh>
 #include <G4EmStandardPhysics_option4.hh>
 
 
@@ -37,7 +37,7 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)
     RegisterPhysics( new G4HadronElasticPhysicsHP(ver) );
 
     // Hadron Physics
-    RegisterPhysics( new G4HadronPhysicsFTFP_BERT_HP(ver) );
+    RegisterPhysics( new G4HadronPhysicsQGSP_BERT_HP(ver) );
 
     // Stopping Physics
     RegisterPhysics( new G4StoppingPhysics(ver) );
