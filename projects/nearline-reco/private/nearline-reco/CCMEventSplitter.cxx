@@ -1,10 +1,10 @@
 /**
  *  $Id$
- *  
+ *
  *  Copyright (C) 2011
  *  Nathan Whitehorn <nwhitehorn@icecube.wisc.edu>
  *  and the IceCube Collaboration <http://www.icecube.wisc.edu>
- *  
+ *
  */
 
 #include <icetray/I3ConditionalModule.h>
@@ -43,7 +43,6 @@ private:
 
     double pre_padding_;
     double post_padding_;
-        
 };
 
 I3_MODULE(CCMEventSplitter);

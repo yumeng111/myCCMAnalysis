@@ -275,8 +275,19 @@ void IntervalChargeSum::Physics(I3FramePtr frame) {
 
     std::sort(pulse_list.begin(), pulse_list.end(), [](auto const & t0, auto const & t1){return std::get<1>(t0).GetTime() < std::get<1>(t1).GetTime();});
 
-    double start_time = frame->Get<I3DoubleConstPtr>(input_prefix_ + "EventStartTime")->value;
-    double end_time = frame->Get<I3DoubleConstPtr>(input_prefix_ + "EventEndTime")->value;
+    I3DoubleConstPtr start_time_ptr = frame->Get<I3DoubleConstPtr>(input_prefix_ + "EventStartTime");
+    I3DoubleConstPtr end_time_ptr = frame->Get<I3DoubleConstPtr>(input_prefix_ + "EventEndTime");
+
+    if(not start_time_ptr) {
+        log_fatal("Count not find event start time \"%s\" in the frame.", (input_prefix_ + "EventStartTime").c_str());
+    }
+
+    if(not end_time_ptr) {
+        log_fatal("Count not find event end time \"%s\" in the frame.", (input_prefix_ + "EventEndTime").c_str());
+    }
+
+    double start_time = start_time_ptr->value;
+    double end_time = end_time_ptr->value;
 
     size_t event_idx = 0;
     double total_charge = 0.0;
