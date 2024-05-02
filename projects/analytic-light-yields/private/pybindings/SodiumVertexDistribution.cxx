@@ -30,7 +30,7 @@
 //   
 //
 
-#include <photon-propagation/SodiumVertexDistribution.h>
+#include <analytic-light-yields/SodiumVertexDistribution.h>
 #include <icetray/python/copy_suite.hpp>
 #include <icetray/python/indexed_property.hpp>
 #include <icetray/python/boost_serializable_pickle_suite.hpp>
@@ -44,7 +44,7 @@ void register_SodiumVertexDistribution() {
 
     class_<SodiumVertexDistribution, boost::noncopyable>("SodiumVertexDistribution")
         .def(init<>())
-        .def("GetEventVertices", &SodiumVertexDistribution::GetEventVertices)
+        .def("GetEventVertices", &SodiumVertexDistribution::GetEventVertices);
 
 }
 }

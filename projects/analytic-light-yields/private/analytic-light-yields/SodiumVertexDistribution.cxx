@@ -12,7 +12,7 @@
 #include <random>
 
 #include <icetray/I3Units.h>
-#include <photon-propagation/SodiumVertexDistribution.h>
+#include <analytic-light-yields/SodiumVertexDistribution.h>
 
 void get_ray_intersections(double const & x,
                            double const & y,
