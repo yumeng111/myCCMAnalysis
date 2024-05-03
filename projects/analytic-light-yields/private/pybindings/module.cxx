@@ -54,7 +54,7 @@ namespace bp = boost::python;
 #define I3_REGISTER(r, data, t) BOOST_PP_CAT(register_,t)();
 BOOST_PP_SEQ_FOR_EACH(I3_REGISTRATION_FN_DECL, ~, REGISTER_THESE_THINGS)
 
-I3_PYTHON_MODULE(daqtools)
+I3_PYTHON_MODULE(analytic_light_yields)
 {
   //load_project("dataclasses", false);
   BOOST_PP_SEQ_FOR_EACH(I3_REGISTER, ~, REGISTER_THESE_THINGS);
