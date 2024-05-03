@@ -47,7 +47,7 @@ namespace bp = boost::python;
 //  that does the boost.python registration for class Nick.
 //
 #define REGISTER_THESE_THINGS                                           \
-  (SodiumVertexDistribution)                                            \
+  (SodiumVertexDistribution)(YieldsPerPMT)                              \
 
 
 #define I3_REGISTRATION_FN_DECL(r, data, t) void BOOST_PP_CAT(register_,t)();

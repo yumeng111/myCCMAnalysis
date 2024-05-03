@@ -7,7 +7,8 @@ i3_project(${PROJECT_NAME}
     )
 
 i3_add_library(${PROJECT_NAME}
-    private/analytic-light-yields/*.cxx
+    private/analytic-light-yields/SodiumVertexDistribution.cxx
+    private/analytic-light-yields/YieldsPerPMT.cxx
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services

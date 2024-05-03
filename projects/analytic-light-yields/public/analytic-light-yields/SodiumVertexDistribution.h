@@ -14,7 +14,9 @@
 #include <vector>
 #include <random>
 
-#include <icetray/I3Units.h>
+#include "icetray/I3Units.h"
+#include "dataclasses/I3Position.h"
+#include "dataclasses/physics/HESodiumEvent.h"
 
 class SodiumVertexDistribution {
 
@@ -32,10 +34,14 @@ class SodiumVertexDistribution {
     double detector_radius = cylinder_radius;
     double pos_rad = source_diameter / 2.0;
 
-    size_t equivalent_events_in_data; 
+    // let's keep track of events we're simulation
+    size_t equivalent_events_in_data;
+
+    // let's also make our HESodiumEventSeries to save to
+    boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
 
 public:
     SodiumVertexDistribution();
-    void GetEventVertices(size_t const & n_events_to_simulate, double const & z_position);
+    boost::shared_ptr<HESodiumEventSeries> GetEventVertices(size_t const & n_events_to_simulate, double const & z_position);
 };
 #endif

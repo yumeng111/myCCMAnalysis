@@ -186,7 +186,7 @@ void get_511kev_photon(double const & z_offset,
 
 SodiumVertexDistribution::SodiumVertexDistribution() {}
 
-void SodiumVertexDistribution::GetEventVertices(size_t const & n_events_to_simulate, double const & z_position){
+boost::shared_ptr<HESodiumEventSeries> SodiumVertexDistribution::GetEventVertices(size_t const & n_events_to_simulate, double const & z_position){
     // set our events parameter
     equivalent_events_in_data = 0;
 
@@ -214,7 +214,6 @@ void SodiumVertexDistribution::GetEventVertices(size_t const & n_events_to_simul
     double final_x_photon_2;
     double final_y_photon_2;
     double final_z_photon_2;
-    std::vector<double> this_vertex (3);
 
     while (equivalent_events_in_data < n_events_to_simulate){
         // so for the high energy bump, we want 3 photons -- isotropic 1275 kev, and 2 back to back 511 kev photons
@@ -256,24 +255,16 @@ void SodiumVertexDistribution::GetEventVertices(size_t const & n_events_to_simul
         // now we only want events where all 3 photons escape
         if (escaped and escaped_photon_1 and escaped_photon_2){
             equivalent_events_in_data += 1;
-            // now we can save
-            //this_vertex.clear();
-            //this_vertex.push_back(final_x);
-            //this_vertex.push_back(final_y);
-            //this_vertex.push_back(final_z);
-            //verticies_to_simuate_1275_.push_back(this_vertex);
-            //this_vertex.clear();
-            //this_vertex.push_back(final_x_photon_1);
-            //this_vertex.push_back(final_y_photon_1);
-            //this_vertex.push_back(final_z_photon_1);
-            //verticies_to_simuate_511_.push_back(this_vertex);
-            //this_vertex.clear();
-            //this_vertex.push_back(final_x_photon_2);
-            //this_vertex.push_back(final_y_photon_2);
-            //this_vertex.push_back(final_z_photon_2);
-            //verticies_to_simuate_511_.push_back(this_vertex);
+            // now we can save!!!
+            HESodiumEvent single_sodium_event;
+            single_sodium_event.photon_vertex = I3Position(final_x * I3Units::cm, final_y * I3Units::cm, final_z * I3Units::cm);
+            single_sodium_event.electron_vertex = I3Position(final_x_photon_1 * I3Units::cm, final_y_photon_1 * I3Units::cm, final_z_photon_1 * I3Units::cm);
+            single_sodium_event.positron_vertex = I3Position(final_x_photon_2 * I3Units::cm, final_y_photon_2 * I3Units::cm, final_z_photon_2 * I3Units::cm);
+            event_vertices->push_back(single_sodium_event);
         }
     }
+
+    return event_vertices;
 }
 
 
