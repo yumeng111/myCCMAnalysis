@@ -13,7 +13,9 @@
 
 static const unsigned photonyieldsummary_version_ = 0;
 
-struct PhotonYieldSummary {
+class PhotonYieldSummary : public I3FrameObject {
+    public:
+    
     enum class PhotonSource : int8_t {
         Unknown = 0,
         Vertex = 1,
@@ -48,8 +50,9 @@ struct PhotonYieldSummary {
     friend class icecube::serialization::access;
     template <class Archive> void serialize(Archive & ar, const unsigned version) {
         if (version>photonyieldsummary_version_)
-            log_fatal("Attempting to read version %u from file but running version %u of PhotonYieldSummary class.",
+            log_fatal("Attempting to read version %u from file but running version %u of photonyieldsummary class.",
                     version,photonyieldsummary_version_);
+        ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
         ar & make_nvp("time",time);
         ar & make_nvp("yield",yield);
         ar & make_nvp("photon_source",photon_source);
