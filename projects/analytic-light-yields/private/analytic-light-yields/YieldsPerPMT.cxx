@@ -40,6 +40,9 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <analytic-light-yields/YieldsPerPMT.h>
 
+
+
+
 void combined_area_penalty(double const & chunk_center_x,
                            double const & chunk_center_y,
                            double const & x0,
@@ -244,7 +247,6 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
     }
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo = geo.pmt_geo;
-    std::vector<double> this_pmt_info (9);
     I3Vector<double> this_pmt_loc;
 
     for(std::pair<CCMPMTKey const, CCMOMGeo> const & it : pmt_geo) {
@@ -298,20 +300,18 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
         }
 
         // now time save!!!
-        this_pmt_info.clear();
-        this_pmt_info.push_back(pos_x);
-        this_pmt_info.push_back(pos_y);
-        this_pmt_info.push_back(pos_z);
-        this_pmt_info.push_back(facing_dir_x);
-        this_pmt_info.push_back(facing_dir_y);
-        this_pmt_info.push_back(facing_dir_z);
-        this_pmt_info.push_back(coating_flag);
-        this_pmt_info.push_back(pmt_facing_area);
-        this_pmt_info.push_back(pmt_side_area);
+        pmt_info this_pmt_info;
+        this_pmt_info.key = it.first;
+        this_pmt_info.pmt_x = pos_x;
+        this_pmt_info.pmt_y = pos_y;
+        this_pmt_info.pmt_z = pos_z;
+        this_pmt_info.facing_dir_x = facing_dir_x;
+        this_pmt_info.facing_dir_y = facing_dir_y;
+        this_pmt_info.facing_dir_z = facing_dir_z;
+        this_pmt_info.coating_flag = coating_flag;
+        this_pmt_info.pmt_facing_area = pmt_facing_area;
+        this_pmt_info.pmt_side_area = pmt_side_area;
         pmt_parsed_information_.push_back(this_pmt_info);
-
-        // let's also save this pmt position and key in our map for later
-        PMTPositionToKey.insert({I3Position(pos_x, pos_y, pos_z), it.first});
 
         // let's save a few extra things useful for chunking up detector
         this_pmt_loc.clear();
@@ -356,7 +356,6 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
 
 void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) {
 
-    std::vector<double> this_loc_info (9);
     // so we've parsed our pmt info, but now we need to get our secondary locations
     // let's start with chunking up the sides of the detector
     size_t n_chunks_c = (size_t) cylinder_circumference / desired_chunk_width;
@@ -473,17 +472,17 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
                 double facing_dir_y = facing_r_y / facing_dir_norm_factor;
                 double facing_dir_z = 0.0;
 
-                // now a vector to save things to
-                this_loc_info.clear();
-                this_loc_info.push_back(loc_x);
-                this_loc_info.push_back(loc_y);
-                this_loc_info.push_back(loc_z);
-                this_loc_info.push_back(facing_dir_x);
-                this_loc_info.push_back(facing_dir_y);
-                this_loc_info.push_back(facing_dir_z);
-                this_loc_info.push_back(pmt_portion);
-                this_loc_info.push_back(valid_area);
-                this_loc_info.push_back(valid_area * chunk_side_area_factor);
+                // now save!!!
+                secondary_loc_info this_loc_info;
+                this_loc_info.loc_x = loc_x;
+                this_loc_info.loc_y = loc_y;
+                this_loc_info.loc_z = loc_z;
+                this_loc_info.facing_dir_x = facing_dir_x;
+                this_loc_info.facing_dir_y = facing_dir_y;
+                this_loc_info.facing_dir_z = facing_dir_z;
+                this_loc_info.pmt_portion = pmt_portion;
+                this_loc_info.loc_facing_area = valid_area;
+                this_loc_info.loc_side_area = valid_area * chunk_side_area_factor;
                 locations_to_check_information_.push_back(this_loc_info);
             }
         }
@@ -631,18 +630,16 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
                         facing_dir_z = 1.0;
                     }
 
-
-                    // now a vector to save things to
-                    this_loc_info.clear();
-                    this_loc_info.push_back(this_x);
-                    this_loc_info.push_back(this_y);
-                    this_loc_info.push_back(this_z);
-                    this_loc_info.push_back(facing_dir_x);
-                    this_loc_info.push_back(facing_dir_y);
-                    this_loc_info.push_back(facing_dir_z);
-                    this_loc_info.push_back(pmt_portion);
-                    this_loc_info.push_back(valid_area);
-                    this_loc_info.push_back(valid_area * chunk_side_area_factor);
+                    secondary_loc_info this_loc_info;
+                    this_loc_info.loc_x = this_x;
+                    this_loc_info.loc_y = this_y;
+                    this_loc_info.loc_z = this_z;
+                    this_loc_info.facing_dir_x = facing_dir_x;
+                    this_loc_info.facing_dir_y = facing_dir_y;
+                    this_loc_info.facing_dir_z = facing_dir_z;
+                    this_loc_info.pmt_portion = pmt_portion;
+                    this_loc_info.loc_facing_area = valid_area;
+                    this_loc_info.loc_side_area = valid_area * chunk_side_area_factor;
                     locations_to_check_information_.push_back(this_loc_info);
                 }
             }
@@ -659,10 +656,9 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
                                double const & n_photons_produced,
                                double const & time_offset,
                                double const & absorption_length,
-                               std::vector<std::vector<double>> const & pmt_parsed_information_,
+                               std::vector<pmt_info> const & pmt_parsed_information_,
                                bool const & is_visible,
                                I3Position const & vertex,
-                               std::map<I3Position, CCMPMTKey> PMTPositionToKey, 
                                boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map ){
 
     // let's define some things
@@ -684,18 +680,16 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
     // let's start by looping over our pmt parsed information
     for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
 
-        pmt_x_loc = pmt_parsed_information_.at(pmt_it).at(0);
-        pmt_y_loc = pmt_parsed_information_.at(pmt_it).at(1);
-        pmt_z_loc = pmt_parsed_information_.at(pmt_it).at(2);
-        facing_dir_x = pmt_parsed_information_.at(pmt_it).at(3);
-        facing_dir_y = pmt_parsed_information_.at(pmt_it).at(4);
-        facing_dir_z = pmt_parsed_information_.at(pmt_it).at(5);
-        coating_flag = pmt_parsed_information_.at(pmt_it).at(6); // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
-        pmt_facing_area = pmt_parsed_information_.at(pmt_it).at(7);
-        pmt_side_area = pmt_parsed_information_.at(pmt_it).at(8);
-
-        // now let's grab the pmt key from our map
-        pmt_key = PMTPositionToKey.at(I3Position(pmt_x_loc, pmt_y_loc, pmt_z_loc));
+        pmt_x_loc = pmt_parsed_information_.at(pmt_it).pmt_x;
+        pmt_y_loc = pmt_parsed_information_.at(pmt_it).pmt_y;
+        pmt_z_loc = pmt_parsed_information_.at(pmt_it).pmt_z;
+        facing_dir_x = pmt_parsed_information_.at(pmt_it).facing_dir_x;
+        facing_dir_y = pmt_parsed_information_.at(pmt_it).facing_dir_y;
+        facing_dir_z = pmt_parsed_information_.at(pmt_it).facing_dir_z;
+        coating_flag = pmt_parsed_information_.at(pmt_it).coating_flag; // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
+        pmt_facing_area = pmt_parsed_information_.at(pmt_it).pmt_facing_area;
+        pmt_side_area = pmt_parsed_information_.at(pmt_it).pmt_side_area;
+        pmt_key = pmt_parsed_information_.at(pmt_it).key;
 
         if (is_visible == false and coating_flag == 0.0){
             // this is the case where we are propagating UV light and we have an uncoated pmt...so we won't see anything
@@ -757,9 +751,8 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
                                       double const & UV_absorption_length,
                                       double const & vis_absorption_length,
                                       I3Position const & vertex,
-                                      std::vector<std::vector<double>> const & pmt_parsed_information_,
-                                      std::vector<std::vector<double>> const & locations_to_check_information_,
-                                      std::map<I3Position, CCMPMTKey> PMTPositionToKey, 
+                                      std::vector<pmt_info> const & pmt_parsed_information_,
+                                      std::vector<secondary_loc_info> const & locations_to_check_information_,
                                       boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map ){
     // define some things
     double omega;
@@ -779,15 +772,15 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
     // let's start by looping our our secondary locations parsed information
     for (size_t loc_it = 0; loc_it < locations_to_check_information_.size(); loc_it ++){
 
-        loc_x = locations_to_check_information_.at(loc_it).at(0);
-        loc_y = locations_to_check_information_.at(loc_it).at(1);
-        loc_z = locations_to_check_information_.at(loc_it).at(2);
-        facing_dir_x = locations_to_check_information_.at(loc_it).at(3);
-        facing_dir_y = locations_to_check_information_.at(loc_it).at(4);
-        facing_dir_z = locations_to_check_information_.at(loc_it).at(5);
-        pmt_portion = locations_to_check_information_.at(loc_it).at(6); // portion_light_reflected_by_tpb_ if we are NOT on a pmt, otherwise 0.5 * portion_light_reflected_by_tpb_ 
-        facing_area = locations_to_check_information_.at(loc_it).at(7);
-        side_area = locations_to_check_information_.at(loc_it).at(8);
+        loc_x = locations_to_check_information_.at(loc_it).loc_x;
+        loc_y = locations_to_check_information_.at(loc_it).loc_y;
+        loc_z = locations_to_check_information_.at(loc_it).loc_z;
+        facing_dir_x = locations_to_check_information_.at(loc_it).facing_dir_x;
+        facing_dir_y = locations_to_check_information_.at(loc_it).facing_dir_y;
+        facing_dir_z = locations_to_check_information_.at(loc_it).facing_dir_z;
+        pmt_portion = locations_to_check_information_.at(loc_it).pmt_portion; // portion_light_reflected_by_tpb_ if we are NOT on a pmt, otherwise 0.5 * portion_light_reflected_by_tpb_ 
+        facing_area = locations_to_check_information_.at(loc_it).loc_facing_area;
+        side_area = locations_to_check_information_.at(loc_it).loc_side_area;
 
         // let's get solid angle and distance from vertex to this loc
         get_solid_angle_and_distance_vertex_to_location(vertex.GetX() / I3Units::cm, vertex.GetY() / I3Units::cm, vertex.GetZ() / I3Units::cm,
@@ -806,9 +799,8 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
         // ok so now we have time offset and yields at this loc, let's calculate what gets into our PMTs
         vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
                                   photons_at_secondary_location, travel_time, vis_absorption_length,
-                                  pmt_parsed_information_, true, I3Position(loc_x / I3Units::cm, loc_y / I3Units::cm, loc_z / I3Units::cm),
-                                  PMTPositionToKey, all_pmt_yields_map);
-        
+                                  pmt_parsed_information_, true, I3Position(loc_x / I3Units::cm, loc_y / I3Units::cm, loc_z / I3Units::cm), all_pmt_yields_map);
+ 
         // since vertex_to_pmt_propagation saves info -- we're done!
     }
 
@@ -820,9 +812,8 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
                                 double const & vis_index_of_refraction,
                                 double const & UV_absorption_length,
                                 double const & vis_absorption_length,
-                                std::vector<std::vector<double>> const & pmt_parsed_information_,
-                                std::vector<std::vector<double>> const & locations_to_check_information_,
-                                std::map<I3Position, CCMPMTKey> PMTPositionToKey, 
+                                std::vector<pmt_info> const & pmt_parsed_information_,
+                                std::vector<secondary_loc_info> const & locations_to_check_information_,
                                 boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map){
 
     // ok so let's grab our vertex locations from our soidum_event
@@ -837,24 +828,24 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
     // now let's call our functions to get direct vertex --> PMT yields (UV scint light)
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, photon_vertex, PMTPositionToKey, all_pmt_yields_map);                            
+                              false, photon_vertex, all_pmt_yields_map);                            
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, electron_vertex, PMTPositionToKey, all_pmt_yields_map);                            
+                              false, electron_vertex, all_pmt_yields_map);                            
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, positron_vertex, PMTPositionToKey, all_pmt_yields_map);                            
+                              false, positron_vertex, all_pmt_yields_map);                            
 
     // now let's call our functions to get indirect vertex --> TPB --> PMT yields
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
                                      UV_absorption_length, vis_absorption_length, photon_vertex, 
-                                     pmt_parsed_information_, locations_to_check_information_, PMTPositionToKey, all_pmt_yields_map);
+                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map);
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                                      UV_absorption_length, vis_absorption_length, electron_vertex, 
-                                     pmt_parsed_information_, locations_to_check_information_, PMTPositionToKey, all_pmt_yields_map);
+                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map);
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                                      UV_absorption_length, vis_absorption_length, positron_vertex, 
-                                     pmt_parsed_information_, locations_to_check_information_, PMTPositionToKey, all_pmt_yields_map);
+                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map);
     // ok done!
 }
 
@@ -874,7 +865,7 @@ boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(boost:
     
         PutSimulationStepsTogether(event_vertices->at(sodium_it), c_cm_per_nsec_, uv_index_of_refraction_, 
                                    vis_index_of_refraction_, UV_absorption_length_, vis_absorption_length_,
-                                   pmt_parsed_information_, locations_to_check_information_, PMTPositionToKey, all_pmt_yields_map_);
+                                   pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_);
     }
 
     return all_pmt_yields_map_;

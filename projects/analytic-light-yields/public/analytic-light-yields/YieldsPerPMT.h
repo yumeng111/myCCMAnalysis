@@ -21,14 +21,41 @@
 #include "dataclasses/physics/HESodiumEvent.h"
 #include "dataclasses/physics/PhotonYieldSummary.h"
 
+struct pmt_info {
+
+    CCMPMTKey key;
+    double pmt_x = 0.0;
+    double pmt_y = 0.0;
+    double pmt_z = 0.0;
+    double facing_dir_x = 0.0;
+    double facing_dir_y = 0.0;
+    double facing_dir_z = 0.0;
+    double coating_flag = 0.0;
+    double pmt_facing_area = 0.0;
+    double pmt_side_area = 0.0;    
+}; 
+
+struct secondary_loc_info {
+    
+    double loc_x = 0.0;
+    double loc_y = 0.0;
+    double loc_z = 0.0;
+    double facing_dir_x = 0.0;
+    double facing_dir_y = 0.0;
+    double facing_dir_z = 0.0;
+    double pmt_portion = 0.0;
+    double loc_facing_area = 0.0;
+    double loc_side_area = 0.0;    
+}; 
+
 class YieldsPerPMT {
     std::string geometry_name_ = std::string("CCMGeometry");
     double portion_light_reflected_by_tpb_ = 1.0;
     double vis_absorption_length_ = 2000.0;
     double desired_chunk_width_ = 20.0; // use 5 for finer binning
     double desired_chunk_height_ = 20.0; // use 5 for finer binning
-    std::vector<std::vector<double>> pmt_parsed_information_;
-    std::vector<std::vector<double>> locations_to_check_information_;
+    std::vector<pmt_info> pmt_parsed_information_;
+    std::vector<secondary_loc_info> locations_to_check_information_;
 
     unsigned int coated_omtype = (unsigned int)10;
     unsigned int uncoated_omtype = (unsigned int)20;
@@ -66,7 +93,7 @@ class YieldsPerPMT {
     boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();
 
     // let's make a map to go from pmt x, y, z and CCMPMTKey
-    std::map<I3Position, CCMPMTKey> PMTPositionToKey;
+    I3Vector<CCMPMTKey> all_keys_;
 
 public:
     YieldsPerPMT();
