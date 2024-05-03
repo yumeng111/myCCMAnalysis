@@ -3,7 +3,7 @@ set(PROJECT_NAME analytic-light-yields)
 i3_project(${PROJECT_NAME}
     DOCS_DIR resources/docs
     PYTHON_DIR python
-    PYTHON_DEST icecube/${PROJECT_NAME}
+    PYTHON_DEST icecube/analytic_light_yields 
     )
 
 i3_add_library(${PROJECT_NAME}
