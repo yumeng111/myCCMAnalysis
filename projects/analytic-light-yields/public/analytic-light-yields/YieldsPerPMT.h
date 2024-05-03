@@ -92,9 +92,6 @@ class YieldsPerPMT {
     // let's also make our PhotonYieldSummary map to save to
     boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();
 
-    // let's make a map to go from pmt x, y, z and CCMPMTKey
-    I3Vector<CCMPMTKey> all_keys_;
-
 public:
     YieldsPerPMT();
     void GetPMTInformation(I3FramePtr frame);
