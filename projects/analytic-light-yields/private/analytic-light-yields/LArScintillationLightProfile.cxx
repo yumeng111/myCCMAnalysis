@@ -123,7 +123,7 @@ I3Vector<double> LArScintillationLightProfile::GetFullLightProfile(double const 
 
     // let's set up our light profile
     double start_time = 0.0;
-    double end_time = 1200.0;
+    double end_time = 100.0;
     double bin_width = 2.0;
     size_t n_time_bins = (size_t)((end_time - start_time)/bin_width);
 
@@ -155,7 +155,7 @@ I3Vector<double> LArScintillationLightProfile::GetSimplifiedLightProfile(double 
 
     // let's set up our light profile
     double start_time = 0.0;
-    double end_time = 1200.0;
+    double end_time = 100.0;
     double bin_width = 2.0;
     size_t n_time_bins = (size_t)((end_time - start_time)/bin_width);
 

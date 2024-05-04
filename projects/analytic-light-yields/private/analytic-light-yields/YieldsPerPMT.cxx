@@ -799,7 +799,7 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
         // ok so now we have time offset and yields at this loc, let's calculate what gets into our PMTs
         vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
                                   photons_at_secondary_location, travel_time, vis_absorption_length,
-                                  pmt_parsed_information_, true, I3Position(loc_x / I3Units::cm, loc_y / I3Units::cm, loc_z / I3Units::cm), all_pmt_yields_map);
+                                  pmt_parsed_information_, true, I3Position(loc_x * I3Units::cm, loc_y * I3Units::cm, loc_z * I3Units::cm), all_pmt_yields_map);
  
         // since vertex_to_pmt_propagation saves info -- we're done!
     }
@@ -849,22 +849,29 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
     // ok done!
 }
 
-boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(boost::shared_ptr<HESodiumEventSeries> const & event_vertices, I3FramePtr geo_frame){
+boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(boost::shared_ptr<HESodiumEventSeries> const & event_vertices, I3FramePtr geo_frame, double const & UV_absorption_length){
 
     // so we have our sodium event vertices that we want to simulate
     // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
 
-    // so let's set everything up by calling our functions to chunk things up
-    // note -- when we want to fit for UV abs length, we will want to seperate out the set up and the light propagation steps to avoid doing re-doing work
-    // but for now let's keep them together to make the logic simpler
-    GetPMTInformation(geo_frame);
-    GetSecondaryLocs(desired_chunk_width_, desired_chunk_height_);
+    // let's check that we set up our pmt info and secondary location information
+    if (!set_pmt_info_){
+        GetPMTInformation(geo_frame);
+        set_pmt_info_ = true;
+    }
+    if (!set_secondary_locs_){
+        GetSecondaryLocs(desired_chunk_width_, desired_chunk_height_);
+        set_secondary_locs_ = true;
+    }
+
+    // let's also make our PhotonYieldSummary map to save to
+    boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();
 
     // ok we've set up the geometry stuff, now we can take each vertex and calculate light yields in each pmt
     for (size_t sodium_it = 0; sodium_it < event_vertices->size(); sodium_it++){
-    
+
         PutSimulationStepsTogether(event_vertices->at(sodium_it), c_cm_per_nsec_, uv_index_of_refraction_, 
-                                   vis_index_of_refraction_, UV_absorption_length_, vis_absorption_length_,
+                                   vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
                                    pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_);
     }
 
