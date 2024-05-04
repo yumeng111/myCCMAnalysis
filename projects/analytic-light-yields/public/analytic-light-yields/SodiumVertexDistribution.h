@@ -37,9 +37,6 @@ class SodiumVertexDistribution {
     // let's keep track of events we're simulation
     size_t equivalent_events_in_data;
 
-    // let's also make our HESodiumEventSeries to save to
-    boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
-
 public:
     SodiumVertexDistribution();
     boost::shared_ptr<HESodiumEventSeries> GetEventVertices(size_t const & n_events_to_simulate, double const & z_position);
