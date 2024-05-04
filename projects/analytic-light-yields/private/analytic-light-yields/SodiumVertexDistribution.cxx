@@ -189,6 +189,9 @@ SodiumVertexDistribution::SodiumVertexDistribution() {}
 boost::shared_ptr<HESodiumEventSeries> SodiumVertexDistribution::GetEventVertices(size_t const & n_events_to_simulate, double const & z_position){
     // set our events parameter
     equivalent_events_in_data = 0;
+    
+    // let's also make our HESodiumEventSeries to save to
+    boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
 
     // while we're pre-computing things, let's also pre-compute verticies for our ensemble of sodium events
     // let's make some random number generators that we will pass to our functions
