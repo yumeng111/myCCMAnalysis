@@ -87,15 +87,14 @@ class YieldsPerPMT {
     double c_cm_per_nsec_ = c * std::pow(10.0, -7.0); // speed of light in cm/nsec
     double uv_index_of_refraction_ = 1.358;
     double vis_index_of_refraction_ = 1.23;
-    double UV_absorption_length_ = 50.0;
 
-    // let's also make our PhotonYieldSummary map to save to
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();
+    bool set_pmt_info_ = false;
+    bool set_secondary_locs_ = false;
 
 public:
     YieldsPerPMT();
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) ;
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(boost::shared_ptr<HESodiumEventSeries> const & event_vertices,  I3FramePtr geo_frame);
+    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(boost::shared_ptr<HESodiumEventSeries> const & event_vertices,  I3FramePtr geo_frame, double const & UV_absorption_length);
 };
 #endif
