@@ -44,7 +44,12 @@ void register_GenerateExpectation() {
 
     class_<GenerateExpectation, boost::noncopyable>("GenerateExpectation")
         .def(init<>())
+        .def("GetSodiumVertices", &GenerateExpectation::GetSodiumVertices)
+        .def("GetYieldsAndOffsets", &GenerateExpectation::GetYieldsAndOffsets)
+        .def("LightProfile", &GenerateExpectation::LightProfile)
         .def("GetExpectation", &GenerateExpectation::GetExpectation);
 
 }
 }
+
+

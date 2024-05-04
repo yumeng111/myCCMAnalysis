@@ -40,9 +40,65 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <analytic-light-yields/GenerateExpectation.h>
 
+
 GenerateExpectation::GenerateExpectation() {}
 
-boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(boost::shared_ptr<PhotonYieldSummarySeriesMap> yields_map, I3Vector<double> LAr_light_profile){
+void GenerateExpectation::GetSodiumVertices(size_t const & n_events_to_simulate, double const & z_position){
+    sodium_events_constructor = new SodiumVertexDistribution();
+    event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
+}
+
+void GenerateExpectation::GetYieldsAndOffsets(I3FramePtr geo_frame, double const & uv_absorption){
+    yields_and_offset_constructor = new YieldsPerPMT();
+    yields_per_pmt = yields_and_offset_constructor->GetAllYields(event_vertices, geo_frame, uv_absorption);
+}
+
+I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_rec, double const & tau_TPB,
+                                       AnalyticLightYieldGenerator::LArLightProfileType const & light_profile_type){
+
+    if (LAr_scintillation_light_constructor == nullptr){
+        LAr_scintillation_light_constructor = new LArScintillationLightProfile();
+    }
+
+    I3Vector<double> light_profile;
+
+    if (light_profile_type == AnalyticLightYieldGenerator::LArLightProfileType::Simplified){
+        light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB);
+    }
+    else {
+        light_profile = LAr_scintillation_light_constructor->GetFullLightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB);
+    }
+
+    return light_profile;
+}
+
+boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame){
+
+    // let's parse the info necessary to get our expectation
+    double Rs = analytic_light_yield_setup.Rs;
+    double Rt = analytic_light_yield_setup.Rt;
+    double tau_s = analytic_light_yield_setup.tau_s;
+    double tau_t = analytic_light_yield_setup.tau_t;
+    double tau_rec = analytic_light_yield_setup.tau_rec;
+    double tau_TPB = analytic_light_yield_setup.tau_TPB;
+    double uv_absorption = analytic_light_yield_setup.uv_absorption;
+    double normalization = analytic_light_yield_setup.normalization;
+    double n_sodium_events = analytic_light_yield_setup.n_sodium_events;
+    double z_offset = analytic_light_yield_setup.z_offset;
+    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = analytic_light_yield_setup.light_profile_type;
+
+    // check that we made our sodium event vertices
+    if (sodium_events_constructor == nullptr){
+        GetSodiumVertices(n_sodium_events, z_offset);
+    }
+
+    // now let's check if we get our yields + time offsets
+    if (yields_and_offset_constructor == nullptr){
+        GetYieldsAndOffsets(geo_frame, uv_absorption);
+    }
+
+    // now grab our light profile!
+    I3Vector<double> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_profile_type);
 
     // so let's recap where we are
     // 1) we generated sodium event vertices
@@ -50,6 +106,9 @@ boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(b
     // 3) we calculated our light profile
     // so all that's left to do is take our yields and apply to LAr light profile then bin charge
     // after binning, we are going to be ready to compare to data!
+
+    // make map of final binned yields to return
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_yields_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
 
     double light_profile_start_time = 0.0;
     size_t n_light_profile_time_bins = LAr_light_profile.size();
@@ -72,7 +131,7 @@ boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(b
     double light_time;
     double light_val;
     size_t bin_idx;
-    for (PhotonYieldSummarySeriesMap::const_iterator i = yields_map->begin(); i != yields_map->end(); i++) {
+    for (PhotonYieldSummarySeriesMap::const_iterator i = yields_per_pmt->begin(); i != yields_per_pmt->end(); i++) {
         pmt_key = i->first;
 
         // check if this pmt is in final_binned_yields_ -- if not, add it
