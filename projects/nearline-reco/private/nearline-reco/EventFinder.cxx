@@ -141,6 +141,23 @@ void EventFinder::DAQ(I3FramePtr frame) {
     std::vector<std::tuple<double, double, double, double>> events;
     bool have_event = false;
     double total_charge = 0.0;
+
+    auto save_event = [&] (PMTKeyPulsePair const & pulse) {
+        event_end_time = std::get<1>(pulse).GetTime();
+
+        if((not allow_overlapping_events_) and events.size() > 0 and std::get<1>(events.back()) > event_start_time) {
+            if(std::get<2>(events.back()) > max_event_charge) {
+                max_event_charge = std::get<2>(events.back());
+                max_event_charge_time = std::get<3>(events.back());
+            }
+            events.back() = std::make_tuple(std::get<0>(events.back()), event_end_time, max_event_charge, max_event_charge_time);
+        } else {
+            events.emplace_back(event_start_time, event_end_time, max_event_charge, max_event_charge_time);
+        }
+        have_event = false;
+        max_event_charge = 0.0;
+    };
+
     for (PMTKeyPulseVector::const_iterator i = pulse_list.begin(), j = pulse_list.begin(); j != pulse_list.end(); j++) {
         total_charge += std::get<1>(*j).GetCharge();
         while(std::get<1>(*j).GetTime() - std::get<1>(*i).GetTime() > timeWindow_) {
@@ -162,23 +179,13 @@ void EventFinder::DAQ(I3FramePtr frame) {
             }
         } else {
             if(have_event) {
-                event_end_time = std::get<1>(*j).GetTime();
-
-                if((not allow_overlapping_events_) and events.size() > 0 and std::get<1>(events.back()) > event_start_time) {
-                    if(std::get<2>(events.back()) > max_event_charge) {
-                        max_event_charge = std::get<2>(events.back());
-                        max_event_charge_time = std::get<3>(events.back());
-                    }
-                    events.back() = std::make_tuple(std::get<0>(events.back()), event_end_time, max_event_charge, max_event_charge_time);
-                } else {
-                    events.emplace_back(event_start_time, event_end_time, max_event_charge, max_event_charge_time);
-                }
-                have_event = false;
-                max_event_charge = 0.0;
-            } else {
+                save_event(*j);
             }
         }
     }
+
+    if (have_event and pulse_list.size() > 0)
+        save_event(pulse_list.back());
 
     boost::shared_ptr<I3VectorDouble> event_start_times = boost::make_shared<I3VectorDouble>(events.size());
     boost::shared_ptr<I3VectorDouble> event_end_times = boost::make_shared<I3VectorDouble>(events.size());
