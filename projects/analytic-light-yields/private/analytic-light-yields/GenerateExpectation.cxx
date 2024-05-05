@@ -147,7 +147,7 @@ boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(A
             // now apply time offsets and yields to our light profile
             for (size_t light_time_it = 0; light_time_it < n_light_profile_time_bins; light_time_it++){
                 light_time = light_profile_times.at(light_time_it) + time_offset;
-                light_val = LAr_light_profile.at(light_time_it) * relative_yields;
+                light_val = LAr_light_profile.at(light_time_it) * relative_yields * normalization;
 
                 // now binning!
                 bin_idx = (size_t) (light_time / 2.0);
