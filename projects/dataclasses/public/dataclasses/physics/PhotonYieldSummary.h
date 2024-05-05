@@ -15,7 +15,7 @@ static const unsigned photonyieldsummary_version_ = 0;
 
 class PhotonYieldSummary : public I3FrameObject {
     public:
-    
+
     enum class PhotonSource : int8_t {
         Unknown = 0,
         Vertex = 1,
@@ -23,8 +23,8 @@ class PhotonYieldSummary : public I3FrameObject {
     };
 
     float time; // photon hit time
-    float yield; // number of photon hits 
-    PhotonSource photon_source; 
+    float yield; // number of photon hits
+    PhotonSource photon_source;
 
     SET_LOGGER("PhotonYieldSummary");
 

@@ -39,7 +39,7 @@ class GenerateExpectation {
     LArScintillationLightProfile* LAr_scintillation_light_constructor = nullptr;
 
     boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> yields_per_pmt = boost::make_shared<PhotonYieldSummarySeriesMap> ();
+    std::vector<boost::shared_ptr<PhotonYieldSummarySeriesMap>> yields_per_pmt_per_event;
 
 public:
     GenerateExpectation();
@@ -47,6 +47,7 @@ public:
     void GetYieldsAndOffsets(I3FramePtr geo_frame, double const & uv_absorption);
     I3Vector<double> LightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_rec, double const & tau_TPB,
                                        AnalyticLightYieldGenerator::LArLightProfileType const & light_profile_type);
-    boost::shared_ptr<I3MapPMTKeyVectorDouble> GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame);
+    std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>,boost::shared_ptr<I3MapPMTKeyVectorDouble>> GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame);
+    //boost::shared_ptr<I3MapPMTKeyVectorDouble> GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame);
 };
 #endif

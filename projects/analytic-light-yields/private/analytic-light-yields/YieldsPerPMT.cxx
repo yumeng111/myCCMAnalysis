@@ -245,6 +245,7 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
+    std::cout << "in YieldsPerPMT::GetPMTInformation" << std::endl;
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo = geo.pmt_geo;
     I3Vector<double> this_pmt_loc;
@@ -355,6 +356,7 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
 }
 
 void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) {
+    std::cout << "in YieldsPerPMT::GetSecondaryLocs " << std::endl;
 
     // so we've parsed our pmt info, but now we need to get our secondary locations
     // let's start with chunking up the sides of the detector
@@ -735,7 +737,7 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
                 if (map_key == pmt_key){
                     all_pmt_yields_map->at(map_key).push_back(this_pmt_yield_summary);
                 }
-            }   
+            }
         }
 
     }
@@ -828,13 +830,13 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
     // now let's call our functions to get direct vertex --> PMT yields (UV scint light)
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, photon_vertex, all_pmt_yields_map);                            
+                              false, photon_vertex, all_pmt_yields_map);
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, electron_vertex, all_pmt_yields_map);                            
+                              false, electron_vertex, all_pmt_yields_map);
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, positron_vertex, all_pmt_yields_map);                            
+                              false, positron_vertex, all_pmt_yields_map);
 
     // now let's call our functions to get indirect vertex --> TPB --> PMT yields
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
@@ -849,9 +851,10 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
     // ok done!
 }
 
-boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(boost::shared_ptr<HESodiumEventSeries> const & event_vertices, I3FramePtr geo_frame, double const & UV_absorption_length){
+boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, I3FramePtr geo_frame, double const & UV_absorption_length){
 
-    // so we have our sodium event vertices that we want to simulate
+    std::cout << "in YieldsPerPMT::GetAllYields " << std::endl;
+    // so we have an event we want to simulate
     // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
 
     // let's check that we set up our pmt info and secondary location information
@@ -867,13 +870,10 @@ boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(boost:
     // let's also make our PhotonYieldSummary map to save to
     boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();
 
-    // ok we've set up the geometry stuff, now we can take each vertex and calculate light yields in each pmt
-    for (size_t sodium_it = 0; sodium_it < event_vertices->size(); sodium_it++){
-
-        PutSimulationStepsTogether(event_vertices->at(sodium_it), c_cm_per_nsec_, uv_index_of_refraction_, 
-                                   vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
-                                   pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_);
-    }
+    // ok we've set up the geometry stuff, now we can take the vertex and calculate light yields in each pmt
+    PutSimulationStepsTogether(event_vertex, c_cm_per_nsec_, uv_index_of_refraction_, 
+                               vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
+                               pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_);
 
     return all_pmt_yields_map_;
 }

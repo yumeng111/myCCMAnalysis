@@ -46,11 +46,17 @@ GenerateExpectation::GenerateExpectation() {}
 void GenerateExpectation::GetSodiumVertices(size_t const & n_events_to_simulate, double const & z_position){
     sodium_events_constructor = new SodiumVertexDistribution();
     event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
+    std::cout << "in GenerateExpectation::GetSodiumVertices" << std::endl;
 }
 
 void GenerateExpectation::GetYieldsAndOffsets(I3FramePtr geo_frame, double const & uv_absorption){
     yields_and_offset_constructor = new YieldsPerPMT();
-    yields_per_pmt = yields_and_offset_constructor->GetAllYields(event_vertices, geo_frame, uv_absorption);
+    // now loop over events and get map between CCMPMTKey and PhotonYieldSummarySeries
+    for (size_t sodium_it = 0; sodium_it < event_vertices->size(); sodium_it++){
+        boost::shared_ptr<PhotonYieldSummarySeriesMap> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), geo_frame, uv_absorption);
+        yields_per_pmt_per_event.push_back(yields_per_event);
+    }
+    std::cout << "in GenerateExpectation::GetYieldsAndOffsets" << std::endl;
 }
 
 I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_rec, double const & tau_TPB,
@@ -68,11 +74,14 @@ I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double con
     else {
         light_profile = LAr_scintillation_light_constructor->GetFullLightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB);
     }
+    std::cout << "in GenerateExpectation::LightProfile" << std::endl;
 
     return light_profile;
 }
 
-boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame){
+std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> GenerateExpectation::GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup,
+                                                                                                                                       I3FramePtr geo_frame){
+//boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame){
 
     // let's parse the info necessary to get our expectation
     double Rs = analytic_light_yield_setup.Rs;
@@ -109,6 +118,7 @@ boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(A
 
     // make map of final binned yields to return
     boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_yields_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_squared_yields_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
 
     double light_profile_start_time = 0.0;
     size_t n_light_profile_time_bins = LAr_light_profile.size();
@@ -125,38 +135,61 @@ boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(A
         expectation_times.push_back(expectation_start_time + 2.0 * (double)i);
     }
 
-    CCMPMTKey pmt_key;
     double time_offset;
     double relative_yields;
     double light_time;
     double light_val;
     size_t bin_idx;
-    for (PhotonYieldSummarySeriesMap::const_iterator i = yields_per_pmt->begin(); i != yields_per_pmt->end(); i++) {
-        pmt_key = i->first;
+    for (size_t event_it = 0; event_it < yields_per_pmt_per_event.size(); event_it ++){
+        boost::shared_ptr<PhotonYieldSummarySeriesMap> this_event_yields_per_pmt = yields_per_pmt_per_event.at(event_it); 
+        boost::shared_ptr<I3MapPMTKeyVectorDouble> this_event_binned_yields = boost::make_shared<I3MapPMTKeyVectorDouble> ();
 
-        // check if this pmt is in final_binned_yields_ -- if not, add it
-        if (final_binned_yields_->find(pmt_key) == final_binned_yields_->end()) {
-            (*final_binned_yields_)[pmt_key] = std::vector<double> (n_expectation_time_bins, 0.0);
+        for (PhotonYieldSummarySeriesMap::const_iterator i = this_event_yields_per_pmt->begin(); i != this_event_yields_per_pmt->end(); i++) {
+            // check if this pmt is in this_event_binned_yields -- if not, add it
+            if (this_event_binned_yields->find(i->first) == this_event_binned_yields->end()) {
+                (*this_event_binned_yields)[i->first] = std::vector<double> (n_expectation_time_bins, 0.0);
+            }
+
+            // now let's loop over all the PhotonYieldSummary for this PMT
+            for(PhotonYieldSummary const & this_yield: i->second) {
+                time_offset = this_yield.time;
+                relative_yields = this_yield.yield;
+
+                // now apply time offsets and yields to our light profile
+                for (size_t light_time_it = 0; light_time_it < n_light_profile_time_bins; light_time_it++){
+                    light_time = light_profile_times.at(light_time_it) + time_offset;
+                    light_val = LAr_light_profile.at(light_time_it) * relative_yields * normalization;
+
+                    // now binning!
+                    bin_idx = (size_t) (light_time / 2.0);
+                    (*this_event_binned_yields)[i->first].at(bin_idx) += light_val;
+                }
+            }
         }
 
-        // now let's loop over all the PhotonYieldSummary for this PMT
-        for(PhotonYieldSummary const & this_yield: i->second) {
-            time_offset = this_yield.time;
-            relative_yields = this_yield.yield;
+        // ok so for this event we have finished binning the expected light yield
+        // let's add this event yields and yields^2 to our final lists
+        for (I3MapPMTKeyVectorDouble::const_iterator j = this_event_binned_yields->begin(); j != this_event_binned_yields->end(); j++) {
+            // check if this pmt key is in final_binned_yields_
+            if (final_binned_yields_->find(j->first) == final_binned_yields_->end()) {
+                (*final_binned_yields_)[j->first] = std::vector<double> (n_expectation_time_bins, 0.0);
+            }
+            // check if this pmt key is in final_binned_squared_yields_
+            if (final_binned_squared_yields_->find(j->first) == final_binned_squared_yields_->end()) {
+                (*final_binned_squared_yields_)[j->first] = std::vector<double> (n_expectation_time_bins, 0.0);
+            }
 
-            // now apply time offsets and yields to our light profile
-            for (size_t light_time_it = 0; light_time_it < n_light_profile_time_bins; light_time_it++){
-                light_time = light_profile_times.at(light_time_it) + time_offset;
-                light_val = LAr_light_profile.at(light_time_it) * relative_yields * normalization;
-
-                // now binning!
-                bin_idx = (size_t) (light_time / 2.0);
-                (*final_binned_yields_)[pmt_key].at(bin_idx) += light_val;
+            // now loop over the yields in every time bin and square
+            for (size_t time_bin_it = 0; time_bin_it < this_event_binned_yields->at(j->first).size(); time_bin_it++){
+                final_binned_yields_->at(j->first).at(time_bin_it) += this_event_binned_yields->at(j->first).at(time_bin_it);
+                final_binned_squared_yields_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields->at(j->first).at(time_bin_it), 2.0);
             }
         }
     }
 
-    return final_binned_yields_;
+
+    return std::make_tuple(final_binned_yields_, final_binned_squared_yields_);
+    //return final_binned_yields_;
 
 }
 

@@ -95,6 +95,6 @@ public:
     YieldsPerPMT();
     void GetPMTInformation(I3FramePtr frame);
     void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) ;
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(boost::shared_ptr<HESodiumEventSeries> const & event_vertices,  I3FramePtr geo_frame, double const & UV_absorption_length);
+    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(HESodiumEvent const & event_vertex,  I3FramePtr geo_frame, double const & UV_absorption_length);
 };
 #endif
