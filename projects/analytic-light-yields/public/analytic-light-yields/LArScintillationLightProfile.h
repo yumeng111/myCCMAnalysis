@@ -25,5 +25,7 @@ public:
                                          double const & triplet_tau, double const & recombination_tau, double const & TPB_tau);
     I3Vector<double> GetSimplifiedLightProfile(double const & singlet_ratio, double const & triplet_ratio, double const & singlet_tau,
                                          double const & triplet_tau, double const & TPB_tau);
+    I3Vector<double> GetSimplifiedLightProfileDeriv(double const & singlet_ratio, double const & triplet_ratio, double const & singlet_tau,
+                                                    double const & triplet_tau, double const & TPB_tau, std::string deriv_variable);
 };
 #endif

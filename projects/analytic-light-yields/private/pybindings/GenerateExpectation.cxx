@@ -47,7 +47,9 @@ void register_GenerateExpectation() {
         .def("GetSodiumVertices", &GenerateExpectation::GetSodiumVertices)
         .def("GetYieldsAndOffsets", &GenerateExpectation::GetYieldsAndOffsets)
         .def("LightProfile", &GenerateExpectation::LightProfile)
-        .def("GetExpectation", &GenerateExpectation::GetExpectation);
+        .def("DLightProfile", &GenerateExpectation::DLightProfile)
+        .def("GetExpectation", &GenerateExpectation::GetExpectation)
+        .def("GetExpectationWithDerivs", &GenerateExpectation::GetExpectationWithDerivs);
 
 }
 }

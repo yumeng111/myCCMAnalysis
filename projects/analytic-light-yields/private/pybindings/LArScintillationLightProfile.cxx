@@ -45,7 +45,8 @@ void register_LArScintillationLightProfile() {
     class_<LArScintillationLightProfile, boost::noncopyable>("LArScintillationLightProfile")
         .def(init<>())
         .def("GetFullLightProfile", &LArScintillationLightProfile::GetFullLightProfile)
-        .def("GetSimplifiedLightProfile", &LArScintillationLightProfile::GetSimplifiedLightProfile);
+        .def("GetSimplifiedLightProfile", &LArScintillationLightProfile::GetSimplifiedLightProfile)
+        .def("GetSimplifiedLightProfileDeriv", &LArScintillationLightProfile::GetSimplifiedLightProfileDeriv);
 
 }
 }
