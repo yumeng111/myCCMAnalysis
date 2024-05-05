@@ -237,6 +237,7 @@ class CalculateNLLH {
 public:
     CalculateNLLH();
     double GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                   boost::shared_ptr<I3MapPMTKeyVectorDouble> nuisance_paramters, boost::shared_ptr<I3MapPMTKeyVectorDouble> data);
+                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_paramters, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
+                              double const & n_data_events, size_t time_bin_offset);
 };
 #endif

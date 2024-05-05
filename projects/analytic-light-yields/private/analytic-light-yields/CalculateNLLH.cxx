@@ -43,7 +43,7 @@
 CalculateNLLH::CalculateNLLH() {}
 
 double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                              boost::shared_ptr<I3MapPMTKeyVectorDouble> nuisance_paramters, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
+                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_paramters, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
                               double const & n_data_events, size_t time_bin_offset){
 
     // let's check to see if we've initialized our GenerateExpectation constructor
@@ -51,7 +51,14 @@ double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_s
         gen_expectation = new GenerateExpectation();
     }
     // let's grab our expectation
-    boost::shared_ptr<I3MapPMTKeyVectorDouble> pred = gen_expectation->GetExpectation(analytic_light_yield_setup, geo_frame);
+    std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectation(analytic_light_yield_setup, geo_frame);
+    // unpack into yields and yields^2
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_squared = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    std::tie(pred_yields, pred_yields_squared) = pred;
+
+    // and grab number of simulation events
+    double n_simulation_events = analytic_light_yield_setup.n_sodium_events;
 
     // ok so we have data and we have prediction
     // before we can calculate our LLH, we need to figure our the timing
@@ -59,24 +66,27 @@ double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_s
     // then we will calculate our llh from 6nsec after event start until 70nsec after event start
 
     size_t llh_bins_from_start = 5;
-    size_t llh_time_bins = 35;
+    size_t total_llh_time_bins = 35;
 
-    std::vector<double> this_pmt_pred;
-    std::vector<double> this_pmt_data;
     size_t corresponding_data_bin;
-    for (I3MapPMTKeyVectorDouble::const_iterator i = pred->begin(); i != pred->end(); i++) {
-        // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
-        this_pmt_pred = i->second; 
-        this_pmt_data = data->at(i->first);
+    double mu;
+    double sigma_squared;
+    double k;
+    double total_nllh = 0.0;
 
+    for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
+        // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
         // now loop over the time bins in our pred
-        for (size_t time_bin_it = llh_bins_from_start; time_bin_it < this_pmt_pred.size(); time_bin_it++){
-            corresponding_data_bin = time_bin_it + time_bin_offset;    
+        for (size_t time_bin_it = llh_bins_from_start; time_bin_it < (total_llh_time_bins + llh_bins_from_start); time_bin_it++){
+            corresponding_data_bin = time_bin_it + time_bin_offset;
+            k = data->at(i->first).at(corresponding_data_bin);
+            mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_paramters->at(i->first);
+            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events), 2.0);    
+            total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
         }
     }
 
-
-    return 0.0;
+    return total_nllh;
 
 }
 
