@@ -142,7 +142,7 @@ void EventFinder::DAQ(I3FramePtr frame) {
     bool have_event = false;
     double total_charge = 0.0;
 
-    std::function<void(PMTKeyPulsePair const &)> save_event = [&] (PMTKeyPulsePair const & pulse) {
+    auto save_event = [&] (PMTKeyPulsePair const & pulse) {
         event_end_time = std::get<1>(pulse).GetTime();
 
         if((not allow_overlapping_events_) and events.size() > 0 and std::get<1>(events.back()) > event_start_time) {
