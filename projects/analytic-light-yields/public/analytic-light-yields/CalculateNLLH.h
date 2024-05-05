@@ -9,6 +9,7 @@
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/math/special_functions.hpp>
+#include <boost/math/special_functions/polygamma.hpp>
 
 #include <tuple>
 #include <vector>
@@ -110,6 +111,21 @@ struct gammaPriorPoissonLikelihood {
 	}
 };
 
+struct gammaPriorPoissonLikelihoodDerivative {
+	template<typename T>
+	T operator()(double k, T const & w, T const & w2, T const & DwDTheta, T const & Dw2DTheta) {
+		std::vector<T> items(5);
+        items[0] = ((2 * log(w * w) / w2) + (log(1 + ((w * w) / w2)) / w2)) * DwDTheta -
+                   ((log(w * w * w) / (w2 * w2 * w2)) + (log(w) * (1 + (w * w) / w2 * w2) / (w2 * w2))) * Dw2DTheta;
+		items[1] = ((2 * w * boost::math::polygamma(0, 1 + k + (w * w) / w2)) / w2) * DwDTheta - ((w * w * boost::math::polygamma(0, 1 + k + (w * w) / w2)) / (w2 * w2)) * Dw2DTheta;
+		items[2] = 0;
+		items[3] = (((-1 - k - ((w * w) / w2)) / (w2 * (1 + (w / w2)))) - ((2 * w * detail::LogOnePlusX(1 + (w / w2))) / w2)) * DwDTheta +
+                    (-((w * (-1 - k - ((w * w) / w2))) / (w2 * w2 * (1 + (w / w2)))) + ((w * w * detail::LogOnePlusX(1 + (w / w2))) / (w2 * w2))) * Dw2DTheta;
+		items[4] = (- (2 * w * boost::math::polygamma(0, 1 + ((w * w) / w2))) / w2) * DwDTheta + ((w * w * boost::math::polygamma(0, 1 + ((w * w) / w2))) / (w2 * w2)) * Dw2DTheta;
+		return detail::accumulate(items.begin(), items.end());
+	}
+};
+
 struct LMean {
     template<typename T>
     T operator()(double k, T const & w_sum, T const & w2_sum) const {
@@ -201,6 +217,32 @@ struct LEff {
     }
 };
 
+struct LEffDeriv {
+    template<typename T>
+    T operator()(double k, T const & w_sum, T const & w2_sum, T const & Dw_sumDTheta, T const & Dw2_sumDTheta) const {
+        if(w_sum <= 0 || w2_sum < 0) {
+            return(k==0?0:-std::numeric_limits<T>::infinity());
+        }
+
+        if(w2_sum == 0) {
+            return poissonLikelihood()(k, w_sum, w2_sum);
+        }
+
+        T zero(0);
+        if(w_sum == zero) {
+            if(k == 0) {
+                return zero;
+            }
+            else {
+                return T(-std::numeric_limits<double>::infinity());
+            }
+        }
+
+        T L = gammaPriorPoissonLikelihoodDerivative()(k, w_sum, w2_sum, Dw_sumDTheta, Dw2_sumDTheta);
+
+        return L;
+    }
+};
 
 struct computeLMean {
     template<typename T>
@@ -237,7 +279,10 @@ class CalculateNLLH {
 public:
     CalculateNLLH();
     double GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_paramters, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
+                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_params, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
+                              double const & n_data_events, size_t time_bin_offset);
+    I3Vector<double> GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
+                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_params, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
                               double const & n_data_events, size_t time_bin_offset);
 };
 #endif
