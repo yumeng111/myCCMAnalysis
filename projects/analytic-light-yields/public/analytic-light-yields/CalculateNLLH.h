@@ -117,14 +117,13 @@ struct gammaPriorPoissonLikelihoodDerivative {
 	template<typename T>
 	T operator()(double k, T const & w, T const & w2, T const & DwDTheta, T const & Dw2DTheta) {
 		std::vector<T> items(5);
-        items[0] = ((2 * log(w * w) / w2) + (log(1 + ((w * w) / w2)) / w2)) * DwDTheta -
-                   ((log(w * w * w) / (w2 * w2 * w2)) + (log(w) * (1 + (w * w) / w2 * w2) / (w2 * w2))) * Dw2DTheta;
+        items[0] = (((1 + ((w*w) / w2)) / w) + (2 * w * log(w/w2) / w2)) * DwDTheta + (-((1 + ((w*w) / w2)) / w2) - (w*w*log(w/w2) / (w2*w2))) * Dw2DTheta;
 		items[1] = ((2 * w * boost::math::polygamma(0, 1 + k + (w * w) / w2)) / w2) * DwDTheta - ((w * w * boost::math::polygamma(0, 1 + k + (w * w) / w2)) / (w2 * w2)) * Dw2DTheta;
 		items[2] = 0;
 		items[3] = (((-1 - k - ((w * w) / w2)) / (w2 * (1 + (w / w2)))) - ((2 * w * detail::LogOnePlusX(w / w2)) / w2)) * DwDTheta +
                     (-((w * (-1 - k - ((w * w) / w2))) / (w2 * w2 * (1 + (w / w2)))) + ((w * w * detail::LogOnePlusX(w / w2)) / (w2 * w2))) * Dw2DTheta;
 		items[4] = (- (2 * w * boost::math::polygamma(0, 1 + ((w * w) / w2))) / w2) * DwDTheta + ((w * w * boost::math::polygamma(0, 1 + ((w * w) / w2))) / (w2 * w2)) * Dw2DTheta;
-		return detail::accumulate(items.begin(), items.end());
+        return detail::accumulate(items.begin(), items.end());
 	}
 };
 
