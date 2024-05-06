@@ -108,6 +108,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // position
     G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
+    G4ThreeVector prePos = aStep->GetPreStepPoint()->GetPosition();
+    double delta_pos = std::sqrt(std::pow(photonPosition.x()/mm - prePos.x()/mm, 2) + std::pow(photonPosition.y()/mm - prePos.y()/mm, 2) + std::pow(photonPosition.z()/mm - prePos.z()/mm, 2));
     I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
 
     // direction
@@ -131,6 +133,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4ParticleDefinition* fParticleDefinition = aStep->GetTrack()->GetDefinition();
     G4int pdg = fParticleDefinition->GetPDGEncoding();
 
+    // static_cast<I3Particle::ParticleType>(pdg)
+    std::cout << "creation process name = " << creationProcessName << " parent id = " << parent_id << " and track id = " << aStep->GetTrack()->GetTrackID() << " and pdg code = " << pdg << " and delta distance = " << delta_pos << " and e dep = " << edep << std::endl;
     // now save to our MCTree!
     if (parent_id == 0){
         // let's create and fill our I3Particle

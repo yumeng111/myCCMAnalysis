@@ -75,7 +75,7 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
     G4VPhysicalVolume* thePostPV = thePostPoint->GetPhysicalVolume();
     std::string thePostPVName = static_cast<std::string>(thePostPV->GetName());
 
-    std::string desired_str ("photocath");
+    std::string desired_str ("PMT");
 
     if(theTrack->GetParentID() == 0) {
         // This is a primary track

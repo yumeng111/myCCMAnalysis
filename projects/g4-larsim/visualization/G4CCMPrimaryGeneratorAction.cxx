@@ -53,16 +53,22 @@ G4CCMPrimaryGeneratorAction::G4CCMPrimaryGeneratorAction()
   fParticleGun->SetParticleEnergy(511. * keV);
   fParticleGun->SetParticlePosition(G4ThreeVector(0., 0., -20. * cm));
   fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 0., 1.));
+
+  fGeneralParticleSource = new G4GeneralParticleSource();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPrimaryGeneratorAction::~G4CCMPrimaryGeneratorAction() { delete fParticleGun; }
+G4CCMPrimaryGeneratorAction::~G4CCMPrimaryGeneratorAction() { 
+    delete fParticleGun; 
+    delete fGeneralParticleSource;
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void G4CCMPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
   fParticleGun->GeneratePrimaryVertex(anEvent);
+  fGeneralParticleSource->GeneratePrimaryVertex(anEvent);
 }
 

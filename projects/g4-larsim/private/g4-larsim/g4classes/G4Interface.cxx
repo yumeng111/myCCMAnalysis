@@ -306,23 +306,23 @@ void G4Interface::Initialize()
     runManager_.SetUserInitialization(detector_);
 
     log_debug("Init physics list ...");
-    //G4VModularPhysicsList* physicsList = new FTFP_BERT;
-    //physicsList->ReplacePhysics(new G4EmStandardPhysics_option4());
+    G4VModularPhysicsList* physicsList = new FTFP_BERT;
+    physicsList->ReplacePhysics(new G4EmStandardPhysics_option4());
 
-    //auto opticalPhysics = new G4OpticalPhysics();
-    //auto opticalParams  = G4OpticalParameters::Instance();
+    auto opticalPhysics = new G4OpticalPhysics();
+    auto opticalParams  = G4OpticalParameters::Instance();
 
-    //opticalParams->SetWLSTimeProfile("delta");
+    opticalParams->SetWLSTimeProfile("delta");
 
-    //opticalParams->SetScintTrackSecondariesFirst(true);
+    opticalParams->SetScintTrackSecondariesFirst(true);
 
-    //opticalParams->SetCerenkovMaxPhotonsPerStep(100);
-    //opticalParams->SetCerenkovMaxBetaChange(10.0);
-    //opticalParams->SetCerenkovTrackSecondariesFirst(true);
+    opticalParams->SetCerenkovMaxPhotonsPerStep(100);
+    opticalParams->SetCerenkovMaxBetaChange(10.0);
+    opticalParams->SetCerenkovTrackSecondariesFirst(true);
 
-    //physicsList->RegisterPhysics(opticalPhysics);
-    //runManager_.SetUserInitialization(physicsList);
-    runManager_.SetUserInitialization(new G4CCMPhysicsList(verboseLevel));
+    physicsList->RegisterPhysics(opticalPhysics);
+    runManager_.SetUserInitialization(physicsList);
+    //runManager_.SetUserInitialization(new G4CCMPhysicsList(verboseLevel));
 
     // Initialize G4 kernel
     log_debug("Init run manager ...");

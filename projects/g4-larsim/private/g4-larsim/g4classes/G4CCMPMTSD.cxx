@@ -134,7 +134,8 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if (creationProcess) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
-   
+
+    //std::cout << "saw " << creationProcessName << " photon on " << key << std::endl;   
     // now save to CCMMCPE!
     CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
 

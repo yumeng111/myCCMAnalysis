@@ -32,6 +32,7 @@
 #define G4CCMPrimaryGeneratorAction_h 1
 
 #include "G4VUserPrimaryGeneratorAction.hh"
+#include "G4GeneralParticleSource.hh"
 
 class G4ParticleGun;
 class G4Event;
@@ -44,7 +45,11 @@ class G4CCMPrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 
   void GeneratePrimaries(G4Event* anEvent) override;
 
+  // method to access particle gps
+  const G4GeneralParticleSource *GetGeneralParticleSource() const { return fGeneralParticleSource; }
+
  private:
+  G4GeneralParticleSource *fGeneralParticleSource; // pointer a to G4 GeneralParticleSource class
   G4ParticleGun* fParticleGun = nullptr;
 };
 
