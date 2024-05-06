@@ -61,7 +61,7 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
 
     // let's check to see if we've initialized our GenerateExpectation constructor
     if (gen_expectation == nullptr){
-        gen_expectation = new GenerateExpectation();
+        gen_expectation = std::make_shared<GenerateExpectation> ();
     }
     // let's grab our expectation
     std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
@@ -117,7 +117,7 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     double total_dtau_TPB = 0.0;
 
     // let's also set up our vector for derivs of nuisance_params
-    std::vector<double> nuisance_param_derivs(nuisance_params.size() , 0.0);
+    std::vector<double> nuisance_param_derivs(nuisance_params.size() - 1, 0.0);
 
     size_t nuisance_counter = 0;
     for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
@@ -164,7 +164,7 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     for (size_t k = 0; k < nuisance_param_derivs.size(); k++){
         nllh_and_derivs.push_back(nuisance_param_derivs.at(k));
     }
-    
+ 
     return nllh_and_derivs;
 
 }
@@ -179,7 +179,7 @@ double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_s
     
     // let's check to see if we've initialized our GenerateExpectation constructor
     if (gen_expectation == nullptr){
-        gen_expectation = new GenerateExpectation();
+        gen_expectation = std::make_shared<GenerateExpectation> ();
     }
     // let's grab our expectation
     std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectation(analytic_light_yield_setup, geo_frame);

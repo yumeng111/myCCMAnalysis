@@ -44,12 +44,12 @@
 GenerateExpectation::GenerateExpectation() {}
 
 void GenerateExpectation::GetSodiumVertices(size_t const & n_events_to_simulate, double const & z_position){
-    sodium_events_constructor = new SodiumVertexDistribution();
+    sodium_events_constructor = std::make_shared<SodiumVertexDistribution> ();
     event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
 }
 
 void GenerateExpectation::GetYieldsAndOffsets(I3FramePtr geo_frame, double const & uv_absorption){
-    yields_and_offset_constructor = new YieldsPerPMT();
+    yields_and_offset_constructor = std::make_shared<YieldsPerPMT> ();
     // now loop over events and get map between CCMPMTKey and PhotonYieldSummarySeries
     for (size_t sodium_it = 0; sodium_it < event_vertices->size(); sodium_it++){
         boost::shared_ptr<PhotonYieldSummarySeriesMap> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), geo_frame, uv_absorption);
@@ -61,7 +61,7 @@ I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double con
                                        AnalyticLightYieldGenerator::LArLightProfileType const & light_profile_type){
 
     if (LAr_scintillation_light_constructor == nullptr){
-        LAr_scintillation_light_constructor = new LArScintillationLightProfile();
+        LAr_scintillation_light_constructor = std::make_shared<LArScintillationLightProfile> ();
     }
 
     I3Vector<double> light_profile;
@@ -79,7 +79,7 @@ I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double con
 I3Vector<double> GenerateExpectation::DLightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_TPB, std::string deriv_variable){
 
     if (LAr_scintillation_light_constructor == nullptr){
-        LAr_scintillation_light_constructor = new LArScintillationLightProfile();
+        LAr_scintillation_light_constructor = std::make_shared<LArScintillationLightProfile> ();
     }
 
     I3Vector<double> light_profile;

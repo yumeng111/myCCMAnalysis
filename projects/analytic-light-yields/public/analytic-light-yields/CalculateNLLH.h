@@ -16,6 +16,7 @@
 #include <random>
 #include <cmath>
 #include <map>
+#include <memory>
 
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
@@ -275,7 +276,7 @@ struct computeLEff {
 } // namespace MCLLH
 
 class CalculateNLLH {
-    GenerateExpectation* gen_expectation = nullptr;
+    std::shared_ptr<GenerateExpectation> gen_expectation = nullptr;
     I3MapPMTKeyVectorDouble data;
     double n_data_events;
     bool grabbed_data = false;

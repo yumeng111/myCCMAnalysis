@@ -15,6 +15,7 @@
 #include <random>
 #include <cmath>
 #include <map>
+#include <memory>
 
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
@@ -34,9 +35,9 @@ class GenerateExpectation {
     // then we put it all together and bin!
     // so for now, we are going to set sodium vertices ONCE and get yields + offsets ONCE
     // and update light profile with every call to GetExpectation
-    SodiumVertexDistribution* sodium_events_constructor = nullptr;
-    YieldsPerPMT* yields_and_offset_constructor = nullptr;
-    LArScintillationLightProfile* LAr_scintillation_light_constructor = nullptr;
+    std::shared_ptr<SodiumVertexDistribution> sodium_events_constructor = nullptr;
+    std::shared_ptr<YieldsPerPMT> yields_and_offset_constructor = nullptr;
+    std::shared_ptr<LArScintillationLightProfile> LAr_scintillation_light_constructor = nullptr;
 
     boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
     std::vector<boost::shared_ptr<PhotonYieldSummarySeriesMap>> yields_per_pmt_per_event;
