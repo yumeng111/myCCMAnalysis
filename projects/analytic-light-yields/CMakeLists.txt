@@ -9,6 +9,7 @@ i3_project(${PROJECT_NAME}
 i3_add_library(${PROJECT_NAME}
     private/analytic-light-yields/YieldsPerPMT.cxx
     private/analytic-light-yields/CalculateNLLH.cxx
+    private/analytic-light-yields/NumericalCheck.cxx
     private/analytic-light-yields/GenerateExpectation.cxx
     private/analytic-light-yields/SodiumVertexDistribution.cxx
     private/analytic-light-yields/LArScintillationLightProfile.cxx
