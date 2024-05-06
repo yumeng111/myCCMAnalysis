@@ -257,8 +257,8 @@ void D_light_profile_no_recombination_dtoffset(double const & R_s,
                                                std::vector<double> & final_light_profile) {
 
     // times is a vector of times to calculate the light profile for
-    double coeff_one = - R_s / (tau_s - tau_TPB);
-    double coeff_two = - R_t / (tau_t - tau_TPB);
+    double coeff_one = R_s / (tau_s - tau_TPB);
+    double coeff_two = R_t / (tau_t - tau_TPB);
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
