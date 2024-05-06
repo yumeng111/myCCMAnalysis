@@ -103,8 +103,10 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     // let's try aligning on event start time but allowing a time offset to float
     // then we will calculate our llh from 6nsec after event start until 70nsec after event start
 
-    size_t llh_bins_from_start = 5;
+    size_t llh_bins_from_start = 3;
     size_t total_llh_time_bins = 35;
+    size_t data_event_start_bin = 50; // note -- this is a artefact of how i am accumulating data
+    size_t data_llh_start_bin = data_event_start_bin + llh_bins_from_start;
 
     size_t corresponding_data_bin;
     double mu;
@@ -129,8 +131,9 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
         // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
         // now loop over the time bins in our pred
-        for (size_t time_bin_it = llh_bins_from_start; time_bin_it < (total_llh_time_bins + llh_bins_from_start); time_bin_it++){
-            corresponding_data_bin = time_bin_it + time_bin_offset;
+        size_t data_time_bin_it = 0;
+        for (size_t time_bin_it = (time_bin_offset + llh_bins_from_start); time_bin_it < (time_bin_offset + llh_bins_from_start + total_llh_time_bins); time_bin_it++){
+            corresponding_data_bin = data_llh_start_bin + data_time_bin_it;
             k = data.at(i->first).at(corresponding_data_bin);
             mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
             sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
@@ -159,6 +162,7 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
             DmuDtheta = pred_yields_t_offset->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
             Dsigma_squaredDtheta = pred_yields_squared_t_offset->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_dtoffest += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
+            data_time_bin_it += 1;
         }
         nuisance_counter += 1;
     }
