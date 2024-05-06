@@ -69,6 +69,7 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
+               boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectationWithDerivs(analytic_light_yield_setup, geo_frame);
     // unpack into yields and yields^2
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields = boost::make_shared<I3MapPMTKeyVectorDouble> ();
@@ -84,12 +85,15 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_squared_tau_t = boost::make_shared<I3MapPMTKeyVectorDouble> ();
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_tau_TPB = boost::make_shared<I3MapPMTKeyVectorDouble> ();
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_squared_tau_TPB = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_t_offset = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_squared_t_offset = boost::make_shared<I3MapPMTKeyVectorDouble> ();
     std::tie(pred_yields, pred_yields_squared,
              pred_yields_Rs, pred_yields_squared_Rs,
              pred_yields_Rt, pred_yields_squared_Rt, 
              pred_yields_tau_s, pred_yields_squared_tau_s,
              pred_yields_tau_t, pred_yields_squared_tau_t, 
-             pred_yields_tau_TPB, pred_yields_squared_tau_TPB) = pred;
+             pred_yields_tau_TPB, pred_yields_squared_tau_TPB,
+             pred_yields_t_offset, pred_yields_squared_t_offset) = pred;
 
     // and grab number of simulation events
     double n_simulation_events = analytic_light_yield_setup.n_sodium_events;
@@ -117,7 +121,9 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     double total_dtau_TPB = 0.0;
 
     // let's also set up our vector for derivs of nuisance_params
-    std::vector<double> nuisance_param_derivs(nuisance_params.size() - 1, 0.0);
+    std::vector<double> nuisance_param_derivs(nuisance_params.size(), 0.0);
+
+    double total_dtoffest = 0.0;
 
     size_t nuisance_counter = 0;
     for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
@@ -149,6 +155,10 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
             DmuDtheta = mu / nuisance_params[nuisance_counter];
             Dsigma_squaredDtheta = 2 * nuisance_params[nuisance_counter] * pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events), 2.0);
             nuisance_param_derivs[nuisance_counter] += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
+            // and our time offset!
+            DmuDtheta = pred_yields_t_offset->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            Dsigma_squaredDtheta = pred_yields_squared_t_offset->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            total_dtoffest += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
         }
         nuisance_counter += 1;
     }
@@ -164,7 +174,8 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     for (size_t k = 0; k < nuisance_param_derivs.size(); k++){
         nllh_and_derivs.push_back(nuisance_param_derivs.at(k));
     }
- 
+    nllh_and_derivs.push_back(total_dtoffest);
+
     return nllh_and_derivs;
 
 }

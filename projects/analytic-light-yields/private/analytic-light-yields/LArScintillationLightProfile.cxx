@@ -248,6 +248,34 @@ void D_light_profile_no_recombination_dR_t(double const & R_s,
     }
 }
 
+void D_light_profile_no_recombination_dtoffset(double const & R_s,
+                                               double const & R_t,
+                                               double const & tau_s,
+                                               double const & tau_t,
+                                               double const & tau_TPB,
+                                               std::vector<double> const & times,
+                                               std::vector<double> & final_light_profile) {
+
+    // times is a vector of times to calculate the light profile for
+    double coeff_one = R_s / (tau_s - tau_TPB);
+    double coeff_two = R_t / (tau_t - tau_TPB);
+
+    // let's loop over times and calculate the light profile at each time
+    for (size_t time_it = 0; time_it < times.size(); time_it++) {
+        double const & t = times.at(time_it);
+        double exp_singlet = std::exp(-t / tau_s);
+        double exp_triplet = std::exp(-t / tau_t);
+        double exp_prompt_TPB = std::exp(-t / tau_TPB);
+
+        double one = coeff_one * ((exp_singlet / tau_s) - (exp_prompt_TPB / tau_TPB));
+        double two = coeff_two * ((exp_triplet / tau_t) - (exp_prompt_TPB / tau_TPB));
+
+        double y = one + two;
+
+        final_light_profile.at(time_it) = y;
+    }
+}
+
 LArScintillationLightProfile::LArScintillationLightProfile() {}
 
 I3Vector<double> LArScintillationLightProfile::GetFullLightProfile(double const & singlet_ratio,
@@ -349,6 +377,9 @@ I3Vector<double> LArScintillationLightProfile::GetSimplifiedLightProfileDeriv(do
     }
     else if (deriv_variable == "tau_TPB"){
         D_light_profile_no_recombination_dtau_TPB(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
+    }
+    else if (deriv_variable == "t_offset"){
+        D_light_profile_no_recombination_dtoffset(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
     }
 
     return light_profile;

@@ -208,6 +208,7 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
            boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
            boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
            boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
+           boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
            boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>>
            GenerateExpectation::GetExpectationWithDerivs(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame){
 
@@ -241,6 +242,7 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
     I3Vector<double> DLAr_light_profile_dtau_TPB = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_TPB");
     I3Vector<double> DLAr_light_profile_dRs = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "Rs");
     I3Vector<double> DLAr_light_profile_dRt = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "Rt");
+    I3Vector<double> DLAr_light_profile_dt_offset = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "t_offset");
 
     // so let's recap where we are
     // 1) we generated sodium event vertices
@@ -262,6 +264,8 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
     boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_squared_yields_deriv_tau_t_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
     boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_yields_deriv_tau_TPB_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
     boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_squared_yields_deriv_tau_TPB_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_yields_deriv_t_offset_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    boost::shared_ptr<I3MapPMTKeyVectorDouble> final_binned_squared_yields_deriv_t_offset_ = boost::make_shared<I3MapPMTKeyVectorDouble> ();
 
     double light_profile_start_time = 0.0;
     size_t n_light_profile_time_bins = LAr_light_profile.size();
@@ -291,6 +295,7 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
         boost::shared_ptr<I3MapPMTKeyVectorDouble> this_event_binned_yields_deriv_tau_s = boost::make_shared<I3MapPMTKeyVectorDouble> ();
         boost::shared_ptr<I3MapPMTKeyVectorDouble> this_event_binned_yields_deriv_tau_t = boost::make_shared<I3MapPMTKeyVectorDouble> ();
         boost::shared_ptr<I3MapPMTKeyVectorDouble> this_event_binned_yields_deriv_tau_TPB = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+        boost::shared_ptr<I3MapPMTKeyVectorDouble> this_event_binned_yields_deriv_t_offset = boost::make_shared<I3MapPMTKeyVectorDouble> ();
 
         for (PhotonYieldSummarySeriesMap::const_iterator i = this_event_yields_per_pmt->begin(); i != this_event_yields_per_pmt->end(); i++) {
             // check if this pmt is in this_event_binned_yields -- if not, add it
@@ -316,6 +321,10 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
             // check if this pmt is in this_event_binned_yields_deriv_tau_TPB -- if not, add it
             if (this_event_binned_yields_deriv_tau_TPB->find(i->first) == this_event_binned_yields_deriv_tau_TPB->end()) {
                 (*this_event_binned_yields_deriv_tau_TPB)[i->first] = std::vector<double> (n_expectation_time_bins, 0.0);
+            }
+            // check if this pmt is in this_event_binned_yields_deriv_t_offset -- if not, add it
+            if (this_event_binned_yields_deriv_t_offset->find(i->first) == this_event_binned_yields_deriv_t_offset->end()) {
+                (*this_event_binned_yields_deriv_t_offset)[i->first] = std::vector<double> (n_expectation_time_bins, 0.0);
             }
 
             // now let's loop over all the PhotonYieldSummary for this PMT
@@ -343,6 +352,8 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
                     (*this_event_binned_yields_deriv_tau_t)[i->first].at(bin_idx) += light_val;
                     light_val = DLAr_light_profile_dtau_TPB.at(light_time_it) * relative_yields * normalization;
                     (*this_event_binned_yields_deriv_tau_TPB)[i->first].at(bin_idx) += light_val;
+                    light_val = DLAr_light_profile_dt_offset.at(light_time_it) * relative_yields * normalization;
+                    (*this_event_binned_yields_deriv_t_offset)[i->first].at(bin_idx) += light_val;
 
                 }
             }
@@ -399,6 +410,14 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
             if (final_binned_squared_yields_deriv_tau_TPB_->find(j->first) == final_binned_squared_yields_deriv_tau_TPB_->end()) {
                 (*final_binned_squared_yields_deriv_tau_TPB_)[j->first] = std::vector<double> (n_expectation_time_bins, 0.0);
             }
+            // check if this pmt key is in final_binned_yields_deriv_t_offset_
+            if (final_binned_yields_deriv_t_offset_->find(j->first) == final_binned_yields_deriv_t_offset_->end()) {
+                (*final_binned_yields_deriv_t_offset_)[j->first] = std::vector<double> (n_expectation_time_bins, 0.0);
+            }
+            // check if this pmt key is in final_binned_squared_yields_deriv_t_offset_
+            if (final_binned_squared_yields_deriv_t_offset_->find(j->first) == final_binned_squared_yields_deriv_t_offset_->end()) {
+                (*final_binned_squared_yields_deriv_t_offset_)[j->first] = std::vector<double> (n_expectation_time_bins, 0.0);
+            }
 
             // now loop over the yields in every time bin and square
             for (size_t time_bin_it = 0; time_bin_it < this_event_binned_yields->at(j->first).size(); time_bin_it++){
@@ -416,6 +435,8 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
                 final_binned_squared_yields_deriv_tau_t_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_tau_t->at(j->first).at(time_bin_it), 2.0);
                 final_binned_yields_deriv_tau_TPB_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_tau_TPB->at(j->first).at(time_bin_it);
                 final_binned_squared_yields_deriv_tau_TPB_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_tau_TPB->at(j->first).at(time_bin_it), 2.0);
+                final_binned_yields_deriv_t_offset_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_t_offset->at(j->first).at(time_bin_it);
+                final_binned_squared_yields_deriv_t_offset_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_t_offset->at(j->first).at(time_bin_it), 2.0);
             }
         }
     }
@@ -426,7 +447,8 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
                            final_binned_yields_deriv_Rt_, final_binned_squared_yields_deriv_Rt_,
                            final_binned_yields_deriv_tau_s_, final_binned_squared_yields_deriv_tau_s_,
                            final_binned_yields_deriv_tau_t_, final_binned_squared_yields_deriv_tau_t_,
-                           final_binned_yields_deriv_tau_TPB_, final_binned_squared_yields_deriv_tau_TPB_);
+                           final_binned_yields_deriv_tau_TPB_, final_binned_squared_yields_deriv_tau_TPB_,
+                           final_binned_yields_deriv_t_offset_, final_binned_squared_yields_deriv_t_offset_);
 
 }
 
