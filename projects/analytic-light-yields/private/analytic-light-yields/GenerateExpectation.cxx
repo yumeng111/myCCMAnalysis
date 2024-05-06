@@ -46,7 +46,6 @@ GenerateExpectation::GenerateExpectation() {}
 void GenerateExpectation::GetSodiumVertices(size_t const & n_events_to_simulate, double const & z_position){
     sodium_events_constructor = new SodiumVertexDistribution();
     event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
-    std::cout << "in GenerateExpectation::GetSodiumVertices" << std::endl;
 }
 
 void GenerateExpectation::GetYieldsAndOffsets(I3FramePtr geo_frame, double const & uv_absorption){
@@ -56,7 +55,6 @@ void GenerateExpectation::GetYieldsAndOffsets(I3FramePtr geo_frame, double const
         boost::shared_ptr<PhotonYieldSummarySeriesMap> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), geo_frame, uv_absorption);
         yields_per_pmt_per_event.push_back(yields_per_event);
     }
-    std::cout << "in GenerateExpectation::GetYieldsAndOffsets" << std::endl;
 }
 
 I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_rec, double const & tau_TPB,
@@ -74,7 +72,6 @@ I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double con
     else {
         light_profile = LAr_scintillation_light_constructor->GetFullLightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB);
     }
-    std::cout << "in GenerateExpectation::LightProfile" << std::endl;
 
     return light_profile;
 }

@@ -42,9 +42,22 @@
 
 CalculateNLLH::CalculateNLLH() {}
 
+void CalculateNLLH::GrabData(I3FramePtr data_frame){
+
+    // grab our data out of the frame
+    data = data_frame->Get<I3MapPMTKeyVectorDouble>("AccumulatedEventsMap");
+    n_data_events = data_frame->Get<I3Double>("TotalEventsPastCuts").value;
+    std::cout << "n_data_events = " << n_data_events << std::endl;
+    grabbed_data = true;
+}
+
 I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                                                  boost::shared_ptr<I3MapPMTKeyDouble> nuisance_params, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
-                                                  double const & n_data_events, size_t time_bin_offset){
+                                                  std::vector<double> nuisance_params, I3FramePtr data_frame, size_t time_bin_offset){
+
+    // check to see if we've grabbed our data
+    if (grabbed_data == false){
+        GrabData(data_frame);
+    }
 
     // let's check to see if we've initialized our GenerateExpectation constructor
     if (gen_expectation == nullptr){
@@ -95,7 +108,7 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     double k;
     double DmuDtheta;
     double Dsigma_squaredDtheta;
-    
+
     double total_nllh = 0.0;
     double total_dRs = 0.0;
     double total_dRt = 0.0;
@@ -104,43 +117,40 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
     double total_dtau_TPB = 0.0;
 
     // let's also set up our vector for derivs of nuisance_params
-    I3Vector<double> nuisance_param_derivs;
-    for (I3MapPMTKeyDouble::const_iterator j = nuisance_params->begin(); j != nuisance_params->end(); j++) {
-        nuisance_param_derivs.push_back(0.0);
-    }
+    std::vector<double> nuisance_param_derivs(nuisance_params.size() , 0.0);
 
+    size_t nuisance_counter = 0;
     for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
         // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
         // now loop over the time bins in our pred
         for (size_t time_bin_it = llh_bins_from_start; time_bin_it < (total_llh_time_bins + llh_bins_from_start); time_bin_it++){
             corresponding_data_bin = time_bin_it + time_bin_offset;
-            k = data->at(i->first).at(corresponding_data_bin);
-            mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params->at(i->first);
-            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params->at(i->first), 2.0);
+            k = data.at(i->first).at(corresponding_data_bin);
+            mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
             // now let's get our derivs
-            DmuDtheta = pred_yields_Rs->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params->at(i->first);
-            Dsigma_squaredDtheta = pred_yields_squared_Rs->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params->at(i->first), 2.0);
+            DmuDtheta = pred_yields_Rs->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            Dsigma_squaredDtheta = pred_yields_squared_Rs->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_dRs += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_Rt->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params->at(i->first);
-            Dsigma_squaredDtheta = pred_yields_squared_Rt->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params->at(i->first), 2.0);
+            DmuDtheta = pred_yields_Rt->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            Dsigma_squaredDtheta = pred_yields_squared_Rt->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_dRt += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_tau_s->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params->at(i->first);
-            Dsigma_squaredDtheta = pred_yields_squared_tau_s->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params->at(i->first), 2.0);
+            DmuDtheta = pred_yields_tau_s->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            Dsigma_squaredDtheta = pred_yields_squared_tau_s->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_dtau_s += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_tau_t->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params->at(i->first);
-            Dsigma_squaredDtheta = pred_yields_squared_tau_t->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params->at(i->first), 2.0);
+            DmuDtheta = pred_yields_tau_t->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            Dsigma_squaredDtheta = pred_yields_squared_tau_t->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_dtau_t += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_tau_TPB->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params->at(i->first);
-            Dsigma_squaredDtheta = pred_yields_squared_tau_TPB->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params->at(i->first), 2.0);
+            DmuDtheta = pred_yields_tau_TPB->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            Dsigma_squaredDtheta = pred_yields_squared_tau_TPB->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_dtau_TPB += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
             // and can't forget about the nuissance params! luckily the derivs are easy
-            for (size_t k = 0; k < nuisance_param_derivs.size(); k++){
-                DmuDtheta = mu / nuisance_params->at(i->first);
-                Dsigma_squaredDtheta = 2 * nuisance_params->at(i->first) * pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events), 2.0);
-                nuisance_param_derivs.at(k) += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            }
+            DmuDtheta = mu / nuisance_params[nuisance_counter];
+            Dsigma_squaredDtheta = 2 * nuisance_params[nuisance_counter] * pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events), 2.0);
+            nuisance_param_derivs[nuisance_counter] += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
         }
+        nuisance_counter += 1;
     }
 
     // now make our vector to return everybody 
@@ -160,10 +170,13 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
 }
 
 
-double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_params, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
-                              double const & n_data_events, size_t time_bin_offset){
+double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, std::vector<double> nuisance_params, I3FramePtr data_frame, size_t time_bin_offset){
 
+    // check to see if we've grabbed our data
+    if (grabbed_data == false){
+        GrabData(data_frame);
+    }
+    
     // let's check to see if we've initialized our GenerateExpectation constructor
     if (gen_expectation == nullptr){
         gen_expectation = new GenerateExpectation();
@@ -192,16 +205,18 @@ double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_s
     double k;
     double total_nllh = 0.0;
 
+    size_t nuisance_counter = 0;
     for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
         // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
         // now loop over the time bins in our pred
         for (size_t time_bin_it = llh_bins_from_start; time_bin_it < (total_llh_time_bins + llh_bins_from_start); time_bin_it++){
             corresponding_data_bin = time_bin_it + time_bin_offset;
-            k = data->at(i->first).at(corresponding_data_bin);
-            mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params->at(i->first);
-            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events), 2.0);    
+            k = data.at(i->first).at(corresponding_data_bin);
+            mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
+            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
             total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
         }
+        nuisance_counter += 1;
     }
 
     return total_nllh;

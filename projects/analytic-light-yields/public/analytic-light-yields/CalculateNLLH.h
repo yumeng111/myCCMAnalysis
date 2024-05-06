@@ -20,6 +20,7 @@
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
 #include "dataclasses/I3Map.h"
+#include "dataclasses/I3Double.h"
 #include <analytic-light-yields/GenerateExpectation.h>
 
 namespace MCLLH {
@@ -275,14 +276,16 @@ struct computeLEff {
 
 class CalculateNLLH {
     GenerateExpectation* gen_expectation = nullptr;
+    I3MapPMTKeyVectorDouble data;
+    double n_data_events;
+    bool grabbed_data = false;
 
 public:
     CalculateNLLH();
+    void GrabData(I3FramePtr data_frame);
     double GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_params, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
-                              double const & n_data_events, size_t time_bin_offset);
+                   std::vector<double> nuisance_params, I3FramePtr data_frame, size_t time_bin_offset);
     I3Vector<double> GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                              boost::shared_ptr<I3MapPMTKeyDouble> nuisance_params, boost::shared_ptr<I3MapPMTKeyVectorDouble> data,
-                              double const & n_data_events, size_t time_bin_offset);
+                                       std::vector<double> nuisance_params, I3FramePtr data, size_t time_bin_offset);
 };
 #endif

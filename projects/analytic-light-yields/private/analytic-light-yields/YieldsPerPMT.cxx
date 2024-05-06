@@ -245,7 +245,6 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
-    std::cout << "in YieldsPerPMT::GetPMTInformation" << std::endl;
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
     I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo = geo.pmt_geo;
     I3Vector<double> this_pmt_loc;
@@ -356,7 +355,6 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
 }
 
 void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) {
-    std::cout << "in YieldsPerPMT::GetSecondaryLocs " << std::endl;
 
     // so we've parsed our pmt info, but now we need to get our secondary locations
     // let's start with chunking up the sides of the detector
@@ -853,7 +851,6 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
 
 boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, I3FramePtr geo_frame, double const & UV_absorption_length){
 
-    std::cout << "in YieldsPerPMT::GetAllYields " << std::endl;
     // so we have an event we want to simulate
     // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
 
