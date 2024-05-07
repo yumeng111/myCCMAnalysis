@@ -30,9 +30,17 @@
 
 class NumericalCheck {
     std::shared_ptr<LArScintillationLightProfile> LAr_scintillation_light_constructor = nullptr;
+    std::shared_ptr<CalculateNLLH> CalculateNLLH_constructor = nullptr;
+    std::vector<I3MapPMTKeyVectorDouble> dubug_info;
 public:
     NumericalCheck();
-    void CheckSimplifiedLightProfile(AnalyticLightYieldGenerator analytic_light_yield_setup);
+    void CheckSimplifiedLightProfile(AnalyticLightYieldGenerator analytic_light_yield_setup, double const & time_offset);
     void CheckNLLHDerivs(double const & k, double const & mu, double const & sigma_squared, double const & DmuDtheta, double const & Dsigma_squaredDtheta);
+    I3MapPMTKeyVectorDouble CheckData(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+                                                                     std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset);
+    I3MapPMTKeyVectorDouble CheckPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+                                                                     std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset);
+    I3MapPMTKeyVectorDouble CheckSigma2(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+                                                                     std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset);
 };
 #endif

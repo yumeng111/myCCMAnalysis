@@ -58,7 +58,7 @@ void GenerateExpectation::GetYieldsAndOffsets(I3FramePtr geo_frame, double const
 }
 
 I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_rec, double const & tau_TPB,
-                                       AnalyticLightYieldGenerator::LArLightProfileType const & light_profile_type){
+                                                    double const & t_offset, AnalyticLightYieldGenerator::LArLightProfileType const & light_profile_type){
 
     if (LAr_scintillation_light_constructor == nullptr){
         LAr_scintillation_light_constructor = std::make_shared<LArScintillationLightProfile> ();
@@ -67,30 +67,30 @@ I3Vector<double> GenerateExpectation::LightProfile(double const & Rs, double con
     I3Vector<double> light_profile;
 
     if (light_profile_type == AnalyticLightYieldGenerator::LArLightProfileType::Simplified){
-        light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB);
+        light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset);
     }
     else {
-        light_profile = LAr_scintillation_light_constructor->GetFullLightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB);
+        light_profile = LAr_scintillation_light_constructor->GetFullLightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, t_offset);
     }
 
     return light_profile;
 }
 
-I3Vector<double> GenerateExpectation::DLightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_TPB, std::string deriv_variable){
+I3Vector<double> GenerateExpectation::DLightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_TPB, 
+                                                    double const & t_offset, std::string deriv_variable){
 
     if (LAr_scintillation_light_constructor == nullptr){
         LAr_scintillation_light_constructor = std::make_shared<LArScintillationLightProfile> ();
     }
 
     I3Vector<double> light_profile;
-    light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, deriv_variable);
+    light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset, deriv_variable);
 
     return light_profile;
 }
 
 std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> GenerateExpectation::GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup,
-                                                                                                                                       I3FramePtr geo_frame){
-//boost::shared_ptr<I3MapPMTKeyVectorDouble> GenerateExpectation::GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame){
+                                                                                                                                       I3FramePtr geo_frame, double const & t_offset){
 
     // let's parse the info necessary to get our expectation
     double Rs = analytic_light_yield_setup.Rs;
@@ -116,7 +116,7 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
     }
 
     // now grab our light profile!
-    I3Vector<double> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_profile_type);
+    I3Vector<double> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, t_offset, light_profile_type);
 
     // so let's recap where we are
     // 1) we generated sodium event vertices
@@ -190,15 +190,13 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
 
             // now loop over the yields in every time bin and square
             for (size_t time_bin_it = 0; time_bin_it < this_event_binned_yields->at(j->first).size(); time_bin_it++){
-                final_binned_yields_->at(j->first).at(time_bin_it) += this_event_binned_yields->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields->at(j->first).at(time_bin_it), 2.0);
+                final_binned_yields_->at(j->first).at(time_bin_it) += (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin, 2.0);
             }
         }
     }
 
-
     return std::make_tuple(final_binned_yields_, final_binned_squared_yields_);
-    //return final_binned_yields_;
 
 }
 
@@ -210,7 +208,7 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
            boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
            boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
            boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>>
-           GenerateExpectation::GetExpectationWithDerivs(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame){
+           GenerateExpectation::GetExpectationWithDerivs(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, double const & t_offset){
 
     // let's parse the info necessary to get our expectation
     double Rs = analytic_light_yield_setup.Rs;
@@ -236,13 +234,13 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
     }
 
     // now grab our light profile!
-    I3Vector<double> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_profile_type);
-    I3Vector<double> DLAr_light_profile_dtau_s = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_s");
-    I3Vector<double> DLAr_light_profile_dtau_t = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_t");
-    I3Vector<double> DLAr_light_profile_dtau_TPB = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_TPB");
-    I3Vector<double> DLAr_light_profile_dRs = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "Rs");
-    I3Vector<double> DLAr_light_profile_dRt = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "Rt");
-    I3Vector<double> DLAr_light_profile_dt_offset = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, "t_offset");
+    I3Vector<double> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, t_offset, light_profile_type);
+    I3Vector<double> DLAr_light_profile_dtau_s = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset, "tau_s");
+    I3Vector<double> DLAr_light_profile_dtau_t = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset, "tau_t");
+    I3Vector<double> DLAr_light_profile_dtau_TPB = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset, "tau_TPB");
+    I3Vector<double> DLAr_light_profile_dRs = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset, "Rs");
+    I3Vector<double> DLAr_light_profile_dRt = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset, "Rt");
+    I3Vector<double> DLAr_light_profile_dt_offset = DLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, t_offset, "t_offset");
 
     // so let's recap where we are
     // 1) we generated sodium event vertices
@@ -421,22 +419,30 @@ std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPM
 
             // now loop over the yields in every time bin and square
             for (size_t time_bin_it = 0; time_bin_it < this_event_binned_yields->at(j->first).size(); time_bin_it++){
-                final_binned_yields_->at(j->first).at(time_bin_it) += this_event_binned_yields->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields->at(j->first).at(time_bin_it), 2.0);
+                final_binned_yields_->at(j->first).at(time_bin_it) += (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin, 2.0);
                 
                 // and for the derivs
-                final_binned_yields_deriv_Rs_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_Rs->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_deriv_Rs_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_Rs->at(j->first).at(time_bin_it), 2.0);
-                final_binned_yields_deriv_Rt_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_Rt->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_deriv_Rt_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_Rt->at(j->first).at(time_bin_it), 2.0);
-                final_binned_yields_deriv_tau_s_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_tau_s->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_deriv_tau_s_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_tau_s->at(j->first).at(time_bin_it), 2.0);
-                final_binned_yields_deriv_tau_t_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_tau_t->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_deriv_tau_t_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_tau_t->at(j->first).at(time_bin_it), 2.0);
-                final_binned_yields_deriv_tau_TPB_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_tau_TPB->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_deriv_tau_TPB_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_tau_TPB->at(j->first).at(time_bin_it), 2.0);
-                final_binned_yields_deriv_t_offset_->at(j->first).at(time_bin_it) += this_event_binned_yields_deriv_t_offset->at(j->first).at(time_bin_it);
-                final_binned_squared_yields_deriv_t_offset_->at(j->first).at(time_bin_it) += std::pow(this_event_binned_yields_deriv_t_offset->at(j->first).at(time_bin_it), 2.0);
+                // note -- dwdtheta = derivs we binned
+                // but dw2dtheta = 2 * w * dwdtheta
+                final_binned_yields_deriv_Rs_->at(j->first).at(time_bin_it) += (this_event_binned_yields_deriv_Rs->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_deriv_Rs_->at(j->first).at(time_bin_it) += 2.0 * (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin)
+                                                                                       * this_event_binned_yields_deriv_Rs->at(j->first).at(time_bin_it);
+                final_binned_yields_deriv_Rt_->at(j->first).at(time_bin_it) += (this_event_binned_yields_deriv_Rt->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_deriv_Rt_->at(j->first).at(time_bin_it) += 2.0 * (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin)
+                                                                                       * this_event_binned_yields_deriv_Rt->at(j->first).at(time_bin_it);
+                final_binned_yields_deriv_tau_s_->at(j->first).at(time_bin_it) += (this_event_binned_yields_deriv_tau_s->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_deriv_tau_s_->at(j->first).at(time_bin_it) += 2.0 * (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin)
+                                                                                        * this_event_binned_yields_deriv_tau_s->at(j->first).at(time_bin_it);
+                final_binned_yields_deriv_tau_t_->at(j->first).at(time_bin_it) += (this_event_binned_yields_deriv_tau_t->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_deriv_tau_t_->at(j->first).at(time_bin_it) += 2.0 * (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin)
+                                                                                          * this_event_binned_yields_deriv_tau_t->at(j->first).at(time_bin_it);
+                final_binned_yields_deriv_tau_TPB_->at(j->first).at(time_bin_it) += (this_event_binned_yields_deriv_tau_TPB->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_deriv_tau_TPB_->at(j->first).at(time_bin_it) += 2.0 * (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin)
+                                                                                            * this_event_binned_yields_deriv_tau_TPB->at(j->first).at(time_bin_it);
+                final_binned_yields_deriv_t_offset_->at(j->first).at(time_bin_it) += (this_event_binned_yields_deriv_t_offset->at(j->first).at(time_bin_it) + noise_rate_per_time_bin);
+                final_binned_squared_yields_deriv_t_offset_->at(j->first).at(time_bin_it) += 2.0 * (this_event_binned_yields->at(j->first).at(time_bin_it) + noise_rate_per_time_bin)
+                                                                                             * this_event_binned_yields_deriv_t_offset->at(j->first).at(time_bin_it);
             }
         }
     }

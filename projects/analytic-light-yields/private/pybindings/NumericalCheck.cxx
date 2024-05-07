@@ -45,6 +45,9 @@ void register_NumericalCheck() {
     class_<NumericalCheck, boost::noncopyable>("NumericalCheck")
         .def(init<>())
         .def("CheckSimplifiedLightProfile", &NumericalCheck::CheckSimplifiedLightProfile)
+        .def("CheckData", &NumericalCheck::CheckData)
+        .def("CheckPred", &NumericalCheck::CheckPred)
+        .def("CheckSigma2", &NumericalCheck::CheckSigma2)
         .def("CheckNLLHDerivs", &NumericalCheck::CheckNLLHDerivs);
 
 }

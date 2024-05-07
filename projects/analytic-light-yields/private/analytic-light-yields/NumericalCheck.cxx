@@ -43,7 +43,7 @@
 
 NumericalCheck::NumericalCheck() {}
 
-void NumericalCheck::CheckSimplifiedLightProfile(AnalyticLightYieldGenerator analytic_light_yield_setup){
+void NumericalCheck::CheckSimplifiedLightProfile(AnalyticLightYieldGenerator analytic_light_yield_setup, double const & time_offset){
     // given light parameters, print out times and values of our simplified light profile
     if (LAr_scintillation_light_constructor == nullptr){
         LAr_scintillation_light_constructor = std::make_shared<LArScintillationLightProfile> ();
@@ -58,7 +58,7 @@ void NumericalCheck::CheckSimplifiedLightProfile(AnalyticLightYieldGenerator ana
     std::cout << "getting light profile for Rs = " << Rs << ", Rt = " << Rt << ", tau_s = " << tau_s << ", tau_t = " << tau_t << ", and tau_TPB  = " << tau_TPB << std::endl;
 
     I3Vector<double> light_profile;
-    light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB);
+    light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, time_offset);
    
     // copying over time binning from LArScintillationLightProfile 
     double start_time = 0.0;
@@ -72,17 +72,17 @@ void NumericalCheck::CheckSimplifiedLightProfile(AnalyticLightYieldGenerator ana
 
     // now let's also check our derivatives 
     I3Vector<double> light_profile_derivRs;
-    light_profile_derivRs = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "Rs");
+    light_profile_derivRs = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, time_offset, "Rs");
     I3Vector<double> light_profile_derivRt;
-    light_profile_derivRt = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "Rt");
+    light_profile_derivRt = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, time_offset, "Rt");
     I3Vector<double> light_profile_derivtau_s;
-    light_profile_derivtau_s = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_s");
+    light_profile_derivtau_s = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, time_offset, "tau_s");
     I3Vector<double> light_profile_derivtau_t;
-    light_profile_derivtau_t = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_t");
+    light_profile_derivtau_t = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, time_offset, "tau_t");
     I3Vector<double> light_profile_derivtau_TPB;
-    light_profile_derivtau_TPB = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_TPB");
+    light_profile_derivtau_TPB = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, time_offset, "tau_TPB");
     I3Vector<double> light_profile_derivt_offset;
-    light_profile_derivt_offset = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "t_offset");
+    light_profile_derivt_offset = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, time_offset, "t_offset");
 
     std::cout << "and now for derivatives : " << std::endl;
     for (size_t i = 0; i < n_time_bins; i++){
@@ -106,5 +106,37 @@ void NumericalCheck::CheckNLLHDerivs(double const & k, double const & mu, double
     std::cout << "nllh = " << nllh << " and gradient = " << deriv << std::endl;
 }
 
+I3MapPMTKeyVectorDouble NumericalCheck::CheckData(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+                                                               std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset){
 
+    if (CalculateNLLH_constructor == nullptr){
+        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
+    }
+
+    // let's grab our nllh
+    dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, nuisance_params, keys_to_ignore, data_frame, time_offset);
+    return dubug_info[0]; 
+}
+
+I3MapPMTKeyVectorDouble NumericalCheck::CheckPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+                                                               std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset){
+
+    if (CalculateNLLH_constructor == nullptr){
+        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
+        dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, nuisance_params, keys_to_ignore, data_frame, time_offset);
+    }
+    
+    return dubug_info[1]; 
+}
+
+
+I3MapPMTKeyVectorDouble NumericalCheck::CheckSigma2(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+                                                               std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset){
+    if (CalculateNLLH_constructor == nullptr){
+        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
+        dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, nuisance_params, keys_to_ignore, data_frame, time_offset);
+    }
+    
+    return dubug_info[2]; 
+}
 

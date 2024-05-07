@@ -51,9 +51,207 @@ void CalculateNLLH::GrabData(I3FramePtr data_frame){
     grabbed_data = true;
 }
 
-I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                                                  std::vector<double> nuisance_params, I3FramePtr data_frame, size_t time_bin_offset){
+I3MapPMTKeyDouble GetPeakBin(boost::shared_ptr<I3MapPMTKeyVectorDouble> data){
 
+    // ok let's get peak bin in data
+    I3MapPMTKeyDouble data_peak_bins;
+    for (I3MapPMTKeyVectorDouble::const_iterator i = data->begin(); i != data->end(); i++) {
+        size_t peak_bin;
+        double peak_val = 0.0;
+        std::vector<double> this_pmt_data = i->second;
+        
+        // now loop over wf in this pmt
+        for (size_t j = 0; j < this_pmt_data.size(); j++){
+            if (this_pmt_data.at(j) > peak_val){
+                peak_val = this_pmt_data.at(j);
+                peak_bin = j;
+            }
+        }
+
+        // now save
+        data_peak_bins[i->first] = peak_bin;
+    }
+
+    return data_peak_bins;
+}
+
+I3MapPMTKeyDouble GetPeakBin(I3MapPMTKeyVectorDouble data){
+
+    // ok let's get peak bin in data
+    I3MapPMTKeyDouble data_peak_bins;
+    for (I3MapPMTKeyVectorDouble::const_iterator i = data.begin(); i != data.end(); i++) {
+        size_t peak_bin;
+        double peak_val = 0.0;
+        std::vector<double> this_pmt_data = i->second;
+        
+        // now loop over wf in this pmt
+        for (size_t j = 0; j < this_pmt_data.size(); j++){
+            if (this_pmt_data.at(j) > peak_val){
+                peak_val = this_pmt_data.at(j);
+                peak_bin = j;
+            }
+        }
+
+        // now save
+        data_peak_bins[i->first] = peak_bin;
+    }
+
+    return data_peak_bins;
+}
+
+I3MapPMTKeyDouble PinNuisance(boost::shared_ptr<I3MapPMTKeyVectorDouble> pred, I3MapPMTKeyVectorDouble data){
+
+    // ok let's get peak height in data and pred for each pmt, then figure out scaling factor to make them match 
+    I3MapPMTKeyDouble data_peak_height;
+    I3MapPMTKeyDouble pred_peak_height;
+
+    for (I3MapPMTKeyVectorDouble::const_iterator i = pred->begin(); i != pred->end(); i++) {
+        double pred_peak_val = 0.0;
+        std::vector<double> this_pmt_pred = i->second;
+        
+        // now loop over wf in this pmt
+        for (size_t j = 0; j < this_pmt_pred.size(); j++){
+            if (this_pmt_pred.at(j) > pred_peak_val){
+                pred_peak_val = this_pmt_pred.at(j);
+            }
+        }
+
+        // now save
+        pred_peak_height[i->first] = pred_peak_val;
+    }
+    
+    for (I3MapPMTKeyVectorDouble::const_iterator i = data.begin(); i != data.end(); i++) {
+        double data_peak_val = 0.0;
+        std::vector<double> this_pmt_data = i->second;
+        
+        // now loop over wf in this pmt
+        for (size_t j = 0; j < this_pmt_data.size(); j++){
+            if (this_pmt_data.at(j) > data_peak_val){
+                data_peak_val = this_pmt_data.at(j);
+            }
+        }
+
+        // now save
+        data_peak_height[i->first] = data_peak_val;
+    }
+
+    // now make our scaling map
+    I3MapPMTKeyDouble scaling;
+    for (I3MapPMTKeyDouble::const_iterator j = data_peak_height.begin(); j != data_peak_height.end(); j++){
+        double this_scaling_factor = (j->second / pred_peak_height[j->first]);
+        scaling[j->first] = this_scaling_factor;
+    }
+
+
+    return scaling;
+}
+
+std::vector<I3MapPMTKeyVectorDouble> CalculateNLLH::DebugDatavsPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
+                                                                    std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore,
+                                                                    I3FramePtr data_frame, double const & time_offset){
+    //// check to see if we've grabbed our data
+    //if (grabbed_data == false){
+    //    GrabData(data_frame);
+    //}
+
+    //// let's check to see if we've initialized our GenerateExpectation constructor
+    //if (gen_expectation == nullptr){
+    //    gen_expectation = std::make_shared<GenerateExpectation> ();
+    //}
+    //// let's grab our expectation
+    //std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectation(analytic_light_yield_setup, geo_frame, time_offset);
+
+    //// unpack into yields and yields^2
+    //boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    //boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_squared = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+    //std::tie(pred_yields, pred_yields_squared) = pred;
+    //
+    //// and grab number of simulation events
+    //double n_simulation_events = analytic_light_yield_setup.n_sodium_events;
+   
+    //// let grab our peak bins in data and in pred
+    //I3MapPMTKeyDouble data_peak_bins = GetPeakBin(data);
+    //I3MapPMTKeyDouble pred_peak_bins = GetPeakBin(pred_yields);
+
+    //// let's also grab the nuissance params...pin them so they scale data and pred peaks to be at the same height
+    //I3MapPMTKeyDouble pinned_nuissance = PinNuisance(pred_yields, data);
+
+    //// for every pmt, we want to align data and pred on the peak bins
+    //// let's also grab the smallest pred peak bin to make sure we are not going too far to the left of the peaks
+    //size_t closest_pred_peak_bin = 3;
+    //for (I3MapPMTKeyDouble::const_iterator i = pred_peak_bins.begin(); i != pred_peak_bins.end(); i++) {
+    //    if (i->second < closest_pred_peak_bin){
+    //        closest_pred_peak_bin = i->second;
+    //    }
+    //}
+
+    //// ok so we have data and we have prediction
+    //// before we can calculate our LLH, we need to figure our the timing
+
+    //size_t llh_bins_from_peak = closest_pred_peak_bin;
+    //size_t total_llh_time_bins = 100;
+
+    //size_t corresponding_data_bin;
+    //double mu;
+    //double sigma_squared;
+    //double k;
+
+    //double total_nllh = 0.0;
+
+    //for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
+    //    // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
+    //    // now loop over the time bins in our pred
+    //    // let's first see if this is a pmt to ignore
+    //    bool ignore = false;
+    //    for (size_t pmt_it = 0; pmt_it < keys_to_ignore.size(); pmt_it ++){
+    //        if (keys_to_ignore.at(pmt_it) == i->first){
+    //            ignore = true;
+    //        }
+    //    }
+    //    if (ignore){
+    //        continue;
+    //    }
+    //    for (size_t time_bin_it = (pred_peak_bins[i->first] - llh_bins_from_peak); time_bin_it < (pred_peak_bins[i->first] - llh_bins_from_peak + total_llh_time_bins); time_bin_it++){
+    //        corresponding_data_bin = data_peak_bins[i->first] - llh_bins_from_peak + (time_bin_it - (pred_peak_bins[i->first] - llh_bins_from_peak)); 
+    //        k = data.at(i->first).at(corresponding_data_bin);
+    //        mu = (i->second).at(time_bin_it) * pinned_nuissance[i->first]; 
+    //        sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
+    //        total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+    //        
+    //        // save some things for debugging
+    //        // add this key to our maps between data and pred for debugging
+    //        if (debug_data.find(i->first) == debug_data.end()) {
+    //            debug_data[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
+    //        }
+    //        if (debug_pred.find(i->first) == debug_pred.end()) {
+    //            debug_pred[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
+    //        }
+    //        if (debug_sigma2.find(i->first) == debug_sigma2.end()) {
+    //            debug_sigma2[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
+    //        }
+
+    //        // now save our data and pred
+    //        debug_data.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = k;
+    //        debug_pred.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = mu;
+    //        debug_sigma2.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = sigma_squared;
+    //    }
+    //}
+
+    I3Vector<double> nllh;
+    nllh =  GetNLLHDerivative(analytic_light_yield_setup, geo_frame, nuisance_params, data_frame, time_offset, keys_to_ignore);
+
+
+    std::vector<I3MapPMTKeyVectorDouble> final_debug_info;
+    final_debug_info.push_back(debug_data);
+    final_debug_info.push_back(debug_pred);
+    final_debug_info.push_back(debug_sigma2);
+    return final_debug_info;
+
+}
+
+I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
+                                                  std::vector<double> nuisance_params, I3FramePtr data_frame, double const & time_offset,
+                                                  std::vector<CCMPMTKey> keys_to_ignore){
     // check to see if we've grabbed our data
     if (grabbed_data == false){
         GrabData(data_frame);
@@ -70,7 +268,7 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
-               boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectationWithDerivs(analytic_light_yield_setup, geo_frame);
+               boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectationWithDerivs(analytic_light_yield_setup, geo_frame, time_offset);
     // unpack into yields and yields^2
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields = boost::make_shared<I3MapPMTKeyVectorDouble> ();
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_squared = boost::make_shared<I3MapPMTKeyVectorDouble> ();
@@ -97,16 +295,28 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
 
     // and grab number of simulation events
     double n_simulation_events = analytic_light_yield_setup.n_sodium_events;
+    
+    // let grab our peak bins in data and in pred
+    I3MapPMTKeyDouble data_peak_bins = GetPeakBin(data);
+    I3MapPMTKeyDouble pred_peak_bins = GetPeakBin(pred_yields);
+
+    // let's also grab the nuissance params...pin them so they scale data and pred peaks to be at the same height
+    I3MapPMTKeyDouble pinned_nuissance = PinNuisance(pred_yields, data);
+
+    // for every pmt, we want to align data and pred on the peak bins
+    // let's also grab the smallest pred peak bin to make sure we are not going too far to the left of the peaks
+    size_t closest_pred_peak_bin = 3;
+    for (I3MapPMTKeyDouble::const_iterator i = pred_peak_bins.begin(); i != pred_peak_bins.end(); i++) {
+        if (i->second < closest_pred_peak_bin){
+            closest_pred_peak_bin = i->second;
+        }
+    }
 
     // ok so we have data and we have prediction
     // before we can calculate our LLH, we need to figure our the timing
-    // let's try aligning on event start time but allowing a time offset to float
-    // then we will calculate our llh from 6nsec after event start until 70nsec after event start
-
-    size_t llh_bins_from_start = 3;
-    size_t total_llh_time_bins = 35;
-    size_t data_event_start_bin = 50; // note -- this is a artefact of how i am accumulating data
-    size_t data_llh_start_bin = data_event_start_bin + llh_bins_from_start;
+    
+    size_t llh_bins_from_peak = closest_pred_peak_bin;
+    size_t total_llh_time_bins = 100;
 
     size_t corresponding_data_bin;
     double mu;
@@ -124,45 +334,70 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
 
     // let's also set up our vector for derivs of nuisance_params
     std::vector<double> nuisance_param_derivs(nuisance_params.size(), 0.0);
-
     double total_dtoffest = 0.0;
 
     size_t nuisance_counter = 0;
     for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
         // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
         // now loop over the time bins in our pred
-        size_t data_time_bin_it = 0;
-        for (size_t time_bin_it = (time_bin_offset + llh_bins_from_start); time_bin_it < (time_bin_offset + llh_bins_from_start + total_llh_time_bins); time_bin_it++){
-            corresponding_data_bin = data_llh_start_bin + data_time_bin_it;
+        // let's first see if this is a pmt to ignore
+        bool ignore = false;
+        for (size_t pmt_it = 0; pmt_it < keys_to_ignore.size(); pmt_it ++){
+            if (keys_to_ignore.at(pmt_it) == i->first){
+                ignore = true;
+            }
+        }
+        if (ignore){
+            continue;
+        }
+        for (size_t time_bin_it = (pred_peak_bins[i->first] - llh_bins_from_peak); time_bin_it < (pred_peak_bins[i->first] - llh_bins_from_peak + total_llh_time_bins); time_bin_it++){
+            corresponding_data_bin = data_peak_bins[i->first] - llh_bins_from_peak + (time_bin_it - (pred_peak_bins[i->first] - llh_bins_from_peak)); 
             k = data.at(i->first).at(corresponding_data_bin);
-            mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            mu = (i->second).at(time_bin_it) * pinned_nuissance[i->first]; 
+            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+
             // now let's get our derivs
-            DmuDtheta = pred_yields_Rs->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            Dsigma_squaredDtheta = pred_yields_squared_Rs->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            DmuDtheta = pred_yields_Rs->at(i->first).at(time_bin_it) * pinned_nuissance[i->first];
+            Dsigma_squaredDtheta = pred_yields_squared_Rs->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_dRs += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_Rt->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            Dsigma_squaredDtheta = pred_yields_squared_Rt->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            DmuDtheta = pred_yields_Rt->at(i->first).at(time_bin_it) * pinned_nuissance[i->first];
+            Dsigma_squaredDtheta = pred_yields_squared_Rt->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_dRt += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_tau_s->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            Dsigma_squaredDtheta = pred_yields_squared_tau_s->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            DmuDtheta = pred_yields_tau_s->at(i->first).at(time_bin_it) * pinned_nuissance[i->first];
+            Dsigma_squaredDtheta = pred_yields_squared_tau_s->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_dtau_s += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_tau_t->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            Dsigma_squaredDtheta = pred_yields_squared_tau_t->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            DmuDtheta = pred_yields_tau_t->at(i->first).at(time_bin_it) * pinned_nuissance[i->first];
+            Dsigma_squaredDtheta = pred_yields_squared_tau_t->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_dtau_t += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            DmuDtheta = pred_yields_tau_TPB->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            Dsigma_squaredDtheta = pred_yields_squared_tau_TPB->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            DmuDtheta = pred_yields_tau_TPB->at(i->first).at(time_bin_it) * pinned_nuissance[i->first];
+            Dsigma_squaredDtheta = pred_yields_squared_tau_TPB->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_dtau_TPB += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
             // and can't forget about the nuissance params! luckily the derivs are easy
-            DmuDtheta = mu / nuisance_params[nuisance_counter];
-            Dsigma_squaredDtheta = 2 * nuisance_params[nuisance_counter] * pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events), 2.0);
+            DmuDtheta = mu / pinned_nuissance[i->first];
+            Dsigma_squaredDtheta = 2 * pinned_nuissance[i->first] * pred_yields_squared->at(i->first).at(time_bin_it);
             nuisance_param_derivs[nuisance_counter] += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
             // and our time offset!
-            DmuDtheta = pred_yields_t_offset->at(i->first).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            Dsigma_squaredDtheta = pred_yields_squared_t_offset->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            DmuDtheta = pred_yields_t_offset->at(i->first).at(time_bin_it) * pinned_nuissance[i->first];
+            Dsigma_squaredDtheta = pred_yields_squared_t_offset->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_dtoffest += MCLLH::LEffDeriv()(k, mu, sigma_squared, DmuDtheta, Dsigma_squaredDtheta);
-            data_time_bin_it += 1;
+            
+            // save some things for debugging
+            // add this key to our maps between data and pred for debugging
+            if (debug_data.find(i->first) == debug_data.end()) {
+                debug_data[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
+            }
+            if (debug_pred.find(i->first) == debug_pred.end()) {
+                debug_pred[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
+            }
+            if (debug_sigma2.find(i->first) == debug_sigma2.end()) {
+                debug_sigma2[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
+            }
+
+            // now save our data and pred
+            debug_data.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = k;
+            debug_pred.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = mu;
+            debug_sigma2.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = sigma_squared;
         }
         nuisance_counter += 1;
     }
@@ -185,19 +420,22 @@ I3Vector<double> CalculateNLLH::GetNLLHDerivative(AnalyticLightYieldGenerator an
 }
 
 
-double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, std::vector<double> nuisance_params, I3FramePtr data_frame, size_t time_bin_offset){
+
+double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, std::vector<double> nuisance_params,
+                              std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset){
 
     // check to see if we've grabbed our data
     if (grabbed_data == false){
         GrabData(data_frame);
     }
-    
+
     // let's check to see if we've initialized our GenerateExpectation constructor
     if (gen_expectation == nullptr){
         gen_expectation = std::make_shared<GenerateExpectation> ();
     }
     // let's grab our expectation
-    std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectation(analytic_light_yield_setup, geo_frame);
+    std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>> pred = gen_expectation->GetExpectation(analytic_light_yield_setup, geo_frame, time_offset);
+
     // unpack into yields and yields^2
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields = boost::make_shared<I3MapPMTKeyVectorDouble> ();
     boost::shared_ptr<I3MapPMTKeyVectorDouble> pred_yields_squared = boost::make_shared<I3MapPMTKeyVectorDouble> ();
@@ -205,33 +443,56 @@ double CalculateNLLH::GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_s
 
     // and grab number of simulation events
     double n_simulation_events = analytic_light_yield_setup.n_sodium_events;
+   
+    // let grab our peak bins in data and in pred
+    I3MapPMTKeyDouble data_peak_bins = GetPeakBin(data);
+    I3MapPMTKeyDouble pred_peak_bins = GetPeakBin(pred_yields);
+
+    // let's also grab the nuissance params...pin them so they scale data and pred peaks to be at the same height
+    I3MapPMTKeyDouble pinned_nuissance = PinNuisance(pred_yields, data);
+
+    // for every pmt, we want to align data and pred on the peak bins
+    // let's also grab the smallest pred peak bin to make sure we are not going too far to the left of the peaks
+    size_t closest_pred_peak_bin = 3;
+    for (I3MapPMTKeyDouble::const_iterator i = pred_peak_bins.begin(); i != pred_peak_bins.end(); i++) {
+        if (i->second < closest_pred_peak_bin){
+            closest_pred_peak_bin = i->second;
+        }
+    }
 
     // ok so we have data and we have prediction
     // before we can calculate our LLH, we need to figure our the timing
-    // let's try aligning on event start time but allowing a time offset to float
-    // then we will calculate our llh from 6nsec after event start until 70nsec after event start
 
-    size_t llh_bins_from_start = 5;
-    size_t total_llh_time_bins = 35;
+    size_t llh_bins_from_peak = closest_pred_peak_bin;
+    size_t total_llh_time_bins = 100;
 
     size_t corresponding_data_bin;
     double mu;
     double sigma_squared;
     double k;
+
     double total_nllh = 0.0;
 
-    size_t nuisance_counter = 0;
     for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
         // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
         // now loop over the time bins in our pred
-        for (size_t time_bin_it = llh_bins_from_start; time_bin_it < (total_llh_time_bins + llh_bins_from_start); time_bin_it++){
-            corresponding_data_bin = time_bin_it + time_bin_offset;
+        // let's first see if this is a pmt to ignore
+        bool ignore = false;
+        for (size_t pmt_it = 0; pmt_it < keys_to_ignore.size(); pmt_it ++){
+            if (keys_to_ignore.at(pmt_it) == i->first){
+                ignore = true;
+            }
+        }
+        if (ignore){
+            continue;
+        }
+        for (size_t time_bin_it = (pred_peak_bins[i->first] - llh_bins_from_peak); time_bin_it < (pred_peak_bins[i->first] - llh_bins_from_peak + total_llh_time_bins); time_bin_it++){
+            corresponding_data_bin = data_peak_bins[i->first] - llh_bins_from_peak + (time_bin_it - (pred_peak_bins[i->first] - llh_bins_from_peak)); 
             k = data.at(i->first).at(corresponding_data_bin);
-            mu = (i->second).at(time_bin_it) * (n_data_events / n_simulation_events) * nuisance_params[nuisance_counter];
-            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow((n_data_events / n_simulation_events) * nuisance_params[nuisance_counter], 2.0);
+            mu = (i->second).at(time_bin_it) * pinned_nuissance[i->first]; 
+            sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
             total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
         }
-        nuisance_counter += 1;
     }
 
     return total_nllh;

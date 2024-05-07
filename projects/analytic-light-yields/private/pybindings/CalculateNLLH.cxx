@@ -46,6 +46,7 @@ void register_CalculateNLLH() {
         .def(init<>())
         .def("GrabData", &CalculateNLLH::GrabData)
         .def("GetNLLH", &CalculateNLLH::GetNLLH)
+        .def("DebugDatavsPred", &CalculateNLLH::DebugDatavsPred)
         .def("GetNLLHDerivative", &CalculateNLLH::GetNLLHDerivative);
 
 }

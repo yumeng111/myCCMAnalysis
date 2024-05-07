@@ -55,6 +55,7 @@ void get_total_light_profile(double const & R_s,
                             double const & tau_t,
                             double const & tau_rec,
                             double const & tau_TPB,
+                            double const & t_offset,
                             std::vector<double> const & times,
                             std::vector<double> & final_light_profile) {
 
@@ -67,7 +68,7 @@ void get_total_light_profile(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_singlet = std::exp(-t / tau_s);
         double exp_triplet = std::exp(-t / tau_t);
         double exp_recombination = std::exp(-(t+tau_rec) / tau_TPB);
@@ -89,6 +90,7 @@ void get_light_profile_no_recombination(double const & R_s,
                                         double const & tau_s,
                                         double const & tau_t,
                                         double const & tau_TPB,
+                                        double const & t_offset,
                                         std::vector<double> const & times,
                                         std::vector<double> & final_light_profile) {
 
@@ -98,7 +100,7 @@ void get_light_profile_no_recombination(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_singlet = std::exp(-t / tau_s);
         double exp_triplet = std::exp(-t / tau_t);
         double exp_prompt_TPB = std::exp(-t / tau_TPB);
@@ -117,6 +119,7 @@ void D_light_profile_no_recombination_dtau_s(double const & R_s,
                                             double const & tau_s,
                                             double const & tau_t,
                                             double const & tau_TPB,
+                                            double const & t_offset,
                                             std::vector<double> const & times,
                                             std::vector<double> & final_light_profile) {
 
@@ -126,7 +129,7 @@ void D_light_profile_no_recombination_dtau_s(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_singlet = std::exp(-t / tau_s);
         double exp_prompt_TPB = std::exp(-t / tau_TPB);
 
@@ -144,6 +147,7 @@ void D_light_profile_no_recombination_dtau_t(double const & R_s,
                                             double const & tau_s,
                                             double const & tau_t,
                                             double const & tau_TPB,
+                                            double const & t_offset,
                                             std::vector<double> const & times,
                                             std::vector<double> & final_light_profile) {
 
@@ -153,7 +157,7 @@ void D_light_profile_no_recombination_dtau_t(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_triplet = std::exp(-t / tau_t);
         double exp_prompt_TPB = std::exp(-t / tau_TPB);
 
@@ -171,6 +175,7 @@ void D_light_profile_no_recombination_dtau_TPB(double const & R_s,
                                             double const & tau_s,
                                             double const & tau_t,
                                             double const & tau_TPB,
+                                            double const & t_offset,
                                             std::vector<double> const & times,
                                             std::vector<double> & final_light_profile) {
 
@@ -182,7 +187,7 @@ void D_light_profile_no_recombination_dtau_TPB(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_singlet = std::exp(-t / tau_s);
         double exp_triplet = std::exp(-t / tau_t);
         double exp_prompt_TPB = std::exp(-t / tau_TPB);
@@ -203,6 +208,7 @@ void D_light_profile_no_recombination_dR_s(double const & R_s,
                                             double const & tau_s,
                                             double const & tau_t,
                                             double const & tau_TPB,
+                                            double const & t_offset,
                                             std::vector<double> const & times,
                                             std::vector<double> & final_light_profile) {
 
@@ -211,7 +217,7 @@ void D_light_profile_no_recombination_dR_s(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_singlet = std::exp(-t / tau_s);
         double exp_prompt_TPB = std::exp(-t / tau_TPB);
 
@@ -228,6 +234,7 @@ void D_light_profile_no_recombination_dR_t(double const & R_s,
                                             double const & tau_s,
                                             double const & tau_t,
                                             double const & tau_TPB,
+                                            double const & t_offset,
                                             std::vector<double> const & times,
                                             std::vector<double> & final_light_profile) {
 
@@ -236,7 +243,7 @@ void D_light_profile_no_recombination_dR_t(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_triplet = std::exp(-t / tau_t);
         double exp_prompt_TPB = std::exp(-t / tau_TPB);
 
@@ -253,6 +260,7 @@ void D_light_profile_no_recombination_dtoffset(double const & R_s,
                                                double const & tau_s,
                                                double const & tau_t,
                                                double const & tau_TPB,
+                                               double const & t_offset,
                                                std::vector<double> const & times,
                                                std::vector<double> & final_light_profile) {
 
@@ -262,7 +270,7 @@ void D_light_profile_no_recombination_dtoffset(double const & R_s,
 
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
-        double const & t = times.at(time_it);
+        double const & t = times.at(time_it) - t_offset;
         double exp_singlet = std::exp(-t / tau_s);
         double exp_triplet = std::exp(-t / tau_t);
         double exp_prompt_TPB = std::exp(-t / tau_TPB);
@@ -283,11 +291,12 @@ I3Vector<double> LArScintillationLightProfile::GetFullLightProfile(double const 
                                                                    double const & singlet_tau,
                                                                    double const & triplet_tau,
                                                                    double const & recombination_tau,
-                                                                   double const & TPB_tau) {
+                                                                   double const & TPB_tau,
+                                                                   double const & t_offset){
 
     // let's set up our light profile
     double start_time = 0.0;
-    double end_time = 100.0;
+    double end_time = 250.0;
     double bin_width = 2.0;
     size_t n_time_bins = (size_t)((end_time - start_time)/bin_width);
 
@@ -305,6 +314,7 @@ I3Vector<double> LArScintillationLightProfile::GetFullLightProfile(double const 
                             triplet_tau,
                             recombination_tau,
                             TPB_tau,
+                            t_offset,
                             times,
                             light_profile);
 
@@ -315,11 +325,12 @@ I3Vector<double> LArScintillationLightProfile::GetSimplifiedLightProfile(double 
                                                                          double const & triplet_ratio,
                                                                          double const & singlet_tau,
                                                                          double const & triplet_tau,
-                                                                         double const & TPB_tau) {
+                                                                         double const & TPB_tau,
+                                                                         double const & t_offset){
 
     // let's set up our light profile
     double start_time = 0.0;
-    double end_time = 100.0;
+    double end_time = 250.0;
     double bin_width = 2.0;
     size_t n_time_bins = (size_t)((end_time - start_time)/bin_width);
 
@@ -336,6 +347,7 @@ I3Vector<double> LArScintillationLightProfile::GetSimplifiedLightProfile(double 
                                        singlet_tau,
                                        triplet_tau,
                                        TPB_tau,
+                                       t_offset,
                                        times,
                                        light_profile);
 
@@ -347,11 +359,12 @@ I3Vector<double> LArScintillationLightProfile::GetSimplifiedLightProfileDeriv(do
                                                                               double const & singlet_tau,
                                                                               double const & triplet_tau,
                                                                               double const & TPB_tau,
+                                                                              double const & t_offset,
                                                                               std::string deriv_variable) {
 
     // let's set up our light profile
     double start_time = 0.0;
-    double end_time = 100.0;
+    double end_time = 250.0;
     double bin_width = 2.0;
     size_t n_time_bins = (size_t)((end_time - start_time)/bin_width);
 
@@ -364,22 +377,22 @@ I3Vector<double> LArScintillationLightProfile::GetSimplifiedLightProfileDeriv(do
     // now let's get out light profile
     I3Vector<double> light_profile(n_time_bins);
     if (deriv_variable == "Rs"){
-        D_light_profile_no_recombination_dR_s(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
+        D_light_profile_no_recombination_dR_s(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, t_offset, times, light_profile);
     }
     else if (deriv_variable == "Rt"){
-        D_light_profile_no_recombination_dR_t(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
+        D_light_profile_no_recombination_dR_t(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, t_offset, times, light_profile);
     }
     else if (deriv_variable == "tau_s"){
-        D_light_profile_no_recombination_dtau_s(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
+        D_light_profile_no_recombination_dtau_s(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, t_offset, times, light_profile);
     }
     else if (deriv_variable == "tau_t"){
-        D_light_profile_no_recombination_dtau_t(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
+        D_light_profile_no_recombination_dtau_t(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, t_offset, times, light_profile);
     }
     else if (deriv_variable == "tau_TPB"){
-        D_light_profile_no_recombination_dtau_TPB(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
+        D_light_profile_no_recombination_dtau_TPB(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, t_offset, times, light_profile);
     }
     else if (deriv_variable == "t_offset"){
-        D_light_profile_no_recombination_dtoffset(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, times, light_profile);
+        D_light_profile_no_recombination_dtoffset(singlet_ratio, triplet_ratio, singlet_tau, triplet_tau, TPB_tau, t_offset, times, light_profile);
     }
 
     return light_profile;
