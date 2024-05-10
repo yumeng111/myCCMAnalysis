@@ -22,10 +22,10 @@ class LArScintillationLightProfile {
 public:
     LArScintillationLightProfile();
     I3Vector<double> GetFullLightProfile(double const & singlet_ratio, double const & triplet_ratio, double const & singlet_tau,
-                                         double const & triplet_tau, double const & recombination_tau, double const & TPB_tau, double const & time_offset);
+                                         double const & triplet_tau, double const & recombination_tau, double const & TPB_tau, double light_time_offset);
     I3Vector<double> GetSimplifiedLightProfile(double const & singlet_ratio, double const & triplet_ratio, double const & singlet_tau,
-                                         double const & triplet_tau, double const & TPB_tau, double const & time_offset);
+                                         double const & triplet_tau, double const & TPB_tau, double light_time_offset);
     I3Vector<double> GetSimplifiedLightProfileDeriv(double const & singlet_ratio, double const & triplet_ratio, double const & singlet_tau,
-                                                    double const & triplet_tau, double const & TPB_tau, double const & time_offset, std::string deriv_variable);
+                                                    double const & triplet_tau, double const & TPB_tau, std::string deriv_variable, double light_time_offset);
 };
 #endif

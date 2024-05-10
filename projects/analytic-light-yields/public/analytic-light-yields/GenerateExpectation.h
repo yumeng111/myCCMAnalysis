@@ -41,7 +41,7 @@ class GenerateExpectation {
 
     boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
     std::vector<boost::shared_ptr<PhotonYieldSummarySeriesMap>> yields_per_pmt_per_event;
-    
+
     // let's also add small noise to every bin
     double noise_photons = 1.0;
     double noise_triggers = 5.0;
@@ -52,13 +52,12 @@ class GenerateExpectation {
 public:
     GenerateExpectation();
     void GetSodiumVertices(size_t const & n_events_to_simulate, double const & z_position);
-    void GetYieldsAndOffsets(I3FramePtr geo_frame, double const & uv_absorption);
-    I3Vector<double> LightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_rec, double const & tau_TPB, double const & time_offset,
-                                       AnalyticLightYieldGenerator::LArLightProfileType const & light_profile_type);
-    I3Vector<double> DLightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_TPB, double const & time_offset, std::string deriv_variable);
+    void GetYieldsAndOffsets(I3FramePtr geo_frame, double const & uv_absorption, std::vector<CCMPMTKey> keys_to_fit);
+    I3Vector<double> LightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_rec, double const & tau_TPB,
+                                       AnalyticLightYieldGenerator::LArLightProfileType const & light_profile_type, double light_time_offset);
+    I3Vector<double> DLightProfile(double const & Rs, double const & Rt, double const & tau_s, double const & tau_t, double const & tau_TPB, std::string deriv_variable, double light_time_offset);
     std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>,boost::shared_ptr<I3MapPMTKeyVectorDouble>> GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup,
-                                                                                                      I3FramePtr geo_frame, double const & time_offset);
-    //boost::shared_ptr<I3MapPMTKeyVectorDouble> GetExpectation(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame);
+                                                                                                      I3FramePtr geo_frame, std::vector<CCMPMTKey> keys_to_fit, double light_time_offset);
     std::tuple<boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
@@ -66,6 +65,7 @@ public:
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>,
                boost::shared_ptr<I3MapPMTKeyVectorDouble>, boost::shared_ptr<I3MapPMTKeyVectorDouble>>
-               GetExpectationWithDerivs(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, double const & time_offset);
+               GetExpectationWithDerivs(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
+                                        double const & single_pmt_norm, double const & single_pmt_offset, std::vector<CCMPMTKey> keys_to_fit, double light_time_offset);
 };
 #endif

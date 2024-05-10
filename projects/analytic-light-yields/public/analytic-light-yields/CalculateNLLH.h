@@ -286,21 +286,14 @@ class CalculateNLLH {
     I3MapPMTKeyVectorDouble debug_data;
     I3MapPMTKeyVectorDouble debug_pred;
     I3MapPMTKeyVectorDouble debug_sigma2;
-    
-    double noise_photons = 1.0;
-    double noise_triggers = 5.0;
-    double digitization_time = 16.0 * std::pow(10.0, 3.0); //16 usec in nsec
-    double noise_rate = noise_photons / (noise_triggers * digitization_time); // units of photons/nsec
-    double noise_rate_per_time_bin = 2.0 * noise_rate; // 2nsec binning
 
 public:
     CalculateNLLH();
     void GrabData(I3FramePtr data_frame);
-    double GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                   std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset);
-    I3Vector<double> GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                                       std::vector<double> nuisance_params, I3FramePtr data, double const & time_offset, std::vector<CCMPMTKey> keys_to_ignore);
-    std::vector<I3MapPMTKeyVectorDouble> DebugDatavsPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
-                                                         std::vector<double> nuisance_params, std::vector<CCMPMTKey> keys_to_ignore, I3FramePtr data_frame, double const & time_offset);
+    double GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, std::vector<CCMPMTKey> keys_to_fit, I3FramePtr data_frame, double light_time_offset);
+    I3Vector<double> GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, I3FramePtr data,
+                                      std::vector<CCMPMTKey> keys_to_fit, double single_pmt_norm, double single_pmt_offset, double light_time_offset);
+    std::vector<I3MapPMTKeyVectorDouble> DebugDatavsPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, I3FramePtr data_frame,
+                                                         std::vector<CCMPMTKey> keys_to_fit, double single_pmt_norm, double single_pmt_offset, double light_time_offset);
 };
 #endif

@@ -659,7 +659,8 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
                                std::vector<pmt_info> const & pmt_parsed_information_,
                                bool const & is_visible,
                                I3Position const & vertex,
-                               boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map ){
+                               boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
+                               std::vector<CCMPMTKey> keys_to_fit){
 
     // let's define some things
     double omega;
@@ -690,7 +691,19 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
         pmt_facing_area = pmt_parsed_information_.at(pmt_it).pmt_facing_area;
         pmt_side_area = pmt_parsed_information_.at(pmt_it).pmt_side_area;
         pmt_key = pmt_parsed_information_.at(pmt_it).key;
+        
+        // check if this is a pmt key we should fite
+        bool fit = false;
+        for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++){
+            if (keys_to_fit.at(pmt_it) == pmt_key){
+                fit = true;
+            }
+        }
+        if (!fit){
+            continue;
+        }
 
+        // ok, this must be a pmt we want to fit!
         if (is_visible == false and coating_flag == 0.0){
             // this is the case where we are propagating UV light and we have an uncoated pmt...so we won't see anything
             continue;
@@ -753,7 +766,8 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
                                       I3Position const & vertex,
                                       std::vector<pmt_info> const & pmt_parsed_information_,
                                       std::vector<secondary_loc_info> const & locations_to_check_information_,
-                                      boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map ){
+                                      boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
+                                      std::vector<CCMPMTKey> keys_to_fit){
     // define some things
     double omega;
     double distance_travelled;
@@ -799,7 +813,8 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
         // ok so now we have time offset and yields at this loc, let's calculate what gets into our PMTs
         vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction,
                                   photons_at_secondary_location, travel_time, vis_absorption_length,
-                                  pmt_parsed_information_, true, I3Position(loc_x * I3Units::cm, loc_y * I3Units::cm, loc_z * I3Units::cm), all_pmt_yields_map);
+                                  pmt_parsed_information_, true, I3Position(loc_x * I3Units::cm, loc_y * I3Units::cm, loc_z * I3Units::cm),
+                                  all_pmt_yields_map, keys_to_fit);
  
         // since vertex_to_pmt_propagation saves info -- we're done!
     }
@@ -814,7 +829,8 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
                                 double const & vis_absorption_length,
                                 std::vector<pmt_info> const & pmt_parsed_information_,
                                 std::vector<secondary_loc_info> const & locations_to_check_information_,
-                                boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map){
+                                boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
+                                std::vector<CCMPMTKey> keys_to_fit){
 
     // ok so let's grab our vertex locations from our soidum_event
     I3Position photon_vertex = soidum_event.photon_vertex;
@@ -828,28 +844,28 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
     // now let's call our functions to get direct vertex --> PMT yields (UV scint light)
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, photon_vertex, all_pmt_yields_map);
+                              false, photon_vertex, all_pmt_yields_map, keys_to_fit);
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, electron_vertex, all_pmt_yields_map);
+                              false, electron_vertex, all_pmt_yields_map, keys_to_fit);
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                               default_time_offset, UV_absorption_length, pmt_parsed_information_,
-                              false, positron_vertex, all_pmt_yields_map);
+                              false, positron_vertex, all_pmt_yields_map, keys_to_fit);
 
     // now let's call our functions to get indirect vertex --> TPB --> PMT yields
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
                                      UV_absorption_length, vis_absorption_length, photon_vertex, 
-                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map);
+                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map, keys_to_fit);
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                                      UV_absorption_length, vis_absorption_length, electron_vertex, 
-                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map);
+                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map, keys_to_fit);
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
                                      UV_absorption_length, vis_absorption_length, positron_vertex, 
-                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map);
+                                     pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map, keys_to_fit);
     // ok done!
 }
 
-boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, I3FramePtr geo_frame, double const & UV_absorption_length){
+boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, I3FramePtr geo_frame, double const & UV_absorption_length, std::vector<CCMPMTKey> keys_to_fit){
 
     // so we have an event we want to simulate
     // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
@@ -870,7 +886,7 @@ boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodi
     // ok we've set up the geometry stuff, now we can take the vertex and calculate light yields in each pmt
     PutSimulationStepsTogether(event_vertex, c_cm_per_nsec_, uv_index_of_refraction_, 
                                vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
-                               pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_);
+                               pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_, keys_to_fit);
 
     return all_pmt_yields_map_;
 }
