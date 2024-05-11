@@ -86,40 +86,6 @@ void CalculateNLLH::SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen
     this->gen_expectation = gen_expectation;
 }
 
-template<typename T>
-T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
-
-    // let's grab our data
-    SinglePMTInfo const & pmt_data = data[key];
-    double start_time = pmt_data.start_time;
-    double max_time = pmt_data.max_time;
-
-    // let's grab our expectation
-    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB,
-            normalization, light_time_offset, uv_absorption, z_offset, n_sodium_events, light_profile_type);
-
-    // unpack into yields and yields^2
-    boost::shared_ptr<std::vector<T>> pred_yields;
-    boost::shared_ptr<std::vector<T>> pred_yields_squared;
-    pred_yields = std::get<0>(pred);
-    pred_yields_squared = std::get<1>(pred);
-
-    T total_nllh(0.0);
-
-    size_t n_bins = pmt_data.data.size();
-
-    // now loop over the time bins in our pred
-    for (size_t i=0; i<n_bins; ++i) {
-        double k = pmt_data.data.at(i);
-        T mu = pred_yields->at(i) * normalization;
-        T sigma_squared = pred_yields_squared->at(i) * (normalization * normalization);
-        total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
-    }
-
-    return total_nllh;
-}
-
 CalculateNLLH::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
     return this->ComputeNLLH<AD>(key, AD(params.Rs, 0), AD(params.Rt, 1), AD(params.tau_s, 2), AD(params.tau_t, 3), AD(params.tau_rec, 4), AD(params.tau_TPB, 5),
             AD(params.normalization, 6), AD(params.time_offset, 7), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
