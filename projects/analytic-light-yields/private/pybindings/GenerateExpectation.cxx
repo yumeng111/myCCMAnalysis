@@ -81,7 +81,7 @@ std::vector<Grad> LightProfileGrad(GenerateExpectation & g, double Rs, double Rt
     return ret_val;
 }
 
-int
+std::tuple<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 GetExpectationGrad(GenerateExpectation & g, CCMPMTKey key, double start_time, double max_time, double peak_time, double Rs, double Rt, double tau_s, double tau_t, double tau_rec, double tau_TPB,
             double normalization, double light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
@@ -93,7 +93,7 @@ GetExpectationGrad(GenerateExpectation & g, CCMPMTKey key, double start_time, do
         std::get<0>(result)->at(i).copyGradient((grads)[i].data());
         std::get<1>(result)->at(i).copyGradient((grads_squared)[i].data());
     }
-    return 0;
+    return std::tie(grads, grads_squared);
 }
 
 void register_GenerateExpectation() {
