@@ -42,9 +42,9 @@ struct mpmath_gammainc {
 };
 
 template <unsigned int nVars, typename T>
-struct mpmath_gammainc<FD<nVars, T>> {
+struct mpmath_gammainc<phys_tools::autodiff::FD<nVars, T>> {
     mpmath_gammainc<T> base;
-    using AD = FD<nVars, T>;
+    using AD = phys_tools::autodiff::FD<nVars, T>;
 
     AD operator() (double const & a, AD const & x) const {
         AD result(base(a, x.value()));
@@ -84,10 +84,10 @@ void get_total_light_profile (T const & R_s,
             final_light_profile.at(time_it) = 1e-18 * exp(t / 10.0);
             continue;
         }
-        T exp_singlet = std::exp(-t / tau_s);
-        T exp_triplet = std::exp(-t / tau_t);
-        T exp_recombination = std::exp(-(t+tau_rec) / tau_TPB);
-        T exp_prompt_TPB = std::exp(-t / tau_TPB);
+        T exp_singlet = exp(-t / tau_s);
+        T exp_triplet = exp(-t / tau_t);
+        T exp_recombination = exp(-(t+tau_rec) / tau_TPB);
+        T exp_prompt_TPB = exp(-t / tau_TPB);
         T gamma_t = gammainc(-1, -(t + tau_rec) / tau_TPB);
 
         T one = coeff_one * (exp_singlet - exp_prompt_TPB);
@@ -120,9 +120,9 @@ void get_light_profile_no_recombination(T const & R_s,
             final_light_profile.at(time_it) = 1e-18 * exp(t / 10.0);
             continue;
         }
-        T exp_singlet = std::exp(-t / tau_s);
-        T exp_triplet = std::exp(-t / tau_t);
-        T exp_prompt_TPB = std::exp(-t / tau_TPB);
+        T exp_singlet = exp(-t / tau_s);
+        T exp_triplet = exp(-t / tau_t);
+        T exp_prompt_TPB = exp(-t / tau_TPB);
 
         T one = coeff_one * (exp_singlet - exp_prompt_TPB);
         T two = coeff_two * (exp_triplet - exp_prompt_TPB);

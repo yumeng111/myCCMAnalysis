@@ -31,8 +31,8 @@ struct yields_pmt_info {
     double facing_dir_z = 0.0;
     double coating_flag = 0.0;
     double pmt_facing_area = 0.0;
-    double pmt_side_area = 0.0;    
-}; 
+    double pmt_side_area = 0.0;
+};
 
 struct secondary_loc_info {
     double loc_x = 0.0;
@@ -43,8 +43,8 @@ struct secondary_loc_info {
     double facing_dir_z = 0.0;
     double pmt_portion = 0.0;
     double loc_facing_area = 0.0;
-    double loc_side_area = 0.0;    
-}; 
+    double loc_side_area = 0.0;
+};
 
 class YieldsPerPMT {
     std::string geometry_name_ = std::string("CCMGeometry");
@@ -97,6 +97,6 @@ public:
     void SetGeoFrame(I3FramePtr geo_frame);
     void SetChunks(double chunk_width, double chunk_height);
 
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(HESodiumEvent const & event_vertex, double const & UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit);
+    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(HESodiumEvent const & event_vertex, double UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit);
 };
 #endif

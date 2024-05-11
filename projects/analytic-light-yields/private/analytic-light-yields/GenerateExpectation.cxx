@@ -40,10 +40,10 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <analytic-light-yields/GenerateExpectation.h>
 
-GenerateExpectation::GenerateExpectation(std::vector<CCMPMTKey> keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double vis_absorption_length, double desired_chunk_width, double desired_chunk_height, std::vector<double> time_bin_edges) :
-    keys_to_fit(keys_to_fit), geo_frame(geo_frame), n_sodium_events(n_sodium_events), time_bin_edges(time_bin_edges) {}
+GenerateExpectation::GenerateExpectation(std::vector<CCMPMTKey> keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height) :
+    keys_to_fit(keys_to_fit), geo_frame(geo_frame), n_sodium_events(n_sodium_events), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height) {}
 
-void GenerateExpectation::GetSodiumVertices(size_t const & n_events_to_simulate, double const & z_position){
+void GenerateExpectation::GetSodiumVertices(size_t n_events_to_simulate, double z_position) {
     sodium_events_constructor = std::make_shared<SodiumVertexDistribution> ();
     event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
 }
@@ -52,10 +52,10 @@ void GenerateExpectation::GetYieldsAndOffsets(double uv_absorption) {
     yields_per_pmt_per_event.clear();
     binned_yields.clear();
     binned_square_yields.clear();
-    yields_and_offset_constructor = std::make_shared<YieldsPerPMT>(geo_frame, portion_light_reflected_by_tpb, vis_absorption_length, desired_chunk_width, desired_chunk_height);
+    yields_and_offset_constructor = std::make_shared<YieldsPerPMT>(geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
     // now loop over events and get map between CCMPMTKey and PhotonYieldSummarySeries
     for (size_t sodium_it = 0; sodium_it < event_vertices->size(); ++sodium_it) {
-        boost::shared_ptr<PhotonYieldSummarySeriesMap> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), geo_frame, uv_absorption, keys_to_fit);
+        boost::shared_ptr<PhotonYieldSummarySeriesMap> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), uv_absorption, keys_to_fit);
         yields_per_pmt_per_event.push_back(yields_per_event);
         for (PhotonYieldSummarySeriesMap::const_iterator i = yields_per_event->begin(); i != yields_per_event->end(); i++) {
             I3Vector<PhotonYieldSummary> const & yields = i->second;
@@ -85,14 +85,12 @@ void GenerateExpectation::ComputeBinnedYield(CCMPMTKey key, double max_time) {
         }
         for(size_t yield_it = 0; yield_it < yields.size(); ++yield_it) {
             PhotonYieldSummary const & yield = yields.at(yield_it);
-            double time_offset = yield.time_offset;
-            double yield_value = yield.yield;
-            size_t bin_idx = time_offset / 2.0;
+            size_t bin_idx = yield.time / 2.0;
             if(bin_idx >= n_bins) {
                 continue;
             }
-            binned_yields_per_pmt.at(bin_idx) += yield_value;
-            binned_square_yields_per_pmt.at(bin_idx) += yield_value * yield_value;
+            binned_yields_per_pmt.at(bin_idx) += yield.yield;
+            binned_square_yields_per_pmt.at(bin_idx) += yield.yield * yield.yield;
         }
     }
     binned_yields[key] = binned_yields_per_pmt;

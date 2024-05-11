@@ -40,12 +40,16 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <analytic-light-yields/CalculateNLLH.h>
 
-CalculateNLLH::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, std::vector<CCMPMTKey> keys_to_fit) :
-    keys_to_fit(keys_to_fit)
+CalculateNLLH::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, size_t n_sodium_events, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height, std::vector<CCMPMTKey> keys_to_fit) :
+    max_bins(max_bins), n_sodium_events(n_sodium_events), portion_light_reflected_by_tpb(portion_light_reflected_by_tpb), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height), keys_to_fit(keys_to_fit)
 {
     SetData(data_frame);
     SetGeo(geo_frame);
-    gen_expectation = std::make_shared<GenerateExpectation> ();
+}
+
+void CalculateNLLH::SetGeo(I3FramePtr geo_frame) {
+    this->geo_frame = geo_frame;
+    gen_expectation = boost::make_shared<GenerateExpectation>(keys_to_fit, n_sodium_events, geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
 }
 
 void CalculateNLLH::SetData(I3FramePtr data_frame) {
@@ -58,13 +62,12 @@ void CalculateNLLH::SetData(I3FramePtr data_frame) {
         }
         SinglePMTInfo pmt_data;
         pmt_data.key = i->first;
-        size_t max_idx = std::distance(i->second.begin(), std::max_element(i->second.begin(), i->second.end()));
-        max_idx = std::min(max_idx, max_bins);
-        size_t start_idx = std::max(size_t(3), max_idx) - 3;
-        size_t min_idx = std::max(size_t(15), max_idx) - 15;
+        size_t peak_idx = std::distance(i->second.begin(), std::max_element(i->second.begin(), i->second.end()));
+        size_t start_idx = std::max(size_t(3), peak_idx) - 3;
+        size_t min_idx = std::max(size_t(15), peak_idx) - 15;
+        size_t max_idx = std::min(min_idx + max_bins, i->second.size());
         pmt_data.data = std::vector(i->second.begin() + min_idx, i->second.begin() + max_idx);
         pmt_data.start_time = (start_idx - min_idx) * 2.0;
-        pmt_data.peak_time = (peak_idx - min_idx) * 2.0;
         pmt_data.max_time = (std::max(int(min_idx), int(max_idx) - 1) - min_idx) * 2.0;
         data[pmt_data.key] = pmt_data;
     }
@@ -79,7 +82,7 @@ I3MapPMTKeyVectorDoublePtr CalculateNLLH::GetData() const {
     return data_map;
 }
 
-void CalculateNLLH::SetGenExpectation(std::shared_ptr<GenerateExpectation> gen_expectation) {
+void CalculateNLLH::SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen_expectation) {
     this->gen_expectation = gen_expectation;
 }
 
@@ -102,53 +105,35 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     pred_yields = std::get<0>(pred);
     pred_yields_squared = std::get<1>(pred);
 
-    // for every pmt, we want to align data and pred on the peak bins
-    // let's also grab the smallest pred peak bin to make sure we are not going too far to the left of the peaks
-    size_t closest_pred_peak_bin = 3;
-    for (I3MapPMTKeyDouble::const_iterator i = pred_peak_bins.begin(); i != pred_peak_bins.end(); i++) {
-        if (i->second < closest_pred_peak_bin){
-            closest_pred_peak_bin = i->second;
-        }
-    }
+    T total_nllh(0.0);
 
-    // ok so we have data and we have prediction
-    // before we can calculate our LLH, we need to figure our the timing
+    size_t n_bins = pmt_data.data.size();
 
-    size_t llh_bins_from_peak = closest_pred_peak_bin;
-    size_t total_llh_time_bins = 100;
-
-    double total_nllh = 0.0;
-
-    for (I3MapPMTKeyVectorDouble::const_iterator i = pred_yields->begin(); i != pred_yields->end(); i++) {
-        // looping over each pmt key in our pred map between CCMPMTKey and std::vector<double>
-        // now loop over the time bins in our pred
-        for (size_t time_bin_it = (pred_peak_bins[i->first] - llh_bins_from_peak); time_bin_it < (pred_peak_bins[i->first] - llh_bins_from_peak + total_llh_time_bins); time_bin_it++) {
-            size_t corresponding_data_bin = data_peak_bins[i->first] - llh_bins_from_peak + (time_bin_it - (pred_peak_bins[i->first] - llh_bins_from_peak)); 
-            double k = data.at(i->first).at(corresponding_data_bin);
-            double mu = (i->second).at(time_bin_it) * pinned_nuissance[i->first];  
-            double sigma_squared = pred_yields_squared->at(i->first).at(time_bin_it) * std::pow(pinned_nuissance[i->first], 2.0);
-            total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
-            
-            // save some things for debugging
-            // add this key to our maps between data and pred for debugging
-            if (debug_data.find(i->first) == debug_data.end()) {
-                debug_data[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
-            }
-            if (debug_pred.find(i->first) == debug_pred.end()) {
-                debug_pred[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
-            }
-            if (debug_sigma2.find(i->first) == debug_sigma2.end()) {
-                debug_sigma2[i->first] = std::vector<double> (total_llh_time_bins, 0.0);
-            }
-
-            // now save our data and pred
-            debug_data.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = k;
-            debug_pred.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = mu;
-            debug_sigma2.at(i->first).at(time_bin_it + llh_bins_from_peak - pred_peak_bins[i->first]) = sigma_squared;
-        }
+    // now loop over the time bins in our pred
+    for (size_t i=0; i<n_bins; ++i) {
+        double k = pmt_data.data.at(i);
+        T mu = pred_yields->at(i) * normalization;
+        T sigma_squared = pred_yields_squared->at(i) * (normalization * normalization);
+        total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
     }
 
     return total_nllh;
+}
+
+CalculateNLLH::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
+    return this->ComputeNLLH<AD>(key, AD(params.Rs, 0), AD(params.Rt, 1), AD(params.tau_s, 2), AD(params.tau_t, 3), AD(params.tau_rec, 4), AD(params.tau_TPB, 5),
+            AD(params.normalization, 6), AD(params.time_offset, 7), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+}
+
+double CalculateNLLH::GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
+    return this->ComputeNLLH<double>(key, params.Rs, params.Rt, params.tau_s, params.tau_t, params.tau_rec, params.tau_TPB,
+            params.normalization, params.time_offset, params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+}
+
+CalculateNLLH::Grad CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
+    Grad grad;
+    this->GetNLLH(key, params).copyGradient(grad.data());
+    return grad;
 }
 
 

@@ -29,7 +29,6 @@
 #include <analytic-light-yields/CalculateNLLH.h>
 
 class NumericalCheck {
-    std::shared_ptr<LArScintillationLightProfile> LAr_scintillation_light_constructor = nullptr;
     std::shared_ptr<CalculateNLLH> CalculateNLLH_constructor = nullptr;
     std::vector<I3MapPMTKeyVectorDouble> dubug_info;
 public:
@@ -38,10 +37,10 @@ public:
     void CheckNLLHDerivs(double const & k, double const & mu, double const & sigma_squared, double const & DmuDtheta, double const & Dsigma_squaredDtheta);
     I3MapPMTKeyVectorDouble CheckData(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, std::vector<CCMPMTKey> keys_to_fit,
                                                                      I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset);
-    I3MapPMTKeyVectorDouble CheckPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+    I3MapPMTKeyVectorDouble CheckPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
                                                                       std::vector<CCMPMTKey> keys_to_fit,
                                                                      I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset);
-    I3MapPMTKeyVectorDouble CheckSigma2(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
+    I3MapPMTKeyVectorDouble CheckSigma2(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
                                                                       std::vector<CCMPMTKey> keys_to_fit,
                                                                      I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset);
 };

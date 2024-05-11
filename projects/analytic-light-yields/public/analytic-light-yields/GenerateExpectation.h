@@ -30,6 +30,7 @@
 class GenerateExpectation {
     I3FramePtr geo_frame;
     size_t n_sodium_events = 0;
+    std::vector<CCMPMTKey> keys_to_fit;
 
     // things we need to do in order to generate expected hits/pmt :
     // 1) get soidum vertex distribution
@@ -40,7 +41,6 @@ class GenerateExpectation {
     // and update light profile with every call to GetExpectation
     std::shared_ptr<SodiumVertexDistribution> sodium_events_constructor = nullptr;
     std::shared_ptr<YieldsPerPMT> yields_and_offset_constructor = nullptr;
-    LArScintillationLightProfile LAr_scintillation_light_constructor;
 
     boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
     std::vector<boost::shared_ptr<PhotonYieldSummarySeriesMap>> yields_per_pmt_per_event;
@@ -54,7 +54,7 @@ class GenerateExpectation {
     double digitization_time = 16.0 * std::pow(10.0, 3.0); //16 usec in nsec
     double noise_rate = noise_photons / (noise_triggers * digitization_time); // units of photons/nsec
     double noise_rate_per_time_bin = 2.0 * noise_rate; // 2nsec binning
-    
+
     double uv_absorption = 0.0;
     double z_offset = 0.0;
 
@@ -73,8 +73,8 @@ public:
                                        AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
 
     template<typename T>
-    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, std::vector<T> const & times, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, double start_time, double max_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+            T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
 };
 
 template<typename T>
@@ -98,7 +98,7 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
 
     bool compute_vertices = sodium_events_constructor == nullptr or n_sodium_events != this->n_sodium_events or z_offset != this->z_offset;
     bool compute_yields = yields_and_offset_constructor == nullptr or uv_absorption != this->uv_absorption;
-    bool bin_yields = yield_bins.find(key) == yield_bins.end();
+    bool bin_yields = binned_yields.find(key) == binned_yields.end();
     compute_yields |= compute_vertices;
     bin_yields |= compute_yields;
 
@@ -108,7 +108,7 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
 
     // now let's check if we get our yields + time offsets
     if(compute_yields)
-        GetYieldsAndOffsets(uv_absorption, keys_to_fit);
+        GetYieldsAndOffsets(uv_absorption);
 
     // now lets check if we have pre-binned the yields
     if(bin_yields)

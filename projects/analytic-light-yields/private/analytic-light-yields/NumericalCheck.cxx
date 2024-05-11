@@ -37,60 +37,50 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include "CCMAnalysis/CCMBinary/BinaryFormat.h"
 #include "CCMAnalysis/CCMBinary/BinaryUtilities.h"
-#include <dataclasses/geometry/CCMGeometry.h>
-#include <analytic-light-yields/CalculateNLLH.h>
-#include <analytic-light-yields/NumericalCheck.h>
+#include "dataclasses/geometry/CCMGeometry.h"
+#include "analytic-light-yields/CalculateNLLH.h"
+#include "analytic-light-yields/NumericalCheck.h"
+#include "analytic-light-yields/autodiff.h"
 
 NumericalCheck::NumericalCheck() {}
 
-void NumericalCheck::CheckSimplifiedLightProfile(AnalyticLightYieldGenerator analytic_light_yield_setup, double light_time_offset){
+void NumericalCheck::CheckSimplifiedLightProfile(AnalyticLightYieldGenerator analytic_light_yield_setup, double light_time_offset) {
     // given light parameters, print out times and values of our simplified light profile
-    if (LAr_scintillation_light_constructor == nullptr){
-        LAr_scintillation_light_constructor = std::make_shared<LArScintillationLightProfile> ();
-    }
-    
-    double Rs = analytic_light_yield_setup.Rs;
-    double Rt = analytic_light_yield_setup.Rt;
-    double tau_s = analytic_light_yield_setup.tau_s;
-    double tau_t = analytic_light_yield_setup.tau_t;
-    double tau_TPB = analytic_light_yield_setup.tau_TPB;
 
-    std::cout << "getting light profile for Rs = " << Rs << ", Rt = " << Rt << ", tau_s = " << tau_s << ", tau_t = " << tau_t << ", and tau_TPB  = " << tau_TPB << std::endl;
 
-    I3Vector<double> light_profile;
-    light_profile = LAr_scintillation_light_constructor->GetSimplifiedLightProfile(Rs, Rt, tau_s, tau_t, tau_TPB, light_time_offset);
-   
-    // copying over time binning from LArScintillationLightProfile 
-    double start_time = 0.0;
-    double end_time = 100.0;
-    double bin_width = 2.0;
-    size_t n_time_bins = (size_t)((end_time - start_time)/bin_width);
+    typedef phys_tools::autodiff::FD<6, double> AD;
 
-    for (size_t i = 0; i < n_time_bins; i++){
-        std::cout << "at time = " <<  (double) i * 2.0 << " light profile = " << light_profile.at(i) << std::endl;
+    AD Rs(analytic_light_yield_setup.Rs, 0);
+    AD Rt(analytic_light_yield_setup.Rt, 1);
+    AD tau_s(analytic_light_yield_setup.tau_s, 2);
+    AD tau_t(analytic_light_yield_setup.tau_t, 3);
+    AD tau_TPB(analytic_light_yield_setup.tau_TPB, 4);
+    AD time_offset(light_time_offset, 5);
+
+    std::cout << "getting light profile for Rs = " << Rs.value() << ", Rt = " << Rt.value() << ", tau_s = " << tau_s.value() << ", tau_t = " << tau_t.value() << ", and tau_TPB  = " << tau_TPB.value() << std::endl;
+
+    size_t n_bins = 250;
+    std::vector<AD> times(n_bins);
+    for (size_t i = 0; i < n_bins; i++) {
+        times[i] = i * 2.0 + light_time_offset;
     }
 
-    // now let's also check our derivatives 
-    I3Vector<double> light_profile_derivRs;
-    light_profile_derivRs = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "Rs", light_time_offset);
-    I3Vector<double> light_profile_derivRt;
-    light_profile_derivRt = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "Rt", light_time_offset);
-    I3Vector<double> light_profile_derivtau_s;
-    light_profile_derivtau_s = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_s", light_time_offset);
-    I3Vector<double> light_profile_derivtau_t;
-    light_profile_derivtau_t = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_t", light_time_offset);
-    I3Vector<double> light_profile_derivtau_TPB;
-    light_profile_derivtau_TPB = LAr_scintillation_light_constructor->GetSimplifiedLightProfileDeriv(Rs, Rt, tau_s, tau_t, tau_TPB, "tau_TPB", light_time_offset);
+    I3Vector<AD> light_profile(n_bins);
+    get_light_profile_no_recombination(Rs, Rt, tau_s, tau_t, tau_TPB, times, light_profile);
+
+    // copying over time binning from LArScintillationLightProfile
+    for (size_t i = 0; i < n_bins; i++){
+        std::cout << "at time = " <<  (double) i * 2.0 << " light profile = " << light_profile.at(i).value() << std::endl;
+    }
 
     std::cout << "and now for derivatives : " << std::endl;
-    for (size_t i = 0; i < n_time_bins; i++){
-        std::cout << "at time = " <<  (double) i * 2.0 << " dRs = " << light_profile_derivRs.at(i) 
-                                                       << ", dRt = " << light_profile_derivRt.at(i) 
-                                                       << ", dtau_s = " << light_profile_derivtau_s.at(i)
-                                                       << ", dtau_t = " << light_profile_derivtau_t.at(i)
-                                                       << ", and dtau_TPB = " << light_profile_derivtau_TPB.at(i) << std::endl;
+    for (size_t i = 0; i < n_bins; i++){
+        std::cout << "at time = " <<  (double) i * 2.0 << " dRs = " << light_profile.at(i).derivative(0)
+                                                       << ", dRt = " << light_profile.at(i).derivative(1)
+                                                       << ", dtau_s = " << light_profile.at(i).derivative(2)
+                                                       << ", dtau_t = " << light_profile.at(i).derivative(3)
+                                                       << ", and dtau_TPB = " << light_profile.at(i).derivative(4) << std::endl;
     }
-
 }
 
 void NumericalCheck::CheckNLLHDerivs(double const & k, double const & mu, double const & sigma_squared, double const & DmuDtheta, double const & Dsigma_squaredDtheta){
@@ -103,39 +93,39 @@ void NumericalCheck::CheckNLLHDerivs(double const & k, double const & mu, double
     std::cout << "nllh = " << nllh << " and gradient = " << deriv << std::endl;
 }
 
-I3MapPMTKeyVectorDouble NumericalCheck::CheckData(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
-                                                                std::vector<CCMPMTKey> keys_to_fit,
-                                                               I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset){
-
-    if (CalculateNLLH_constructor == nullptr){
-        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
-    }
-    // let's grab our nllh
-    dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, data_frame, keys_to_fit, single_pmt_norm, single_pmt_offset, light_time_offset);
-    return dubug_info[0]; 
-}
-
-I3MapPMTKeyVectorDouble NumericalCheck::CheckPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
-                                                                std::vector<CCMPMTKey> keys_to_fit,
-                                                               I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset){
-
-    if (CalculateNLLH_constructor == nullptr){
-        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
-        dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, data_frame, keys_to_fit, single_pmt_norm, single_pmt_offset, light_time_offset);
-    }
-    
-    return dubug_info[1]; 
-}
-
-
-I3MapPMTKeyVectorDouble NumericalCheck::CheckSigma2(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, 
-                                                                std::vector<CCMPMTKey> keys_to_fit,
-                                                               I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset){
-    if (CalculateNLLH_constructor == nullptr){
-        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
-        dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, data_frame, keys_to_fit, single_pmt_norm, single_pmt_offset, light_time_offset);
-    }
-    
-    return dubug_info[2]; 
-}
+//I3MapPMTKeyVectorDouble NumericalCheck::CheckData(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
+//                                                                std::vector<CCMPMTKey> keys_to_fit,
+//                                                               I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset){
+//
+//    if (CalculateNLLH_constructor == nullptr){
+//        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
+//    }
+//    // let's grab our nllh
+//    dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, data_frame, keys_to_fit, single_pmt_norm, single_pmt_offset, light_time_offset);
+//    return dubug_info[0];
+//}
+//
+//I3MapPMTKeyVectorDouble NumericalCheck::CheckPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
+//                                                                std::vector<CCMPMTKey> keys_to_fit,
+//                                                               I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset){
+//
+//    if (CalculateNLLH_constructor == nullptr){
+//        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
+//        dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, data_frame, keys_to_fit, single_pmt_norm, single_pmt_offset, light_time_offset);
+//    }
+//
+//    return dubug_info[1];
+//}
+//
+//
+//I3MapPMTKeyVectorDouble NumericalCheck::CheckSigma2(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame,
+//                                                                std::vector<CCMPMTKey> keys_to_fit,
+//                                                               I3FramePtr data_frame, double single_pmt_norm, double single_pmt_offset, double light_time_offset){
+//    if (CalculateNLLH_constructor == nullptr){
+//        CalculateNLLH_constructor = std::make_shared<CalculateNLLH> ();
+//        dubug_info = CalculateNLLH_constructor->DebugDatavsPred(analytic_light_yield_setup, geo_frame, data_frame, keys_to_fit, single_pmt_norm, single_pmt_offset, light_time_offset);
+//    }
+//
+//    return dubug_info[2];
+//}
 

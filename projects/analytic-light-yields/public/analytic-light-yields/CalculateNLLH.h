@@ -287,28 +287,43 @@ struct SinglePMTInfo {
 };
 
 class CalculateNLLH {
-    constexpr size_t n_params = 4;
+    static constexpr size_t n_params = 8;
     typedef double Underlying;
-    typedef phys_tools::autodiff::FD<Underlying, n_params> AD;
+
+    typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
+    typedef std::array<Underlying, n_params> Grad;
 
     std::map<CCMPMTKey, SinglePMTInfo> data;
     std::vector<CCMPMTKey> keys_to_fit;
+    I3FramePtr geo_frame;
 
-    std::shared_ptr<GenerateExpectation> gen_expectation = nullptr;
+    size_t n_sodium_events;
+    double portion_light_reflected_by_tpb;
+    double desired_chunk_width;
+    double desired_chunk_height;
+
+    boost::shared_ptr<GenerateExpectation> gen_expectation = nullptr;
     double n_data_events;
 
+    size_t max_bins;
+
 public:
-    CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
+    CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=125, size_t n_sodium_events=2000, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
     void SetGeo(I3FramePtr geo_frame);
     void SetData(I3FramePtr data_frame);
-    void SetGenExpectation(std::shared_ptr<GenerateExpectation> gen_expectation);
+    void SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen_expectation);
 
     double GetNDataEvents() const { return n_data_events; };
     I3MapPMTKeyVectorDoublePtr GetData() const;
     boost::shared_ptr<GenerateExpectation> GetGenExpectation() const { return gen_expectation; };
 
     template<typename T>
-    T GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator analytic_light_yield_setup);
+    T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+            T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+
+    AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
+    double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
+    Grad GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
 };
 
 #endif // CalculateNLLH_H

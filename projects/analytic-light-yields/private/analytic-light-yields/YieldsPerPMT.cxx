@@ -52,7 +52,7 @@ void combined_area_penalty(double const & chunk_center_x,
                            double const & detector_radius,
                            double const & pmt_radius,
                            double const & half_chunk_hypotenuse,
-                           std::vector<std::vector<double>> & this_chunk_valid_points, 
+                           std::vector<std::vector<double>> & this_chunk_valid_points,
                            std::vector<std::vector<double>> & this_chunk_invalid_points,
                            std::vector<std::vector<double>> & this_chunk_coated_pmt_points) {
 
@@ -104,7 +104,7 @@ void combined_area_penalty(double const & chunk_center_x,
             double this_point_in_chunk_y = possible_chunk_y_positions.at(y_chunk_it);
 
             // first things first, let's make sure this point is actually on our chunk by checking radius
-            double this_point_dist_from_center_chunk = std::sqrt(std::pow(this_point_in_chunk_x - chunk_center_x, 2) + std::pow(this_point_in_chunk_y - chunk_center_y, 2)); 
+            double this_point_dist_from_center_chunk = std::sqrt(std::pow(this_point_in_chunk_x - chunk_center_x, 2) + std::pow(this_point_in_chunk_y - chunk_center_y, 2));
             if (this_point_dist_from_center_chunk > half_chunk_hypotenuse){
                 // oops! this point is not actually on our chunk
                 continue;
@@ -679,7 +679,7 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
         double const & pmt_facing_area = pmt_parsed_information_.at(pmt_it).pmt_facing_area;
         double const & pmt_side_area = pmt_parsed_information_.at(pmt_it).pmt_side_area;
         CCMPMTKey const & pmt_key = pmt_parsed_information_.at(pmt_it).key;
-        
+
         // check if this is a pmt key we should fite
         bool fit = false;
         for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++) {
@@ -782,7 +782,7 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
         facing_dir_x = locations_to_check_information_.at(loc_it).facing_dir_x;
         facing_dir_y = locations_to_check_information_.at(loc_it).facing_dir_y;
         facing_dir_z = locations_to_check_information_.at(loc_it).facing_dir_z;
-        pmt_portion = locations_to_check_information_.at(loc_it).pmt_portion; // portion_light_reflected_by_tpb_ if we are NOT on a pmt, otherwise 0.5 * portion_light_reflected_by_tpb_ 
+        pmt_portion = locations_to_check_information_.at(loc_it).pmt_portion; // portion_light_reflected_by_tpb_ if we are NOT on a pmt, otherwise 0.5 * portion_light_reflected_by_tpb_
         facing_area = locations_to_check_information_.at(loc_it).loc_facing_area;
         side_area = locations_to_check_information_.at(loc_it).loc_side_area;
 
@@ -805,7 +805,7 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
                                   photons_at_secondary_location, travel_time, vis_absorption_length,
                                   pmt_parsed_information_, true, I3Position(loc_x * I3Units::cm, loc_y * I3Units::cm, loc_z * I3Units::cm),
                                   all_pmt_yields_map, keys_to_fit);
- 
+
         // since vertex_to_pmt_propagation saves info -- we're done!
     }
 }
@@ -843,18 +843,18 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
 
     // now let's call our functions to get indirect vertex --> TPB --> PMT yields
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
-                                     UV_absorption_length, vis_absorption_length, photon_vertex, 
+                                     UV_absorption_length, vis_absorption_length, photon_vertex,
                                      pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map, keys_to_fit);
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
-                                     UV_absorption_length, vis_absorption_length, electron_vertex, 
+                                     UV_absorption_length, vis_absorption_length, electron_vertex,
                                      pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map, keys_to_fit);
     vertex_to_TPB_to_PMT_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_511,
-                                     UV_absorption_length, vis_absorption_length, positron_vertex, 
+                                     UV_absorption_length, vis_absorption_length, positron_vertex,
                                      pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map, keys_to_fit);
     // ok done!
 }
 
-boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, I3FramePtr geo_frame, double const & UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit) {
+boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, double UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // so we have an event we want to simulate
     // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
@@ -863,7 +863,7 @@ boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodi
     boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();
 
     // ok we've set up the geometry stuff, now we can take the vertex and calculate light yields in each pmt
-    PutSimulationStepsTogether(event_vertex, c_cm_per_nsec_, uv_index_of_refraction_, 
+    PutSimulationStepsTogether(event_vertex, c_cm_per_nsec_, uv_index_of_refraction_,
                                vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
                                pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_, keys_to_fit);
 
