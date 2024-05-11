@@ -24,9 +24,11 @@ class AnalyticLightYieldGenerator : public I3FrameObject {
     float tau_t;
     float tau_rec;
     float tau_TPB;
-    float uv_absorption;
     float normalization;
+    float time_offset;
+
     float n_sodium_events;
+    float uv_absorption;
     float z_offset;
     LArLightProfileType light_profile_type; 
 
@@ -72,9 +74,11 @@ class AnalyticLightYieldGenerator : public I3FrameObject {
         ar & make_nvp("tau_t",tau_t);
         ar & make_nvp("tau_rec",tau_rec);
         ar & make_nvp("tau_TPB",tau_TPB);
-        ar & make_nvp("uv_absorption",uv_absorption);
         ar & make_nvp("normalization",normalization);
+        ar & make_nvp("time_offset", time_offset);
+
         ar & make_nvp("n_sodium_events",n_sodium_events);
+        ar & make_nvp("uv_absorption",uv_absorption);
         ar & make_nvp("z_offset",z_offset);
         ar & make_nvp("light_profile_type",light_profile_type);
     }

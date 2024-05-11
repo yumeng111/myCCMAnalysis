@@ -22,7 +22,8 @@
 #include "dataclasses/I3Position.h"
 #include "dataclasses/I3Map.h"
 #include "dataclasses/I3Double.h"
-#include <analytic-light-yields/GenerateExpectation.h>
+#include "analytic-light-yields/GenerateExpectation.h"
+#include "analytic-light-yields/autodiff.h"
 
 namespace MCLLH {
 namespace detail {
@@ -277,23 +278,37 @@ struct computeLEff {
 
 } // namespace MCLLH
 
-class CalculateNLLH {
-    std::shared_ptr<GenerateExpectation> gen_expectation = nullptr;
-    I3MapPMTKeyVectorDouble data;
-    double n_data_events;
-    bool grabbed_data = false;
+struct SinglePMTInfo {
+    CCMPMTKey key;
+    std::vector<double> data;
+    double peak_time;
+    double start_time;
+    double max_time;
+};
 
-    I3MapPMTKeyVectorDouble debug_data;
-    I3MapPMTKeyVectorDouble debug_pred;
-    I3MapPMTKeyVectorDouble debug_sigma2;
+class CalculateNLLH {
+    constexpr size_t n_params = 4;
+    typedef double Underlying;
+    typedef phys_tools::autodiff::FD<Underlying, n_params> AD;
+
+    std::map<CCMPMTKey, SinglePMTInfo> data;
+    std::vector<CCMPMTKey> keys_to_fit;
+
+    std::shared_ptr<GenerateExpectation> gen_expectation = nullptr;
+    double n_data_events;
 
 public:
-    CalculateNLLH();
-    void GrabData(I3FramePtr data_frame);
-    double GetNLLH(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, std::vector<CCMPMTKey> keys_to_fit, I3FramePtr data_frame, double light_time_offset);
-    I3Vector<double> GetNLLHDerivative(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, I3FramePtr data,
-                                      std::vector<CCMPMTKey> keys_to_fit, double single_pmt_norm, double single_pmt_offset, double light_time_offset);
-    std::vector<I3MapPMTKeyVectorDouble> DebugDatavsPred(AnalyticLightYieldGenerator analytic_light_yield_setup, I3FramePtr geo_frame, I3FramePtr data_frame,
-                                                         std::vector<CCMPMTKey> keys_to_fit, double single_pmt_norm, double single_pmt_offset, double light_time_offset);
+    CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
+    void SetGeo(I3FramePtr geo_frame);
+    void SetData(I3FramePtr data_frame);
+    void SetGenExpectation(std::shared_ptr<GenerateExpectation> gen_expectation);
+
+    double GetNDataEvents() const { return n_data_events; };
+    I3MapPMTKeyVectorDoublePtr GetData() const;
+    boost::shared_ptr<GenerateExpectation> GetGenExpectation() const { return gen_expectation; };
+
+    template<typename T>
+    T GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator analytic_light_yield_setup);
 };
-#endif
+
+#endif // CalculateNLLH_H

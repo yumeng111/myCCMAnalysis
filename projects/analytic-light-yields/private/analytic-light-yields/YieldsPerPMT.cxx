@@ -40,9 +40,6 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <analytic-light-yields/YieldsPerPMT.h>
 
-
-
-
 void combined_area_penalty(double const & chunk_center_x,
                            double const & chunk_center_y,
                            double const & x0,
@@ -50,14 +47,14 @@ void combined_area_penalty(double const & chunk_center_x,
                            double const & y0,
                            double const & y1,
                            bool const & top_bottom_flag,
-                           I3Vector<I3Vector<double>> const & relevant_coated_pmt_locs,
-                           I3Vector<I3Vector<double>> const & relevant_uncoated_pmt_locs,
+                           std::vector<std::vector<double>> const & relevant_coated_pmt_locs,
+                           std::vector<std::vector<double>> const & relevant_uncoated_pmt_locs,
                            double const & detector_radius,
                            double const & pmt_radius,
                            double const & half_chunk_hypotenuse,
-                           I3Vector<I3Vector<double>> & this_chunk_valid_points, 
-                           I3Vector<I3Vector<double>> & this_chunk_invalid_points,
-                           I3Vector<I3Vector<double>> & this_chunk_coated_pmt_points){
+                           std::vector<std::vector<double>> & this_chunk_valid_points, 
+                           std::vector<std::vector<double>> & this_chunk_invalid_points,
+                           std::vector<std::vector<double>> & this_chunk_coated_pmt_points) {
 
     // x0, x1, y0, and y1 are the corners of the chunk we are intersting in calcualting overlap with
     // top_bottom_flag is true if point is on top/bottom and false if on side --> dictates if we check if point is within the detector
@@ -96,7 +93,7 @@ void combined_area_penalty(double const & chunk_center_x,
     // 3) is this point on top of an uncoated pmt? if yes -- this is an invalid point!
     // 4) is this point on top of a coated pmt? if yes -- this is a valid point, but keep track for tpb portions
 
-    I3Vector<double> this_point;
+    std::vector<double> this_point;
     for (size_t x_chunk_it = 0; x_chunk_it < possible_chunk_x_positions.size(); x_chunk_it ++){
         for (size_t y_chunk_it = 0; y_chunk_it < possible_chunk_y_positions.size(); y_chunk_it ++){
             // booleans to keep track of this point
@@ -186,10 +183,7 @@ void combined_area_penalty(double const & chunk_center_x,
 
         }
     }
-
-
 }
-
 
 void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
                                                      double const & vertex_y,
@@ -203,7 +197,7 @@ void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
                                                      double const & facing_area,
                                                      double const & side_area,
                                                      double & omega,
-                                                     double & D){
+                                                     double & D) {
     double v_to_loc_dir_x = loc_x - vertex_x;
     double v_to_loc_dir_y = loc_y - vertex_y;
     double v_to_loc_dir_z = loc_z - vertex_z;
@@ -230,24 +224,34 @@ void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
     }
 }
 
-
 void get_light_yield(double const & omega,
                      double const & distance_travelled,
                      double const & absorption_length,
-                     double & light_yield){
+                     double & light_yield) {
 
     light_yield = omega * std::exp(- distance_travelled / absorption_length);
 }
 
-YieldsPerPMT::YieldsPerPMT() {}
+YieldsPerPMT::YieldsPerPMT(I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height) :
+    portion_light_reflected_by_tpb_(portion_light_reflected_by_tpb)
+{
+    SetGeoFrame(geo_frame);
+    SetChunks(desired_chunk_width, desired_chunk_height);
+}
 
-void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
+void YieldsPerPMT::SetGeoFrame(I3FramePtr geo_frame) {
+    this->geo_frame = geo_frame;
+    SetPMTInformation(geo_frame);
+}
+
+void YieldsPerPMT::SetPMTInformation(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
+
     CCMGeometry const & geo = frame->Get<CCMGeometry const>(geometry_name_);
-    I3Map<CCMPMTKey, CCMOMGeo> const & pmt_geo = geo.pmt_geo;
-    I3Vector<double> this_pmt_loc;
+    std::map<CCMPMTKey, CCMOMGeo> const & pmt_geo = geo.pmt_geo;
+    std::vector<double> this_pmt_loc;
 
     for(std::pair<CCMPMTKey const, CCMOMGeo> const & it : pmt_geo) {
         bool this_pmt_status = true;
@@ -256,14 +260,14 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
 
         CCMPMTType omtype = it.second.omtype;
         double coating_flag;
-        if (omtype == coated_omtype){
+        if (omtype == coated_omtype) {
             coating_flag = 1.0; // coating flag = 1 ==> pmt is coated!
         }
-        else if (omtype == uncoated_omtype){
+        else if (omtype == uncoated_omtype) {
             coating_flag = 0.0; // uncoated pmt!
             coating_status = false;
         }
-        else{
+        else {
             continue; // this pmt is not an 8in! we dont need it!
         }
         // now let's compute our facing direction
@@ -276,19 +280,19 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
         double facing_dir_y;
         double facing_dir_z;
 
-        if (pos_z > 50.0){
+        if (pos_z > 50.0) {
             // region 0 pmts!
             facing_dir_x = 0.0;
             facing_dir_y = 0.0;
             facing_dir_z = -1.0;
         }
-        if (pos_z < -50.0){
+        if (pos_z < -50.0) {
             // region 6 pmts!
             facing_dir_x = 0.0;
             facing_dir_y = 0.0;
             facing_dir_z = 1.0;
         }
-        if (pos_z < 50.0 and pos_z > -50.0){
+        if (pos_z < 50.0 and pos_z > -50.0) {
             double facing_radius = std::pow(pos_x, 2) + std::pow(pos_y, 2);
             double facing_r_x = pos_x / facing_radius;
             double facing_r_y = pos_y / facing_radius;
@@ -300,7 +304,7 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
         }
 
         // now time save!!!
-        pmt_info this_pmt_info;
+        yields_pmt_info this_pmt_info;
         this_pmt_info.key = it.first;
         this_pmt_info.pmt_x = pos_x;
         this_pmt_info.pmt_y = pos_y;
@@ -350,11 +354,13 @@ void YieldsPerPMT::GetPMTInformation(I3FramePtr frame){
                 coated_pmt_locs_side_.push_back(this_pmt_loc);
             }
         }
- 
     }
 }
 
-void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) {
+void YieldsPerPMT::SetChunks(double desired_chunk_width, double desired_chunk_height) {
+
+    this->desired_chunk_width_ = desired_chunk_width;
+    this->desired_chunk_height_ = desired_chunk_height;
 
     // so we've parsed our pmt info, but now we need to get our secondary locations
     // let's start with chunking up the sides of the detector
@@ -391,9 +397,9 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
 
     // setting up some variables we will need
     double small_percent_pmt_occluded = 0.0;
-    I3Vector<I3Vector<double>> this_chunk_valid_points;
-    I3Vector<I3Vector<double>> this_chunk_invalid_points;
-    I3Vector<I3Vector<double>> this_chunk_coated_pmt_points;
+    std::vector<std::vector<double>> this_chunk_valid_points;
+    std::vector<std::vector<double>> this_chunk_invalid_points;
+    std::vector<std::vector<double>> this_chunk_coated_pmt_points;
 
     bool top_bottom_flag = false;
     size_t total_valid_points;
@@ -403,7 +409,7 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
     double ratio_coated;
 
     // now let's calculate x and y from these circumference positions
-    for (size_t i = 0; i < possible_circumference_positions.size(); i++){
+    for (size_t i = 0; i < possible_circumference_positions.size(); i++) {
         double loc_c = possible_circumference_positions.at(i);
         double loc_theta = loc_c / cylinder_radius;
         double loc_x = cylinder_radius * std::cos(loc_theta);
@@ -454,7 +460,7 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
 
             // now let's save if enough of this chunk is valid
             if (ratio_valid > small_percent_pmt_occluded){
-                I3Vector<double> side_chunk_xy;
+                std::vector<double> side_chunk_xy;
                 side_chunk_xy.push_back(loc_c);
                 side_chunk_xy.push_back(loc_z);
 
@@ -487,7 +493,6 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
             }
         }
     }
-
 
     // time to chunk up the top and bottom of the detector
     size_t n_chunks_x = (size_t) (cylinder_max_x - cylinder_min_x) / desired_chunk_width;
@@ -618,13 +623,13 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
                     double facing_dir_y = 0.0;
                     double facing_dir_z;
                     if (this_z == z_top){
-                        I3Vector<double> top_chunk_xy;
+                        std::vector<double> top_chunk_xy;
                         top_chunk_xy.push_back(this_x);
                         top_chunk_xy.push_back(this_y);
                         facing_dir_z = -1.0;
                     }
                     if (this_z == z_bottom){
-                        I3Vector<double> bottom_chunk_xy;
+                        std::vector<double> bottom_chunk_xy;
                         bottom_chunk_xy.push_back(this_x);
                         bottom_chunk_xy.push_back(this_y);
                         facing_dir_z = 1.0;
@@ -647,7 +652,6 @@ void YieldsPerPMT::GetSecondaryLocs(double const & desired_chunk_width, double c
     }
 }
 
-
 // let's make a function to calculate how much light from a vertex goes into each PMT
 
 void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
@@ -656,55 +660,39 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
                                double const & n_photons_produced,
                                double const & time_offset,
                                double const & absorption_length,
-                               std::vector<pmt_info> const & pmt_parsed_information_,
+                               std::vector<yields_pmt_info> const & pmt_parsed_information_,
                                bool const & is_visible,
                                I3Position const & vertex,
                                boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
-                               std::vector<CCMPMTKey> keys_to_fit){
-
-    // let's define some things
-    double omega;
-    double distance_travelled;
-    double photons_in_this_pmt;
-    double travel_time;
-    double pmt_x_loc;
-    double pmt_y_loc;
-    double pmt_z_loc;
-    double facing_dir_x;
-    double facing_dir_y;
-    double facing_dir_z;
-    double coating_flag;
-    double pmt_facing_area;
-    double pmt_side_area;
-    CCMPMTKey pmt_key;
+                               std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // let's start by looping over our pmt parsed information
-    for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); pmt_it ++){
+    for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); ++pmt_it) {
 
-        pmt_x_loc = pmt_parsed_information_.at(pmt_it).pmt_x;
-        pmt_y_loc = pmt_parsed_information_.at(pmt_it).pmt_y;
-        pmt_z_loc = pmt_parsed_information_.at(pmt_it).pmt_z;
-        facing_dir_x = pmt_parsed_information_.at(pmt_it).facing_dir_x;
-        facing_dir_y = pmt_parsed_information_.at(pmt_it).facing_dir_y;
-        facing_dir_z = pmt_parsed_information_.at(pmt_it).facing_dir_z;
-        coating_flag = pmt_parsed_information_.at(pmt_it).coating_flag; // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
-        pmt_facing_area = pmt_parsed_information_.at(pmt_it).pmt_facing_area;
-        pmt_side_area = pmt_parsed_information_.at(pmt_it).pmt_side_area;
-        pmt_key = pmt_parsed_information_.at(pmt_it).key;
+        double const & pmt_x_loc = pmt_parsed_information_.at(pmt_it).pmt_x;
+        double const & pmt_y_loc = pmt_parsed_information_.at(pmt_it).pmt_y;
+        double const & pmt_z_loc = pmt_parsed_information_.at(pmt_it).pmt_z;
+        double const & facing_dir_x = pmt_parsed_information_.at(pmt_it).facing_dir_x;
+        double const & facing_dir_y = pmt_parsed_information_.at(pmt_it).facing_dir_y;
+        double const & facing_dir_z = pmt_parsed_information_.at(pmt_it).facing_dir_z;
+        double const & coating_flag = pmt_parsed_information_.at(pmt_it).coating_flag; // coating flag == 1.0 for coated pmts and 0.0 for uncoated!
+        double const & pmt_facing_area = pmt_parsed_information_.at(pmt_it).pmt_facing_area;
+        double const & pmt_side_area = pmt_parsed_information_.at(pmt_it).pmt_side_area;
+        CCMPMTKey const & pmt_key = pmt_parsed_information_.at(pmt_it).key;
         
         // check if this is a pmt key we should fite
         bool fit = false;
-        for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++){
+        for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++) {
             if (keys_to_fit.at(pmt_it) == pmt_key){
                 fit = true;
             }
         }
-        if (!fit){
+        if (!fit) {
             continue;
         }
 
         // ok, this must be a pmt we want to fit!
-        if (is_visible == false and coating_flag == 0.0){
+        if (is_visible == false and coating_flag == 0.0) {
             // this is the case where we are propagating UV light and we have an uncoated pmt...so we won't see anything
             continue;
         }
@@ -714,19 +702,23 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
             (*all_pmt_yields_map)[pmt_key] = PhotonYieldSummarySeries ();
         }
 
-        else{
+        else {
+            double omega;
+            double distance_travelled;
             // let's get solid angle and distance from vertex to this pmt
             get_solid_angle_and_distance_vertex_to_location(vertex.GetX() / I3Units::cm, vertex.GetY() / I3Units::cm, vertex.GetZ() / I3Units::cm,
                                                             pmt_x_loc, pmt_y_loc, pmt_z_loc,
                                                             facing_dir_x, facing_dir_y, facing_dir_z,
                                                             pmt_facing_area, pmt_side_area, omega, distance_travelled);
 
+            double photons_in_this_pmt;
             // now call function to get light yields
             get_light_yield(omega, distance_travelled, absorption_length, photons_in_this_pmt);
             photons_in_this_pmt *= n_photons_produced;
 
+            double travel_time;
             // ok so we have the photons seen by this pmt, let's get the propagation times
-            if (is_visible){
+            if (is_visible) {
                 travel_time = distance_travelled / (c_cm_per_nsec / vis_index_of_refraction); // units of nsec
             }
             else{
@@ -750,9 +742,7 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
                 }
             }
         }
-
     }
-
 }
 
 // now let's do vertex --> TPB --> PMT propagation
@@ -764,10 +754,10 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
                                       double const & UV_absorption_length,
                                       double const & vis_absorption_length,
                                       I3Position const & vertex,
-                                      std::vector<pmt_info> const & pmt_parsed_information_,
+                                      std::vector<yields_pmt_info> const & pmt_parsed_information_,
                                       std::vector<secondary_loc_info> const & locations_to_check_information_,
                                       boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
-                                      std::vector<CCMPMTKey> keys_to_fit){
+                                      std::vector<CCMPMTKey> const & keys_to_fit) {
     // define some things
     double omega;
     double distance_travelled;
@@ -784,7 +774,7 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
     double side_area;
 
     // let's start by looping our our secondary locations parsed information
-    for (size_t loc_it = 0; loc_it < locations_to_check_information_.size(); loc_it ++){
+    for (size_t loc_it = 0; loc_it < locations_to_check_information_.size(); ++loc_it) {
 
         loc_x = locations_to_check_information_.at(loc_it).loc_x;
         loc_y = locations_to_check_information_.at(loc_it).loc_y;
@@ -818,7 +808,6 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
  
         // since vertex_to_pmt_propagation saves info -- we're done!
     }
-
 }
 
 void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
@@ -827,10 +816,10 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
                                 double const & vis_index_of_refraction,
                                 double const & UV_absorption_length,
                                 double const & vis_absorption_length,
-                                std::vector<pmt_info> const & pmt_parsed_information_,
+                                std::vector<yields_pmt_info> const & pmt_parsed_information_,
                                 std::vector<secondary_loc_info> const & locations_to_check_information_,
                                 boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
-                                std::vector<CCMPMTKey> keys_to_fit){
+                                std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // ok so let's grab our vertex locations from our soidum_event
     I3Position photon_vertex = soidum_event.photon_vertex;
@@ -865,20 +854,10 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
     // ok done!
 }
 
-boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, I3FramePtr geo_frame, double const & UV_absorption_length, std::vector<CCMPMTKey> keys_to_fit){
+boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, I3FramePtr geo_frame, double const & UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // so we have an event we want to simulate
     // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
-
-    // let's check that we set up our pmt info and secondary location information
-    if (!set_pmt_info_){
-        GetPMTInformation(geo_frame);
-        set_pmt_info_ = true;
-    }
-    if (!set_secondary_locs_){
-        GetSecondaryLocs(desired_chunk_width_, desired_chunk_height_);
-        set_secondary_locs_ = true;
-    }
 
     // let's also make our PhotonYieldSummary map to save to
     boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();

@@ -21,8 +21,7 @@
 #include "dataclasses/physics/HESodiumEvent.h"
 #include "dataclasses/physics/PhotonYieldSummary.h"
 
-struct pmt_info {
-
+struct yields_pmt_info {
     CCMPMTKey key;
     double pmt_x = 0.0;
     double pmt_y = 0.0;
@@ -36,7 +35,6 @@ struct pmt_info {
 }; 
 
 struct secondary_loc_info {
-    
     double loc_x = 0.0;
     double loc_y = 0.0;
     double loc_z = 0.0;
@@ -50,21 +48,23 @@ struct secondary_loc_info {
 
 class YieldsPerPMT {
     std::string geometry_name_ = std::string("CCMGeometry");
+    I3FramePtr geo_frame;
+
     double portion_light_reflected_by_tpb_ = 1.0;
     double vis_absorption_length_ = 2000.0;
     double desired_chunk_width_ = 20.0; // use 5 for finer binning
     double desired_chunk_height_ = 20.0; // use 5 for finer binning
-    std::vector<pmt_info> pmt_parsed_information_;
+    std::vector<yields_pmt_info> pmt_parsed_information_;
     std::vector<secondary_loc_info> locations_to_check_information_;
 
     unsigned int coated_omtype = (unsigned int)10;
     unsigned int uncoated_omtype = (unsigned int)20;
-    I3Vector<I3Vector<double>> uncoated_pmt_locs_top_;
-    I3Vector<I3Vector<double>> coated_pmt_locs_top_;
-    I3Vector<I3Vector<double>> uncoated_pmt_locs_bottom_;
-    I3Vector<I3Vector<double>> coated_pmt_locs_bottom_;
-    I3Vector<I3Vector<double>> uncoated_pmt_locs_side_;
-    I3Vector<I3Vector<double>> coated_pmt_locs_side_;
+    std::vector<std::vector<double>> uncoated_pmt_locs_top_;
+    std::vector<std::vector<double>> coated_pmt_locs_top_;
+    std::vector<std::vector<double>> uncoated_pmt_locs_bottom_;
+    std::vector<std::vector<double>> coated_pmt_locs_bottom_;
+    std::vector<std::vector<double>> uncoated_pmt_locs_side_;
+    std::vector<std::vector<double>> coated_pmt_locs_side_;
 
     // defining some geomtry things for modelling the detector...not the most elegant
     double pmt_radius = 10.16; //radius in cm^2
@@ -88,13 +88,15 @@ class YieldsPerPMT {
     double uv_index_of_refraction_ = 1.358;
     double vis_index_of_refraction_ = 1.23;
 
-    bool set_pmt_info_ = false;
     bool set_secondary_locs_ = false;
 
 public:
-    YieldsPerPMT();
-    void GetPMTInformation(I3FramePtr frame);
-    void GetSecondaryLocs(double const & desired_chunk_width, double const & desired_chunk_height) ;
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(HESodiumEvent const & event_vertex,  I3FramePtr geo_frame, double const & UV_absorption_length, std::vector<CCMPMTKey> keys_to_fit);
+    YieldsPerPMT(I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
+
+    void SetPMTInformation(I3FramePtr frame);
+    void SetGeoFrame(I3FramePtr geo_frame);
+    void SetChunks(double chunk_width, double chunk_height);
+
+    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(HESodiumEvent const & event_vertex, double const & UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit);
 };
 #endif
