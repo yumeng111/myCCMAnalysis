@@ -43,9 +43,9 @@ void register_YieldsPerPMT() {
 {
 
     class_<YieldsPerPMT, boost::noncopyable>("YieldsPerPMT")
-        .def(init<>())
-        .def("GetPMTInformation", &YieldsPerPMT::GetPMTInformation)
-        .def("GetSecondaryLocs", &YieldsPerPMT::GetSecondaryLocs)
+        .def(init<I3FramePtr, double, double, double>())
+        //.def("GetPMTInformation", &YieldsPerPMT::GetPMTInformation)
+        //.def("GetSecondaryLocs", &YieldsPerPMT::GetSecondaryLocs)
         .def("GetAllYields", &YieldsPerPMT::GetAllYields);
 
 }

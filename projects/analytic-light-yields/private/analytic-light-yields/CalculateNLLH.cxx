@@ -40,6 +40,9 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <analytic-light-yields/CalculateNLLH.h>
 
+CalculateNLLH::CalculateNLLH() :
+    max_bins(125), n_sodium_events(2000), portion_light_reflected_by_tpb(1.0), desired_chunk_width(20), desired_chunk_height(20), keys_to_fit(std::vector<CCMPMTKey>()) {}
+
 CalculateNLLH::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, size_t n_sodium_events, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height, std::vector<CCMPMTKey> keys_to_fit) :
     max_bins(max_bins), n_sodium_events(n_sodium_events), portion_light_reflected_by_tpb(portion_light_reflected_by_tpb), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height), keys_to_fit(keys_to_fit)
 {

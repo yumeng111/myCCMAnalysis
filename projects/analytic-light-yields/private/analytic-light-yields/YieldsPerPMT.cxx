@@ -680,13 +680,8 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
         double const & pmt_side_area = pmt_parsed_information_.at(pmt_it).pmt_side_area;
         CCMPMTKey const & pmt_key = pmt_parsed_information_.at(pmt_it).key;
 
-        // check if this is a pmt key we should fite
-        bool fit = false;
-        for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++) {
-            if (keys_to_fit.at(pmt_it) == pmt_key){
-                fit = true;
-            }
-        }
+        // check if this is a pmt key we should fit
+        bool fit = keys_to_fit.size() == 0 or std::find(keys_to_fit.begin(), keys_to_fit.end(), pmt_key) != keys_to_fit.end();
         if (!fit) {
             continue;
         }

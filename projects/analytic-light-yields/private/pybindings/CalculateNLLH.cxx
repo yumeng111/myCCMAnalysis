@@ -44,9 +44,10 @@ void register_CalculateNLLH() {
 
     class_<CalculateNLLH, boost::noncopyable>("CalculateNLLH")
         .def(init<>())
-        .def("GrabData", &CalculateNLLH::GrabData)
+        //.def("GrabData", &CalculateNLLH::GrabData)
         .def("GetNLLH", &CalculateNLLH::GetNLLH)
-        .def("DebugDatavsPred", &CalculateNLLH::DebugDatavsPred)
+        .def("GetNLLHValue", &CalculateNLLH::GetNLLHValue)
+        //.def("DebugDatavsPred", &CalculateNLLH::DebugDatavsPred)
         .def("GetNLLHDerivative", &CalculateNLLH::GetNLLHDerivative);
 
 }

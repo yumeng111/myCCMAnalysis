@@ -91,6 +91,7 @@ class YieldsPerPMT {
     bool set_secondary_locs_ = false;
 
 public:
+    YieldsPerPMT() = default;
     YieldsPerPMT(I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
 
     void SetPMTInformation(I3FramePtr frame);

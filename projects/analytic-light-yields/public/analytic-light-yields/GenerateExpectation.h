@@ -65,6 +65,7 @@ class GenerateExpectation {
     void ComputeBinnedYield(CCMPMTKey key, double max_time);
 
 public:
+    GenerateExpectation();
     GenerateExpectation(std::vector<CCMPMTKey> keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
     void GetSodiumVertices(size_t n_events_to_simulate, double z_position);
     void GetYieldsAndOffsets(double uv_absorption);

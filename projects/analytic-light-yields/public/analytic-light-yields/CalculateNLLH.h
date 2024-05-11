@@ -287,12 +287,14 @@ struct SinglePMTInfo {
 };
 
 class CalculateNLLH {
+public:
     static constexpr size_t n_params = 8;
     typedef double Underlying;
 
     typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
     typedef std::array<Underlying, n_params> Grad;
 
+private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
     std::vector<CCMPMTKey> keys_to_fit;
     I3FramePtr geo_frame;
@@ -308,6 +310,7 @@ class CalculateNLLH {
     size_t max_bins;
 
 public:
+    CalculateNLLH();
     CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=125, size_t n_sodium_events=2000, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
     void SetGeo(I3FramePtr geo_frame);
     void SetData(I3FramePtr data_frame);
