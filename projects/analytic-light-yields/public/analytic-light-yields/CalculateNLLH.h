@@ -337,9 +337,10 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
     double max_time = pmt_data.max_time;
+    double peak_time = pmt_data.peak_time;
 
     // let's grab our expectation
-    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB,
+    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time, peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB,
             normalization, light_time_offset, uv_absorption, z_offset, n_sodium_events, light_profile_type);
 
     // unpack into yields and yields^2

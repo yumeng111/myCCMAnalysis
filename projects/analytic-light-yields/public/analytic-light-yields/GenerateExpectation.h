@@ -74,7 +74,7 @@ public:
                                        AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
 
     template<typename T>
-    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, double start_time, double max_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
 };
 
@@ -94,7 +94,7 @@ std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T
 
 template<typename T>
 std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
-    GenerateExpectation::GetExpectation(CCMPMTKey key, double start_time, double max_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+    GenerateExpectation::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
     bool compute_vertices = sodium_events_constructor == nullptr or n_sodium_events != this->n_sodium_events or z_offset != this->z_offset;
@@ -124,7 +124,7 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
 
     std::vector<T> light_times(n_light_bins, 0.0);
     for(size_t i = 0; i < n_light_bins; i++) {
-        light_times[i] = 2.0 * i + light_time_offset;
+        light_times[i] = 2.0 * i + (light_time_offset - peak_time);
     }
 
     // now grab our light profile!

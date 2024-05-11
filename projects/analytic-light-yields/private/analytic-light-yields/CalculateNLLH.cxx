@@ -72,6 +72,7 @@ void CalculateNLLH::SetData(I3FramePtr data_frame) {
         pmt_data.data = std::vector(i->second.begin() + min_idx, i->second.begin() + max_idx);
         pmt_data.start_time = (start_idx - min_idx) * 2.0;
         pmt_data.max_time = (std::max(int(min_idx), int(max_idx) - 1) - min_idx) * 2.0;
+        pmt_data.peak_time = (peak_idx - min_idx) * 2.0;
         data[pmt_data.key] = pmt_data;
     }
     n_data_events = data_frame->Get<I3Double>("TotalEventsPastCuts").value;
