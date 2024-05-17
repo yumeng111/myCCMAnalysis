@@ -106,7 +106,6 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
     // check that we made our sodium event vertices
     if(compute_vertices)
         GetSodiumVertices(n_sodium_events, z_offset);
-
     // now let's check if we get our yields + time offsets
     if(compute_yields)
         GetYieldsAndOffsets(uv_absorption);
@@ -135,22 +134,20 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
     }
 
     // make a vector of final binned yields to return
-    boost::shared_ptr<std::vector<T>> final_binned_yields_ = boost::make_shared<std::vector<T>> ();
-    boost::shared_ptr<std::vector<T>> final_binned_squared_yields_ = boost::make_shared<std::vector<T>> ();
-    std::vector<T> & expectation = *final_binned_yields_;
-    std::vector<T> & expectation_squared = *final_binned_squared_yields_;
+    boost::shared_ptr<std::vector<T>> expectation = boost::make_shared<std::vector<T>> (LAr_light_profile.size(), 0.0);
+    boost::shared_ptr<std::vector<T>> expectation_squared = boost::make_shared<std::vector<T>> (LAr_light_profile_squared.size(), 0.0);
 
     // Convolute the light profile with the binned yields
     for(size_t i = 0; i < n_data_bins; i++) {
         size_t tot_idx = i + offset;
         for(size_t j = 0; j <= tot_idx; j++) {
             size_t k = tot_idx - j;
-            expectation[i] += binned_yield[k] * LAr_light_profile[j];
-            expectation_squared[i] += binned_square_yield[k] * LAr_light_profile_squared[j];
+            expectation->at(i) += binned_yield[k] * LAr_light_profile[j];
+            expectation_squared->at(i) += binned_square_yield[k] * LAr_light_profile_squared[j];
         }
     }
 
-    return std::make_tuple(final_binned_yields_, final_binned_squared_yields_);
+    return std::make_tuple(expectation, expectation_squared);
 }
 
 

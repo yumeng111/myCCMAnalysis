@@ -41,13 +41,17 @@
 #include <analytic-light-yields/CalculateNLLH.h>
 
 CalculateNLLH::CalculateNLLH() :
-    max_bins(125), n_sodium_events(2000), portion_light_reflected_by_tpb(1.0), desired_chunk_width(20), desired_chunk_height(20), keys_to_fit(std::vector<CCMPMTKey>()) {}
+    max_bins(100), n_sodium_events(20), portion_light_reflected_by_tpb(1.0), desired_chunk_width(20.0), desired_chunk_height(20.0), keys_to_fit(std::vector<CCMPMTKey>()) {}
 
 CalculateNLLH::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, size_t n_sodium_events, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height, std::vector<CCMPMTKey> keys_to_fit) :
     max_bins(max_bins), n_sodium_events(n_sodium_events), portion_light_reflected_by_tpb(portion_light_reflected_by_tpb), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height), keys_to_fit(keys_to_fit)
 {
     SetData(data_frame);
     SetGeo(geo_frame);
+}
+
+void CalculateNLLH::SetKeys(std::vector<CCMPMTKey> keys){
+    keys_to_fit = keys;
 }
 
 void CalculateNLLH::SetGeo(I3FramePtr geo_frame) {
@@ -92,18 +96,23 @@ void CalculateNLLH::SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen
 
 CalculateNLLH::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
     return this->ComputeNLLH<AD>(key, AD(params.Rs, 0), AD(params.Rt, 1), AD(params.tau_s, 2), AD(params.tau_t, 3), AD(params.tau_rec, 4), AD(params.tau_TPB, 5),
-            AD(params.normalization, 6), AD(params.time_offset, 7), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+            AD(params.normalization, 6), AD(params.time_offset, 7), AD(params.const_offset, 8), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
 }
 
 double CalculateNLLH::GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
     return this->ComputeNLLH<double>(key, params.Rs, params.Rt, params.tau_s, params.tau_t, params.tau_rec, params.tau_TPB,
-            params.normalization, params.time_offset, params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+            params.normalization, params.time_offset, params.const_offset, params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
 }
 
-CalculateNLLH::Grad CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
+std::vector<double> CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
     Grad grad;
     this->GetNLLH(key, params).copyGradient(grad.data());
-    return grad;
+    // putting grad into a vector...don't want to deal with pybindings for arrays
+    std::vector<double> grad_to_return;
+    for (size_t i = 0; i < grad.size(); i++){
+        grad_to_return.push_back(grad.at(i));
+    }
+    return grad_to_return;
 }
 
 

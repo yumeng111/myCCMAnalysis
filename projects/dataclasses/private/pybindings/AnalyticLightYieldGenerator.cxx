@@ -28,6 +28,8 @@ void register_AnalyticLightYieldGenerator() {
     .def_readwrite("tau_TPB",&AnalyticLightYieldGenerator::tau_TPB)
     .def_readwrite("uv_absorption",&AnalyticLightYieldGenerator::uv_absorption)
     .def_readwrite("normalization",&AnalyticLightYieldGenerator::normalization)
+    .def_readwrite("time_offset",&AnalyticLightYieldGenerator::time_offset)
+    .def_readwrite("const_offset",&AnalyticLightYieldGenerator::const_offset)
     .def_readwrite("n_sodium_events",&AnalyticLightYieldGenerator::n_sodium_events)
     .def_readwrite("z_offset",&AnalyticLightYieldGenerator::z_offset)
     .def_readwrite("light_profile_type",&AnalyticLightYieldGenerator::light_profile_type)

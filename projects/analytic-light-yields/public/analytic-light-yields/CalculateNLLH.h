@@ -288,7 +288,7 @@ struct SinglePMTInfo {
 
 class CalculateNLLH {
 public:
-    static constexpr size_t n_params = 8;
+    static constexpr size_t n_params = 9;
     typedef double Underlying;
 
     typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
@@ -312,6 +312,7 @@ private:
 public:
     CalculateNLLH();
     CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=125, size_t n_sodium_events=2000, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
+    void SetKeys(std::vector<CCMPMTKey> keys);
     void SetGeo(I3FramePtr geo_frame);
     void SetData(I3FramePtr data_frame);
     void SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen_expectation);
@@ -322,27 +323,26 @@ public:
 
     template<typename T>
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+            T normalization, T light_time_offset, T const_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
 
     AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
     double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
-    Grad GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
+    std::vector<double> GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
 };
 
 template<typename T>
 T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+            T normalization, T light_time_offset, T const_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
     double max_time = pmt_data.max_time;
     double peak_time = pmt_data.peak_time;
-
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time, peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB,
             normalization, light_time_offset, uv_absorption, z_offset, n_sodium_events, light_profile_type);
-
+    
     // unpack into yields and yields^2
     boost::shared_ptr<std::vector<T>> pred_yields;
     boost::shared_ptr<std::vector<T>> pred_yields_squared;
@@ -352,15 +352,14 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     T total_nllh(0.0);
 
     size_t n_bins = pmt_data.data.size();
-
+    
     // now loop over the time bins in our pred
     for (size_t i=0; i<n_bins; ++i) {
         double k = pmt_data.data.at(i);
-        T mu = pred_yields->at(i) * normalization;
-        T sigma_squared = pred_yields_squared->at(i) * (normalization * normalization);
+        T mu = pred_yields->at(i) * normalization + const_offset;
+        T sigma_squared = pred_yields_squared->at(i) * (normalization * normalization) + (const_offset * const_offset);
         total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
     }
-
     return total_nllh;
 }
 

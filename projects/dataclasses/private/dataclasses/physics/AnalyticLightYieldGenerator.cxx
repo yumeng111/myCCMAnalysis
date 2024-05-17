@@ -20,6 +20,8 @@ std::ostream& AnalyticLightYieldGenerator::Print(std::ostream& os) const{
         << "\n  TPB Time Constant :" << tau_TPB
         << "\n  UV Absorption Length :" << uv_absorption
         << "\n  Normalization :" << normalization
+        << "\n  Time Offset :" << time_offset
+        << "\n  Constant Offset :" << const_offset
         << "\n  N Sodium Events :" << n_sodium_events
         << "\n  Z Offset :" << z_offset
         << "\n  Light Profile Type :" << LArLightProfileTypeToName.at(light_profile_type)

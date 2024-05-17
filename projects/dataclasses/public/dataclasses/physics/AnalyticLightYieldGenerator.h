@@ -26,6 +26,7 @@ class AnalyticLightYieldGenerator : public I3FrameObject {
     float tau_TPB;
     float normalization;
     float time_offset;
+    float const_offset;
 
     float n_sodium_events;
     float uv_absorption;
@@ -43,6 +44,8 @@ class AnalyticLightYieldGenerator : public I3FrameObject {
             && tau_TPB == rhs.tau_TPB
             && uv_absorption == rhs.uv_absorption
             && normalization == rhs.normalization
+            && time_offset == rhs.time_offset
+            && const_offset == rhs.const_offset
             && n_sodium_events == rhs.n_sodium_events
             && z_offset == rhs.z_offset
             && light_profile_type == rhs.light_profile_type;
@@ -50,10 +53,11 @@ class AnalyticLightYieldGenerator : public I3FrameObject {
 
 
   AnalyticLightYieldGenerator(float Rs_ = 0, float Rt_ = 0, float tau_s_ = 0, float tau_t_ = 0, float tau_rec_ = 0, float tau_TPB_ = 0,
-          float uv_absorption_ = 0, float normalization_ = 0, float n_sodium_events_ = 0, float z_offset_ = 0,
+          float uv_absorption_ = 0, float normalization_ = 0, float time_offset_ = 0, float const_offset_ = 0, float n_sodium_events_ = 0, float z_offset_ = 0,
           LArLightProfileType light_profile_type_ = AnalyticLightYieldGenerator::LArLightProfileType::Unknown):
         Rs(Rs_), Rt(Rt_), tau_s(tau_s_), tau_t(tau_t_), tau_rec(tau_rec_), tau_TPB(tau_TPB_),
-        uv_absorption(uv_absorption_), normalization(normalization_), n_sodium_events(n_sodium_events_), z_offset(z_offset_), light_profile_type(light_profile_type_) {
+        uv_absorption(uv_absorption_), normalization(normalization_), time_offset(time_offset_), const_offset(const_offset_), n_sodium_events(n_sodium_events_),
+        z_offset(z_offset_), light_profile_type(light_profile_type_) {
     }
 
 
@@ -76,7 +80,7 @@ class AnalyticLightYieldGenerator : public I3FrameObject {
         ar & make_nvp("tau_TPB",tau_TPB);
         ar & make_nvp("normalization",normalization);
         ar & make_nvp("time_offset", time_offset);
-
+        ar & make_nvp("const_offset", const_offset);
         ar & make_nvp("n_sodium_events",n_sodium_events);
         ar & make_nvp("uv_absorption",uv_absorption);
         ar & make_nvp("z_offset",z_offset);
