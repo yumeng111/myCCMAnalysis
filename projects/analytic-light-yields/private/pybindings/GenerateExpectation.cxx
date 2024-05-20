@@ -54,7 +54,8 @@ std::vector<std::tuple<double, Grad>> LightProfile(GenerateExpectation & g, doub
         grad_times[i] = AD(times[i], 7);
     }
 
-    std::vector<AD> result = g.LightProfile(AD(Rs, 0), AD(Rt, 1), AD(tau_s, 3), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), light_profile_type, grad_times);
+    //std::vector<AD> result = g.LightProfile(AD(Rs, 0), AD(Rt, 1), AD(tau_s, 3), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), light_profile_type, grad_times);
+    std::vector<AD> result = g.LightProfile(AD(Rs, 0), AD(Rt, 1), AD(tau_s, 2), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), light_profile_type, grad_times);
     std::vector<std::tuple<double, Grad>> ret_val;
     for (size_t i = 0; i < result.size(); i++) {
         double val = result[i].value();
@@ -71,7 +72,8 @@ std::vector<Grad> LightProfileGrad(GenerateExpectation & g, double Rs, double Rt
         grad_times[i] = AD(times[i], 7);
     }
 
-    std::vector<AD> result = g.LightProfile(AD(Rs, 0), AD(Rt, 1), AD(tau_s, 3), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), light_profile_type, grad_times);
+    //std::vector<AD> result = g.LightProfile(AD(Rs, 0), AD(Rt, 1), AD(tau_s, 3), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), light_profile_type, grad_times);
+    std::vector<AD> result = g.LightProfile(AD(Rs, 0), AD(Rt, 1), AD(tau_s, 2), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), light_profile_type, grad_times);
     std::vector<Grad> ret_val;
     for (size_t i = 0; i < result.size(); i++) {
         Grad grad;

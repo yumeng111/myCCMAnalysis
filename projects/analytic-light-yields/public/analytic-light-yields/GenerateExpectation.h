@@ -48,13 +48,6 @@ class GenerateExpectation {
     std::map<CCMPMTKey, std::vector<double>> binned_yields;
     std::map<CCMPMTKey, std::vector<double>> binned_square_yields;
 
-    // let's also add small noise to every bin
-    double noise_photons = 1.0;
-    double noise_triggers = 5.0;
-    double digitization_time = 16.0 * std::pow(10.0, 3.0); //16 usec in nsec
-    double noise_rate = noise_photons / (noise_triggers * digitization_time); // units of photons/nsec
-    double noise_rate_per_time_bin = 2.0 * noise_rate; // 2nsec binning
-
     double uv_absorption = 0.0;
     double z_offset = 0.0;
 
@@ -97,11 +90,15 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
     GenerateExpectation::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
-    bool compute_vertices = sodium_events_constructor == nullptr or n_sodium_events != this->n_sodium_events or z_offset != this->z_offset;
-    bool compute_yields = yields_and_offset_constructor == nullptr or uv_absorption != this->uv_absorption;
+    //bool compute_vertices = sodium_events_constructor == nullptr or n_sodium_events != this->n_sodium_events or z_offset != this->z_offset;
+    //bool compute_yields = yields_and_offset_constructor == nullptr or uv_absorption != this->uv_absorption;
+    //bool bin_yields = binned_yields.find(key) == binned_yields.end();
+    //compute_yields |= compute_vertices;
+    //bin_yields |= compute_yields;
+    
+    bool compute_vertices = sodium_events_constructor == nullptr;
+    bool compute_yields = yields_and_offset_constructor == nullptr;
     bool bin_yields = binned_yields.find(key) == binned_yields.end();
-    compute_yields |= compute_vertices;
-    bin_yields |= compute_yields;
 
     // check that we made our sodium event vertices
     if(compute_vertices)
@@ -109,7 +106,6 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
     // now let's check if we get our yields + time offsets
     if(compute_yields)
         GetYieldsAndOffsets(uv_absorption);
-
     // now lets check if we have pre-binned the yields
     if(bin_yields)
         ComputeBinnedYield(key, max_time);

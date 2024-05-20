@@ -17,6 +17,7 @@
 #include <cmath>
 #include <map>
 #include <memory>
+#include <type_traits>
 
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
@@ -294,6 +295,8 @@ public:
     typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
     typedef std::array<Underlying, n_params> Grad;
 
+    I3MapPMTKeyVectorDouble debug_data;
+    I3MapPMTKeyVectorDouble debug_pred;
 private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
     std::vector<CCMPMTKey> keys_to_fit;
@@ -320,6 +323,10 @@ public:
     double GetNDataEvents() const { return n_data_events; };
     I3MapPMTKeyVectorDoublePtr GetData() const;
     boost::shared_ptr<GenerateExpectation> GetGenExpectation() const { return gen_expectation; };
+
+    I3MapPMTKeyVectorDouble GetDataForDebug() {return debug_data;};
+    I3MapPMTKeyVectorDouble GetPredForDebug() {return debug_pred;};
+
 
     template<typename T>
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
@@ -353,12 +360,22 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
 
     size_t n_bins = pmt_data.data.size();
     
+    // let's add empty vector to debug_data and debug_pred
+    debug_data[key] = std::vector<double> (n_bins, 0.0);
+    debug_pred[key] = std::vector<double> (n_bins, 0.0);
+
     // now loop over the time bins in our pred
     for (size_t i=0; i<n_bins; ++i) {
         double k = pmt_data.data.at(i);
         T mu = pred_yields->at(i) * normalization + const_offset;
         T sigma_squared = pred_yields_squared->at(i) * (normalization * normalization) + (const_offset * const_offset);
         total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+        // save for debugging!
+        if constexpr (std::is_same<T, double>::value) {
+            debug_data[key].at(i) = k;
+            debug_pred[key].at(i) = mu;
+        }
+
     }
     return total_nllh;
 }

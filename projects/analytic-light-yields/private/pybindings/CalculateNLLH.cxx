@@ -47,6 +47,8 @@ void register_CalculateNLLH() {
         .def("SetKeys", &CalculateNLLH::SetKeys)
         .def("SetGeo", &CalculateNLLH::SetGeo)
         .def("SetData", &CalculateNLLH::SetData)
+        .def("GetDataForDebug", &CalculateNLLH::GetDataForDebug)
+        .def("GetPredForDebug", &CalculateNLLH::GetPredForDebug)
         .def("SetGenExpectation", &CalculateNLLH::SetGenExpectation)
         .def("GetNDataEvents", &CalculateNLLH::GetNDataEvents)
         .def("GetData", &CalculateNLLH::GetData)
