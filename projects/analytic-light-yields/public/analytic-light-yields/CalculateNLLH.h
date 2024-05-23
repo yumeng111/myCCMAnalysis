@@ -283,8 +283,11 @@ struct SinglePMTInfo {
     CCMPMTKey key;
     std::vector<double> data;
     double peak_time;
+    double peak_value;
     double start_time;
     double max_time;
+    size_t event_start_bin;
+    double pre_event_average;
 };
 
 class CalculateNLLH {
@@ -295,8 +298,13 @@ public:
     typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
     typedef std::array<Underlying, n_params> Grad;
 
-    I3MapPMTKeyVectorDouble debug_data;
-    I3MapPMTKeyVectorDouble debug_pred;
+    I3MapPMTKeyVectorDouble debug_all_data;
+    I3MapPMTKeyVectorDouble debug_all_pred;
+    I3MapPMTKeyVectorDouble debug_fit_data;
+    I3MapPMTKeyVectorDouble debug_fit_pred;
+
+    double event_start_threshold = 20.0;
+
 private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
     std::vector<CCMPMTKey> keys_to_fit;
@@ -314,7 +322,7 @@ private:
 
 public:
     CalculateNLLH();
-    CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=125, size_t n_sodium_events=2000, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
+    CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=100, size_t n_sodium_events=20, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
     void SetKeys(std::vector<CCMPMTKey> keys);
     void SetGeo(I3FramePtr geo_frame);
     void SetData(I3FramePtr data_frame);
@@ -324,8 +332,10 @@ public:
     I3MapPMTKeyVectorDoublePtr GetData() const;
     boost::shared_ptr<GenerateExpectation> GetGenExpectation() const { return gen_expectation; };
 
-    I3MapPMTKeyVectorDouble GetDataForDebug() {return debug_data;};
-    I3MapPMTKeyVectorDouble GetPredForDebug() {return debug_pred;};
+    I3MapPMTKeyVectorDouble GetAllDataForDebug() {return debug_all_data;};
+    I3MapPMTKeyVectorDouble GetAllPredForDebug() {return debug_all_pred;};
+    I3MapPMTKeyVectorDouble GetFitDataForDebug() {return debug_fit_data;};
+    I3MapPMTKeyVectorDouble GetFitPredForDebug() {return debug_fit_pred;};
 
 
     template<typename T>
@@ -346,9 +356,13 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     double start_time = pmt_data.start_time;
     double max_time = pmt_data.max_time;
     double peak_time = pmt_data.peak_time;
+    size_t event_start_bin = pmt_data.event_start_bin;
+    double pre_event_average = pmt_data.pre_event_average;
+    double data_peak_value = pmt_data.peak_value;
+
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time, peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB,
-            normalization, light_time_offset, uv_absorption, z_offset, n_sodium_events, light_profile_type);
+            light_time_offset, uv_absorption, z_offset, n_sodium_events, light_profile_type);
     
     // unpack into yields and yields^2
     boost::shared_ptr<std::vector<T>> pred_yields;
@@ -361,19 +375,42 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     size_t n_bins = pmt_data.data.size();
     
     // let's add empty vector to debug_data and debug_pred
-    debug_data[key] = std::vector<double> (n_bins, 0.0);
-    debug_pred[key] = std::vector<double> (n_bins, 0.0);
+    debug_all_data[key] = std::vector<double> (n_bins, 0.0);
+    debug_all_pred[key] = std::vector<double> (n_bins, 0.0);
+    debug_fit_data[key] = std::vector<double> (n_bins, 0.0);
+    debug_fit_pred[key] = std::vector<double> (n_bins, 0.0);
+
+    // this is not exactly kosher but we're going to pin the normalization to make the max pred == max data
+    // we already have max data (aka data_peak_value), so let's just find the max of the pred
+    size_t pred_peak_idx = std::distance(pred_yields->begin(), std::max_element(pred_yields->begin(), pred_yields->end())); 
+    T pred_peak_value = pred_yields->at(pred_peak_idx);
+    T pinned_norm = data_peak_value / pred_peak_value;
+
+    size_t bump_start_bin = 30;
+    size_t bump_end_bin = 55;
 
     // now loop over the time bins in our pred
     for (size_t i=0; i<n_bins; ++i) {
+        bool in_bump_region = false;
+        if (i >= bump_start_bin and i  <= bump_end_bin){
+            in_bump_region = true;
+        }
         double k = pmt_data.data.at(i);
-        T mu = pred_yields->at(i) * normalization + const_offset;
-        T sigma_squared = pred_yields_squared->at(i) * (normalization * normalization) + (const_offset * const_offset);
-        total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
-        // save for debugging!
+        T mu = pred_yields->at(i) * pinned_norm + pre_event_average;
+        T sigma_squared = pred_yields_squared->at(i) * (pinned_norm * pinned_norm) + (pre_event_average * pre_event_average);
+        // we want to compute the llh everywhere except first 3 bins of event and the bump region
+        if ((i < event_start_bin) or (i > (event_start_bin + 3))){
+            if (in_bump_region == false){
+                total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+                if constexpr (std::is_same<T, double>::value) {
+                    debug_fit_data[key].at(i) = k;
+                    debug_fit_pred[key].at(i) = mu;
+                }
+            }
+        }
         if constexpr (std::is_same<T, double>::value) {
-            debug_data[key].at(i) = k;
-            debug_pred[key].at(i) = mu;
+            debug_all_data[key].at(i) = k;
+            debug_all_pred[key].at(i) = mu;
         }
 
     }

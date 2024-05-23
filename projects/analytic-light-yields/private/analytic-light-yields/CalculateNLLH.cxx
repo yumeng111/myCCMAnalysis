@@ -70,16 +70,35 @@ void CalculateNLLH::SetData(I3FramePtr data_frame) {
         SinglePMTInfo pmt_data;
         pmt_data.key = i->first;
         size_t peak_idx = std::distance(i->second.begin(), std::max_element(i->second.begin(), i->second.end()));
+        pmt_data.peak_value = i->second.at(peak_idx); 
         size_t start_idx = std::max(size_t(3), peak_idx) - 3;
         size_t min_idx = std::max(size_t(15), peak_idx) - 15;
         size_t max_idx = std::min(min_idx + max_bins, i->second.size());
         pmt_data.data = std::vector(i->second.begin() + min_idx, i->second.begin() + max_idx);
         pmt_data.start_time = (start_idx - min_idx) * 2.0;
-        pmt_data.max_time = (std::max(int(min_idx), int(max_idx) - 1) - min_idx) * 2.0;
+        pmt_data.max_time = (std::max(int(min_idx), int(max_idx) - 1) - min_idx) * 2.0 + 30.0;
         pmt_data.peak_time = (peak_idx - min_idx) * 2.0;
+
+        // let's also get the event start bin using derivs
+        bool found_start = false;
+        double pre_event_values = pmt_data.data.at(0);
+        double pre_event_bins = 1.0;
+        for (size_t data_it = 1; data_it < pmt_data.data.size(); data_it++){
+            double deriv = pmt_data.data.at(data_it) - pmt_data.data.at(data_it - 1);
+            if (deriv > event_start_threshold and found_start == false){
+                pmt_data.event_start_bin = data_it - 2;
+                found_start = true;
+            }
+            if (deriv < event_start_threshold and found_start == false){
+                pre_event_values += pmt_data.data.at(data_it);
+                pre_event_bins += 1.0;
+            }
+        }
+        pmt_data.pre_event_average = pre_event_values / pre_event_bins;
         data[pmt_data.key] = pmt_data;
     }
     n_data_events = data_frame->Get<I3Double>("TotalEventsPastCuts").value;
+
 }
 
 I3MapPMTKeyVectorDoublePtr CalculateNLLH::GetData() const {

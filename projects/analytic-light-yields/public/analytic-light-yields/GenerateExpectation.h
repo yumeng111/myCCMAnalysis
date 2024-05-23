@@ -67,8 +67,10 @@ public:
                                        AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
 
     template<typename T>
-    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time,
+                                            T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset,
+                                            double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type); 
+
 };
 
 template<typename T>
@@ -77,7 +79,7 @@ std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T
     std::vector<T> light_profile(times.size());
 
     if (light_profile_type == AnalyticLightYieldGenerator::LArLightProfileType::Simplified) {
-        get_light_profile_no_recombination(Rs, Rt, tau_s, tau_t, tau_TPB, times, light_profile);
+        get_light_profile_no_recombination(Rs, tau_s, tau_t, tau_TPB, times, light_profile);
     } else {
         get_total_light_profile (Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, times, light_profile);
     }
@@ -88,7 +90,7 @@ std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T
 template<typename T>
 std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
     GenerateExpectation::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+            T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
     //bool compute_vertices = sodium_events_constructor == nullptr or n_sodium_events != this->n_sodium_events or z_offset != this->z_offset;
     //bool compute_yields = yields_and_offset_constructor == nullptr or uv_absorption != this->uv_absorption;
@@ -139,10 +141,9 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
         for(size_t j = 0; j <= tot_idx; j++) {
             size_t k = tot_idx - j;
             expectation->at(i) += binned_yield[k] * LAr_light_profile[j];
-            expectation_squared->at(i) += binned_square_yield[k] * LAr_light_profile_squared[j];
+            expectation_squared->at(i) += binned_square_yield[k] * LAr_light_profile_squared[j]; 
         }
     }
-
     return std::make_tuple(expectation, expectation_squared);
 }
 

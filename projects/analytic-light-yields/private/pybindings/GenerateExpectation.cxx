@@ -85,9 +85,9 @@ std::vector<Grad> LightProfileGrad(GenerateExpectation & g, double Rs, double Rt
 
 std::tuple<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 GetExpectationGrad(GenerateExpectation & g, CCMPMTKey key, double start_time, double max_time, double peak_time, double Rs, double Rt, double tau_s, double tau_t, double tau_rec, double tau_TPB,
-            double normalization, double light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+            double normalization, double light_time_offset, double const_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
-    std::tuple<boost::shared_ptr<std::vector<AD>>, boost::shared_ptr<std::vector<AD>>> result = g.GetExpectation<AD>(key, start_time, max_time, peak_time, AD(Rs, 0), AD(Rt, 1), AD(tau_s, 3), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), AD(normalization, 6), AD(light_time_offset, 7), uv_absorption, z_offset, n_sodium_events, light_profile_type);
+    std::tuple<boost::shared_ptr<std::vector<AD>>, boost::shared_ptr<std::vector<AD>>> result = g.GetExpectation<AD>(key, start_time, max_time, peak_time, AD(Rs, 0), AD(Rt, 1), AD(tau_s, 3), AD(tau_t, 3), AD(tau_rec, 4), AD(tau_TPB, 5), AD(light_time_offset, 7), uv_absorption, z_offset, n_sodium_events, light_profile_type);
 
     std::vector<std::vector<double>> grads(std::get<0>(result)->size(), std::vector<double>(n_params));
     std::vector<std::vector<double>> grads_squared(std::get<1>(result)->size(), std::vector<double>(n_params));

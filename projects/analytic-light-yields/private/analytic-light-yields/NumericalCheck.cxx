@@ -66,7 +66,7 @@ void NumericalCheck::CheckSimplifiedLightProfile(AnalyticLightYieldGenerator ana
     }
 
     I3Vector<AD> light_profile(n_bins);
-    get_light_profile_no_recombination(Rs, Rt, tau_s, tau_t, tau_TPB, times, light_profile);
+    get_light_profile_no_recombination(Rs, tau_s, tau_t, tau_TPB, times, light_profile);
 
     // copying over time binning from LArScintillationLightProfile
     for (size_t i = 0; i < n_bins; i++){
