@@ -1,6 +1,6 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim
-//
+//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim  
+//   
 //   $Id$
 //
 //   This file is part of IceTray.
@@ -13,7 +13,7 @@
 //   2. Redistributions in binary form must reproduce the above copyright
 //      notice, this list of conditions and the following disclaimer in the
 //      documentation and/or other materials provided with the distribution.
-//
+//   
 //   THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 //   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 //   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,40 +25,27 @@
 //   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 //   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 //   SUCH DAMAGE.
-//
+//   
 //   SPDX-License-Identifier: BSD-2-Clause
-//
+//   
 //
 
-#include <icetray/I3FrameObject.h>
-#include <icetray/load_project.h>
+#include <analytic-light-yields/cppMinimizer.h>
+#include <icetray/python/copy_suite.hpp>
+#include <icetray/python/indexed_property.hpp>
+#include <icetray/python/boost_serializable_pickle_suite.hpp>
+#include <icetray/python/dataclass_suite.hpp>
+#include <icetray/python/stream_to_string.hpp>
 
 using namespace boost::python;
-namespace bp = boost::python;
-#include <boost/preprocessor.hpp>
 
-//
-//  Add the class you are registering to this list of parenthesized typenames.
-//  Don't forget to watch that the newlines are backslashed.
-//  To register class Nick, add (Nick) to the list below, add
-//  Nick.cxx to the list of i3_add_library out in CMakeLists.txt,
-//  and create a file Nick.cxx that contains a function
-//    void register_Nick();
-//  that does the boost.python registration for class Nick.
-//
-#define REGISTER_THESE_THINGS                                           \
-  (SodiumVertexDistribution)(YieldsPerPMT)(GenerateExpectation)         \
-  (CalculateNLLH)                                                       \
-  (NumericalCheck)                                                      \
-  (cppMinimizer)                                                        \
-
-#define I3_REGISTRATION_FN_DECL(r, data, t) void BOOST_PP_CAT(register_,t)();
-#define I3_REGISTER(r, data, t) BOOST_PP_CAT(register_,t)();
-BOOST_PP_SEQ_FOR_EACH(I3_REGISTRATION_FN_DECL, ~, REGISTER_THESE_THINGS)
-
-I3_PYTHON_MODULE(analytic_light_yields)
+void register_cppMinimizer() {
 {
-  //load_project("dataclasses", false);
-  BOOST_PP_SEQ_FOR_EACH(I3_REGISTER, ~, REGISTER_THESE_THINGS);
-}
 
+    class_<cppMinimizer, boost::noncopyable>("cppMinimizer")
+        .def(init<>())
+        .def("OnePMTOneDataSetMinimization", &cppMinimizer::OnePMTOneDataSetMinimization);
+        .def("OnePMTMultipleDataSetMinimization", &cppMinimizer::OnePMTMultipleDataSetMinimization);
+
+}
+}
