@@ -30,26 +30,18 @@
 
 struct LikelihoodFunctor {
 
-    static constexpr int DerivativeDimension = 3;
+    static constexpr int DerivativeDimension = 12;
+    std::shared_ptr<CalculateNLLH> llh_constructor;
+    CCMPMTKey key_to_fit;
+    double uv_absorption = 55.0;
+    double z_offset = 0.0;
+    size_t n_sodium_events = 20;
+    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
 
     // This returns the LLH
     template<typename T>
     T evaluateLikelihood(std::vector<T> x) const {
-        // set up our alygen
-        AnalyticLightYieldGenerator alygen = AnalyticLightYieldGenerator();
-        alygen.uv_absorption = 55.0;
-        alygen.n_sodium_events = 20;
-        alygen.z_offset = 0.0; 
-        alygen.light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified;
-        alygen.tau_t = 743.0;
-        alygen.Rs = x[0];
-        alygen.Rt = 1.0 - x[0];
-        alygen.tau_s = x[1];
-        alygen.normalization = 1e5; 
-        alygen.tau_TPB = x[2];
-        alygen.time_offset = 25.4; 
-        
-        return llh_constructor->GetNLLH(CCMPMTKey(0,2,0), alygen, 60.0, 10.0, 1e3); 
+        return llh_constructor->ComputeNLLH<T>(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], uv_absorption, z_offset, n_sodium_events, light_profile_type);
     }
 };
 
@@ -70,11 +62,8 @@ public:
         const size_t size=x.size();
         using GradType = phys_tools::autodiff::FD<FuncType::DerivativeDimension>;
         std::vector<GradType> params(size);
-        for(size_t i=0; i<12; i++){
-            if (i == 0 or i == 2 or i == 5){
-                params[i] = GradType(x[i],i);
-            }
-        }
+        for(size_t i=0; i<size; i++)                                                                                                                                                         
+            params[i] = GradType(x[i],i);
         GradType result=func.template evaluateLikelihood<GradType>(params);
         std::vector<double> grad(size);
         for(unsigned int i=0; i<size; i++)
@@ -101,23 +90,43 @@ int main(int argc, char ** argv) {
 
     std::shared_ptr<CalculateNLLH> llh_constructor = std::make_shared<CalculateNLLH>();
     // doing this for one PMT at the moment...
-    llh_constructor->SetKeys({CCMPMTKey(0,2,0)});
+    CCMPMTKey this_key = CCMPMTKey(0,2,0);
+    llh_constructor->SetKeys({this_key});
     llh_constructor->SetData(data_frame);
     llh_constructor->SetGeo(geo_frame);
 
     LikelihoodType likelihood;
+    likelihood.llh_constructor = llh_constructor;
+    likelihood.key_to_fit = this_key;
 
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
 
-    double seeds[3]       = {0.34,    8.2,   2.5    };
-    double grad_scales[3] = {1,    1,    1   };
-    double mins[3]        = {1e-3, 5.0, 1.0};
-    double maxs[3]        = {1.0,  16.0,  9.0};
+    // free paramters are : Rs, tau_s, tau_TPB, normalization, time offset, late pulse mu, late pulse sigma, and late pulse scale
+    // fixed paramters are : Rt, tau_t, tau_rec, and const_offset
+    double seeds[8] = {0.34, 8.2, 3.0, 1e5, 25.4, 60.0, 10.0, 1e3};
+    double grad_scales[8] = {1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3};
+    double mins[8] = {1e-3, 5.0, 1.0, 1.0, 20.0, 40.0, 2.0, 0.0};
+    double maxs[8] = {1.0, 16.0, 9.0, 1e8, 30.0, 68.0, 30.0, 1e7};
 
-    minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]);
-    minimizer.addParameter(seeds[1], grad_scales[1], mins[1], maxs[1]);
-    minimizer.addParameter(seeds[2], grad_scales[2], mins[2], maxs[2]);
+    minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]); // Rs
+    minimizer.addParameter(0.0);                                         // Rt
+    minimizer.addParameter(seeds[1], grad_scales[1], mins[1], maxs[1]); // tau_s
+    minimizer.addParameter(743.0);                                       // tau_t
+    minimizer.addParameter(0.0);                                         // tau_rec
+    minimizer.addParameter(seeds[2], grad_scales[2], mins[2], maxs[2]); // tau_TPB
+    minimizer.addParameter(seeds[3], grad_scales[2], mins[2], maxs[2]); // norm
+    minimizer.addParameter(seeds[4], grad_scales[4], mins[4], maxs[4]); // time offset
+    minimizer.addParameter(0.0);                                         // const offset
+    minimizer.addParameter(seeds[5], grad_scales[5], mins[5], maxs[5]); // late pulse mu
+    minimizer.addParameter(seeds[6], grad_scales[6], mins[6], maxs[6]); // late pulse sigma
+    minimizer.addParameter(seeds[7], grad_scales[7], mins[7], maxs[7]); // late pulse scale
     minimizer.setHistorySize(20);
+
+    // fix parameter idx of guys we are not minimizing
+    minimizer.fixParameter(1); // Rt
+    minimizer.fixParameter(3); // tau_t
+    minimizer.fixParameter(4); // tau_rec
+    minimizer.fixParameter(8); // const offset
 
     bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
 
