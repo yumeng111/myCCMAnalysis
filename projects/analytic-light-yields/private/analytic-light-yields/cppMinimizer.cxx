@@ -31,24 +31,36 @@
 
 struct LikelihoodFunctor {
 
-    //static constexpr int DerivativeDimension = 12;
+    static constexpr int DerivativeDimension = 15; // max number of dimensions :
+                                                   // Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB
+                                                   // norm, norm, norm, norm -- 1 / data set!
+                                                   // time offset, const offset
+                                                   // LP mu, LP sigma, LP scale
     std::vector<std::shared_ptr<CalculateNLLH>> llh_constructor;
-    static constexpr int DerivativeDimension = 11 + (int) llh_constructor.size();
     CCMPMTKey key_to_fit;
     double uv_absorption = 55.0;
     std::vector<double> z_offset;
-    size_t n_sodium_events = 20;
+    size_t n_sodium_events = 40;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+    std::vector<double> time_offsets;
+    std::vector<double> LPscales;
 
     // This returns the LLH
     template<typename T>
     T evaluateLikelihood(std::vector<T> x) const {
         T total_llh = 0;
-        size_t n_data_sets = llh_constructor.size();
         for (size_t data_it = 0; data_it < llh_constructor.size(); data_it ++){
-            total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization!!!
-                    x[7 + (n_data_sets - 1)], x[8 + (n_data_sets - 1)], x[9 + (n_data_sets - 1)], x[10 + (n_data_sets - 1)], x[11 + (n_data_sets - 1)],
-                    uv_absorption, z_offset.at(data_it), n_sodium_events, light_profile_type);
+            T time_offset;
+            T LPscale;
+            if (time_offsets.size() > 0){
+                time_offset = time_offsets.at(data_it);
+                LPscale = LPscales.at(data_it);
+            } else {
+                time_offset = x[10];
+                LPscale = x[14];
+            }
+            total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
+                    time_offset, x[11], x[12], x[13], LPscale, uv_absorption, z_offset.at(data_it), n_sodium_events, light_profile_type);
         }
         return total_llh; 
     }
@@ -86,17 +98,27 @@ typedef LikelihoodFunctor LikelihoodType;
 
 cppMinimizer::cppMinimizer() {}
 
-std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets) {
+std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets, double norm_seed) {
 
     // let's try scanning over t offset
     double t_offset_start = 25.0;
-    double t_offset_end = 30.0;
+    double t_offset_end = 35.0;
     double t_offset_range = t_offset_end - t_offset_start;
-    size_t n_t_offsets = 25;
+    size_t n_t_offsets = 30;
 
     std::vector<double> func_val;
     std::vector<std::vector<double>> params;
-    std::vector<std::string> paramter_names = {"Rs", "Rt", "tau_s", "tau_t", "tau_rec", "tau_TPB", "normalization", "time offset", "const offset", "late pulse mu", "late pulse sigma", "late pulse scale"};
+    std::vector<int> nevals;
+    std::vector<std::string> paramter_names = {"Rs", "Rt", "tau_s", "tau_t", "tau_rec", "tau_TPB", "norm1", "norm2", "norm3", "norm4",  "time offset", "const offset", "late pulse mu", "late pulse sigma", "late pulse scale"};
+
+    // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
+    // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
+    double seeds[7] = {0.34, 8.2, 3.0, norm_seed, 60.0, 10.0, 1e-2};
+    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3};
+    double mins[7] = {0.2, 6.0, 1.0, norm_seed / 5, 50.0, 2.0, 1e-10};
+    double maxs[7] = {0.5, 16.0, 9.0, norm_seed * 1e2, 68.0, 15.0, 0.09};
+
+    std::cout << "norm seed = " << norm_seed << ", lower bound = " << mins[3] << " and upper bound = " << maxs[3] << std::endl;
 
     for (size_t toff_it = 0; toff_it < (n_t_offsets + 1); toff_it++){
         double this_t_offset = t_offset_start + ((double)toff_it / (double)n_t_offsets) * t_offset_range;
@@ -132,113 +154,6 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
 
         phys_tools::lbfgsb::LBFGSB_Driver minimizer;
 
-        // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
-        // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
-        double seeds[7] = {0.34, 8.2, 3.0, 1e5, 60.0, 10.0, 1e3};
-        double grad_scales[7] = {1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2};
-        double mins[7] = {0.2, 6.0, 1.0, 1e2, 50.0, 2.0, 0.0};
-        double maxs[7] = {0.5, 16.0, 9.0, 1e8, 68.0, 50.0, 1e7};
-
-        minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]); // Rs
-        minimizer.addParameter(0.0);                                        // Rt
-        minimizer.addParameter(seeds[1], grad_scales[1], mins[1], maxs[1]); // tau_s
-        minimizer.addParameter(743.0);                                      // tau_t
-        minimizer.addParameter(0.0);                                        // tau_rec
-        minimizer.addParameter(seeds[2], grad_scales[2], mins[2], maxs[2]); // tau_TPB
-        minimizer.addParameter(seeds[3], grad_scales[3], mins[3], maxs[3]); // norm
-        minimizer.addParameter(this_t_offset);                              // time offset
-        minimizer.addParameter(0.0);                                        // const offset
-        minimizer.addParameter(seeds[4], grad_scales[4], mins[4], maxs[4]); // late pulse mu
-        minimizer.addParameter(seeds[5], grad_scales[5], mins[5], maxs[5]); // late pulse sigma
-        minimizer.addParameter(seeds[6], grad_scales[6], mins[6], maxs[6]); // late pulse scale
-        minimizer.setHistorySize(20);
-
-        // fix parameter idx of guys we are not minimizing
-        minimizer.fixParameter(1); // Rt
-        minimizer.fixParameter(3); // tau_t
-        minimizer.fixParameter(4); // tau_rec
-        minimizer.fixParameter(7); // time offset
-        minimizer.fixParameter(8); // const offset
-
-        bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
-
-        if(succeeded) {
-            func_val.push_back(minimizer.minimumValue());
-            params.push_back(minimizer.minimumPosition());
-        } 
-
-    }
-
-    // now let's find the smallest func_val!
-    size_t smallest_idx = std::distance(func_val.begin(), std::min_element(func_val.begin(), func_val.end()));
-    std::cout << "Best evaluation!!! Function value at minimum: " << func_val.at(smallest_idx) << std::endl;
-    std::cout << "Parameters: " << std::endl;
-    std::vector<double> data_to_return;
-    data_to_return.push_back(func_val.at(smallest_idx));
-    for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
-        data_to_return.push_back(params.at(smallest_idx).at(i));
-        if (i == 1 or i == 3 or i == 4 or i == 8){
-            continue;
-        }
-        std::cout << paramter_names.at(i) << " = " << params.at(smallest_idx).at(i) << std::endl;
-    }
-    return data_to_return;
-}
-
-std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets) {
-
-    // let's try scanning over t offset
-    double t_offset_start = 25.0;
-    double t_offset_end = 30.0;
-    double t_offset_range = t_offset_end - t_offset_start;
-    size_t n_t_offsets = 25;
-
-    std::vector<double> func_val;
-    std::vector<std::vector<double>> params;
-    std::vector<std::string> paramter_names = {"Rs", "Rt", "tau_s", "tau_t", "tau_rec", "tau_TPB", "normalization", "time offset", "const offset", "late pulse mu", "late pulse sigma", "late pulse scale"};
-
-    size_t n_data_sets = data_file_names.size();
-
-    for (size_t toff_it = 0; toff_it < (n_t_offsets + 1); toff_it++){
-        double this_t_offset = t_offset_start + ((double)toff_it / (double)n_t_offsets) * t_offset_range;
-        
-        // grab our geomtry frame
-        std::string geometry_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/geo_run012490.i3.zst";
-        dataio::I3File geometry_file(geometry_fname, dataio::I3File::Mode::read);
-        I3FramePtr geo_frame = geometry_file.pop_frame();
-        
-        // now grab data frame(s) to make our constructors
-        std::vector<std::shared_ptr<CalculateNLLH>> all_constructors;
-        for (size_t data_it = 0; data_it < data_file_names.size(); data_it++){
-            std::string this_data_fname = data_file_names.at(data_it);
-            dataio::I3File this_data_file(this_data_fname, dataio::I3File::Mode::read);
-            I3FramePtr this_data_frame = this_data_file.pop_frame();
-
-            // and now make constructor
-            std::shared_ptr<CalculateNLLH> this_llh_constructor = std::make_shared<CalculateNLLH>();
-            this_llh_constructor->SetKeys({this_key});
-            this_llh_constructor->SetData(this_data_frame);
-            this_llh_constructor->SetGeo(geo_frame);
-        
-            // now save!
-            all_constructors.push_back(this_llh_constructor);
-        }
-        
-        // now set up our likelihood object
-        LikelihoodType likelihood;
-        likelihood.z_offset = z_offsets; 
-        likelihood.llh_constructor = all_constructors;
-        likelihood.key_to_fit = this_key;
-
-        phys_tools::lbfgsb::LBFGSB_Driver minimizer;
-
-        // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
-        // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
-        double seeds[7] = {0.34, 8.2, 3.0, 1e5, 60.0, 10.0, 1e3};
-        double grad_scales[7] = {1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2};
-        double mins[7] = {0.2, 6.0, 1.0, 1e2, 50.0, 2.0, 0.0};
-        double maxs[7] = {0.5, 16.0, 9.0, 1e8, 68.0, 50.0, 1e7};
-
         minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]); // Rs
         minimizer.addParameter(0.0);                                        // Rt
         minimizer.addParameter(seeds[1], grad_scales[1], mins[1], maxs[1]); // tau_s
@@ -246,7 +161,7 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
         minimizer.addParameter(0.0);                                        // tau_rec
         minimizer.addParameter(seeds[2], grad_scales[2], mins[2], maxs[2]); // tau_TPB
         // this is where we add our normalization parameter...need to add one for each data set
-        for (size_t n = 0; n < n_data_sets; n++){
+        for (size_t n = 0; n < 4; n++){
             minimizer.addParameter(seeds[3], grad_scales[3], mins[3], maxs[3]); // norm
         } 
         minimizer.addParameter(this_t_offset);                              // time offset
@@ -260,27 +175,130 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
         minimizer.fixParameter(1); // Rt
         minimizer.fixParameter(3); // tau_t
         minimizer.fixParameter(4); // tau_rec
-        minimizer.fixParameter(7 + (n_data_sets - 1)); // time offset
-        minimizer.fixParameter(8 + (n_data_sets - 1)); // const offset
+        minimizer.fixParameter(7); // norm #2 
+        minimizer.fixParameter(8); // norm #3
+        minimizer.fixParameter(9); // norm #4 
+        minimizer.fixParameter(10); // time offset
+        minimizer.fixParameter(11); // const offset
 
         bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
 
         if(succeeded) {
             func_val.push_back(minimizer.minimumValue());
             params.push_back(minimizer.minimumPosition());
+            nevals.push_back(minimizer.numberOfEvaluations());
         } 
 
     }
 
     // now let's find the smallest func_val!
     size_t smallest_idx = std::distance(func_val.begin(), std::min_element(func_val.begin(), func_val.end()));
-    std::cout << "Best evaluation!!! Function value at minimum: " << func_val.at(smallest_idx) << std::endl;
+    std::cout << "Best evaluation!!! Function value at minimum: " << func_val.at(smallest_idx) << " after " << nevals.at(smallest_idx) << " function evaluations" << std::endl;
     std::cout << "Parameters: " << std::endl;
     std::vector<double> data_to_return;
     data_to_return.push_back(func_val.at(smallest_idx));
     for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
         data_to_return.push_back(params.at(smallest_idx).at(i));
+        if (i == 1 or i == 3 or i == 4 or i == 7 or i == 8 or i == 9 or i == 11){
+            continue;
+        }
         std::cout << paramter_names.at(i) << " = " << params.at(smallest_idx).at(i) << std::endl;
+    }
+    return data_to_return;
+}
+
+std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets,
+                            std::vector<double> time_offsets, std::vector<double> LPscales, std::vector<double> norm_seeds) {
+
+    std::vector<std::string> paramter_names = {"Rs", "Rt", "tau_s", "tau_t", "tau_rec", "tau_TPB", "norm1", "norm2", "norm3", "norm4",
+                                               "time offset", "const offset", "late pulse mu", "late pulse sigma", "late pulse scale"};
+
+    size_t n_data_sets = data_file_names.size();
+
+    // grab our geomtry frame
+    std::string geometry_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/geo_run012490.i3.zst";
+    dataio::I3File geometry_file(geometry_fname, dataio::I3File::Mode::read);
+    I3FramePtr geo_frame = geometry_file.pop_frame();
+    
+    // now grab data frame(s) to make our constructors
+    std::vector<std::shared_ptr<CalculateNLLH>> all_constructors;
+    for (size_t data_it = 0; data_it < data_file_names.size(); data_it++){
+        std::string this_data_fname = data_file_names.at(data_it);
+        dataio::I3File this_data_file(this_data_fname, dataio::I3File::Mode::read);
+        I3FramePtr this_data_frame = this_data_file.pop_frame();
+
+        // and now make constructor
+        std::shared_ptr<CalculateNLLH> this_llh_constructor = std::make_shared<CalculateNLLH>();
+        this_llh_constructor->SetKeys({this_key});
+        this_llh_constructor->SetData(this_data_frame);
+        this_llh_constructor->SetGeo(geo_frame);
+    
+        // now save!
+        all_constructors.push_back(this_llh_constructor);
+    }
+    
+    // now set up our likelihood object
+    LikelihoodType likelihood;
+    likelihood.z_offset = z_offsets; 
+    likelihood.llh_constructor = all_constructors;
+    likelihood.key_to_fit = this_key;
+    likelihood.time_offsets = time_offsets;
+    likelihood.LPscales = LPscales;
+
+    phys_tools::lbfgsb::LBFGSB_Driver minimizer;
+
+    // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
+    // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
+    double seeds[7] = {0.34, 8.2, 3.0, 5.2e6, 60.0, 10.0, 1e-2};
+    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3};
+    double mins[7] = {0.2, 6.0, 1.0, 1e2, 50.0, 2.0, 1e-10};
+    double maxs[7] = {0.5, 16.0, 9.0, 1e16, 68.0, 15.0, 0.09};
+    
+    minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]); // Rs
+    minimizer.addParameter(0.0);                                        // Rt
+    minimizer.addParameter(seeds[1], grad_scales[1], mins[1], maxs[1]); // tau_s
+    minimizer.addParameter(743.0);                                      // tau_t
+    minimizer.addParameter(0.0);                                        // tau_rec
+    minimizer.addParameter(seeds[2], grad_scales[2], mins[2], maxs[2]); // tau_TPB
+    // this is where we add our normalization parameter...need to add one for each data set
+    for (size_t n = 0; n < n_data_sets; n++){
+        minimizer.addParameter(norm_seeds.at(n), grad_scales[3], norm_seeds.at(n) / 1e2, norm_seeds.at(n) * 1e3); // norm
+    } 
+    minimizer.addParameter(0.0);                                        // time offset
+    minimizer.addParameter(0.0);                                        // const offset
+    minimizer.addParameter(seeds[4], grad_scales[4], mins[4], maxs[4]); // late pulse mu
+    minimizer.addParameter(seeds[5], grad_scales[5], mins[5], maxs[5]); // late pulse sigma
+    minimizer.addParameter(0.0);                                        // late pulse scale
+    minimizer.setHistorySize(20);
+
+    // fix parameter idx of guys we are not minimizing
+    minimizer.fixParameter(1); // Rt
+    minimizer.fixParameter(3); // tau_t
+    minimizer.fixParameter(4); // tau_rec
+    minimizer.fixParameter(10); // time offset
+    minimizer.fixParameter(11); // const offset
+    minimizer.fixParameter(14); // LP scale 
+
+    bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
+
+    if (succeeded){
+        std::cout << "joint fit converged!" << std::endl;
+    }
+
+    double value = minimizer.minimumValue();                                                                                                                                                 
+    std::vector<double> params = minimizer.minimumPosition();
+    
+    // now let's find the smallest func_val!
+    std::cout << "Function value at minimum: " << value << " after " << minimizer.numberOfEvaluations() << " function evaluations" << std::endl;
+    std::cout << "Parameters: " << std::endl;
+    std::vector<double> data_to_return;
+    data_to_return.push_back(value);
+    for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
+        data_to_return.push_back(params.at(i));
+        if (i == 1 or i == 3 or i == 4 or i == 10 or i == 11 or i == 14){
+            continue;
+        }
+        std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;
     }
     return data_to_return;
 }

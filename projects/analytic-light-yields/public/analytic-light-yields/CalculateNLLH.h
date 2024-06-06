@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <type_traits>
+#include <algorithm>
 
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
@@ -195,8 +196,8 @@ struct LEff {
     template<typename T>
     T operator()(double k, T const & w_sum, T const & w2_sum) const {
         if(w_sum <= 0 || w2_sum < 0) {
-            std::cout << "w/w2 < 0" << std::endl;
-            std::cout << "w = " << w_sum << ", w2 = " << w2_sum << std::endl;
+            //std::cout << "w/w2 < 0" << std::endl;
+            //std::cout << "w = " << w_sum << ", w2 = " << w2_sum << std::endl;
             return(k==0?0:-std::numeric_limits<T>::infinity());
         }
 
@@ -210,7 +211,7 @@ struct LEff {
                 return zero;
             }
             else {
-                std::cout << "w = 0" << std::endl;
+                //std::cout << "w = 0" << std::endl;
                 return T(-std::numeric_limits<double>::infinity());
             }
         }
@@ -288,11 +289,12 @@ struct SinglePMTInfo {
     double max_time;
     size_t event_start_bin;
     double pre_event_average;
+    std::vector<double> data_times;
 };
 
 class CalculateNLLH {
 public:
-    static constexpr size_t n_params = 9;
+    static constexpr size_t n_params = 12;
     typedef double Underlying;
 
     typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
@@ -302,8 +304,10 @@ public:
     I3MapPMTKeyVectorDouble debug_all_pred;
     I3MapPMTKeyVectorDouble debug_fit_data;
     I3MapPMTKeyVectorDouble debug_fit_pred;
+    std::vector<double> debug_pred_times;
+    std::vector<double> debug_data_times;
 
-    double event_start_threshold = 20.0;
+    double event_start_threshold = 10.0;
 
 private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
@@ -334,23 +338,84 @@ public:
 
     I3MapPMTKeyVectorDouble GetAllDataForDebug() {return debug_all_data;};
     I3MapPMTKeyVectorDouble GetAllPredForDebug() {return debug_all_pred;};
+    std::vector<double> GetPredTimesForDebug() {return debug_pred_times;};
+    std::vector<double> GetDataTimesForDebug() {return debug_data_times;};
     I3MapPMTKeyVectorDouble GetFitDataForDebug() {return debug_fit_data;};
     I3MapPMTKeyVectorDouble GetFitPredForDebug() {return debug_fit_pred;};
 
+    std::vector<double> GetLightProfileDebug() {return gen_expectation->GetLightProfileDebug();};
+    std::vector<double> GetLightProfileTimesDebug() {return gen_expectation->GetLightProfileTimesDebug();};
+    std::vector<double> GetLightProfileTOffsetGradDebug() {return gen_expectation->GetLightProfileTOffsetGradDebug();};
 
     template<typename T>
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, T const_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+            T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
+            double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
 
-    AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
-    double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
-    std::vector<double> GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params);
+    AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale);
+    double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale);
+    std::vector<double> GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale);
+
+    template<typename T> T Interpolation(double this_time, std::vector<T> data_times, std::vector<T> data);
+    template<typename T> T LatePulseGaussian(double this_time, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale);
 };
+
+template<typename T> T CalculateNLLH::Interpolation(double this_time, std::vector<T> data_times, std::vector<T> data){
+        
+    // let's find closest times in data_times
+    size_t closest_data_idx = 0;
+    T data_time_diff = abs(data_times.at(0) - this_time);
+    for (size_t data_it = 1; data_it < data_times.size(); data_it++){
+        if (abs(data_times.at(data_it) - this_time) < data_time_diff){
+            closest_data_idx = data_it;
+            data_time_diff = abs(data_times.at(data_it) - this_time);
+        } 
+    }
+    T closest_data_point;
+    if (this_time == data_times.at(closest_data_idx)){
+        // this is the case where our llh grid point overlaps with a data grid point
+        closest_data_point = data.at(closest_data_idx);
+    }
+    else{
+        // case where our llh grid point is not in data_times! 
+        // we need to interpolate!
+        T closest_data_time_below;
+        T closest_data_value_below;
+        T closest_data_time_above;
+        T closest_data_value_above;
+
+        if (data_times.at(closest_data_idx) < this_time){
+            closest_data_time_below = data_times.at(closest_data_idx);
+            closest_data_value_below = data.at(closest_data_idx);
+
+            closest_data_time_above = data_times.at(closest_data_idx + 1);
+            closest_data_value_above = data.at(closest_data_idx + 1);
+        }
+        else {
+            closest_data_time_below = data_times.at(closest_data_idx - 1);
+            closest_data_value_below = data.at(closest_data_idx - 1);
+
+            closest_data_time_above = data_times.at(closest_data_idx);
+            closest_data_value_above = data.at(closest_data_idx);
+        }
+
+        // now interpolate!!!
+        closest_data_point = closest_data_value_below + (this_time - closest_data_time_below) * ((closest_data_value_above - closest_data_value_below)/ (closest_data_time_above - closest_data_time_below));
+    }
+
+    return closest_data_point;
+
+}
+
+template<typename T> T CalculateNLLH::LatePulseGaussian(double this_time, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale){
+    return late_pulse_scale * (1 / (late_pulse_sigma * std::sqrt(2.0 * M_PI))) * exp(-0.5 * ((this_time - late_pulse_mu) * (this_time - late_pulse_mu)) / (late_pulse_sigma * late_pulse_sigma));   
+}
 
 template<typename T>
 T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, T const_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
-
+            T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
+            double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+    
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
@@ -359,61 +424,153 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     size_t event_start_bin = pmt_data.event_start_bin;
     double pre_event_average = pmt_data.pre_event_average;
     double data_peak_value = pmt_data.peak_value;
+    std::vector<double> data_times = pmt_data.data_times;
 
     // let's grab our expectation
-    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time, peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB,
-            light_time_offset, uv_absorption, z_offset, n_sodium_events, light_profile_type);
+    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time,
+            peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, uv_absorption, z_offset, n_sodium_events, light_profile_type);
     
-    // unpack into yields and yields^2
+    // unpack into yields, yields^2, and times
     boost::shared_ptr<std::vector<T>> pred_yields;
     boost::shared_ptr<std::vector<T>> pred_yields_squared;
+    boost::shared_ptr<std::vector<T>> pred_times;
     pred_yields = std::get<0>(pred);
     pred_yields_squared = std::get<1>(pred);
+    pred_times = std::get<2>(pred);
+    T minimum_pred_time = pred_times->at(0);
 
     T total_nllh(0.0);
 
     size_t n_bins = pmt_data.data.size();
+
+    // let's make a llh grid -- this combines both the times we have data values at along with the times we have prediction values at
+    double starting_llh_grid_time = data_times.front();
+    double ending_llh_grid_time = data_times.back();
     
-    // let's add empty vector to debug_data and debug_pred
-    debug_all_data[key] = std::vector<double> (n_bins, 0.0);
-    debug_all_pred[key] = std::vector<double> (n_bins, 0.0);
-    debug_fit_data[key] = std::vector<double> (n_bins, 0.0);
-    debug_fit_pred[key] = std::vector<double> (n_bins, 0.0);
-
-    // this is not exactly kosher but we're going to pin the normalization to make the max pred == max data
-    // we already have max data (aka data_peak_value), so let's just find the max of the pred
-    size_t pred_peak_idx = std::distance(pred_yields->begin(), std::max_element(pred_yields->begin(), pred_yields->end())); 
-    T pred_peak_value = pred_yields->at(pred_peak_idx);
-    T pinned_norm = data_peak_value / pred_peak_value;
-
-    size_t bump_start_bin = 30;
-    size_t bump_end_bin = 55;
-
-    // now loop over the time bins in our pred
-    for (size_t i=0; i<n_bins; ++i) {
-        bool in_bump_region = false;
-        if (i >= bump_start_bin and i  <= bump_end_bin){
-            in_bump_region = true;
+    // to make things easier, let's make sure we have a vector of doubles containing pred times
+    std::vector<double> pred_times_double;
+    for (size_t j = 0; j < pred_times->size(); j++){
+        if constexpr (std::is_same<T, double>::value) {
+            pred_times_double.push_back(pred_times->at(j) + light_time_offset);
+            //pred_times_double.push_back(pred_times->at(j));
         }
-        double k = pmt_data.data.at(i);
-        T mu = pred_yields->at(i) * pinned_norm + pre_event_average;
-        T sigma_squared = pred_yields_squared->at(i) * (pinned_norm * pinned_norm) + (pre_event_average * pre_event_average);
-        // we want to compute the llh everywhere except first 3 bins of event and the bump region
-        if ((i < event_start_bin) or (i > (event_start_bin + 3))){
-            if (in_bump_region == false){
-                total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
-                if constexpr (std::is_same<T, double>::value) {
-                    debug_fit_data[key].at(i) = k;
-                    debug_fit_pred[key].at(i) = mu;
-                }
-            }
+        if constexpr (std::is_same<T, AD>::value) {
+            pred_times_double.push_back(pred_times->at(j).value() + light_time_offset.value());
+            //pred_times_double.push_back(pred_times->at(j).value());
+        }
+    }
+
+
+    std::vector<double> llh_grid;
+    for (size_t i = 0; i < data_times.size(); i++){
+        llh_grid.push_back(data_times.at(i));
+    }
+    for (size_t i = 0; i < pred_times_double.size(); i++){
+        if (pred_times_double.at(i) >= starting_llh_grid_time and pred_times_double.at(i) <= ending_llh_grid_time){
+            llh_grid.push_back(pred_times_double.at(i));
+        }
+    }
+
+    std::vector<T> pred_times_offset;
+    for (size_t j = 0; j < pred_times->size(); j++){
+        pred_times_offset.push_back(pred_times->at(j) + light_time_offset);   
+    }
+    
+    // now sort our llh grid!
+    std::sort(llh_grid.begin(), llh_grid.end());
+
+    // let's add empty vector to debug_data and debug_pred
+    debug_all_data[key] = std::vector<double> (llh_grid.size(), 0.0);
+    debug_all_pred[key] = std::vector<double> (llh_grid.size(), 0.0);
+    debug_fit_data[key] = std::vector<double> (llh_grid.size(), 0.0);
+    debug_fit_pred[key] = std::vector<double> (llh_grid.size(), 0.0);
+    debug_pred_times.clear();
+    debug_data_times.clear();
+
+    // set some times at the beginning of the wf to ignore for llh calculation!
+    double ignore_start = 0.0;
+    double ignore_end = 5.5;
+
+    // let's try looping over our llh grid
+    for (size_t i = 0; i < llh_grid.size(); i++){
+        double this_time = llh_grid.at(i);
+
+        // grab our data
+        double k = Interpolation<double>(this_time, data_times, pmt_data.data);
+        
+        // now call our interpolation function for pred yields
+        T pred_yields_this_time = Interpolation<T>(this_time, pred_times_offset, *pred_yields);
+        T pred_yields_squared_this_time = Interpolation<T>(this_time, pred_times_offset, *pred_yields_squared);
+
+        // and grab our late pulse gaussian fit
+        T relative_late_pulse_height = late_pulse_scale * normalization;
+        T late_pulse_gauss = LatePulseGaussian<T>(this_time, late_pulse_mu, late_pulse_sigma, relative_late_pulse_height);
+
+        // now put together to make mu and sigma2!
+        T mu = pred_yields_this_time * normalization + pre_event_average + late_pulse_gauss;
+        T sigma_squared = pred_yields_squared_this_time * (normalization * normalization) + (pre_event_average * pre_event_average) + (late_pulse_gauss * late_pulse_gauss);
+        
+        // now check the time before computing the llh
+        if (this_time < ignore_start or this_time > ignore_end){
+            total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
         }
         if constexpr (std::is_same<T, double>::value) {
             debug_all_data[key].at(i) = k;
             debug_all_pred[key].at(i) = mu;
+            debug_fit_pred[key].at(i) = late_pulse_gauss;
+            debug_data_times.push_back(this_time);
         }
-
     }
+
+
+    //// now loop over the time bins in our data 
+    //size_t pred_idx;
+    //for (size_t i=0; i<n_bins; ++i) {
+    //    bool in_bump_region = false;
+    //    if (i >= bump_start_bin and i  <= bump_end_bin){
+    //        in_bump_region = true;
+    //    }
+    //    double k = pmt_data.data.at(i);
+    //    double time_in_data = data_times.at(i);
+
+    //    // let's find closest time bin in prediction
+    //    T closest_pred_time = time_in_data + light_time_offset;
+    //    if constexpr (std::is_same<T, double>::value) {
+    //        pred_idx = (size_t) ((closest_pred_time - minimum_pred_time) / 2.0);
+    //    }
+    //    if constexpr (std::is_same<T, AD>::value) {
+    //        pred_idx = (size_t) ((closest_pred_time.value() - minimum_pred_time.value()) / 2.0);
+    //    }
+    //    
+    //    T mu = pred_yields->at(pred_idx) * normalization + pre_event_average;
+    //    T sigma_squared = pred_yields_squared->at(pred_idx) * (normalization * normalization) + (pre_event_average * pre_event_average);
+    //    
+    //    // we want to compute the llh everywhere except first 3 bins of event and the bump region
+    //    if ((i < event_start_bin) or (i > (event_start_bin + 3))){
+    //        if (in_bump_region == false){
+    //            total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+    //            if constexpr (std::is_same<T, double>::value) {
+    //                debug_fit_data[key].at(i) = k;
+    //                debug_fit_pred[key].at(i) = mu;
+    //            }
+    //        }
+    //    }
+    //    //total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+    //    if constexpr (std::is_same<T, double>::value) {
+    //        debug_all_data[key].at(i) = k;
+    //        debug_all_pred[key].at(i) = mu;
+    //        debug_pred_times.push_back(closest_pred_time);
+    //        debug_data_times.push_back(time_in_data);
+    //    }
+    //    // let's also save the gradient of time offset at every time bin
+    //    // over-writing debug_fit_pred to contain gradient of t offset in every bin fyi
+    //    //if constexpr (std::is_same<T, AD>::value) {
+    //    //    Grad grad;
+    //    //    MCLLH::LEff()(k, mu, sigma_squared).copyGradient(grad.data());
+    //    //    debug_fit_pred[key].at(i) = grad.at(7);
+    //    //}
+
+    //}
     return total_nllh;
 }
 

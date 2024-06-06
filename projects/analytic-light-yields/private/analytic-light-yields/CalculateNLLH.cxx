@@ -67,6 +67,24 @@ void CalculateNLLH::SetData(I3FramePtr data_frame) {
         if(restrict_keys and std::find(keys_to_fit.begin(), keys_to_fit.end(), i->first) == keys_to_fit.end()) {
             continue;
         }
+
+        // based on the way I accumulated data, the event starts around the 50th bin
+        // so to be safe, let's use the first 40 bins for out pre-event average
+        double pre_event_values = 0.0;
+        double pre_event_deriv = 0.0;
+        double pre_event_bins = 0.0;
+        double time_counter = 0.0;
+        double prev_data = 0.0;
+        for(double const & data_points: i->second) {
+            if (time_counter < 80.0){
+                pre_event_values += data_points;
+                pre_event_bins += 1.0;
+                pre_event_deriv += abs(data_points - prev_data);
+            } 
+            prev_data = data_points;
+            time_counter += 2.0;
+        }
+
         SinglePMTInfo pmt_data;
         pmt_data.key = i->first;
         size_t peak_idx = std::distance(i->second.begin(), std::max_element(i->second.begin(), i->second.end()));
@@ -81,18 +99,20 @@ void CalculateNLLH::SetData(I3FramePtr data_frame) {
 
         // let's also get the event start bin using derivs
         bool found_start = false;
-        double pre_event_values = pmt_data.data.at(0);
-        double pre_event_bins = 1.0;
+        double deriv_threshold = (pre_event_deriv / pre_event_bins) * 5.0;
+        pmt_data.data_times.push_back(0.0);
         for (size_t data_it = 1; data_it < pmt_data.data.size(); data_it++){
             double deriv = pmt_data.data.at(data_it) - pmt_data.data.at(data_it - 1);
-            if (deriv > event_start_threshold and found_start == false){
-                pmt_data.event_start_bin = data_it - 2;
+            if (deriv > deriv_threshold and found_start == false){
+                pmt_data.event_start_bin = data_it - 1;
                 found_start = true;
             }
-            if (deriv < event_start_threshold and found_start == false){
-                pre_event_values += pmt_data.data.at(data_it);
-                pre_event_bins += 1.0;
-            }
+            pmt_data.data_times.push_back(pmt_data.data_times[data_it - 1] + 2.0);
+        }
+
+        // let's subtract off our event start time from pmt_data.data_times
+        for (size_t i = 0; i < pmt_data.data_times.size(); i++){
+            pmt_data.data_times.at(i) -= (pmt_data.event_start_bin * 2.0);
         }
         pmt_data.pre_event_average = pre_event_values / pre_event_bins;
         data[pmt_data.key] = pmt_data;
@@ -113,19 +133,19 @@ void CalculateNLLH::SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen
     this->gen_expectation = gen_expectation;
 }
 
-CalculateNLLH::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
+CalculateNLLH::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale) {
     return this->ComputeNLLH<AD>(key, AD(params.Rs, 0), AD(params.Rt, 1), AD(params.tau_s, 2), AD(params.tau_t, 3), AD(params.tau_rec, 4), AD(params.tau_TPB, 5),
-            AD(params.normalization, 6), AD(params.time_offset, 7), AD(params.const_offset, 8), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+            AD(params.normalization, 6), AD(params.time_offset, 7), AD(params.const_offset, 8), AD(late_pulse_mu, 9), AD(late_pulse_sigma, 10), AD(late_pulse_scale, 11), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
 }
 
-double CalculateNLLH::GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
+double CalculateNLLH::GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale) {
     return this->ComputeNLLH<double>(key, params.Rs, params.Rt, params.tau_s, params.tau_t, params.tau_rec, params.tau_TPB,
-            params.normalization, params.time_offset, params.const_offset, params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+            params.normalization, params.time_offset, params.const_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale, params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
 }
 
-std::vector<double> CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params) {
+std::vector<double> CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale) {
     Grad grad;
-    this->GetNLLH(key, params).copyGradient(grad.data());
+    this->GetNLLH(key, params, late_pulse_mu, late_pulse_sigma, late_pulse_scale).copyGradient(grad.data());
     // putting grad into a vector...don't want to deal with pybindings for arrays
     std::vector<double> grad_to_return;
     for (size_t i = 0; i < grad.size(); i++){
@@ -133,5 +153,4 @@ std::vector<double> CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLigh
     }
     return grad_to_return;
 }
-
 

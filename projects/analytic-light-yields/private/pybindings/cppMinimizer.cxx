@@ -44,7 +44,7 @@ void register_cppMinimizer() {
 
     class_<cppMinimizer, boost::noncopyable>("cppMinimizer")
         .def(init<>())
-        .def("OnePMTOneDataSetMinimization", &cppMinimizer::OnePMTOneDataSetMinimization);
+        .def("OnePMTOneDataSetMinimization", &cppMinimizer::OnePMTOneDataSetMinimization)
         .def("OnePMTMultipleDataSetMinimization", &cppMinimizer::OnePMTMultipleDataSetMinimization);
 
 }

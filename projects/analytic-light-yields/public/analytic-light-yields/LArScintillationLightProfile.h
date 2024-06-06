@@ -102,7 +102,6 @@ void get_total_light_profile (T const & R_s,
 
 template<typename T>
 void get_light_profile_no_recombination(T const & R_s,
-                                        //T const & R_t,
                                         T const & tau_s,
                                         T const & tau_t,
                                         T const & tau_TPB,
@@ -116,7 +115,7 @@ void get_light_profile_no_recombination(T const & R_s,
     // let's loop over times and calculate the light profile at each time
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
         T const & t = times.at(time_it);
-        if(t < 0) {
+        if(t <= 0) {
             final_light_profile.at(time_it) = 1e-18 * exp(t / 10.0);
             //final_light_profile.at(time_it) = 0.0; 
             continue;
@@ -129,8 +128,7 @@ void get_light_profile_no_recombination(T const & R_s,
         T two = coeff_two * (exp_triplet - exp_prompt_TPB);
 
         T y = one + two;
-
-        final_light_profile.at(time_it) = y;
+        final_light_profile.at(time_it) = y; 
     }
 }
 

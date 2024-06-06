@@ -242,8 +242,8 @@ public:
 	LBFGSB_Driver():
 	nVar(0),
 	historySize(10),
-	changeTol(1e-8),
-	gradTol(1e-8),
+	changeTol(1e-10),
+	gradTol(1e-10),
 	finalFunctionValue(std::numeric_limits<double>::quiet_NaN()),
 	nEvals(0)
 	{}
