@@ -243,7 +243,7 @@ public:
 	nVar(0),
 	historySize(10),
 	changeTol(1e-10),
-	gradTol(1e-10),
+	gradTol(1e-12),
 	finalFunctionValue(std::numeric_limits<double>::quiet_NaN()),
 	nEvals(0)
 	{}
@@ -490,7 +490,8 @@ public:
 		}
         bool success=(task[0]=='C');
         if(success)
-            lastError.clear();
+            //lastError.clear();
+            lastError=task;
         else
             lastError=task;
 		return(success);

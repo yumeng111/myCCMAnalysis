@@ -71,11 +71,11 @@ void check_escape(double const & x,
 
     // Generate a random number
     double cdf_prob = dis_0_1(gen);
+    //double cdf_prob = 0.5; 
     // distance travelled
     double dist = -decay_constant * std::log(cdf_prob + 1/decay_constant);
 
     if (intersection_radius < pos_rad){
-
         // now let's check if inside the detector
         final_x = x + dist * nx;
         final_y = y + dist * ny;
@@ -92,6 +92,7 @@ void check_escape(double const & x,
     if (intersection_radius >= pos_rad){
         // ok so we are a sodium photon going up through the rod... about 1/3 chance of survival (this is pretty ad hoc..)
         double survival = dis_0_1(gen);
+        //double survival = 0.2; 
         if (survival > 1.0/3.0){
             escaped = false;
         }
@@ -127,6 +128,8 @@ void get_1275kev_photon(double const & z_offset,
     // let's get an initial position
     double theta_pos = dis_angle(gen);
     double r = std::sqrt(dis_0_1(gen)) * source_diameter/2;
+    //double theta_pos = M_PI; 
+    //double r = std::sqrt(0.5) * source_diameter/2;
     double x = r * std::cos(theta_pos);
     double y = r * std::sin(theta_pos);
     double z = z_offset;
@@ -134,6 +137,8 @@ void get_1275kev_photon(double const & z_offset,
     // now let's get an initial direction
     double phi = dis_angle(gen);
     double cos_theta = dis_neg_1_1(gen);
+    //double phi = M_PI; 
+    //double cos_theta = 0.0; 
     double theta = std::acos(cos_theta);
     double nx = std::cos(phi) * std::sin(theta);
     double ny = std::sin(phi) * std::sin(theta);
@@ -165,6 +170,8 @@ void get_511kev_photon(double const & z_offset,
     // let's get an initial position
     double theta_pos = dis_angle(gen);
     double r = std::sqrt(dis_0_1(gen)) * source_diameter/2;
+    //double theta_pos = M_PI; 
+    //double r = std::sqrt(0.5) * source_diameter/2;
     double x = r * std::cos(theta_pos);
     double y = r * std::sin(theta_pos);
     double z = z_offset;
@@ -172,6 +179,8 @@ void get_511kev_photon(double const & z_offset,
     // now let's get an initial direction
     double phi = dis_angle(gen);
     double cos_theta = dis_neg_1_1(gen);
+    //double phi = M_PI; 
+    //double cos_theta = 0.0; 
     double theta = std::acos(cos_theta);
     double nx = std::cos(phi) * std::sin(theta);
     double ny = std::sin(phi) * std::sin(theta);

@@ -40,7 +40,7 @@ struct LikelihoodFunctor {
     CCMPMTKey key_to_fit;
     double uv_absorption = 55.0;
     std::vector<double> z_offset;
-    size_t n_sodium_events = 40;
+    size_t n_sodium_events;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
     std::vector<double> time_offsets;
     std::vector<double> LPscales;
@@ -98,7 +98,7 @@ typedef LikelihoodFunctor LikelihoodType;
 
 cppMinimizer::cppMinimizer() {}
 
-std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets, double norm_seed) {
+std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets, double norm_seed, size_t n_sodium_events) {
 
     // let's try scanning over t offset
     double t_offset_start = 25.0;
@@ -113,10 +113,10 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
 
     // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
     // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
-    double seeds[7] = {0.34, 8.2, 3.0, norm_seed, 60.0, 10.0, 1e-2};
-    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3};
-    double mins[7] = {0.2, 6.0, 1.0, norm_seed / 5, 50.0, 2.0, 1e-10};
-    double maxs[7] = {0.5, 16.0, 9.0, norm_seed * 1e2, 68.0, 15.0, 0.09};
+    double seeds[7] = {0.34, 8.2, 3.0, norm_seed, 60.0, 4.0, 1.0};
+    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-6, 1e-3, 1e-3, 1e-3};
+    double mins[7] = {0.2, 6.0, 1.0, norm_seed / 5, 50.0, 2.0, 1e-1};
+    double maxs[7] = {0.5, 16.0, 9.0, norm_seed * 1e5, 68.0, 20.0, 20.0};
 
     std::cout << "norm seed = " << norm_seed << ", lower bound = " << mins[3] << " and upper bound = " << maxs[3] << std::endl;
 
@@ -148,6 +148,7 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
         
         // now set up our likelihood object
         LikelihoodType likelihood;
+        likelihood.n_sodium_events = n_sodium_events;
         likelihood.z_offset = z_offsets; 
         likelihood.llh_constructor = all_constructors;
         likelihood.key_to_fit = this_key;
@@ -187,6 +188,7 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
             func_val.push_back(minimizer.minimumValue());
             params.push_back(minimizer.minimumPosition());
             nevals.push_back(minimizer.numberOfEvaluations());
+            std::cout << "function minimum at " << minimizer.minimumValue() << " and minimization message = " << minimizer.errorMessage() << std::endl; 
         } 
 
     }
@@ -208,7 +210,7 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
 }
 
 std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets,
-                            std::vector<double> time_offsets, std::vector<double> LPscales, std::vector<double> norm_seeds) {
+                            std::vector<double> time_offsets, std::vector<double> LPscales, std::vector<double> norm_seeds, size_t n_sodium_events) {
 
     std::vector<std::string> paramter_names = {"Rs", "Rt", "tau_s", "tau_t", "tau_rec", "tau_TPB", "norm1", "norm2", "norm3", "norm4",
                                                "time offset", "const offset", "late pulse mu", "late pulse sigma", "late pulse scale"};
@@ -239,6 +241,7 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
     
     // now set up our likelihood object
     LikelihoodType likelihood;
+    likelihood.n_sodium_events = n_sodium_events;
     likelihood.z_offset = z_offsets; 
     likelihood.llh_constructor = all_constructors;
     likelihood.key_to_fit = this_key;
@@ -249,10 +252,10 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
 
     // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
     // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
-    double seeds[7] = {0.34, 8.2, 3.0, 5.2e6, 60.0, 10.0, 1e-2};
-    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3};
-    double mins[7] = {0.2, 6.0, 1.0, 1e2, 50.0, 2.0, 1e-10};
-    double maxs[7] = {0.5, 16.0, 9.0, 1e16, 68.0, 15.0, 0.09};
+    double seeds[7] = {0.34, 8.2, 3.0, 1e5, 60.0, 4.0, 1.0};
+    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-6, 1e-3, 1e-3, 1e-3};
+    double mins[7] = {0.2, 6.0, 1.0, 1.0, 50.0, 2.0, 1e-1};
+    double maxs[7] = {0.5, 16.0, 9.0, 1e10, 68.0, 20.0, 20.0};
     
     minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]); // Rs
     minimizer.addParameter(0.0);                                        // Rt
@@ -262,7 +265,7 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
     minimizer.addParameter(seeds[2], grad_scales[2], mins[2], maxs[2]); // tau_TPB
     // this is where we add our normalization parameter...need to add one for each data set
     for (size_t n = 0; n < n_data_sets; n++){
-        minimizer.addParameter(norm_seeds.at(n), grad_scales[3], norm_seeds.at(n) / 1e2, norm_seeds.at(n) * 1e3); // norm
+        minimizer.addParameter(norm_seeds.at(n), grad_scales[3], norm_seeds.at(n) / 1e2, norm_seeds.at(n) * 1e5); // norm
     } 
     minimizer.addParameter(0.0);                                        // time offset
     minimizer.addParameter(0.0);                                        // const offset
@@ -283,6 +286,7 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
 
     if (succeeded){
         std::cout << "joint fit converged!" << std::endl;
+        std::cout << "minimization finished with " << minimizer.errorMessage() << " error message" << std::endl; 
     }
 
     double value = minimizer.minimumValue();                                                                                                                                                 

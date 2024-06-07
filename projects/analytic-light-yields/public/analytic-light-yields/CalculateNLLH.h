@@ -504,7 +504,12 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
 
         // and grab our late pulse gaussian fit
         T relative_late_pulse_height = late_pulse_scale * normalization;
-        T late_pulse_gauss = LatePulseGaussian<T>(this_time, late_pulse_mu, late_pulse_sigma, relative_late_pulse_height);
+        T late_pulse_gauss;
+        if (this_time > 0.0){
+            late_pulse_gauss = LatePulseGaussian<T>(this_time, late_pulse_mu, late_pulse_sigma, relative_late_pulse_height);
+        } else {
+            late_pulse_gauss = LatePulseGaussian<T>(this_time, late_pulse_mu, late_pulse_sigma, 0.0);
+        }
 
         // now put together to make mu and sigma2!
         T mu = pred_yields_this_time * normalization + pre_event_average + late_pulse_gauss;
