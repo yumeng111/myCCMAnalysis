@@ -300,6 +300,13 @@ public:
     typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
     typedef std::array<Underlying, n_params> Grad;
 
+    
+    static constexpr size_t n_params_cppmin = 18;
+    typedef double Underlying_cppmin;
+
+    typedef phys_tools::autodiff::FD<n_params_cppmin, Underlying_cppmin> AD_cppmin;
+    typedef std::array<Underlying_cppmin, n_params_cppmin> Grad_cppmin;
+
     I3MapPMTKeyVectorDouble debug_all_data;
     I3MapPMTKeyVectorDouble debug_all_pred;
     I3MapPMTKeyVectorDouble debug_fit_data;
@@ -415,7 +422,6 @@ template<typename T>
 T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
             double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
-    
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
@@ -453,10 +459,8 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
         if constexpr (std::is_same<T, double>::value) {
             pred_times_double.push_back(pred_times->at(j) + light_time_offset);
             //pred_times_double.push_back(pred_times->at(j));
-        }
-        if constexpr (std::is_same<T, AD>::value) {
+        } else {
             pred_times_double.push_back(pred_times->at(j).value() + light_time_offset.value());
-            //pred_times_double.push_back(pred_times->at(j).value());
         }
     }
 
@@ -504,20 +508,28 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
 
         // and grab our late pulse gaussian fit
         T relative_late_pulse_height = late_pulse_scale * normalization;
-        T late_pulse_gauss;
-        if (this_time > 0.0){
-            late_pulse_gauss = LatePulseGaussian<T>(this_time, late_pulse_mu, late_pulse_sigma, relative_late_pulse_height);
-        } else {
-            late_pulse_gauss = LatePulseGaussian<T>(this_time, late_pulse_mu, late_pulse_sigma, 0.0);
-        }
+        T late_pulse_gauss = LatePulseGaussian<T>(this_time, late_pulse_mu, late_pulse_sigma, relative_late_pulse_height);
 
         // now put together to make mu and sigma2!
         T mu = pred_yields_this_time * normalization + pre_event_average + late_pulse_gauss;
         T sigma_squared = pred_yields_squared_this_time * (normalization * normalization) + (pre_event_average * pre_event_average) + (late_pulse_gauss * late_pulse_gauss);
-        
+
         // now check the time before computing the llh
         if (this_time < ignore_start or this_time > ignore_end){
             total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+            
+            if constexpr (std::is_same<T, AD>::value){
+                //std::cout << "late_pulse_scale = " << late_pulse_scale << std::endl;
+                //std::cout << "mu = " << mu << std::endl;
+                //std::cout << "at time = " << this_time << " nllh = " << MCLLH::LEff()(k, mu, sigma_squared) << std::endl;
+                
+                Grad_cppmin grad;
+                MCLLH::LEff()(k, mu, sigma_squared).copyGradient(grad.data());
+                debug_fit_data[key].at(i) = grad.at(11);
+                //std::cout << "late pulse scale gradient = " << grad.at(14) << std::endl;
+            }
+
+                
         }
         if constexpr (std::is_same<T, double>::value) {
             debug_all_data[key].at(i) = k;
@@ -526,7 +538,7 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
             debug_data_times.push_back(this_time);
         }
     }
-
+    //std::cout << "total LP scale grad = " << total_LP_scale_grad << std::endl;
 
     //// now loop over the time bins in our data 
     //size_t pred_idx;
