@@ -60,6 +60,7 @@ struct LikelihoodFunctor {
     // This returns the LLH
     template<typename T>
     T evaluateLikelihood(std::vector<T> x) const {
+        std::cout << "in evaluateLikelihood" << std::endl;
         T total_llh = 0;
         std::cout << "llh_constructor.size() = " << llh_constructor.size() << std::endl;
         for (size_t data_it = 0; data_it < llh_constructor.size(); data_it ++){
@@ -86,13 +87,13 @@ public:
     
     // This evaluates the NLLH value
     virtual double evalF(std::vector<double> x) const {
-        std::cout << "about to call evaluateLikelihood" << std::endl;
+        std::cout << "in evalF" << std::endl;
         return(-func.template evaluateLikelihood<double>(x)); // note negation!
     }
 
     // This evaluates the NLLH value and the NLLH gradient
     virtual std::pair<double,std::vector<double>> evalFG(std::vector<double> x) const {
-        std::cout << "line 95" << std::endl;
+        std::cout << "in evalFG" << std::endl;
         const size_t size=x.size();
         using GradType = phys_tools::autodiff::FD<FuncType::DerivativeDimension>;
         std::vector<GradType> params(size);
