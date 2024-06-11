@@ -74,12 +74,12 @@ public:
     void GetSodiumVertices(size_t n_events_to_simulate, double z_position);
     void GetYieldsAndOffsets(double uv_absorption);
     template<typename T>
-    std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+    std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                                        AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
 
     template<typename T>
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time,
-                                            T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset,
+                                            T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                                             double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type); 
     
     //static constexpr size_t n_params = 9;
@@ -99,14 +99,14 @@ public:
 };
 
 template<typename T>
-std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                                                     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times) {
     std::vector<T> light_profile(times.size());
 
     if (light_profile_type == AnalyticLightYieldGenerator::LArLightProfileType::Simplified) {
-        get_light_profile_no_recombination(Rs, tau_s, tau_t, tau_TPB, times, light_profile);
+        get_light_profile_no_recombination(Rs, tau_s, tau_t, tau_TPB, late_pulse_mu, late_pulse_sigma, late_pulse_scale, times, light_profile);
     } else {
-        get_total_light_profile (Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, times, light_profile);
+        get_total_light_profile (Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, late_pulse_mu, late_pulse_sigma, late_pulse_scale, times, light_profile);
     }
 
     return light_profile;
@@ -115,14 +115,9 @@ std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T
 template<typename T>
 std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
     GenerateExpectation::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T light_time_offset, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+            T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, double uv_absorption, double z_offset, size_t n_sodium_events,
+            AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
-    //bool compute_vertices = sodium_events_constructor == nullptr or n_sodium_events != this->n_sodium_events or z_offset != this->z_offset;
-    //bool compute_yields = yields_and_offset_constructor == nullptr or uv_absorption != this->uv_absorption;
-    //bool bin_yields = binned_yields.find(key) == binned_yields.end();
-    //compute_yields |= compute_vertices;
-    //bin_yields |= compute_yields;
-    
     bool compute_vertices = sodium_events_constructor == nullptr;
     bool compute_yields = yields_and_offset_constructor == nullptr;
     bool bin_yields = binned_yields.find(key) == binned_yields.end();
@@ -140,7 +135,6 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>,
     std::vector<double> const & binned_yield = binned_yields.at(key);
     std::vector<double> const & binned_square_yield = binned_square_yields.at(key);
 
-    //size_t n_light_bins = size_t(max_time / 2.0) + 1;
     peak_time += 40.0;
     size_t n_light_bins = size_t(max_time / 2.0) + 1 + 40;
     size_t offset = size_t(start_time / 2.0);
@@ -148,12 +142,11 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>,
 
     std::vector<T> light_times(n_light_bins, 0.0);
     for(size_t i = 0; i < n_light_bins; i++) {
-        //light_times[i] = 2.0 * i + (light_time_offset - peak_time);
         light_times[i] = 2.0 * i - peak_time;
     }
     
     // now grab our light profile!
-    std::vector<T> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_profile_type, light_times);
+    std::vector<T> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, late_pulse_mu, late_pulse_sigma, late_pulse_scale, light_profile_type, light_times);
     std::vector<T> LAr_light_profile_squared(n_light_bins);
     for(size_t i = 0; i < n_light_bins; i++) {
         LAr_light_profile_squared[i] = LAr_light_profile[i] * LAr_light_profile[i];
@@ -208,50 +201,6 @@ std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>,
             expectation_squared->at(i) += binned_square_yield[k] * LAr_light_profile_squared[j]; 
         }
     }
-    // trying this the old way...
-    //size_t n_light_bins_extended = n_light_bins + 20;
-    //boost::shared_ptr<std::vector<T>> extended_light_times = boost::make_shared<std::vector<T>> (n_light_bins_extended, 0.0);
-    //for(size_t i = 0; i < n_light_bins_extended; i++) {
-    //    //extended_light_times->at(i) = 2.0 * i + (light_time_offset - peak_time);
-    //    extended_light_times->at(i) = 2.0 * i - peak_time;
-    //}
-    //
-    //boost::shared_ptr<std::vector<T>> expectation = boost::make_shared<std::vector<T>> (extended_light_times->size(), 0.0);
-    //boost::shared_ptr<std::vector<T>> expectation_squared = boost::make_shared<std::vector<T>> (extended_light_times->size(), 0.0);
-    //
-    //size_t bin_idx;
-    //for (size_t event_it = 0; event_it < yields_per_pmt_per_event.size(); event_it ++){
-    //    boost::shared_ptr<PhotonYieldSummarySeriesMap> this_event_yields_per_pmt = yields_per_pmt_per_event.at(event_it);
-    //    boost::shared_ptr<std::vector<T>> this_event_binned_yields = boost::make_shared<std::vector<T>> (extended_light_times->size(), 0.0);
-
-    //    for (PhotonYieldSummarySeriesMap::const_iterator i = this_event_yields_per_pmt->begin(); i != this_event_yields_per_pmt->end(); i++) {
-    //        // now let's loop over all the PhotonYieldSummary for this PMT
-    //        for(PhotonYieldSummary const & this_yield: i->second) {
-    //            double time_offset = this_yield.time;
-    //            double relative_yields = this_yield.yield;
-    //            // now apply time offsets and yields to our light profile
-    //            for (size_t light_time_it = 0; light_time_it < n_light_bins; light_time_it++){
-    //                T light_time = light_times.at(light_time_it) + time_offset;
-    //                T light_val = LAr_light_profile.at(light_time_it) * relative_yields;
-
-    //                // now binning!
-    //                if constexpr (std::is_same<T, double>::value) {
-    //                    bin_idx = (size_t) ((light_time - minimum_light_time) / 2.0);
-    //                }
-    //                if constexpr (std::is_same<T, AD>::value) {
-    //                    bin_idx = (size_t) ((light_time.value() - minimum_light_time.value()) / 2.0);
-    //                }
-    //                (*this_event_binned_yields).at(bin_idx) += light_val;
-    //            }
-    //        }
-    //    }
-    //    // ok so for this event we have finished binning the expected light yield
-    //    // let's add this event yields and yields^2 to our expecation 
-    //    for (size_t time_bin_it = 0; time_bin_it < this_event_binned_yields->size(); time_bin_it++){
-    //        expectation->at(time_bin_it) += this_event_binned_yields->at(time_bin_it);
-    //        expectation_squared->at(time_bin_it) += (this_event_binned_yields->at(time_bin_it) * this_event_binned_yields->at(time_bin_it));
-    //    }
-    //}
     
     return std::make_tuple(expectation, expectation_squared, extended_light_times);
 }

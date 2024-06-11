@@ -31,12 +31,11 @@
 
 struct LikelihoodFunctor {
 
-    static constexpr int DerivativeDimension = 18; // max number of dimensions :
+    static constexpr int DerivativeDimension = 15; // max number of dimensions :
                                                    // Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB
                                                    // norm, norm, norm, norm -- 1 / data set!
                                                    // time offset, const offset
-                                                   // LP mu, LP sigma,
-                                                   // LP scale, LP scale, LP scale, LP scale -- 1 / data set!
+                                                   // LP mu, LP sigma, LP scale
     std::vector<std::shared_ptr<CalculateNLLH>> llh_constructor;
     CCMPMTKey key_to_fit;
     double uv_absorption = 55.0;
@@ -56,10 +55,9 @@ struct LikelihoodFunctor {
             } else {
                 time_offset = x[10];
             }
-            T partial_nllh = llh_constructor.at(data_it)->ComputeNLLH<T>(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
-                             time_offset, x[11], x[12], x[13], x[14 + data_it], uv_absorption, z_offset.at(data_it), n_sodium_events, light_profile_type);
-            total_llh += partial_nllh;
-            //std::cout << "partial nllh = " << partial_nllh << std::endl; 
+            total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
+                             time_offset, x[11], x[12], x[13], x[14], uv_absorption, z_offset.at(data_it), n_sodium_events, light_profile_type);
+
         }
         return total_llh; 
     }
@@ -101,22 +99,22 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
 
     // let's try scanning over t offset
     double t_offset_start = 25.0;
-    double t_offset_end = 35.0;
+    double t_offset_end = 31.0;
     double t_offset_range = t_offset_end - t_offset_start;
-    size_t n_t_offsets = 20;
+    size_t n_t_offsets = 25;
 
     std::vector<double> func_val;
     std::vector<std::vector<double>> params;
     std::vector<int> nevals;
     std::vector<std::string> paramter_names = {"Rs", "Rt", "tau_s", "tau_t", "tau_rec", "tau_TPB", "norm1", "norm2", "norm3", "norm4",  "time offset", "const offset",
-                                               "late pulse mu", "late pulse sigma", "late pulse scale1", "late pulse scale2", "late pulse scale3", "late pulse scale4"};
+                                               "late pulse mu", "late pulse sigma", "late pulse scale"};
 
     // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
     // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
-    double seeds[7] = {0.34, 8.2, 3.0, norm_seed, 58.0, 8.0, 1.0};
-    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-6, 1e-6, 1e-6, 1e-6};
-    double mins[7] = {0.2, 6.0, 1.0, norm_seed / 5, 50.0, 2.0, 0.0};
-    double maxs[7] = {0.5, 16.0, 9.0, norm_seed * 1e5, 68.0, 15.0, 30.0};
+    double seeds[7] = {0.34, 8.2, 3.0, norm_seed, 55.0, 8.0, 3e-2};
+    double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-6, 1e-3, 1e-3, 1e-3};
+    double mins[7] = {0.2, 2.0, 1.0, norm_seed / 5, 35.0, 2.0, 0.0};
+    double maxs[7] = {0.5, 16.0, 9.0, norm_seed * 1e5, 68.0, 20.0, 1e-1};
 
     std::cout << "norm seed = " << norm_seed << ", lower bound = " << mins[3] << " and upper bound = " << maxs[3] << std::endl;
     
@@ -169,10 +167,7 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
         minimizer.addParameter(0.0);                                        // const offset
         minimizer.addParameter(seeds[4], grad_scales[4], mins[4], maxs[4]); // late pulse mu
         minimizer.addParameter(seeds[5], grad_scales[5], mins[5], maxs[5]); // late pulse sigma
-        // this is where we add our LP scale parameter...need to add one for each data set
-        for (size_t n = 0; n < 4; n++){
-            minimizer.addParameter(seeds[6], grad_scales[6], mins[6], maxs[6]); // late pulse scale 
-        } 
+        minimizer.addParameter(seeds[6], grad_scales[6], mins[6], maxs[6]); // late pulse scale 
         minimizer.setHistorySize(20);
 
         // fix parameter idx of guys we are not minimizing
@@ -184,9 +179,6 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
         minimizer.fixParameter(9); // norm #4 
         minimizer.fixParameter(10); // time offset
         minimizer.fixParameter(11); // const offset
-        minimizer.fixParameter(15); // LP scale #2 
-        minimizer.fixParameter(16); // LP scale #3 
-        minimizer.fixParameter(17); // LP scale #4 
 
         bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
 
@@ -194,8 +186,11 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
             func_val.push_back(minimizer.minimumValue());
             params.push_back(minimizer.minimumPosition());
             nevals.push_back(minimizer.numberOfEvaluations());
-            std::cout << "function minimum at " << minimizer.minimumValue() << " and minimization message = " << minimizer.errorMessage() << std::endl; 
+            std::cout << "for time offset = " << this_t_offset << ", function minimum at " << minimizer.minimumValue() << " and minimization message = " << minimizer.errorMessage() << std::endl; 
+        } else{
+            std::cout << "oops! for time offset = " << this_t_offset << ", minimizer says = " << minimizer.errorMessage() << std::endl; 
         } 
+
 
     }
 
@@ -207,7 +202,7 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
     data_to_return.push_back(func_val.at(smallest_idx));
     for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
         data_to_return.push_back(params.at(smallest_idx).at(i));
-        if (i == 1 or i == 3 or i == 4 or i == 7 or i == 8 or i == 9 or i == 11 or i == 15 or i == 16 or i == 17){
+        if (i == 1 or i == 3 or i == 4 or i == 7 or i == 8 or i == 9 or i == 11){
             continue;
         }
         std::cout << paramter_names.at(i) << " = " << params.at(smallest_idx).at(i) << std::endl;
@@ -216,11 +211,10 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
 }
 
 std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets,
-                            std::vector<double> time_offsets, std::vector<double> LPscale_seeds, std::vector<double> norm_seeds, size_t n_sodium_events) {
+                            std::vector<double> time_offsets, std::vector<double> norm_seeds, size_t n_sodium_events) {
 
     std::vector<std::string> paramter_names = {"Rs", "Rt", "tau_s", "tau_t", "tau_rec", "tau_TPB", "norm1", "norm2", "norm3", "norm4",
-                                               "time offset", "const offset", "late pulse mu", "late pulse sigma", "late pulse scale1",
-                                               "late pulse scale2", "late pulse scale3", "late pulse scale4"};
+                                               "time offset", "const offset", "late pulse mu", "late pulse sigma", "late pulse scale"};
 
     size_t n_data_sets = data_file_names.size();
 
@@ -258,10 +252,10 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
 
     // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale
     // fixed paramters are : Rt, tau_t, tau_rec, time offset, and const_offset
-    double seeds[7] = {0.34, 8.2, 3.0, 1e5, 60.0, 4.0, 1.0};
+    double seeds[7] = {0.34, 8.2, 3.0, 1e5, 55.0, 8.0, 3e-2};
     double grad_scales[7] = {1e-3, 1e-3, 1e-3, 1e-6, 1e-3, 1e-3, 1e-3};
-    double mins[7] = {0.2, 6.0, 1.0, 1.0, 50.0, 2.0, 1e-1};
-    double maxs[7] = {0.5, 16.0, 9.0, 1e10, 68.0, 15.0, 30.0};
+    double mins[7] = {0.2, 2.0, 1.0, 1.0, 35.0, 2.0, 0.0};
+    double maxs[7] = {0.5, 16.0, 9.0, 1e10, 68.0, 20.0, 1e-1};
     
     minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]); // Rs
     minimizer.addParameter(0.0);                                        // Rt
@@ -277,7 +271,7 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
     minimizer.addParameter(0.0);                                        // const offset
     minimizer.addParameter(seeds[4], grad_scales[4], mins[4], maxs[4]); // late pulse mu
     minimizer.addParameter(seeds[5], grad_scales[5], mins[5], maxs[5]); // late pulse sigma
-    minimizer.addParameter(0.0);                                        // late pulse scale
+    minimizer.addParameter(seeds[6], grad_scales[6], mins[6], maxs[6]); // late pulse scale
     minimizer.setHistorySize(20);
 
     // fix parameter idx of guys we are not minimizing
@@ -286,7 +280,6 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
     minimizer.fixParameter(4); // tau_rec
     minimizer.fixParameter(10); // time offset
     minimizer.fixParameter(11); // const offset
-    minimizer.fixParameter(14); // LP scale 
 
     bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
 
@@ -303,9 +296,10 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
     std::cout << "Parameters: " << std::endl;
     std::vector<double> data_to_return;
     data_to_return.push_back(value);
+    data_to_return.push_back((double) minimizer.numberOfEvaluations());
     for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
         data_to_return.push_back(params.at(i));
-        if (i == 1 or i == 3 or i == 4 or i == 10 or i == 11 or i == 14){
+        if (i == 1 or i == 3 or i == 4 or i == 10 or i == 11){
             continue;
         }
         std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;

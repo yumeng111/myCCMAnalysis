@@ -49,7 +49,6 @@ namespace bp = boost::python;
 #define REGISTER_THESE_THINGS                                           \
   (SodiumVertexDistribution)(YieldsPerPMT)(GenerateExpectation)         \
   (CalculateNLLH)                                                       \
-  (NumericalCheck)                                                      \
   (cppMinimizer)                                                        \
 
 #define I3_REGISTRATION_FN_DECL(r, data, t) void BOOST_PP_CAT(register_,t)();

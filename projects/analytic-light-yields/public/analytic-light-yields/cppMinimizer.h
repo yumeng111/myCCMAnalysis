@@ -22,6 +22,6 @@ public:
     cppMinimizer();
     std::vector<double> OnePMTOneDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets, double norm_seed, size_t n_sodium_events);
     std::vector<double> OnePMTMultipleDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets,
-                        std::vector<double> time_offsets, std::vector<double> LPscales, std::vector<double> norm_seeds, size_t n_sodium_events);
+                        std::vector<double> time_offsets, std::vector<double> norm_seeds, size_t n_sodium_events);
 };
 #endif

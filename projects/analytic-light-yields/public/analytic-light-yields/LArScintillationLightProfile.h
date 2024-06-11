@@ -58,15 +58,40 @@ struct mpmath_gammainc<phys_tools::autodiff::FD<nVars, T>> {
     }
 };
 
+template<typename T> T normal_distribution(T const & time, T const & mu, T const & sigma) {
+    T scale = 1.0 / (sigma * std::sqrt(2.0 * M_PI));
+    T z = (time - mu) / sigma;
+    T e = exp(-0.5 * z * z);
+
+    return scale * e;
+}
+
+template<typename T> T add_late_pulse_bump(T const & mu,
+                                           T const & sigma,
+                                           T const & scale,
+                                           T const & max_light_prof,
+                                           T const & time,
+                                           T const & light_profile) {
+    T light_prof_w_gauss = light_profile;
+    T gaussian_peak_value = normal_distribution(mu, mu, sigma);
+    if (time > 10.0){
+        light_prof_w_gauss += (scale * max_light_prof * (normal_distribution(time, mu, sigma) / gaussian_peak_value));
+    }
+    return light_prof_w_gauss;
+}
+
 template<typename T>
 void get_total_light_profile (T const & R_s,
-                            T const & R_t,
-                            T const & tau_s,
-                            T const & tau_t,
-                            T const & tau_rec,
-                            T const & tau_TPB,
-                            std::vector<T> const & times,
-                            std::vector<T> & final_light_profile) {
+                              T const & R_t,
+                              T const & tau_s,
+                              T const & tau_t,
+                              T const & tau_rec,
+                              T const & tau_TPB,
+                              T const & late_pulse_mu, 
+                              T const & late_pulse_sigma,
+                              T const & late_pulse_scale, 
+                              std::vector<T> const & times,
+                              std::vector<T> & final_light_profile) {
 
     mpmath_gammainc<T> gammainc;
 
@@ -105,6 +130,9 @@ void get_light_profile_no_recombination(T const & R_s,
                                         T const & tau_s,
                                         T const & tau_t,
                                         T const & tau_TPB,
+                                        T const & late_pulse_mu, 
+                                        T const & late_pulse_sigma,
+                                        T const & late_pulse_scale, 
                                         std::vector<T> const & times,
                                         std::vector<T> & final_light_profile) {
 
@@ -113,11 +141,15 @@ void get_light_profile_no_recombination(T const & R_s,
     T coeff_one = R_s / (tau_s - tau_TPB);
     T coeff_two = R_t / (tau_t - tau_TPB);
     // let's loop over times and calculate the light profile at each time
+    // note -- we are going to calculate the light profile then normalize so that maximum is equal to 1.0
+    // that way late pulse scale can be a percent of the max light profile
+    std::vector<T> just_light_prof(final_light_profile.size());
+    T max_light_prof;
     for (size_t time_it = 0; time_it < times.size(); time_it++) {
         T const & t = times.at(time_it);
         if(t <= 0) {
-            final_light_profile.at(time_it) = 1e-18 * exp(t / 10.0);
-            //final_light_profile.at(time_it) = 0.0; 
+            just_light_prof.at(time_it) = 1e-18 * exp(t / 10.0);
+            max_light_prof = just_light_prof.at(time_it);
             continue;
         }
         T exp_singlet = exp(-t / tau_s);
@@ -128,8 +160,19 @@ void get_light_profile_no_recombination(T const & R_s,
         T two = coeff_two * (exp_triplet - exp_prompt_TPB);
 
         T y = one + two;
-        final_light_profile.at(time_it) = y; 
+        just_light_prof.at(time_it) = y; 
+        if (y > max_light_prof){
+            max_light_prof = y;
+        }
     }
+
+    // ok so we have just the light profile
+    // now let's loop over times again and divide by the max value then add in our gaussian
+    for (size_t time_it = 0; time_it < times.size(); time_it++) {
+        T const & t = times.at(time_it);
+        final_light_profile.at(time_it) = add_late_pulse_bump(late_pulse_mu, late_pulse_sigma, late_pulse_scale, max_light_prof, t, just_light_prof.at(time_it));
+    }
+
 }
 
 #endif
