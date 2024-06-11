@@ -312,6 +312,7 @@ public:
 private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
     std::vector<CCMPMTKey> keys_to_fit;
+    I3MapPMTKeyDouble PMT_eff;
     I3FramePtr geo_frame;
 
     size_t n_sodium_events;
@@ -328,6 +329,7 @@ public:
     CalculateNLLH();
     CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=100, size_t n_sodium_events=20, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
     void SetKeys(std::vector<CCMPMTKey> keys);
+    void SetPMTEff(I3MapPMTKeyDouble pmt_eff);
     void SetGeo(I3FramePtr geo_frame);
     void SetData(I3FramePtr data_frame);
     void SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen_expectation);
@@ -410,6 +412,7 @@ template<typename T>
 T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
             double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+    std::cout << "pmt effs = " << PMT_eff << std::endl;    
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
@@ -423,6 +426,7 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time,
             peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale, uv_absorption, z_offset, n_sodium_events, light_profile_type);
+    std::cout << "got pred for " << key << std::endl;
     
     // unpack into yields, yields^2, and times
     boost::shared_ptr<std::vector<T>> pred_yields;
@@ -498,10 +502,16 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
         T mu = pred_yields_this_time * normalization + pre_event_average;
         T sigma_squared = pred_yields_squared_this_time * (normalization * normalization) + (pre_event_average * pre_event_average);
 
+        // now let's account for our pmt efficiency
+        mu /= PMT_eff[key];
+        sigma_squared /= (PMT_eff[key] * PMT_eff[key]);
+
         // now check the time before computing the llh
         if (this_time < ignore_start or this_time > ignore_end){
             total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
         }
+
+        // and save some stuff for plotting
         if constexpr (std::is_same<T, double>::value) {
             debug_all_data[key].at(i) = k;
             debug_all_pred[key].at(i) = mu;

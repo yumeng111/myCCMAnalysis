@@ -52,6 +52,19 @@ CalculateNLLH::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t
 
 void CalculateNLLH::SetKeys(std::vector<CCMPMTKey> keys){
     keys_to_fit = keys;
+
+    // now let's set up pmt efficiencies that are all 1.0
+    for (size_t pmt_it = 0; pmt_it < keys.size(); pmt_it++){
+        PMT_eff[keys.at(pmt_it)] = 1.0; 
+    }
+}
+
+void CalculateNLLH::SetPMTEff(I3MapPMTKeyDouble pmt_eff){
+    // clear our defauly pmt efficiencies just to make sure 
+    PMT_eff.clear();
+
+    // now use pmt_eff to set efficiencies
+    PMT_eff = pmt_eff; 
 }
 
 void CalculateNLLH::SetGeo(I3FramePtr geo_frame) {
@@ -67,7 +80,6 @@ void CalculateNLLH::SetData(I3FramePtr data_frame) {
         if(restrict_keys and std::find(keys_to_fit.begin(), keys_to_fit.end(), i->first) == keys_to_fit.end()) {
             continue;
         }
-
         // based on the way I accumulated data, the event starts around the 50th bin
         // so to be safe, let's use the first 40 bins for out pre-event average
         double pre_event_values = 0.0;
