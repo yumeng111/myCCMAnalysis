@@ -363,26 +363,24 @@ void PulseChargeTimeHistogram::Finish() {
 
     std::vector<double> charge_bin_edges = np_logspace(charge_log_low_, charge_log_high_, charge_n_edges_, charge_base_);
     std::vector<double> time_bin_edges = np_linspace(time_low_, time_high_, time_n_edges_);
+    size_t ntime = time_bin_edges.size();
+    size_t ncharge = charge_bin_edges.size();
 
     std::stringstream ss;
     ss << output_prefix << ".txt";
     std::string output_name = ss.str();
-    std::ofstream output_file(output_name.c_str());
-    if(not output_file) {
-        log_fatal("Could not open file \"%s\" for writing.", output_name.c_str());
-    }
 
-    output_file << "# time_bin_edges:";
-    for(size_t bin_idx=0; bin_idx<time_bin_edges.size(); ++bin_idx) {
-        output_file << " " << time_bin_edges.at(bin_idx);
-    }
-    output_file << std::endl;
+    hist_t tot_hist = new_hist();
+    time_hist_t tot_time_hist = new_time_hist();
+    charge_hist_t tot_charge_hist = new_charge_hist();
+    time_hist_t tot_time_chargeW_hist = new_time_hist();
 
-    output_file << "# charge_bin_edges:";
-    for(size_t bin_idx=0; bin_idx<charge_bin_edges.size(); ++bin_idx) {
-        output_file << " " << charge_bin_edges.at(bin_idx);
+    for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
+        Add2DHists(ntime, ncharge, tot_hist, hists_.at(p.first));
+        Add1DHists(ntime, tot_time_hist, time_hists_.at(p.first));
+        Add1DHists(ncharge, tot_charge_hist, charge_hists_.at(p.first));
+        Add1DHists(ntime, tot_time_chargeW_hist, time_chargeW_hists_.at(p.first));
     }
-    output_file << std::endl;
 
     /*
     std::vector<double> total_charge_hist(n_edges_, 0.0);
