@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <vector>
+#include <iostream>
 #include "analytic-light-yields/autodiff.h"
 
 namespace phys_tools{
@@ -359,7 +360,7 @@ public:
 	///Has no effect if the parameter is already fixed.
 	///\param idx the index of the parameter to fix
 	void fixParameter(size_t idx){
-		if(std::find(fixedParams.begin(),fixedParams.end(),idx)==fixedParams.end()){
+        if(std::find(fixedParams.begin(),fixedParams.end(),idx)==fixedParams.end()){
 			if(std::binary_search(fixedParams.begin(),fixedParams.end(),idx))
 				return;
 			fixedParams.push_back(idx);
@@ -375,6 +376,14 @@ public:
 			fixedParams.erase(it);
 	}
 
+    size_t GetnVar(){
+        return nVar;
+    }
+    
+    size_t GeteffectivenVar(){
+        return nVar-fixedParams.size();
+    }
+
 	///Perform a minimization of a function with respect to the free parameters
 	///\param func the objective function to be minimized
 	///\returns true if minimization successfully converged
@@ -384,17 +393,18 @@ public:
 	///can be retrieved using minimumValue(). Additionally, numberOfEvaluations() can report the number of
 	///function evaluations performed during the minimization attempt.
 	bool minimize(const BFGS_FunctionBase& func){
+        std::cout << "check 1" << std::endl;
 		//number of currently free variables
 		int effectiveNVar=nVar-fixedParams.size();
-		if(effectiveNVar==0){ //the 0D case is so easy we don't have to call a library
+        if(effectiveNVar==0){ //the 0D case is so easy we don't have to call a library
 			finalFunctionValue=func.evalF(parameterValues);
 			nEvals=1;
 			lastError.clear();
 			return(true);
 		}
 		assert(effectiveNVar>0);
-
-		///buffer for receiving instructions from setulb
+		
+        ///buffer for receiving instructions from setulb
 		char task[60];
 		///buffer for internal calculations (iwa)
 		std::vector<int> internalBuf(3*effectiveNVar);

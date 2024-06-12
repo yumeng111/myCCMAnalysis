@@ -87,13 +87,11 @@ public:
     
     // This evaluates the NLLH value
     virtual double evalF(std::vector<double> x) const {
-        std::cout << "in evalF" << std::endl;
         return(-func.template evaluateLikelihood<double>(x)); // note negation!
     }
 
     // This evaluates the NLLH value and the NLLH gradient
     virtual std::pair<double,std::vector<double>> evalFG(std::vector<double> x) const {
-        std::cout << "in evalFG" << std::endl;
         const size_t size=x.size();
         using GradType = phys_tools::autodiff::FD<FuncType::DerivativeDimension>;
         std::vector<GradType> params(size);
@@ -107,7 +105,6 @@ public:
     }
 };
 
-
 typedef LikelihoodFunctor LikelihoodType;
 
 AllPMTcppMinimizer::AllPMTcppMinimizer() {}
@@ -117,7 +114,7 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(std::vector<CCMP
                                                                 I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                                                 std::vector<std::string> data_file_names,
                                                                 std::vector<double> z_offsets, size_t n_sodium_events) {        
-   
+
     std::vector<I3MapPMTKeyDouble> time_offsets = {time_offset1, time_offset2, time_offset3, time_offset4}; 
     std::vector<std::string> paramter_names = {"Rs", "tau_s", "tau_TPB", "norm1", "norm2", "norm3", "norm4"};
 
@@ -164,7 +161,7 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(std::vector<CCMP
 
     // now set up our minimizer
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
-
+        
     minimizer.addParameter(seeds[0], grad_scales[0], mins[0], maxs[0]); // Rs
     minimizer.addParameter(seeds[1], grad_scales[1], mins[1], maxs[1]); // tau_s
     minimizer.addParameter(seeds[2], grad_scales[2], mins[2], maxs[2]); // tau_TPB
@@ -189,29 +186,28 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(std::vector<CCMP
     
     std::cout << "about to minimize!" << std::endl;
     bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
-    std::cout << "ln 193" << std::endl;
  
     std::vector<double> data_to_return;
     
-    if(succeeded) {
-        std::cout << "joint fit converged!" << std::endl;
-        std::cout << "minimization finished with " << minimizer.errorMessage() << " error message" << std::endl; 
-        
-        // save things for returning!
-        double value = minimizer.minimumValue();                                                                                                                                                 
-        std::vector<double> params = minimizer.minimumPosition();
-        
-        std::cout << "Function value at minimum: " << value << " after " << minimizer.numberOfEvaluations() << " function evaluations" << std::endl;
-        std::cout << "Parameters: " << std::endl;
-        data_to_return.push_back(value);
-        data_to_return.push_back((double) minimizer.numberOfEvaluations());
-        for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
-            data_to_return.push_back(params.at(i));
-            std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;
-        }
-    } else {
-        std::cout << "oops! fit did not converge :( error message = " << minimizer.errorMessage() << std::endl;
-    } 
+    //if(succeeded) {
+    //    std::cout << "joint fit converged!" << std::endl;
+    //    std::cout << "minimization finished with " << minimizer.errorMessage() << " error message" << std::endl; 
+    //    
+    //    // save things for returning!
+    //    double value = minimizer.minimumValue();                                                                                                                                                 
+    //    std::vector<double> params = minimizer.minimumPosition();
+    //    
+    //    std::cout << "Function value at minimum: " << value << " after " << minimizer.numberOfEvaluations() << " function evaluations" << std::endl;
+    //    std::cout << "Parameters: " << std::endl;
+    //    data_to_return.push_back(value);
+    //    data_to_return.push_back((double) minimizer.numberOfEvaluations());
+    //    for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
+    //        data_to_return.push_back(params.at(i));
+    //        std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;
+    //    }
+    //} else {
+    //    std::cout << "oops! fit did not converge :( error message = " << minimizer.errorMessage() << std::endl;
+    //} 
     
     return data_to_return;
 

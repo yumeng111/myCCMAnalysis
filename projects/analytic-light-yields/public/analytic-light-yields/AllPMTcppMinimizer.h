@@ -13,6 +13,7 @@
 #include <tuple>
 #include <vector>
 #include <random>
+#include <memory>
 
 #include "icetray/CCMPMTKey.h"
 #include "dataclasses/I3Map.h"
