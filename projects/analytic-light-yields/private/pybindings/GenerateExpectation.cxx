@@ -101,7 +101,7 @@ void register_GenerateExpectation() {
 {
 
     class_<GenerateExpectation, boost::noncopyable>("GenerateExpectation")
-        .def(init<std::vector<CCMPMTKey>,size_t,I3FramePtr,double,double,double>())
+        .def(init<I3VectorCCMPMTKey,size_t,I3FramePtr,double,double,double>())
         .def("GetSodiumVertices", &GenerateExpectation::GetSodiumVertices)
         .def("GetYieldsAndOffsets", &GenerateExpectation::GetYieldsAndOffsets)
         //.def("LightProfile", LightProfile)

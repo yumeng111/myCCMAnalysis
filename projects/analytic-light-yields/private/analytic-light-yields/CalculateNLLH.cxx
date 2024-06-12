@@ -41,16 +41,16 @@
 #include <analytic-light-yields/CalculateNLLH.h>
 
 CalculateNLLH::CalculateNLLH() :
-    max_bins(100), n_sodium_events(20), portion_light_reflected_by_tpb(1.0), desired_chunk_width(20.0), desired_chunk_height(20.0), keys_to_fit(std::vector<CCMPMTKey>()) {}
+    max_bins(100), n_sodium_events(20), portion_light_reflected_by_tpb(1.0), desired_chunk_width(20.0), desired_chunk_height(20.0), keys_to_fit(I3VectorCCMPMTKey()) {}
 
-CalculateNLLH::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, size_t n_sodium_events, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height, std::vector<CCMPMTKey> keys_to_fit) :
+CalculateNLLH::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, size_t n_sodium_events, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height, I3VectorCCMPMTKey keys_to_fit) :
     max_bins(max_bins), n_sodium_events(n_sodium_events), portion_light_reflected_by_tpb(portion_light_reflected_by_tpb), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height), keys_to_fit(keys_to_fit)
 {
     SetData(data_frame);
     SetGeo(geo_frame);
 }
 
-void CalculateNLLH::SetKeys(std::vector<CCMPMTKey> keys){
+void CalculateNLLH::SetKeys(I3VectorCCMPMTKey keys){
     keys_to_fit = keys;
 
     // now let's set up pmt efficiencies that are all 1.0

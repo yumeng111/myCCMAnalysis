@@ -23,6 +23,7 @@
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
 #include "dataclasses/I3Map.h"
+#include "dataclasses/I3Vector.h"
 #include "dataclasses/I3Double.h"
 #include "analytic-light-yields/GenerateExpectation.h"
 #include "analytic-light-yields/autodiff.h"
@@ -311,7 +312,7 @@ public:
 
 private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
-    std::vector<CCMPMTKey> keys_to_fit;
+    I3VectorCCMPMTKey keys_to_fit;
     I3MapPMTKeyDouble PMT_eff;
     I3FramePtr geo_frame;
 
@@ -327,8 +328,8 @@ private:
 
 public:
     CalculateNLLH();
-    CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=100, size_t n_sodium_events=20, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, std::vector<CCMPMTKey> keys_to_fit=std::vector<CCMPMTKey>());
-    void SetKeys(std::vector<CCMPMTKey> keys);
+    CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=100, size_t n_sodium_events=20, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, I3VectorCCMPMTKey keys_to_fit=I3VectorCCMPMTKey());
+    void SetKeys(I3VectorCCMPMTKey keys);
     void SetPMTEff(I3MapPMTKeyDouble pmt_eff);
     void SetGeo(I3FramePtr geo_frame);
     void SetData(I3FramePtr data_frame);

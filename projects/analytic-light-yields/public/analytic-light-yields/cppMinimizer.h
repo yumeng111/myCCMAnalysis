@@ -15,6 +15,7 @@
 #include <random>
 
 #include "icetray/CCMPMTKey.h"
+#include "dataclasses/I3Vector.h"
 
 class cppMinimizer {
 

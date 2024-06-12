@@ -30,6 +30,7 @@
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
 #include "dataclasses/I3Map.h"
+#include "dataclasses/I3Vector.h"
 #include "dataclasses/physics/PhotonYieldSummary.h"
 #include "dataclasses/physics/HESodiumEvent.h"
 #include "dataclasses/physics/AnalyticLightYieldGenerator.h"
@@ -41,7 +42,7 @@
 class GenerateExpectation {
     I3FramePtr geo_frame;
     size_t n_sodium_events = 0;
-    std::vector<CCMPMTKey> keys_to_fit;
+    I3VectorCCMPMTKey keys_to_fit;
 
     // things we need to do in order to generate expected hits/pmt :
     // 1) get soidum vertex distribution
@@ -70,7 +71,7 @@ class GenerateExpectation {
 
 public:
     GenerateExpectation();
-    GenerateExpectation(std::vector<CCMPMTKey> keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
+    GenerateExpectation(I3VectorCCMPMTKey keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
     void GetSodiumVertices(size_t n_events_to_simulate, double z_position);
     void GetYieldsAndOffsets(double uv_absorption);
     template<typename T>

@@ -17,13 +17,14 @@
 
 #include "icetray/CCMPMTKey.h"
 #include "dataclasses/I3Map.h"
+#include "dataclasses/I3Vector.h"
 
 class AllPMTcppMinimizer {
 
 public:
     AllPMTcppMinimizer();
 
-    std::vector<double> MultiplePMTMinimization(std::vector<CCMPMTKey> keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies,
+    std::vector<double> MultiplePMTMinimization(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies,
                                                 I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                                 I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                                 std::vector<std::string> data_file_names,

@@ -43,7 +43,7 @@ struct LikelihoodFunctor {
                                                    // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
     
     std::vector<std::shared_ptr<CalculateNLLH>> llh_constructor; // list of constructors
-    std::vector<CCMPMTKey> keys_to_fit; // list of PMTs in fit
+    I3VectorCCMPMTKey keys_to_fit; // list of PMTs in fit
     I3MapPMTKeyDouble LPmu; // map between CCMPMTKey and LPmu
     I3MapPMTKeyDouble LPsigma; // map between CCMPMTKey and LPsigma
     I3MapPMTKeyDouble LPscale; // map between CCMPMTKey and LPscale
@@ -53,7 +53,7 @@ struct LikelihoodFunctor {
     double tau_t = 743.0;
     double tau_rec = 0.0;
     double const_offset = 0.0;
-    std::vector<double> z_offsets; // list of z offsets
+    std::vector<double> z_offset; // list of z offsets
     size_t n_sodium_events;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
 
@@ -71,7 +71,7 @@ struct LikelihoodFunctor {
                 std::cout << "in minimizer! " << key << std::endl;
                 total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
                                  time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), uv_absorption,
-                                 z_offsets.at(data_it), n_sodium_events, light_profile_type);
+                                 z_offset.at(data_it), n_sodium_events, light_profile_type);
             }
         }
         return total_llh; 
@@ -109,7 +109,7 @@ typedef LikelihoodFunctor LikelihoodType;
 
 AllPMTcppMinimizer::AllPMTcppMinimizer() {}
 
-std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(std::vector<CCMPMTKey> keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies,
+std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies,
                                                                 I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                                                 I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                                                 std::vector<std::string> data_file_names,
@@ -146,19 +146,30 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(std::vector<CCMP
         // now save!
         all_constructors.push_back(this_llh_constructor);
     }
-    
+    std::cout << "made constructors!" << std::endl;    
 
     // now set up our likelihood object
     LikelihoodType likelihood;
+    std::cout << "check 1" << std::endl;
     likelihood.n_sodium_events = n_sodium_events;
-    likelihood.z_offsets = z_offsets; 
+    std::cout << "check 2" << std::endl;
+    likelihood.z_offset = z_offsets; 
+    std::cout << "check 3" << std::endl;
     likelihood.llh_constructor = all_constructors;
+    std::cout << "check 4" << std::endl;
+    std::cout << "keys_to_fit = " << keys_to_fit << std::endl;
     likelihood.keys_to_fit = keys_to_fit;
-    likelihood.LPmu = LPmu;
-    likelihood.LPsigma = LPsigma;
-    likelihood.LPscale = LPscale;
-    likelihood.time_offsets = time_offsets;
+    std::cout << "check 5" << std::endl;
+    //likelihood.LPmu = LPmu;
+    //std::cout << "check 6" << std::endl;
+    //likelihood.LPsigma = LPsigma;
+    //std::cout << "check 7" << std::endl;
+    //likelihood.LPscale = LPscale;
+    //std::cout << "check 8" << std::endl;
+    //likelihood.time_offsets = time_offsets;
+    //std::cout << "check 9" << std::endl;
 
+    std::cout << "set up likelihood object" << std::endl;
     // now set up our minimizer
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
         
@@ -171,6 +182,7 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(std::vector<CCMP
     } 
     minimizer.setHistorySize(20);
 
+    std::cout << "set up minimizer params" << std::endl;
     // fix parameter idx of guys we are not minimizing
     size_t data_sets_to_minimize = data_file_names.size();
 

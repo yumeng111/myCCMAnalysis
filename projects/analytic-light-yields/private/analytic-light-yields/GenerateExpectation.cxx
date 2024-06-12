@@ -41,9 +41,9 @@
 #include <analytic-light-yields/GenerateExpectation.h>
 
 GenerateExpectation::GenerateExpectation() :
-    keys_to_fit(std::vector<CCMPMTKey>()), geo_frame(geo_frame), n_sodium_events(n_sodium_events), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height) {}
+    keys_to_fit(I3VectorCCMPMTKey()), geo_frame(geo_frame), n_sodium_events(n_sodium_events), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height) {}
 
-GenerateExpectation::GenerateExpectation(std::vector<CCMPMTKey> keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height) :
+GenerateExpectation::GenerateExpectation(I3VectorCCMPMTKey keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height) :
     keys_to_fit(keys_to_fit), geo_frame(geo_frame), n_sodium_events(n_sodium_events), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height) {}
 
 void GenerateExpectation::GetSodiumVertices(size_t n_events_to_simulate, double z_position) {

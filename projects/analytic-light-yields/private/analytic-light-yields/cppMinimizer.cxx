@@ -133,7 +133,7 @@ std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_ke
 
         // and now make constructor
         std::shared_ptr<CalculateNLLH> this_llh_constructor = std::make_shared<CalculateNLLH>();
-        this_llh_constructor->SetKeys({this_key});
+        this_llh_constructor->SetKeys(I3VectorCCMPMTKey({this_key}));
         this_llh_constructor->SetData(this_data_frame);
         this_llh_constructor->SetGeo(geo_frame);
     
@@ -232,7 +232,7 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
 
         // and now make constructor
         std::shared_ptr<CalculateNLLH> this_llh_constructor = std::make_shared<CalculateNLLH>();
-        this_llh_constructor->SetKeys({this_key});
+        this_llh_constructor->SetKeys(I3VectorCCMPMTKey({this_key}));
         this_llh_constructor->SetData(this_data_frame);
         this_llh_constructor->SetGeo(geo_frame);
     
