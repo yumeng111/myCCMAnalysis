@@ -43,6 +43,44 @@
 typedef std::tuple<CCMPMTKey, CCMRecoPulse> PMTKeyPulsePair;
 typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
 
+namespace {
+std::vector<double> np_linspace(double low, double high, size_t n_edges) {
+    assert(n_edges > 1);
+    if(n_edges == 1)
+        return {low};
+    if(n_edges == 2)
+        return {low, high};
+
+    double width = (high - low) / (n_edges - 1);
+    std::vector<double> bin_edges;
+    bin_edges.reserve(n_edges);
+
+    for(size_t i=0; i<n_edges; ++i) {
+        bin_edges.push_back(low + i * width);
+    }
+
+    return bin_edges;
+}
+
+std::vector<double> np_logspace(double log_low, double log_high, size_t n_edges, double base=10.0) {
+    assert(n_edges > 1);
+    if(n_edges == 1)
+        return {std::pow(base, log_low)};
+    if(n_edges == 2)
+        return {std::pow(base, log_low), std::pow(base, log_high)};
+
+    double width = (log_high - log_low) / (n_edges - 1);
+    std::vector<double> bin_edges;
+    bin_edges.reserve(n_edges);
+
+    for(size_t i=0; i<n_edges; ++i) {
+        bin_edges.push_back(std::pow(base, log_low + i * width));
+    }
+
+    return bin_edges;
+}
+}
+
 class PulseChargeTimeHistogram: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
@@ -93,15 +131,134 @@ class PulseChargeTimeHistogram: public I3Module {
     I3Map<CCMPMTKey, charge_hist_t> charge_hists_;
     I3Map<CCMPMTKey, time_hist_t> time_chargeW_hists_;
 
+    hist_t new_hist() {
+        return boost::histogram::make_histogram_with(
+            storage_,
+            time_axis_,
+            charge_axis_
+        );
+    }
+    time_hist_t new_time_hist() {
+        return boost::histogram::make_histogram_with(
+            storage_,
+            time_axis_
+        );
+    }
+    charge_hist_t new_charge_hist() {
+        return boost::histogram::make_histogram_with(
+            storage_,
+            charge_axis_
+        );
+    }
+
 public:
     void Geometry(I3FramePtr frame);
     PulseChargeTimeHistogram(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
     void Finish();
+
+    static void SaveHists(
+        std::string fname,
+        std::vector<double> const & time_bins,
+        std::vector<double> const & charge_bins,
+        hist_t const & hist,
+        time_hist_t const & time_hist,
+        charge_hist_t const & charge_hist,
+        time_hist_t const & time_charge_hist);
 };
 
 I3_MODULE(PulseChargeTimeHistogram);
+
+
+template<typename Hist>
+void Add1DHists(size_t nbins, Hist & hist, Hist const & other) {
+    for(size_t i=0; i<nbins; ++i) {
+        hist.at(i) += other.at(i);
+    }
+}
+
+template<typename Hist>
+void Add2DHists(size_t nbins_1, size_t nbins_2, Hist & hist, Hist const & other) {
+    for(size_t i=0; i<nbins_1; ++i) {
+        for(size_t j=0; j<nbins_2; ++j) {
+            hist.at(i, j) += other.at(i, j);
+        }
+    }
+}
+
+template<typename Hist>
+void Save1DHist(std::ostream & os, size_t nbins, Hist const & hist) {
+    for(size_t i=0; i<nbins; ++i) {
+        if(i > 0)
+            os << " ";
+        os << hist.at(i).value();
+    }
+}
+
+template<typename Hist>
+void Save1DHistVar(std::ostream & os, size_t nbins, Hist const & hist) {
+    for(size_t i=0; i<nbins; ++i) {
+        if(i > 0)
+            os << " ";
+        os << hist.at(i).variance();
+    }
+}
+
+template<typename Hist>
+void Save2DHist(std::ostream & os, size_t nbins_1, size_t nbins_2, Hist const & hist) {
+    for(size_t i=0; i<nbins_1; ++i) {
+        if(i > 0)
+            os << std::endl;
+        for(size_t j=0; j<nbins_2; ++j) {
+            if(j > 0)
+                os << " ";
+            os << hist.at(i).value();
+        }
+    }
+}
+
+void SaveValues(std::ostream & os, std::vector<double> const & bin_edges) {
+    for(size_t i=0; i<bin_edges.size(); ++i) {
+        if(i > 0)
+            os << " ";
+        os << bin_edges.at(i);
+    }
+}
+
+void PulseChargeTimeHistogram::SaveHists(
+        std::string fname,
+        std::vector<double> const & time_bins,
+        std::vector<double> const & charge_bins,
+        hist_t const & hist,
+        time_hist_t const & time_hist,
+        charge_hist_t const & charge_hist,
+        time_hist_t const & time_charge_hist) {
+    std::ofstream output_file(fname);
+    if(not output_file) {
+        log_fatal("Could not open file \"%s\" for writing.", fname.c_str());
+    }
+
+    output_file << "# time_bin_edges:" << std::endl;
+    SaveValues(output_file, time_bins);
+    output_file << std::endl;
+
+    output_file << "# charge_bin_edges:" << std::endl;
+    SaveValues(output_file, charge_bins);
+    output_file << std::endl;
+
+    output_file << "# time_hist:" << std::endl;
+    Save1DHist(output_file, time_bins.size(), time_hist);
+
+    output_file << "# charge_hist:" << std::endl;
+    Save1DHist(output_file, charge_bins.size(), charge_hist);
+
+    output_file << "# charge_weighted_time_hist:" << std::endl;
+    Save1DHist(output_file, time_bins.size(), time_charge_hist);
+
+    output_file << "# time_charge_hist" << std::endl;
+    Save2DHist(output_file, time_bins.size(), charge_bins.size(), hist);
+}
 
 PulseChargeTimeHistogram::PulseChargeTimeHistogram(const I3Context& context) : I3Module(context),
     geo_seen(false), geometry_name_("") {
@@ -146,38 +303,25 @@ void PulseChargeTimeHistogram::Geometry(I3FramePtr frame) {
             hists_.insert(
                     std::make_pair(
                         p.first,
-                        boost::histogram::make_histogram_with(
-                            storage_,
-                            time_axis_,
-                            charge_axis_
-                            )
+                        new_hist()
                         )
                     );
             time_hists_.insert(
                     std::make_pair(
                         p.first,
-                        boost::histogram::make_histogram_with(
-                            storage_,
-                            time_axis_
-                            )
+                        new_time_hist()
                         )
                     );
             charge_hists_.insert(
                     std::make_pair(
                         p.first,
-                        boost::histogram::make_histogram_with(
-                            storage_,
-                            charge_axis_
-                            )
+                        new_charge_hist()
                         )
                     );
             time_chargeW_hists_.insert(
                     std::make_pair(
                         p.first,
-                        boost::histogram::make_histogram_with(
-                            storage_,
-                            time_axis_
-                            )
+                        new_time_hist()
                         )
                     );
         }
@@ -212,13 +356,13 @@ void PulseChargeTimeHistogram::DAQ(I3FramePtr frame) {
 }
 
 void PulseChargeTimeHistogram::Finish() {
-    /*
     std::string output_prefix = output_prefix_;
     if(output_prefix.empty()) {
         output_prefix = pulses_name_;
     }
 
-    std::vector<double> bin_edges = np_logspace(log_low_, log_high_, n_edges_, base_);
+    std::vector<double> charge_bin_edges = np_logspace(charge_log_low_, charge_log_high_, charge_n_edges_, charge_base_);
+    std::vector<double> time_bin_edges = np_linspace(time_low_, time_high_, time_n_edges_);
 
     std::stringstream ss;
     ss << output_prefix << ".txt";
@@ -227,12 +371,20 @@ void PulseChargeTimeHistogram::Finish() {
     if(not output_file) {
         log_fatal("Could not open file \"%s\" for writing.", output_name.c_str());
     }
-    output_file << bin_edges.at(0);
-    for(size_t bin_idx=1; bin_idx<n_edges_; ++bin_idx) {
-        output_file << " " << bin_edges.at(bin_idx);
+
+    output_file << "# time_bin_edges:";
+    for(size_t bin_idx=0; bin_idx<time_bin_edges.size(); ++bin_idx) {
+        output_file << " " << time_bin_edges.at(bin_idx);
     }
     output_file << std::endl;
 
+    output_file << "# charge_bin_edges:";
+    for(size_t bin_idx=0; bin_idx<charge_bin_edges.size(); ++bin_idx) {
+        output_file << " " << charge_bin_edges.at(bin_idx);
+    }
+    output_file << std::endl;
+
+    /*
     std::vector<double> total_charge_hist(n_edges_, 0.0);
     for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *charge_hists_) {
         for(size_t bin_idx=0; bin_idx<n_edges_; ++bin_idx) {
