@@ -256,6 +256,9 @@ void PulseChargeTimeHistogram::SaveHists(
     output_file << "# charge_weighted_time_hist:" << std::endl;
     Save1DHist(output_file, time_bins.size(), time_charge_hist);
 
+    output_file << "# charge_weighted_time_hist_variance:" << std::endl;
+    Save1DHistVar(output_file, time_bins.size(), time_charge_hist);
+
     output_file << "# time_charge_hist" << std::endl;
     Save2DHist(output_file, time_bins.size(), charge_bins.size(), hist);
 }
