@@ -380,7 +380,29 @@ void PulseChargeTimeHistogram::Finish() {
         Add1DHists(ntime, tot_time_hist, time_hists_.at(p.first));
         Add1DHists(ncharge, tot_charge_hist, charge_hists_.at(p.first));
         Add1DHists(ntime, tot_time_chargeW_hist, time_chargeW_hists_.at(p.first));
+
+        std::stringstream ss;
+        ss << output_prefix << "_pmt_" << p.first.GetRegion() << "_" << p.first.GetSensor() << ".txt";
+        std::string pmt_output_name = ss.str();
+
+        SaveHists(
+            pmt_output_name,
+            time_bin_edges,
+            charge_bin_edges,
+            hists_.at(p.first),
+            time_hists_.at(p.first),
+            charge_hists_.at(p.first),
+            time_chargeW_hists_.at(p.first));
     }
+
+    SaveHists(
+        output_name,
+        time_bin_edges,
+        charge_bin_edges,
+        tot_hist,
+        tot_time_hist,
+        tot_charge_hist,
+        tot_time_chargeW_hist);
 
     /*
     std::vector<double> total_charge_hist(n_edges_, 0.0);
