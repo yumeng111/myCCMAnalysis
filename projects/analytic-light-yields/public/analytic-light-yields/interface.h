@@ -393,7 +393,6 @@ public:
 	///can be retrieved using minimumValue(). Additionally, numberOfEvaluations() can report the number of
 	///function evaluations performed during the minimization attempt.
 	bool minimize(const BFGS_FunctionBase& func){
-        std::cout << "check 1" << std::endl;
 		//number of currently free variables
 		int effectiveNVar=nVar-fixedParams.size();
         if(effectiveNVar==0){ //the 0D case is so easy we don't have to call a library
@@ -439,7 +438,6 @@ public:
 		std::vector<double> scales(effectiveNVar);
 		externalToInternal(parameterScales,scales);
 
-
 		//prepare for first iteration
 		memset(task, 0, 60);
 		strncpy(task, "START", 5);
@@ -472,6 +470,7 @@ public:
 
 			switch(task[0]){
 				case 'A': //failure
+                    std::cout << "check 7A in minimizer" << std::endl;
 					//copy back fit point and value
 					internalToExternal(pos,parameterValues);
 					finalFunctionValue=fval;
@@ -479,21 +478,32 @@ public:
 					//failure indicated to the user by return value below
 					break;
 				case 'C': //converged
+                    std::cout << "check 7C in minimizer" << std::endl;
 					//copy back fit point and value
 					internalToExternal(pos,parameterValues);
 					finalFunctionValue=fval;
 					done=true;
 					break;
 				case 'E':
+                    std::cout << "check 7E in minimizer" << std::endl;
 					lastError=task;
 					throw std::runtime_error("Invalid parameters passed to setulb");
 				case 'F': //need to evaluate function
+                    std::cout << "check 7F0 in minimizer" << std::endl;
 					internalToExternal(pos,parameterValues);
-					std::tie(fval,fullGrad)=func.evalFG(parameterValues);
+                    std::cout << "check 7F1 in minimizer" << std::endl;
+                    std::cout << "fval = " << fval << std::endl;
+                    std::cout << "parameterValues size = " << parameterValues.size() << std::endl;
+                    std::cout << "fullGrad size = " << fullGrad.size() << std::endl;
+                    std::tie(fval,fullGrad)=func.evalFG(parameterValues);
+                    std::cout << "check 7F2 in minimizer" << std::endl;
 					externalToInternal(fullGrad,grad);
+                    std::cout << "check 7F3 in minimizer" << std::endl;
 					nEvals++;
+                    std::cout << "check 7F4 in minimizer" << std::endl;
 					break;
 				case 'N': //iteration completed
+                    std::cout << "check 7N in minimizer" << std::endl;
 					//check iteration count/number of evaluations?
 					break;
 			}
