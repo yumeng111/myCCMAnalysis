@@ -3,7 +3,6 @@
 #include <vector>
 #include <float.h>
 #include <utility>
-#include <cholmod.h>
 
 #include <boost/make_shared.hpp>
 #include <boost/foreach.hpp>

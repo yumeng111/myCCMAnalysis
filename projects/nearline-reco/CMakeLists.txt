@@ -14,5 +14,5 @@ i3_add_library(${PROJECT_NAME}
     private/nearline-reco/CCMEventSplitter.cxx
     IWYU
     USE_TOOLS boost python
-    USE_PROJECTS icetray serialization dataio dataclasses phys-services
+    USE_PROJECTS icetray serialization dataio dataclasses phys-services CCMBinary
 )
