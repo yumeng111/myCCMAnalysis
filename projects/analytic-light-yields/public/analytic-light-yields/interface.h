@@ -470,7 +470,6 @@ public:
 
 			switch(task[0]){
 				case 'A': //failure
-                    std::cout << "check 7A in minimizer" << std::endl;
 					//copy back fit point and value
 					internalToExternal(pos,parameterValues);
 					finalFunctionValue=fval;
@@ -478,32 +477,21 @@ public:
 					//failure indicated to the user by return value below
 					break;
 				case 'C': //converged
-                    std::cout << "check 7C in minimizer" << std::endl;
 					//copy back fit point and value
 					internalToExternal(pos,parameterValues);
 					finalFunctionValue=fval;
 					done=true;
 					break;
 				case 'E':
-                    std::cout << "check 7E in minimizer" << std::endl;
 					lastError=task;
 					throw std::runtime_error("Invalid parameters passed to setulb");
 				case 'F': //need to evaluate function
-                    std::cout << "check 7F0 in minimizer" << std::endl;
 					internalToExternal(pos,parameterValues);
-                    std::cout << "check 7F1 in minimizer" << std::endl;
-                    std::cout << "fval = " << fval << std::endl;
-                    std::cout << "parameterValues size = " << parameterValues.size() << std::endl;
-                    std::cout << "fullGrad size = " << fullGrad.size() << std::endl;
                     std::tie(fval,fullGrad)=func.evalFG(parameterValues);
-                    std::cout << "check 7F2 in minimizer" << std::endl;
 					externalToInternal(fullGrad,grad);
-                    std::cout << "check 7F3 in minimizer" << std::endl;
 					nEvals++;
-                    std::cout << "check 7F4 in minimizer" << std::endl;
 					break;
 				case 'N': //iteration completed
-                    std::cout << "check 7N in minimizer" << std::endl;
 					//check iteration count/number of evaluations?
 					break;
 			}

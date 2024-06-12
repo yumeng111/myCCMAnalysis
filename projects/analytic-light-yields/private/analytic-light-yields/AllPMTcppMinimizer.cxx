@@ -30,17 +30,17 @@
 #include "analytic-light-yields/AllPMTcppMinimizer.h"
 #include "dataclasses/physics/AnalyticLightYieldGenerator.h"
 
-struct LikelihoodFunctor {
+struct NewLikelihoodFunctor {
 
-    static constexpr int DerivativeDimension = 7; // max number of dimensions :
-                                                   // Rs, tau_s, tau_TPB
-                                                   // norm, norm, norm, norm -- 1 / data set!
-                                                   
-                                                   // things that are fixed for all PMTs:
-                                                   // Rt, tau_t, tau_rec, const_offset 
-                                                   
-                                                   // things that are fixed for each PMT : 
-                                                   // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
+    static constexpr int NewDerivativeDimension = 7; // max number of dimensions :
+                                                     // Rs, tau_s, tau_TPB
+                                                     // norm, norm, norm, norm -- 1 / data set!
+                                                     
+                                                     // things that are fixed for all PMTs:
+                                                     // Rt, tau_t, tau_rec, const_offset 
+                                                     
+                                                     // things that are fixed for each PMT : 
+                                                     // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
     
     std::vector<std::shared_ptr<CalculateNLLH>> llh_constructor; // list of constructors
     I3VectorCCMPMTKey all_keys; // list of PMTs in fit
@@ -60,18 +60,14 @@ struct LikelihoodFunctor {
     // This returns the LLH
     template<typename T>
     T evaluateLikelihood(std::vector<T> x) const {
-        std::cout << "in evaluateLikelihood" << std::endl;
         T total_llh = 0;
-        std::cout << "llh_constructor.size() = " << llh_constructor.size() << std::endl;
         for (size_t data_it = 0; data_it < llh_constructor.size(); data_it ++){
             // loop over each data set we are fitting to
             for (size_t pmt_it = 0; pmt_it < all_keys.size(); pmt_it ++){
                 // loop over each PMT
                 CCMPMTKey key = all_keys.at(pmt_it);
-                std::cout << "in minimizer! " << key << std::endl;
                 total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
-                                 25.0, 0.0, 50.0, 13.0, 0.003, uv_absorption,
-                                 //time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), uv_absorption,
+                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), uv_absorption,
                                  z_offset.at(data_it), n_sodium_events, light_profile_type);
             }
         }
@@ -93,10 +89,8 @@ public:
 
     // This evaluates the NLLH value and the NLLH gradient
     virtual std::pair<double,std::vector<double>> evalFG(std::vector<double> x) const {
-        std::cout << "in evalFG" << std::endl;
         const size_t size=x.size();
-        std::cout << "size = " << size << std::endl;
-        using GradType = phys_tools::autodiff::FD<FuncType::DerivativeDimension>;
+        using GradType = phys_tools::autodiff::FD<FuncType::NewDerivativeDimension>;
         std::vector<GradType> params(size);
         for(size_t i=0; i<size; i++)                                                                                                                                                         
             params[i] = GradType(x[i],i);
@@ -108,7 +102,7 @@ public:
     }
 };
 
-typedef LikelihoodFunctor LikelihoodType;
+typedef NewLikelihoodFunctor LikelihoodType;
 
 AllPMTcppMinimizer::AllPMTcppMinimizer() {}
 
@@ -149,34 +143,18 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         // now save!
         all_constructors.push_back(this_llh_constructor);
     }
-    std::cout << "made constructors!" << std::endl;    
 
     // now set up our likelihood object
     LikelihoodType likelihood;
-    std::cout << "check 1" << std::endl;
     likelihood.n_sodium_events = n_sodium_events;
-    std::cout << "check 2" << std::endl;
     likelihood.z_offset = z_offsets; 
-    std::cout << "check 3" << std::endl;
     likelihood.llh_constructor = all_constructors;
-    std::cout << "check 4" << std::endl;
-    std::cout << "keys_to_fit = " << keys_to_fit << std::endl;
-    for (size_t key_it = 0; key_it < keys_to_fit.size(); key_it++){
-        likelihood.all_keys.push_back(keys_to_fit.at(key_it));
-        //std::cout << "added " << keys_to_fit.at(key_it) << " to likelihood object" << std::endl;
-    }
-    //likelihood.all_keys = keys_to_fit;
-    //std::cout << "check 5" << std::endl;
-    //likelihood.LPmu = LPmu;
-    //std::cout << "check 6" << std::endl;
-    //likelihood.LPsigma = LPsigma;
-    //std::cout << "check 7" << std::endl;
-    //likelihood.LPscale = LPscale;
-    //std::cout << "check 8" << std::endl;
-    //likelihood.time_offsets = time_offsets;
-    //std::cout << "check 9" << std::endl;
+    likelihood.all_keys = keys_to_fit;
+    likelihood.LPmu = LPmu;
+    likelihood.LPsigma = LPsigma;
+    likelihood.LPscale = LPscale;
+    likelihood.time_offsets = time_offsets;
 
-    std::cout << "set up likelihood object" << std::endl;
     // now set up our minimizer
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
         
@@ -189,7 +167,6 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
     } 
     minimizer.setHistorySize(20);
 
-    std::cout << "set up minimizer params" << std::endl;
     // fix parameter idx of guys we are not minimizing
     size_t data_sets_to_minimize = data_file_names.size();
 
@@ -203,30 +180,29 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         }
     } 
     
-    std::cout << "about to minimize!" << std::endl;
     bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
  
     std::vector<double> data_to_return;
     
-    //if(succeeded) {
-    //    std::cout << "joint fit converged!" << std::endl;
-    //    std::cout << "minimization finished with " << minimizer.errorMessage() << " error message" << std::endl; 
-    //    
-    //    // save things for returning!
-    //    double value = minimizer.minimumValue();                                                                                                                                                 
-    //    std::vector<double> params = minimizer.minimumPosition();
-    //    
-    //    std::cout << "Function value at minimum: " << value << " after " << minimizer.numberOfEvaluations() << " function evaluations" << std::endl;
-    //    std::cout << "Parameters: " << std::endl;
-    //    data_to_return.push_back(value);
-    //    data_to_return.push_back((double) minimizer.numberOfEvaluations());
-    //    for(size_t i=0; i<LikelihoodFunctor::DerivativeDimension; ++i) {
-    //        data_to_return.push_back(params.at(i));
-    //        std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;
-    //    }
-    //} else {
-    //    std::cout << "oops! fit did not converge :( error message = " << minimizer.errorMessage() << std::endl;
-    //} 
+    if(succeeded) {
+        std::cout << "joint fit converged!" << std::endl;
+        std::cout << "minimization finished with " << minimizer.errorMessage() << " error message" << std::endl; 
+        
+        // save things for returning!
+        double value = minimizer.minimumValue();                                                                                                                                                 
+        std::vector<double> params = minimizer.minimumPosition();
+        
+        std::cout << "Function value at minimum: " << value << " after " << minimizer.numberOfEvaluations() << " function evaluations" << std::endl;
+        std::cout << "Parameters: " << std::endl;
+        data_to_return.push_back(value);
+        data_to_return.push_back((double) minimizer.numberOfEvaluations());
+        for(size_t i=0; i<NewLikelihoodFunctor::NewDerivativeDimension; ++i) {
+            data_to_return.push_back(params.at(i));
+            std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;
+        }
+    } else {
+        std::cout << "oops! fit did not converge :( error message = " << minimizer.errorMessage() << std::endl;
+    } 
     
     return data_to_return;
 
