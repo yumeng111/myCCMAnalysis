@@ -28,7 +28,7 @@
 
 template <typename Key, typename Value>
 struct I3Map : public I3FrameObject, public std::map<Key, Value>
-{ 
+{
   typedef std::map<Key, Value> base_t;
   typedef typename base_t::value_type value_type;
   typedef typename base_t::key_compare Compare;
@@ -106,7 +106,7 @@ struct I3Map : public I3FrameObject, public std::map<Key, Value>
 
   ~I3Map();
 
-  const Value& 
+  const Value&
   at(const Key& where) const
   {
     typename std::map<Key, Value>::const_iterator iter = this->find(where);
@@ -116,8 +116,8 @@ struct I3Map : public I3FrameObject, public std::map<Key, Value>
     return iter->second;
   }
 
-  Value& 
-  at(const Key& where) 
+  Value&
+  at(const Key& where)
   {
     typename std::map<Key, Value>::iterator iter = this->find(where);
     if (iter == this->end())
@@ -125,7 +125,7 @@ struct I3Map : public I3FrameObject, public std::map<Key, Value>
 
     return iter->second;
   }
-  
+
   std::ostream& Print(std::ostream& os) const override{
     constexpr bool can_print=has_operator::insertion<std::ostream&,Key>::value
                              && has_operator::insertion<std::ostream&,Value>::value;
@@ -155,7 +155,7 @@ private:
 
 template <typename Key, typename Value>
 I3Map<Key, Value> :: ~I3Map() { }
-  
+
 template <typename Key, typename Value>
 std::ostream& operator<<(std::ostream& os, const I3Map<Key, Value> m){
   return(m.Print(os));
@@ -197,6 +197,7 @@ typedef I3Map<CCMPMTKey, int > I3MapPMTKeyInt;
 typedef I3Map<CCMPMTKey, unsigned int > I3MapPMTKeyUInt;
 typedef I3Map<CCMPMTKey, std::pair<uint32_t, uint32_t> > I3MapPMTKeyPairUInt32UInt32;
 typedef I3Map<CCMPMTKey, std::pair<uint64_t, uint64_t> > I3MapPMTKeyPairUInt64UInt64;
+typedef I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, double> I3MapTuplePMTKeyPMTKeyDouble;
 
 I3_POINTER_TYPEDEFS(I3MapStringDouble);
 I3_POINTER_TYPEDEFS(I3MapStringInt);
@@ -229,6 +230,7 @@ I3_POINTER_TYPEDEFS(I3MapPMTKeyInt);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyUInt);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyPairUInt32UInt32);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyPairUInt64UInt64);
+I3_POINTER_TYPEDEFS(I3MapTuplePMTKeyPMTKeyDouble);
 
 #endif // I3MAP_H_INCLUDED
 
