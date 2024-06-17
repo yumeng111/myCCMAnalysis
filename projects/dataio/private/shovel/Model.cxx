@@ -44,6 +44,7 @@
 #include <dataclasses/physics/I3EventHeader.h>
 #include <dataclasses/physics/CCMEventHeader.h>
 #include <dataclasses/physics/I3RecoPulse.h>
+#include <dataclasses/physics/CCMRecoPulse.h>
 #include "shovel/View.h"
 
 
@@ -593,6 +594,16 @@ Model::pretty_print()
     auto pulses=frame->Get<boost::shared_ptr<const I3RecoPulseSeriesMap>>(y_keystring_);
     if(pulses){
       oss << "As an I3RecoPulseSeriesMap:\n";
+      pulses->Print(oss);
+      oss << "\nOriginal form:\n";
+    }
+  }catch(std::exception& ex){
+    //do nothing
+  }
+  try{ //All frame objects are equal, but recopulses are more equal
+    auto pulses=frame->Get<boost::shared_ptr<const CCMRecoPulseSeriesMap>>(y_keystring_);
+    if(pulses){
+      oss << "As a CCMRecoPulseSeriesMap:\n";
       pulses->Print(oss);
       oss << "\nOriginal form:\n";
     }
