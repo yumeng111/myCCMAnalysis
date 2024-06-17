@@ -301,12 +301,9 @@ public:
     typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
     typedef std::array<Underlying, n_params> Grad;
 
-    I3MapPMTKeyVectorDouble debug_all_data;
-    I3MapPMTKeyVectorDouble debug_all_pred;
-    I3MapPMTKeyVectorDouble debug_fit_data;
-    I3MapPMTKeyVectorDouble debug_fit_pred;
-    std::vector<double> debug_pred_times;
-    std::vector<double> debug_data_times;
+    std::vector<double> data_vector;
+    std::vector<double> pred_vector;
+    std::vector<double> times_vector;
 
     double event_start_threshold = 10.0;
 
@@ -339,12 +336,9 @@ public:
     I3MapPMTKeyVectorDoublePtr GetData() const;
     boost::shared_ptr<GenerateExpectation> GetGenExpectation() const { return gen_expectation; };
 
-    I3MapPMTKeyVectorDouble GetAllDataForDebug() {return debug_all_data;};
-    I3MapPMTKeyVectorDouble GetAllPredForDebug() {return debug_all_pred;};
-    std::vector<double> GetPredTimesForDebug() {return debug_pred_times;};
-    std::vector<double> GetDataTimesForDebug() {return debug_data_times;};
-    I3MapPMTKeyVectorDouble GetFitDataForDebug() {return debug_fit_data;};
-    I3MapPMTKeyVectorDouble GetFitPredForDebug() {return debug_fit_pred;};
+    std::vector<double> GetDataVector() {return data_vector;};
+    std::vector<double> GetPredVector() {return pred_vector;};
+    std::vector<double> GetTimesVector() {return times_vector;};
 
     std::vector<double> GetLightProfileDebug() {return gen_expectation->GetLightProfileDebug();};
     std::vector<double> GetLightProfileTimesDebug() {return gen_expectation->GetLightProfileTimesDebug();};
@@ -352,12 +346,12 @@ public:
 
     template<typename T>
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
+            T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T pmt_efficiency,
             double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
 
-    AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale);
-    double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale);
-    std::vector<double> GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale);
+    AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
+    double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
+    std::vector<double> GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
 
     template<typename T> T Interpolation(double this_time, std::vector<T> data_times, std::vector<T> data);
 };
@@ -412,7 +406,8 @@ template<typename T> T CalculateNLLH::Interpolation(double this_time, std::vecto
 template<typename T>
 T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
-            double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+            T pmt_efficiency, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+    //std::cout << "in ComputeNLLH, fitting to " << key << ". Rs = " << Rs << ", tau_s = " << tau_t << ", tau_TPB = " << tau_TPB << ", normalization = " << normalization << ", LP params = " << late_pulse_mu << ", " << late_pulse_sigma << ", " << late_pulse_scale << " and time offset = " << light_time_offset << std::endl;
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
@@ -449,7 +444,6 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     for (size_t j = 0; j < pred_times->size(); j++){
         if constexpr (std::is_same<T, double>::value) {
             pred_times_double.push_back(pred_times->at(j) + light_time_offset);
-            //pred_times_double.push_back(pred_times->at(j));
         } else {
             pred_times_double.push_back(pred_times->at(j).value() + light_time_offset.value());
         }
@@ -474,13 +468,10 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
     // now sort our llh grid!
     std::sort(llh_grid.begin(), llh_grid.end());
 
-    // let's add empty vector to debug_data and debug_pred
-    debug_all_data[key] = std::vector<double> (llh_grid.size(), 0.0);
-    debug_all_pred[key] = std::vector<double> (llh_grid.size(), 0.0);
-    debug_fit_data[key] = std::vector<double> (llh_grid.size(), 0.0);
-    debug_fit_pred[key] = std::vector<double> (llh_grid.size(), 0.0);
-    debug_pred_times.clear();
-    debug_data_times.clear();
+    // let's empty vectors to save data, pred, and times
+    data_vector.clear();
+    pred_vector.clear();
+    times_vector.clear();
 
     // set some times at the beginning of the wf to ignore for llh calculation!
     double ignore_start = 0.0;
@@ -498,23 +489,24 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
         T pred_yields_squared_this_time = Interpolation<T>(this_time, pred_times_offset, *pred_yields_squared);
 
         // now put together to make mu and sigma2!
-        T mu = pred_yields_this_time * normalization + pre_event_average;
-        T sigma_squared = pred_yields_squared_this_time * (normalization * normalization) + (pre_event_average * pre_event_average);
-
-        // now let's account for our pmt efficiency
-        mu /= PMT_eff[key];
-        sigma_squared /= (PMT_eff[key] * PMT_eff[key]);
+        //T adjusted_norm = normalization / PMT_eff[key];
+        T adjusted_norm = normalization * pmt_efficiency;
+        T mu = pred_yields_this_time * adjusted_norm + pre_event_average;
+        T sigma_squared = pred_yields_squared_this_time * (adjusted_norm * adjusted_norm) + (pre_event_average * pre_event_average);
 
         // now check the time before computing the llh
         if (this_time < ignore_start or this_time > ignore_end){
-            total_nllh += MCLLH::LEff()(k, mu, sigma_squared);
+            T partial_nllh = MCLLH::LEff()(k, mu, sigma_squared);
+            total_nllh += partial_nllh;
         }
 
         // and save some stuff for plotting
+        data_vector.push_back(k);
+        times_vector.push_back(this_time);
         if constexpr (std::is_same<T, double>::value) {
-            debug_all_data[key].at(i) = k;
-            debug_all_pred[key].at(i) = mu;
-            debug_data_times.push_back(this_time);
+            pred_vector.push_back(mu);
+        } else {
+            pred_vector.push_back(mu.value());
         }
     }
     //std::cout << "total LP scale grad = " << total_LP_scale_grad << std::endl;

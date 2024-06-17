@@ -145,19 +145,24 @@ void CalculateNLLH::SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen
     this->gen_expectation = gen_expectation;
 }
 
-CalculateNLLH::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale) {
+CalculateNLLH::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, 
+                                         const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency) {
     return this->ComputeNLLH<AD>(key, AD(params.Rs, 0), AD(params.Rt, 1), AD(params.tau_s, 2), AD(params.tau_t, 3), AD(params.tau_rec, 4), AD(params.tau_TPB, 5),
-            AD(params.normalization, 6), AD(params.time_offset, 7), AD(params.const_offset, 8), AD(late_pulse_mu, 9), AD(late_pulse_sigma, 10), AD(late_pulse_scale, 11), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+            AD(params.normalization, 6), AD(params.time_offset, 7), AD(params.const_offset, 8), AD(late_pulse_mu, 9), AD(late_pulse_sigma, 10), AD(late_pulse_scale, 11), 
+            AD(pmt_efficiency, 12), params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
 }
 
-double CalculateNLLH::GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale) {
+double CalculateNLLH::GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params,
+                                   const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency) {
     return this->ComputeNLLH<double>(key, params.Rs, params.Rt, params.tau_s, params.tau_t, params.tau_rec, params.tau_TPB,
-            params.normalization, params.time_offset, params.const_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale, params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
+            params.normalization, params.time_offset, params.const_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale,
+            pmt_efficiency, params.uv_absorption, params.z_offset, params.n_sodium_events, params.light_profile_type);
 }
 
-std::vector<double> CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale) {
+std::vector<double> CalculateNLLH::GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params,
+                                                     const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency) {
     Grad grad;
-    this->GetNLLH(key, params, late_pulse_mu, late_pulse_sigma, late_pulse_scale).copyGradient(grad.data());
+    this->GetNLLH(key, params, late_pulse_mu, late_pulse_sigma, late_pulse_scale, pmt_efficiency).copyGradient(grad.data());
     // putting grad into a vector...don't want to deal with pybindings for arrays
     std::vector<double> grad_to_return;
     for (size_t i = 0; i < grad.size(); i++){

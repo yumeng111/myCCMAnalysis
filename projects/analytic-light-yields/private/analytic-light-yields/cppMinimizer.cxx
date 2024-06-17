@@ -29,13 +29,29 @@
 #include "analytic-light-yields/cppMinimizer.h"
 #include "dataclasses/physics/AnalyticLightYieldGenerator.h"
 
-struct LikelihoodFunctor {
+struct ZigZagPrior{
+    private:
+        double point;
+        double scale;
+        double m;
+    public:
+        ZigZagPrior(double point, double scale, bool small):
+        point(point), scale(scale), m(int(small)*2.0 - 1.0) {}
 
+        template<typename DataType>
+        DataType operator()(DataType x) const{
+            return log((tanh(scale*(point-x)*m)+1.)/2.+1e-18)-exp(-scale*(point-x)*m);
+        }
+};
+
+struct LikelihoodFunctor {
+    
     static constexpr int DerivativeDimension = 15; // max number of dimensions :
                                                    // Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB
                                                    // norm, norm, norm, norm -- 1 / data set!
                                                    // time offset, const offset
                                                    // LP mu, LP sigma, LP scale
+    
     std::vector<std::shared_ptr<CalculateNLLH>> llh_constructor;
     CCMPMTKey key_to_fit;
     double uv_absorption = 55.0;
@@ -43,6 +59,7 @@ struct LikelihoodFunctor {
     size_t n_sodium_events;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
     std::vector<double> time_offsets;
+    ZigZagPrior prior = ZigZagPrior(3.0, 6.0, false); // we want (tau_s - tau_TPB) > 3.0 with 600% scale
 
     // This returns the LLH
     template<typename T>
@@ -55,8 +72,21 @@ struct LikelihoodFunctor {
             } else {
                 time_offset = x[10];
             }
-            total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
-                             time_offset, x[11], x[12], x[13], x[14], uv_absorption, z_offset.at(data_it), n_sodium_events, light_profile_type);
+            // first check that tau_s != tau_TPB
+            T tau_s = x[2];
+            T tau_TPB = x[5];
+            
+            if (tau_s != tau_TPB){
+                total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
+                                 time_offset, x[11], x[12], x[13], x[14], 1.0, uv_absorption, z_offset.at(data_it), n_sodium_events, light_profile_type);
+                
+                // and now add our prior!
+                total_llh += prior(tau_s - tau_TPB); 
+            } 
+            else {
+                total_llh += std::numeric_limits<T>::infinity(); 
+            }
+
 
         }
         return total_llh; 
@@ -98,10 +128,10 @@ cppMinimizer::cppMinimizer() {}
 std::vector<double> cppMinimizer::OnePMTOneDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets, double norm_seed, size_t n_sodium_events) {
 
     // let's try scanning over t offset
-    double t_offset_start = 25.0;
-    double t_offset_end = 31.0;
+    double t_offset_start = 23.0;
+    double t_offset_end = 33.0;
     double t_offset_range = t_offset_end - t_offset_start;
-    size_t n_t_offsets = 25;
+    size_t n_t_offsets = 31;
 
     std::vector<double> func_val;
     std::vector<std::vector<double>> params;
@@ -247,7 +277,7 @@ std::vector<double> cppMinimizer::OnePMTMultipleDataSetMinimization(CCMPMTKey th
     likelihood.llh_constructor = all_constructors;
     likelihood.key_to_fit = this_key;
     likelihood.time_offsets = time_offsets;
-
+    
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
 
     // free paramters are : Rs, tau_s, tau_TPB, normalization, late pulse mu, late pulse sigma, and late pulse scale

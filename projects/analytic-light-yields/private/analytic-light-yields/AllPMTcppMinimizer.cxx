@@ -30,17 +30,33 @@
 #include "analytic-light-yields/AllPMTcppMinimizer.h"
 #include "dataclasses/physics/AnalyticLightYieldGenerator.h"
 
+struct ZigZagPrior{
+    private:
+        double point;
+        double scale;
+        double m;
+    public:
+        ZigZagPrior(double point, double scale, bool small):
+        point(point), scale(scale), m(int(small)*2.0 - 1.0) {}
+
+        template<typename DataType>
+        DataType operator()(DataType x) const{
+            return log((tanh(scale*(point-x)*m)+1.)/2.+1e-18)-exp(-scale*(point-x)*m);
+        }
+};
+
 struct NewLikelihoodFunctor {
 
-    static constexpr int NewDerivativeDimension = 7; // max number of dimensions :
-                                                     // Rs, tau_s, tau_TPB
-                                                     // norm, norm, norm, norm -- 1 / data set!
-                                                     
-                                                     // things that are fixed for all PMTs:
-                                                     // Rt, tau_t, tau_rec, const_offset 
-                                                     
-                                                     // things that are fixed for each PMT : 
-                                                     // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
+    static constexpr int NewDerivativeDimension = 7 + 200; // max number of dimensions :
+                                                           // Rs, tau_s, tau_TPB
+                                                           // norm, norm, norm, norm -- 1 / data set!
+                                                           // and 200 PMT efficiency terms (many will be fixed)                                                 
+
+                                                           // things that are fixed for all PMTs:
+                                                           // Rt, tau_t, tau_rec, const_offset 
+                                                           
+                                                           // things that are fixed for each PMT : 
+                                                           // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
     
     std::vector<std::shared_ptr<CalculateNLLH>> llh_constructor; // list of constructors
     I3VectorCCMPMTKey all_keys; // list of PMTs in fit
@@ -56,19 +72,29 @@ struct NewLikelihoodFunctor {
     std::vector<double> z_offset; // list of z offsets
     size_t n_sodium_events;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+    ZigZagPrior prior = ZigZagPrior(3.0, 6.0, false); // we want (tau_s - tau_TPB) > 3.0 with 600% scale
 
     // This returns the LLH
     template<typename T>
     T evaluateLikelihood(std::vector<T> x) const {
         T total_llh = 0;
+        if constexpr (std::is_same<T, double>::value) {
+            std::cout << "Rs = " << x[0] << ", tau_s = " << x[1] << ", tau_TPB = " << x[2] << ", and norm = " << x[3] << ", " << x[4] << ", " << x[5] << ", " << x[6] << std::endl;
+        } else {
+            std::cout <<"Rs = " << x[0].value() << ", tau_s = " << x[1].value() << ", tau_TPB = " << x[2].value()
+                << ", and norm = " << x[3].value() << ", " << x[4].value() << ", " << x[5].value() << ", " << x[6].value() << std::endl;
+        }
         for (size_t data_it = 0; data_it < llh_constructor.size(); data_it ++){
             // loop over each data set we are fitting to
+            T tau_s = x[1];
+            T tau_TPB = x[2];        
             for (size_t pmt_it = 0; pmt_it < all_keys.size(); pmt_it ++){
                 // loop over each PMT
                 CCMPMTKey key = all_keys.at(pmt_it);
                 total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
-                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), uv_absorption,
+                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), x[7 + pmt_it], uv_absorption,
                                  z_offset.at(data_it), n_sodium_events, light_profile_type);
+                total_llh += prior(tau_s - tau_TPB); 
             }
         }
         return total_llh; 
@@ -114,12 +140,12 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
 
     std::vector<I3MapPMTKeyDouble> time_offsets = {time_offset1, time_offset2, time_offset3, time_offset4}; 
     std::vector<std::string> paramter_names = {"Rs", "tau_s", "tau_TPB", "norm1", "norm2", "norm3", "norm4"};
-
-    double seeds[4] = {0.34, 6.7, 6.7, 1e5};
-    double grad_scales[4] = {1e-3, 1e-3, 1e-3, 1e-6};
+    
+    double seeds[4] = {0.34, 8.2, 3.0, 1e3};
+    double grad_scales[4] = {1e-3, 1e-3, 1e-3, 1e-3};
     double mins[4] = {0.2, 2.0, 1.0, 10.0};
     double maxs[4] = {0.5, 16.0, 9.0, 1e10};
-    
+
     // let's initialize our constructor
     // grab our geometry frame
     std::string geometry_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/geo_run012490.i3.zst";
@@ -136,7 +162,6 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         // and now make constructor
         std::shared_ptr<CalculateNLLH> this_llh_constructor = std::make_shared<CalculateNLLH>();
         this_llh_constructor->SetKeys(keys_to_fit);
-        this_llh_constructor->SetPMTEff(PMT_efficiencies);
         this_llh_constructor->SetData(this_data_frame);
         this_llh_constructor->SetGeo(geo_frame);
     
@@ -164,19 +189,34 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
     // this is where we add our normalization parameter...need to add one for each data set
     for (size_t n = 0; n < 4; n++){
         minimizer.addParameter(seeds[3], grad_scales[3], mins[3], maxs[3]); // norm
+    }
+    // now we are adding our pmt efficincy terms
+    size_t n_pmts_fitting = keys_to_fit.size();
+    for (size_t n = 0; n < 200; n++){
+        double pmt_eff_seed = 1.0;
+        if (n < n_pmts_fitting){
+           pmt_eff_seed = 1.0 / PMT_efficiencies[keys_to_fit.at(n)]; 
+        }
+        minimizer.addParameter(pmt_eff_seed, 1e-4, 1.0, pmt_eff_seed * 1e2); // pmt eff
     } 
     minimizer.setHistorySize(20);
 
     // fix parameter idx of guys we are not minimizing
     size_t data_sets_to_minimize = data_file_names.size();
-
-    // data_sets_to_minimize should either be 1 or 4
-    // but let's try to make this general
     size_t data_sets_included = 0;
     for (size_t n = 0; n < 4; n++){
         data_sets_included += 1;
         if (data_sets_included > data_sets_to_minimize){
             minimizer.fixParameter(2 + data_sets_included); // norms
+        }
+    }
+
+    // now fix PMT efficincy params for PMTs we are not fitting to
+    size_t n_pmts_included = 0;
+    for (size_t n = 0; n < 200; n++){
+        n_pmts_included += 1;
+        if (n_pmts_included > n_pmts_fitting){
+            minimizer.fixParameter(6 + n_pmts_included); // pmt eff
         }
     } 
     
@@ -198,15 +238,56 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         data_to_return.push_back((double) minimizer.numberOfEvaluations());
         for(size_t i=0; i<NewLikelihoodFunctor::NewDerivativeDimension; ++i) {
             data_to_return.push_back(params.at(i));
-            std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;
+            if (i < 7) {
+                std::cout << paramter_names.at(i) << " = " << params.at(i) << std::endl;
+            } else {
+                std::cout << params.at(i) << std::endl;
+            }
         }
+    
+        // one last thing -- take this best fit point and grab our data, pred, and times
+        double uv_absorption = 55.0;
+        double Rt = 0.0;
+        double tau_t = 743.0;
+        double tau_rec = 0.0;
+        double const_offset = 0.0;
+        AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+        for (size_t data_it = 0; data_it < all_constructors.size(); data_it ++){
+            // loop over each data set we are fitting to
+            I3MapPMTKeyVectorDouble this_data; 
+            I3MapPMTKeyVectorDouble this_pred; 
+            I3MapPMTKeyVectorDouble this_times; 
+            
+            for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++){
+                // loop over each PMT
+                CCMPMTKey key = keys_to_fit.at(pmt_it);
+                double llh = all_constructors.at(data_it)->ComputeNLLH<double>(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3 + data_it), // normalization for data set!!!
+                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), uv_absorption,
+                                 z_offsets.at(data_it), n_sodium_events, light_profile_type);
+                // now grab out data etc
+                std::vector<double> this_pmt_data = all_constructors.at(data_it)->GetDataVector(); 
+                std::vector<double> this_pmt_pred = all_constructors.at(data_it)->GetPredVector(); 
+                std::vector<double> this_pmt_times = all_constructors.at(data_it)->GetTimesVector(); 
+                // now save
+                this_data[key] = this_pmt_data;
+                this_pred[key] = this_pmt_pred;
+                this_times[key] = this_pmt_times;
+            }
+            data.push_back(this_data);
+            pred.push_back(this_pred);
+            times.push_back(this_times);
+        }
+    
     } else {
-        std::cout << "oops! fit did not converge :( error message = " << minimizer.errorMessage() << std::endl;
-    } 
+        std::cout << "minimizer did not converge :( error message = " << minimizer.errorMessage() << std::endl;
+    }
     
     return data_to_return;
 
 }
+
+
+
 
 
 

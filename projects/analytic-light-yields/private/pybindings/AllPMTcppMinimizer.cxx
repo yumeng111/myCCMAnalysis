@@ -44,7 +44,10 @@ void register_AllPMTcppMinimizer() {
 
     class_<AllPMTcppMinimizer, boost::noncopyable>("AllPMTcppMinimizer")
         .def(init<>())
-        .def("MultiplePMTMinimization", &AllPMTcppMinimizer::MultiplePMTMinimization);
+        .def("MultiplePMTMinimization", &AllPMTcppMinimizer::MultiplePMTMinimization)
+        .def("GetBestFitData", &AllPMTcppMinimizer::GetBestFitData)
+        .def("GetBestFitPred", &AllPMTcppMinimizer::GetBestFitPred)
+        .def("GetBestFitTimes", &AllPMTcppMinimizer::GetBestFitTimes);
 
 }
 }

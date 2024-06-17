@@ -164,6 +164,7 @@ void get_light_profile_no_recombination(T const & R_s,
         if (y > max_light_prof){
             max_light_prof = y;
         }
+    
     }
 
     // ok so we have just the light profile
