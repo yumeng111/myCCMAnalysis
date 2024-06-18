@@ -616,4 +616,6 @@ void PulseChargeTimeHistogram::Finish() {
     frame->Put("ChargeHists", tot_charge_output);
     frame->Put("TimeChargeWHists", tot_time_chargeW_output);
     frame->Put("TimeChargeWHistsVar", tot_time_chargeW_output_var);
+
+    PushFrame(frame);
 }
