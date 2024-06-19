@@ -13,7 +13,6 @@
 
 static const unsigned photonyieldsummary_version_ = 0;
 
-template<typename TimeType, typename YieldType>
 class PhotonYieldSummary : public I3FrameObject {
     public:
 
@@ -23,8 +22,8 @@ class PhotonYieldSummary : public I3FrameObject {
         TPBFoil = 2,
     };
 
-    TimeType time; // photon hit time
-    YieldType yield; // number of photon hits
+    float time; // photon hit time
+    float yield; // number of photon hits
     PhotonSource photon_source;
 
     SET_LOGGER("PhotonYieldSummary");
