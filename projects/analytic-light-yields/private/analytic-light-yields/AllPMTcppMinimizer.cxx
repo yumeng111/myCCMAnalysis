@@ -47,24 +47,29 @@ struct ZigZagPrior{
 
 struct NewLikelihoodFunctor {
 
-    static constexpr int NewDerivativeDimension = 7 + 200; // max number of dimensions :
-                                                           // Rs, tau_s, tau_TPB
-                                                           // norm, norm, norm, norm -- 1 / data set!
-                                                           // and 200 PMT efficiency terms (many will be fixed)                                                 
-
-                                                           // things that are fixed for all PMTs:
-                                                           // Rt, tau_t, tau_rec, const_offset 
-                                                           
-                                                           // things that are fixed for each PMT : 
-                                                           // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
+    static constexpr int NewDerivativeDimension = 7 + 200 + 1; // max number of dimensions :
+                                                               // Rs, tau_s, tau_TPB
+                                                               // norm, norm, norm, norm -- 1 / data set!
+                                                               // 200 PMT efficiency terms (many will be fixed)                                                 
+                                                               // finally -- uv absorption
+                                                               
+                                                               // things that are fixed for all PMTs:
+                                                               // Rt, tau_t, tau_rec, const_offset 
+                                                               
+                                                               // things that are fixed for each PMT : 
+                                                               // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
     
-    std::vector<std::shared_ptr<CalculateNLLH>> llh_constructor; // list of constructors
+    typedef double Underlying;
+    typedef phys_tools::autodiff::FD<NewDerivativeDimension, Underlying> AD;
+    
+    std::vector<std::shared_ptr<CalculateNLLH<AD>>> llh_constructorAD;
+    std::vector<std::shared_ptr<CalculateNLLH<double>>> llh_constructorDouble;
+    
     I3VectorCCMPMTKey all_keys; // list of PMTs in fit
     I3MapPMTKeyDouble LPmu; // map between CCMPMTKey and LPmu
     I3MapPMTKeyDouble LPsigma; // map between CCMPMTKey and LPsigma
     I3MapPMTKeyDouble LPscale; // map between CCMPMTKey and LPscale
     std::vector<I3MapPMTKeyDouble> time_offsets; // map between CCMPMTKey and time offset (1 map/data set) 
-    double uv_absorption = 55.0;
     double Rt = 0.0;
     double tau_t = 743.0;
     double tau_rec = 0.0;
@@ -73,6 +78,7 @@ struct NewLikelihoodFunctor {
     size_t n_sodium_events;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
     ZigZagPrior prior = ZigZagPrior(3.0, 6.0, false); // we want (tau_s - tau_TPB) > 3.0 with 600% scale
+    bool fittining_uv_abs = true;
 
     // This returns the LLH
     template<typename T>
@@ -84,16 +90,22 @@ struct NewLikelihoodFunctor {
             std::cout <<"Rs = " << x[0].value() << ", tau_s = " << x[1].value() << ", tau_TPB = " << x[2].value()
                 << ", and norm = " << x[3].value() << ", " << x[4].value() << ", " << x[5].value() << ", " << x[6].value() << std::endl;
         }
-        for (size_t data_it = 0; data_it < llh_constructor.size(); data_it ++){
+        for (size_t data_it = 0; data_it < llh_constructorAD.size(); data_it ++){
             // loop over each data set we are fitting to
             T tau_s = x[1];
             T tau_TPB = x[2];        
             for (size_t pmt_it = 0; pmt_it < all_keys.size(); pmt_it ++){
                 // loop over each PMT
                 CCMPMTKey key = all_keys.at(pmt_it);
-                total_llh += llh_constructor.at(data_it)->ComputeNLLH<T>(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
-                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), x[7 + pmt_it], uv_absorption,
-                                 z_offset.at(data_it), n_sodium_events, light_profile_type);
+                if constexpr (std::is_same<T, double>::value) {
+                    total_llh += llh_constructorDouble.at(data_it)->ComputeNLLH(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
+                                    time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), x[7 + pmt_it], // pmt eff!!
+                                    x[207], fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
+                } else {
+                    total_llh += llh_constructorAD.at(data_it)->ComputeNLLH(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
+                                    time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), x[7 + pmt_it], // pmt eff!
+                                    x[207], fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
+                }
                 total_llh += prior(tau_s - tau_TPB); 
             }
         }
@@ -147,33 +159,49 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
     double maxs[4] = {0.5, 16.0, 9.0, 1e10};
 
     // let's initialize our constructor
-    // grab our geometry frame
+    // grab our geomtry frame
     std::string geometry_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/geo_run012490.i3.zst";
     dataio::I3File geometry_file(geometry_fname, dataio::I3File::Mode::read);
     I3FramePtr geo_frame = geometry_file.pop_frame();
     
+    // now set up our likelihood object
+    LikelihoodType likelihood;
+    
+    // make our AD object
+    typedef double Underlying;
+    typedef phys_tools::autodiff::FD<likelihood.NewDerivativeDimension, Underlying> AD;
+    
     // now grab data frame(s) to make our constructors
-    std::vector<std::shared_ptr<CalculateNLLH>> all_constructors;
+    std::vector<std::shared_ptr<CalculateNLLH<AD>>> all_constructorsAD;
+    std::vector<std::shared_ptr<CalculateNLLH<double>>> all_constructorsDouble;
     for (size_t data_it = 0; data_it < data_file_names.size(); data_it++){
         std::string this_data_fname = data_file_names.at(data_it);
         dataio::I3File this_data_file(this_data_fname, dataio::I3File::Mode::read);
         I3FramePtr this_data_frame = this_data_file.pop_frame();
 
-        // and now make constructor
-        std::shared_ptr<CalculateNLLH> this_llh_constructor = std::make_shared<CalculateNLLH>();
-        this_llh_constructor->SetKeys(keys_to_fit);
-        this_llh_constructor->SetData(this_data_frame);
-        this_llh_constructor->SetGeo(geo_frame);
+        // and now make constructor -- AD type
+        std::shared_ptr<CalculateNLLH<AD>> this_llh_constructorAD = std::make_shared<CalculateNLLH<AD>>();
+        this_llh_constructorAD->SetKeys(keys_to_fit);
+        this_llh_constructorAD->SetData(this_data_frame);
+        this_llh_constructorAD->SetGeo(geo_frame);
     
         // now save!
-        all_constructors.push_back(this_llh_constructor);
+        all_constructorsAD.push_back(this_llh_constructorAD);
+        
+        // and now make constructor -- double type
+        std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
+        this_llh_constructorDouble->SetKeys(keys_to_fit);
+        this_llh_constructorDouble->SetData(this_data_frame);
+        this_llh_constructorDouble->SetGeo(geo_frame);
+    
+        // now save!
+        all_constructorsDouble.push_back(this_llh_constructorDouble);
     }
-
-    // now set up our likelihood object
-    LikelihoodType likelihood;
+    
+    likelihood.llh_constructorAD = all_constructorsAD;
+    likelihood.llh_constructorDouble = all_constructorsDouble;
     likelihood.n_sodium_events = n_sodium_events;
     likelihood.z_offset = z_offsets; 
-    likelihood.llh_constructor = all_constructors;
     likelihood.all_keys = keys_to_fit;
     likelihood.LPmu = LPmu;
     likelihood.LPsigma = LPsigma;
@@ -199,6 +227,7 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         }
         minimizer.addParameter(pmt_eff_seed, 1e-4, 1.0, pmt_eff_seed * 1e2); // pmt eff
     } 
+    minimizer.addParameter(55.0, 1e-4, 30.0, 100.0); // uv absorption!!!
     minimizer.setHistorySize(20);
 
     // fix parameter idx of guys we are not minimizing
@@ -246,13 +275,12 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         }
     
         // one last thing -- take this best fit point and grab our data, pred, and times
-        double uv_absorption = 55.0;
         double Rt = 0.0;
         double tau_t = 743.0;
         double tau_rec = 0.0;
         double const_offset = 0.0;
         AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
-        for (size_t data_it = 0; data_it < all_constructors.size(); data_it ++){
+        for (size_t data_it = 0; data_it < all_constructorsDouble.size(); data_it ++){
             // loop over each data set we are fitting to
             I3MapPMTKeyVectorDouble this_data; 
             I3MapPMTKeyVectorDouble this_pred; 
@@ -261,13 +289,13 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
             for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++){
                 // loop over each PMT
                 CCMPMTKey key = keys_to_fit.at(pmt_it);
-                double llh = all_constructors.at(data_it)->ComputeNLLH<double>(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3 + data_it), // normalization for data set!!!
-                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), uv_absorption,
+                double llh = all_constructorsDouble.at(data_it)->ComputeNLLH(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3 + data_it), // normalization for data set!!!
+                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), params.at(207), true,
                                  z_offsets.at(data_it), n_sodium_events, light_profile_type);
                 // now grab out data etc
-                std::vector<double> this_pmt_data = all_constructors.at(data_it)->GetDataVector(); 
-                std::vector<double> this_pmt_pred = all_constructors.at(data_it)->GetPredVector(); 
-                std::vector<double> this_pmt_times = all_constructors.at(data_it)->GetTimesVector(); 
+                std::vector<double> this_pmt_data = all_constructorsDouble.at(data_it)->GetDataVector(); 
+                std::vector<double> this_pmt_pred = all_constructorsDouble.at(data_it)->GetPredVector(); 
+                std::vector<double> this_pmt_times = all_constructorsDouble.at(data_it)->GetTimesVector(); 
                 // now save
                 this_data[key] = this_pmt_data;
                 this_pred[key] = this_pmt_pred;
@@ -286,6 +314,79 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
 
 }
 
+void AllPMTcppMinimizer::ScanOverTOffsets(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
+                                          std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events,
+                                          double best_fit_Rs, double best_fit_tau_s, double best_fit_tau_other, std::vector<double> best_fit_norms) {        
+
+    // let's initialize our constructor
+    // grab our geometry frame
+    std::string geometry_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/geo_run012490.i3.zst";
+    dataio::I3File geometry_file(geometry_fname, dataio::I3File::Mode::read);
+    I3FramePtr geo_frame = geometry_file.pop_frame();
+    
+    // now grab data frame(s) to make our constructors
+    std::vector<std::shared_ptr<CalculateNLLH<double>>> all_constructorsDouble;
+    for (size_t data_it = 0; data_it < data_file_names.size(); data_it++){
+        std::string this_data_fname = data_file_names.at(data_it);
+        dataio::I3File this_data_file(this_data_fname, dataio::I3File::Mode::read);
+        I3FramePtr this_data_frame = this_data_file.pop_frame();
+
+        // and now make constructor -- double type
+        std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
+        this_llh_constructorDouble->SetKeys(keys_to_fit);
+        this_llh_constructorDouble->SetData(this_data_frame);
+        this_llh_constructorDouble->SetGeo(geo_frame);
+    
+        // now save!
+        all_constructorsDouble.push_back(this_llh_constructorDouble);
+    }
+
+    // now loop over each data set and then loop over each pmt
+    double uv_absorption = 55.0;
+    double Rt = 0.0;
+    double tau_t = 743.0;
+    double tau_rec = 0.0;
+    double const_offset = 0.0;
+    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+    
+    for (size_t data_it = 0; data_it < all_constructorsDouble.size(); data_it ++){
+        // loop over each data set we are fitting to
+        I3MapPMTKeyDouble this_data_set_best_time_offsets;
+
+        for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++){
+            // loop over each PMT
+            CCMPMTKey key = keys_to_fit.at(pmt_it);
+            
+            // let's try scanning over t offset
+            double t_offset_start = 15.0;
+            double t_offset_end = 40.0;
+            double t_offset_range = t_offset_end - t_offset_start;
+            size_t n_t_offsets = 100;
+
+            std::vector<double> func_val;
+            std::vector<double> time_offsets;
+            
+            for (size_t toff_it = 0; toff_it < (n_t_offsets + 1); toff_it++){
+                double this_t_offset = t_offset_start + ((double)toff_it / (double)n_t_offsets) * t_offset_range;
+                double this_nllh = -1.0 * all_constructorsDouble.at(data_it)->ComputeNLLH(key, best_fit_Rs, Rt, best_fit_tau_s, tau_t, tau_rec, best_fit_tau_other, best_fit_norms.at(data_it), 
+                             this_t_offset, const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), PMT_efficiencies.at(key), uv_absorption, false, z_offsets.at(data_it), n_sodium_events,
+                             light_profile_type);
+            
+                // now let's save this nllh and corresponding time offset
+                func_val.push_back(this_nllh);
+                time_offsets.push_back(this_t_offset);
+            }
+
+            // now let's find the time offset that minimizes our nllh
+            size_t smallest_idx = std::distance(func_val.begin(), std::min_element(func_val.begin(), func_val.end()));
+            this_data_set_best_time_offsets[key] = time_offsets.at(smallest_idx);         
+        }
+
+        best_time_offsets.push_back(this_data_set_best_time_offsets);
+    }
+
+
+}
 
 
 

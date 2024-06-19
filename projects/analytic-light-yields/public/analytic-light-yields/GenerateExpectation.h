@@ -31,7 +31,6 @@
 #include "dataclasses/I3Position.h"
 #include "dataclasses/I3Map.h"
 #include "dataclasses/I3Vector.h"
-#include "dataclasses/physics/PhotonYieldSummary.h"
 #include "dataclasses/physics/HESodiumEvent.h"
 #include "dataclasses/physics/AnalyticLightYieldGenerator.h"
 #include <analytic-light-yields/SodiumVertexDistribution.h>
@@ -39,6 +38,7 @@
 #include <analytic-light-yields/LArScintillationLightProfile.h>
 #include "analytic-light-yields/autodiff.h"
 
+template<typename T>
 class GenerateExpectation {
     I3FramePtr geo_frame;
     size_t n_sodium_events = 0;
@@ -53,41 +53,25 @@ class GenerateExpectation {
     // and update light profile with every call to GetExpectation
     std::shared_ptr<SodiumVertexDistribution> sodium_events_constructor = nullptr;
     std::shared_ptr<YieldsPerPMT> yields_and_offset_constructor = nullptr;
-
     boost::shared_ptr<HESodiumEventSeries> event_vertices = boost::make_shared<HESodiumEventSeries> ();
-    std::vector<boost::shared_ptr<PhotonYieldSummarySeriesMap>> yields_per_pmt_per_event;
-    // std::map<CCMPMTKey, std::tuple<double, double>> time_extents_per_pmt;
-    std::map<CCMPMTKey, std::vector<double>> binned_yields;
-    std::map<CCMPMTKey, std::vector<double>> binned_square_yields;
-
-    double uv_absorption = 0.0;
     double z_offset = 0.0;
-
     double portion_light_reflected_by_tpb;
     double desired_chunk_width;
     double desired_chunk_height;
-
-    void ComputeBinnedYield(CCMPMTKey key, double max_time);
-
 public:
     GenerateExpectation();
     GenerateExpectation(I3VectorCCMPMTKey keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
     void GetSodiumVertices(size_t n_events_to_simulate, double z_position);
-    void GetYieldsAndOffsets(double uv_absorption);
-    template<typename T>
+    void GetYieldsAndOffsets(T uv_absorption);
     std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
-                                       AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
+                  AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
 
-    template<typename T>
-    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time,
-                                            T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
-                                            double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type); 
+    std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key,
+                       double start_time, double max_time, double peak_time,
+                       T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
+                       T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type); 
     
-    //static constexpr size_t n_params = 9;
-    //typedef double Underlying;
-
-    //typedef phys_tools::autodiff::FD<n_params, Underlying> AD;
-    //typedef std::array<Underlying, n_params> Grad;
+    void ComputeBinnedYield(CCMPMTKey key, double max_time);
     
     std::vector<double> light_prof_debug;
     std::vector<double> light_prof_times_debug;
@@ -96,11 +80,14 @@ public:
     std::vector<double> GetLightProfileDebug() {return light_prof_debug;};
     std::vector<double> GetLightProfileTimesDebug() {return light_prof_times_debug;};
     std::vector<double> GetLightProfileTOffsetGradDebug() {return light_prof_time_offset_grad_debug;};
-
+    
+    // now define some class members    
+    std::map<CCMPMTKey, std::vector<T>> binned_yields;
+    std::map<CCMPMTKey, std::vector<T>> binned_square_yields;
+    boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> yields_per_pmt_per_event;
 };
 
-template<typename T>
-std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
+template<typename T> std::vector<T> GenerateExpectation<T>::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                                                     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times) {
     std::vector<T> light_profile(times.size());
 
@@ -113,28 +100,24 @@ std::vector<T> GenerateExpectation::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T
     return light_profile;
 }
 
-template<typename T>
-std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
-    GenerateExpectation::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, double uv_absorption, double z_offset, size_t n_sodium_events,
+template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
+    GenerateExpectation<T>::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+            T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
     bool compute_vertices = sodium_events_constructor == nullptr;
     bool compute_yields = yields_and_offset_constructor == nullptr;
-    bool bin_yields = binned_yields.find(key) == binned_yields.end();
 
     // check that we made our sodium event vertices
     if(compute_vertices)
         GetSodiumVertices(n_sodium_events, z_offset);
-    // now let's check if we get our yields + time offsets
-    if(compute_yields)
+    // now let's check if we got our yields + time offsets
+    if(compute_yields or fitting_uv_abs)
         GetYieldsAndOffsets(uv_absorption);
-    // now lets check if we have pre-binned the yields
-    if(bin_yields)
         ComputeBinnedYield(key, max_time);
 
-    std::vector<double> const & binned_yield = binned_yields.at(key);
-    std::vector<double> const & binned_square_yield = binned_square_yields.at(key);
+    std::vector<T> const & binned_yield = binned_yields.at(key);
+    std::vector<T> const & binned_square_yield = binned_square_yields.at(key);
 
     peak_time += 40.0;
     size_t n_light_bins = size_t(max_time / 2.0) + 1 + 40;

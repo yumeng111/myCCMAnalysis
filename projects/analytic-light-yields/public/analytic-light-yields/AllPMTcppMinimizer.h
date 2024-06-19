@@ -29,15 +29,22 @@ public:
     std::vector<I3MapPMTKeyVectorDouble> pred;
     std::vector<I3MapPMTKeyVectorDouble> times;
 
+    std::vector<I3MapPMTKeyDouble> best_time_offsets;
+
     std::vector<double> MultiplePMTMinimization(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies,
                                                 I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                                 I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                                 std::vector<std::string> data_file_names,
                                                 std::vector<double> z_offsets, size_t n_sodium_events);        
+    void ScanOverTOffsets(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
+                          std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events,
+                          double best_fit_Rs, double best_fit_tau_s, double best_fit_tau_other, std::vector<double> best_fit_norms);       
 
     I3MapPMTKeyVectorDouble GetBestFitData(size_t dataset_idx) {return data.at(dataset_idx);};
     I3MapPMTKeyVectorDouble GetBestFitPred(size_t dataset_idx) {return pred.at(dataset_idx);};
     I3MapPMTKeyVectorDouble GetBestFitTimes(size_t dataset_idx) {return times.at(dataset_idx);};
+
+    I3MapPMTKeyDouble GetBestTimeOffset(size_t dataset_idx) {return best_time_offsets.at(dataset_idx);};
 
 };
 #endif

@@ -19,7 +19,18 @@
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
 #include "dataclasses/physics/HESodiumEvent.h"
-#include "dataclasses/physics/PhotonYieldSummary.h"
+
+template <typename T>
+struct photon_yield_summary {
+    enum class PhotonSource : int8_t {
+        Unknown = 0,
+        Vertex = 1,
+        TPBFoil = 2,
+    };
+    T time; // photon hit time
+    T yield; // number of photon hits
+    PhotonSource photon_source;
+};
 
 struct yields_pmt_info {
     CCMPMTKey key;
@@ -98,6 +109,7 @@ public:
     void SetGeoFrame(I3FramePtr geo_frame);
     void SetChunks(double chunk_width, double chunk_height);
 
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> GetAllYields(HESodiumEvent const & event_vertex, double UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit);
+    template<typename T> boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> GetAllYields(HESodiumEvent const & event_vertex, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit);
+
 };
 #endif

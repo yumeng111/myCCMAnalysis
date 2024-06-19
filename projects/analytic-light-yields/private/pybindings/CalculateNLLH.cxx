@@ -45,7 +45,6 @@ void register_CalculateNLLH() {
     class_<CalculateNLLH, boost::noncopyable>("CalculateNLLH")
         .def(init<>())
         .def("SetKeys", &CalculateNLLH::SetKeys)
-        .def("SetPMTEff", &CalculateNLLH::SetPMTEff)
         .def("SetGeo", &CalculateNLLH::SetGeo)
         .def("SetData", &CalculateNLLH::SetData)
         .def("GetDataVector", &CalculateNLLH::GetDataVector)

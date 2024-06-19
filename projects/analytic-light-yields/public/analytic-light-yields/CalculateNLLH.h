@@ -26,6 +26,7 @@
 #include "dataclasses/I3Vector.h"
 #include "dataclasses/I3Double.h"
 #include "analytic-light-yields/GenerateExpectation.h"
+#include <analytic-light-yields/YieldsPerPMT.h>
 #include "analytic-light-yields/autodiff.h"
 
 namespace MCLLH {
@@ -293,6 +294,7 @@ struct SinglePMTInfo {
     std::vector<double> data_times;
 };
 
+template<typename T>
 class CalculateNLLH {
 public:
     static constexpr size_t n_params = 12;
@@ -310,31 +312,26 @@ public:
 private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
     I3VectorCCMPMTKey keys_to_fit;
-    I3MapPMTKeyDouble PMT_eff;
     I3FramePtr geo_frame;
 
     size_t n_sodium_events;
     double portion_light_reflected_by_tpb;
     double desired_chunk_width;
     double desired_chunk_height;
-
-    boost::shared_ptr<GenerateExpectation> gen_expectation = nullptr;
     double n_data_events;
-
     size_t max_bins;
 
 public:
     CalculateNLLH();
     CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins=100, size_t n_sodium_events=20, double portion_light_reflected_by_tpb=1.0, double desired_chunk_width=20, double desired_chunk_height=20, I3VectorCCMPMTKey keys_to_fit=I3VectorCCMPMTKey());
     void SetKeys(I3VectorCCMPMTKey keys);
-    void SetPMTEff(I3MapPMTKeyDouble pmt_eff);
     void SetGeo(I3FramePtr geo_frame);
     void SetData(I3FramePtr data_frame);
-    void SetGenExpectation(boost::shared_ptr<GenerateExpectation> gen_expectation);
+    void SetGenExpectation(boost::shared_ptr<GenerateExpectation<T>> gen_expectation);
 
     double GetNDataEvents() const { return n_data_events; };
     I3MapPMTKeyVectorDoublePtr GetData() const;
-    boost::shared_ptr<GenerateExpectation> GetGenExpectation() const { return gen_expectation; };
+    boost::shared_ptr<GenerateExpectation<T>> GetGenExpectation() const { return gen_expectation; };
 
     std::vector<double> GetDataVector() {return data_vector;};
     std::vector<double> GetPredVector() {return pred_vector;};
@@ -344,19 +341,21 @@ public:
     std::vector<double> GetLightProfileTimesDebug() {return gen_expectation->GetLightProfileTimesDebug();};
     std::vector<double> GetLightProfileTOffsetGradDebug() {return gen_expectation->GetLightProfileTOffsetGradDebug();};
 
-    template<typename T>
-    T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T pmt_efficiency,
-            double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+    T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T normalization, T light_time_offset,
+            T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T pmt_efficiency,
+            T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
 
-    AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
-    double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
-    std::vector<double> GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
+    //AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
+    //double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
+    //std::vector<double> GetNLLHDerivative(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
 
-    template<typename T> T Interpolation(double this_time, std::vector<T> data_times, std::vector<T> data);
+    T Interpolation(double this_time, std::vector<T> data_times, std::vector<T> data);
+    double InterpolationDouble(double this_time, std::vector<double> data_times, std::vector<double> data);
+    boost::shared_ptr<GenerateExpectation<T>> gen_expectation = nullptr;
 };
 
-template<typename T> T CalculateNLLH::Interpolation(double this_time, std::vector<T> data_times, std::vector<T> data){
+template<typename T>
+T CalculateNLLH<T>::Interpolation(double this_time, std::vector<T> data_times, std::vector<T> data){
         
     // let's find closest times in data_times
     size_t closest_data_idx = 0;
@@ -404,10 +403,57 @@ template<typename T> T CalculateNLLH::Interpolation(double this_time, std::vecto
 }
 
 template<typename T>
-T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
+double CalculateNLLH<T>::InterpolationDouble(double this_time, std::vector<double> data_times, std::vector<double> data){
+        
+    // let's find closest times in data_times
+    size_t closest_data_idx = 0;
+    double data_time_diff = abs(data_times.at(0) - this_time);
+    for (size_t data_it = 1; data_it < data_times.size(); data_it++){
+        if (abs(data_times.at(data_it) - this_time) < data_time_diff){
+            closest_data_idx = data_it;
+            data_time_diff = abs(data_times.at(data_it) - this_time);
+        } 
+    }
+    double closest_data_point;
+    if (this_time == data_times.at(closest_data_idx)){
+        // this is the case where our llh grid point overlaps with a data grid point
+        closest_data_point = data.at(closest_data_idx);
+    }
+    else{
+        // case where our llh grid point is not in data_times! 
+        // we need to interpolate!
+        double closest_data_time_below;
+        double closest_data_value_below;
+        double closest_data_time_above;
+        double closest_data_value_above;
+
+        if (data_times.at(closest_data_idx) < this_time){
+            closest_data_time_below = data_times.at(closest_data_idx);
+            closest_data_value_below = data.at(closest_data_idx);
+
+            closest_data_time_above = data_times.at(closest_data_idx + 1);
+            closest_data_value_above = data.at(closest_data_idx + 1);
+        }
+        else {
+            closest_data_time_below = data_times.at(closest_data_idx - 1);
+            closest_data_value_below = data.at(closest_data_idx - 1);
+
+            closest_data_time_above = data_times.at(closest_data_idx);
+            closest_data_value_above = data.at(closest_data_idx);
+        }
+
+        // now interpolate!!!
+        closest_data_point = closest_data_value_below + (this_time - closest_data_time_below) * ((closest_data_value_above - closest_data_value_below)/ (closest_data_time_above - closest_data_time_below));
+    }
+
+    return closest_data_point;
+
+}
+template<typename T>
+T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
-            T pmt_efficiency, double uv_absorption, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
-    //std::cout << "in ComputeNLLH, fitting to " << key << ". Rs = " << Rs << ", tau_s = " << tau_t << ", tau_TPB = " << tau_TPB << ", normalization = " << normalization << ", LP params = " << late_pulse_mu << ", " << late_pulse_sigma << ", " << late_pulse_scale << " and time offset = " << light_time_offset << std::endl;
+            T pmt_efficiency, T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+    
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
@@ -420,7 +466,7 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
 
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time,
-            peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale, uv_absorption, z_offset, n_sodium_events, light_profile_type);
+            peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale, uv_absorption, fitting_uv_abs, z_offset, n_sodium_events, light_profile_type);
     
     // unpack into yields, yields^2, and times
     boost::shared_ptr<std::vector<T>> pred_yields;
@@ -482,14 +528,13 @@ T CalculateNLLH::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_
         double this_time = llh_grid.at(i);
 
         // grab our data
-        double k = Interpolation<double>(this_time, data_times, pmt_data.data);
-        
+        double k = InterpolationDouble(this_time, data_times, pmt_data.data);
+
         // now call our interpolation function for pred yields
-        T pred_yields_this_time = Interpolation<T>(this_time, pred_times_offset, *pred_yields);
-        T pred_yields_squared_this_time = Interpolation<T>(this_time, pred_times_offset, *pred_yields_squared);
+        T pred_yields_this_time = Interpolation(this_time, pred_times_offset, *pred_yields);
+        T pred_yields_squared_this_time = Interpolation(this_time, pred_times_offset, *pred_yields_squared);
 
         // now put together to make mu and sigma2!
-        //T adjusted_norm = normalization / PMT_eff[key];
         T adjusted_norm = normalization * pmt_efficiency;
         T mu = pred_yields_this_time * adjusted_norm + pre_event_average;
         T sigma_squared = pred_yields_squared_this_time * (adjusted_norm * adjusted_norm) + (pre_event_average * pre_event_average);

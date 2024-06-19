@@ -224,10 +224,10 @@ void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
     }
 }
 
-void get_light_yield(double const & omega,
-                     double const & distance_travelled,
-                     double const & absorption_length,
-                     double & light_yield) {
+template<typename T> void get_light_yield(double const & omega,
+                                          double const & distance_travelled,
+                                          T absorption_length,
+                                          T & light_yield) {
 
     light_yield = omega * std::exp(- distance_travelled / absorption_length);
 }
@@ -654,17 +654,17 @@ void YieldsPerPMT::SetChunks(double desired_chunk_width, double desired_chunk_he
 
 // let's make a function to calculate how much light from a vertex goes into each PMT
 
-void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
-                               double const & uv_index_of_refraction,
-                               double const & vis_index_of_refraction,
-                               double const & n_photons_produced,
-                               double const & time_offset,
-                               double const & absorption_length,
-                               std::vector<yields_pmt_info> const & pmt_parsed_information_,
-                               bool const & is_visible,
-                               I3Position const & vertex,
-                               boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
-                               std::vector<CCMPMTKey> const & keys_to_fit) {
+template<typename T> void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
+                                                    double const & uv_index_of_refraction,
+                                                    double const & vis_index_of_refraction,
+                                                    double const & n_photons_produced,
+                                                    T const & time_offset,
+                                                    double const & absorption_length,
+                                                    std::vector<yields_pmt_info> const & pmt_parsed_information_,
+                                                    bool const & is_visible,
+                                                    I3Position const & vertex,
+                                                    boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
+                                                    std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // let's start by looping over our pmt parsed information
     for (size_t pmt_it = 0; pmt_it < pmt_parsed_information_.size(); ++pmt_it) {
@@ -694,7 +694,7 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
 
         // let's check if this pmt is in our map to save all photon yield summary info, if not we add it!
         if (all_pmt_yields_map->find(pmt_key) == all_pmt_yields_map->end()) {
-            (*all_pmt_yields_map)[pmt_key] = PhotonYieldSummarySeries ();
+            (*all_pmt_yields_map)[pmt_key] = std::vector<photon_yield_summary<T>>{};
         }
 
         else {
@@ -706,12 +706,12 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
                                                             facing_dir_x, facing_dir_y, facing_dir_z,
                                                             pmt_facing_area, pmt_side_area, omega, distance_travelled);
 
-            double photons_in_this_pmt;
+            T photons_in_this_pmt;
             // now call function to get light yields
             get_light_yield(omega, distance_travelled, absorption_length, photons_in_this_pmt);
             photons_in_this_pmt *= n_photons_produced;
 
-            double travel_time;
+            T travel_time;
             // ok so we have the photons seen by this pmt, let's get the propagation times
             if (is_visible) {
                 travel_time = distance_travelled / (c_cm_per_nsec / vis_index_of_refraction); // units of nsec
@@ -721,14 +721,14 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
             }
 
             // now all that's left to do is save!
-            PhotonYieldSummary this_pmt_yield_summary;
+            photon_yield_summary<T> this_pmt_yield_summary;
             this_pmt_yield_summary.time = travel_time + time_offset;
             this_pmt_yield_summary.yield = photons_in_this_pmt;
             if (is_visible){
-                this_pmt_yield_summary.photon_source = PhotonYieldSummary::PhotonSource::TPBFoil;
+                this_pmt_yield_summary.photon_source = photon_yield_summary<T>::PhotonSource::TPBFoil;
             }
             else {
-                this_pmt_yield_summary.photon_source = PhotonYieldSummary::PhotonSource::Vertex;
+                this_pmt_yield_summary.photon_source = photon_yield_summary<T>::PhotonSource::Vertex;
             }
             for (auto it = all_pmt_yields_map->begin(); it != all_pmt_yields_map->end(); ++it) {
                 CCMPMTKey map_key = it->first;
@@ -742,17 +742,17 @@ void vertex_to_pmt_propagation(double const & c_cm_per_nsec,
 
 // now let's do vertex --> TPB --> PMT propagation
 
-void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
-                                      double const & uv_index_of_refraction,
-                                      double const & vis_index_of_refraction,
-                                      double const & n_photons_produced,
-                                      double const & UV_absorption_length,
-                                      double const & vis_absorption_length,
-                                      I3Position const & vertex,
-                                      std::vector<yields_pmt_info> const & pmt_parsed_information_,
-                                      std::vector<secondary_loc_info> const & locations_to_check_information_,
-                                      boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
-                                      std::vector<CCMPMTKey> const & keys_to_fit) {
+template<typename T> void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
+                                                           double const & uv_index_of_refraction,
+                                                           double const & vis_index_of_refraction,
+                                                           double const & n_photons_produced,
+                                                           T UV_absorption_length,
+                                                           double const & vis_absorption_length,
+                                                           I3Position const & vertex,
+                                                           std::vector<yields_pmt_info> const & pmt_parsed_information_,
+                                                           std::vector<secondary_loc_info> const & locations_to_check_information_,
+                                                           boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
+                                                           std::vector<CCMPMTKey> const & keys_to_fit) {
     // define some things
     double omega;
     double distance_travelled;
@@ -805,16 +805,16 @@ void vertex_to_TPB_to_PMT_propagation(double const & c_cm_per_nsec,
     }
 }
 
-void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
-                                double const & c_cm_per_nsec,
-                                double const & uv_index_of_refraction,
-                                double const & vis_index_of_refraction,
-                                double const & UV_absorption_length,
-                                double const & vis_absorption_length,
-                                std::vector<yields_pmt_info> const & pmt_parsed_information_,
-                                std::vector<secondary_loc_info> const & locations_to_check_information_,
-                                boost::shared_ptr<PhotonYieldSummarySeriesMap> & all_pmt_yields_map,
-                                std::vector<CCMPMTKey> const & keys_to_fit) {
+template<typename T> void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
+                                                     double const & c_cm_per_nsec,
+                                                     double const & uv_index_of_refraction,
+                                                     double const & vis_index_of_refraction,
+                                                     T UV_absorption_length,
+                                                     double const & vis_absorption_length,
+                                                     std::vector<yields_pmt_info> const & pmt_parsed_information_,
+                                                     std::vector<secondary_loc_info> const & locations_to_check_information_,
+                                                     boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
+                                                     std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // ok so let's grab our vertex locations from our soidum_event
     I3Position photon_vertex = soidum_event.photon_vertex;
@@ -823,7 +823,7 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
 
     double n_photons_1275 = 1.275;
     double n_photons_511 = 0.511;
-    double default_time_offset = 0.0;
+    T default_time_offset = 0.0;
 
     // now let's call our functions to get direct vertex --> PMT yields (UV scint light)
     vertex_to_pmt_propagation(c_cm_per_nsec, uv_index_of_refraction, vis_index_of_refraction, n_photons_1275,
@@ -849,13 +849,13 @@ void PutSimulationStepsTogether(HESodiumEvent const & soidum_event,
     // ok done!
 }
 
-boost::shared_ptr<PhotonYieldSummarySeriesMap> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, double UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit) {
+template<typename T> boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // so we have an event we want to simulate
     // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
 
-    // let's also make our PhotonYieldSummary map to save to
-    boost::shared_ptr<PhotonYieldSummarySeriesMap> all_pmt_yields_map_ = boost::make_shared<PhotonYieldSummarySeriesMap> ();
+    // let's also make our photon_yield_summary map to save to
+    boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> all_pmt_yields_map_ = boost::make_shared<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> ();
 
     // ok we've set up the geometry stuff, now we can take the vertex and calculate light yields in each pmt
     PutSimulationStepsTogether(event_vertex, c_cm_per_nsec_, uv_index_of_refraction_,
