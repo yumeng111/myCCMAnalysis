@@ -47,8 +47,6 @@ namespace bp = boost::python;
 //  that does the boost.python registration for class Nick.
 //
 #define REGISTER_THESE_THINGS                                           \
-  (SodiumVertexDistribution)(YieldsPerPMT)(GenerateExpectation)         \
-  (CalculateNLLH)                                                       \
   (cppMinimizer)                                                        \
   (AllPMTcppMinimizer)                                                  \
 

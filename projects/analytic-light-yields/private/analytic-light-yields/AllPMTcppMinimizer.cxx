@@ -85,10 +85,10 @@ struct NewLikelihoodFunctor {
     T evaluateLikelihood(std::vector<T> x) const {
         T total_llh = 0;
         if constexpr (std::is_same<T, double>::value) {
-            std::cout << "Rs = " << x[0] << ", tau_s = " << x[1] << ", tau_TPB = " << x[2] << ", and norm = " << x[3] << ", " << x[4] << ", " << x[5] << ", " << x[6] << std::endl;
+            std::cout << "Rs = " << x[0] << ", tau_s = " << x[1] << ", tau_TPB = " << x[2] << ", norm = " << x[3] << ", " << x[4] << ", " << x[5] << ", " << x[6] << ", and uv abs = " << x[207] << std::endl;
         } else {
             std::cout <<"Rs = " << x[0].value() << ", tau_s = " << x[1].value() << ", tau_TPB = " << x[2].value()
-                << ", and norm = " << x[3].value() << ", " << x[4].value() << ", " << x[5].value() << ", " << x[6].value() << std::endl;
+                << ", and norm = " << x[3].value() << ", " << x[4].value() << ", " << x[5].value() << ", " << x[6].value() << ", and uv abs = " << x[207].value() << std::endl;
         }
         for (size_t data_it = 0; data_it < llh_constructorAD.size(); data_it ++){
             // loop over each data set we are fitting to
@@ -153,9 +153,9 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
     std::vector<I3MapPMTKeyDouble> time_offsets = {time_offset1, time_offset2, time_offset3, time_offset4}; 
     std::vector<std::string> paramter_names = {"Rs", "tau_s", "tau_TPB", "norm1", "norm2", "norm3", "norm4"};
     
-    double seeds[4] = {0.34, 8.2, 3.0, 1e3};
+    double seeds[4] = {0.34, 8.2, 3.0, 1000.0};
     double grad_scales[4] = {1e-3, 1e-3, 1e-3, 1e-3};
-    double mins[4] = {0.2, 2.0, 1.0, 10.0};
+    double mins[4] = {0.2, 2.0, 1.0, 70.0};
     double maxs[4] = {0.5, 16.0, 9.0, 1e10};
 
     // let's initialize our constructor
@@ -227,7 +227,7 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         }
         minimizer.addParameter(pmt_eff_seed, 1e-4, 1.0, pmt_eff_seed * 1e2); // pmt eff
     } 
-    minimizer.addParameter(55.0, 1e-4, 30.0, 100.0); // uv absorption!!!
+    minimizer.addParameter(55.0, 1e-5, 30.0, 100.0); // uv absorption!!!
     minimizer.setHistorySize(20);
 
     // fix parameter idx of guys we are not minimizing

@@ -40,97 +40,97 @@
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <analytic-light-yields/CalculateNLLH.h>
 
-template<typename T> CalculateNLLH<T>::CalculateNLLH() :
-    max_bins(100), n_sodium_events(20), portion_light_reflected_by_tpb(1.0), desired_chunk_width(20.0), desired_chunk_height(20.0), keys_to_fit(I3VectorCCMPMTKey()) {}
-
-template<typename T> CalculateNLLH<T>::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, size_t n_sodium_events, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height, I3VectorCCMPMTKey keys_to_fit) :
-    max_bins(max_bins), n_sodium_events(n_sodium_events), portion_light_reflected_by_tpb(portion_light_reflected_by_tpb), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height), keys_to_fit(keys_to_fit)
-{
-    SetData(data_frame);
-    SetGeo(geo_frame);
-}
-
-template<typename T> void CalculateNLLH<T>::SetKeys(I3VectorCCMPMTKey keys){
-    keys_to_fit = keys;
-}
-
-template<typename T> void CalculateNLLH<T>::SetGeo(I3FramePtr geo_frame) {
-    this->geo_frame = geo_frame;
-    gen_expectation = boost::make_shared<GenerateExpectation<T>>(keys_to_fit, n_sodium_events, geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
-}
-
-template<typename T> void CalculateNLLH<T>::SetData(I3FramePtr data_frame) {
-    bool restrict_keys = keys_to_fit.size() > 0;
-    // grab our data out of the frame
-    I3MapPMTKeyVectorDoubleConstPtr data_map = data_frame->Get<I3MapPMTKeyVectorDoubleConstPtr>("AccumulatedEventsMap");
-    for(I3MapPMTKeyVectorDouble::const_iterator i = data_map->begin(); i != data_map->end(); i++) {
-        if(restrict_keys and std::find(keys_to_fit.begin(), keys_to_fit.end(), i->first) == keys_to_fit.end()) {
-            continue;
-        }
-        // based on the way I accumulated data, the event starts around the 50th bin
-        // so to be safe, let's use the first 40 bins for out pre-event average
-        double pre_event_values = 0.0;
-        double pre_event_deriv = 0.0;
-        double pre_event_bins = 0.0;
-        double time_counter = 0.0;
-        double prev_data = 0.0;
-        for(double const & data_points: i->second) {
-            if (time_counter < 80.0){
-                pre_event_values += data_points;
-                pre_event_bins += 1.0;
-                pre_event_deriv += abs(data_points - prev_data);
-            } 
-            prev_data = data_points;
-            time_counter += 2.0;
-        }
-
-        SinglePMTInfo pmt_data;
-        pmt_data.key = i->first;
-        size_t peak_idx = std::distance(i->second.begin(), std::max_element(i->second.begin(), i->second.end()));
-        pmt_data.peak_value = i->second.at(peak_idx); 
-        size_t start_idx = std::max(size_t(3), peak_idx) - 3;
-        size_t min_idx = std::max(size_t(15), peak_idx) - 15;
-        size_t max_idx = std::min(min_idx + max_bins, i->second.size());
-        pmt_data.data = std::vector(i->second.begin() + min_idx, i->second.begin() + max_idx);
-        pmt_data.start_time = (start_idx - min_idx) * 2.0;
-        pmt_data.max_time = (std::max(int(min_idx), int(max_idx) - 1) - min_idx) * 2.0 + 30.0;
-        pmt_data.peak_time = (peak_idx - min_idx) * 2.0;
-
-        // let's also get the event start bin using derivs
-        bool found_start = false;
-        double deriv_threshold = (pre_event_deriv / pre_event_bins) * 5.0;
-        pmt_data.data_times.push_back(0.0);
-        for (size_t data_it = 1; data_it < pmt_data.data.size(); data_it++){
-            double deriv = pmt_data.data.at(data_it) - pmt_data.data.at(data_it - 1);
-            if (deriv > deriv_threshold and found_start == false){
-                pmt_data.event_start_bin = data_it - 1;
-                found_start = true;
-            }
-            pmt_data.data_times.push_back(pmt_data.data_times[data_it - 1] + 2.0);
-        }
-
-        // let's subtract off our event start time from pmt_data.data_times
-        for (size_t i = 0; i < pmt_data.data_times.size(); i++){
-            pmt_data.data_times.at(i) -= (pmt_data.event_start_bin * 2.0);
-        }
-        pmt_data.pre_event_average = pre_event_values / pre_event_bins;
-        data[pmt_data.key] = pmt_data;
-    }
-    n_data_events = data_frame->Get<I3Double>("TotalEventsPastCuts").value;
-
-}
-
-template<typename T> I3MapPMTKeyVectorDoublePtr CalculateNLLH<T>::GetData() const {
-    I3MapPMTKeyVectorDoublePtr data_map = boost::make_shared<I3MapPMTKeyVectorDouble> ();
-    for (std::map<CCMPMTKey, SinglePMTInfo>::const_iterator i = data.begin(); i != data.end(); i++) {
-        data_map->insert(std::make_pair(i->first, i->second.data));
-    }
-    return data_map;
-}
-
-template<typename T> void CalculateNLLH<T>::SetGenExpectation(boost::shared_ptr<GenerateExpectation<T>> gen_expectation) {
-    this->gen_expectation = gen_expectation;
-}
+//template<typename T> CalculateNLLH<T>::CalculateNLLH() :
+//    max_bins(100), n_sodium_events(20), portion_light_reflected_by_tpb(1.0), desired_chunk_width(20.0), desired_chunk_height(20.0), keys_to_fit(I3VectorCCMPMTKey()) {}
+//
+//template<typename T> CalculateNLLH<T>::CalculateNLLH(I3FramePtr data_frame, I3FramePtr geo_frame, size_t max_bins, size_t n_sodium_events, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height, I3VectorCCMPMTKey keys_to_fit) :
+//    max_bins(max_bins), n_sodium_events(n_sodium_events), portion_light_reflected_by_tpb(portion_light_reflected_by_tpb), desired_chunk_width(desired_chunk_width), desired_chunk_height(desired_chunk_height), keys_to_fit(keys_to_fit)
+//{
+//    SetData(data_frame);
+//    SetGeo(geo_frame);
+//}
+//
+//template<typename T> void CalculateNLLH<T>::SetKeys(I3VectorCCMPMTKey keys){
+//    keys_to_fit = keys;
+//}
+//
+//template<typename T> void CalculateNLLH<T>::SetGeo(I3FramePtr geo_frame) {
+//    this->geo_frame = geo_frame;
+//    gen_expectation = boost::make_shared<GenerateExpectation<T>>(keys_to_fit, n_sodium_events, geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
+//}
+//
+//template<typename T> void CalculateNLLH<T>::SetData(I3FramePtr data_frame) {
+//    bool restrict_keys = keys_to_fit.size() > 0;
+//    // grab our data out of the frame
+//    I3MapPMTKeyVectorDoubleConstPtr data_map = data_frame->Get<I3MapPMTKeyVectorDoubleConstPtr>("AccumulatedEventsMap");
+//    for(I3MapPMTKeyVectorDouble::const_iterator i = data_map->begin(); i != data_map->end(); i++) {
+//        if(restrict_keys and std::find(keys_to_fit.begin(), keys_to_fit.end(), i->first) == keys_to_fit.end()) {
+//            continue;
+//        }
+//        // based on the way I accumulated data, the event starts around the 50th bin
+//        // so to be safe, let's use the first 40 bins for out pre-event average
+//        double pre_event_values = 0.0;
+//        double pre_event_deriv = 0.0;
+//        double pre_event_bins = 0.0;
+//        double time_counter = 0.0;
+//        double prev_data = 0.0;
+//        for(double const & data_points: i->second) {
+//            if (time_counter < 80.0){
+//                pre_event_values += data_points;
+//                pre_event_bins += 1.0;
+//                pre_event_deriv += abs(data_points - prev_data);
+//            } 
+//            prev_data = data_points;
+//            time_counter += 2.0;
+//        }
+//
+//        SinglePMTInfo pmt_data;
+//        pmt_data.key = i->first;
+//        size_t peak_idx = std::distance(i->second.begin(), std::max_element(i->second.begin(), i->second.end()));
+//        pmt_data.peak_value = i->second.at(peak_idx); 
+//        size_t start_idx = std::max(size_t(3), peak_idx) - 3;
+//        size_t min_idx = std::max(size_t(15), peak_idx) - 15;
+//        size_t max_idx = std::min(min_idx + max_bins, i->second.size());
+//        pmt_data.data = std::vector(i->second.begin() + min_idx, i->second.begin() + max_idx);
+//        pmt_data.start_time = (start_idx - min_idx) * 2.0;
+//        pmt_data.max_time = (std::max(int(min_idx), int(max_idx) - 1) - min_idx) * 2.0 + 30.0;
+//        pmt_data.peak_time = (peak_idx - min_idx) * 2.0;
+//
+//        // let's also get the event start bin using derivs
+//        bool found_start = false;
+//        double deriv_threshold = (pre_event_deriv / pre_event_bins) * 5.0;
+//        pmt_data.data_times.push_back(0.0);
+//        for (size_t data_it = 1; data_it < pmt_data.data.size(); data_it++){
+//            double deriv = pmt_data.data.at(data_it) - pmt_data.data.at(data_it - 1);
+//            if (deriv > deriv_threshold and found_start == false){
+//                pmt_data.event_start_bin = data_it - 1;
+//                found_start = true;
+//            }
+//            pmt_data.data_times.push_back(pmt_data.data_times[data_it - 1] + 2.0);
+//        }
+//
+//        // let's subtract off our event start time from pmt_data.data_times
+//        for (size_t i = 0; i < pmt_data.data_times.size(); i++){
+//            pmt_data.data_times.at(i) -= (pmt_data.event_start_bin * 2.0);
+//        }
+//        pmt_data.pre_event_average = pre_event_values / pre_event_bins;
+//        data[pmt_data.key] = pmt_data;
+//    }
+//    n_data_events = data_frame->Get<I3Double>("TotalEventsPastCuts").value;
+//
+//}
+//
+//template<typename T> I3MapPMTKeyVectorDoublePtr CalculateNLLH<T>::GetData() const {
+//    I3MapPMTKeyVectorDoublePtr data_map = boost::make_shared<I3MapPMTKeyVectorDouble> ();
+//    for (std::map<CCMPMTKey, SinglePMTInfo>::const_iterator i = data.begin(); i != data.end(); i++) {
+//        data_map->insert(std::make_pair(i->first, i->second.data));
+//    }
+//    return data_map;
+//}
+//
+//template<typename T> void CalculateNLLH<T>::SetGenExpectation(boost::shared_ptr<GenerateExpectation<T>> gen_expectation) {
+//    this->gen_expectation = gen_expectation;
+//}
 
 //template<typename T> CalculateNLLH<T>::AD CalculateNLLH::GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, 
 //                                         const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency) {
