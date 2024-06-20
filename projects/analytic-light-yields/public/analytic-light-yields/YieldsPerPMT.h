@@ -16,6 +16,7 @@
 #include <cmath>
 #include <map>
 
+#include "icetray/ctpl.h"
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
 #include "dataclasses/physics/HESodiumEvent.h"
@@ -55,6 +56,23 @@ struct secondary_loc_info {
     double pmt_portion = 0.0;
     double loc_facing_area = 0.0;
     double loc_side_area = 0.0;
+};
+
+template <typename T>
+struct PhotonPropagationJob {
+    std::atomic<bool> running = false;
+    size_t event_idx = 0;
+    std::vector<HESodiumEvent> this_event;
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields = nullptr;
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared = nullptr;
+};
+
+template <typename T>
+struct PhotonPropagationResult {
+    size_t event_idx = 0;
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields = nullptr;
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared = nullptr;
+    bool done = false;
 };
 
 class YieldsPerPMT {
@@ -100,6 +118,10 @@ class YieldsPerPMT {
 
     bool set_secondary_locs_ = false;
 
+    ctpl::thread_pool pool;
+    size_t max_cached_vertices = (size_t) 2000;
+    std::exception_ptr teptr = nullptr;
+
 public:
     YieldsPerPMT() = default;
     YieldsPerPMT(I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
@@ -108,7 +130,8 @@ public:
     void SetGeoFrame(I3FramePtr geo_frame);
     void SetChunks(double chunk_width, double chunk_height);
 
-    template<typename T> boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> GetAllYields(HESodiumEvent const & event_vertex, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit);
+    template<typename T> void GetAllYields(size_t n_threads, boost::shared_ptr<HESodiumEventSeries> event_vertices, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit,
+                                                     double max_time, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
 
 };
 
@@ -170,7 +193,7 @@ template<typename T> void vertex_to_pmt_propagation(double const & c_cm_per_nsec
                                                     std::vector<yields_pmt_info> const & pmt_parsed_information_,
                                                     bool const & is_visible,
                                                     I3Position const & vertex,
-                                                    boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
+                                                    std::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
                                                     std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // let's start by looping over our pmt parsed information
@@ -256,7 +279,7 @@ template<typename T> void vertex_to_TPB_to_PMT_propagation(double const & c_cm_p
                                                            I3Position const & vertex,
                                                            std::vector<yields_pmt_info> const & pmt_parsed_information_,
                                                            std::vector<secondary_loc_info> const & locations_to_check_information_,
-                                                           boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
+                                                           std::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
                                                            std::vector<CCMPMTKey> const & keys_to_fit) {
     // define some things
     double omega;
@@ -316,7 +339,7 @@ template<typename T> void PutSimulationStepsTogether(HESodiumEvent const & soidu
                                                      T vis_absorption_length,
                                                      std::vector<yields_pmt_info> const & pmt_parsed_information_,
                                                      std::vector<secondary_loc_info> const & locations_to_check_information_,
-                                                     boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
+                                                     std::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
                                                      std::vector<CCMPMTKey> const & keys_to_fit) {
 
     // ok so let's grab our vertex locations from our soidum_event
@@ -352,21 +375,301 @@ template<typename T> void PutSimulationStepsTogether(HESodiumEvent const & soidu
     // ok done!
 }
 
-template<typename T> boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> YieldsPerPMT::GetAllYields(HESodiumEvent const & event_vertex, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit) {
 
-    // so we have an event we want to simulate
-    // probably want to to multi-thread at some point, but for now we will just loop over all high energy sodium events
+template<typename T>
+void FrameThread(std::atomic<bool> & running,
+                 std::vector<CCMPMTKey> const & keys_to_fit,
+                 std::vector<HESodiumEvent> const & sodium_events,
+                 double const & c_cm_per_nsec,
+                 double const & uv_index_of_refraction,
+                 double const & vis_index_of_refraction,
+                 T UV_absorption_length,
+                 T vis_absorption_length,
+                 std::vector<yields_pmt_info> const & pmt_parsed_information_,
+                 std::vector<secondary_loc_info> const & locations_to_check_information_,
+                 double max_time,
+                 std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields,
+                 std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared) {
 
-    // let's also make our photon_yield_summary map to save to
-    boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> all_pmt_yields_map_ = boost::make_shared<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> ();
+    // now let's loop over each event in our vector sodium_events
+    for (size_t event_it = 0; event_it < sodium_events.size(); event_it ++){
 
-    // ok we've set up the geometry stuff, now we can take the vertex and calculate light yields in each pmt
+        // call simulation code
+        std::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> this_event_pmt_yields_map = std::make_shared<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>>();
+        PutSimulationStepsTogether(sodium_events.at(event_it), c_cm_per_nsec, uv_index_of_refraction,
+                                   vis_index_of_refraction, UV_absorption_length, vis_absorption_length,
+                                   pmt_parsed_information_, locations_to_check_information_, this_event_pmt_yields_map, keys_to_fit);
+        
+        // now let's bin this_event_pmt_yields_map 
+        size_t n_bins = max_time / 2.0;
+        
+        // loop over each key are we calculating yields + offset for
+        for (size_t k = 0; k < keys_to_fit.size(); k++){ 
+            CCMPMTKey key = keys_to_fit.at(k);
+            (*this_event_binned_yields)[key] = std::vector<T>(n_bins, 0.0);
+            (*this_event_binned_yields_squared)[key] = std::vector<T>(n_bins, 0.0);
+            
+            auto i = this_event_pmt_yields_map->find(key);
+            if (i == this_event_pmt_yields_map->end()) {
+                continue;
+            }
+            std::vector<photon_yield_summary<T>> const & yields = i->second;
+            if(yields.size() == 0) {
+                continue;
+            }
+            for(size_t yield_it = 0; yield_it < yields.size(); ++yield_it) {
+                photon_yield_summary<T> const & yield = yields.at(yield_it);
+                size_t bin_idx;
+                if constexpr (std::is_same<T, double>::value) {
+                    bin_idx = yield.time / 2.0;
+                } else {
+                    bin_idx = yield.time.value() / 2.0;
+                }
+                if(bin_idx >= n_bins) {
+                    continue;
+                }
+                this_event_binned_yields->at(key).at(bin_idx) += yield.yield;
+                this_event_binned_yields_squared->at(key).at(bin_idx) += (yield.yield * yield.yield);
+            }
+        }
+    
+    }
+
+
+    running.store(false);
+}
+
+template<typename T>
+void RunFrameThread(ctpl::thread_pool & pool,
+                    PhotonPropagationJob<T> * job,
+                    std::vector<CCMPMTKey> const & keys_to_fit,
+                    double const & c_cm_per_nsec,
+                    double const & uv_index_of_refraction,
+                    double const & vis_index_of_refraction,
+                    T UV_absorption_length,
+                    T vis_absorption_length,
+                    double max_time,
+                    std::vector<yields_pmt_info> const & pmt_parsed_information_,
+                    std::vector<secondary_loc_info> const & locations_to_check_information_) {
+
+    job->running.store(true);
+    pool.push([ &running = job->running, &keys_to_fit, &sodium_event = job->this_event,
+                &c_cm_per_nsec, &uv_index_of_refraction, &vis_index_of_refraction,
+                UV_absorption_length, vis_absorption_length, &pmt_parsed_information_, &locations_to_check_information_,
+                max_time, job 
+    ] (int id) {
+    FrameThread(running,
+                keys_to_fit,
+                sodium_event,
+                c_cm_per_nsec,
+                uv_index_of_refraction,
+                vis_index_of_refraction,
+                UV_absorption_length, 
+                vis_absorption_length,
+                pmt_parsed_information_,
+                locations_to_check_information_,
+                max_time,
+                job->this_event_binned_yields,
+                job->this_event_binned_yields_squared);
+    });
+
+}
+
+template<typename T> void YieldsPerPMT::GetAllYields(size_t n_threads, boost::shared_ptr<HESodiumEventSeries> event_vertices, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit,
+                                                     double max_time, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields){
+    
+    // this function takes the list of event vertices, uv absorption length (which we will be fitting for), keys to fit (which will usually be a list of just one key),
+    // and finally binned_yields and binned_square_yields as references which we will be updating
+    // we are going to multi thread this code -- chunk up event_vertices into vector for each thread
+    
+    // set our absorption length for visible light (in cm -- shouldnt really affect things)
     T vis_absorption_length_ = 2000.0;
-    PutSimulationStepsTogether(event_vertex, c_cm_per_nsec_, uv_index_of_refraction_,
-                               vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
-                               pmt_parsed_information_, locations_to_check_information_, all_pmt_yields_map_, keys_to_fit);
 
-    return all_pmt_yields_map_;
+    // will be used for multi-threading our simulation jobs
+    std::deque<PhotonPropagationJob<T> *> free_jobs;
+    std::deque<PhotonPropagationJob<T> *> running_jobs;
+    std::deque<PhotonPropagationResult<T>> results;
+    size_t min_vertex_idx = 0;
+
+    // set up our num threads
+    size_t num_threads;
+    if (n_threads == 0){
+        num_threads = std::thread::hardware_concurrency();
+    } else{
+        num_threads = n_threads;
+    }
+    pool.resize(num_threads);
+
+    // now let's chunk up our event_vertices so we can give 1 vector of event_vertices to each thread
+    std::vector<std::vector<HESodiumEvent>> events_per_thread;
+    size_t n_events_per_thread = event_vertices->size() / num_threads;
+    size_t left_over_events = event_vertices->size() - (num_threads * n_events_per_thread);
+
+    size_t sodium_event_idx = 0;
+    size_t accounted_for_left_over_events = 0;
+    for (size_t thread_it = 0; thread_it < num_threads; thread_it++){
+        // make vector to hold events
+        std::vector<HESodiumEvent> this_thread_vector_of_events;
+
+        // things to keep track of
+        size_t n_events_on_this_thread = 0;
+
+        // now time to actaully add the sodium events to this_thread_vector_of_events
+        while (n_events_on_this_thread < n_events_per_thread){
+            this_thread_vector_of_events.push_back(event_vertices->at(sodium_event_idx));
+            n_events_on_this_thread += 1;
+            sodium_event_idx += 1;
+        }
+
+        // check if we've dolled out all of the left over events yet
+        if (accounted_for_left_over_events < left_over_events){
+            this_thread_vector_of_events.push_back(event_vertices->at(sodium_event_idx));
+            sodium_event_idx += 1;
+            accounted_for_left_over_events += 1;
+        }
+
+        events_per_thread.push_back(this_thread_vector_of_events);
+    }
+
+    // now let's loop over our pre-made lists of sodium events for each thread
+    for (size_t sodium_it = 0; sodium_it < events_per_thread.size(); ++sodium_it) {
+        std::vector<HESodiumEvent> this_event = events_per_thread.at(sodium_it);
+
+        while(true) {
+            // Check if any jobs have finished
+            for(int i=int(running_jobs.size())-1; i>=0; --i) {
+			    if (teptr) {
+				    try{
+					    std::rethrow_exception(teptr);
+				    }
+				    catch(const std::exception &ex)
+				    {
+					    std::cerr << "Thread exited with exception: " << ex.what() << "\n";
+				    }
+			    }
+			    if(not running_jobs.at(i)->running.load()) {
+				    PhotonPropagationJob<T> * job = running_jobs.at(i);
+                    running_jobs.erase(running_jobs.begin() + i);
+                    free_jobs.push_back(job);
+                    results.at(job->event_idx - min_vertex_idx).done = true;
+                } else {
+                    PhotonPropagationJob<T> * job = running_jobs.at(i);
+                }
+            }
+
+            // Check for any done results and push the corresponding frames
+            size_t results_done = 0;
+            for(size_t i=0; i<results.size(); ++i) {
+                if(results.at(i).done) {
+                    // let's save this_event_binned_yields to our binned_yields map
+                    for (auto e = results.at(i).this_event_binned_yields->begin(); e != results.at(i).this_event_binned_yields->end(); ++e) {
+                        // now let's take our binned_yields at this pmt and add vector appropraitly
+                        // and same for the binned_yields_squared
+                        if (binned_yields[e->first].size() == 0){
+                            binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                            binned_square_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                        }
+                        for (size_t b = 0; b < e->second.size(); b++){
+                            binned_yields[e->first].at(b) += e->second.at(b);
+                            binned_square_yields[e->first].at(b) += results.at(i).this_event_binned_yields_squared->at(e->first).at(b);
+                        }
+                    }
+                    // now reset our results object
+                    results.at(i).this_event_binned_yields = nullptr;
+                    results.at(i).this_event_binned_yields_squared = nullptr;
+                    results.at(i).event_idx = 0;
+                    results_done += 1;
+                } else {
+                    break;
+                }
+            }
+            if(results_done > 0) {
+                results.erase(results.begin(), results.begin() + results_done);
+                min_vertex_idx += results_done;
+            }
+
+            // Attempt to queue up a new job for the frame
+            PhotonPropagationJob<T> * job = nullptr;
+
+            if(free_jobs.size() > 0) {
+                job = free_jobs.front();
+                job->running.store(false);
+                free_jobs.pop_front();
+            } else if(running_jobs.size() < num_threads) {
+                job = new PhotonPropagationJob<T>();
+                job->running.store(false);
+            }
+
+            if(job != nullptr and results.size() < max_cached_vertices) {
+                job->running.store(true);
+                running_jobs.push_back(job);
+                job->event_idx = sodium_it;
+                job->this_event = this_event; 
+                job->this_event_binned_yields = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>(); 
+                job->this_event_binned_yields_squared = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>(); 
+                results.emplace_back();
+                results.back().event_idx = job->event_idx;
+                results.back().this_event_binned_yields = job->this_event_binned_yields;
+                results.back().this_event_binned_yields_squared = job->this_event_binned_yields_squared;
+                results.back().done = false;
+                RunFrameThread<T>(pool, job, keys_to_fit, c_cm_per_nsec_, uv_index_of_refraction_, vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
+                               max_time, pmt_parsed_information_, locations_to_check_information_);
+                break;
+            } else if(job != nullptr) {
+                free_jobs.push_back(job);
+            }
+        } 
+    }    
+
+    // final check for any running jobs
+    while(running_jobs.size() > 0) {
+        // Check if any jobs have finished
+        for(int i=int(running_jobs.size())-1; i>=0; --i) {
+            if(not running_jobs.at(i)->running.load()) {
+                PhotonPropagationJob<T> * job = running_jobs.at(i);
+                running_jobs.erase(running_jobs.begin() + i);
+                free_jobs.push_back(job);
+                results.at(job->event_idx - min_vertex_idx).done = true;
+            }
+        }
+        // Check for any done results and push the corresponding frames
+        size_t results_done = 0;
+        for(size_t i=0; i<results.size(); ++i) {
+            if(results.at(i).done) {
+                // let's save this_event_binned_yields to our binned_yields map
+                for (auto e = results.at(i).this_event_binned_yields->begin(); e != results.at(i).this_event_binned_yields->end(); ++e) {
+                    // now let's take our binned_yields at this pmt and add vector appropraitly
+                    // and same for the binned_yields_squared
+                    if (binned_yields[e->first].size() == 0){
+                        binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                        binned_square_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                    }
+                    for (size_t b = 0; b < e->second.size(); b++){
+                        binned_yields[e->first].at(b) += e->second.at(b);
+                        binned_square_yields[e->first].at(b) += results.at(i).this_event_binned_yields_squared->at(e->first).at(b);
+                    }
+                }
+                // now reset our results object
+                results.at(i).this_event_binned_yields = nullptr;
+                results.at(i).this_event_binned_yields_squared = nullptr;
+                results.at(i).event_idx = 0;
+                results_done += 1;
+            } else {
+                break;
+            }
+        }
+        if(results_done > 0) {
+            results.erase(results.begin(), results.begin() + results_done);
+            min_vertex_idx += results_done;
+        }
+    }
+    // we also need to delete free_jobs now that we're done threading
+    if (free_jobs.size() > 0){
+        for(PhotonPropagationJob<T> * obj : free_jobs){
+            delete obj;
+        }
+    }
+
 }
 
 #endif

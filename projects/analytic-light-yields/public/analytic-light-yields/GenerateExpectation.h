@@ -62,7 +62,10 @@ public:
     GenerateExpectation();
     GenerateExpectation(I3VectorCCMPMTKey keys_to_fit, size_t n_sodium_events, I3FramePtr geo_frame, double portion_light_reflected_by_tpb, double desired_chunk_width, double desired_chunk_height);
     void GetSodiumVertices(size_t n_events_to_simulate, double z_position);
-    void GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption);
+    //void GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption);
+    //void ComputeBinnedYield(CCMPMTKey key, double max_time);
+    void RunMultiThreadedCode(CCMPMTKey key, T uv_absorption, double max_time);
+
     std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                   AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
 
@@ -70,8 +73,6 @@ public:
                        double start_time, double max_time, double peak_time,
                        T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                        T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type); 
-    
-    void ComputeBinnedYield(CCMPMTKey key, double max_time);
     
     std::vector<double> light_prof_debug;
     std::vector<double> light_prof_times_debug;
@@ -107,15 +108,17 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
 
     bool compute_vertices = sodium_events_constructor == nullptr;
     bool compute_yields = yields_and_offset_constructor == nullptr;
-
+    //std::cout << "going to get yields for " << key << std::endl;
     // check that we made our sodium event vertices
     if(compute_vertices)
         GetSodiumVertices(n_sodium_events, z_offset);
     // now let's check if we got our yields + time offsets
     if(compute_yields or fitting_uv_abs)
-        GetYieldsAndOffsets(key, uv_absorption);
-        ComputeBinnedYield(key, max_time);
-
+        //GetYieldsAndOffsets(key, uv_absorption);
+        //ComputeBinnedYield(key, max_time);
+        RunMultiThreadedCode(key, uv_absorption, max_time);
+    //std::cout << "done getting yields for " << key << std::endl;
+        
     std::vector<T> const & binned_yield = binned_yields.at(key);
     std::vector<T> const & binned_square_yield = binned_square_yields.at(key);
 
@@ -135,38 +138,6 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
     for(size_t i = 0; i < n_light_bins; i++) {
         LAr_light_profile_squared[i] = LAr_light_profile[i] * LAr_light_profile[i];
     }
-
-    //// quick debug -- grabbing our light profile again but w very fine time binning
-    // empty all our vectors
-    //light_prof_debug.clear();
-    //light_prof_times_debug.clear();
-    //light_prof_time_offset_grad_debug.clear();
-
-    //double fine_grained_bin_spacing = 0.001;
-    //size_t n_light_bins_fine_grained = size_t(max_time / fine_grained_bin_spacing) + 1;
-    //std::vector<T> light_times_debug(n_light_bins_fine_grained, 0.0);
-    //for(size_t i = 0; i < n_light_bins_fine_grained; i++) {
-    //    light_times_debug[i] = fine_grained_bin_spacing * i + (light_time_offset - peak_time);
-    //    if constexpr (std::is_same<T, double>::value) {
-    //        light_prof_times_debug.push_back(light_times_debug[i]);
-    //    }
-    //}
-    //
-    //std::vector<T> LAr_light_profile_debug = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_profile_type, light_times_debug);
-    //for(size_t i = 0; i < n_light_bins_fine_grained; i++) {
-    //    // saving light profile value
-    //    if constexpr (std::is_same<T, double>::value) {
-    //        light_prof_debug.push_back(LAr_light_profile_debug[i]);
-    //    }
-    //    // saving time offset gradient
-    //    if constexpr (std::is_same<T, AD>::value) {
-    //        Grad grad;
-    //        LAr_light_profile_debug[i].copyGradient(grad.data());
-    //        light_prof_time_offset_grad_debug.push_back(grad.at(7));
-    //    }
-    //}
-
-    //// done w debug!
 
     // make a vector of final binned yields to return
     boost::shared_ptr<std::vector<T>> expectation = boost::make_shared<std::vector<T>> (LAr_light_profile.size(), 0.0);
@@ -200,60 +171,70 @@ template<typename T> void GenerateExpectation<T>::GetSodiumVertices(size_t n_eve
     event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
 }
 
-template<typename T> void GenerateExpectation<T>::GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption) {
-    yields_per_pmt_per_event.clear();
+template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(CCMPMTKey key, T uv_absorption, double max_time){
     binned_yields.clear();
     binned_square_yields.clear();
     yields_and_offset_constructor = std::make_shared<YieldsPerPMT>(geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
-    
-    // now loop over events and get map between CCMPMTKey and std::vector<photon_yield_summary> 
-    for (size_t sodium_it = 0; sodium_it < event_vertices->size(); ++sodium_it) {
-        boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), uv_absorption, {key});
-        yields_per_pmt_per_event.push_back(yields_per_event);
-        for (typename std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>::const_iterator i = yields_per_event->begin(); i != yields_per_event->end(); i++) {
-            std::vector<photon_yield_summary<T>> const & yields = i->second;
-            if(yields.size() == 0) {
-                continue;
-            }
-        }
-    }
+
+    size_t n_threads = 0;
+    yields_and_offset_constructor->GetAllYields(n_threads, event_vertices, uv_absorption, {key}, max_time,
+                                                binned_yields, binned_square_yields);
 }
 
-template<typename T> void GenerateExpectation<T>::ComputeBinnedYield(CCMPMTKey key, double max_time) {
-    size_t n_bins = max_time / 2.0;
-    binned_yields[key] = std::vector<T>(n_bins, 0.0);
-    binned_square_yields[key] = std::vector<T>(n_bins, 0.0);
-    std::vector<T> & binned_yields_per_pmt = binned_yields[key];
-    std::vector<T> & binned_square_yields_per_pmt = binned_square_yields[key];
-
-    for (size_t sodium_it = 0; sodium_it < event_vertices->size(); ++sodium_it) {
-        boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> yields_per_event = yields_per_pmt_per_event.at(sodium_it);
-        typename std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>::const_iterator i = yields_per_event->find(key);
-        if (i == yields_per_event->end()) {
-            continue;
-        }
-        std::vector<photon_yield_summary<T>> const & yields = i->second;
-        if(yields.size() == 0) {
-            continue;
-        }
-        for(size_t yield_it = 0; yield_it < yields.size(); ++yield_it) {
-            photon_yield_summary<T> const & yield = yields.at(yield_it);
-            size_t bin_idx;
-            if constexpr (std::is_same<T, double>::value) {
-                bin_idx = yield.time / 2.0;
-            } else {
-                bin_idx = yield.time.value() / 2.0;
-            }
-            if(bin_idx >= n_bins) {
-                continue;
-            }
-            binned_yields_per_pmt.at(bin_idx) += yield.yield;
-            binned_square_yields_per_pmt.at(bin_idx) += yield.yield * yield.yield;
-        }
-    }
-    binned_yields[key] = binned_yields_per_pmt;
-    binned_square_yields[key] = binned_square_yields_per_pmt;
-}
+//template<typename T> void GenerateExpectation<T>::GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption) {
+//    yields_per_pmt_per_event.clear();
+//    binned_yields.clear();
+//    binned_square_yields.clear();
+//    yields_and_offset_constructor = std::make_shared<YieldsPerPMT>(geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
+//    
+//    // now loop over events and get map between CCMPMTKey and std::vector<photon_yield_summary> 
+//    for (size_t sodium_it = 0; sodium_it < event_vertices->size(); ++sodium_it) {
+//        boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), uv_absorption, {key});
+//        yields_per_pmt_per_event.push_back(yields_per_event);
+//        for (typename std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>::const_iterator i = yields_per_event->begin(); i != yields_per_event->end(); i++) {
+//            std::vector<photon_yield_summary<T>> const & yields = i->second;
+//            if(yields.size() == 0) {
+//                continue;
+//            }
+//        }
+//    }
+//}
+//
+//template<typename T> void GenerateExpectation<T>::ComputeBinnedYield(CCMPMTKey key, double max_time) {
+//    size_t n_bins = max_time / 2.0;
+//    binned_yields[key] = std::vector<T>(n_bins, 0.0);
+//    binned_square_yields[key] = std::vector<T>(n_bins, 0.0);
+//    std::vector<T> & binned_yields_per_pmt = binned_yields[key];
+//    std::vector<T> & binned_square_yields_per_pmt = binned_square_yields[key];
+//
+//    for (size_t sodium_it = 0; sodium_it < event_vertices->size(); ++sodium_it) {
+//        boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> yields_per_event = yields_per_pmt_per_event.at(sodium_it);
+//        typename std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>::const_iterator i = yields_per_event->find(key);
+//        if (i == yields_per_event->end()) {
+//            continue;
+//        }
+//        std::vector<photon_yield_summary<T>> const & yields = i->second;
+//        if(yields.size() == 0) {
+//            continue;
+//        }
+//        for(size_t yield_it = 0; yield_it < yields.size(); ++yield_it) {
+//            photon_yield_summary<T> const & yield = yields.at(yield_it);
+//            size_t bin_idx;
+//            if constexpr (std::is_same<T, double>::value) {
+//                bin_idx = yield.time / 2.0;
+//            } else {
+//                bin_idx = yield.time.value() / 2.0;
+//            }
+//            if(bin_idx >= n_bins) {
+//                continue;
+//            }
+//            binned_yields_per_pmt.at(bin_idx) += yield.yield;
+//            binned_square_yields_per_pmt.at(bin_idx) += yield.yield * yield.yield;
+//        }
+//    }
+//    binned_yields[key] = binned_yields_per_pmt;
+//    binned_square_yields[key] = binned_square_yields_per_pmt;
+//}
 
 
 #endif
