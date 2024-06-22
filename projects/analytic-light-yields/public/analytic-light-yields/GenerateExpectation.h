@@ -64,7 +64,7 @@ public:
     void GetSodiumVertices(size_t n_events_to_simulate, double z_position);
     //void GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption);
     //void ComputeBinnedYield(CCMPMTKey key, double max_time);
-    void RunMultiThreadedCode(CCMPMTKey key, T uv_absorption, double max_time);
+    void RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, double max_time, bool fitting_uv_abs);
 
     std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                   AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
@@ -86,6 +86,8 @@ public:
     std::map<CCMPMTKey, std::vector<T>> binned_yields;
     std::map<CCMPMTKey, std::vector<T>> binned_square_yields;
     std::vector<boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>>> yields_per_pmt_per_event;
+
+    T uv_absorption_calculated = 0.0;
 };
 
 template<typename T> std::vector<T> GenerateExpectation<T>::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
@@ -105,23 +107,44 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
     GenerateExpectation<T>::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
-
+    
     bool compute_vertices = sodium_events_constructor == nullptr;
     bool compute_yields = yields_and_offset_constructor == nullptr;
-    //std::cout << "going to get yields for " << key << std::endl;
+
+    if (uv_absorption_calculated == 0.0){
+        uv_absorption_calculated = uv_absorption;
+    }
+
+    // one last check that we've already got the yields for key at this uv absorption
+    if (compute_yields == false){
+        // check if we've already calculated the yields at the given uv_absorption value
+        if (uv_absorption != uv_absorption_calculated){
+            // this is the case where uv absorption has changed!!! need to clear out binned_yields and re-compute
+            binned_yields.clear();
+            binned_square_yields.clear();
+            compute_yields = false;
+            uv_absorption_calculated = uv_absorption;
+        }
+        
+        // check if we have this key
+        bool key_exists = binned_yields.find(key) != binned_yields.end();
+        if (key_exists == false) {
+            compute_yields = true;
+        }
+    }
+
     // check that we made our sodium event vertices
     if(compute_vertices)
         GetSodiumVertices(n_sodium_events, z_offset);
     // now let's check if we got our yields + time offsets
-    if(compute_yields or fitting_uv_abs)
+    if(compute_yields)
         //GetYieldsAndOffsets(key, uv_absorption);
         //ComputeBinnedYield(key, max_time);
-        RunMultiThreadedCode(key, uv_absorption, max_time);
-    //std::cout << "done getting yields for " << key << std::endl;
+        RunMultiThreadedCode(keys_to_fit, uv_absorption, max_time, fitting_uv_abs);
         
     std::vector<T> const & binned_yield = binned_yields.at(key);
     std::vector<T> const & binned_square_yield = binned_square_yields.at(key);
-
+    
     peak_time += 40.0;
     size_t n_light_bins = size_t(max_time / 2.0) + 1 + 40;
     size_t offset = size_t(start_time / 2.0);
@@ -171,13 +194,11 @@ template<typename T> void GenerateExpectation<T>::GetSodiumVertices(size_t n_eve
     event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
 }
 
-template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(CCMPMTKey key, T uv_absorption, double max_time){
-    binned_yields.clear();
-    binned_square_yields.clear();
+template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, double max_time, bool fitting_uv_abs){
     yields_and_offset_constructor = std::make_shared<YieldsPerPMT>(geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
 
     size_t n_threads = 0;
-    yields_and_offset_constructor->GetAllYields(n_threads, event_vertices, uv_absorption, {key}, max_time,
+    yields_and_offset_constructor->GetAllYields(n_threads, event_vertices, uv_absorption, keys_to_fit, max_time,
                                                 binned_yields, binned_square_yields);
 }
 

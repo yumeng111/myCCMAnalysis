@@ -432,9 +432,7 @@ void FrameThread(std::atomic<bool> & running,
                 this_event_binned_yields_squared->at(key).at(bin_idx) += (yield.yield * yield.yield);
             }
         }
-    
     }
-
 
     running.store(false);
 }
@@ -477,7 +475,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
 
 template<typename T> void YieldsPerPMT::GetAllYields(size_t n_threads, boost::shared_ptr<HESodiumEventSeries> event_vertices, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit,
                                                      double max_time, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields){
-    
+
     // this function takes the list of event vertices, uv absorption length (which we will be fitting for), keys to fit (which will usually be a list of just one key),
     // and finally binned_yields and binned_square_yields as references which we will be updating
     // we are going to multi thread this code -- chunk up event_vertices into vector for each thread
@@ -504,7 +502,7 @@ template<typename T> void YieldsPerPMT::GetAllYields(size_t n_threads, boost::sh
     std::vector<std::vector<HESodiumEvent>> events_per_thread;
     size_t n_events_per_thread = event_vertices->size() / num_threads;
     size_t left_over_events = event_vertices->size() - (num_threads * n_events_per_thread);
-
+    
     size_t sodium_event_idx = 0;
     size_t accounted_for_left_over_events = 0;
     for (size_t thread_it = 0; thread_it < num_threads; thread_it++){
@@ -571,7 +569,7 @@ template<typename T> void YieldsPerPMT::GetAllYields(size_t n_threads, boost::sh
                         }
                         for (size_t b = 0; b < e->second.size(); b++){
                             binned_yields[e->first].at(b) += e->second.at(b);
-                            binned_square_yields[e->first].at(b) += results.at(i).this_event_binned_yields_squared->at(e->first).at(b);
+                            binned_square_yields[e->first].at(b) += (results.at(i).this_event_binned_yields_squared)->at(e->first).at(b);
                         }
                     }
                     // now reset our results object
