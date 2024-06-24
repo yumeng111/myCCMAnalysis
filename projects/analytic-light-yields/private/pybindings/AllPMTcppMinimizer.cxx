@@ -47,6 +47,7 @@ void register_AllPMTcppMinimizer() {
         .def("MultiplePMTMinimization", &AllPMTcppMinimizer::MultiplePMTMinimization)
         .def("ScanOverTOffsets", &AllPMTcppMinimizer::ScanOverTOffsets)
         .def("GrabNormSeed", &AllPMTcppMinimizer::GrabNormSeed)
+        .def("GrabPhotonsPerMeVSeed", &AllPMTcppMinimizer::GrabPhotonsPerMeVSeed)
         .def("FitUVAbsorption", &AllPMTcppMinimizer::FitUVAbsorption)
         .def("ScanOverUVAbsorption", &AllPMTcppMinimizer::ScanOverUVAbsorption)
         .def("GetBestFitData", &AllPMTcppMinimizer::GetBestFitData)

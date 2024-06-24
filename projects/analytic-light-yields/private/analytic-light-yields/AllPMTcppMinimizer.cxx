@@ -47,17 +47,18 @@ struct ZigZagPrior{
 
 struct NewLikelihoodFunctor {
 
-    static constexpr int NewDerivativeDimension = 7 + 200 + 1; // max number of dimensions :
-                                                               // Rs, tau_s, tau_TPB
-                                                               // norm, norm, norm, norm -- 1 / data set!
-                                                               // 200 PMT efficiency terms (many will be fixed)                                                 
-                                                               // finally -- uv absorption
-                                                               
-                                                               // things that are fixed for all PMTs:
-                                                               // Rt, tau_t, tau_rec, const_offset 
-                                                               
-                                                               // things that are fixed for each PMT : 
-                                                               // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
+    static constexpr int NewDerivativeDimension = 7 + 200 + 1 + 1; // max number of dimensions :
+                                                                   // Rs, tau_s, tau_TPB
+                                                                   // norm, norm, norm, norm -- 1 / data set!
+                                                                   // 200 PMT efficiency terms (many will be fixed)                                                 
+                                                                   // finally -- uv absorption
+                                                                   // jk, one more variable -- photons per mev!                                                               
+
+                                                                   // things that are fixed for all PMTs:
+                                                                   // Rt, tau_t, tau_rec, const_offset 
+                                                                   
+                                                                   // things that are fixed for each PMT : 
+                                                                   // time offset (1 / PMT / data set), LPmu, LPsigma, and LPscale
     
     typedef double Underlying;
     typedef phys_tools::autodiff::FD<NewDerivativeDimension, Underlying> AD;
@@ -79,17 +80,19 @@ struct NewLikelihoodFunctor {
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
     ZigZagPrior prior = ZigZagPrior(3.0, 6.0, false); // we want (tau_s - tau_TPB) > 3.0 with 600% scale
     ZigZagPrior uv_abs_prior = ZigZagPrior(65.0, 6.0, true); // we want uv abs < 65.0 with 600% scale
-    bool fittining_uv_abs = true;
+    bool fitting_uv_abs = true;
+    bool apply_uv_abs_prior = false;
 
     // This returns the LLH
     template<typename T>
     T evaluateLikelihood(std::vector<T> x) const {
         T total_llh = 0;
         if constexpr (std::is_same<T, double>::value) {
-            std::cout << "Rs = " << x[0] << ", tau_s = " << x[1] << ", tau_TPB = " << x[2] << ", norm = " << x[3] << ", " << x[4] << ", " << x[5] << ", " << x[6] << ", and uv abs = " << x[207] << std::endl;
+            std::cout << "Rs = " << x[0] << ", tau_s = " << x[1] << ", tau_TPB = " << x[2] << ", norm = " << x[3] << ", " << x[4] << ", " << x[5] << ", " << x[6]
+                << ", uv abs = " << x[207] << ", and photons/mev = " << x[208] << std::endl;
         } else {
-            std::cout <<"Rs = " << x[0].value() << ", tau_s = " << x[1].value() << ", tau_TPB = " << x[2].value()
-                << ", and norm = " << x[3].value() << ", " << x[4].value() << ", " << x[5].value() << ", " << x[6].value() << ", and uv abs = " << x[207].value() << std::endl;
+            std::cout <<"Rs = " << x[0].value() << ", tau_s = " << x[1].value() << ", tau_TPB = " << x[2].value() << ", norm = " << x[3].value() << ", " << x[4].value()
+                << ", " << x[5].value() << ", " << x[6].value() << ", uv abs = " << x[207].value() << ", and photons/mev = " << x[208].value() << std::endl;
         }
         for (size_t data_it = 0; data_it < llh_constructorAD.size(); data_it ++){
             // loop over each data set we are fitting to
@@ -101,14 +104,16 @@ struct NewLikelihoodFunctor {
                 if constexpr (std::is_same<T, double>::value) {
                     total_llh += llh_constructorDouble.at(data_it)->ComputeNLLH(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
                                     time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), x[7 + pmt_it], // pmt eff!!
-                                    x[207], fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
+                                    x[207], x[208], fitting_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
                 } else {
                     total_llh += llh_constructorAD.at(data_it)->ComputeNLLH(key, x[0], Rt, x[1], tau_t, tau_rec, x[2], x[3 + data_it], // normalization for data set!!!
                                     time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), x[7 + pmt_it], // pmt eff!
-                                    x[207], fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
+                                    x[207], x[208], fitting_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
                 }
                 total_llh += prior(tau_s - tau_TPB); 
-                //total_llh += uv_abs_prior(x[207]); 
+                if (apply_uv_abs_prior){
+                    total_llh += uv_abs_prior(x[207]); 
+                }
             }
         }
         return total_llh; 
@@ -230,6 +235,7 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         minimizer.addParameter(pmt_eff_seed, 1e-4, 1.0, pmt_eff_seed * 1e2); // pmt eff
     } 
     minimizer.addParameter(55.0, 1e-5, 30.0, 100.0); // uv absorption!!!
+    minimizer.addParameter(1.0); // photons per mev!!!
     minimizer.setHistorySize(20);
 
     // fix parameter idx of guys we are not minimizing
@@ -250,6 +256,9 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
             minimizer.fixParameter(6 + n_pmts_included); // pmt eff
         }
     } 
+
+    // fix photons per mev
+    minimizer.fixParameter(208);
     
     bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
  
@@ -292,7 +301,7 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
                 // loop over each PMT
                 CCMPMTKey key = keys_to_fit.at(pmt_it);
                 double llh = all_constructorsDouble.at(data_it)->ComputeNLLH(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3 + data_it), // normalization for data set!!!
-                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), params.at(207), true,
+                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), params.at(207), params.at(208), true,
                                  z_offsets.at(data_it), n_sodium_events, light_profile_type);
                 // now grab out data etc
                 std::vector<double> this_pmt_data = all_constructorsDouble.at(data_it)->GetDataVector(); 
@@ -349,6 +358,7 @@ void AllPMTcppMinimizer::ScanOverTOffsets(I3VectorCCMPMTKey keys_to_fit, I3MapPM
     double tau_t = 743.0;
     double tau_rec = 0.0;
     double const_offset = 0.0;
+    double photons_per_mev = 1.0;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
     
     for (size_t data_it = 0; data_it < all_constructorsDouble.size(); data_it ++){
@@ -371,8 +381,8 @@ void AllPMTcppMinimizer::ScanOverTOffsets(I3VectorCCMPMTKey keys_to_fit, I3MapPM
             for (size_t toff_it = 0; toff_it < (n_t_offsets + 1); toff_it++){
                 double this_t_offset = t_offset_start + ((double)toff_it / (double)n_t_offsets) * t_offset_range;
                 double this_nllh = -1.0 * all_constructorsDouble.at(data_it)->ComputeNLLH(key, best_fit_Rs, Rt, best_fit_tau_s, tau_t, tau_rec, best_fit_tau_other, best_fit_norms.at(data_it), 
-                             this_t_offset, const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), PMT_efficiencies.at(key), uv_absorption, false, z_offsets.at(data_it), n_sodium_events,
-                             light_profile_type);
+                             this_t_offset, const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), PMT_efficiencies.at(key), uv_absorption, photons_per_mev, false, z_offsets.at(data_it),
+                             n_sodium_events, light_profile_type);
             
                 // now let's save this nllh and corresponding time offset
                 func_val.push_back(this_nllh);
@@ -401,14 +411,15 @@ std::vector<double> AllPMTcppMinimizer::GrabNormSeed(CCMPMTKey key, double basel
     double tau_t = 743.0;
     double tau_rec = 0.0;
     double const_offset = 0.0;
+    double photons_per_mev = 1.0;
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
    
     std::vector<double> norm_seeds; 
     for (size_t data_it = 0; data_it < llh_constructorDouble.size(); data_it ++){
         // loop over each data set we are fitting to
         double llh = llh_constructorDouble.at(data_it)->ComputeNLLH(key, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, 1e10, // normalization for data set!!!
-                         time_offsets.at(data_it).at(key), const_offset, LPmu, LPsigma, LPscale, baseline_efficiency, uv_abs, true,
-                         z_offsets.at(data_it), n_sodium_events, light_profile_type);
+                         time_offsets.at(data_it).at(key), const_offset, LPmu, LPsigma, LPscale, baseline_efficiency,
+                         uv_abs, photons_per_mev, true, z_offsets.at(data_it), n_sodium_events, light_profile_type);
         
         // now grab out data etc
         std::vector<double> this_pmt_data = llh_constructorDouble.at(data_it)->GetDataVector(); 
@@ -512,7 +523,7 @@ std::vector<double> AllPMTcppMinimizer::ScanOverUVAbsorption(I3VectorCCMPMTKey k
             likelihood.LPsigma = LPsigma;
             likelihood.LPscale = LPscale;
             likelihood.time_offsets = time_offsets;
-            likelihood.fittining_uv_abs = false;
+            likelihood.fitting_uv_abs = false;
            
             // now let's grab our norm seeds
             size_t reference_pmt_idx = (size_t) (keys_to_fit.size() / 2);
@@ -567,6 +578,7 @@ std::vector<double> AllPMTcppMinimizer::ScanOverUVAbsorption(I3VectorCCMPMTKey k
                 minimizer.addParameter(0.5, 1e-3, 0.1, 10.0); // pmt eff
             } 
             minimizer.addParameter(this_uv_abs, 1e-3, 30.0, 100.0); // uv absorption!!!
+            minimizer.addParameter(1.0); // photons per mev!!!
             minimizer.setHistorySize(20);
 
             // fix parameter idx of guys we are not minimizing
@@ -590,6 +602,7 @@ std::vector<double> AllPMTcppMinimizer::ScanOverUVAbsorption(I3VectorCCMPMTKey k
 
             // finally, fix uv absorption since we are not minimizing but scanning over
             minimizer.fixParameter(207); // uv absorption!!! 
+            minimizer.fixParameter(208); // photons per mev!!! 
 
             bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
             
@@ -637,8 +650,8 @@ std::vector<double> AllPMTcppMinimizer::ScanOverUVAbsorption(I3VectorCCMPMTKey k
                         // loop over each PMT
                         CCMPMTKey key = keys_to_fit.at(pmt_it);
                         double llh = all_constructorsDouble.at(data_it)->ComputeNLLH(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3 + data_it), // normalization for data set!!!
-                                         time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), params.at(207), false,
-                                         z_offsets.at(data_it), n_sodium_events, light_profile_type);
+                                         time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), params.at(207),
+                                         params.at(208), false, z_offsets.at(data_it), n_sodium_events, light_profile_type);
                         // now grab out data etc
                         std::vector<double> this_pmt_data = all_constructorsDouble.at(data_it)->GetDataVector(); 
                         std::vector<double> this_pmt_pred = all_constructorsDouble.at(data_it)->GetPredVector(); 
@@ -682,9 +695,52 @@ std::vector<double> AllPMTcppMinimizer::ScanOverUVAbsorption(I3VectorCCMPMTKey k
 
 }
 
+std::vector<double> AllPMTcppMinimizer::GrabPhotonsPerMeVSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
+                                                              double uv_abs, std::vector<double> z_offsets, size_t n_sodium_events,
+                                                              std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::shared_ptr<CalculateNLLH<double>>> llh_constructorDouble){
+    
+    // for each data set, going to grab expectation for benchmark PMT
+    // then we can get a reasonable looking norm
+    double Rs = 0.3;
+    double Rt = 0.0;
+    double tau_s = 8.0;
+    double tau_TPB = 4.0;
+    double tau_t = 743.0;
+    double tau_rec = 0.0;
+    double const_offset = 0.0;
+    double photons_per_mev = 1e10;
+    double norm = 1.0;
+    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+   
+    std::vector<double> photons_per_mev_seeds; 
+    for (size_t data_it = 0; data_it < llh_constructorDouble.size(); data_it ++){
+        // loop over each data set we are fitting to
+        double llh = llh_constructorDouble.at(data_it)->ComputeNLLH(key, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, norm,
+                         time_offsets.at(data_it).at(key), const_offset, LPmu, LPsigma, LPscale, baseline_efficiency,
+                         uv_abs, photons_per_mev, true, z_offsets.at(data_it), n_sodium_events, light_profile_type);
+        
+        // now grab out data etc
+        std::vector<double> this_pmt_data = llh_constructorDouble.at(data_it)->GetDataVector(); 
+        std::vector<double> this_pmt_pred = llh_constructorDouble.at(data_it)->GetPredVector(); 
+        
+        // now let's get norm scaling
+        size_t data_max_idx = std::distance(this_pmt_data.begin(), std::max_element(this_pmt_data.begin(), this_pmt_data.end()));
+        size_t pred_max_idx = std::distance(this_pmt_pred.begin(), std::max_element(this_pmt_pred.begin(), this_pmt_pred.end()));
+        
+        double photons_per_mev_scaling = (this_pmt_data.at(data_max_idx) / this_pmt_pred.at(pred_max_idx)) * photons_per_mev;
+        
+        // now save
+        photons_per_mev_seeds.push_back(photons_per_mev_scaling);
+    }
+
+    return photons_per_mev_seeds;
+}
+
+
 std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                                         I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
-                                                        std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events, std::vector<double> best_fit_params){
+                                                        std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events, std::vector<double> best_fit_params,
+                                                        bool apply_uv_abs_prior){
 
     std::vector<I3MapPMTKeyDouble> time_offsets = {time_offset1, time_offset2, time_offset3, time_offset4}; 
     std::vector<std::string> paramter_names = {"Rs", "tau_s", "tau_TPB", "norm1", "norm2", "norm3", "norm4"};
@@ -743,7 +799,8 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
         likelihood.LPsigma = LPsigma;
         likelihood.LPscale = LPscale;
         likelihood.time_offsets = time_offsets;
-        likelihood.fittining_uv_abs = true; 
+        likelihood.fitting_uv_abs = true; 
+        likelihood.apply_uv_abs_prior = apply_uv_abs_prior;
     
         // now set up our minimizer
         phys_tools::lbfgsb::LBFGSB_Driver minimizer;
@@ -756,46 +813,79 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
         size_t total_data_sets = all_constructorsDouble.size();
         size_t data_sets_accounted_for = 0;
         for (size_t n = 0; n < 4; n++){
-            data_sets_accounted_for += 1;
-            if (data_sets_accounted_for <= total_data_sets) {
-                double norm_seed = best_fit_params.at(3 + n + 2);
-                minimizer.addParameter(norm_seed, 1e-3, norm_seed * 1e-4, norm_seed * 1e4); // norm
-            }
-            else {
-                minimizer.addParameter(1000.0, 1e-3, 10.0, 1e10); // norm
-            }
+            //data_sets_accounted_for += 1;
+            //if (data_sets_accounted_for <= total_data_sets) {
+            //    double norm_seed = best_fit_params.at(3 + n + 2);
+            //    minimizer.addParameter(norm_seed, 1e-3, norm_seed * 1e-4, norm_seed * 1e4); // norm
+            //}
+            //else {
+            //    minimizer.addParameter(1000.0, 1e-3, 10.0, 1e10); // norm
+            //}
+            minimizer.addParameter(1.0); // norm
         }
         
         // now we are adding our pmt efficincy terms
         for (size_t n = 0; n < 200; n++){
-            minimizer.addParameter(best_fit_params.at(7 + n + 2), 1e-3, 0.1, 10.0); // pmt eff
+            //minimizer.addParameter(best_fit_params.at(7 + n + 2), 1e-3, 0.1, 10.0); // pmt eff
+            minimizer.addParameter(0.5, 1e-3, 0.01, 10.0); // pmt eff
         } 
+        double uv_abs_seed = 65.0;        
+        minimizer.addParameter(uv_abs_seed, 1e-3, 20.0, 300.0); // uv absorption!!!
         
-        minimizer.addParameter(55.0, 1e-3, 20.0, 300.0); // uv absorption!!!
+        // now let's grab our photons/mev seeds
+        size_t reference_pmt_idx = (size_t) (keys_to_fit.size() / 2);
+        CCMPMTKey reference_pmt = keys_to_fit.at(reference_pmt_idx);
+        
+        std::vector<std::shared_ptr<CalculateNLLH<double>>> all_constructorsDoubleNormSeed;
+        for (size_t data_it = 0; data_it < data_file_names.size(); data_it++){
+            std::string this_data_fname = data_file_names.at(data_it);
+            dataio::I3File this_data_file(this_data_fname, dataio::I3File::Mode::read);
+            I3FramePtr this_data_frame = this_data_file.pop_frame();
+
+            // and now make constructor -- double type
+            std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
+            this_llh_constructorDouble->SetKeys(I3VectorCCMPMTKey({reference_pmt}));
+            this_llh_constructorDouble->SetData(this_data_frame);
+            this_llh_constructorDouble->SetGeo(geo_frame);
+        
+            // now save!
+            all_constructorsDoubleNormSeed.push_back(this_llh_constructorDouble);
+        }
+        std::vector<double> photons_per_mev_seeds = GrabPhotonsPerMeVSeed(reference_pmt, 0.5, LPmu.at(reference_pmt), LPsigma.at(reference_pmt), LPscale.at(reference_pmt),
+                                                     uv_abs_seed, z_offsets, n_sodium_events, time_offsets, all_constructorsDouble);
+        
+        std::cout << "photons/mev seed = " << photons_per_mev_seeds << std::endl;
+        
+        // let's use the average photons/mev seed for our seed
+        //double average_photons_per_mev = 0.0;
+        //for (size_t p = 0; p < photons_per_mev_seeds.size(); p++){
+        //    average_photons_per_mev += photons_per_mev_seeds.at(p);
+        //}
+        //average_photons_per_mev /= (double)photons_per_mev_seeds.size();
+
+        minimizer.addParameter(photons_per_mev_seeds.at(0), 1e-3, photons_per_mev_seeds.at(0) * 1e-5, photons_per_mev_seeds.at(0) * 1e5); // photons per mev!!!
         minimizer.setHistorySize(20);
     
         // fix parameter idx of guys we are not minimizing
-        //minimizer.fixParameter(0); // Rs
-        //minimizer.fixParameter(1); // tau_s
-        //minimizer.fixParameter(2); // tau_TPB
-
         size_t data_sets_to_minimize = data_file_names.size();
         size_t data_sets_included = 0;
         for (size_t n = 0; n < 4; n++){
-            data_sets_included += 1;
-            if (data_sets_included > data_sets_to_minimize){
-                minimizer.fixParameter(2 + data_sets_included); // norms
-            }
+            //data_sets_included += 1;
+            //if (data_sets_included > data_sets_to_minimize){
+            //    minimizer.fixParameter(2 + data_sets_included); // norms
+            //}
+            minimizer.fixParameter(3 + n); // norms
         }
         
         // now fix PMT efficincy params for PMTs we are not fitting to
         size_t n_pmts_included = 0;
         size_t n_pmts_fitting = keys_to_fit.size();
         for (size_t n = 0; n < 200; n++){
-            n_pmts_included += 1;
-            if (n_pmts_included > n_pmts_fitting){
-                minimizer.fixParameter(6 + n_pmts_included); // pmt eff
-            }
+            //n_pmts_included += 1;
+            //if (n_pmts_included > n_pmts_fitting){
+            //    minimizer.fixParameter(6 + n_pmts_included); // pmt eff
+            //}
+            minimizer.fixParameter(7 + n); // pmt eff
         }
         
         bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
@@ -838,8 +928,8 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
                     // loop over each PMT
                     CCMPMTKey key = keys_to_fit.at(pmt_it);
                     double llh = all_constructorsDouble.at(data_it)->ComputeNLLH(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3 + data_it), // normalization for data set!!!
-                                     time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), params.at(207), true,
-                                     z_offsets.at(data_it), n_sodium_events, light_profile_type);
+                                     time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(7 + pmt_it), params.at(207),
+                                     params.at(208), true, z_offsets.at(data_it), n_sodium_events, light_profile_type);
                     // now grab out data etc
                     std::vector<double> this_pmt_data = all_constructorsDouble.at(data_it)->GetDataVector(); 
                     std::vector<double> this_pmt_pred = all_constructorsDouble.at(data_it)->GetPredVector(); 

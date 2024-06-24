@@ -309,7 +309,7 @@ public:
     std::vector<double> times_vector;
 
     double event_start_threshold = 10.0;
-
+    
 private:
     std::map<CCMPMTKey, SinglePMTInfo> data;
     I3VectorCCMPMTKey keys_to_fit;
@@ -344,7 +344,7 @@ public:
 
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T normalization, T light_time_offset,
             T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T pmt_efficiency,
-            T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+            T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
 
     //AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
     //double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
@@ -453,7 +453,7 @@ double CalculateNLLH<T>::InterpolationDouble(double this_time, std::vector<doubl
 template<typename T>
 T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
-            T pmt_efficiency, T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+            T pmt_efficiency, T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
     
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
@@ -467,7 +467,8 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
 
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time,
-            peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale, uv_absorption, fitting_uv_abs, z_offset, n_sodium_events, light_profile_type);
+                                                            peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale,
+                                                            uv_absorption, photons_per_mev, fitting_uv_abs, z_offset, n_sodium_events, light_profile_type);
     // unpack into yields, yields^2, and times
     boost::shared_ptr<std::vector<T>> pred_yields;
     boost::shared_ptr<std::vector<T>> pred_yields_squared;
@@ -521,6 +522,7 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
     // set some times at the beginning of the wf to ignore for llh calculation!
     double ignore_start = 0.0;
     double ignore_end = 6.0;
+    double n_event_scaling = n_data_events / (double)n_sodium_events;
 
     // let's try looping over our llh grid
     for (size_t i = 0; i < llh_grid.size(); i++){
@@ -535,8 +537,8 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
 
         // now put together to make mu and sigma2!
         T adjusted_norm = normalization * pmt_efficiency;
-        T mu = pred_yields_this_time * adjusted_norm + pre_event_average;
-        T sigma_squared = pred_yields_squared_this_time * (adjusted_norm * adjusted_norm) + (pre_event_average * pre_event_average);
+        T mu = (pred_yields_this_time * adjusted_norm * n_event_scaling) + pre_event_average;
+        T sigma_squared = (pred_yields_squared_this_time * (adjusted_norm * adjusted_norm) * (n_event_scaling * n_event_scaling) )+ (pre_event_average * pre_event_average);
 
         // now check the time before computing the llh
         if (this_time < ignore_start or this_time > ignore_end){
@@ -683,7 +685,6 @@ template<typename T> void CalculateNLLH<T>::SetData(I3FramePtr data_frame) {
         data[pmt_data.key] = pmt_data;
     }
     n_data_events = data_frame->Get<I3Double>("TotalEventsPastCuts").value;
-
 }
 
 template<typename T> I3MapPMTKeyVectorDoublePtr CalculateNLLH<T>::GetData() const {

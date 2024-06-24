@@ -64,7 +64,7 @@ public:
     void GetSodiumVertices(size_t n_events_to_simulate, double z_position);
     //void GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption);
     //void ComputeBinnedYield(CCMPMTKey key, double max_time);
-    void RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, double max_time, bool fitting_uv_abs);
+    void RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs);
 
     std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                   AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
@@ -72,7 +72,7 @@ public:
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> GetExpectation(CCMPMTKey key,
                        double start_time, double max_time, double peak_time,
                        T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
-                       T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type); 
+                       T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type); 
     
     std::vector<double> light_prof_debug;
     std::vector<double> light_prof_times_debug;
@@ -105,7 +105,7 @@ template<typename T> std::vector<T> GenerateExpectation<T>::LightProfile(T Rs, T
 
 template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>>
     GenerateExpectation<T>::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
-            T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
+            T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
 
     // now see if we need to get our yields    
@@ -130,7 +130,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
         //GetYieldsAndOffsets(key, uv_absorption);
         //ComputeBinnedYield(key, max_time);
         uv_absorption_calculated = uv_absorption;
-        RunMultiThreadedCode(keys_to_fit, uv_absorption, 2.0 * max_time, fitting_uv_abs);
+        RunMultiThreadedCode(keys_to_fit, uv_absorption, photons_per_mev, 2.0 * max_time, fitting_uv_abs);
     }
 
     std::vector<T> const & binned_yield = binned_yields.at(key);
@@ -184,11 +184,11 @@ template<typename T> void GenerateExpectation<T>::GetSodiumVertices(size_t n_eve
     event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
 }
 
-template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, double max_time, bool fitting_uv_abs){
+template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs){
     yields_and_offset_constructor = std::make_shared<YieldsPerPMT>(geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
 
     size_t n_threads = 0;
-    yields_and_offset_constructor->GetAllYields(n_threads, event_vertices, uv_absorption, keys_to_fit, max_time,
+    yields_and_offset_constructor->GetAllYields(n_threads, event_vertices, uv_absorption, keys_to_fit, max_time, photons_per_mev,
                                                 binned_yields, binned_square_yields);
 }
 

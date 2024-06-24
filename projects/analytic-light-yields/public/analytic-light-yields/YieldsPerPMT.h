@@ -131,7 +131,7 @@ public:
     void SetChunks(double chunk_width, double chunk_height);
 
     template<typename T> void GetAllYields(size_t n_threads, boost::shared_ptr<HESodiumEventSeries> event_vertices, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit,
-                                                     double max_time, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
+                                           double max_time, T photons_per_mev, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
 
 };
 
@@ -337,6 +337,7 @@ template<typename T> void PutSimulationStepsTogether(HESodiumEvent const & soidu
                                                      double const & vis_index_of_refraction,
                                                      T UV_absorption_length,
                                                      T vis_absorption_length,
+                                                     T photons_per_mev,
                                                      std::vector<yields_pmt_info> const & pmt_parsed_information_,
                                                      std::vector<secondary_loc_info> const & locations_to_check_information_,
                                                      std::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> & all_pmt_yields_map,
@@ -347,8 +348,8 @@ template<typename T> void PutSimulationStepsTogether(HESodiumEvent const & soidu
     I3Position electron_vertex = soidum_event.electron_vertex;
     I3Position positron_vertex = soidum_event.positron_vertex;
 
-    T n_photons_1275 = 1.275;
-    T n_photons_511 = 0.511;
+    T n_photons_1275 = 1.275 * photons_per_mev;
+    T n_photons_511 = 0.511 * photons_per_mev;
     T default_time_offset = 0.0;
 
     // now let's call our functions to get direct vertex --> PMT yields (UV scint light)
@@ -388,6 +389,7 @@ void FrameThread(std::atomic<bool> & running,
                  std::vector<yields_pmt_info> const & pmt_parsed_information_,
                  std::vector<secondary_loc_info> const & locations_to_check_information_,
                  double max_time,
+                 T photons_per_mev,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared) {
 
@@ -397,7 +399,7 @@ void FrameThread(std::atomic<bool> & running,
         // call simulation code
         std::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> this_event_pmt_yields_map = std::make_shared<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>>();
         PutSimulationStepsTogether(sodium_events.at(event_it), c_cm_per_nsec, uv_index_of_refraction,
-                                   vis_index_of_refraction, UV_absorption_length, vis_absorption_length,
+                                   vis_index_of_refraction, UV_absorption_length, vis_absorption_length, photons_per_mev,
                                    pmt_parsed_information_, locations_to_check_information_, this_event_pmt_yields_map, keys_to_fit);
         
         // now let's bin this_event_pmt_yields_map 
@@ -447,6 +449,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
                     T UV_absorption_length,
                     T vis_absorption_length,
                     double max_time,
+                    T photons_per_mev,
                     std::vector<yields_pmt_info> const & pmt_parsed_information_,
                     std::vector<secondary_loc_info> const & locations_to_check_information_) {
 
@@ -454,7 +457,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
     pool.push([ &running = job->running, &keys_to_fit, &sodium_event = job->this_event,
                 &c_cm_per_nsec, &uv_index_of_refraction, &vis_index_of_refraction,
                 UV_absorption_length, vis_absorption_length, &pmt_parsed_information_, &locations_to_check_information_,
-                max_time, job 
+                max_time, photons_per_mev, job 
     ] (int id) {
     FrameThread(running,
                 keys_to_fit,
@@ -467,6 +470,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
                 pmt_parsed_information_,
                 locations_to_check_information_,
                 max_time,
+                photons_per_mev,
                 job->this_event_binned_yields,
                 job->this_event_binned_yields_squared);
     });
@@ -474,7 +478,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
 }
 
 template<typename T> void YieldsPerPMT::GetAllYields(size_t n_threads, boost::shared_ptr<HESodiumEventSeries> event_vertices, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit,
-                                                     double max_time, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields){
+                                                     double max_time, T photons_per_mev, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields){
 
     // this function takes the list of event vertices, uv absorption length (which we will be fitting for), keys to fit (which will usually be a list of just one key),
     // and finally binned_yields and binned_square_yields as references which we will be updating
@@ -611,7 +615,7 @@ template<typename T> void YieldsPerPMT::GetAllYields(size_t n_threads, boost::sh
                 results.back().this_event_binned_yields_squared = job->this_event_binned_yields_squared;
                 results.back().done = false;
                 RunFrameThread<T>(pool, job, keys_to_fit, c_cm_per_nsec_, uv_index_of_refraction_, vis_index_of_refraction_, UV_absorption_length, vis_absorption_length_,
-                               max_time, pmt_parsed_information_, locations_to_check_information_);
+                               max_time, photons_per_mev, pmt_parsed_information_, locations_to_check_information_);
                 break;
             } else if(job != nullptr) {
                 free_jobs.push_back(job);
