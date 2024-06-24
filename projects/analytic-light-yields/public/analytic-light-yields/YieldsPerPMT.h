@@ -481,7 +481,7 @@ template<typename T> void YieldsPerPMT::GetAllYields(size_t n_threads, boost::sh
     // we are going to multi thread this code -- chunk up event_vertices into vector for each thread
     
     // set our absorption length for visible light (in cm -- shouldnt really affect things)
-    T vis_absorption_length_ = 2000.0;
+    T vis_absorption_length_(2000.0);
 
     // will be used for multi-threading our simulation jobs
     std::deque<PhotonPropagationJob<T> *> free_jobs;

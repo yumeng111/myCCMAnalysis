@@ -468,7 +468,6 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time,
             peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale, uv_absorption, fitting_uv_abs, z_offset, n_sodium_events, light_profile_type);
-    
     // unpack into yields, yields^2, and times
     boost::shared_ptr<std::vector<T>> pred_yields;
     boost::shared_ptr<std::vector<T>> pred_yields_squared;
@@ -476,9 +475,8 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
     pred_yields = std::get<0>(pred);
     pred_yields_squared = std::get<1>(pred);
     pred_times = std::get<2>(pred);
-    T minimum_pred_time = pred_times->at(0);
 
-    T total_nllh(0.0);
+    T total_nllh = 0.0;
 
     size_t n_bins = pmt_data.data.size();
 

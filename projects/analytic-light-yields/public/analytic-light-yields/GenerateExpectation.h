@@ -107,28 +107,17 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
     GenerateExpectation<T>::GetExpectation(CCMPMTKey key, double start_time, double max_time, double peak_time, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T uv_absorption, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
-    
+
+    // now see if we need to get our yields    
     bool compute_vertices = sodium_events_constructor == nullptr;
     bool compute_yields = yields_and_offset_constructor == nullptr;
 
-    if (uv_absorption_calculated == 0.0){
-        uv_absorption_calculated = uv_absorption;
-    }
-
     // one last check that we've already got the yields for key at this uv absorption
     if (compute_yields == false){
-        // check if we've already calculated the yields at the given uv_absorption value
+        // check if uv absorption has changed!!!
         if (uv_absorption != uv_absorption_calculated){
-            // this is the case where uv absorption has changed!!! need to clear out binned_yields and re-compute
             binned_yields.clear();
             binned_square_yields.clear();
-            compute_yields = false;
-            uv_absorption_calculated = uv_absorption;
-        }
-        
-        // check if we have this key
-        bool key_exists = binned_yields.find(key) != binned_yields.end();
-        if (key_exists == false) {
             compute_yields = true;
         }
     }
@@ -137,11 +126,13 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
     if(compute_vertices)
         GetSodiumVertices(n_sodium_events, z_offset);
     // now let's check if we got our yields + time offsets
-    if(compute_yields)
+    if(compute_yields){
         //GetYieldsAndOffsets(key, uv_absorption);
         //ComputeBinnedYield(key, max_time);
-        RunMultiThreadedCode(keys_to_fit, uv_absorption, max_time, fitting_uv_abs);
-        
+        uv_absorption_calculated = uv_absorption;
+        RunMultiThreadedCode(keys_to_fit, uv_absorption, 2.0 * max_time, fitting_uv_abs);
+    }
+
     std::vector<T> const & binned_yield = binned_yields.at(key);
     std::vector<T> const & binned_square_yield = binned_square_yields.at(key);
     
@@ -175,11 +166,10 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
         size_t tot_idx = i + offset;
         for(size_t j = 0; j <= tot_idx; j++) {
             size_t k = tot_idx - j;
-            expectation->at(i) += binned_yield[k] * LAr_light_profile[j];
-            expectation_squared->at(i) += binned_square_yield[k] * LAr_light_profile_squared[j]; 
+            expectation->at(i) += binned_yield.at(k) * LAr_light_profile.at(j);
+            expectation_squared->at(i) += binned_square_yield.at(k) * LAr_light_profile_squared.at(j); 
         }
     }
-    
     return std::make_tuple(expectation, expectation_squared, extended_light_times);
 }
 
