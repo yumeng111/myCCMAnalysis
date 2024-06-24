@@ -80,6 +80,7 @@ namespace bp = boost::python;
   (I3MapStringBool)(I3MapStringVectorDouble)(I3MapStringStringDouble)   \
   (I3MapStringTestMapStringString)(I3MapTriggerInt)(I3MapTriggerUInt)   \
   (I3MapStringString)                                                   \
+  (I3MapTuplePMTKeyPMTKeyVectorDouble)(I3MapTuplePMTKeyPMTKeyDouble)    \
   (CCMRecoPulseSeriesMapMask)(CCMRecoPulseSeriesMapUnion)               \
   (CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime)                     \
   (CCMRecoPulseSeriesMapApplySPECalPlusBeamTime)                     \

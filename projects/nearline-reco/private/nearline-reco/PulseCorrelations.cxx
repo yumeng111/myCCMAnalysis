@@ -54,11 +54,12 @@ public:
         c = (t - sum) - y;
         sum = t;
     }
-    double Sum() const { return sum; }
     operator double() const { return sum; }
     operator double&() { return sum; }
     double operator+=(double x) { Add(x); return sum; }
     double operator-=(double x) { Add(-x); return sum; }
+    double Sum() const { return sum; }
+    double Compensation() const { return c; }
 };
 
 /*
@@ -106,6 +107,26 @@ public:
     double ReliabilityCovar() {
         return C / (wsum - wsum2 / wsum);
     }
+    void Add(OnlineCovariance const & other) {
+        C += other.C + (other.meanx - meanx) * (other.meany - meany) * wsum * other.wsum / (wsum + other.wsum);
+        wsum += other.wsum;
+        wsum2 += other.wsum2;
+        meanx += (other.wsum / wsum) * (other.meanx - meanx);
+        meany += (other.wsum / wsum) * (other.meany - meany);
+    }
+    template<typename Container>
+    void Fill(Container & c) const {
+        c.push_back(meanx.Sum());
+        c.push_back(meanx.Compensation());
+        c.push_back(meany.Sum());
+        c.push_back(meany.Compensation());
+        c.push_back(wsum.Sum());
+        c.push_back(wsum.Compensation());
+        c.push_back(wsum2.Sum());
+        c.push_back(wsum2.Compensation());
+        c.push_back(C.Sum());
+        c.push_back(C.Compensation());
+     }
 };
 }
 
@@ -120,6 +141,7 @@ class PulseCorrelations: public I3Module {
 
     I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance> pulse_covariance_;
     I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance> charge_covariance_;
+    I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance> nonzero_charge_covariance_;
 
 public:
     void Geometry(I3FramePtr frame);
@@ -283,5 +305,27 @@ void PulseCorrelations::DAQ(I3FramePtr frame) {
 }
 
 void PulseCorrelations::Finish() {
+    boost::shared_ptr<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>> pulse_covariance_out = boost::make_shared<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>>();
+    boost::shared_ptr<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>> charge_covariance_out = boost::make_shared<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>>();
+
+    for(I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance>::const_iterator i = pulse_covariance_.begin(); i != pulse_covariance_.end(); i++) {
+        std::tuple<CCMPMTKey, CCMPMTKey> const & key = i->first;
+        OnlineCovariance const & cov = i->second;
+        pulse_covariance_out->operator[](key) = std::vector<double>();
+        std::vector<double> & c = pulse_covariance_out->operator[](key);
+        cov.Fill(c);
+    }
+
+    for(I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance>::const_iterator i = charge_covariance_.begin(); i != charge_covariance_.end(); i++) {
+        std::tuple<CCMPMTKey, CCMPMTKey> const & key = i->first;
+        OnlineCovariance const & cov = i->second;
+        charge_covariance_out[key] = std::vector<double>();
+        std::vector<double> & c = charge_covariance_out[key];
+        cov.Fill(c);
+    }
+
+    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Physics);
+    frame->Put(output_prefix_ + "PulseCovariance", pulse_covariance_out);
+    frame->Put(output_prefix_ + "ChargeCovariance", charge_covariance_out);
 
 }
