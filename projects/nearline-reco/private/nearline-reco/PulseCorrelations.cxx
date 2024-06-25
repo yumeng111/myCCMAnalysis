@@ -319,8 +319,8 @@ void PulseCorrelations::Finish() {
     for(I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance>::const_iterator i = charge_covariance_.begin(); i != charge_covariance_.end(); i++) {
         std::tuple<CCMPMTKey, CCMPMTKey> const & key = i->first;
         OnlineCovariance const & cov = i->second;
-        charge_covariance_out[key] = std::vector<double>();
-        std::vector<double> & c = charge_covariance_out[key];
+        charge_covariance_out->operator[](key) = std::vector<double>();
+        std::vector<double> & c = charge_covariance_out->operator[](key);
         cov.Fill(c);
     }
 

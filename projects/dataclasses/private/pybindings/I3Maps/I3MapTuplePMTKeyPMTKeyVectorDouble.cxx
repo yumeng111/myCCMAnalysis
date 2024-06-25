@@ -31,15 +31,15 @@
 //
 
 #include <dataclasses/I3Map.h>
+#include <serialization/tuple.hpp>
 #include <icetray/python/dataclass_suite.hpp>
 
 using namespace boost::python;
 
-void register_I3MapTuplePMTKeyPMTKeyVectorDouble()
-{
-  class_<I3MapTuplePMTKeyPMTKeyVectorDouble, bases<I3FrameObject>, I3MapTuplePMTKeyPMTKeyVectorDoublePtr>("I3MapTuplePMTKeyPMTKeyVectorDouble")
-    .def(dataclass_suite<I3MapTuplePMTKeyPMTKeyVectorDouble >())
-    ;
+void register_I3MapTuplePMTKeyPMTKeyVectorDouble() {
+    class_<I3MapTuplePMTKeyPMTKeyVectorDouble, bases<I3FrameObject>, I3MapTuplePMTKeyPMTKeyVectorDoublePtr>("I3MapTuplePMTKeyPMTKeyVectorDouble")
+        .def(dataclass_suite<I3MapTuplePMTKeyPMTKeyVectorDouble >())
+        ;
     register_pointer_conversions<I3MapTuplePMTKeyPMTKeyVectorDouble>();
 }
 
