@@ -27,7 +27,7 @@ void G4CCMActionInitialization::BuildForMaster() const
 void G4CCMActionInitialization::Build() const
 {
     SetUserAction(new G4CCMPrimaryGeneratorAction());
-
+    std::cout << "in action initilization" << std::endl;
     auto eventAction = new G4CCMEventAction(fDetector);
     SetUserAction(eventAction);
     SetUserAction(new G4CCMStackingAction(eventAction));

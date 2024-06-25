@@ -18,6 +18,7 @@ public:
     ~G4CCMPhysicsList();
 private:
     void SetCuts();
+    void AddBetaPlusDecay();
 };
 
 #endif // g4-larsim_G4CCMPhysicsList_H

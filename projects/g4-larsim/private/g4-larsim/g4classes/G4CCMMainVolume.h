@@ -25,7 +25,7 @@ class G4CCMMainVolume : public G4PVPlacement
   public:
     G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
-                G4CCMDetectorConstruction* c);
+                G4CCMDetectorConstruction* c, G4bool SodiumSourceOn, G4double SodiumSourceLocation);
 
     G4LogicalVolume* GetLogPhotoCathCoated() { return fPMTCoated_log; }
     G4LogicalVolume* GetLogPhotoCathUncoated() { return fPMTUncoated_log; }
@@ -50,6 +50,8 @@ class G4CCMMainVolume : public G4PVPlacement
     G4VSolid* fTPBCoating = nullptr; 
     G4VSolid* fPhotocathCoated = nullptr; 
     G4VSolid* fPhotocathUncoated = nullptr; 
+    G4Tubs* fSourceRod = nullptr;
+    G4Tubs* fSodiumSourcePellet = nullptr;
 
     // Logical volumes
     G4LogicalVolume* fCryoVessel_log = nullptr;
@@ -64,6 +66,8 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fTPBCoating_log = nullptr; 
     G4LogicalVolume* fPhotocathCoated_log = nullptr;
     G4LogicalVolume* fPhotocathUncoated_log = nullptr;
+    G4LogicalVolume* fSourceRod_log = nullptr;
+    G4LogicalVolume* fSodiumSourcePellet_log = nullptr;
 
     // Sensitive Detectors positions
     std::vector<G4ThreeVector> fPMTPositions;

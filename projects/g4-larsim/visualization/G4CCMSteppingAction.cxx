@@ -58,23 +58,26 @@ G4CCMSteppingAction::~G4CCMSteppingAction() { delete fSteppingMessenger; }
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
+    std::cout << "in  G4CCMSteppingAction::UserSteppingAction " << std::endl;
     G4Track* theTrack = theStep->GetTrack();
     const G4ParticleDefinition* part = theTrack->GetDefinition();
     G4int pdg = part->GetPDGEncoding();
 
-    if(theTrack->GetCurrentStepNumber() == 1)
-        fExpectedNextStatus = Undefined;
+    //if(theTrack->GetCurrentStepNumber() == 1)
+    //    fExpectedNextStatus = Undefined;
 
     auto trackInformation = static_cast<G4CCMUserTrackInformation*>(theTrack->GetUserInformation());
 
     G4StepPoint* thePrePoint    = theStep->GetPreStepPoint();
     G4VPhysicalVolume* thePrePV = thePrePoint->GetPhysicalVolume();
     std::string thePrePVName = static_cast<std::string>(thePrePV->GetName());
+    std::cout << "thePrePVName = " << thePrePVName  << ", pdg = " << pdg << ", and parent id = " << theTrack->GetParentID() << std::endl;
 
-    G4StepPoint* thePostPoint    = theStep->GetPostStepPoint();
-    G4VPhysicalVolume* thePostPV = thePostPoint->GetPhysicalVolume();
-    std::string thePostPVName = static_cast<std::string>(thePostPV->GetName());
+    //G4StepPoint* thePostPoint    = theStep->GetPostStepPoint();
+    //G4VPhysicalVolume* thePostPV = thePostPoint->GetPhysicalVolume();
+    //std::string thePostPVName = static_cast<std::string>(thePostPV->GetName());
 
+    //std::cout << "thePostPVName = " << thePostPVName << std::endl;
     std::string desired_str ("PMT");
 
     if(theTrack->GetParentID() == 0) {
@@ -82,21 +85,20 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
         trackInformation->SetTrackStatusFlags(primaryLArDeposition);
     }
 
-    if(nullptr == thePostPV) {  // out of world
-        fExpectedNextStatus = Undefined;
-        return;
-    }
+    //if(nullptr == thePostPV) {  // out of world
+    //    fExpectedNextStatus = Undefined;
+    //    return;
+    //}
 
     // Optical photon only
     if(pdg == -22) {
-
         // grab photons on photcathode
         if (thePrePVName.find(desired_str) != std::string::npos) {
             trackInformation->AddTrackStatusFlag(hitPMT);
         } 
-        if (thePostPVName.find(desired_str) != std::string::npos) {
-            trackInformation->AddTrackStatusFlag(hitPMT);
-        } 
+        //if (thePostPVName.find(desired_str) != std::string::npos) {
+        //    trackInformation->AddTrackStatusFlag(hitPMT);
+        //} 
         //if (thePrePV->GetName() == "photocath" or thePostPV->GetName() == "photocath"){
             // draw anything in our pmts
             //trackInformation->AddTrackStatusFlag(hitPMT);

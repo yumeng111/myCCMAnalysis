@@ -129,8 +129,9 @@ void G4CCMTrajectory::DrawTrajectory() const {
             }
         }
 
-        if (fParticleDefinition == G4OpticalPhoton::OpticalPhotonDefinition() and fParentProcess != "OpWLS" and fParentProcess != "Scintillation"){
+        //if (fParticleDefinition == G4OpticalPhoton::OpticalPhotonDefinition() and fParentProcess != "OpWLS" and fParentProcess != "Scintillation"){
         //if (fParticleDefinition != G4OpticalPhoton::OpticalPhotonDefinition()) {
+        if (fParentProcess != "OpWLS" and fParentProcess != "Scintillation" and fParentProcess != "Cerenkov") {
             //std::cout << "fParentProcess = " << fParentProcess << std::endl;    
             // only drawing non-optical photons for the moment
             G4VisAttributes trajectoryLineAttribs(colour);

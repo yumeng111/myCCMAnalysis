@@ -211,6 +211,7 @@ class I3Particle : public I3FrameObject
     ePairProd = 2000000008,
     CoulombScat = 2000000009,
     annihil = 2000000010,
+    Sodium22 = 2000000011,
   };
 
  public:
@@ -426,6 +427,7 @@ std::string i3particle_type_string(int32_t pdg_code);
     (Hadrons)(ContinuousEnergyLoss)(FiberLaser)(N2Laser)(YAGLaser)                \
     (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)                                      \
     (phot)(compt)(conv)(Rayl)(msc)(eIoni)(eBrem)(ePairProd)(CoulombScat)(annihil) \
+    (Sodium22)                                                                    \
  
 std::ostream& operator<<(std::ostream& oss, const I3Particle& d);
 

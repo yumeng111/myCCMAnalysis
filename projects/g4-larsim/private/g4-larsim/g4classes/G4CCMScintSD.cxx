@@ -92,6 +92,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // we don't care about optical photons for getting energy deposited in LAr
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
+    std::cout << "in G4CCMScintSD::ProcessHits" << std::endl;
     if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
@@ -101,8 +102,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // now let's check energy deposited
     G4double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
-    if(edep == 0.)
-        return false;  // No edep so don't count as hit
+    //if(edep == 0.)
+    //    return false;  // No edep so don't count as hit
 
     // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
 
@@ -129,7 +130,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // let's also grab parent id
     // if parent id == 0, that's our primary injected particle
     G4int parent_id = aStep->GetTrack()->GetParentID();
-  
+
     G4ParticleDefinition* fParticleDefinition = aStep->GetTrack()->GetDefinition();
     G4int pdg = fParticleDefinition->GetPDGEncoding();
 

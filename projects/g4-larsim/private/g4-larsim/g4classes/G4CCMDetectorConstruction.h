@@ -14,6 +14,7 @@ Global variables include most of the important volumes and materials.
 
 #include <G4Cache.hh>
 #include <G4Material.hh>
+#include <G4RunManager.hh>
 #include <G4VisAttributes.hh>
 #include <G4RotationMatrix.hh>
 #include <CLHEP/Units/SystemOfUnits.h>
@@ -60,7 +61,18 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     // get SD configuration
     bool GetPMTSDStatus() { return PMTSDStatus_; }
     bool GetLArSDStatus() { return LArSDStatus_; }
-  
+ 
+    // set sodium source calibration run status
+    void InitializeSodiumSourceRun(G4double SodiumSourceLocation){
+        SodiumSourceRun_ = true; 
+        SodiumSourceLocation_ = SodiumSourceLocation;
+        G4RunManager::GetRunManager()->ReinitializeGeometry();
+    }
+
+    // get sodium source calibration run status
+    bool GetSodiumSourceRun() { return SodiumSourceRun_; }
+    G4double GetSodiumSourcePosition() { return SodiumSourceLocation_; }
+
   private:
     
     void DefineMaterials();
@@ -90,7 +102,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* fVacuum;
     G4Material* fPTFE;
     G4Material* fTPBFoil;
-
+    
     // Geometry
     G4bool fMainVolumeOn = true;
 
@@ -114,6 +126,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     bool PMTSDStatus_ = true; // turn PMT SD on/off
     bool LArSDStatus_ = true; // turn fiducial LAr SD on/off
 
+    // controls to turn sodium source on/off
+    bool SodiumSourceRun_ = true;
+    G4double SodiumSourceLocation_ = 0.0; 
 };
 
 #endif

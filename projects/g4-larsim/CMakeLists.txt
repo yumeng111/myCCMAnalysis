@@ -10,6 +10,7 @@ if(GEANT4_FOUND)
         private/g4-larsim/CCMSimpleInjector.cxx
         private/g4-larsim/CCM200Response.cxx
         private/g4-larsim/CCMSimulator.cxx
+        private/g4-larsim/SodiumSourceInjector.cxx
         private/g4-larsim/g4classes/*.h
         private/g4-larsim/g4classes/*.cxx
         visualization/*.cxx

@@ -17,17 +17,26 @@
 #include <G4Run.hh>
 #include <G4Event.hh>
 #include <FTFP_BERT.hh>
+#include <G4IonTable.hh>
 #include <G4UImanager.hh>
 #include <G4SDManager.hh>
 #include <G4RunManager.hh>
 #include <G4ParticleGun.hh>
+#include <G4DecayPhysics.hh>
 #include <G4EventManager.hh>
 #include <G4ParticleTable.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4OpticalPhysics.hh>
 #include <G4OpticalParameters.hh>
 #include <G4ParticleDefinition.hh>
+#include <G4VModularPhysicsList.hh>
+#include <G4RadioactiveDecayPhysics.hh>
 #include <G4EmStandardPhysics_option4.hh>
+#include <G4DecayTable.hh>
+#include <G4RadioactiveDecay.hh>
+#include <G4BetaPlusDecay.hh>
+#include <G4GenericIon.hh>
+
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
@@ -90,6 +99,7 @@ void G4Interface::InitializeEvent()
 
 void G4Interface::InjectParticle(const I3Particle& particle)
 {
+    std::cout << "in G4Interface::InjectParticle" << std::endl;
     if(!eventInitialized_) {
         log_fatal("No event initialized. Cannot inject particle!");
         return;
@@ -104,6 +114,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
     }
 
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+    G4IonTable* ionTable = particleTable->GetIonTable();
     G4ParticleDefinition* particleDef = NULL;
     switch(particle.GetType())
     {
@@ -229,33 +240,44 @@ void G4Interface::InjectParticle(const I3Particle& particle)
     case I3Particle::He6Nucleus:
        particleDef = particleTable->FindParticle("He6");
        break;
+    case I3Particle::Sodium22:
+       particleDef = ionTable->GetIon(11, 22, 0); 
+       break;
     default:
       log_warn("Man, check out that strange particle \"%s\" ?!", particle.GetTypeString().c_str());
       return;
     }
   
-    // Particle position in G4 units
-    G4ThreeVector position((particle.GetX() / I3Units::m) * CLHEP::m,
-                           (particle.GetY() / I3Units::m) * CLHEP::m,
-                           (particle.GetZ() / I3Units::m) * CLHEP::m);
-
-    // Transform I3 coordinates to world system
-    //position -= detector_->GetWorldOrigin();
-
-    G4ThreeVector direction(particle.GetDir().GetX(),
-                            particle.GetDir().GetY(),
-                            particle.GetDir().GetZ());
-
     if (!particleDef){
         log_warn("You passed NULL particleDef \"%s\" ?!", particle.GetTypeString().c_str());
         return;
     }
+    
+    // Particle position in G4 units
+    G4ThreeVector position((particle.GetX() / I3Units::m) * CLHEP::m,
+                           (particle.GetY() / I3Units::m) * CLHEP::m,
+                           (particle.GetZ() / I3Units::m) * CLHEP::m);
+    
+    G4ThreeVector direction(particle.GetDir().GetX(),
+                            particle.GetDir().GetY(),
+                            0.0);
+                            //particle.GetDir().GetZ());
+
+    // special logic for the case of sodium22
+    if (particleDef == particleTable->FindParticle("Na22")){
+        // let's pass the right commends to our detector construction
+        detector_->InitializeSodiumSourceRun((particle.GetZ() / I3Units::m) * CLHEP::m );
+    }
+    
     G4ParticleGun gun(1);
     gun.SetParticleDefinition(particleDef);
-    gun.SetParticleEnergy((particle.GetEnergy() / I3Units::MeV) * CLHEP::MeV);
     gun.SetParticlePosition(position);
+    std::cout << "got position = " << position << std::endl;
+    gun.SetParticleEnergy((particle.GetEnergy() / I3Units::MeV) * CLHEP::MeV);
+    std::cout << "set energy = " << (particle.GetEnergy() / I3Units::MeV) * CLHEP::MeV << std::endl;
     gun.SetParticleMomentumDirection(direction);
-    
+    std::cout << "got direction = " << direction << std::endl;
+
     log_trace("Injecting %s: x=%.2f m, y=%.2f m, z=%.2f m, E=%.3f MeV",
               particle.GetTypeString().c_str(),
               position.x() / CLHEP::m,
@@ -263,6 +285,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
               position.z() / CLHEP::m,
               gun.GetParticleEnergy() / CLHEP::MeV);
 
+    std::cout << "about to inject particle!" << std::endl;
     runManager_.InjectParticle(&gun);
 }
 
@@ -294,6 +317,7 @@ void G4Interface::TerminateEvent()
 
 void G4Interface::Initialize()
 {
+    std::cout << "in G4Interface::Initialize" << std::endl;
     if(initialized_) {
         log_error("G4Interface has already been initialized. Ignoring this call!");
         return;
@@ -306,23 +330,9 @@ void G4Interface::Initialize()
     runManager_.SetUserInitialization(detector_);
 
     log_debug("Init physics list ...");
-    G4VModularPhysicsList* physicsList = new FTFP_BERT;
-    physicsList->ReplacePhysics(new G4EmStandardPhysics_option4());
 
-    auto opticalPhysics = new G4OpticalPhysics();
-    auto opticalParams  = G4OpticalParameters::Instance();
-
-    opticalParams->SetWLSTimeProfile("delta");
-
-    opticalParams->SetScintTrackSecondariesFirst(true);
-
-    opticalParams->SetCerenkovMaxPhotonsPerStep(100);
-    opticalParams->SetCerenkovMaxBetaChange(10.0);
-    opticalParams->SetCerenkovTrackSecondariesFirst(true);
-
-    physicsList->RegisterPhysics(opticalPhysics);
-    runManager_.SetUserInitialization(physicsList);
-    //runManager_.SetUserInitialization(new G4CCMPhysicsList(verboseLevel));
+    // adding physics list
+    runManager_.SetUserInitialization(new G4CCMPhysicsList(verboseLevel));
 
     // Initialize G4 kernel
     log_debug("Init run manager ...");
