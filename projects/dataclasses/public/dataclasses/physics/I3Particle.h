@@ -105,7 +105,9 @@ class I3Particle : public I3FrameObject
     Ne20Nucleus = 1000100200,
     Ne21Nucleus = 1000100210,
     Ne22Nucleus = 1000100220,
+    ExcitedNe22Nuclus = 1000100221,
     Na23Nucleus = 1000110230,
+    Na22Nucleus = 1000110220,
     Mg24Nucleus = 1000120240,
     Mg25Nucleus = 1000120250,
     Mg26Nucleus = 1000120260,
@@ -211,7 +213,6 @@ class I3Particle : public I3FrameObject
     ePairProd = 2000000008,
     CoulombScat = 2000000009,
     annihil = 2000000010,
-    Sodium22 = 2000000011,
   };
 
  public:
@@ -427,8 +428,8 @@ std::string i3particle_type_string(int32_t pdg_code);
     (Hadrons)(ContinuousEnergyLoss)(FiberLaser)(N2Laser)(YAGLaser)                \
     (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)                                      \
     (phot)(compt)(conv)(Rayl)(msc)(eIoni)(eBrem)(ePairProd)(CoulombScat)(annihil) \
-    (Sodium22)                                                                    \
- 
+    (Na22Nucleus)(ExcitedNe22Nuclus)                                              \
+
 std::ostream& operator<<(std::ostream& oss, const I3Particle& d);
 
 I3_POINTER_TYPEDEFS(I3Particle);

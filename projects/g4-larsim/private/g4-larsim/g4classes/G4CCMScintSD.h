@@ -90,7 +90,6 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
 
-        static const std::unordered_map<int, I3Particle::ParticleType> pdgCodeToI3ParticleType; 
 };
 
 #endif

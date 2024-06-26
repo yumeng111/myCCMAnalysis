@@ -36,7 +36,8 @@
 #include <G4RadioactiveDecay.hh>
 #include <G4BetaPlusDecay.hh>
 #include <G4GenericIon.hh>
-
+#include <G4Geantino.hh> 
+#include <Randomize.hh>
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
@@ -115,8 +116,8 @@ void G4Interface::InjectParticle(const I3Particle& particle)
     }
 
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
-    G4IonTable* ionTable = particleTable->GetIonTable();
     G4ParticleDefinition* particleDef = NULL;
+    bool sodium_run = false;
     switch(particle.GetType())
     {
     case I3Particle::Gamma:
@@ -241,37 +242,34 @@ void G4Interface::InjectParticle(const I3Particle& particle)
     case I3Particle::He6Nucleus:
        particleDef = particleTable->FindParticle("He6");
        break;
-    case I3Particle::Sodium22:
-       particleDef = ionTable->GetIon(11, 22, 3); 
+    case I3Particle::Na22Nucleus:
+       sodium_run = true;
        break;
     default:
       log_warn("Man, check out that strange particle \"%s\" ?!", particle.GetTypeString().c_str());
       return;
     }
-  
+ 
+    G4ParticleGun gun(1);
+    
+    // special logic for adding sodium particle
+    if (sodium_run){
+        std::cout << "adding sodium" << std::endl;
+    
+        G4int Z = 11, A = 22;
+        G4double ionCharge   = 0.*eplus;
+        G4double excitEnergy = 0.*keV;
+
+        particleDef = G4IonTable::GetIonTable()->GetIon(Z,A,excitEnergy);
+        gun.SetParticleCharge(ionCharge);
+    }
+
     if (!particleDef){
         log_warn("You passed NULL particleDef \"%s\" ?!", particle.GetTypeString().c_str());
         return;
     }
 
-    if (particleDef ==  ionTable->GetIon(11, 22, 3)){
-        G4DecayTable* decayTable = particleDef->GetDecayTable();
-        G4int nDecays = decayTable->entries();
-        G4cout << "Decay table for " << particleDef->GetParticleName() << ":" << G4endl;
-        G4cout << "Number of decay channels: " << nDecays << G4endl;
-
-        for (G4int i = 0; i < nDecays; ++i) {
-            G4VDecayChannel* decayChannel = decayTable->GetDecayChannel(i);
-            if (decayChannel) {
-                G4int n_daughters = decayChannel->GetNumberOfDaughters();
-                G4cout << "Decay channel " << i + 1 << " parent name = " << decayChannel->GetParentName() << " and kinematics name = " << decayChannel->GetKinematicsName() << G4endl;
-                for (G4int d = 0; d < n_daughters; d++){
-                    G4cout << "daughter " << d << " = " << decayChannel->GetDaughterName(d) << G4endl;
-                }
-            } 
-        } 
-    }
-
+    
     // Particle position in G4 units
     G4ThreeVector position((particle.GetX() / I3Units::m) * CLHEP::m,
                            (particle.GetY() / I3Units::m) * CLHEP::m,
@@ -281,7 +279,6 @@ void G4Interface::InjectParticle(const I3Particle& particle)
                             particle.GetDir().GetY(),
                             particle.GetDir().GetZ());
 
-    G4ParticleGun gun(1);
     gun.SetParticleDefinition(particleDef);
     gun.SetParticlePosition(position);
     gun.SetParticleEnergy((particle.GetEnergy() / I3Units::MeV) * CLHEP::MeV);
@@ -341,14 +338,11 @@ void G4Interface::Initialize()
     // adding physics list
     G4CCMPhysicsList* physics_list= new G4CCMPhysicsList(verboseLevel);
     runManager_.SetUserInitialization(physics_list);
-
+    
     // Initialize G4 kernel
     log_debug("Init run manager ...");
     runManager_.Initialize();
 
-    // now add our sodium decay
-    // very imporant that this step happens after initializing our physics list and our run manager!!!
-    physics_list->AddSodiumDecay();
 
     switch (GetIcetrayLogger()->LogLevelForUnit("G4Interface"))
     {

@@ -46,10 +46,11 @@ class G4CCMPrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
   void GeneratePrimaries(G4Event* anEvent) override;
 
   // method to access particle gps
-  const G4GeneralParticleSource *GetGeneralParticleSource() const { return fGeneralParticleSource; }
+  //const G4GeneralParticleSource *GetGeneralParticleSource() const { return fGeneralParticleSource; }
+  G4ParticleGun* GetParticleGun() { return fParticleGun;} ;
 
  private:
-  G4GeneralParticleSource *fGeneralParticleSource; // pointer a to G4 GeneralParticleSource class
+  //G4GeneralParticleSource *fGeneralParticleSource; // pointer a to G4 GeneralParticleSource class
   G4ParticleGun* fParticleGun = nullptr;
 };
 

@@ -19,20 +19,23 @@ G4CCMActionInitialization::G4CCMActionInitialization(
 
 void G4CCMActionInitialization::BuildForMaster() const
 {
-    SetUserAction(new G4CCMRunAction());
+    SetUserAction(new G4CCMRunAction(nullptr));
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMActionInitialization::Build() const
-{
-    SetUserAction(new G4CCMPrimaryGeneratorAction());
-    std::cout << "in action initilization" << std::endl;
+void G4CCMActionInitialization::Build() const {
+    G4CCMPrimaryGeneratorAction* primary = new G4CCMPrimaryGeneratorAction();
+    SetUserAction(primary);
+
+    G4CCMRunAction* runAction = new G4CCMRunAction(primary);
+    SetUserAction(runAction);
+    
     auto eventAction = new G4CCMEventAction(fDetector);
     SetUserAction(eventAction);
+    
     SetUserAction(new G4CCMStackingAction(eventAction));
 
-    SetUserAction(new G4CCMRunAction());
     SetUserAction(new G4CCMTrackingAction());
     SetUserAction(new G4CCMSteppingAction(eventAction));
 }

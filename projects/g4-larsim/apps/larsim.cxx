@@ -31,6 +31,7 @@
 
 #include "../visualization/G4CCMActionInitialization.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include "../visualization/PhysicsList.h"
 
 #include "FTFP_BERT.hh"
 #include "G4EmStandardPhysics_option4.hh"
@@ -59,22 +60,23 @@ int main(int argc, char** argv)
   auto det = new G4CCMDetectorConstruction();
   runManager->SetUserInitialization(det);
 
-  G4VModularPhysicsList* physicsList = new FTFP_BERT;
-  physicsList->ReplacePhysics(new G4EmStandardPhysics_option4());
+  //G4VModularPhysicsList* physicsList = new FTFP_BERT;
+  //physicsList->ReplacePhysics(new G4EmStandardPhysics_option4());
 
-  auto opticalPhysics = new G4OpticalPhysics();
-  auto opticalParams  = G4OpticalParameters::Instance();
+  //auto opticalPhysics = new G4OpticalPhysics();
+  //auto opticalParams  = G4OpticalParameters::Instance();
 
-  opticalParams->SetWLSTimeProfile("delta");
+  //opticalParams->SetWLSTimeProfile("delta");
 
-  opticalParams->SetScintTrackSecondariesFirst(true);
+  //opticalParams->SetScintTrackSecondariesFirst(true);
 
-  opticalParams->SetCerenkovMaxPhotonsPerStep(100);
-  opticalParams->SetCerenkovMaxBetaChange(10.0);
-  opticalParams->SetCerenkovTrackSecondariesFirst(true);
+  //opticalParams->SetCerenkovMaxPhotonsPerStep(100);
+  //opticalParams->SetCerenkovMaxBetaChange(10.0);
+  //opticalParams->SetCerenkovTrackSecondariesFirst(true);
 
-  physicsList->RegisterPhysics(opticalPhysics);
-  runManager->SetUserInitialization(physicsList);
+  //physicsList->RegisterPhysics(opticalPhysics);
+  //runManager->SetUserInitialization(physicsList);
+  runManager->SetUserInitialization(new PhysicsList());
 
   runManager->SetUserInitialization(new G4CCMActionInitialization(det));
 

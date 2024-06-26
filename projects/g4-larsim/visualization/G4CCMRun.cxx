@@ -33,12 +33,21 @@
 #include "G4CCMRun.h"
 
 #include "G4SystemOfUnits.hh"
+#include "G4CCMPrimaryGeneratorAction.h"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+void G4CCMRun::SetPrimary(G4ParticleDefinition* particle, G4double energy)
+{ 
+  fParticle = particle;
+  fEkin = energy;
+} 
 
 void G4CCMRun::Merge(const G4Run* run)
 {
   const auto localRun = static_cast<const G4CCMRun*>(run);
+  
+  fParticle = localRun->fParticle;
+  fEkin     = localRun->fEkin;
 
   fHitCount += localRun->fHitCount;
   fHitCount2 += localRun->fHitCount2;

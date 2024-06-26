@@ -35,6 +35,7 @@
 
 #include "globals.hh"
 #include "G4Run.hh"
+#include "G4VProcess.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -43,6 +44,8 @@ class G4CCMRun : public G4Run
  public:
   G4CCMRun() = default;
   ~G4CCMRun() override = default;
+
+  void SetPrimary(G4ParticleDefinition* particle, G4double energy);
 
   void IncPhotonCount_Scint(G4int count)
   {
@@ -97,6 +100,9 @@ class G4CCMRun : public G4Run
   G4int fBoundaryAbsorptionCount2 = 0;
   G4int fPMTsAboveThreshold = 0;
   G4int fPMTsAboveThreshold2 = 0;
+
+  G4ParticleDefinition*  fParticle = nullptr;
+  G4double  fEkin = 0.;
 
   G4double fTotE = 0.;
   G4double fTotE2 = 0.;

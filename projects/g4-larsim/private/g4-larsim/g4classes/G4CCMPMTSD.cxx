@@ -90,7 +90,6 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
-    std::cout << "G4CCMPMTSD::ProcessHits" << std::endl;    
     // need to know if this is an optical photon
     if(aStep->GetTrack()->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
         return false;

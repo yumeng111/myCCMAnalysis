@@ -23,62 +23,35 @@
 // * acceptance of all terms of the Geant4 Software license.          *
 // ********************************************************************
 //
+/// \file PhysicsList.hh
+/// \brief Definition of the PhysicsList class
 //
-/// \file optical/LXe/src/LXeRunAction.cc
-/// \brief Implementation of the LXeRunAction class
-//
-//
-#include "G4CCMRunAction.h"
-#include "G4CCMRun.h"
-#include "G4ParticleGun.hh"
+// 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo...... 
+
+#ifndef PhysicsList_h
+#define PhysicsList_h 1
+
+#include "G4VUserPhysicsList.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMRunAction::G4CCMRunAction(G4CCMPrimaryGeneratorAction* kin) : fPrimary(kin) {
-    //fHistoManager = new HistoManager();
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-//G4CCMRunAction::~G4CCMRunAction() { delete fHistoManager; }
-G4CCMRunAction::~G4CCMRunAction() { }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4Run* G4CCMRunAction::GenerateRun()
+class PhysicsList: public G4VUserPhysicsList
 {
-  fRun = new G4CCMRun();
-  return fRun;
-}
+  public:
+    PhysicsList();
+   ~PhysicsList() override = default;
+
+  protected:
+    // Construct particle and physics
+    void ConstructParticle() override;
+    void ConstructProcess()  override;
+};
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMRunAction::BeginOfRunAction(const G4Run*) {
-    // keep run condition
-    if (fPrimary) { 
-        G4ParticleDefinition* particle = fPrimary->GetParticleGun()->GetParticleDefinition();
-        G4double energy = fPrimary->GetParticleGun()->GetParticleEnergy();
-        fRun->SetPrimary(particle, energy);
-    }    
-    //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    //if(analysisManager->IsActive())
-    //{
-    //  analysisManager->OpenFile();
-    //}
-}
+#endif
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMRunAction::EndOfRunAction(const G4Run*)
-{
-  if(isMaster)
-    fRun->EndOfRun();
-
-  // save histograms
-  //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-  //if(analysisManager->IsActive())
-  //{
-  //  analysisManager->Write();
-  //  analysisManager->CloseFile();
-  //}
-}
 

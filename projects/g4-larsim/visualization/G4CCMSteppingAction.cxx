@@ -61,6 +61,7 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
     std::cout << "in  G4CCMSteppingAction::UserSteppingAction " << std::endl;
     G4Track* theTrack = theStep->GetTrack();
     const G4ParticleDefinition* part = theTrack->GetDefinition();
+    G4String particleName = part->GetParticleName();
     G4int pdg = part->GetPDGEncoding();
 
     //if(theTrack->GetCurrentStepNumber() == 1)
@@ -71,7 +72,7 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
     G4StepPoint* thePrePoint    = theStep->GetPreStepPoint();
     G4VPhysicalVolume* thePrePV = thePrePoint->GetPhysicalVolume();
     std::string thePrePVName = static_cast<std::string>(thePrePV->GetName());
-    std::cout << "thePrePVName = " << thePrePVName  << ", pdg = " << pdg << ", and parent id = " << theTrack->GetParentID() << std::endl;
+    std::cout << "thePrePVName = " << thePrePVName  << ", pdg = " << pdg <<  ", name = " << particleName << ", and parent id = " << theTrack->GetParentID() << std::endl;
 
     //G4StepPoint* thePostPoint    = theStep->GetPostStepPoint();
     //G4VPhysicalVolume* thePostPV = thePostPoint->GetPhysicalVolume();

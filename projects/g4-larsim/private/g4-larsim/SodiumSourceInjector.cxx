@@ -58,10 +58,10 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
 
     // let's create and fill our I3Particle
-    I3Particle primary(I3Particle::Sodium22);
+    I3Particle primary(I3Particle::Na22Nucleus);
     primary.SetPos(0.0 * I3Units::cm, 0.0 * I3Units::cm, z_position_);
     primary.SetEnergy(0.0 * I3Units::MeV);
-    primary.SetDir(0.0 * I3Units::cm, 0.0 * I3Units::cm, 0.0 * I3Units::cm);
+    primary.SetDir(0.5, 0.5, -1.0);
     
     I3MCTreeUtils::AddPrimary(*mcTree, primary);
     

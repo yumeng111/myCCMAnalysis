@@ -1,36 +1,51 @@
 
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 
+#include <G4VUserPhysicsList.hh>
 #include <globals.hh>
 #include <G4Version.hh>
 #include <G4IonPhysics.hh>
 #include <G4DecayPhysics.hh>
-#include <G4ParticleTypes.hh>
 #include <G4OpticalPhysics.hh>
-#include <G4EmExtraPhysics.hh>
-#include <G4ProcessManager.hh>
-#include <G4UserSpecialCuts.hh>
 #include <G4StoppingPhysics.hh>
-#include <G4HadronElasticPhysicsHP.hh>
 #include <G4RadioactiveDecayPhysics.hh>
-#include <G4HadronPhysicsQGSP_BERT_HP.hh>
+#include <G4Radioactivation.hh>
 #include <G4EmStandardPhysics_option4.hh>
 
-#include <FTFP_BERT.hh>
-#include <G4IonTable.hh>
-#include <G4ParticleTable.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4OpticalParameters.hh>
-#include <G4VModularPhysicsList.hh>
-#include <G4RadioactiveDecayPhysics.hh>
-#include <G4DecayTable.hh>
-#include <G4RadioactiveDecay.hh>
-#include <G4BetaPlusDecay.hh>
 #include <G4GenericIon.hh>
 #include <G4PhysicsListHelper.hh>
-#include <G4WrapperProcess.hh>
-#include <G4Ions.hh>
-#include <G4ParticleDefinition.hh>
+
+#include <G4UnitsTable.hh>
+#include <G4IonConstructor.hh>
+#include <G4LossTableManager.hh>
+#include <G4UAtomicDeexcitation.hh>
+#include <G4NuclideTable.hh>
+#include <G4NuclearLevelData.hh>
+#include <G4DeexPrecoParameters.hh>
+#include <G4PhysListUtil.hh>
+#include <G4EmBuilder.hh>
+
+
+#include <G4EmExtraPhysics.hh>
+#include <G4HadronElasticPhysicsHP.hh>
+#include <G4HadronPhysicsFTFP_BERT_HP.hh>
+
+#include <G4ProcessManager.hh>
+#include <G4ParticleTypes.hh>
+#include <G4UserSpecialCuts.hh>
+
+
+#include <G4EmStandardPhysics.hh>
+#include <G4EmParameters.hh>
+#include <G4HadronElasticPhysics.hh>
+#include <G4HadronPhysicsFTFP_BERT.hh>
+#include <G4HadronInelasticQBBC.hh>
+#include <G4HadronPhysicsINCLXX.hh>
+#include <G4IonElasticPhysics.hh>
+#include <G4IonINCLXXPhysics.hh>
+
 
 G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
 
@@ -42,7 +57,6 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
 
     // Decays
     RegisterPhysics( new G4DecayPhysics(ver) );
-    RegisterPhysics( new G4IonPhysics(ver) );
     RegisterPhysics( new G4RadioactiveDecayPhysics(ver) );
 
     // Optical Physics
@@ -84,7 +98,7 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
 #elif G4VERSION_NUMBER >= 1000
     RegisterPhysics(opticalPhysics);
 #endif
-    
+
 //    // Synchroton Radiation & GN Physics
 //    RegisterPhysics( new G4EmExtraPhysics(ver) );
 //
@@ -96,52 +110,59 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
 //
 //    // Stopping Physics
 //    RegisterPhysics( new G4StoppingPhysics(ver) );
+    
+    // Instantiate Physics List infrastructure
+    //G4PhysListUtil::InitialiseParameters();
+
+    //// Update G4NuclideTable time limit
+    //const G4double meanLife = 1 * picosecond;
+    //G4NuclideTable::GetInstance()->SetMeanLifeThreshold(meanLife);
+    //G4NuclideTable::GetInstance()->SetLevelTolerance(1.0 * eV);
+
+    //// Define flags for the atomic de-excitation module
+    //G4EmParameters::Instance()->SetDefaults();
+    //G4EmParameters::Instance()->SetAugerCascade(true);
+    //G4EmParameters::Instance()->SetDeexcitationIgnoreCut(true);
+
+    //// Define flags for nuclear gamma de-excitation model
+    //G4DeexPrecoParameters* deex = G4NuclearLevelData::GetInstance()->GetParameters();
+    //deex->SetCorrelatedGamma(false);
+    //deex->SetStoreAllLevels(true);
+    //deex->SetInternalConversionFlag(true);
+    //deex->SetIsomerProduction(true);
+    //deex->SetMaxLifeTime(meanLife);
+  
 
 }
 
-G4CCMPhysicsList::~G4CCMPhysicsList() {
+G4CCMPhysicsList::~G4CCMPhysicsList() {}
+
+void G4CCMPhysicsList::ConstructParticle() {
+    // Minimal set of particles for EM physics and radioactive decay
+    G4EmBuilder::ConstructMinimalEmSet();
 }
 
-void G4CCMPhysicsList::AddSodiumDecay() {
+void G4CCMPhysicsList::ConstructProcess() {
+    AddTransportation();
 
-    G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
-    G4IonTable* ionTable = particleTable->GetIonTable();
-    
-    // Define properties of Sodium-22
-    G4double sodium22Mass = 22.0 * CLHEP::amu; // Mass of Sodium-22
-    G4int sodium22Charge = 11; // Charge of Sodium-22 (atomic number)
-    G4int sodium22Spin = 3; // Spin of Sodium-22 
-    G4int sodium22Parity = 0; // Parity of Sodium-22 
-    G4int sodium22Isospin = 1; // Isospin of Sodium-22...idk check 
-    G4int sodium22IsospinZ = 1; // Isospin Z of Sodium-22...idk check 
-    G4String sodium22ParticleType = "ion"; // Particle type of Sodium-22
-    G4int sodium22Lepton = 0; // Lepton number of Sodium-22 (arbitrary value)
-    G4int sodium22Baryon = 1; // Baryon number of Sodium-22 (arbitrary value)
-    G4int sodium22Encoding = 1000110220; // PDG encoding of Sodium-22 (arbitrary value)
-    G4bool sodium22Stable = false; // Stability of Sodium-22 (arbitrary value)
-    G4double sodium22Lifetime = 2.6019 * 365.25 * 24 * 60 * 60 * s; // Lifetime of Sodium-22
-    G4DecayTable* sodium22DecayTable = nullptr; // Decay table of Sodium-22 (null for stable particles)
-    
-    // Create Sodium-22 particle definition
-    G4ParticleDefinition* sodium22Particle = new G4ParticleDefinition("sodium22", sodium22Mass, 0.0, sodium22Charge, sodium22Spin, sodium22Parity,
-                                                                      0, sodium22Isospin, sodium22IsospinZ, 0, sodium22ParticleType,
-                                                                      sodium22Lepton, sodium22Baryon, sodium22Encoding, sodium22Stable,
-                                                                      sodium22Lifetime, sodium22DecayTable);
-    
-    ionTable->Insert(sodium22Particle);
-    
-    // Add beta plus decay for sodium-22
-    G4ParticleDefinition* sodium22 = ionTable->GetIon(11, 22, 3); 
-    G4double branchingRatio = 1.0;  // Branching ratio for this decay mode
-    G4double endpointEnergy = 2.842 * MeV;  // Endpoint energy for the beta-plus decay of Sodium-22
-    G4double daughterExcitation = 1.275 * MeV;  // Excitation energy of the daughter nucleus
-    G4Ions::G4FloatLevelBase flb = G4Ions::G4FloatLevelBase::no_Float;  // Float level base
-    G4BetaDecayType decayType = G4BetaDecayType::allowed;  // Decay type
-    G4BetaPlusDecay* betaPlusDecay = new G4BetaPlusDecay(sodium22, branchingRatio, endpointEnergy, daughterExcitation, flb, decayType);
-    G4DecayTable* decayTable = new G4DecayTable();
-    decayTable->Insert(betaPlusDecay); // Insert the beta plus decay process into the decay table
-    ionTable->GetIon(11, 22, 3)->SetDecayTable(decayTable);
+    G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60 * CLHEP::year);
 
+    G4bool ARMflag = false;
+    radioactiveDecay->SetARM(ARMflag); // Atomic Rearrangement
+
+    // EM physics constructor is not used in this example, so
+    // it is needed to instantiate and to initialize atomic deexcitation
+    G4LossTableManager* man = G4LossTableManager::Instance();
+    G4VAtomDeexcitation* deex = man->AtomDeexcitation();
+    if (nullptr == deex) {
+        deex = new G4UAtomicDeexcitation();
+        man->SetAtomDeexcitation(deex);
+    }
+    deex->InitialiseAtomicDeexcitation();
+
+    // Register radioactiveDecay
+    G4PhysicsListHelper* ph = G4PhysicsListHelper::GetPhysicsListHelper();
+    ph->RegisterProcess(radioactiveDecay, G4GenericIon::GenericIon());
 }
 
 void G4CCMPhysicsList::SetCuts() {
@@ -150,9 +171,8 @@ void G4CCMPhysicsList::SetCuts() {
     }
     //  " G4VUserPhysicsList::SetCutsWithDefault" method sets
     //   the default cut value for all particle types
-
     SetCutsWithDefault();
-
     //Set proton cut value to 0 for producing low energy recoil nucleus
     SetCutValue(0.0, "proton");
 }
+

@@ -43,29 +43,6 @@
 #include <G4TouchableHistory.hh>
 #include <G4ParticleDefinition.hh>
 
-const std::unordered_map<int, I3Particle::ParticleType> G4CCMScintSD::pdgCodeToI3ParticleType = {{0 , I3Particle::unknown},
-                                                                                                 {22 , I3Particle::Gamma},
-                                                                                                 {-11, I3Particle::EPlus},
-                                                                                                 {11, I3Particle::EMinus},
-                                                                                                 {-13, I3Particle::MuPlus},
-                                                                                                 {13 , I3Particle::MuMinus},
-                                                                                                 {111 , I3Particle::Pi0},
-                                                                                                 {211 , I3Particle::PiPlus},
-                                                                                                 {-211 , I3Particle::PiMinus},
-                                                                                                 {130 , I3Particle::K0_Long},
-                                                                                                 {321 , I3Particle::KPlus},
-                                                                                                 {-321 , I3Particle::KMinus},
-                                                                                                 {2112 , I3Particle::Neutron},
-                                                                                                 {2212 , I3Particle::PPlus},
-                                                                                                 {-2212 , I3Particle::PMinus},
-                                                                                                 {310, I3Particle::K0_Short},
-                                                                                                 {221 , I3Particle::Eta},
-                                                                                                 {3122 , I3Particle::Lambda},
-                                                                                                 {3222 , I3Particle::SigmaPlus},
-                                                                                                 {3212 , I3Particle::Sigma0},
-                                                                                                 {3112 , I3Particle::SigmaMinus},
-                                                                                                 {1000170360, I3Particle::Cl36Nucleus}};
-
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
@@ -92,7 +69,6 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // we don't care about optical photons for getting energy deposited in LAr
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
-    std::cout << "in G4CCMScintSD::ProcessHits" << std::endl;
     if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
@@ -102,8 +78,9 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // now let's check energy deposited
     G4double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
-    //if(edep == 0.)
-    //    return false;  // No edep so don't count as hit
+    G4double ekin = aStep->GetTrack()->GetKineticEnergy() / electronvolt * I3Units::eV;
+    if(ekin == 0.)
+        return false;  // No ekin so don't count as hit
 
     // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
 
@@ -133,15 +110,24 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     G4ParticleDefinition* fParticleDefinition = aStep->GetTrack()->GetDefinition();
     G4int pdg = fParticleDefinition->GetPDGEncoding();
+    G4String particleName = fParticleDefinition->GetParticleName();
+
+    //kill neutrinos 
+    if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
+        
+        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+        return false;
+    } 
 
     // static_cast<I3Particle::ParticleType>(pdg)
-    std::cout << "creation process name = " << creationProcessName << " parent id = " << parent_id << " and track id = " << aStep->GetTrack()->GetTrackID() << " and pdg code = " << pdg << " and delta distance = " << delta_pos << " and e dep = " << edep << std::endl;
+    std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << aStep->GetTrack()->GetTrackID() << ", pdg code = " << pdg
+        << ", name = " << particleName << ", delta distance = " << delta_pos <<  ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
     // now save to our MCTree!
     if (parent_id == 0){
         // let's create and fill our I3Particle
         // since parent id = 0, this will also be a primary
         I3Particle primary(primaryParticleType_);
-        primary.SetEnergy(edep);
+        primary.SetEnergy(ekin);
         primary.SetPos(position);
         primary.SetDir(direction);
  
@@ -154,18 +140,9 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         I3ParticleID prev_parent_particle_id = prev_parent_particle_id_;
         
         // now let's get particle type for this daughter
-        I3Particle::ParticleType daughter_type = I3Particle::unknown;
-        for (auto it = pdgCodeToI3ParticleType.begin(); it != pdgCodeToI3ParticleType.end(); ++it) {
-            size_t this_pdg_code = it->first;
-            if (this_pdg_code == pdg){
-                daughter_type = pdgCodeToI3ParticleType.at(pdg);
-            }
-        }
-        if (daughter_type == I3Particle::unknown) {
-            std::cout << "oops! need conversion for pdg code = " << pdg << std::endl;
-        }   
+        I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
         I3Particle daughter(daughter_type);
-        daughter.SetEnergy(edep);
+        daughter.SetEnergy(ekin);
         daughter.SetPos(position);
         daughter.SetDir(direction);
 
@@ -185,7 +162,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     auto scintHit = new G4CCMScintHit(thePrePV);
 
-    scintHit->SetEdep(edep);
+    scintHit->SetEdep(ekin);
     scintHit->SetPos(pos);
 
     fScintCollection->insert(scintHit);

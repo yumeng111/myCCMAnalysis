@@ -36,39 +36,70 @@
 #include "G4ParticleGun.hh"
 #include "G4ParticleTable.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4Geantino.hh"
+#include "G4IonTable.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPrimaryGeneratorAction::G4CCMPrimaryGeneratorAction()
-{
-  G4int n_particle = 1;
-  fParticleGun     = new G4ParticleGun(n_particle);
+G4CCMPrimaryGeneratorAction::G4CCMPrimaryGeneratorAction(){
+    G4int n_particle = 1;
+    fParticleGun = new G4ParticleGun(n_particle);
 
-  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+    //G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
 
-  G4String particleName;
-  fParticleGun->SetParticleDefinition(
-    particleTable->FindParticle(particleName = "gamma"));
-  // Default energy,position,momentum
-  fParticleGun->SetParticleEnergy(511. * keV);
-  fParticleGun->SetParticlePosition(G4ThreeVector(0., 0., -20. * cm));
-  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 0., 1.));
+    //G4String particleName;
+    //fParticleGun->SetParticleDefinition(particleTable->FindParticle(particleName = "gamma"));
+    //// Default energy,position,momentum
+    //fParticleGun->SetParticleEnergy(511. * keV);
+    //fParticleGun->SetParticlePosition(G4ThreeVector(0., 0., -20. * cm));
+    //fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 0., 1.));
 
-  fGeneralParticleSource = new G4GeneralParticleSource();
+    G4ParticleTable *particleTable = G4ParticleTable::GetParticleTable();
+    G4ParticleDefinition *particle = particleTable->FindParticle("geantino");
+
+    G4ThreeVector pos(0.,0.,0.);
+    G4ThreeVector mom(0.,0.,-1.);
+
+    fParticleGun->SetParticlePosition(pos);
+    fParticleGun->SetParticleMomentumDirection(mom);
+    fParticleGun->SetParticleMomentum(0.*GeV);
+    fParticleGun->SetParticleDefinition(particle);
+
+    //fGeneralParticleSource = new G4GeneralParticleSource();
+    //fGeneralParticleSource->SetParticlePosition(pos);
+    //fGeneralParticleSource->SetParticleMomentumDirection(mom);
+    //fGeneralParticleSource->SetParticleMomentum(0.*GeV);
+    //fGeneralParticleSource->SetParticleDefinition(particle);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4CCMPrimaryGeneratorAction::~G4CCMPrimaryGeneratorAction() { 
     delete fParticleGun; 
-    delete fGeneralParticleSource;
+    //delete fGeneralParticleSource;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
-{
-  fParticleGun->GeneratePrimaryVertex(anEvent);
-  fGeneralParticleSource->GeneratePrimaryVertex(anEvent);
+void G4CCMPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
+    std::cout << "in G4CCMPrimaryGeneratorAction::GeneratePrimaries!!!" << std::endl;  
+    std::cout << "fParticleGun->GetParticleDefinition()->GetParticleName() = " << fParticleGun->GetParticleDefinition()->GetParticleName() << std::endl;
+    if (fParticleGun->GetParticleDefinition() == G4Geantino::Geantino()) {  
+        std::cout << "adding sodium" << std::endl;
+        G4int Z = 11, A = 22;
+        G4double ionCharge   = 0.*eplus;
+        G4double excitEnergy = 0.*keV;
+
+        G4ParticleDefinition* ion
+           = G4IonTable::GetIonTable()->GetIon(Z,A,excitEnergy);
+        fParticleGun->SetParticleDefinition(ion);
+        fParticleGun->SetParticleCharge(ionCharge);
+        //fGeneralParticleSource->SetParticleDefinition(ion);
+        //fGeneralParticleSource->SetParticleCharge(ionCharge);
+    }    
+    //create vertex
+    //   
+    fParticleGun->GeneratePrimaryVertex(anEvent);
+    //fGeneralParticleSource->GeneratePrimaryVertex(anEvent);
 }
 

@@ -5,20 +5,18 @@
 
 /**
  * Implementation of G4VModularPhysicsList. The top-level physics list. It combines all the other physics lists:
- *
- *  \li G4CCMGeneralPhysics
- *  \li G4CCMHadronPhysics
- *  \li G4CCMIonPhysics
- *  \li G4CCMMuonPhysics
- *  \li G4CCMEMPhysics
  */
+
 class G4CCMPhysicsList: public G4VModularPhysicsList {
 public:
     G4CCMPhysicsList(G4int ver=1);
     ~G4CCMPhysicsList();
-    void AddSodiumDecay();
-private:
-    void SetCuts();
+  
+protected:
+    // Construct particle and physics
+    void ConstructParticle() override;
+    void ConstructProcess()  override;
+    void SetCuts() override;
 };
 
 #endif // g4-larsim_G4CCMPhysicsList_H
