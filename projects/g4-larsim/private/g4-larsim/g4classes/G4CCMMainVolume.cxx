@@ -490,8 +490,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             // place coated pmts
             G4String descriptive_name = "CoatedPMT_" + pmt_name;
             new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoated_log, descriptive_name, fFiducialAr_log, false, k);
-            //G4String tpb_descriptive_name = "TPBCoating_" + pmt_name;
-            //new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, tpb_descriptive_name, fFiducialAr_log, false, k);
+            G4String tpb_descriptive_name = "TPBCoating_" + pmt_name;
+            new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, tpb_descriptive_name, fFiducialAr_log, false, k);
         }
         else {
             // place uncoated pmts
@@ -521,7 +521,6 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fSodiumSourcePellet_log  = new G4LogicalVolume(fSodiumSourcePellet, fNa, "SodiumSourcePelletLog");
 
     if (SodiumSourceOn){
-        G4double SodiumSourceLocation = 0.0*cm;
         G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SodiumSourceLocation + rod_height/2);
         new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0);
     

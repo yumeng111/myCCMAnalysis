@@ -34,6 +34,8 @@ private:
 
     bool PMTSDStatus_; // turn PMT SD on/off
     bool LArSDStatus_; // turn fiducial LAr SD on/off
+    bool SodiumSourceRun_; // turn source run on/off 
+    double SodiumSourceLocation_; // location of end of source rod 
 
     G4Interface* g4Interface_;
         

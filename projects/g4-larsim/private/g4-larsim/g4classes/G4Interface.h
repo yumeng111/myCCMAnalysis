@@ -34,7 +34,7 @@ class G4Interface {
         static G4Interface* GetInstance() {return g4Interface_;}
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector(bool PMTSDStatus, bool LArSDStatus);
+        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation);
         /// Initialize event. Most Geant4 global things are initialized the first time this is called.
         void InitializeEvent();
         /// To be called after simulating each IceTray event.
@@ -45,7 +45,7 @@ class G4Interface {
         // return CCMMCPEMap and LAr energy deposition
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
         I3MCTreePtr GetLArEnergyDep() { return LArEnergyDep; }
-
+    
     private:
         void Initialize();
 

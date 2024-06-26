@@ -16,9 +16,9 @@ class G4CCMPhysicsList: public G4VModularPhysicsList {
 public:
     G4CCMPhysicsList(G4int ver=1);
     ~G4CCMPhysicsList();
+    void AddSodiumDecay();
 private:
     void SetCuts();
-    void AddBetaPlusDecay();
 };
 
 #endif // g4-larsim_G4CCMPhysicsList_H

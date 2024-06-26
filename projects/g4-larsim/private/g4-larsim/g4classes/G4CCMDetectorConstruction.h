@@ -63,10 +63,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     bool GetLArSDStatus() { return LArSDStatus_; }
  
     // set sodium source calibration run status
-    void InitializeSodiumSourceRun(G4double SodiumSourceLocation){
-        SodiumSourceRun_ = true; 
+    void InitializeSodiumSourceRun(bool SodiumSourceRun, G4double SodiumSourceLocation){
+        SodiumSourceRun_ = SodiumSourceRun; 
         SodiumSourceLocation_ = SodiumSourceLocation;
-        G4RunManager::GetRunManager()->ReinitializeGeometry();
     }
 
     // get sodium source calibration run status
@@ -127,7 +126,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     bool LArSDStatus_ = true; // turn fiducial LAr SD on/off
 
     // controls to turn sodium source on/off
-    bool SodiumSourceRun_ = true;
+    bool SodiumSourceRun_ = false;
     G4double SodiumSourceLocation_ = 0.0; 
 };
 
