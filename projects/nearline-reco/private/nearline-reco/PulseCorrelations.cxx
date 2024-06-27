@@ -25,6 +25,7 @@
 #include <icetray/I3Logging.h>
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
+#include <icetray/CCMPMTKeyPair.h>
 #include <icetray/CCMTriggerKey.h>
 #include <icetray/robust_statistics.h>
 #include <icetray/I3Int.h>
@@ -138,10 +139,10 @@ class PulseCorrelations: public I3Module {
     std::string output_prefix_;
 
     double time_window_ns_;
+    bool pulse_correlations_;
 
     I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance> pulse_covariance_;
     I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance> charge_covariance_;
-    I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance> nonzero_charge_covariance_;
 
 public:
     void Geometry(I3FramePtr frame);
@@ -179,6 +180,7 @@ PulseCorrelations::PulseCorrelations(const I3Context& context) : I3Module(contex
     AddParameter("InputPulsesName", "Name of the input pulses", std::string("WavedeformPulses"));
     AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
     AddParameter("TimeWindow", "Time window for considering correlations in ns", double(10.0));
+    AddParameter("PulseCorrelations", "ComputePulseCorrelations", bool(false));
 }
 
 void PulseCorrelations::Configure() {
@@ -186,6 +188,7 @@ void PulseCorrelations::Configure() {
     GetParameter("InputPulsesName", pulses_name_);
     GetParameter("OutputPrefix", output_prefix_);
     GetParameter("TimeWindow", time_window_ns_);
+    GetParameter("PulseCorrelations", pulse_correlations_);
 }
 
 void PulseCorrelations::Geometry(I3FramePtr frame) {
@@ -238,32 +241,34 @@ void PulseCorrelations::DAQ(I3FramePtr frame) {
         if(time_of_last_pulse.find(j_key) == time_of_last_pulse.end()) {
             pulses_in_window[j_key] = 1;
         } else {
-            double previous_j_time = time_of_last_pulse[j_key];
-            if(j_time - previous_j_time > time_window_ns_) {
-                // Add entries for pulses not present in the window
-                for(std::pair<CCMPMTKey const, double> const & p : time_of_last_pulse) {
-                    CCMPMTKey const & p_key = p.first;
-                    std::tuple<std::tuple<CCMPMTKey, CCMPMTKey>, std::tuple<double, double>> kp = present_key_pair(j_key, p_key);
-                    std::tuple<CCMPMTKey, CCMPMTKey> const & key = std::get<0>(kp);
-                    std::set<std::tuple<CCMPMTKey, CCMPMTKey>>::iterator it = pending.find(key);
-                    if(it != pending.end())
-                        pending.erase(it);
-                    if(pulses_in_window[p_key] == 0) {
-                        double p_time = time_of_last_pulse[p_key];
-                        if(p_time - previous_j_time < time_window_ns_)
-                            continue;
-                        std::tuple<double, double> const & present_not_present = std::get<1>(kp);
-                        double weight = std::min(j_time - p_time, p_time - previous_j_time) / time_window_ns_;
-                        pulse_covariance_[key].AddValue(std::get<0>(present_not_present), std::get<1>(present_not_present), weight);
-                    }
-                }
-            } else {
-                for(std::pair<CCMPMTKey const, double> const & p : time_of_last_pulse) {
-                    CCMPMTKey const & p_key = p.first;
-                    if(pulses_in_window[p_key] == 0) {
+            if(pulse_correlations_) {
+                double previous_j_time = time_of_last_pulse[j_key];
+                if(j_time - previous_j_time > time_window_ns_) {
+                    // Add entries for pulses not present in the window
+                    for(std::pair<CCMPMTKey const, double> const & p : time_of_last_pulse) {
+                        CCMPMTKey const & p_key = p.first;
                         std::tuple<std::tuple<CCMPMTKey, CCMPMTKey>, std::tuple<double, double>> kp = present_key_pair(j_key, p_key);
                         std::tuple<CCMPMTKey, CCMPMTKey> const & key = std::get<0>(kp);
-                        pending.insert(key);
+                        std::set<std::tuple<CCMPMTKey, CCMPMTKey>>::iterator it = pending.find(key);
+                        if(it != pending.end())
+                            pending.erase(it);
+                        if(pulses_in_window[p_key] == 0) {
+                            double p_time = time_of_last_pulse[p_key];
+                            if(p_time - previous_j_time < time_window_ns_)
+                                continue;
+                            std::tuple<double, double> const & present_not_present = std::get<1>(kp);
+                            double weight = std::min(j_time - p_time, p_time - previous_j_time) / time_window_ns_;
+                            pulse_covariance_[key].AddValue(std::get<0>(present_not_present), std::get<1>(present_not_present), weight);
+                        }
+                    }
+                } else {
+                    for(std::pair<CCMPMTKey const, double> const & p : time_of_last_pulse) {
+                        CCMPMTKey const & p_key = p.first;
+                        if(pulses_in_window[p_key] == 0) {
+                            std::tuple<std::tuple<CCMPMTKey, CCMPMTKey>, std::tuple<double, double>> kp = present_key_pair(j_key, p_key);
+                            std::tuple<CCMPMTKey, CCMPMTKey> const & key = std::get<0>(kp);
+                            pending.insert(key);
+                        }
                     }
                 }
             }
@@ -278,54 +283,60 @@ void PulseCorrelations::DAQ(I3FramePtr frame) {
             std::tuple<CCMPMTKey, CCMPMTKey> const & key = std::get<0>(kp);
             std::tuple<double, double> const & charge = std::get<1>(kp);
             charge_covariance_[key].AddValue(std::get<0>(charge), std::get<1>(charge), 1.0);
-            pulse_covariance_[key].AddValue(1.0, 1.0, 1.0);
+            if(pulse_correlations_)
+                pulse_covariance_[key].AddValue(1.0, 1.0, 1.0);
         }
     }
 
     // Iterate over pending pairs and add them as empty entries to the covariance matrix
-    for(std::tuple<CCMPMTKey, CCMPMTKey> const & key : pending) {
-        CCMPMTKey const & j_key = std::get<0>(key);
-        CCMPMTKey const & p_key = std::get<1>(key);
-        double const & j_time = time_of_last_pulse.at(j_key);
-        double const & p_time = time_of_last_pulse.at(p_key);
-        std::tuple<std::tuple<CCMPMTKey, CCMPMTKey>, std::tuple<double, double>> kp;
-        if(p_time < j_time) {
-            kp = present_key_pair(j_key, p_key);
-        } else {
-            kp = present_key_pair(p_key, j_key);
+    if(pulse_correlations_)
+        for(std::tuple<CCMPMTKey, CCMPMTKey> const & key : pending) {
+            CCMPMTKey const & j_key = std::get<0>(key);
+            CCMPMTKey const & p_key = std::get<1>(key);
+            double const & j_time = time_of_last_pulse.at(j_key);
+            double const & p_time = time_of_last_pulse.at(p_key);
+            std::tuple<std::tuple<CCMPMTKey, CCMPMTKey>, std::tuple<double, double>> kp;
+            if(p_time < j_time) {
+                kp = present_key_pair(j_key, p_key);
+            } else {
+                kp = present_key_pair(p_key, j_key);
+            }
+            present_key_pair(j_key, p_key);
+            //std::tuple<CCMPMTKey, CCMPMTKey> const & key = std::get<0>(kp);
+            std::tuple<double, double> const & present_not_present = std::get<1>(kp);
+            double weight = std::abs(j_time - p_time) / time_window_ns_;
+            pulse_covariance_[key].AddValue(std::get<0>(present_not_present), std::get<1>(present_not_present), weight);
         }
-        present_key_pair(j_key, p_key);
-        //std::tuple<CCMPMTKey, CCMPMTKey> const & key = std::get<0>(kp);
-        std::tuple<double, double> const & present_not_present = std::get<1>(kp);
-        double weight = std::abs(j_time - p_time) / time_window_ns_;
-        pulse_covariance_[key].AddValue(std::get<0>(present_not_present), std::get<1>(present_not_present), weight);
-    }
 
     PushFrame(frame);
 }
 
 void PulseCorrelations::Finish() {
-    boost::shared_ptr<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>> pulse_covariance_out = boost::make_shared<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>>();
-    boost::shared_ptr<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>> charge_covariance_out = boost::make_shared<I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>>>();
+    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Physics);
 
-    for(I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance>::const_iterator i = pulse_covariance_.begin(); i != pulse_covariance_.end(); i++) {
-        std::tuple<CCMPMTKey, CCMPMTKey> const & key = i->first;
-        OnlineCovariance const & cov = i->second;
-        pulse_covariance_out->operator[](key) = std::vector<double>();
-        std::vector<double> & c = pulse_covariance_out->operator[](key);
-        cov.Fill(c);
+    if(pulse_correlations_) {
+        boost::shared_ptr<I3Map<CCMPMTKeyPair, std::vector<double>>> pulse_covariance_out = boost::make_shared<I3Map<CCMPMTKeyPair, std::vector<double>>>();
+        for(I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance>::const_iterator i = pulse_covariance_.begin(); i != pulse_covariance_.end(); i++) {
+            std::tuple<CCMPMTKey, CCMPMTKey> const & key = i->first;
+            CCMPMTKeyPair key_(std::get<0>(key), std::get<1>(key));
+            OnlineCovariance const & cov = i->second;
+            pulse_covariance_out->operator[](key_) = std::vector<double>();
+            std::vector<double> & c = pulse_covariance_out->operator[](key_);
+            cov.Fill(c);
+        }
+        frame->Put(output_prefix_ + "PulseCovariance", pulse_covariance_out);
     }
 
+    boost::shared_ptr<I3Map<CCMPMTKeyPair, std::vector<double>>> charge_covariance_out = boost::make_shared<I3Map<CCMPMTKeyPair, std::vector<double>>>();
     for(I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, OnlineCovariance>::const_iterator i = charge_covariance_.begin(); i != charge_covariance_.end(); i++) {
         std::tuple<CCMPMTKey, CCMPMTKey> const & key = i->first;
+        CCMPMTKeyPair key_(std::get<0>(key), std::get<1>(key));
         OnlineCovariance const & cov = i->second;
-        charge_covariance_out->operator[](key) = std::vector<double>();
-        std::vector<double> & c = charge_covariance_out->operator[](key);
+        charge_covariance_out->operator[](key_) = std::vector<double>();
+        std::vector<double> & c = charge_covariance_out->operator[](key_);
         cov.Fill(c);
     }
-
-    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Physics);
-    frame->Put(output_prefix_ + "PulseCovariance", pulse_covariance_out);
     frame->Put(output_prefix_ + "ChargeCovariance", charge_covariance_out);
 
+    PushFrame(frame);
 }

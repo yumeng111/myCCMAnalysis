@@ -19,6 +19,7 @@
 #include <icetray/has_operator.h>
 #include <icetray/OMKey.h>
 #include <icetray/CCMPMTKey.h>
+#include <icetray/CCMPMTKeyPair.h>
 #include "dataclasses/TriggerKey.h"
 #include "dataclasses/ostream_overloads.hpp"
 
@@ -199,6 +200,8 @@ typedef I3Map<CCMPMTKey, std::pair<uint32_t, uint32_t> > I3MapPMTKeyPairUInt32UI
 typedef I3Map<CCMPMTKey, std::pair<uint64_t, uint64_t> > I3MapPMTKeyPairUInt64UInt64;
 typedef I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, double> I3MapTuplePMTKeyPMTKeyDouble;
 typedef I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>> I3MapTuplePMTKeyPMTKeyVectorDouble;
+typedef I3Map<CCMPMTKeyPair, double> I3MapPMTKeyPairDouble;
+typedef I3Map<CCMPMTKeyPair, std::vector<double>> I3MapPMTKeyPairVectorDouble;
 
 I3_POINTER_TYPEDEFS(I3MapStringDouble);
 I3_POINTER_TYPEDEFS(I3MapStringInt);
@@ -233,6 +236,8 @@ I3_POINTER_TYPEDEFS(I3MapPMTKeyPairUInt32UInt32);
 I3_POINTER_TYPEDEFS(I3MapPMTKeyPairUInt64UInt64);
 I3_POINTER_TYPEDEFS(I3MapTuplePMTKeyPMTKeyDouble);
 I3_POINTER_TYPEDEFS(I3MapTuplePMTKeyPMTKeyVectorDouble);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyPairDouble);
+I3_POINTER_TYPEDEFS(I3MapPMTKeyPairVectorDouble);
 
 #endif // I3MAP_H_INCLUDED
 

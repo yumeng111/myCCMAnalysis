@@ -55,6 +55,7 @@ set(ICETRAY_PYTHON_SRC
   private/pybindings/module.cxx
   private/pybindings/OMKey.cxx
   private/pybindings/CCMPMTKey.cxx
+  private/pybindings/CCMPMTKeyPair.cxx
   private/pybindings/CCMTriggerKey.cxx
   private/pybindings/CCMChannelKey.cxx
   private/pybindings/I3Bool.cxx
@@ -118,6 +119,7 @@ i3_add_library(icetray
   private/icetray/PythonModule.cxx
   private/icetray/OMKey.cxx
   private/icetray/CCMPMTKey.cxx
+  private/icetray/CCMPMTKeyPair.cxx
   private/icetray/CCMTriggerKey.cxx
   private/icetray/CCMChannelKey.cxx
   private/icetray/I3Int.cxx

@@ -98,8 +98,6 @@ class PulseChargeTimeHistogram: public I3Module {
     size_t charge_n_edges_;
     double charge_base_;
 
-    bool output_per_pmt_;
-
     using storage_t = boost::histogram::dense_storage<boost::histogram::accumulators::weighted_sum<double>>;
     using time_axis_t =
         boost::histogram::axis::regular<double>;
@@ -451,7 +449,6 @@ PulseChargeTimeHistogram::PulseChargeTimeHistogram(const I3Context& context) : I
         AddParameter("ChargeLogHigh", "High edge of the log binning", double(9.0));
         AddParameter("ChargeNEdges", "Number of edges in the log binning", size_t(10*11+1));
         AddParameter("ChargeBase", "Base of the log binning", double(10.0));
-        AddParameter("OutputPerPMT", "Output one file per PMT", bool(false));
 }
 
 void PulseChargeTimeHistogram::Configure() {
@@ -465,7 +462,6 @@ void PulseChargeTimeHistogram::Configure() {
     GetParameter("ChargeLogHigh", charge_log_high_);
     GetParameter("ChargeNEdges", charge_n_edges_);
     GetParameter("ChargeBase", charge_base_);
-    GetParameter("OutputPerPMT", output_per_pmt_);
 
     time_axis_ = time_axis_t(time_n_edges_, time_low_, time_high_);
     // charge_axis_ = charge_axis_t(charge_n_edges_, log(charge_base_) * charge_log_low_, log(charge_base_) * charge_log_high_);
@@ -551,8 +547,8 @@ void PulseChargeTimeHistogram::Finish() {
     charge_hist_t tot_charge_hist = new_charge_hist();
     time_hist_t tot_time_chargeW_hist = new_time_hist();
 
-    std::stringstream ss;
-    ss << output_prefix << "_binning.txt";
+    //std::stringstream ss;
+    //ss << output_prefix << "_binning.txt";
 
     I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Physics);
 
@@ -562,9 +558,9 @@ void PulseChargeTimeHistogram::Finish() {
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> time_chargeW_hists_var = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<std::vector<double>>>> time_charge_hists = boost::make_shared<I3Map<CCMPMTKey, std::vector<std::vector<double>>>>();
 
-    std::string binning_output_name = ss.str();
+    //std::string binning_output_name = ss.str();
 
-    SaveBins(binning_output_name, time_bin_edges, charge_bin_edges);
+    //SaveBins(binning_output_name, time_bin_edges, charge_bin_edges);
 
     for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
         Add2DHists(ntime, ncharge, tot_hist, hists_.at(p.first));
@@ -611,11 +607,13 @@ void PulseChargeTimeHistogram::Finish() {
         tot_charge_hist,
         tot_time_chargeW_hist);
 
-    frame->Put("TimeChargeHists", tot_time_charge_output);
-    frame->Put("TimeHists", tot_time_output);
-    frame->Put("ChargeHists", tot_charge_output);
-    frame->Put("TimeChargeWHists", tot_time_chargeW_output);
-    frame->Put("TimeChargeWHistsVar", tot_time_chargeW_output_var);
+    frame->Put(output_prefix + "TimeBinEdges", boost::make_shared<I3VectorDouble>(time_bin_edges.begin(), time_bin_edges.end()));
+    frame->Put(output_prefix + "ChargeBinEdges", boost::make_shared<I3VectorDouble>(charge_bin_edges.begin(), charge_bin_edges.end()));
+    frame->Put(output_prefix + "TimeChargeHists", tot_time_charge_output);
+    frame->Put(output_prefix + "TimeHists", tot_time_output);
+    frame->Put(output_prefix + "ChargeHists", tot_charge_output);
+    frame->Put(output_prefix + "TimeChargeWHists", tot_time_chargeW_output);
+    frame->Put(output_prefix + "TimeChargeWHistsVar", tot_time_chargeW_output_var);
 
     PushFrame(frame);
 }

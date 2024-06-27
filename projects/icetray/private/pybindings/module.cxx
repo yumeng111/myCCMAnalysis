@@ -37,6 +37,7 @@
 
 
 void register_CCMPMTKey();
+void register_CCMPMTKeyPair();
 void register_CCMTriggerKey();
 void register_OMKey();
 void register_I3Bool();
@@ -94,6 +95,7 @@ I3_PYTHON_MODULE(icetray)
   def("set_scratch_directory", &I3::dataio::SetScratchDirectory);
 
   register_CCMPMTKey();
+  register_CCMPMTKeyPair();
   register_CCMTriggerKey();
   register_OMKey();
   register_I3PhysicsUsage();
