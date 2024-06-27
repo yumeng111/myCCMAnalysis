@@ -80,8 +80,11 @@ struct NewLikelihoodFunctor {
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
     ZigZagPrior prior = ZigZagPrior(3.0, 6.0, false); // we want (tau_s - tau_TPB) > 3.0 with 600% scale
     ZigZagPrior uv_abs_prior = ZigZagPrior(65.0, 6.0, true); // we want uv abs < 65.0 with 600% scale
+    ZigZagPrior pmt_eff_prior = ZigZagPrior(0.0, 30.0, true); // we want |(reference pmt eff - ith pmt eff)| < 0 with 600% scale
     bool fitting_uv_abs = true;
     bool apply_uv_abs_prior = false;
+    bool apply_pmt_eff_prior = false;
+    I3MapPMTKeyVectorDouble pmt_nearby_idx;
 
     // This returns the LLH
     template<typename T>
@@ -113,6 +116,13 @@ struct NewLikelihoodFunctor {
                 total_llh += prior(tau_s - tau_TPB); 
                 if (apply_uv_abs_prior){
                     total_llh += uv_abs_prior(x[207]); 
+                }
+                if (apply_pmt_eff_prior){
+                    std::vector<double> this_pmt_nearby_idx = pmt_nearby_idx.at(key);
+                    for (size_t r = 0; r < this_pmt_nearby_idx.size(); r++){
+                        T rel_eff = abs(x[7 + pmt_it] - x[7 + size_t(this_pmt_nearby_idx.at(r))]);
+                        total_llh += pmt_eff_prior(rel_eff);
+                    }
                 }
             }
         }
@@ -740,7 +750,7 @@ std::vector<double> AllPMTcppMinimizer::GrabPhotonsPerMeVSeed(CCMPMTKey key, dou
 std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                                         I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                                         std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events, std::vector<double> best_fit_params,
-                                                        bool apply_uv_abs_prior){
+                                                        bool apply_uv_abs_prior, bool apply_pmt_eff_prior, I3MapPMTKeyVectorDouble pmt_nearby_idx){
 
     std::vector<I3MapPMTKeyDouble> time_offsets = {time_offset1, time_offset2, time_offset3, time_offset4}; 
     std::vector<std::string> paramter_names = {"Rs", "tau_s", "tau_TPB", "norm1", "norm2", "norm3", "norm4"};
@@ -801,6 +811,8 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
         likelihood.time_offsets = time_offsets;
         likelihood.fitting_uv_abs = true; 
         likelihood.apply_uv_abs_prior = apply_uv_abs_prior;
+        likelihood.apply_pmt_eff_prior = apply_pmt_eff_prior;
+        likelihood.pmt_nearby_idx = pmt_nearby_idx;
     
         // now set up our minimizer
         phys_tools::lbfgsb::LBFGSB_Driver minimizer;
@@ -829,8 +841,8 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
             //minimizer.addParameter(best_fit_params.at(7 + n + 2), 1e-3, 0.1, 10.0); // pmt eff
             minimizer.addParameter(0.5, 1e-3, 0.01, 10.0); // pmt eff
         } 
-        double uv_abs_seed = 65.0;        
-        minimizer.addParameter(uv_abs_seed, 1e-3, 20.0, 300.0); // uv absorption!!!
+        double uv_abs_seed = 50.0;        
+        minimizer.addParameter(uv_abs_seed, 1e-3, 20.0, 100.0); // uv absorption!!!
         
         // now let's grab our photons/mev seeds
         size_t reference_pmt_idx = (size_t) (keys_to_fit.size() / 2);
@@ -857,13 +869,15 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
         std::cout << "photons/mev seed = " << photons_per_mev_seeds << std::endl;
         
         // let's use the average photons/mev seed for our seed
-        //double average_photons_per_mev = 0.0;
-        //for (size_t p = 0; p < photons_per_mev_seeds.size(); p++){
-        //    average_photons_per_mev += photons_per_mev_seeds.at(p);
-        //}
-        //average_photons_per_mev /= (double)photons_per_mev_seeds.size();
+        double average_photons_per_mev = 0.0;
+        for (size_t p = 0; p < photons_per_mev_seeds.size(); p++){
+            average_photons_per_mev += photons_per_mev_seeds.at(p);
+        }
+        average_photons_per_mev /= (double)photons_per_mev_seeds.size();
+        
+        //size_t smallest_idx = std::distance(photons_per_mev_seeds.begin(), std::min_element(photons_per_mev_seeds.begin(), photons_per_mev_seeds.end()));
 
-        minimizer.addParameter(photons_per_mev_seeds.at(0), 1e-3, photons_per_mev_seeds.at(0) * 1e-5, photons_per_mev_seeds.at(0) * 1e5); // photons per mev!!!
+        minimizer.addParameter(average_photons_per_mev, 1e-3, average_photons_per_mev * 1e-5, average_photons_per_mev * 1e5); // photons per mev!!!
         minimizer.setHistorySize(20);
     
         // fix parameter idx of guys we are not minimizing
@@ -881,11 +895,11 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
         size_t n_pmts_included = 0;
         size_t n_pmts_fitting = keys_to_fit.size();
         for (size_t n = 0; n < 200; n++){
-            //n_pmts_included += 1;
-            //if (n_pmts_included > n_pmts_fitting){
-            //    minimizer.fixParameter(6 + n_pmts_included); // pmt eff
-            //}
-            minimizer.fixParameter(7 + n); // pmt eff
+            n_pmts_included += 1;
+            if (n_pmts_included > n_pmts_fitting){
+                minimizer.fixParameter(6 + n_pmts_included); // pmt eff
+            }
+            //minimizer.fixParameter(7 + n); // pmt eff
         }
         
         bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));

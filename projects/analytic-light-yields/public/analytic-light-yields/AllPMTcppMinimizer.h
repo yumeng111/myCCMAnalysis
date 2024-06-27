@@ -53,7 +53,7 @@ public:
     std::vector<double> FitUVAbsorption(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                         I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                         std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events, std::vector<double> best_fit_params,
-                                        bool apply_uv_abs_prior);
+                                        bool apply_uv_abs_prior, bool apply_pmt_eff_prior, I3MapPMTKeyVectorDouble pmt_nearby_idx);
     
     std::vector<double> GrabPhotonsPerMeVSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
                                               double uv_abs, std::vector<double> z_offsets, size_t n_sodium_events,
