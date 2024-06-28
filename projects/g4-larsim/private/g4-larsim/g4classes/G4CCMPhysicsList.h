@@ -13,9 +13,6 @@ public:
     ~G4CCMPhysicsList();
   
 protected:
-    // Construct particle and physics
-    void ConstructParticle() override;
-    void ConstructProcess()  override;
     void SetCuts() override;
 };
 

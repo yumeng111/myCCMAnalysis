@@ -26,7 +26,7 @@
 #include <G4DeexPrecoParameters.hh>
 #include <G4PhysListUtil.hh>
 #include <G4EmBuilder.hh>
-
+#include <G4WrapperProcess.hh>
 
 #include <G4EmExtraPhysics.hh>
 #include <G4HadronElasticPhysicsHP.hh>
@@ -45,7 +45,7 @@
 #include <G4HadronPhysicsINCLXX.hh>
 #include <G4IonElasticPhysics.hh>
 #include <G4IonINCLXXPhysics.hh>
-
+#include <FTFP_BERT.hh>
 
 G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
 
@@ -98,72 +98,22 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
 #elif G4VERSION_NUMBER >= 1000
     RegisterPhysics(opticalPhysics);
 #endif
+    std::cout << "loaded optical physics" << std::endl;
 
-//    // Synchroton Radiation & GN Physics
-//    RegisterPhysics( new G4EmExtraPhysics(ver) );
-//
+    // Synchroton Radiation & GN Physics
+    RegisterPhysics( new G4EmExtraPhysics(ver) );
+
 //    // Hadron Elastic scattering
 //    RegisterPhysics( new G4HadronElasticPhysicsHP(ver) );
 //
 //    // Hadron Physics
 //    RegisterPhysics( new G4HadronPhysicsQGSP_BERT_HP(ver) );
-//
-//    // Stopping Physics
-//    RegisterPhysics( new G4StoppingPhysics(ver) );
-    
-    // Instantiate Physics List infrastructure
-    //G4PhysListUtil::InitialiseParameters();
 
-    //// Update G4NuclideTable time limit
-    //const G4double meanLife = 1 * picosecond;
-    //G4NuclideTable::GetInstance()->SetMeanLifeThreshold(meanLife);
-    //G4NuclideTable::GetInstance()->SetLevelTolerance(1.0 * eV);
-
-    //// Define flags for the atomic de-excitation module
-    //G4EmParameters::Instance()->SetDefaults();
-    //G4EmParameters::Instance()->SetAugerCascade(true);
-    //G4EmParameters::Instance()->SetDeexcitationIgnoreCut(true);
-
-    //// Define flags for nuclear gamma de-excitation model
-    //G4DeexPrecoParameters* deex = G4NuclearLevelData::GetInstance()->GetParameters();
-    //deex->SetCorrelatedGamma(false);
-    //deex->SetStoreAllLevels(true);
-    //deex->SetInternalConversionFlag(true);
-    //deex->SetIsomerProduction(true);
-    //deex->SetMaxLifeTime(meanLife);
-  
-
+    // Stopping Physics
+    RegisterPhysics( new G4StoppingPhysics(ver) );
 }
 
 G4CCMPhysicsList::~G4CCMPhysicsList() {}
-
-void G4CCMPhysicsList::ConstructParticle() {
-    // Minimal set of particles for EM physics and radioactive decay
-    G4EmBuilder::ConstructMinimalEmSet();
-}
-
-void G4CCMPhysicsList::ConstructProcess() {
-    AddTransportation();
-
-    G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60 * CLHEP::year);
-
-    G4bool ARMflag = false;
-    radioactiveDecay->SetARM(ARMflag); // Atomic Rearrangement
-
-    // EM physics constructor is not used in this example, so
-    // it is needed to instantiate and to initialize atomic deexcitation
-    G4LossTableManager* man = G4LossTableManager::Instance();
-    G4VAtomDeexcitation* deex = man->AtomDeexcitation();
-    if (nullptr == deex) {
-        deex = new G4UAtomicDeexcitation();
-        man->SetAtomDeexcitation(deex);
-    }
-    deex->InitialiseAtomicDeexcitation();
-
-    // Register radioactiveDecay
-    G4PhysicsListHelper* ph = G4PhysicsListHelper::GetPhysicsListHelper();
-    ph->RegisterProcess(radioactiveDecay, G4GenericIon::GenericIon());
-}
 
 void G4CCMPhysicsList::SetCuts() {
     if (verboseLevel >1){

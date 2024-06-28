@@ -79,8 +79,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // now let's check energy deposited
     G4double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
     G4double ekin = aStep->GetTrack()->GetKineticEnergy() / electronvolt * I3Units::eV;
-    if(ekin == 0.)
-        return false;  // No ekin so don't count as hit
+    //if(ekin == 0.)
+    //    return false;  // No ekin so don't count as hit
 
     // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
 
@@ -127,7 +127,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         // let's create and fill our I3Particle
         // since parent id = 0, this will also be a primary
         I3Particle primary(primaryParticleType_);
-        primary.SetEnergy(ekin);
+        primary.SetEnergy(edep);
         primary.SetPos(position);
         primary.SetDir(direction);
  
@@ -142,7 +142,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         // now let's get particle type for this daughter
         I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
         I3Particle daughter(daughter_type);
-        daughter.SetEnergy(ekin);
+        daughter.SetEnergy(edep);
         daughter.SetPos(position);
         daughter.SetDir(direction);
 
@@ -162,7 +162,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     auto scintHit = new G4CCMScintHit(thePrePV);
 
-    scintHit->SetEdep(ekin);
+    scintHit->SetEdep(edep);
     scintHit->SetPos(pos);
 
     fScintCollection->insert(scintHit);
