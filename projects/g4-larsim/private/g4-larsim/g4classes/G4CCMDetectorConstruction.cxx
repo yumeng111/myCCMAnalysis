@@ -188,8 +188,42 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fLAr_mt = new G4MaterialPropertiesTable();
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", LAr_Energy_Scint, LAr_SCINT); 
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT2", LAr_Energy_Scint, LAr_SCINT);
-    fLAr_mt->AddProperty("RINDEX",        LAr_Energy_RIn,   LAr_RIND);
-    fLAr_mt->AddProperty("RAYLEIGH",      LAr_Energy_RIn,  LAr_RSL);
+    //fLAr_mt->AddProperty("RINDEX",        LAr_Energy_RIn,   LAr_RIND);
+    //fLAr_mt->AddProperty("RAYLEIGH",      LAr_Energy_RIn,  LAr_RSL);
+    
+    // let's do rindex and rayleigh a different way
+    G4double base = 39.56;//AbsLAr < 200 nm
+    G4double uvlas = 100.0;//AbsLAr 200-300 nm
+    G4double three = 1400.;//AbsLAr 300-400 nm
+    G4double mult = 2400.;//AbsLAr 400+ nm
+    G4double rindex = 1.69;//LAr rindex @ 128
+    G4double scaler = 1.0;//scaling slope of rindex
+    G4double ray128 = 94.096;//LAr rayleigh length @128
+    G4double scalerray = 1.73;//scaling slope of rayleigh
+    std::vector<G4double> lar_Energy_rin = { 1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV , 4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV ,
+                                             8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 10.33206*eV , 11.27134*eV , 12.39847*eV }; //energies for refractive index and Rayleigh scattering lengths
+
+    G4double set = rindex-1.24;
+    G4double scaleRin = 1.0;//scaling slope of rindex
+    std::vector<G4double> scale = { 0.125, 0.196, 0.345, 0.637, 0.8065, 1.38, 1.78, 3.22, 4.66 };
+    for (int i = 0; i < 9; ++i) {
+        scale[i] = std::pow(scale[i],scaler)*set+1.24;
+    }//*/
+    G4double rayleigh = ray128*cm;
+    std::vector<G4double> lar_RSL = { 3244.9341, 1712.2246, 798.328,   309.35745, 87.855032, 14.852719, 8.9947353, 4.7653069,
+                                      2.0378371, 1.445036,  1,         0.6279916, 0.3976383, 0.1135036, 0.035983 };
+    for (int i = 0; i < 15; ++i) {
+        lar_RSL[i] = std::pow(lar_RSL[i],scalerray)*rayleigh;
+    }//*/
+
+    const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
+    std::vector<G4double> lar_RIND  = { 1.22 ,     1.222 ,    1.225 ,    1.23 , 1.24 ,     scale[0] , scale[1] , scale[2] , scale[3] ,
+                                        scale[4] , rindex ,   scale[5], scale[6] , scale[7] , scale[8] }; //index of refraction spectrum.
+
+    fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
+    fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
+   
+    // back to defining material property table 
     fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
