@@ -25,6 +25,7 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include <random>
 
 SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
     CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree"), randomServiceName_("") {
@@ -57,14 +58,37 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     // first let's create our MC tree
     I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
 
+    // let's make the location of our event randomly within our sodium pellet
+    // set up geometry of sodium source pellet
+    double inset = 0.25 * I3Units::cm;
+    double pellet_radius = 0.4 * I3Units::cm;
+    double pellet_height = 0.3 * I3Units::cm;
+
+    // now throw events
+    // note -- using c++ random distributions, but should probably change to use I3GSLRandomService at some point,,.
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis_0_1(0.0, 1.0); // uniform distribution 0 - 1
+    std::uniform_real_distribution<double> dis_neg_1_1(-1.0, 1.0); // uniform distribution -1 - 1
+    std::uniform_real_distribution<double> dis_angle(0.0, 2.0*M_PI); // uniform distribution 0 - 2pi
+    std::uniform_real_distribution<double> dis_z(z_position_ + inset, z_position_ + inset + pellet_height); // uniform distribution across z position of sodium pellet 
+
     // let's create and fill our I3Particle
     I3Particle primary(I3Particle::Na22Nucleus);
-    primary.SetPos(0.0 * I3Units::cm, 0.0 * I3Units::cm, z_position_);
-    primary.SetEnergy(0.0 * I3Units::MeV);
-    primary.SetDir(0.5, 0.5, -1.0);
+    
+    double theta_pos = dis_angle(gen);
+    double r = std::sqrt(dis_0_1(gen)) * pellet_radius;
+    double x = r * std::cos(theta_pos);
+    double y = r * std::sin(theta_pos);
+    double z = dis_z(gen);
+
+    std::cout << "event location = " << x << ", " << y << ", " << z << std::endl;
+    primary.SetPos(x, y, z);
+    primary.SetEnergy(0.0 * I3Units::MeV); // doesnt really matter
+    primary.SetDir(0.0, 0.0, 0.0); // doesnt really matter
     
     I3MCTreeUtils::AddPrimary(*mcTree, primary);
-    
+
     return mcTree;
 }
 

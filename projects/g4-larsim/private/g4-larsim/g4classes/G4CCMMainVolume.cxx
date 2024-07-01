@@ -513,8 +513,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
 
     // now make sodium pellet -- really guessing on these measurements
-    G4double pellet_radius = 0.4*cm;
-    G4double pellet_height = 1.0*cm;
+    G4double pellet_radius = 4.0*mm;
+    G4double pellet_height = 3.0*mm;
     fSodiumSourcePellet = new G4Tubs("SodiumSourcePellet", 0, pellet_radius, pellet_height/2.0, 0, 360*deg);
     G4NistManager* nistManager = G4NistManager::Instance();
     G4Material* fNa = nistManager->FindOrBuildMaterial("G4_Na");

@@ -31,7 +31,7 @@
 
 #include "../visualization/G4CCMActionInitialization.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
-#include "../visualization/PhysicsList.h"
+#include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 
 #include "FTFP_BERT.hh"
 #include "G4EmStandardPhysics_option4.hh"
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 
   //physicsList->RegisterPhysics(opticalPhysics);
   //runManager->SetUserInitialization(physicsList);
-  runManager->SetUserInitialization(new PhysicsList());
+  runManager->SetUserInitialization(new G4CCMPhysicsList(1));
 
   runManager->SetUserInitialization(new G4CCMActionInitialization(det));
 

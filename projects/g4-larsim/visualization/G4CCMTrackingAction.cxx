@@ -36,6 +36,7 @@
 #include "G4OpticalPhoton.hh"
 #include "G4Track.hh"
 #include "G4TrackingManager.hh"
+#include <G4ParticleTypes.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -72,5 +73,7 @@ void G4CCMTrackingAction::PostUserTrackingAction(const G4Track* aTrack) {
 
     if(trackInformation->GetForceDrawTrajectory())
         trajectory->SetDrawTrajectory(true);
+    
+
 }
 

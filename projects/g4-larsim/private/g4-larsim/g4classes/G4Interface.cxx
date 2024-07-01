@@ -8,8 +8,6 @@
 #include "g4-larsim/g4classes/G4CCMScintSD.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
-#include "g4-larsim/g4classes/G4CCMDecayPhysics.h"
-#include "g4-larsim/g4classes/V2PhysicsList.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 
 #ifdef G4VIS_USE
@@ -337,11 +335,8 @@ void G4Interface::Initialize()
     log_debug("Init physics list ...");
 
     // adding physics list
-    //V2PhysicsList* physics_list = new V2PhysicsList();
-    //G4CCMPhysicsList* physics_list = new G4CCMPhysicsList(verboseLevel);
-    G4CCMDecayPhysics* decay_physics = new G4CCMDecayPhysics(verboseLevel);
-    runManager_.SetUserInitialization(decay_physics);
-    //runManager_.SetUserInitialization(physics_list);
+    G4CCMPhysicsList* physics_list = new G4CCMPhysicsList(verboseLevel);
+    runManager_.SetUserInitialization(physics_list);
     
     // Initialize G4 kernel
     log_debug("Init run manager ...");

@@ -1,24 +1,45 @@
+//
+// ********************************************************************
+// * License and Disclaimer                                           *
+// *                                                                  *
+// * The  Geant4 software  is  copyright of the Copyright Holders  of *
+// * the Geant4 Collaboration.  It is provided  under  the terms  and *
+// * conditions of the Geant4 Software License,  included in the file *
+// * LICENSE and available at  http://cern.ch/geant4/license .  These *
+// * include a list of copyright holders.                             *
+// *                                                                  *
+// * Neither the authors of this software system, nor their employing *
+// * institutes,nor the agencies providing financial support for this *
+// * work  make  any representation or  warranty, express or implied, *
+// * regarding  this  software system or assume any liability for its *
+// * use.  Please see the license in the file  LICENSE  and URL above *
+// * for the full disclaimer and the limitation of liability.         *
+// *                                                                  *
+// * This  code  implementation is the result of  the  scientific and *
+// * technical work of the GEANT4 collaboration.                      *
+// * By using,  copying,  modifying or  distributing the software (or *
+// * any work based  on the software)  you  agree  to acknowledge its *
+// * use  in  resulting  scientific  publications,  and indicate your *
+// * acceptance of all terms of the Geant4 Software license.          *
+// ********************************************************************
+//
+/// \file G4CCMDecayPhysics.cc
+/// \brief Implementation of the G4CCMDecayPhysics class
+// 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 
-#include <G4VUserPhysicsList.hh>
-#include <globals.hh>
 #include <G4Version.hh>
-#include <G4IonPhysics.hh>
-#include <G4DecayPhysics.hh>
-#include <G4OpticalPhysics.hh>
-#include <G4StoppingPhysics.hh>
-#include <G4RadioactiveDecayPhysics.hh>
-#include <G4Radioactivation.hh>
-#include <G4EmStandardPhysics_option4.hh>
-
-#include <G4SystemOfUnits.hh>
-#include <G4OpticalParameters.hh>
-#include <G4GenericIon.hh>
-#include <G4PhysicsListHelper.hh>
-
 #include <G4UnitsTable.hh>
+#include <G4EmStandardPhysics_option4.hh>
+#include <G4EmStandardPhysics_option3.hh>
+#include <G4ParticleTypes.hh>
 #include <G4IonConstructor.hh>
+#include <G4PhysicsListHelper.hh>
+#include <G4Radioactivation.hh>
+#include <G4SystemOfUnits.hh>
+#include <G4NuclideTable.hh>
 #include <G4LossTableManager.hh>
 #include <G4UAtomicDeexcitation.hh>
 #include <G4NuclideTable.hh>
@@ -26,47 +47,33 @@
 #include <G4DeexPrecoParameters.hh>
 #include <G4PhysListUtil.hh>
 #include <G4EmBuilder.hh>
-#include <G4WrapperProcess.hh>
+#include <globals.hh>
+#include <G4DecayPhysics.hh>
+#include <G4RadioactiveDecayPhysics.hh>
+#include <G4OpticalPhysics.hh>
+#include <G4OpticalParameters.hh>
 
-#include <G4EmExtraPhysics.hh>
-#include <G4HadronElasticPhysicsHP.hh>
-#include <G4HadronPhysicsFTFP_BERT_HP.hh>
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-#include <G4ProcessManager.hh>
-#include <G4ParticleTypes.hh>
-#include <G4UserSpecialCuts.hh>
-
-
-#include <G4EmStandardPhysics.hh>
-#include <G4EmParameters.hh>
-#include <G4HadronElasticPhysics.hh>
-#include <G4HadronPhysicsFTFP_BERT.hh>
-#include <G4HadronInelasticQBBC.hh>
-#include <G4HadronPhysicsINCLXX.hh>
-#include <G4IonElasticPhysics.hh>
-#include <G4IonINCLXXPhysics.hh>
-#include <FTFP_BERT.hh>
-
-G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
-
-    defaultCutValue = 0.7*CLHEP::mm;
+G4CCMPhysicsList::G4CCMPhysicsList(G4int ver):  G4VModularPhysicsList()
+{
+    defaultCutValue = 0.1*CLHEP::mm;
     SetVerboseLevel(ver);
 
-    // EM Physics
-    RegisterPhysics( new G4EmStandardPhysics_option4(ver));
+	// EM physics
+	emPhysicsList = new G4EmStandardPhysics_option4(ver);
 
-    // Decays
-    RegisterPhysics( new G4DecayPhysics(ver) );
-    RegisterPhysics( new G4RadioactiveDecayPhysics(ver) );
+    // Decays 
+    decayPhysicsList = new G4DecayPhysics(ver);
 
     // Optical Physics
-    G4OpticalPhysics* opticalPhysics = new G4OpticalPhysics(ver);
+    opticalPhysicsList = new G4OpticalPhysics(ver);
 
 #if G4VERSION_NUMBER >= 1100
-    RegisterPhysics(opticalPhysics);
+    //RegisterPhysics(opticalPhysicsList);
     G4OpticalParameters* params = G4OpticalParameters::Instance();
 #elif G4VERSION_NUMBER >= 1000
-    G4OpticalPhysics* params = opticalPhysics;
+    G4OpticalPhysics* params = opticalPhysicsList;
 #endif
 
     //The Following lines set more specific parameters for scintillation.
@@ -96,24 +103,92 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver)  : G4VUserPhysicsList() {
 
 #if G4VERSION_NUMBER >= 1100
 #elif G4VERSION_NUMBER >= 1000
-    RegisterPhysics(opticalPhysics);
+    //RegisterPhysics(opticalPhysicsList);
 #endif
-    std::cout << "loaded optical physics" << std::endl;
 
-    // Synchroton Radiation & GN Physics
-    RegisterPhysics( new G4EmExtraPhysics(ver) );
+    // instantiate Physics List infrastructure 
+    //
+    G4PhysListUtil::InitialiseParameters();
 
-//    // Hadron Elastic scattering
-//    RegisterPhysics( new G4HadronElasticPhysicsHP(ver) );
-//
-//    // Hadron Physics
-//    RegisterPhysics( new G4HadronPhysicsQGSP_BERT_HP(ver) );
+    // update G4NuclideTable time limit
+    //
+    const G4double meanLife = 1*picosecond;  
+    G4NuclideTable::GetInstance()->SetMeanLifeThreshold(meanLife);  
+    G4NuclideTable::GetInstance()->SetLevelTolerance(1.0*eV);
 
-    // Stopping Physics
-    RegisterPhysics( new G4StoppingPhysics(ver) );
+    // define flags for the atomic de-excitation module
+    //
+    G4EmParameters::Instance()->SetDefaults();
+    G4EmParameters::Instance()->SetAugerCascade(true);
+    G4EmParameters::Instance()->SetDeexcitationIgnoreCut(true);    
+
+    // define flags for nuclear gamma de-excitation model
+    //
+    G4DeexPrecoParameters* deex = 
+    G4NuclearLevelData::GetInstance()->GetParameters();
+    deex->SetCorrelatedGamma(false);
+    deex->SetStoreAllLevels(true);
+    deex->SetInternalConversionFlag(true);	  
+    deex->SetIsomerProduction(true);  
+    deex->SetMaxLifeTime(meanLife);
+
 }
 
-G4CCMPhysicsList::~G4CCMPhysicsList() {}
+G4CCMPhysicsList::~G4CCMPhysicsList() {  
+	
+    delete emPhysicsList;
+    delete opticalPhysicsList;
+    delete decayPhysicsList;
+
+}
+
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void G4CCMPhysicsList::ConstructParticle() {
+    // minimal set of particles for EM physics and radioactive decay
+    G4EmBuilder::ConstructMinimalEmSet();
+    
+    // Register optical photon
+    G4OpticalPhoton::Definition();
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void G4CCMPhysicsList::ConstructProcess() {
+    AddTransportation();
+
+    // electromagnetic physics list
+    emPhysicsList->ConstructProcess();
+
+    // decay physics list
+    decayPhysicsList->ConstructProcess();
+
+    // optical physics list
+    opticalPhysicsList->ConstructProcess();
+
+    // radioactive decay things
+    G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60*CLHEP::year);
+
+    G4bool ARMflag = false;
+    radioactiveDecay->SetARM(ARMflag);        //Atomic Rearangement
+      
+    // EM physics constructor is not used in this example, so
+    // it is needed to instantiate and to initialize atomic deexcitation
+    //
+    G4LossTableManager* man = G4LossTableManager::Instance();
+    G4VAtomDeexcitation* deex = man->AtomDeexcitation();
+    if (nullptr == deex) {
+     deex = new G4UAtomicDeexcitation();
+     man->SetAtomDeexcitation(deex);
+    }
+    deex->InitialiseAtomicDeexcitation();
+
+    // register radioactiveDecay
+    //
+    G4PhysicsListHelper* ph = G4PhysicsListHelper::GetPhysicsListHelper();
+    ph->RegisterProcess(radioactiveDecay, G4GenericIon::GenericIon());
+}
 
 void G4CCMPhysicsList::SetCuts() {
     if (verboseLevel >1){
@@ -126,3 +201,4 @@ void G4CCMPhysicsList::SetCuts() {
     SetCutValue(0.0, "proton");
 }
 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

@@ -44,6 +44,7 @@
 #include "G4Track.hh"
 #include "G4TrackStatus.hh"
 #include "G4VPhysicalVolume.hh"
+#include <G4ParticleTypes.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -58,7 +59,6 @@ G4CCMSteppingAction::~G4CCMSteppingAction() { delete fSteppingMessenger; }
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
-    std::cout << "in  G4CCMSteppingAction::UserSteppingAction " << std::endl;
     G4Track* theTrack = theStep->GetTrack();
     const G4ParticleDefinition* part = theTrack->GetDefinition();
     G4String particleName = part->GetParticleName();
@@ -72,38 +72,60 @@ void G4CCMSteppingAction::UserSteppingAction(const G4Step* theStep) {
     G4StepPoint* thePrePoint    = theStep->GetPreStepPoint();
     G4VPhysicalVolume* thePrePV = thePrePoint->GetPhysicalVolume();
     std::string thePrePVName = static_cast<std::string>(thePrePV->GetName());
-    std::cout << "thePrePVName = " << thePrePVName  << ", pdg = " << pdg <<  ", name = " << particleName << ", and parent id = " << theTrack->GetParentID() << std::endl;
 
-    //G4StepPoint* thePostPoint    = theStep->GetPostStepPoint();
-    //G4VPhysicalVolume* thePostPV = thePostPoint->GetPhysicalVolume();
-    //std::string thePostPVName = static_cast<std::string>(thePostPV->GetName());
+    G4StepPoint* thePostPoint    = theStep->GetPostStepPoint();
+    G4VPhysicalVolume* thePostPV = thePostPoint->GetPhysicalVolume();
+    std::string thePostPVName = static_cast<std::string>(thePostPV->GetName());
 
-    //std::cout << "thePostPVName = " << thePostPVName << std::endl;
     std::string desired_str ("PMT");
+    std::string desired_str2 ("TPB");
 
     if(theTrack->GetParentID() == 0) {
         // This is a primary track
         trackInformation->SetTrackStatusFlags(primaryLArDeposition);
     }
 
-    //if(nullptr == thePostPV) {  // out of world
-    //    fExpectedNextStatus = Undefined;
-    //    return;
-    //}
+    if(nullptr == thePostPV) {  // out of world
+        fExpectedNextStatus = Undefined;
+        return;
+    }
+    
+    std::cout << particleName << " in " << thePostPVName << std::endl;
+    
+    //kill neutrinos 
+    if (theTrack->GetDefinition() == G4NeutrinoE::NeutrinoE()){
+        theTrack->SetTrackStatus(fStopAndKill);
+    } 
 
     // Optical photon only
     if(pdg == -22) {
-        // grab photons on photcathode
+        // grab photons on PMT and then kill! 
         if (thePrePVName.find(desired_str) != std::string::npos) {
             trackInformation->AddTrackStatusFlag(hitPMT);
+            theTrack->SetTrackStatus(fStopAndKill);
+            
         } 
-        //if (thePostPVName.find(desired_str) != std::string::npos) {
-        //    trackInformation->AddTrackStatusFlag(hitPMT);
-        //} 
+        if (thePostPVName.find(desired_str) != std::string::npos) {
+            trackInformation->AddTrackStatusFlag(hitPMT);
+            theTrack->SetTrackStatus(fStopAndKill);
+        } 
+        if (thePrePVName.find(desired_str2) != std::string::npos) {
+            trackInformation->AddTrackStatusFlag(hitPMT);
+            theTrack->SetTrackStatus(fStopAndKill);
+            
+        } 
+        if (thePostPVName.find(desired_str2) != std::string::npos) {
+            trackInformation->AddTrackStatusFlag(hitPMT);
+            theTrack->SetTrackStatus(fStopAndKill);
+        } 
         //if (thePrePV->GetName() == "photocath" or thePostPV->GetName() == "photocath"){
-            // draw anything in our pmts
-            //trackInformation->AddTrackStatusFlag(hitPMT);
+        //  // draw anything in our pmts
+        //  //trackInformation->AddTrackStatusFlag(hitPMT);
         //}
+        if(thePrePVName == "expHall") {
+            // Kill photons entering expHall from something other than Slab
+            theTrack->SetTrackStatus(fStopAndKill);
+        }
     }
 }
 

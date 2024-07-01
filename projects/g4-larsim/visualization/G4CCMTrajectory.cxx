@@ -76,7 +76,8 @@ void G4CCMTrajectory::DrawTrajectory() const {
 
     const G4double markerSize = 0.05;
     G4bool lineRequired       = true;
-    G4bool markersRequired    = true;
+    //G4bool markersRequired    = true;
+    G4bool markersRequired    = false;
 
     G4Polyline trajectoryLine;
     G4Polymarker stepPoints;
@@ -111,27 +112,27 @@ void G4CCMTrajectory::DrawTrajectory() const {
 
     if(lineRequired) {
         G4Colour colour;
-        colour = G4Colour(0., 0., 1.); // default is blue
-        if(fLArScint)  // primiary lar scintillation photons are red
-            colour = G4Colour(1., 0., 0.);
+        colour = G4Colour(1., 1., 1.); // default is blue
+        if(fLArScint)  // primiary lar energy deposition in grey 
+            colour = G4Colour(1., 0., 0.); 
 
         if(fParticleDefinition == G4OpticalPhoton::OpticalPhotonDefinition()) {
             if (fParentProcess == "Cerenkov"){
-            colour = G4Colour(0., 1., 0.);
+            colour = G4Colour(0., 1., 0.); // green
             }
             
             if (fParentProcess == "OpWLS"){
-            colour = G4Colour(1., 0., 0.);
+            colour = G4Colour(1., 0., 0.); // red
             }
             
             if (fParentProcess == "Scintillation"){
-                colour = G4Colour(0., 0., 1.);
+                colour = G4Colour(0., 0., 1.); // blue
             }
         }
 
         //if (fParticleDefinition == G4OpticalPhoton::OpticalPhotonDefinition() and fParentProcess != "OpWLS" and fParentProcess != "Scintillation"){
         //if (fParticleDefinition != G4OpticalPhoton::OpticalPhotonDefinition()) {
-        if (fParentProcess != "OpWLS" and fParentProcess != "Scintillation" and fParentProcess != "Cerenkov") {
+        if (fParentProcess != "OpWLS" and fParentProcess != "Scintillation" and fParentProcess != "Cerenkov" and fParticleDefinition != G4OpticalPhoton::OpticalPhotonDefinition()) {
             //std::cout << "fParentProcess = " << fParentProcess << std::endl;    
             // only drawing non-optical photons for the moment
             G4VisAttributes trajectoryLineAttribs(colour);
