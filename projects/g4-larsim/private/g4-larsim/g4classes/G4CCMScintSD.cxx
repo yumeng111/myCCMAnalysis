@@ -110,17 +110,13 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4int pdg = fParticleDefinition->GetPDGEncoding();
     G4String particleName = fParticleDefinition->GetParticleName();
     
-    std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << aStep->GetTrack()->GetTrackID() << ", pdg code = " << pdg
-        << ", name = " << particleName << ", delta distance = " << delta_pos <<  ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
+    //std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << aStep->GetTrack()->GetTrackID() << ", pdg code = " << pdg
+    //    << ", name = " << particleName << ", delta distance = " << delta_pos <<  ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
 
-    //kill neutrinos 
-    if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
-        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-        return false;
-    } 
     
-    if(edep == 0.)
+    if(edep == 0. and fParticleDefinition != G4NeutrinoE::NeutrinoE())
         return false;  // No edep so don't count as hit
+                       // make sure note a neutrino -- want to keep track
     
     // now save to our MCTree!
     if (parent_id == 0){
@@ -148,6 +144,12 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
         I3MCTreeUtils::AppendChild(*mcTree, prev_parent_particle_id , daughter);
     }
+    
+    // now we can kill neutrinos 
+    if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
+        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+        return false;
+    } 
 
     // now back to scint hit things
     G4StepPoint* thePrePoint = aStep->GetPreStepPoint(); 
