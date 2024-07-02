@@ -83,6 +83,8 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         // return CCMMCPEMap
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
 
+        void ClearCCMMCPEMap(){ CCMMCPEMap->clear(); }
+
     private:
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
 

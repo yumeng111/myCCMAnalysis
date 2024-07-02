@@ -63,15 +63,19 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         I3Particle GetPrimaryParticle() { return primary_; }
         void SetPrimaryParticle(I3Particle primary) {
-            // let's set the primary particle
+            // now let's set the primary particle
+            ClearMCTree();
+            std::cout << "before adding primary, mc tree has " << I3MCTreeUtils::GetPrimariesPtr(mcTree).size() << " primaries" << std::endl; 
             primary_ = primary;
             primaryParticleType_ = primary_.GetType();
             primaryStartingEnergy_ = primary_.GetEnergy();
             
             prev_parent_particle_id_ = primary_.GetID(); 
             I3MCTreeUtils::AddPrimary(*mcTree, primary_);
+            std::cout << "primary particle pos = " << primary_.GetPos() << " and prev_parent_particle_id_ = " << prev_parent_particle_id_ << std::endl;
         } 
-    
+
+        void ClearMCTree(){ mcTree->clear(); }    
 
     private:
         G4CCMScintHitsCollection* fScintCollection = nullptr;

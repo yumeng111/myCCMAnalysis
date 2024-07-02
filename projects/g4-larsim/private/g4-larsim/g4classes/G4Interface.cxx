@@ -112,9 +112,16 @@ void G4Interface::InjectParticle(const I3Particle& particle)
         G4SDManager* SDman = G4SDManager::GetSDMpointer();
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
+        scintSD->ClearMCTree(); 
         scintSD->SetPrimaryParticle(particle);
     }
-
+    if (PMTSDStatus_){
+        G4SDManager* SDman = G4SDManager::GetSDMpointer();
+        G4String sdNamePMT = "/LAr/pmtSD";
+        G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
+        pmtSD->ClearCCMMCPEMap(); 
+    }
+    
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
     G4ParticleDefinition* particleDef = NULL;
     bool sodium_run = false;

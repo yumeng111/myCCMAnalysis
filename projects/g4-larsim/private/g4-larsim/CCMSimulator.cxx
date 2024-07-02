@@ -97,8 +97,22 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     mcTree_ = injector_->GetMCTree();
     
     std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
-    
+    //std::deque<I3FramePtr> frames_cache_;
+
     for (size_t p = 0; p < primary_particles.size(); p++){
+        
+        // save our simulation frame
+        if (!saved_simulation_setup_) {
+            // now save simulation set up info (just MC tree for now) into S frame
+            I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
+            // put mcTree into frame
+            simframe->Put(mcPrimaryName_, mcTree_);
+            // push simframe
+            PushFrame(simframe);
+            
+            saved_simulation_setup_ = true; 
+        }
+
         // Tell the response service of a new event
         response_->BeginEvent(*primary_particles[p]);
 
@@ -110,29 +124,45 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         // note -- if SD not enabled, these will just be empty objects
         CCMMCPEMap = response_->GetHitsMap(); 
         LArEnergyDep = response_->GetLArEnergyDep();
-    }
     
-    if (!saved_simulation_setup_) {
-        // now save simulation set up info (just MC tree for now) into S frame
-        I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
-        // put mcTree into frame
-        simframe->Put(mcPrimaryName_, mcTree_);
-        // push simframe
-        PushFrame(simframe);
-        
-        saved_simulation_setup_ = true; 
-    }
-    
-    // Put the hits to the DAQ frame 
-    if (PMTSDStatus_){
-        frame->Put(PMTHitSeriesName_, CCMMCPEMap);
-    }
-    if (LArSDStatus_){
-        frame->Put(LArMCTreeName_, LArEnergyDep);
-    }
+        I3FramePtr tempframe(new I3Frame(I3Frame::DAQ));
+        if (PMTSDStatus_){
+            tempframe->Put(PMTHitSeriesName_, CCMMCPEMap);
+        }
+        if (LArSDStatus_){
+            tempframe->Put(LArMCTreeName_, LArEnergyDep);
+            std::cout << "CCMSimulator, primary particle p = " << p << " :: primary particle pos = " << std::endl;
+            std::vector<I3Particle*> pp = I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep);
+            for (size_t ppp = 0 ; ppp < pp.size(); ppp++){
+                std::cout << pp.at(ppp)->GetPos() << std::endl;
+            }
+        }
+        //frames_cache_.push_back(tempframe); 
+        PushFrame(tempframe);
 
-    // push daq frame
-    PushFrame(frame);
+    }
+    
+    //// Put the hits to the DAQ frame 
+    //if (PMTSDStatus_){
+    //    frame->Put(PMTHitSeriesName_, CCMMCPEMap);
+    //}
+    //if (LArSDStatus_){
+    //    frame->Put(LArMCTreeName_, LArEnergyDep);
+    //}
+
+    //// push daq frame
+    //PushFrame(frame);
+
+    //while(frames_cache_.size() > 0){
+    //    // grab frame from cache (should be preserving order or how DAQ sees frames (i hope)
+    //    I3FramePtr prev_frame = frames_cache_[0];
+
+    //    // push frame
+    //    PushFrame(prev_frame);
+
+    //    // remove frame from cache
+    //    frames_cache_.pop_front();
+    //}
 }
 
 
