@@ -42,7 +42,7 @@
 G4Interface* G4Interface::g4Interface_ = NULL;
 
 G4Interface::G4Interface(const std::string& visMacro):
-    detector_(NULL), initialized_(false), eventInitialized_(false), visMacro_(visMacro) {
+    detector_(NULL), initialized_(false), runInitialized_(false), visMacro_(visMacro) {
     g4Interface_ = this;
 
     // Visualization manager
@@ -87,23 +87,23 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
 
 }
 
-void G4Interface::InitializeEvent()
+void G4Interface::InitializeRun()
 {
     if(!initialized_) {
         Initialize();
     }
 
-    if(!eventInitialized_) {
+    if(!runInitialized_) {
         runManager_.InitializeRun();
-        eventInitialized_ = true;
+        runInitialized_ = true;
     }
 }
 
 
 void G4Interface::InjectParticle(const I3Particle& particle)
 {
-    if(!eventInitialized_) {
-        log_fatal("No event initialized. Cannot inject particle!");
+    if(!runInitialized_) {
+        log_fatal("No run initialized. Cannot inject particle!");
         return;
     }
     
@@ -304,27 +304,27 @@ void G4Interface::InjectParticle(const I3Particle& particle)
 void G4Interface::TerminateEvent()
 {
     // let's grab the CCMMCPE map from G4Interface
-    if(eventInitialized_) {
-        // now let's grab SD information
-        G4SDManager* SDman = G4SDManager::GetSDMpointer();
-        if (PMTSDStatus_){
-            G4String sdNamePMT = "/LAr/pmtSD";
-            G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
-            CCMMCPEMap = pmtSD->GetCCMMCPEMap();
-        }
-
-        if (LArSDStatus_){
-            G4String sdNameScint = "/LAr/scintSD";
-            G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-            LArEnergyDep = scintSD->GetUpdatedMCTree();
-        }
-
-        runManager_.TerminateRun();
-        
-        eventInitialized_ = false;
+    // now let's grab SD information
+    G4SDManager* SDman = G4SDManager::GetSDMpointer();
+    if (PMTSDStatus_){
+        G4String sdNamePMT = "/LAr/pmtSD";
+        G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
+        AllEventsCCMMCPEMap.push_back(pmtSD->GetCCMMCPEMap());
     }
+
+    if (LArSDStatus_){
+        G4String sdNameScint = "/LAr/scintSD";
+        G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
+        AllEventsLArEnergyDep.push_back(scintSD->GetUpdatedMCTree());
+    }
+
 }
 
+void G4Interface::TerminateRun()
+{
+    runManager_.TerminateRun();
+    runInitialized_ = false;
+}
 
 void G4Interface::Initialize()
 {

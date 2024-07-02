@@ -34,7 +34,6 @@ class CCMSimulator : public I3Module  {
         std::string PMTHitSeriesName_;
         std::string LArMCTreeName_; 
         I3MCTreePtr mcTree_;
-        bool saved_simulation_setup_ = false;
 
         CCMParticleInjectorPtr injector_;
         CCMDetectorResponsePtr response_;

@@ -61,18 +61,13 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool GetPMTSDStatus() { return PMTSDStatus_; }
         void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
 
-        I3Particle GetPrimaryParticle() { return primary_; }
         void SetPrimaryParticle(I3Particle primary) {
             // now let's set the primary particle
             ClearMCTree();
-            std::cout << "before adding primary, mc tree has " << I3MCTreeUtils::GetPrimariesPtr(mcTree).size() << " primaries" << std::endl; 
-            primary_ = primary;
-            primaryParticleType_ = primary_.GetType();
-            primaryStartingEnergy_ = primary_.GetEnergy();
             
-            prev_parent_particle_id_ = primary_.GetID(); 
-            I3MCTreeUtils::AddPrimary(*mcTree, primary_);
-            std::cout << "primary particle pos = " << primary_.GetPos() << " and prev_parent_particle_id_ = " << prev_parent_particle_id_ << std::endl;
+            primaryParticleType_ = primary.GetType();
+            prev_parent_particle_id_ = primary.GetID(); 
+            I3MCTreeUtils::AddPrimary(*mcTree, primary);
         } 
 
         void ClearMCTree(){ mcTree->clear(); }    
@@ -86,9 +81,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool PMTSDStatus_; 
 
         // let's also grab the primary particle information
-        I3Particle primary_;
-        I3Particle::ParticleType primaryParticleType_; 
-        double primaryStartingEnergy_;
+        I3Particle::ParticleType primaryParticleType_;
         I3ParticleID prev_parent_particle_id_;
 
         // our mc tree we will save energy depositions to

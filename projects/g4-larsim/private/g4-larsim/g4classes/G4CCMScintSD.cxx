@@ -119,8 +119,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if(edep == 0.)
         return false;  // No edep so don't count as hit
     
-    std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << aStep->GetTrack()->GetTrackID() << ", pdg code = " << pdg
-        << ", name = " << particleName << ", delta distance = " << delta_pos <<  ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
+    //std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << aStep->GetTrack()->GetTrackID() << ", pdg code = " << pdg
+    //    << ", name = " << particleName << ", delta distance = " << delta_pos <<  ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
     
     // now save to our MCTree!
     if (parent_id == 0){

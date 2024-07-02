@@ -49,7 +49,8 @@ public:
     virtual void Configure() override;
     virtual void Initialize() override;
     virtual void BeginEvent(const I3Particle& primary) override;
-    virtual void EndEvent() override;
+    virtual void EndEvent(size_t event_idx) override;
+    virtual void TerminateRun() override;
     virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() override {return CCMMCPEMap;};
     virtual I3MCTreePtr GetLArEnergyDep() override { return LArEnergyDep; }
     virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }

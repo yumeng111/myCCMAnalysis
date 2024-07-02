@@ -59,25 +59,28 @@ void CCM200Response::Initialize() {
 
     // let's let's construct the detector
     g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SodiumSourceRun_, SodiumSourceLocation_);
+    g4Interface_->InitializeRun();
 
 }
 
 void CCM200Response::BeginEvent(const I3Particle& primary) {
-    g4Interface_->InitializeEvent();
 
     // inject our particle
     g4Interface_->InjectParticle(primary);
 
 }
 
-void CCM200Response::EndEvent() {
+void CCM200Response::EndEvent(size_t event_idx) {
 
     g4Interface_->TerminateEvent(); // this ends event and grabs salient information from geant4
 
     // now let's call function in G4Interface to grab the map between CCMPMTKey and std::vector<CCMMCPE>
-    CCMMCPEMap = g4Interface_->GetCCMMCPEMap();  
-    LArEnergyDep = g4Interface_->GetLArEnergyDep();
+    CCMMCPEMap = g4Interface_->GetCCMMCPEMap(event_idx);  
+    LArEnergyDep = g4Interface_->GetLArEnergyDep(event_idx);
+}
 
+void CCM200Response::TerminateRun() {
+    g4Interface_->TerminateRun(); 
 }
 
 typedef I3SingleServiceFactory<CCM200Response,CCMDetectorResponse> CCM200ResponseFactory;

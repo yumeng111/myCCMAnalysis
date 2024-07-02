@@ -31,7 +31,10 @@ class CCMDetectorResponse : public I3ServiceBase {
         virtual void BeginEvent(const I3Particle& primary) = 0;
         
         // end events
-        virtual void EndEvent() = 0;
+        virtual void EndEvent(size_t event_idx) = 0;
+
+        // terminate run
+        virtual void TerminateRun() = 0;
 
         // get hits in PMTs 
         virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() = 0;

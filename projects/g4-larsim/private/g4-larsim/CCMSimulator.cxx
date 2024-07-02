@@ -96,28 +96,23 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     // let's grab the mcPrimary from the injector
     mcTree_ = injector_->GetMCTree();
     
+    // now save simulation set up info (just MC tree for now) into S frame
+    I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
+    // put mcTree into frame
+    simframe->Put(mcPrimaryName_, mcTree_);
+    // push simframe
+    PushFrame(simframe);
+    
     std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
     //std::deque<I3FramePtr> frames_cache_;
 
     for (size_t p = 0; p < primary_particles.size(); p++){
-        
-        // save our simulation frame
-        if (!saved_simulation_setup_) {
-            // now save simulation set up info (just MC tree for now) into S frame
-            I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
-            // put mcTree into frame
-            simframe->Put(mcPrimaryName_, mcTree_);
-            // push simframe
-            PushFrame(simframe);
-            
-            saved_simulation_setup_ = true; 
-        }
 
         // Tell the response service of a new event
         response_->BeginEvent(*primary_particles[p]);
 
         // Tell the response service that the event has ended
-        response_->EndEvent();
+        response_->EndEvent(p);
 
         // Now grab the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
         // also grab hits in fiducial argon for voxelization
@@ -131,16 +126,15 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         }
         if (LArSDStatus_){
             tempframe->Put(LArMCTreeName_, LArEnergyDep);
-            std::cout << "CCMSimulator, primary particle p = " << p << " :: primary particle pos = " << std::endl;
-            std::vector<I3Particle*> pp = I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep);
-            for (size_t ppp = 0 ; ppp < pp.size(); ppp++){
-                std::cout << pp.at(ppp)->GetPos() << std::endl;
-            }
+            std::cout << "CCMSimulator, just put LArEnergyDep into frame" << std::endl;
+            std::cout << "primary type = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetType() << " and pos = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetPos() << std::endl;
         }
         //frames_cache_.push_back(tempframe); 
         PushFrame(tempframe);
 
     }
+
+    response_->TerminateRun();
     
     //// Put the hits to the DAQ frame 
     //if (PMTSDStatus_){
