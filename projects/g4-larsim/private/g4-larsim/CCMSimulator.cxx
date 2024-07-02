@@ -125,12 +125,15 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
             tempframe->Put(PMTHitSeriesName_, CCMMCPEMap);
         }
         if (LArSDStatus_){
+            std::cout << "CCMSimulator, about to put LArEnergyDep into frame" << std::endl;
+            std::cout << "primary type = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetType() << " and pos = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetPos() << std::endl;
             tempframe->Put(LArMCTreeName_, LArEnergyDep);
             std::cout << "CCMSimulator, just put LArEnergyDep into frame" << std::endl;
             std::cout << "primary type = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetType() << " and pos = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetPos() << std::endl;
+            PushFrame(tempframe);
         }
         //frames_cache_.push_back(tempframe); 
-        PushFrame(tempframe);
+        //PushFrame(tempframe);
 
     }
 
