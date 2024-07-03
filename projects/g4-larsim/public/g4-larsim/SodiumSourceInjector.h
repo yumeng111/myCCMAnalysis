@@ -28,6 +28,7 @@ private:
     SodiumSourceInjector operator= (const SodiumSourceInjector& rhs);
 
     double z_position_;
+    size_t nevents_;
     std::string mcPrimaryName_;
     std::string output_mc_tree_name_;
     I3Particle::ParticleType particleType_;

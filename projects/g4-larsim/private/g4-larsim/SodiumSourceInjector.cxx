@@ -28,8 +28,9 @@
 #include <random>
 
 SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
-    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree"), randomServiceName_("") {
+    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), nevents_(1), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree"), randomServiceName_("") {
     AddParameter("SourceZPosition", "z location of source pellet", z_position_);
+    AddParameter("NEvents", "number of sodium events to simulate", nevents_);
     AddParameter("PrimaryName", "Name of the primary particle in the frame.", mcPrimaryName_);
     AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
     randomService_ = I3RandomServicePtr();
@@ -38,6 +39,7 @@ SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
 
 void SodiumSourceInjector::Configure() {
     GetParameter("SourceZPosition", z_position_);
+    GetParameter("NEvents", nevents_);
     GetParameter("PrimaryName", mcPrimaryName_);
     GetParameter("OutputMCTreeName", output_mc_tree_name_);
     GetParameter("RandomServiceName", randomServiceName_);
@@ -72,7 +74,7 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     std::uniform_real_distribution<double> dis_z(z_position_ + inset, z_position_ + inset + pellet_height); // uniform distribution across z position of sodium pellet 
     std::uniform_real_distribution<double> dis_radius_squared(0.0, pellet_radius * pellet_radius);
 
-    for (size_t p = 0; p < 2; p++){
+    for (size_t p = 0; p < nevents_; p++){
         // let's create and fill our I3Particle
         I3Particle primary(I3Particle::Na22Nucleus);
 
