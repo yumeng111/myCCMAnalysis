@@ -84,7 +84,7 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
         double y = r * std::sin(theta_pos);
         double z = dis_z(gen);
 
-        std::cout << "event location = " << x << ", " << y << ", " << z << std::endl;
+        //std::cout << "event location = " << x << ", " << y << ", " << z << std::endl;
         primary.SetPos(x, y, z);
         primary.SetEnergy(0.0 * I3Units::MeV); 
         primary.SetDir(0.0, 0.0, 0.0); // doesnt really matter

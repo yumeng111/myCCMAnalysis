@@ -130,16 +130,20 @@ void CCMSimulator::Finish(){
     // push simframe
     PushFrame(simframe);
 
-    // now save information for each event
-    for (size_t j = 0; j < AllEventsLArEnergyDep.size(); ++j){
-        
+    // now go through our deque,
+    // save information for each event to frames,
+    // pop from deque, and push frame
+    while (AllEventsLArEnergyDep.size() > 0){
         I3FramePtr tempframe(new I3Frame(I3Frame::DAQ));
-        if (PMTSDStatus_){
-            tempframe->Put(PMTHitSeriesName_, AllEventsCCMMCPEMap.at(j));
-        }
-        if (LArSDStatus_){
-            tempframe->Put(LArMCTreeName_, AllEventsLArEnergyDep.at(j));
-        }
+        
+        tempframe->Put(PMTHitSeriesName_, AllEventsCCMMCPEMap.at(0));
+        // remove CCMMCPEMap from cache
+        AllEventsCCMMCPEMap.pop_front();
+        
+        tempframe->Put(LArMCTreeName_, AllEventsLArEnergyDep.at(0));
+        // remove LArMCTree from cache
+        AllEventsLArEnergyDep.pop_front();
+        
         PushFrame(tempframe);
     }
     
