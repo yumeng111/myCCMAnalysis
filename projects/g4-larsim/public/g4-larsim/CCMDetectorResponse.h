@@ -31,16 +31,10 @@ class CCMDetectorResponse : public I3ServiceBase {
         virtual void BeginEvent(const I3Particle& primary) = 0;
         
         // end events
-        virtual void EndEvent(size_t event_idx) = 0;
+        virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap) = 0;
 
         // terminate run
         virtual void TerminateRun() = 0;
-
-        // get hits in PMTs 
-        virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() = 0;
-        
-        // get hits in LAr for voxelization 
-        virtual I3MCTreePtr GetLArEnergyDep() = 0;
 
         // get SD status
         virtual bool GetPMTSDStatus() = 0;

@@ -188,6 +188,24 @@ void G4CCMPhysicsList::ConstructProcess() {
     //
     G4PhysicsListHelper* ph = G4PhysicsListHelper::GetPhysicsListHelper();
     ph->RegisterProcess(radioactiveDecay, G4GenericIon::GenericIon());
+
+    // quick aside, printing decay table for sodium22
+    G4int Z = 11; // Atomic number for Sodium
+    G4int A = 22; // Mass number for Sodium
+    G4double E = 0.0 * keV; // Excitation energy
+    G4ParticleDefinition* sodium22 = G4IonTable::GetIonTable()->GetIon(Z, A, E);
+
+    G4DecayTable* decayTable = radioactiveDecay->GetDecayTable(sodium22);
+
+    G4cout << "Decay table for " << sodium22->GetParticleName() << ":" << G4endl;
+    for (G4int i = 0; i < decayTable->entries(); ++i) {
+        G4VDecayChannel* decayChannel = decayTable->GetDecayChannel(i);
+        if (decayChannel) {
+            G4cout << "Decay channel " << i + 1 << ":" << G4endl;
+            decayChannel->DumpInfo();
+        }
+    } 
+
 }
 
 void G4CCMPhysicsList::SetCuts() {

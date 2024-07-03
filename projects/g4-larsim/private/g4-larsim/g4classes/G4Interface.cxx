@@ -309,13 +309,13 @@ void G4Interface::TerminateEvent()
     if (PMTSDStatus_){
         G4String sdNamePMT = "/LAr/pmtSD";
         G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
-        AllEventsCCMMCPEMap.push_back(pmtSD->GetCCMMCPEMap());
+        CCMMCPEMap = pmtSD->GetCCMMCPEMap();
     }
 
     if (LArSDStatus_){
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-        AllEventsLArEnergyDep.push_back(scintSD->GetUpdatedMCTree());
+        LArEnergyDep = scintSD->GetUpdatedMCTree();
     }
 
 }

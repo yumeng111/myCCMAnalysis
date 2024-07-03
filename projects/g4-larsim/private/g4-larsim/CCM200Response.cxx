@@ -70,16 +70,18 @@ void CCM200Response::BeginEvent(const I3Particle& primary) {
 
 }
 
-void CCM200Response::EndEvent(size_t event_idx) {
+void CCM200Response::EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap) {
 
     g4Interface_->TerminateEvent(); // this ends event and grabs salient information from geant4
 
     // now let's call function in G4Interface to grab the map between CCMPMTKey and std::vector<CCMMCPE>
-    CCMMCPEMap = g4Interface_->GetCCMMCPEMap(event_idx);  
-    LArEnergyDep = g4Interface_->GetLArEnergyDep(event_idx);
+    LArEnergyDep = g4Interface_->GetLArEnergyDep(); 
+    CCMMCPEMap = g4Interface_->GetCCMMCPEMap(); 
+
 }
 
 void CCM200Response::TerminateRun() {
+
     g4Interface_->TerminateRun(); 
 }
 

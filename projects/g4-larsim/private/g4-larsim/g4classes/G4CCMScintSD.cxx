@@ -111,23 +111,10 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4ParticleDefinition* fParticleDefinition = aStep->GetTrack()->GetDefinition();
     G4int pdg = fParticleDefinition->GetPDGEncoding();
     G4String particleName = fParticleDefinition->GetParticleName();
+
+    //std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id
+    //    << ", track id = " << aStep->GetTrack()->GetTrackID() << ", name = " << particleName << ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
     
-    //if (parent_id == 0){
-    //    G4TrackVector* secTracks = G4EventManager::GetEventManager()->GetTrackingManager()->GimmeSecondaries();
-    //    for (size_t i = 0; i < secTracks->size(); ++i) {
-    //        G4Track* secondaryTrack = (*secTracks)[i];
-    //        G4String secondaryName = secondaryTrack->GetDefinition()->GetParticleName();
-
-    //        G4cout << "Secondary particle name: " << secondaryName << G4endl;
-    //    }
-    //}
-
-    //if (creationProcessName == "Radioactivation"){
-    //    // get name of parent particle 
-    //    G4Track* parentTrack = aStep->GetTrack()->GetParentTrack();
-    //    std::cout << particleName << " was created via " << creationProcessName << " and the parent particle = " << parentTrack->GetDefinition()->GetParticleName() << std::endl;
-    //}
-
     // we can kill neutrinos 
     if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
         aStep->GetTrack()->SetTrackStatus(fStopAndKill);
@@ -136,10 +123,6 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     
     if(edep == 0.)
         return false;  // No edep so don't count as hit
-
-    std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << aStep->GetTrack()->GetTrackID() << ", name = " 
-        << particleName << ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
-   
 
     // now save to our MCTree!
     if (parent_id == 0){

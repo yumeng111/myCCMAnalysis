@@ -44,8 +44,8 @@ class G4Interface {
         void InjectParticle(const I3Particle& particle);
         
         // return CCMMCPEMap and LAr energy deposition
-        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(size_t event_idx){ return AllEventsCCMMCPEMap.at(event_idx); }
-        I3MCTreePtr GetLArEnergyDep(size_t event_idx) { return AllEventsLArEnergyDep.at(event_idx); }
+        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap ; }
+        I3MCTreePtr GetLArEnergyDep() { return LArEnergyDep ; }
     
     private:
         void Initialize();
@@ -62,8 +62,9 @@ class G4Interface {
         bool initialized_;
         bool runInitialized_;
         std::string visMacro_;
-        std::vector<boost::shared_ptr<CCMMCPESeriesMap>> AllEventsCCMMCPEMap;
-        std::vector<I3MCTreePtr> AllEventsLArEnergyDep;
+    
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+        I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
         
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off

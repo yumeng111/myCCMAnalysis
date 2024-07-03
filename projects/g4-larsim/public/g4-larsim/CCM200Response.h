@@ -49,16 +49,16 @@ public:
     virtual void Configure() override;
     virtual void Initialize() override;
     virtual void BeginEvent(const I3Particle& primary) override;
-    virtual void EndEvent(size_t event_idx) override;
+    virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap) override;
     virtual void TerminateRun() override;
-    virtual boost::shared_ptr<CCMMCPESeriesMap> GetHitsMap() override {return CCMMCPEMap;};
-    virtual I3MCTreePtr GetLArEnergyDep() override { return LArEnergyDep; }
     virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }
     virtual bool GetLArSDStatus() override { return LArSDStatus_; }
 
-    boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-    I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
+    //boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+    //I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
 
+    std::vector<boost::shared_ptr<CCMMCPESeriesMap>> AllEventsCCMMCPEMap;
+    std::vector<I3MCTreePtr> AllEventsLArEnergyDep;
 };
 
 #endif // CCM200RESPONSE_H

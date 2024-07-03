@@ -436,6 +436,11 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
+            // make sure to include source pellet + rod for SD if enabeled
+            //if (SodiumSourceRun_){
+            //    SetSensitiveDetector(fMainVolume->GetLogSodiumPellet(), fScint_SD.Get());
+            //    SetSensitiveDetector(fMainVolume->GetLogSourceRod(), fScint_SD.Get());
+            //} 
         }
 
     }

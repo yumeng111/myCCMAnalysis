@@ -96,72 +96,54 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     // let's grab the mcPrimary from the injector
     mcTree_ = injector_->GetMCTree();
     
+    std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
+    
+    for (size_t p = 0; p < primary_particles.size(); p++){
+        // Tell the response service of a new event
+        response_->BeginEvent(*primary_particles[p]);
+
+        // Tell the response service that the event has ended
+        // this will also populate the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
+        // also grab hits in fiducial argon for voxelization
+        // note -- if SD not enabled, these will just be empty objects
+        I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+        response_->EndEvent(LArEnergyDep, CCMMCPEMap);
+
+        // now save to put into frames and push at the end 
+        AllEventsLArEnergyDep.push_back(boost::make_shared<I3MCTree>(*LArEnergyDep));
+        AllEventsCCMMCPEMap.push_back(boost::make_shared<CCMMCPESeriesMap>(*CCMMCPEMap));
+
+    }
+
+    // terminate geant4    
+    response_->TerminateRun();
+}
+
+
+void CCMSimulator::Finish(){
+    
     // now save simulation set up info (just MC tree for now) into S frame
     I3FramePtr simframe(new I3Frame(I3Frame::Simulation));
     // put mcTree into frame
     simframe->Put(mcPrimaryName_, mcTree_);
     // push simframe
     PushFrame(simframe);
-    
-    std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
-    //std::deque<I3FramePtr> frames_cache_;
 
-    for (size_t p = 0; p < primary_particles.size(); p++){
-
-        // Tell the response service of a new event
-        response_->BeginEvent(*primary_particles[p]);
-
-        // Tell the response service that the event has ended
-        response_->EndEvent(p);
-
-        // Now grab the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
-        // also grab hits in fiducial argon for voxelization
-        // note -- if SD not enabled, these will just be empty objects
-        CCMMCPEMap = response_->GetHitsMap(); 
-        LArEnergyDep = response_->GetLArEnergyDep();
-    
+    // now save information for each event
+    for (size_t j = 0; j < AllEventsLArEnergyDep.size(); ++j){
+        
         I3FramePtr tempframe(new I3Frame(I3Frame::DAQ));
         if (PMTSDStatus_){
-            tempframe->Put(PMTHitSeriesName_, CCMMCPEMap);
+            tempframe->Put(PMTHitSeriesName_, AllEventsCCMMCPEMap.at(j));
         }
         if (LArSDStatus_){
-            std::cout << "CCMSimulator, about to put LArEnergyDep into frame" << std::endl;
-            std::cout << "primary type = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetType() << " and pos = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetPos() << std::endl;
-            tempframe->Put(LArMCTreeName_, LArEnergyDep);
-            std::cout << "CCMSimulator, just put LArEnergyDep into frame" << std::endl;
-            std::cout << "primary type = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetType() << " and pos = " << I3MCTreeUtils::GetPrimariesPtr(LArEnergyDep).at(0)->GetPos() << std::endl;
-            PushFrame(tempframe);
+            tempframe->Put(LArMCTreeName_, AllEventsLArEnergyDep.at(j));
         }
-        //frames_cache_.push_back(tempframe); 
-        //PushFrame(tempframe);
-
+        PushFrame(tempframe);
     }
-
-    response_->TerminateRun();
     
-    //// Put the hits to the DAQ frame 
-    //if (PMTSDStatus_){
-    //    frame->Put(PMTHitSeriesName_, CCMMCPEMap);
-    //}
-    //if (LArSDStatus_){
-    //    frame->Put(LArMCTreeName_, LArEnergyDep);
-    //}
-
-    //// push daq frame
-    //PushFrame(frame);
-
-    //while(frames_cache_.size() > 0){
-    //    // grab frame from cache (should be preserving order or how DAQ sees frames (i hope)
-    //    I3FramePtr prev_frame = frames_cache_[0];
-
-    //    // push frame
-    //    PushFrame(prev_frame);
-
-    //    // remove frame from cache
-    //    frames_cache_.pop_front();
-    //}
 }
-
 
 
 

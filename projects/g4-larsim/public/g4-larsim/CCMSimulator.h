@@ -25,7 +25,7 @@ class CCMSimulator : public I3Module  {
         void Configure();
         void DetectorStatus(I3FramePtr frame);
         void DAQ(I3FramePtr frame);
-
+        void Finish();
     private:
   
         std::string injectorServiceName_;
@@ -37,9 +37,10 @@ class CCMSimulator : public I3Module  {
 
         CCMParticleInjectorPtr injector_;
         CCMDetectorResponsePtr response_;
-        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
-        
+
+        std::deque<boost::shared_ptr<CCMMCPESeriesMap>> AllEventsCCMMCPEMap;
+        std::deque<I3MCTreePtr> AllEventsLArEnergyDep;
+
         bool PMTSDStatus_; // turn PMT SD on/off
         bool LArSDStatus_; // turn fiducial LAr SD on/off
   

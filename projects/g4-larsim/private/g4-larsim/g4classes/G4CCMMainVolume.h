@@ -30,6 +30,8 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogPhotoCathCoated() { return fPMTCoated_log; }
     G4LogicalVolume* GetLogPhotoCathUncoated() { return fPMTUncoated_log; }
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
+    G4LogicalVolume* GetLogSodiumPellet() { return fSodiumSourcePellet_log; }
+    G4LogicalVolume* GetLogSourceRod() { return fSourceRod_log; }
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:

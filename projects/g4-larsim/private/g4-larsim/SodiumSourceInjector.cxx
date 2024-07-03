@@ -72,7 +72,7 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     std::uniform_real_distribution<double> dis_z(z_position_ + inset, z_position_ + inset + pellet_height); // uniform distribution across z position of sodium pellet 
     std::uniform_real_distribution<double> dis_radius_squared(0.0, pellet_radius * pellet_radius);
 
-    for (size_t p = 0; p < 3; p++){
+    for (size_t p = 0; p < 2; p++){
         // let's create and fill our I3Particle
         I3Particle primary(I3Particle::Na22Nucleus);
 
