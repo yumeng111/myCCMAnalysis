@@ -521,15 +521,15 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4Material* fNa = nistManager->FindOrBuildMaterial("G4_Na");
     fSodiumSourcePellet_log  = new G4LogicalVolume(fSodiumSourcePellet, fNa, "SodiumSourcePelletLog");
 
-    //if (SodiumSourceOn){
-    //    G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SodiumSourceLocation + rod_height/2);
-    //    new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0);
-    //
-    //    // and now put the sodium pellet at the end of the rod (inset 1/4cm)
-    //    G4double inset = 0.25 * cm;
-    //    G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SodiumSourceLocation + pellet_height/2.0 + inset);
-    //    new G4PVPlacement(nullptr, pelletPosition, fSodiumSourcePellet_log, "SodiumSourcePellet", fFiducialAr_log, false, 0);
-    //}
+    if (SodiumSourceOn){
+        G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SodiumSourceLocation + rod_height/2);
+        new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0);
+    
+        // and now put the sodium pellet at the end of the rod (inset 1/4cm)
+        G4double inset = 0.25 * cm;
+        G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SodiumSourceLocation + pellet_height/2.0 + inset);
+        new G4PVPlacement(nullptr, pelletPosition, fSodiumSourcePellet_log, "SodiumSourcePellet", fFiducialAr_log, false, 0);
+    }
 
     VisAttributes();
     SurfaceProperties();
