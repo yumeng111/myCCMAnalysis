@@ -37,7 +37,6 @@
 #include <G4BetaPlusDecay.hh>
 #include <G4GenericIon.hh>
 #include <G4Geantino.hh> 
-#include <Randomize.hh>
 
 G4Interface* G4Interface::g4Interface_ = NULL;
 
@@ -335,6 +334,10 @@ void G4Interface::Initialize()
     
     // Set verbosity
     int32_t verboseLevel = 1;
+    
+    // add random seed for geant4
+    G4long myseed = 345354;
+    G4Random::setTheSeed(myseed);
 
     log_debug("Init geometry ...");
     runManager_.SetUserInitialization(detector_);
