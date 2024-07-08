@@ -588,6 +588,15 @@ void PulseChargeTimeHistogram::Finish() {
         );
     }
 
+    frame->Put(output_prefix + "TimeBinEdges", boost::make_shared<I3VectorDouble>(time_bin_edges.begin(), time_bin_edges.end()));
+    frame->Put(output_prefix + "ChargeBinEdges", boost::make_shared<I3VectorDouble>(charge_bin_edges.begin(), charge_bin_edges.end()));
+
+    frame->Put(output_prefix + "TimeChargeHists", time_charge_hists);
+    frame->Put(output_prefix + "TimeHists", time_hists);
+    frame->Put(output_prefix + "ChargeHists", charge_hists);
+    frame->Put(output_prefix + "TimeChargeWHists", time_chargeW_hists);
+    frame->Put(output_prefix + "TimeChargeWHistsVar", time_chargeW_hists_var);
+
     boost::shared_ptr<I3Vector<I3Vector<double>>> tot_time_charge_output = boost::make_shared<I3Vector<I3Vector<double>>>();
     boost::shared_ptr<I3Vector<double>> tot_time_output = boost::make_shared<I3Vector<double>>();
     boost::shared_ptr<I3Vector<double>> tot_charge_output = boost::make_shared<I3Vector<double>>();
@@ -607,13 +616,11 @@ void PulseChargeTimeHistogram::Finish() {
         tot_charge_hist,
         tot_time_chargeW_hist);
 
-    frame->Put(output_prefix + "TimeBinEdges", boost::make_shared<I3VectorDouble>(time_bin_edges.begin(), time_bin_edges.end()));
-    frame->Put(output_prefix + "ChargeBinEdges", boost::make_shared<I3VectorDouble>(charge_bin_edges.begin(), charge_bin_edges.end()));
-    frame->Put(output_prefix + "TimeChargeHists", tot_time_charge_output);
-    frame->Put(output_prefix + "TimeHists", tot_time_output);
-    frame->Put(output_prefix + "ChargeHists", tot_charge_output);
-    frame->Put(output_prefix + "TimeChargeWHists", tot_time_chargeW_output);
-    frame->Put(output_prefix + "TimeChargeWHistsVar", tot_time_chargeW_output_var);
+    frame->Put(output_prefix + "TotTimeChargeHist", tot_time_charge_output);
+    frame->Put(output_prefix + "TotTimeHist", tot_time_output);
+    frame->Put(output_prefix + "TotChargeHist", tot_charge_output);
+    frame->Put(output_prefix + "TotTimeChargeWHist", tot_time_chargeW_output);
+    frame->Put(output_prefix + "TotTimeChargeWHistVar", tot_time_chargeW_output_var);
 
     PushFrame(frame);
 }
