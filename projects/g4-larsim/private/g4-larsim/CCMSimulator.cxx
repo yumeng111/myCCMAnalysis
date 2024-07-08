@@ -98,8 +98,9 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     
     std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
     
+    std::cout << "simulating " << primary_particles.size() << " events" << std::endl;
     for (size_t p = 0; p < primary_particles.size(); p++){
-        std::cout << "injecting " << primary_particles[p]->GetType() << " and pos = " << primary_particles[p]->GetPos() << std::endl;
+        //std::cout << "injecting " << primary_particles[p]->GetType() << " and pos = " << primary_particles[p]->GetPos() << std::endl;
 
         // Tell the response service of a new event
         response_->BeginEvent(*primary_particles[p]);

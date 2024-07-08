@@ -133,6 +133,9 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if (creationProcess) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
+    G4int parent_id = aStep->GetTrack()->GetParentID();
+
+    //std::cout << "photon from " << creationProcessName << " with parent id = " << parent_id << " at " << key << std::endl; 
 
     //std::cout << "saw " << creationProcessName << " photon on " << key << std::endl;   
     // now save to CCMMCPE!

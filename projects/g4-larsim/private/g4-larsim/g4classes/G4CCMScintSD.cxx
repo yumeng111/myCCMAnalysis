@@ -72,6 +72,18 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
     if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
+        const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
+        std::string creationProcessName = "Unknown";
+        if (creationProcess) {
+            creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
+        }
+
+        // let's also grab parent id
+        // if parent id == 0, that's our primary injected particle
+        G4int parent_id = aStep->GetTrack()->GetParentID();
+
+        //std::cout << "optical photon from " << creationProcessName << " with parent id = " << parent_id << " and track id = " << aStep->GetTrack()->GetTrackID() << " in scintillator" << std::endl; 
+        
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
         }
@@ -112,8 +124,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4int pdg = fParticleDefinition->GetPDGEncoding();
     G4String particleName = fParticleDefinition->GetParticleName();
 
-    std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id
-        << ", track id = " << aStep->GetTrack()->GetTrackID() << ", name = " << particleName << ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
+    //std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id
+    //    << ", track id = " << aStep->GetTrack()->GetTrackID() << ", name = " << particleName << ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
     
     // kill neutrinos 
     if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
