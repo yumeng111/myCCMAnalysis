@@ -36,6 +36,8 @@ struct CCMMCPE {
     };
 
     // things we want to save about a photon hitting our pmts in simulation
+    size_t parent_id;
+    size_t track_id;
     float time; // photon hit time
     float wavelength; // wavelength of photon
     I3Position position; // hit position on PMT
@@ -45,7 +47,9 @@ struct CCMMCPE {
     SET_LOGGER("CCMMCPE");
 
     bool operator==(const CCMMCPE& rhs) const {
-        return time == rhs.time
+        return parent_id == rhs.parent_id 
+            && track_id == rhs.track_id
+            && time == rhs.time
             && wavelength == rhs.wavelength
             && position == rhs.position
             && direction == rhs.direction
@@ -53,12 +57,14 @@ struct CCMMCPE {
     }
 
 
-  CCMMCPE(float time_ = 0,
+  CCMMCPE(size_t parent_id_ = 0,
+          size_t track_id_ = 0,
+          float time_ = 0,
           float wavelength_ = 0,
           I3Position position_ = I3Position(0.0, 0.0, 0.0),
           I3Direction direction_ = I3Direction(0.0, 0.0, 0.0),
           PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
-        time(time_), wavelength(wavelength_), position(position_), direction(direction_), photon_source(photon_source_) {
+        parent_id(parent_id_), track_id(track_id_), time(time_), wavelength(wavelength_), position(position_), direction(direction_), photon_source(photon_source_) {
     }
 
 
@@ -72,6 +78,8 @@ struct CCMMCPE {
         if (version>ccmmcpe_version_)
             log_fatal("Attempting to read version %u from file but running version %u of CCMMCPE class.",
                     version,ccmmcpe_version_);
+        ar & make_nvp("parent_id",parent_id);
+        ar & make_nvp("track_id",track_id);
         ar & make_nvp("time",time);
         ar & make_nvp("wavelength",wavelength);
         ar & make_nvp("position",position);

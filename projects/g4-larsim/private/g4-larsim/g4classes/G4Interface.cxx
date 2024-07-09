@@ -111,7 +111,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
         G4SDManager* SDman = G4SDManager::GetSDMpointer();
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-        scintSD->ClearMCTree(); 
+        scintSD->ClearResults(); 
         scintSD->SetPrimaryParticle(particle);
     }
     if (PMTSDStatus_){
@@ -315,6 +315,7 @@ void G4Interface::TerminateEvent()
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
         LArEnergyDep = scintSD->GetUpdatedMCTree();
+        photon_summary = scintSD->GetPhotonSummary(); 
     }
 
 }

@@ -134,12 +134,13 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
     G4int parent_id = aStep->GetTrack()->GetParentID();
+    G4int track_id = aStep->GetTrack()->GetTrackID(); 
 
     //std::cout << "photon from " << creationProcessName << " with parent id = " << parent_id << " at " << key << std::endl; 
 
     //std::cout << "saw " << creationProcessName << " photon on " << key << std::endl;   
     // now save to CCMMCPE!
-    CCMMCPE this_mc_pe = CCMMCPE(photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
+    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
 
     // Find the correct hit collection
     size_t n = fPMTHitCollection->entries();

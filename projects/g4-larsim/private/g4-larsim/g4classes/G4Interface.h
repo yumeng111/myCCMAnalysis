@@ -13,6 +13,7 @@
 #include <icetray/CCMPMTKey.h>
 
 #include <simclasses/CCMMCPE.h>
+#include "simclasses/PhotonSummary.h"
 
 #ifdef G4VIS_USE
 class G4VisManager;
@@ -46,6 +47,7 @@ class G4Interface {
         // return CCMMCPEMap and LAr energy deposition
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap ; }
         I3MCTreePtr GetLArEnergyDep() { return LArEnergyDep ; }
+        PhotonSummarySeriesPtr GetPhotonSummary() { return photon_summary; }
     
     private:
         void Initialize();
@@ -65,6 +67,7 @@ class G4Interface {
     
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
         I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
+        PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
         
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off

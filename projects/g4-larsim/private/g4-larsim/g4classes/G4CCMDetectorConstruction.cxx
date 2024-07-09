@@ -228,7 +228,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE",0.11); 
-    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1",7.*ns);
+    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1",8.2*ns);
     fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2",1400.*ns);
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",0.25); // for e/m scintillation
     fLAr->SetMaterialPropertiesTable(fLAr_mt);

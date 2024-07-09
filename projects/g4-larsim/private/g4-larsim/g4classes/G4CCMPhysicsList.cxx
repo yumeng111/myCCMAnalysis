@@ -169,6 +169,10 @@ void G4CCMPhysicsList::ConstructProcess() {
 
     // radioactive decay things
     G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60*CLHEP::year);
+    // and setting half life to something small
+    G4double halfLife = 1.0 * ns; 
+    radioactiveDecay->SetHLThreshold(halfLife);
+
 
     G4bool ARMflag = false;
     radioactiveDecay->SetARM(ARMflag);        //Atomic Rearangement

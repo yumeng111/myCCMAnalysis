@@ -37,6 +37,9 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     
     LArMCTreeName_ = "LArMCTree";
     AddParameter("LArMCTreeName", "Name of the MC tree containing energy depositions in LAr", LArMCTreeName_);
+    
+    PhotonSummarySeriesName_ = "PhotonSummarySeries";
+    AddParameter("PhotonSummarySeriesName", "Name of the photon summary series containing optical photon hits in LAr", PhotonSummarySeriesName_);
 
     AddOutBox("OutBox");
 }
@@ -66,6 +69,9 @@ void CCMSimulator::Configure() {
     
     GetParameter("LArMCTreeName", LArMCTreeName_);
     log_info("+ LAr MC Tree : %s", LArMCTreeName_.c_str());
+    
+    GetParameter("PhotonSummarySeriesName", PhotonSummarySeriesName_);
+    log_info("+ PhotonSummarySeries : %s", PhotonSummarySeriesName_.c_str());
 
     // initialize injector and response services
     injector_->Configure();
@@ -98,7 +104,6 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     
     std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
     
-    std::cout << "simulating " << primary_particles.size() << " events" << std::endl;
     for (size_t p = 0; p < primary_particles.size(); p++){
         //std::cout << "injecting " << primary_particles[p]->GetType() << " and pos = " << primary_particles[p]->GetPos() << std::endl;
 
@@ -111,12 +116,13 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         // note -- if SD not enabled, these will just be empty objects
         I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        response_->EndEvent(LArEnergyDep, CCMMCPEMap);
+        PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
+        response_->EndEvent(LArEnergyDep, CCMMCPEMap, photon_summary);
 
         // now save to put into frames and push at the end 
         AllEventsLArEnergyDep.push_back(boost::make_shared<I3MCTree>(*LArEnergyDep));
         AllEventsCCMMCPEMap.push_back(boost::make_shared<CCMMCPESeriesMap>(*CCMMCPEMap));
-
+        AllPhotonSummarySeries.push_back(boost::make_shared<PhotonSummarySeries>(*photon_summary));
     }
 
     // terminate geant4    
@@ -146,6 +152,10 @@ void CCMSimulator::Finish(){
         tempframe->Put(LArMCTreeName_, AllEventsLArEnergyDep.at(0));
         // remove LArMCTree from cache
         AllEventsLArEnergyDep.pop_front();
+        
+        tempframe->Put(PhotonSummarySeriesName_, AllPhotonSummarySeries.at(0));
+        // remove photon summary from cache
+        AllPhotonSummarySeries.pop_front();
         
         PushFrame(tempframe);
     }

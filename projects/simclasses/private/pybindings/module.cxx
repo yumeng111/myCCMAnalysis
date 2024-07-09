@@ -25,19 +25,25 @@
 #include <boost/python/import.hpp>
 
 #define REGISTER_THESE_THINGS                       \
-    (CCMMCPE)
+    (CCMMCPE)(PhotonSummary)                        \
+
 
 #define I3_REGISTRATION_FN_DECL(r, data, t) void BOOST_PP_CAT(register_,t)();
 #define I3_REGISTER(r, data, t) BOOST_PP_CAT(register_,t)();
-
 BOOST_PP_SEQ_FOR_EACH(I3_REGISTRATION_FN_DECL, ~, REGISTER_THESE_THINGS)
 
-void register_CCMMCPE();
-
-I3_PYTHON_MODULE(simclasses) {
-    load_project("simclasses", false);
-    boost::python::import("icecube._icetray");
-
-    BOOST_PP_SEQ_FOR_EACH(I3_REGISTER, ~, REGISTER_THESE_THINGS);
+I3_PYTHON_MODULE(simclasses)
+{
+  load_project("simclasses", false);
+  BOOST_PP_SEQ_FOR_EACH(I3_REGISTER, ~, REGISTER_THESE_THINGS);
 }
+
+//void register_CCMMCPE();
+//
+//I3_PYTHON_MODULE(simclasses) {
+//    load_project("simclasses", false);
+//    boost::python::import("icecube._icetray");
+//
+//    BOOST_PP_SEQ_FOR_EACH(I3_REGISTER, ~, REGISTER_THESE_THINGS);
+//}
 

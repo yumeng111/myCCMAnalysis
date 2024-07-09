@@ -46,6 +46,11 @@
 #include <G4TrackingManager.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+const std::unordered_map<std::string, PhotonSummary::CreationProcess> G4CCMScintSD::processNameToCreationProcess = {{"Unknown", PhotonSummary::CreationProcess::Unknown},
+                                                                                                                    {"Scintillation", PhotonSummary::CreationProcess::Scintillation},
+                                                                                                                    {"Cerenkov", PhotonSummary::CreationProcess::Cerenkov},
+                                                                                                                    {"OpWLS", PhotonSummary::CreationProcess::OpWLS}};
+
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
 }
@@ -72,20 +77,26 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
     if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
-        const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
-        std::string creationProcessName = "Unknown";
-        if (creationProcess) {
-            creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
-        }
-
-        // let's also grab parent id
-        // if parent id == 0, that's our primary injected particle
-        G4int parent_id = aStep->GetTrack()->GetParentID();
-
-        //std::cout << "optical photon from " << creationProcessName << " with parent id = " << parent_id << " and track id = " << aStep->GetTrack()->GetTrackID() << " in scintillator" << std::endl; 
-        
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+        } else {
+            // ok add an entry to our photon summary
+            // we need parent id, track id, time, position, and creation process
+            G4int parent_id = aStep->GetTrack()->GetParentID();
+            G4int track_id = aStep->GetTrack()->GetTrackID();
+            double time = static_cast<double>(aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond) * I3Units::nanosecond;
+            G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
+            I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
+            const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
+            std::string creationProcessName = "Unknown";
+            if (creationProcess) {
+                creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
+            }
+            // ok now ready to make a PhotonSummary and then save
+            PhotonSummary this_photon_summary = PhotonSummary(parent_id, track_id, time, position, processNameToCreationProcess.at(creationProcessName));
+            // and now save
+            photon_summary->push_back(this_photon_summary);
+
         }
         return false;
     }

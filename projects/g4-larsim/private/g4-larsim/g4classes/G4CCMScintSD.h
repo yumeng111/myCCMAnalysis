@@ -36,6 +36,7 @@
 #include "dataclasses/physics/I3Particle.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
+#include "simclasses/PhotonSummary.h"
 
 #include <vector>
 #include <string>
@@ -57,20 +58,24 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         
         // return updated MCTree
         I3MCTreePtr GetUpdatedMCTree(){ return mcTree; }
+        PhotonSummarySeriesPtr GetPhotonSummary(){ return photon_summary; }
         
         bool GetPMTSDStatus() { return PMTSDStatus_; }
         void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
 
         void SetPrimaryParticle(I3Particle primary) {
             // now let's set the primary particle
-            ClearMCTree();
-            
+            ClearResults();
+
             primaryParticleType_ = primary.GetType();
             prev_parent_particle_id_ = primary.GetID(); 
             I3MCTreeUtils::AddPrimary(*mcTree, primary);
         } 
-
-        void ClearMCTree(){ mcTree->clear(); }    
+        
+        void ClearResults() {
+            mcTree->clear();
+            photon_summary->clear();
+        } 
 
     private:
         G4CCMScintHitsCollection* fScintCollection = nullptr;
@@ -87,6 +92,10 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
 
+        // and our photon summary series object we will save information about every photon to
+        PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
+        
+        static const std::unordered_map<std::string, PhotonSummary::CreationProcess> processNameToCreationProcess;
 };
 
 #endif

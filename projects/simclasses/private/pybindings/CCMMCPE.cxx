@@ -12,7 +12,9 @@ void register_CCMMCPE() {
     scope mcpe_scope =
         class_<CCMMCPE, boost::shared_ptr<CCMMCPE> >("CCMMCPE")
         .def(dataclass_suite<CCMMCPE>())
-        .def(init<float, float, I3Position, I3Direction, CCMMCPE::PhotonSource >())
+        .def(init<size_t, size_t, float, float, I3Position, I3Direction, CCMMCPE::PhotonSource >())
+        .def_readwrite("parent_id",&CCMMCPE::parent_id)
+        .def_readwrite("track_id",&CCMMCPE::track_id)
         .def_readwrite("time",&CCMMCPE::time)
         .def_readwrite("wavelength",&CCMMCPE::wavelength)
         .def_readwrite("position",&CCMMCPE::position)

@@ -11,6 +11,7 @@
 #include "icetray/I3Module.h"
 
 #include "simclasses/CCMMCPE.h"
+#include "simclasses/PhotonSummary.h"
 
 /**
  * \brief The CCMSimulator module handles the whole simulation and 
@@ -33,6 +34,7 @@ class CCMSimulator : public I3Module  {
         std::string mcPrimaryName_;
         std::string PMTHitSeriesName_;
         std::string LArMCTreeName_; 
+        std::string PhotonSummarySeriesName_; 
         I3MCTreePtr mcTree_;
 
         CCMParticleInjectorPtr injector_;
@@ -40,6 +42,7 @@ class CCMSimulator : public I3Module  {
 
         std::deque<boost::shared_ptr<CCMMCPESeriesMap>> AllEventsCCMMCPEMap;
         std::deque<I3MCTreePtr> AllEventsLArEnergyDep;
+        std::deque<PhotonSummarySeriesPtr> AllPhotonSummarySeries;
 
         bool PMTSDStatus_; // turn PMT SD on/off
         bool LArSDStatus_; // turn fiducial LAr SD on/off

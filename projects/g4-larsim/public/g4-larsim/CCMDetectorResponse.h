@@ -12,6 +12,7 @@
 #include "icetray/I3SingleServiceFactory.h"
 
 #include "simclasses/CCMMCPE.h"
+#include "simclasses/PhotonSummary.h"
 
 class CCMDetectorResponse : public I3ServiceBase {
     public:
@@ -31,7 +32,7 @@ class CCMDetectorResponse : public I3ServiceBase {
         virtual void BeginEvent(const I3Particle& primary) = 0;
         
         // end events
-        virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap) = 0;
+        virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap, PhotonSummarySeriesPtr &  photon_summary) = 0;
 
         // terminate run
         virtual void TerminateRun() = 0;

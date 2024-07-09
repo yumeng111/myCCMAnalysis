@@ -14,6 +14,8 @@ std::ostream& operator<<(std::ostream& os, const CCMMCPE& pe) {
 
 std::ostream& CCMMCPE::Print(std::ostream& os) const{
     os << "[ CCMMCPE::"
+        << "\n  ParentID :" << parent_id 
+        << "\n  TrackID :" << track_id
         << "\n  Time :" << time
         << "\n  Wavelength :" << wavelength
         << "\n  Position :" << position 
