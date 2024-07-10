@@ -552,11 +552,11 @@ void PulseChargeTimeHistogram::Finish() {
 
     I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Physics);
 
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<std::vector<double>>>> time_charge_hists = boost::make_shared<I3Map<CCMPMTKey, std::vector<std::vector<double>>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> time_hists = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> charge_hists = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> time_chargeW_hists = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
     boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> time_chargeW_hists_var = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
-    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<std::vector<double>>>> time_charge_hists = boost::make_shared<I3Map<CCMPMTKey, std::vector<std::vector<double>>>>();
 
     //std::string binning_output_name = ss.str();
 
@@ -621,6 +621,197 @@ void PulseChargeTimeHistogram::Finish() {
     frame->Put(output_prefix + "TotChargeHist", tot_charge_output);
     frame->Put(output_prefix + "TotTimeChargeWHist", tot_time_chargeW_output);
     frame->Put(output_prefix + "TotTimeChargeWHistVar", tot_time_chargeW_output_var);
+
+    PushFrame(frame);
+}
+
+class MergePulseChargeTimeHistogram: public I3Module {
+    std::string prefix_;
+
+    std::vector<std::string> keys_;
+
+    bool seen_physics_frame_ = false;
+
+    boost::shared_ptr<I3VectorDouble> time_bin_edges_ = boost::make_shared<I3VectorDouble>();
+    boost::shared_ptr<I3VectorDouble> charge_bin_edges_ = boost::make_shared<I3VectorDouble>();
+
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<std::vector<double>>>> time_charge_hists_ = boost::make_shared<I3Map<CCMPMTKey, std::vector<std::vector<double>>>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> time_hists_ = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> charge_hists_ = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> time_chargeW_hists_ = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>>> time_chargeW_hists_var_ = boost::make_shared<I3Map<CCMPMTKey, std::vector<double>>>();
+
+    boost::shared_ptr<I3Vector<I3Vector<double>>> tot_time_charge_output_ = boost::make_shared<I3Vector<I3Vector<double>>>();
+    boost::shared_ptr<I3Vector<double>> tot_time_output_ = boost::make_shared<I3Vector<double>>();
+    boost::shared_ptr<I3Vector<double>> tot_charge_output_ = boost::make_shared<I3Vector<double>>();
+    boost::shared_ptr<I3Vector<double>> tot_time_chargeW_output_ = boost::make_shared<I3Vector<double>>();
+    boost::shared_ptr<I3Vector<double>> tot_time_chargeW_output_var_ = boost::make_shared<I3Vector<double>>();
+
+public:
+    MergePulseChargeTimeHistogram(const I3Context&);
+    void Configure();
+    void Physics(I3FramePtr frame);
+    void Finish();
+};
+
+I3_MODULE(MergePulseChargeTimeHistogram);
+
+MergePulseChargeTimeHistogram::MergePulseChargeTimeHistogram(const I3Context& context) : I3Module(context) {
+    AddParameter("Prefix", "Prefix for the outputs", std::string(""));
+}
+
+void MergePulseChargeTimeHistogram::Configure() {
+    GetParameter("Prefix", prefix_);
+
+    keys_.push_back(prefix_ + "TimeBinEdges");
+    keys_.push_back(prefix_ + "ChargeBinEdges");
+
+    keys_.push_back(prefix_ + "TimeChargeHists");
+    keys_.push_back(prefix_ + "TimeHists");
+    keys_.push_back(prefix_ + "ChargeHists");
+    keys_.push_back(prefix_ + "TimeChargeWHists");
+    keys_.push_back(prefix_ + "TimeChargeWHistsVar");
+
+    keys_.push_back(prefix_ + "TotTimeChargeHist");
+    keys_.push_back(prefix_ + "TotTimeHist");
+    keys_.push_back(prefix_ + "TotChargeHist");
+    keys_.push_back(prefix_ + "TotTimeChargeWHist");
+    keys_.push_back(prefix_ + "TotTimeChargeWHistVar");
+}
+
+void MergePulseChargeTimeHistogram::Physics(I3FramePtr frame) {
+    bool have_keys = true;
+    for(std::string const & key : keys_) {
+        if(not frame->Has(key)) {
+            have_keys = false;
+            break;
+        }
+    }
+    if(not have_keys) {
+        PushFrame(frame);
+        return;
+    }
+
+    boost::shared_ptr<I3VectorDouble const> time_bin_edges = frame->Get<boost::shared_ptr<I3VectorDouble const>>(keys_[0]);
+    boost::shared_ptr<I3VectorDouble const> charge_bin_edges = frame->Get<boost::shared_ptr<I3VectorDouble const>>(keys_[1]);
+
+    // BeamTimePulsesChargeBinEdges                                      I3Vector<double>
+    // BeamTimePulsesChargeHists                                         I3Map<CCMPMTKey, vector<double>>
+    // BeamTimePulsesTimeBinEdges                                        I3Vector<double>
+    // BeamTimePulsesTimeChargeHists                                     I3Map<CCMPMTKey, vector<vector<double>, allocator<vector<double>>>>
+    // BeamTimePulsesTimeChargeWHists                                    I3Map<CCMPMTKey, vector<double>>
+    // BeamTimePulsesTimeChargeWHistsVar                                 I3Map<CCMPMTKey, vector<double>>
+    // BeamTimePulsesTimeHists                                           I3Map<CCMPMTKey, vector<double>>
+    // BeamTimePulsesTotChargeHist                                       I3Vector<double>
+    // BeamTimePulsesTotTimeChargeHist                                   I3Vector<I3Vector<double>>
+    // BeamTimePulsesTotTimeChargeWHist                                  I3Vector<double>
+    // BeamTimePulsesTotTimeChargeWHistVar                               I3Vector<double>
+    // BeamTimePulsesTotTimeHist                                         I3Vector<double>
+
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<std::vector<double>>> const> time_charge_hists = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, std::vector<std::vector<double>>> const>>(keys_[2]);
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const> time_hists = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const>>(keys_[3]);
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const> charge_hists = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const>>(keys_[4]);
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const> time_chargeW_hists = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const>>(keys_[5]);
+    boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const> time_chargeW_hists_var = frame->Get<boost::shared_ptr<I3Map<CCMPMTKey, std::vector<double>> const>>(keys_[6]);
+
+    boost::shared_ptr<I3Vector<I3Vector<double>> const> tot_time_charge_output = frame->Get<boost::shared_ptr<I3Vector<I3Vector<double>> const>>(keys_[7]);
+    boost::shared_ptr<I3Vector<double> const> tot_time_output = frame->Get<boost::shared_ptr<I3Vector<double> const>>(keys_[8]);
+    boost::shared_ptr<I3Vector<double> const> tot_charge_output = frame->Get<boost::shared_ptr<I3Vector<double> const>>(keys_[9]);
+    boost::shared_ptr<I3Vector<double> const> tot_time_chargeW_output = frame->Get<boost::shared_ptr<I3Vector<double> const>>(keys_[10]);
+    boost::shared_ptr<I3Vector<double> const> tot_time_chargeW_output_var = frame->Get<boost::shared_ptr<I3Vector<double> const>>(keys_[11]);
+
+    if(not seen_physics_frame_) {
+        *time_bin_edges_ = *time_bin_edges;
+        *charge_bin_edges_ = *charge_bin_edges;
+
+        *time_hists_ = *time_hists;
+        *charge_hists_ = *charge_hists;
+        *time_chargeW_hists_ = *time_chargeW_hists;
+        *time_chargeW_hists_var_ = *time_chargeW_hists_var;
+        *time_charge_hists_ = *time_charge_hists;
+
+        *tot_time_charge_output_ = *tot_time_charge_output;
+        *tot_time_output_ = *tot_time_output;
+        *tot_charge_output_ = *tot_charge_output;
+        *tot_time_chargeW_output_ = *tot_time_chargeW_output;
+        *tot_time_chargeW_output_var_ = *tot_time_chargeW_output_var;
+
+        seen_physics_frame_ = true;
+    } else {
+        for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *time_hists) {
+            std::vector<double> & dest = time_hists_->at(p.first);
+            for(size_t i=0; i<p.second.size(); ++i) {
+                dest[i] += p.second[i];
+            }
+        }
+        for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *charge_hists) {
+            std::vector<double> & dest = charge_hists_->at(p.first);
+            for(size_t i=0; i<p.second.size(); ++i) {
+                dest[i] += p.second[i];
+            }
+        }
+        for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *time_chargeW_hists) {
+            std::vector<double> & dest = time_chargeW_hists_->at(p.first);
+            for(size_t i=0; i<p.second.size(); ++i) {
+                dest[i] += p.second[i];
+            }
+        }
+        for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *time_chargeW_hists_var) {
+            std::vector<double> & dest = time_chargeW_hists_var_->at(p.first);
+            for(size_t i=0; i<p.second.size(); ++i) {
+                dest[i] += p.second[i];
+            }
+        }
+        for(std::pair<CCMPMTKey const, std::vector<std::vector<double>>> const & p : *time_charge_hists) {
+            std::vector<std::vector<double>> & dest = time_charge_hists_->at(p.first);
+            for(size_t i=0; i<p.second.size(); ++i) {
+                std::vector<double> & dest_i = dest[i];
+                std::vector<double> const & src_i = p.second[i];
+                for(size_t j=0; j<src_i.size(); ++j) {
+                    dest_i[j] += src_i[j];
+                }
+            }
+        }
+
+        for(size_t i=0; i<tot_time_charge_output->size(); ++i) {
+            std::vector<double> & dest = tot_time_charge_output_->at(i);
+            std::vector<double> const & src = tot_time_charge_output->at(i);
+            for(size_t j=0; j<dest.size(); ++j) {
+                dest[j] += src[j];
+            }
+        }
+        for(size_t i=0; i<tot_time_output->size(); ++i) {
+            tot_time_output_->at(i) += tot_time_output->at(i);
+        }
+        for(size_t i=0; i<tot_charge_output->size(); ++i) {
+            tot_charge_output_->at(i) += tot_charge_output->at(i);
+        }
+        for(size_t i=0; i<tot_time_chargeW_output->size(); ++i) {
+            tot_time_chargeW_output_->at(i) += tot_time_chargeW_output->at(i);
+        }
+        for(size_t i=0; i<tot_time_chargeW_output_var->size(); ++i) {
+            tot_time_chargeW_output_var_->at(i) += tot_time_chargeW_output_var->at(i);
+        }
+    }
+}
+
+void MergePulseChargeTimeHistogram::Finish() {
+    I3FramePtr frame = boost::make_shared<I3Frame>(I3Frame::Physics);
+
+    frame->Put(prefix_ + "TimeBinEdges", time_bin_edges_);
+    frame->Put(prefix_ + "ChargeBinEdges", charge_bin_edges_);
+
+    frame->Put(prefix_ + "TimeChargeHists", time_charge_hists_);
+    frame->Put(prefix_ + "TimeHists", time_hists_);
+    frame->Put(prefix_ + "ChargeHists", charge_hists_);
+    frame->Put(prefix_ + "TimeChargeWHists", time_chargeW_hists_);
+    frame->Put(prefix_ + "TimeChargeWHistsVar", time_chargeW_hists_var_);
+
+    frame->Put(prefix_ + "TotTimeChargeHist", tot_time_charge_output_);
+    frame->Put(prefix_ + "TotTimeHist", tot_time_output_);
+    frame->Put(prefix_ + "TotChargeHist", tot_charge_output_);
+    frame->Put(prefix_ + "TotTimeChargeWHist", tot_time_chargeW_output_);
+    frame->Put(prefix_ + "TotTimeChargeWHistVar", tot_time_chargeW_output_var_);
 
     PushFrame(frame);
 }
