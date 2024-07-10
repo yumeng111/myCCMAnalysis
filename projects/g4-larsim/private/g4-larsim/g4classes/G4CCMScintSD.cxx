@@ -70,6 +70,28 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
 
 G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
+    // note -- this chunk of code resets global time to 0 in the case of radioactive decays
+    // very important for retaining time structure of scintillation photons!!!
+    G4Track* track = aStep->GetTrack();
+
+    // Check if the particle has decayed
+    if (track->GetTrackStatus() == fStopAndKill) {
+        // Check if it's a primary particle (ParentID == 0)
+        if (track->GetParentID() == 0) {
+            // Get the list of secondaries
+            G4String parentName = track->GetDefinition()->GetParticleName();
+            //std::cout << "for parent particle = " << parentName << ", secondaries = " << std::endl;
+            const G4TrackVector* secondaries = aStep->GetSecondary();
+            // Modify the start time of each secondary particle
+            for (size_t i = 0; i < secondaries->size(); ++i) {
+                G4Track* secondary = const_cast<G4Track*>(secondaries->at(i));
+                //std::cout << secondary->GetDefinition()->GetParticleName() << std::endl;
+                secondary->SetGlobalTime(0.);
+            }
+        }
+    }
+    // ok back to SD logic
+
     // our scint SD is tracking energy deposited in the fiducial argon 
     // this will be used for voxelization
     
@@ -136,7 +158,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4String particleName = fParticleDefinition->GetParticleName();
 
     //std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id
-    //    << ", track id = " << aStep->GetTrack()->GetTrackID() << ", name = " << particleName << ", edep = "  << edep << ", and e kin = " << ekin << std::endl; 
+    //    << ", track id = " << aStep->GetTrack()->GetTrackID() << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl; 
     
     // kill neutrinos 
     if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){

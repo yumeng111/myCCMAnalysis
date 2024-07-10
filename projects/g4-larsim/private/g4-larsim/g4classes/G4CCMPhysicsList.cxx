@@ -169,10 +169,6 @@ void G4CCMPhysicsList::ConstructProcess() {
 
     // radioactive decay things
     G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60*CLHEP::year);
-    // and setting half life to something small
-    G4double halfLife = 1.0 * ns; 
-    radioactiveDecay->SetHLThreshold(halfLife);
-
 
     G4bool ARMflag = false;
     radioactiveDecay->SetARM(ARMflag);        //Atomic Rearangement
@@ -192,7 +188,7 @@ void G4CCMPhysicsList::ConstructProcess() {
     //
     G4PhysicsListHelper* ph = G4PhysicsListHelper::GetPhysicsListHelper();
     ph->RegisterProcess(radioactiveDecay, G4GenericIon::GenericIon());
-
+    
     // quick aside, printing decay table for sodium22
     G4int Z = 11; // Atomic number for Sodium
     G4int A = 22; // Mass number for Sodium
