@@ -30,6 +30,7 @@
 #include <icetray/I3Int.h>
 #include <dataclasses/I3Double.h>
 #include <dataclasses/I3String.h>
+#include <dataclasses/I3TimeWindow.h>
 #include <dataclasses/I3MapCCMPMTKeyMask.h>
 #include <dataclasses/physics/CCMWaveform.h>
 #include <dataclasses/geometry/CCMGeometry.h>
@@ -97,6 +98,7 @@ class PulseChargeTimeHistogram: public I3Module {
     double charge_log_high_;
     size_t charge_n_edges_;
     double charge_base_;
+    std::string allowed_regions_key_;
 
     using storage_t = boost::histogram::dense_storage<boost::histogram::accumulators::weighted_sum<double>>;
     using time_axis_t =
@@ -449,6 +451,7 @@ PulseChargeTimeHistogram::PulseChargeTimeHistogram(const I3Context& context) : I
         AddParameter("ChargeLogHigh", "High edge of the log binning", double(9.0));
         AddParameter("ChargeNEdges", "Number of edges in the log binning", size_t(10*11+1));
         AddParameter("ChargeBase", "Base of the log binning", double(10.0));
+        AddParameter("AllowedRegionsKey", "Key for the allowed regions", std::string("AllowedRegions"));
 }
 
 void PulseChargeTimeHistogram::Configure() {
@@ -462,6 +465,7 @@ void PulseChargeTimeHistogram::Configure() {
     GetParameter("ChargeLogHigh", charge_log_high_);
     GetParameter("ChargeNEdges", charge_n_edges_);
     GetParameter("ChargeBase", charge_base_);
+    GetParameter("AllowedRegionsKey", allowed_regions_key_);
 
     time_axis_ = time_axis_t(time_n_edges_, time_low_, time_high_);
     // charge_axis_ = charge_axis_t(charge_n_edges_, log(charge_base_) * charge_log_low_, log(charge_base_) * charge_log_high_);
@@ -515,16 +519,42 @@ void PulseChargeTimeHistogram::DAQ(I3FramePtr frame) {
         log_fatal("Could not find %s in the DAQ frame.", pulses_name_.c_str());
     }
 
-    for (CCMRecoPulseSeriesMap::const_iterator i = pulses->begin(); i != pulses->end(); i++) {
-        hist_t & hist = hists_.at(i->first);
-        time_hist_t & time_hist = time_hists_.at(i->first);
-        charge_hist_t & charge_hist = charge_hists_.at(i->first);
-        time_hist_t & time_chargeW_hist = time_chargeW_hists_.at(i->first);
-        for(CCMRecoPulse const & pulse: i->second) {
-            hist(boost::histogram::weight(1.0), pulse.GetTime(), pulse.GetCharge());
-            time_hist(boost::histogram::weight(1.0), pulse.GetTime());
-            charge_hist(boost::histogram::weight(1.0), pulse.GetCharge());
-            time_chargeW_hist(boost::histogram::weight(pulse.GetCharge()), pulse.GetTime());
+    boost::shared_ptr<I3TimeWindowSeries const> allowed_regions = frame->Get<boost::shared_ptr<I3TimeWindowSeries const>>(allowed_regions_key_);
+
+    if(allowed_regions == nullptr or allowed_regions->size() == 0) {
+        for (CCMRecoPulseSeriesMap::const_iterator i = pulses->begin(); i != pulses->end(); i++) {
+            hist_t & hist = hists_.at(i->first);
+            time_hist_t & time_hist = time_hists_.at(i->first);
+            charge_hist_t & charge_hist = charge_hists_.at(i->first);
+            time_hist_t & time_chargeW_hist = time_chargeW_hists_.at(i->first);
+            for(CCMRecoPulse const & pulse: i->second) {
+                hist(boost::histogram::weight(1.0), pulse.GetTime(), pulse.GetCharge());
+                time_hist(boost::histogram::weight(1.0), pulse.GetTime());
+                charge_hist(boost::histogram::weight(1.0), pulse.GetCharge());
+                time_chargeW_hist(boost::histogram::weight(pulse.GetCharge()), pulse.GetTime());
+            }
+        }
+    } else {
+        for (CCMRecoPulseSeriesMap::const_iterator i = pulses->begin(); i != pulses->end(); i++) {
+            hist_t & hist = hists_.at(i->first);
+            time_hist_t & time_hist = time_hists_.at(i->first);
+            charge_hist_t & charge_hist = charge_hists_.at(i->first);
+            time_hist_t & time_chargeW_hist = time_chargeW_hists_.at(i->first);
+            I3TimeWindowSeries::const_iterator allowed_region_it = allowed_regions->cbegin();
+            for(CCMRecoPulse const & pulse: i->second) {
+                while(pulse.GetTime() >= allowed_region_it->GetStop()) {
+                    ++allowed_region_it;
+                    if(allowed_region_it == allowed_regions->cend()) {
+                        break;
+                    }
+                }
+                if(pulse.GetTime() >= allowed_region_it->GetStart()) {
+                    hist(boost::histogram::weight(1.0), pulse.GetTime(), pulse.GetCharge());
+                    time_hist(boost::histogram::weight(1.0), pulse.GetTime());
+                    charge_hist(boost::histogram::weight(1.0), pulse.GetCharge());
+                    time_chargeW_hist(boost::histogram::weight(pulse.GetCharge()), pulse.GetTime());
+                }
+            }
         }
     }
 
@@ -739,31 +769,56 @@ void MergePulseChargeTimeHistogram::Physics(I3FramePtr frame) {
         seen_physics_frame_ = true;
     } else {
         for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *time_hists) {
-            std::vector<double> & dest = time_hists_->at(p.first);
+            auto it = time_hists_->find(p.first);
+            if(it == time_hists_->end()) {
+                time_hists_->insert(std::make_pair(p.first, p.second));
+                continue;
+            }
+            std::vector<double> & dest = it->second;
             for(size_t i=0; i<p.second.size(); ++i) {
                 dest[i] += p.second[i];
             }
         }
         for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *charge_hists) {
-            std::vector<double> & dest = charge_hists_->at(p.first);
+            auto it = charge_hists_->find(p.first);
+            if(it == charge_hists_->end()) {
+                charge_hists_->insert(std::make_pair(p.first, p.second));
+                continue;
+            }
+            std::vector<double> & dest = it->second;
             for(size_t i=0; i<p.second.size(); ++i) {
                 dest[i] += p.second[i];
             }
         }
         for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *time_chargeW_hists) {
-            std::vector<double> & dest = time_chargeW_hists_->at(p.first);
+            auto it = time_chargeW_hists_->find(p.first);
+            if(it == time_chargeW_hists_->end()) {
+                time_chargeW_hists_->insert(std::make_pair(p.first, p.second));
+                continue;
+            }
+            std::vector<double> & dest = it->second;
             for(size_t i=0; i<p.second.size(); ++i) {
                 dest[i] += p.second[i];
             }
         }
         for(std::pair<CCMPMTKey const, std::vector<double>> const & p : *time_chargeW_hists_var) {
-            std::vector<double> & dest = time_chargeW_hists_var_->at(p.first);
+            auto it = time_chargeW_hists_var_->find(p.first);
+            if(it == time_chargeW_hists_var_->end()) {
+                time_chargeW_hists_var_->insert(std::make_pair(p.first, p.second));
+                continue;
+            }
+            std::vector<double> & dest = it->second;
             for(size_t i=0; i<p.second.size(); ++i) {
                 dest[i] += p.second[i];
             }
         }
         for(std::pair<CCMPMTKey const, std::vector<std::vector<double>>> const & p : *time_charge_hists) {
-            std::vector<std::vector<double>> & dest = time_charge_hists_->at(p.first);
+            auto it = time_charge_hists_->find(p.first);
+            if(it == time_charge_hists_->end()) {
+                time_charge_hists_->insert(std::make_pair(p.first, p.second));
+                continue;
+            }
+            std::vector<std::vector<double>> & dest = it->second;
             for(size_t i=0; i<p.second.size(); ++i) {
                 std::vector<double> & dest_i = dest[i];
                 std::vector<double> const & src_i = p.second[i];
