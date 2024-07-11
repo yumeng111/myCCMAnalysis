@@ -25,6 +25,7 @@ i3_add_pybindings(analytic_light_yields
     private/pybindings/module.cxx
     private/pybindings/AllPMTcppMinimizer.cxx
     private/pybindings/cppMinimizer.cxx
+    private/pybindings/YieldsPerPMT.cxx
     USE_TOOLS boost python
     USE_PROJECTS icetray serialization dataio dataclasses phys-services analytic-light-yields
     )

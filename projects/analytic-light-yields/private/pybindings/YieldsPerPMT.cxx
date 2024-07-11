@@ -46,7 +46,10 @@ void register_YieldsPerPMT() {
         .def(init<I3FramePtr, double, double, double>())
         //.def("GetPMTInformation", &YieldsPerPMT::GetPMTInformation)
         //.def("GetSecondaryLocs", &YieldsPerPMT::GetSecondaryLocs)
-        .def("GetAllYields", &YieldsPerPMT::GetAllYields);
+        .def("GetPlottingInformation", &YieldsPerPMT::GetPlottingInformation)
+        .def("GetYieldsPlotting", &YieldsPerPMT::GetYieldsPlotting)
+        .def("GetAllYields", &YieldsPerPMT::GetAllYields<double>);
+        //.def("GetAllYields", &YieldsPerPMT::GetAllYields);
 
 }
 }

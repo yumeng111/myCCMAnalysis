@@ -133,6 +133,11 @@ public:
     template<typename T> void GetAllYields(size_t n_threads, boost::shared_ptr<HESodiumEventSeries> event_vertices, T UV_absorption_length, std::vector<CCMPMTKey> const & keys_to_fit,
                                            double max_time, T photons_per_mev, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
 
+    std::vector<double> yields_plotting;
+    
+    void GetPlottingInformation(CCMPMTKey key, size_t n_events_to_simulate, double z_position);
+    std::vector<double> GetYieldsPlotting() { return yields_plotting; }
+    
 };
 
 inline void get_solid_angle_and_distance_vertex_to_location(double const & vertex_x,
