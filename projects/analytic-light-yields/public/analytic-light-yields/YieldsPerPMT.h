@@ -134,9 +134,13 @@ public:
                                            double max_time, T photons_per_mev, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
 
     std::vector<double> yields_plotting;
+    std::map<CCMPMTKey, std::vector<double>> spatial_distro;
     
     void GetPlottingInformation(CCMPMTKey key, size_t n_events_to_simulate, double z_position);
     std::vector<double> GetYieldsPlotting() { return yields_plotting; }
+    
+    void MakeSpatialDistribution(std::vector<CCMPMTKey> key, size_t n_events_to_simulate, double z_position);
+    std::vector<double> GetSpatialDistribution(CCMPMTKey key) { return spatial_distro.at(key); }
     
 };
 

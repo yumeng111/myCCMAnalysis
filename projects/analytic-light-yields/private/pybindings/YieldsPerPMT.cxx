@@ -48,6 +48,8 @@ void register_YieldsPerPMT() {
         //.def("GetSecondaryLocs", &YieldsPerPMT::GetSecondaryLocs)
         .def("GetPlottingInformation", &YieldsPerPMT::GetPlottingInformation)
         .def("GetYieldsPlotting", &YieldsPerPMT::GetYieldsPlotting)
+        .def("MakeSpatialDistribution", &YieldsPerPMT::MakeSpatialDistribution)
+        .def("GetSpatialDistribution", &YieldsPerPMT::GetSpatialDistribution)
         .def("GetAllYields", &YieldsPerPMT::GetAllYields<double>);
         //.def("GetAllYields", &YieldsPerPMT::GetAllYields);
 

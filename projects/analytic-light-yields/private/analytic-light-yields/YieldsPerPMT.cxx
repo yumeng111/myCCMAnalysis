@@ -618,7 +618,7 @@ void YieldsPerPMT::GetPlottingInformation(CCMPMTKey key, size_t n_events_to_simu
     // now get all yields
     size_t n_threads = 0;
     double uv_absorption = 2800.0;
-    double max_time = 100.0;
+    double max_time = 200.0;
     double photons_per_mev = 10000.0;
     std::map<CCMPMTKey, std::vector<double>> binned_yields;
     std::map<CCMPMTKey, std::vector<double>> binned_square_yields;
@@ -627,6 +627,22 @@ void YieldsPerPMT::GetPlottingInformation(CCMPMTKey key, size_t n_events_to_simu
 
     // now grab yields for this pmt
     yields_plotting = binned_yields.at(key);
+}
+
+void YieldsPerPMT::MakeSpatialDistribution(std::vector<CCMPMTKey> key, size_t n_events_to_simulate, double z_position){
+    // let's grab some event vertices
+    std::shared_ptr<SodiumVertexDistribution> sodium_events_constructor = std::make_shared<SodiumVertexDistribution> ();
+    boost::shared_ptr<HESodiumEventSeries> event_vertices = sodium_events_constructor->GetEventVertices(n_events_to_simulate, z_position);
+
+    // now get all yields
+    size_t n_threads = 0;
+    double uv_absorption = 2800.0;
+    double max_time = 100.0;
+    double photons_per_mev = 10000.0;
+    std::map<CCMPMTKey, std::vector<double>> binned_square_yields;
+    
+    GetAllYields<double>(n_threads, event_vertices, uv_absorption, key, max_time, photons_per_mev, spatial_distro, binned_square_yields);
+
 }
 
 
