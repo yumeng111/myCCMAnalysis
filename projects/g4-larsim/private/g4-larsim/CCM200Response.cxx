@@ -26,11 +26,15 @@
 
 
 CCM200Response::CCM200Response(const I3Context& context) :
-    CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SodiumSourceRun_(false), SodiumSourceLocation_(0.0 * I3Units::cm)   {
+    CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SodiumSourceRun_(false), SodiumSourceLocation_(0.0 * I3Units::cm),
+    SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond), UVAbsStatus_(true){
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
     AddParameter("SodiumSourceRun", "true if we want to simulate the sodium source rod + pellet", SodiumSourceRun_);
     AddParameter("SodiumSourceLocation", "z location of the end of the sodium source rod", SodiumSourceLocation_);
+    AddParameter("SingletTimeConstant", "LAr singlet tau", SingletTau_);
+    AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
+    AddParameter("UVAbsLenStatus", "turn uv abs on/off", UVAbsStatus_);
 }
 
 void CCM200Response::Configure() {
@@ -38,6 +42,9 @@ void CCM200Response::Configure() {
     GetParameter("LArSDStatus", LArSDStatus_);
     GetParameter("SodiumSourceRun", SodiumSourceRun_);
     GetParameter("SodiumSourceLocation", SodiumSourceLocation_);
+    GetParameter("SingletTimeConstant", SingletTau_);
+    GetParameter("TripletTimeConstant", TripletTau_);
+    GetParameter("UVAbsLenStatus", UVAbsStatus_);
 }
 
 CCM200Response::~CCM200Response() {
@@ -58,7 +65,7 @@ void CCM200Response::Initialize() {
     }
 
     // let's let's construct the detector
-    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SodiumSourceRun_, SodiumSourceLocation_);
+    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SodiumSourceRun_, SodiumSourceLocation_, SingletTau_, TripletTau_, UVAbsStatus_);
     g4Interface_->InitializeRun();
 
 }

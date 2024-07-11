@@ -19,6 +19,7 @@ Global variables include most of the important volumes and materials.
 #include <G4RotationMatrix.hh>
 #include <CLHEP/Units/SystemOfUnits.h>
 #include <G4VUserDetectorConstruction.hh>
+#include <G4SystemOfUnits.hh>
 
 class G4CCMMainVolume;
 class G4CCMPMTSD;
@@ -38,7 +39,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
   public:
 
     // constructor and destructor
-    G4CCMDetectorConstruction();
+    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4bool UVAbsStatus);
     ~G4CCMDetectorConstruction() override;
 
     // build the detector
@@ -128,6 +129,10 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     // controls to turn sodium source on/off
     bool SodiumSourceRun_ = false;
     G4double SodiumSourceLocation_ = 0.0; 
+
+    G4double SingletTau_;
+    G4double TripletTau_;
+    G4bool UVAbsStatus_;
 };
 
 #endif

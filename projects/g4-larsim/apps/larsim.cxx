@@ -43,6 +43,7 @@
 #include "G4UIExecutive.hh"
 #include "G4UImanager.hh"
 #include "G4VisExecutive.hh"
+#include <G4SystemOfUnits.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -57,7 +58,7 @@ int main(int argc, char** argv)
 
   auto runManager = G4RunManagerFactory::CreateRunManager();
 
-  auto det = new G4CCMDetectorConstruction();
+  auto det = new G4CCMDetectorConstruction(8.2 * ns, 743.0 * ns, true);
   runManager->SetUserInitialization(det);
 
   //G4VModularPhysicsList* physicsList = new FTFP_BERT;

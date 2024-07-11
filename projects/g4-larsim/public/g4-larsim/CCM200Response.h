@@ -37,6 +37,9 @@ private:
     bool LArSDStatus_; // turn fiducial LAr SD on/off
     bool SodiumSourceRun_; // turn source run on/off 
     double SodiumSourceLocation_; // location of end of source rod 
+    double SingletTau_; // set LAr singlet time constant
+    double TripletTau_; // set LAr triplet time constant
+    bool UVAbsStatus_; // set uv abs on/off 
 
     G4Interface* g4Interface_;
         

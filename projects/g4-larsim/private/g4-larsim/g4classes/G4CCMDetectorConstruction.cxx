@@ -35,11 +35,13 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction()
-{
-  SetDefaults();
-  DefineMaterials();
-  fDetectorMessenger = new G4CCMDetectorMessenger(this);
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4bool UVAbsStatus) {
+    SingletTau_ = SingletTau;
+    TripletTau_ = TripletTau;
+    UVAbsStatus_ = UVAbsStatus;
+    SetDefaults();
+    DefineMaterials();
+    fDetectorMessenger = new G4CCMDetectorMessenger(this);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -223,13 +225,24 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
    
-    // back to defining material property table 
-    fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
+    // back to defining material property table
+    std::cout << "UVAbsStatus_ = " << UVAbsStatus_ << std::endl;
+    if (UVAbsStatus_){
+        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
+    } else {
+        std::vector<G4double> dummy_LAr_ABS = {2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
+                                               2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
+                                               2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
+                                               2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm};
+        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, dummy_LAr_ABS);
+    }
+
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE",0.11); 
-    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1",8.2*ns);
-    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2",1400.*ns);
+    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", SingletTau_);
+    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2", TripletTau_);
+    std::cout << "set singlet tau = " << SingletTau_ << " and triplet tau = " << TripletTau_ << std::endl;
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",0.25); // for e/m scintillation
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 

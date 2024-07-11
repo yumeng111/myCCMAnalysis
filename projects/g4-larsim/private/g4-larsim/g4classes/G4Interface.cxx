@@ -64,7 +64,7 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation) {
+void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, bool UVAbsStatus) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -74,7 +74,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
     LArSDStatus_ = LArSDStatus;
 
     if(!detector_) {
-        detector_ = new G4CCMDetectorConstruction();
+        detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns, UVAbsStatus);
         // set SD status
         detector_->SetPMTSDStatus(PMTSDStatus_);
         detector_->SetLArSDStatus(LArSDStatus_);
