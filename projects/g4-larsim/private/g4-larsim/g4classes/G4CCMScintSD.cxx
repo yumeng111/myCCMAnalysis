@@ -46,15 +46,11 @@
 #include <G4TrackingManager.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-const std::unordered_map<std::string, PhotonSummary::CreationProcess> G4CCMScintSD::processNameToCreationProcess = {{"Unknown", PhotonSummary::CreationProcess::Unknown},
-                                                                                                                    {"Scintillation", PhotonSummary::CreationProcess::Scintillation},
-                                                                                                                    {"Cerenkov", PhotonSummary::CreationProcess::Cerenkov},
-                                                                                                                    {"OpWLS", PhotonSummary::CreationProcess::OpWLS}};
-
 const std::unordered_map<std::string, int> G4CCMScintSD::energyLossToI3ParticlePDGCode = {{"phot", 2000000001}, {"compt", 2000000002}, {"conv", 2000000003},
                                                                                           {"Rayl", 2000000004}, {"msc", 2000000005}, {"eIoni", 2000000006},
                                                                                           {"eBrem", 2000000007}, {"ePairProd", 2000000008}, {"CoulombScat", 2000000009},
-                                                                                          {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012}};
+                                                                                          {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012},
+                                                                                          {"Scintillation", 2000000013}, {"OpWLS", 2000000014}};
 
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
@@ -107,11 +103,11 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
         } else {
+
             // ok add an entry to our photon summary
-            // we need parent id, track id, time, position, and creation process
+            // we need parent id, track id, position, and creation process
             G4int parent_id = aStep->GetTrack()->GetParentID();
             G4int track_id = aStep->GetTrack()->GetTrackID();
-            double time = static_cast<double>(aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond) * I3Units::nanosecond;
             G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
             I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
@@ -119,10 +115,26 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             if (creationProcess) {
                 creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
             }
-            // ok now ready to make a PhotonSummary and then save
-            PhotonSummary this_photon_summary = PhotonSummary(parent_id, track_id, time, position, processNameToCreationProcess.at(creationProcessName));
-            // and now save
-            photon_summary->push_back(this_photon_summary);
+            
+            // now check if this our first optical photon
+            if (firstOpPh){
+                firstOpPhParentID = parent_id; 
+                firstOpPh = false;
+            }
+            //std::cout << "optical photon with parent id = " << parent_id << ", track id = " << track_id << ", and creation process = " << creationProcessName << std::endl;    
+            
+            // ok now let's save
+            //if (DaughterOpticalPhotonMap.find(track_id) == DaughterOpticalPhotonMap.end()) {
+            //    // we have not added the daugher...let's do it now
+            //    I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(creationProcessName));
+            //    I3Particle daughter(daughter_type);
+            //    daughter.SetPos(position);
+
+            //    I3MCTreeUtils::AppendChild(*mcTree, DaughterOpticalPhotonMap.at(parent_id) , daughter);
+            //
+            //    // update map 
+            //    DaughterOpticalPhotonMap[track_id] = daughter.GetID();
+            //}
 
         }
         return false;

@@ -116,13 +116,13 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         // note -- if SD not enabled, these will just be empty objects
         I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
+        I3MCTreePtr photon_summary = boost::make_shared<I3MCTree>();
         response_->EndEvent(LArEnergyDep, CCMMCPEMap, photon_summary);
 
         // now save to put into frames and push at the end 
         AllEventsLArEnergyDep.push_back(boost::make_shared<I3MCTree>(*LArEnergyDep));
         AllEventsCCMMCPEMap.push_back(boost::make_shared<CCMMCPESeriesMap>(*CCMMCPEMap));
-        AllPhotonSummarySeries.push_back(boost::make_shared<PhotonSummarySeries>(*photon_summary));
+        AllPhotonSummarySeries.push_back(boost::make_shared<I3MCTree>(*photon_summary));
     }
 
     // terminate geant4    

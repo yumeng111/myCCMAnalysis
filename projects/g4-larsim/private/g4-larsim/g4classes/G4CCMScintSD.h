@@ -36,7 +36,6 @@
 #include "dataclasses/physics/I3Particle.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
-#include "simclasses/PhotonSummary.h"
 
 #include <vector>
 #include <string>
@@ -58,7 +57,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         
         // return updated MCTree
         I3MCTreePtr GetUpdatedMCTree(){ return mcTree; }
-        PhotonSummarySeriesPtr GetPhotonSummary(){ return photon_summary; }
+        I3MCTreePtr GetPhotonSummary(){ return photon_summary; }
         
         bool GetPMTSDStatus() { return PMTSDStatus_; }
         void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
@@ -76,6 +75,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
             mcTree->clear();
             photon_summary->clear();
             DaughterParticleMap.clear();
+            DaughterOpticalPhotonMap.clear();
         } 
 
     private:
@@ -92,13 +92,15 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
 
-        // and our photon summary series object we will save information about every photon to
-        PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
+        // and photon summary that keeps track of optical photons
+        I3MCTreePtr photon_summary = boost::make_shared<I3MCTree>();
         
-        static const std::unordered_map<std::string, PhotonSummary::CreationProcess> processNameToCreationProcess;
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
+        std::map<int, I3ParticleID> DaughterOpticalPhotonMap; // map between track_id and I3ParticleID
+        bool firstOpPh = true;
+        int firstOpPhParentID;
 };
 
 #endif

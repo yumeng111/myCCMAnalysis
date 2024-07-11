@@ -215,6 +215,8 @@ class I3Particle : public I3FrameObject
     annihil = 2000000010,
     Cerenkov = 2000000011,
     Radioactivation = 2000000012,
+    Scintillation = 2000000013,
+    OpWLS = 2000000014,
   };
 
  public:
@@ -431,6 +433,7 @@ std::string i3particle_type_string(int32_t pdg_code);
     (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)                                      \
     (phot)(compt)(conv)(Rayl)(msc)(eIoni)(eBrem)(ePairProd)(CoulombScat)(annihil) \
     (Na22Nucleus)(ExcitedNe22Nuclus)(Cerenkov)(Radioactivation)                   \
+    (Scintillation)(OpWLS)                                                        \
 
 std::ostream& operator<<(std::ostream& oss, const I3Particle& d);
 

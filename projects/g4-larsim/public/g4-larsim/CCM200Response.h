@@ -21,7 +21,6 @@
 #include "phys-services/I3RandomService.h"
 
 #include "simclasses/CCMMCPE.h"
-#include "simclasses/PhotonSummary.h"
 
 #include <vector>
 #include <string>
@@ -53,7 +52,7 @@ public:
     virtual void Configure() override;
     virtual void Initialize() override;
     virtual void BeginEvent(const I3Particle& primary) override;
-    virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap, PhotonSummarySeriesPtr & photon_summary) override;
+    virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap, I3MCTreePtr & photon_summary) override;
     virtual void TerminateRun() override;
     virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }
     virtual bool GetLArSDStatus() override { return LArSDStatus_; }

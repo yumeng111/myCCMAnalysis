@@ -77,7 +77,7 @@ void CCM200Response::BeginEvent(const I3Particle& primary) {
 
 }
 
-void CCM200Response::EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap, PhotonSummarySeriesPtr & photon_summary ) {
+void CCM200Response::EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap, I3MCTreePtr & photon_summary ) {
 
     g4Interface_->TerminateEvent(); // this ends event and grabs salient information from geant4
 
