@@ -51,6 +51,11 @@ const std::unordered_map<std::string, PhotonSummary::CreationProcess> G4CCMScint
                                                                                                                     {"Cerenkov", PhotonSummary::CreationProcess::Cerenkov},
                                                                                                                     {"OpWLS", PhotonSummary::CreationProcess::OpWLS}};
 
+const std::unordered_map<std::string, int> G4CCMScintSD::energyLossToI3ParticlePDGCode = {{"phot", 2000000001}, {"compt", 2000000002}, {"conv", 2000000003},
+                                                                                          {"Rayl", 2000000004}, {"msc", 2000000005}, {"eIoni", 2000000006},
+                                                                                          {"eBrem", 2000000007}, {"ePairProd", 2000000008}, {"CoulombScat", 2000000009},
+                                                                                          {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012}};
+
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
 }
@@ -122,17 +127,15 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
         return false;
     }
+    
+    // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
 
     // now let's check energy deposited
     G4double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
     G4double ekin = aStep->GetTrack()->GetKineticEnergy() / electronvolt * I3Units::eV;
 
-    // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
-
     // position
     G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    G4ThreeVector prePos = aStep->GetPreStepPoint()->GetPosition();
-    double delta_pos = std::sqrt(std::pow(photonPosition.x()/mm - prePos.x()/mm, 2) + std::pow(photonPosition.y()/mm - prePos.y()/mm, 2) + std::pow(photonPosition.z()/mm - prePos.z()/mm, 2));
     I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
 
     // direction
@@ -142,59 +145,83 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // time
     G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
 
-    // process type
+    // creation process -- use for parent id > 0
     const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
     std::string creationProcessName = "Unknown";
     if (creationProcess) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
+    
+    // process name -- use for parent id == 0!
+    std::string processName = "Unknown";
+    const G4VProcess* currentProcess = aStep->GetPostStepPoint()->GetProcessDefinedStep();
+    if (currentProcess) {
+        processName = static_cast<std::string>(currentProcess->GetProcessName());
+    }
 
     // let's also grab parent id
     // if parent id == 0, that's our primary injected particle
     G4int parent_id = aStep->GetTrack()->GetParentID();
+    G4int track_id = aStep->GetTrack()->GetTrackID();
 
+    // get name and pdg code
     G4ParticleDefinition* fParticleDefinition = aStep->GetTrack()->GetDefinition();
     G4int pdg = fParticleDefinition->GetPDGEncoding();
     G4String particleName = fParticleDefinition->GetParticleName();
 
-    //std::cout << "creation process name = " << creationProcessName << ", parent id = " << parent_id
-    //    << ", track id = " << aStep->GetTrack()->GetTrackID() << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl; 
-    
     // kill neutrinos 
     if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
         aStep->GetTrack()->SetTrackStatus(fStopAndKill);
         return false;
     } 
     
+    // do not add entry to MCTree for no energy deposition
     if(edep == 0.){
-        return false;  // No edep so don't count as hit
+        return false; 
     }
+    
+    //std::cout << "creation process name = " << creationProcessName << ", processName = " << processName << ", parent id = " << parent_id
+    //    << ", track id = " << track_id << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl; 
 
     // now save to our MCTree!
     if (parent_id == 0){
+        std::cout << "energy deposition name = " << processName << ", parent id = " << parent_id << ", track id = " << track_id
+            << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // let's create and fill our I3Particle
-        // since parent id = 0, this will also be a primary
-        I3Particle primary(primaryParticleType_);
-        primary.SetEnergy(edep);
-        primary.SetPos(position);
-        primary.SetDir(direction);
- 
-        prev_parent_particle_id_ = primary.GetID(); 
-        I3MCTreeUtils::AddPrimary(*mcTree, primary);
-    }
-    else if (parent_id > 0) {
-        // this will be the daughter in our mcTree
-        // let's grab the particle id of the last I3Particle in previous parent id
-        I3ParticleID prev_parent_particle_id = prev_parent_particle_id_;
-        
-        // now let's get particle type for this daughter
-        I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
+        // since parent id = 0, we need to add daughter energy loss (aka processName) 
+        I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
         I3Particle daughter(daughter_type);
         daughter.SetEnergy(edep);
         daughter.SetPos(position);
         daughter.SetDir(direction);
 
-        I3MCTreeUtils::AppendChild(*mcTree, prev_parent_particle_id , daughter);
+        I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(1), daughter); // append energy deposition to primary particle
+    }
+    else if (parent_id > 0) {
+        std::cout << "energy deposition name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << track_id
+            << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
+        // ok so we've created a new particle
+        // if this is the first time we're seeing this particle -- add particle + energy loss
+        // if we've already added this daughter particle -- only add energy loss
+
+        if (DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
+            // we have not added the daugher...let's do it now
+            I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
+            I3Particle daughter(daughter_type);
+
+            I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
+        
+            // update map 
+            DaughterParticleMap[track_id] = daughter.GetID();
+        }
+
+        // now add energy loss 
+        I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(creationProcessName));
+        I3Particle daughter(daughter_type);
+        daughter.SetEnergy(edep);
+        daughter.SetPos(position);
+        daughter.SetDir(direction);
+        I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id) , daughter);
     }
 
     // now back to scint hit things

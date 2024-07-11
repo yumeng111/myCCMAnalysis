@@ -68,13 +68,14 @@ class G4CCMScintSD : public G4VSensitiveDetector {
             ClearResults();
 
             primaryParticleType_ = primary.GetType();
-            prev_parent_particle_id_ = primary.GetID(); 
+            DaughterParticleMap[1] = primary.GetID();
             I3MCTreeUtils::AddPrimary(*mcTree, primary);
         } 
         
         void ClearResults() {
             mcTree->clear();
             photon_summary->clear();
+            DaughterParticleMap.clear();
         } 
 
     private:
@@ -87,7 +88,6 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         // let's also grab the primary particle information
         I3Particle::ParticleType primaryParticleType_;
-        I3ParticleID prev_parent_particle_id_;
 
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
@@ -96,6 +96,9 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
         
         static const std::unordered_map<std::string, PhotonSummary::CreationProcess> processNameToCreationProcess;
+        static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
+
+        std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
 };
 
 #endif
