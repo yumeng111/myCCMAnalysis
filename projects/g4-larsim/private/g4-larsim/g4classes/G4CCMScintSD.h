@@ -36,6 +36,8 @@
 #include "dataclasses/physics/I3Particle.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
+#include "dataclasses/I3Map.h"
+#include "simclasses/PhotonSummary.h"
 
 #include <vector>
 #include <string>
@@ -57,10 +59,17 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         
         // return updated MCTree
         I3MCTreePtr GetUpdatedMCTree(){ return mcTree; }
-        I3MCTreePtr GetPhotonSummary(){ return photon_summary; }
-        
+        PhotonSummarySeriesPtr GetPhotonSummarySeries(){ return photon_summary; }
+        boost::shared_ptr<I3Map<int, size_t>> GetPhotonSummaryMap() { return optical_photon_map; }
+
         bool GetPMTSDStatus() { return PMTSDStatus_; }
         void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
+
+        bool GetTimeCutStatus() { return TimeCut_; }
+        void SetTimeCutStatus(bool TimeCut) { TimeCut_ = TimeCut; }
+        
+        bool GetCerenkovControlStatus() { return CerenkovControl_; }
+        void SetCerenkovControlStatus(bool CerenkovControl) { CerenkovControl_ = CerenkovControl; }
 
         void SetPrimaryParticle(I3Particle primary) {
             // now let's set the primary particle
@@ -72,11 +81,15 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         } 
         
         void ClearResults() {
-            mcTree->clear();
-            photon_summary->clear();
+            mcTree = boost::make_shared<I3MCTree>();
             DaughterParticleMap.clear();
-            DaughterOpticalPhotonMap.clear();
+            photon_summary = boost::make_shared<PhotonSummarySeries>();
+            optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
         } 
+
+        void AddEntryToPhotonSummary(int parent_id, int track_id, double uv_distance, double vis_distance, std::string creationProcessName);
+        void UpdatePhotonSummary(int parent_id, int track_id, double uv_distance, double vis_distance, std::string creationProcessName,
+                                 std::map<int, size_t>::iterator it, bool new_process);
 
     private:
         G4CCMScintHitsCollection* fScintCollection = nullptr;
@@ -86,6 +99,9 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // we just need to know if PMTSD is on --> if so, we do NOT kill tracks, but if it is off, we DO kill tracks after registering one hit
         bool PMTSDStatus_; 
 
+        bool TimeCut_; // true kills tracks after 200 nsec
+        bool CerenkovControl_; // true kills cerenkov light
+
         // let's also grab the primary particle information
         I3Particle::ParticleType primaryParticleType_;
 
@@ -93,14 +109,18 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
 
         // and photon summary that keeps track of optical photons
-        I3MCTreePtr photon_summary = boost::make_shared<I3MCTree>();
+        // note this is in two parts -- map between track id and idx
+        // and vector containing photon summaries (idx in vector corresponds to track id)
+        boost::shared_ptr<I3Map<int, size_t>> optical_photon_map = boost::make_shared<I3Map<int, size_t>>(); // map between track id and idx in vector
+        PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
+        
+        // define a few things for converting energy to wavelength
+        const G4double hbarc = 197.326; //eV * nm
+        const G4double hc =  hbarc * (2 * 3.14159265358979323846); // eV * nm
         
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
-        std::map<int, I3ParticleID> DaughterOpticalPhotonMap; // map between track_id and I3ParticleID
-        bool firstOpPh = true;
-        int firstOpPhParentID;
 };
 
 #endif

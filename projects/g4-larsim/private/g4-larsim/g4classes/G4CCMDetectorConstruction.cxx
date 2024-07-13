@@ -434,8 +434,8 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPhotoCathCoated(), fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPhotoCathUncoated(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoated(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoated(), fPMT_SD.Get());
         }
 
     }
@@ -446,9 +446,15 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             G4cout << "Construction /LAr/scintSD" << G4endl;
             auto scint_SD = new G4CCMScintSD("/LAr/scintSD");
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
+            scint_SD->SetTimeCutStatus(TimeCut_);
+            scint_SD->SetCerenkovControlStatus(CerenkovControl_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBCoating(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBFoil(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoated(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoated(), fScint_SD.Get());
             // make sure to include source pellet + rod for SD if enabeled
             if (SodiumSourceRun_){
                 SetSensitiveDetector(fMainVolume->GetLogSodiumPellet(), fScint_SD.Get());

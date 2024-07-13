@@ -21,6 +21,7 @@
 #include "phys-services/I3RandomService.h"
 
 #include "simclasses/CCMMCPE.h"
+#include "simclasses/PhotonSummary.h"
 
 #include <vector>
 #include <string>
@@ -39,6 +40,8 @@ private:
     double SingletTau_; // set LAr singlet time constant
     double TripletTau_; // set LAr triplet time constant
     bool UVAbsStatus_; // set uv abs on/off 
+    bool TimeCut_; // true ends all events after 200 nsec
+    bool CerenkovControl_; // true turns off cerenkov light
 
     G4Interface* g4Interface_;
         
@@ -52,7 +55,8 @@ public:
     virtual void Configure() override;
     virtual void Initialize() override;
     virtual void BeginEvent(const I3Particle& primary) override;
-    virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap, I3MCTreePtr & photon_summary) override;
+    virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap,
+                          PhotonSummarySeriesPtr & photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> & photon_summary_series_map) override;
     virtual void TerminateRun() override;
     virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }
     virtual bool GetLArSDStatus() override { return LArSDStatus_; }

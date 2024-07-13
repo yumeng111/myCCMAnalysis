@@ -27,11 +27,13 @@ class G4CCMMainVolume : public G4PVPlacement
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
                 G4CCMDetectorConstruction* c, G4bool SodiumSourceOn, G4double SodiumSourceLocation);
 
-    G4LogicalVolume* GetLogPhotoCathCoated() { return fPMTCoated_log; }
-    G4LogicalVolume* GetLogPhotoCathUncoated() { return fPMTUncoated_log; }
+    G4LogicalVolume* GetLogPMTCoated() { return fPMTCoated_log; }
+    G4LogicalVolume* GetLogPMTUncoated() { return fPMTUncoated_log; }
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
     G4LogicalVolume* GetLogSodiumPellet() { return fSodiumSourcePellet_log; }
     G4LogicalVolume* GetLogSourceRod() { return fSourceRod_log; }
+    G4LogicalVolume* GetLogTPBCoating() { return fTPBCoating_log; }
+    G4LogicalVolume* GetLogTPBFoil() { return fTPBFoil_log; }
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:

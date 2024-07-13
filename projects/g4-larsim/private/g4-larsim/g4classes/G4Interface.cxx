@@ -64,7 +64,8 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, bool UVAbsStatus) {
+void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, bool UVAbsStatus,
+                                  bool TimeCut, bool CerenkovControl) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -78,6 +79,9 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
         // set SD status
         detector_->SetPMTSDStatus(PMTSDStatus_);
         detector_->SetLArSDStatus(LArSDStatus_);
+        // set time cut and cerenkov control
+        detector_->SetTimeCut(TimeCut);
+        detector_->SetCerenkovControl(CerenkovControl);
         // set sodium rod status
         detector_->InitializeSodiumSourceRun(SodiumSourceRun, SodiumSourceLocation / I3Units::cm * CLHEP::cm);
         // Force reinitializatiion
@@ -315,7 +319,8 @@ void G4Interface::TerminateEvent()
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
         LArEnergyDep = scintSD->GetUpdatedMCTree();
-        photon_summary = scintSD->GetPhotonSummary(); 
+        photon_summary_series = scintSD->GetPhotonSummarySeries();
+        photon_summary_series_map = scintSD->GetPhotonSummaryMap();
     }
 
 }

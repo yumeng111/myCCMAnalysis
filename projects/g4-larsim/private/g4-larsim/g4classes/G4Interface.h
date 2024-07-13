@@ -13,6 +13,7 @@
 #include <icetray/CCMPMTKey.h>
 
 #include <simclasses/CCMMCPE.h>
+#include "simclasses/PhotonSummary.h"
 
 #ifdef G4VIS_USE
 class G4VisManager;
@@ -34,7 +35,8 @@ class G4Interface {
         static G4Interface* GetInstance() {return g4Interface_;}
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, bool UVAbsStatus);
+        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, bool UVAbsStatus,
+                             bool TimeCut, bool CerenkovControl);
         /// Initialize event. Most Geant4 global things are initialized the first time this is called.
         void InitializeRun();
         /// To be called after simulating each IceTray event.
@@ -46,7 +48,8 @@ class G4Interface {
         // return CCMMCPEMap and LAr energy deposition
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap ; }
         I3MCTreePtr GetLArEnergyDep() { return LArEnergyDep ; }
-        I3MCTreePtr GetPhotonSummary() { return photon_summary; }
+        PhotonSummarySeriesPtr GetPhotonSummarySeries() { return photon_summary_series; }
+        boost::shared_ptr<I3Map<int, size_t>> GetPhotonSummaryMap() { return photon_summary_series_map; }
     
     private:
         void Initialize();
@@ -66,7 +69,8 @@ class G4Interface {
     
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
         I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
-        I3MCTreePtr photon_summary = boost::make_shared<I3MCTree>();
+        boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map; 
+        PhotonSummarySeriesPtr photon_summary_series = boost::make_shared<PhotonSummarySeries>();
         
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off

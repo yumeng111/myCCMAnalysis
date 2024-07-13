@@ -105,7 +105,6 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
     std::vector<I3Particle*> primary_particles = I3MCTreeUtils::GetPrimariesPtr(mcTree_);
     
     for (size_t p = 0; p < primary_particles.size(); p++){
-        //std::cout << "injecting " << primary_particles[p]->GetType() << " and pos = " << primary_particles[p]->GetPos() << std::endl;
 
         // Tell the response service of a new event
         response_->BeginEvent(*primary_particles[p]);
@@ -115,14 +114,17 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         // also grab hits in fiducial argon for voxelization
         // note -- if SD not enabled, these will just be empty objects
         I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
-        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        I3MCTreePtr photon_summary = boost::make_shared<I3MCTree>();
-        response_->EndEvent(LArEnergyDep, CCMMCPEMap, photon_summary);
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap>();
+        PhotonSummarySeriesPtr photon_summary_series = boost::make_shared<PhotonSummarySeries>();
+        boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map = boost::make_shared<I3Map<int, size_t>>(); 
+        
+        response_->EndEvent(LArEnergyDep, CCMMCPEMap, photon_summary_series, photon_summary_series_map);
 
         // now save to put into frames and push at the end 
         AllEventsLArEnergyDep.push_back(boost::make_shared<I3MCTree>(*LArEnergyDep));
         AllEventsCCMMCPEMap.push_back(boost::make_shared<CCMMCPESeriesMap>(*CCMMCPEMap));
-        AllPhotonSummarySeries.push_back(boost::make_shared<I3MCTree>(*photon_summary));
+        AllPhotonSummarySeries.push_back(boost::make_shared<PhotonSummarySeries>(*photon_summary_series));
+        AllPhotonSummaryMap.push_back(boost::make_shared<I3Map<int, size_t>>(*photon_summary_series_map));
     }
 
     // terminate geant4    
@@ -156,6 +158,10 @@ void CCMSimulator::Finish(){
         tempframe->Put(PhotonSummarySeriesName_, AllPhotonSummarySeries.at(0));
         // remove photon summary from cache
         AllPhotonSummarySeries.pop_front();
+        
+        tempframe->Put("PhotonSummaryMap", AllPhotonSummaryMap.at(0));
+        // remove photon summary from cache
+        AllPhotonSummaryMap.pop_front();
         
         PushFrame(tempframe);
     }

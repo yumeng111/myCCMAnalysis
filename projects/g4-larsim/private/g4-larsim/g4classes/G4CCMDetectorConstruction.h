@@ -69,6 +69,12 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
         SodiumSourceLocation_ = SodiumSourceLocation;
     }
 
+    // set time cut
+    void SetTimeCut(bool TimeCut){ TimeCut_ = TimeCut; }
+    
+    // set cerenkov control
+    void SetCerenkovControl(bool CerenkovControl) { CerenkovControl_ = CerenkovControl; }    
+
     // get sodium source calibration run status
     bool GetSodiumSourceRun() { return SodiumSourceRun_; }
     G4double GetSodiumSourcePosition() { return SodiumSourceLocation_; }
@@ -130,9 +136,12 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     bool SodiumSourceRun_ = false;
     G4double SodiumSourceLocation_ = 0.0; 
 
-    G4double SingletTau_;
-    G4double TripletTau_;
-    G4bool UVAbsStatus_;
+    G4double SingletTau_ = 8.2 * ns;
+    G4double TripletTau_ = 743.0 * ns;
+    G4bool UVAbsStatus_ = true;
+
+    G4bool TimeCut_ = true;
+    G4bool CerenkovControl_ = false;
 };
 
 #endif

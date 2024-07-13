@@ -67,10 +67,46 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
     hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
 }
 
+void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double uv_distance, double vis_distance, std::string creationProcessName){
+    // map does not have key -- let's add our PhotonSummary then update map
+    size_t n_wls = 0;
+    if (creationProcessName == "OpWLS"){
+        n_wls = 1;
+    }
+    PhotonSummary this_photon_summary = PhotonSummary(uv_distance, vis_distance, n_wls);
+    photon_summary->push_back(this_photon_summary);
+    std::cout << "adding entry to optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv 
+              << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
+    std::cout << "" << std::endl;
+    (*optical_photon_map)[track_id] = photon_summary->size() - 1;
+}
+
+void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double uv_distance, double vis_distance, std::string creationProcessName,
+                                       std::map<int, size_t>::iterator it, bool new_process){
+    // map contains this photon
+    // so we need to grab PhotonSummary and update it -- then update key
+    PhotonSummary this_photon_summary = photon_summary->at(it->second);
+    this_photon_summary.distance_uv += uv_distance;
+    this_photon_summary.distance_visible += vis_distance;
+    if (creationProcessName == "OpWLS" and new_process){
+        this_photon_summary.n_wls += 1;
+    }
+
+    // now remove this entry from the map and add new entry at the track id
+    // and remove entry from photon_summary and add new entry
+    optical_photon_map->erase(it);
+    photon_summary->erase(photon_summary->begin() + it->second);
+    
+    photon_summary->push_back(this_photon_summary);
+    std::cout << "updating optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv
+              << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
+    std::cout << "" << std::endl;
+    (*optical_photon_map)[track_id] = photon_summary->size() - 1;
+}
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
-
     // note -- this chunk of code resets global time to 0 in the case of radioactive decays
     // very important for retaining time structure of scintillation photons!!!
     G4Track* track = aStep->GetTrack();
@@ -91,52 +127,105 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             }
         }
     }
-    // ok back to SD logic
 
-    // our scint SD is tracking energy deposited in the fiducial argon 
-    // this will be used for voxelization
+    if (photon_summary->size() > 100){
+        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+        return false;
+    }
+
+    // let's do a check on the time cut
+    if (TimeCut_){
+        // check time ... doesnt matter what type of particle it is
+        G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+        if (time > 200.0){
+            aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+            return false;
+        }
+    }
     
+    // ok back to SD logic
+    // our scint SD is tracking energy deposited in the fiducial argon 
     // we don't care about optical photons for getting energy deposited in LAr
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
     if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-        } else {
-
-            // ok add an entry to our photon summary
-            // we need parent id, track id, position, and creation process
-            G4int parent_id = aStep->GetTrack()->GetParentID();
-            G4int track_id = aStep->GetTrack()->GetTrackID();
-            G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-            I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
+            return false;
+        } 
+        
+        // check if we want to kill cerenkov photons 
+        if (CerenkovControl_){
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
             std::string creationProcessName = "Unknown";
             if (creationProcess) {
                 creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
             }
-            
-            // now check if this our first optical photon
-            if (firstOpPh){
-                firstOpPhParentID = parent_id; 
-                firstOpPh = false;
-            }
-            //std::cout << "optical photon with parent id = " << parent_id << ", track id = " << track_id << ", and creation process = " << creationProcessName << std::endl;    
-            
-            // ok now let's save
-            //if (DaughterOpticalPhotonMap.find(track_id) == DaughterOpticalPhotonMap.end()) {
-            //    // we have not added the daugher...let's do it now
-            //    I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(creationProcessName));
-            //    I3Particle daughter(daughter_type);
-            //    daughter.SetPos(position);
-
-            //    I3MCTreeUtils::AppendChild(*mcTree, DaughterOpticalPhotonMap.at(parent_id) , daughter);
-            //
-            //    // update map 
-            //    DaughterOpticalPhotonMap[track_id] = daughter.GetID();
-            //}
-
+            if (creationProcessName == "Cerenkov"){
+                aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+                return false;
+            } 
         }
+
+        // ok if we survived all checks, add an entry to our photon summary
+        // we need parent id, track id, distance travelled, and wavelength 
+        G4int parent_id = aStep->GetTrack()->GetParentID();
+        G4int track_id = aStep->GetTrack()->GetTrackID();
+        
+        G4ThreeVector pre_step_position = aStep->GetPreStepPoint()->GetPosition();
+        G4ThreeVector post_step_position = aStep->GetPostStepPoint()->GetPosition();
+        double delta_x = ((post_step_position.getX() / mm) - (pre_step_position.getX() / mm)) * I3Units::mm;
+        double delta_y = ((post_step_position.getY() / mm) - (pre_step_position.getY() / mm)) * I3Units::mm;
+        double delta_z = ((post_step_position.getZ() / mm) - (pre_step_position.getZ() / mm)) * I3Units::mm;
+        double delta_distance_squared = (delta_x * delta_x) + (delta_y * delta_y) + (delta_z * delta_z);
+        double delta_distance = std::sqrt(delta_distance_squared);
+         
+        G4double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
+        
+        // based on the wavelength, let's classify as uv or vis
+        double vis_distance = 0.0;
+        double uv_distance = 0.0;
+        if (wavelength <= 325.0){
+            uv_distance = delta_distance;
+        } else { vis_distance = delta_distance; }
+        
+        // let's also check if this photon got wls
+        const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
+        std::string creationProcessName = "Unknown";
+        if (creationProcess) {
+            creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
+        }
+
+        std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", distance travelled = " << delta_distance << ", wavelength = " << wavelength 
+            << ", creation process = " << creationProcessName << ", distance uv = " << uv_distance << ", and distance vis = " << vis_distance << std::endl; 
+
+        //std::cout << "optical_photon_map = " << std::endl;
+        //for (const auto& pair : *(optical_photon_map)) {
+        //    std::cout << "Key: " << pair.first << ", Value: " << pair.second << std::endl;
+        //}
+        //std::cout << "" << std::endl;
+
+        // ok now let's save
+        // check to see if the parent id is in our map
+        std::map<int, size_t>::iterator it = optical_photon_map->find(parent_id);
+        if (it != optical_photon_map->end()) {
+            // update our optical photon map
+            bool new_process = true;
+            UpdatePhotonSummary(parent_id, track_id, uv_distance, vis_distance, creationProcessName, it, new_process);
+        } else {
+            // check if this track id is in our map
+            std::map<int, size_t>::iterator track_it = optical_photon_map->find(track_id);
+            bool new_process = false;
+            if (track_it != optical_photon_map->end()){
+                // ok so this photon is in our map, let's just update
+                UpdatePhotonSummary(parent_id, track_id,  uv_distance, vis_distance, creationProcessName, track_it, new_process);
+            } else {
+                // need to add a new photon to our map
+                AddEntryToPhotonSummary(parent_id, track_id, uv_distance, vis_distance, creationProcessName);
+            }
+        }
+
+
         return false;
     }
     
@@ -197,8 +286,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // now save to our MCTree!
     if (parent_id == 0){
-        std::cout << "energy deposition name = " << processName << ", parent id = " << parent_id << ", track id = " << track_id
-            << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
+        //std::cout << "energy deposition name = " << processName << ", parent id = " << parent_id << ", track id = " << track_id
+        //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // let's create and fill our I3Particle
         // since parent id = 0, we need to add daughter energy loss (aka processName) 
         I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
@@ -210,8 +299,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(1), daughter); // append energy deposition to primary particle
     }
     else if (parent_id > 0) {
-        std::cout << "energy deposition name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << track_id
-            << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
+        //std::cout << "energy deposition name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << track_id
+        //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // ok so we've created a new particle
         // if this is the first time we're seeing this particle -- add particle + energy loss
         // if we've already added this daughter particle -- only add energy loss
