@@ -75,10 +75,10 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double u
     }
     PhotonSummary this_photon_summary = PhotonSummary(uv_distance, vis_distance, n_wls);
     photon_summary->push_back(this_photon_summary);
-    std::cout << "adding entry to optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv 
-              << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
-    std::cout << "" << std::endl;
-    (*optical_photon_map)[track_id] = photon_summary->size() - 1;
+    //std::cout << "adding entry to optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv 
+    //          << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
+    //std::cout << "" << std::endl;
+    optical_photon_map->insert(std::make_pair(track_id, photon_summary->size() - 1));
 }
 
 void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double uv_distance, double vis_distance, std::string creationProcessName,
@@ -92,16 +92,14 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double uv_di
         this_photon_summary.n_wls += 1;
     }
 
-    // now remove this entry from the map and add new entry at the track id
-    // and remove entry from photon_summary and add new entry
-    optical_photon_map->erase(it);
-    photon_summary->erase(photon_summary->begin() + it->second);
-    
-    photon_summary->push_back(this_photon_summary);
-    std::cout << "updating optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv
-              << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
-    std::cout << "" << std::endl;
-    (*optical_photon_map)[track_id] = photon_summary->size() - 1;
+    // now update the photon_summary, delete from map, and add new entry to the map
+    size_t pos = it->second;
+    photon_summary->at(pos) = this_photon_summary;
+    //std::cout << "updating optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv
+    //          << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
+    //std::cout << "" << std::endl;
+    //optical_photon_map->erase(it);
+    optical_photon_map->insert(std::make_pair(track_id, pos));
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -196,8 +194,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
         }
 
-        std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", distance travelled = " << delta_distance << ", wavelength = " << wavelength 
-            << ", creation process = " << creationProcessName << ", distance uv = " << uv_distance << ", and distance vis = " << vis_distance << std::endl; 
+        //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", distance travelled = " << delta_distance << ", wavelength = " << wavelength 
+        //    << ", creation process = " << creationProcessName << ", distance uv = " << uv_distance << ", distance vis = " << vis_distance << std::endl; 
 
         //std::cout << "optical_photon_map = " << std::endl;
         //for (const auto& pair : *(optical_photon_map)) {
@@ -207,10 +205,10 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
         // ok now let's save
         // check to see if the parent id is in our map
+        bool new_process = true;
         std::map<int, size_t>::iterator it = optical_photon_map->find(parent_id);
         if (it != optical_photon_map->end()) {
             // update our optical photon map
-            bool new_process = true;
             UpdatePhotonSummary(parent_id, track_id, uv_distance, vis_distance, creationProcessName, it, new_process);
         } else {
             // check if this track id is in our map
@@ -224,6 +222,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 AddEntryToPhotonSummary(parent_id, track_id, uv_distance, vis_distance, creationProcessName);
             }
         }
+        
+        //std::cout << "new process = " << new_process << std::endl;
 
 
         return false;
