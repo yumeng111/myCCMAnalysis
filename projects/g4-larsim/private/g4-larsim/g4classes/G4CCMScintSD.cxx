@@ -126,11 +126,6 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
     }
 
-    if (photon_summary->size() > 100){
-        aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-        return false;
-    }
-
     // let's do a check on the time cut
     if (TimeCut_){
         // check time ... doesnt matter what type of particle it is
