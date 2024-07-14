@@ -111,8 +111,8 @@ namespace bp = boost::python;
   (IceActKey)(I3IceActGeo)(I3IceActRecoPulseSeries)                     \
   (I3IceActRecoPulseSeriesMap)                                          \
   (I3IceActWaveform)(I3IceActWaveformMap)(I3IceActPixelPositionMap)     \
-  (I3IceActTriggerMap)(I3VectorCCMTriggerKey)
-
+  (I3IceActTriggerMap)(I3VectorCCMTriggerKey)                           \
+  (CCMEventHeader)                                                      \
 
 #define I3_REGISTRATION_FN_DECL(r, data, t) void BOOST_PP_CAT(register_,t)();
 #define I3_REGISTER(r, data, t) BOOST_PP_CAT(register_,t)();
