@@ -16,6 +16,8 @@
 
 #include "icetray/CCMPMTKey.h"
 #include "dataclasses/I3Vector.h"
+#include "simclasses/CCMMCPE.h"
+#include "simclasses/PhotonSummary.h"
 
 class cppMinimizer {
 

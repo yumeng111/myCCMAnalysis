@@ -16,6 +16,7 @@ i3_add_library(${PROJECT_NAME}
     private/analytic-light-yields/linpack.cpp
     private/analytic-light-yields/cppMinimizer.cxx
     private/analytic-light-yields/AllPMTcppMinimizer.cxx
+    private/analytic-light-yields/G4YieldsPerPMT.cxx
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services

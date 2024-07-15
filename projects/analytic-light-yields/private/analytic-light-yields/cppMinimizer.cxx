@@ -84,10 +84,10 @@ struct LikelihoodFunctor {
             if (tau_s != tau_TPB){
                 if constexpr (std::is_same<T, double>::value) {
                     total_llh += llh_constructorDouble.at(data_it)->ComputeNLLH(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
-                                 time_offset, x[11], x[12], x[13], x[14], 1.0, x[15], photons_per_mev, fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
+                                 time_offset, x[11], x[12], x[13], x[14], 1.0, x[15], photons_per_mev, fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type, false);
                 } else {
                     total_llh += llh_constructorAD.at(data_it)->ComputeNLLH(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
-                                 time_offset, x[11], x[12], x[13], x[14], 1.0, x[15], photons_per_mev, fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type);
+                                 time_offset, x[11], x[12], x[13], x[14], 1.0, x[15], photons_per_mev, fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type, false);
                 }
 
                 // and now add our prior!

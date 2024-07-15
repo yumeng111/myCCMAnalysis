@@ -29,6 +29,8 @@
 #include "analytic-light-yields/GenerateExpectation.h"
 #include <analytic-light-yields/YieldsPerPMT.h>
 #include "analytic-light-yields/autodiff.h"
+#include "simclasses/CCMMCPE.h"
+#include "simclasses/PhotonSummary.h"
 
 namespace MCLLH {
 namespace detail {
@@ -344,7 +346,8 @@ public:
 
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T normalization, T light_time_offset,
             T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T pmt_efficiency,
-            T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type);
+            T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
+            AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields);
 
     //AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
     //double GetNLLHValue(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
@@ -453,7 +456,8 @@ double CalculateNLLH<T>::InterpolationDouble(double this_time, std::vector<doubl
 template<typename T>
 T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
-            T pmt_efficiency, T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type) {
+            T pmt_efficiency, T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
+            AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields) {
     
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
@@ -468,7 +472,7 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time,
                                                             peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale,
-                                                            uv_absorption, photons_per_mev, fitting_uv_abs, z_offset, n_sodium_events, light_profile_type);
+                                                            uv_absorption, photons_per_mev, fitting_uv_abs, z_offset, n_sodium_events, light_profile_type, UseG4Yields);
     // unpack into yields, yields^2, and times
     boost::shared_ptr<std::vector<T>> pred_yields;
     boost::shared_ptr<std::vector<T>> pred_yields_squared;

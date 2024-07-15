@@ -19,6 +19,8 @@
 #include "dataclasses/I3Map.h"
 #include "dataclasses/I3Vector.h"
 #include "analytic-light-yields/CalculateNLLH.h"
+#include "simclasses/CCMMCPE.h"
+#include "simclasses/PhotonSummary.h"
 
 class AllPMTcppMinimizer {
 
