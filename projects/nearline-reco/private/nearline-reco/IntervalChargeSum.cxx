@@ -121,7 +121,6 @@ void IntervalChargeSumQ::Geometry(I3FramePtr frame) {
 }
 
 void IntervalChargeSumQ::DAQ(I3FramePtr frame) {
-    std::cout << "IntervalChargeSumQ::DAQ" << std::endl;
     if(not geo_seen) {
         log_fatal("No Geometry frame seen yet.");
     }
@@ -207,7 +206,6 @@ void IntervalChargeSumQ::DAQ(I3FramePtr frame) {
 
     for (size_t i = 0; i < time_windows_.size(); ++i) {
         std::string output_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_[i])) + "NS";
-        std::cout << output_key << std::endl;
         frame->Put(output_key, event_charge_list[i]);
     }
 
@@ -293,18 +291,13 @@ void IntervalChargeSumP::Geometry(I3FramePtr frame) {
 }
 
 void IntervalChargeSumP::Physics(I3FramePtr frame) {
-    std::cout << "IntervalChargeSumP::Physics" << std::endl;
     std::vector<std::string> keys = frame->keys();
-    for(std::string const & key: keys) {
-        std::cout << "\t" << key << std::endl;
-    }
 
     if(not geo_seen) {
         log_fatal("No Geometry frame seen yet.");
     }
 
     std::string input_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_.at(0))) + "NS";
-    std::cout << input_key << std::endl;
 
     size_t event_index = frame->Get<CCMEventHeaderConstPtr>("CCMEventHeader")->GetSubEventID();
 
