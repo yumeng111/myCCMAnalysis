@@ -66,7 +66,7 @@ void SumPulses::ProcessFrame(I3FramePtr frame) {
     for(CCMPMTKey const & pmt_key : pmt_keys_) {
         if(pulses->find(pmt_key) == pulses->end()) {
             if(skip_missing_) {
-                log_warn("Skipping missing PMT (%i/%u) in '%s'",
+                log_debug("Skipping missing PMT (%i/%u) in '%s'",
                         pmt_key.GetRegion(), pmt_key.GetSensor(),
                         pulses_key_.c_str());
                 continue;
@@ -78,7 +78,7 @@ void SumPulses::ProcessFrame(I3FramePtr frame) {
         }
         CCMRecoPulseSeries const & pulse_series = pulses->at(pmt_key);
         if(pulse_series.size() == 0) {
-            log_warn("Skipping empty pulse series for PMT (%i/%u) in '%s'",
+            log_debug("Skipping empty pulse series for PMT (%i/%u) in '%s'",
                     pmt_key.GetRegion(), pmt_key.GetSensor(),
                     pulses_key_.c_str());
             continue;
