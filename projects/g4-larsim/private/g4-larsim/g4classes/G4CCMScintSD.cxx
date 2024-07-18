@@ -284,14 +284,18 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         //std::cout << "energy deposition name = " << processName << ", parent id = " << parent_id << ", track id = " << track_id
         //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // let's create and fill our I3Particle
-        // since parent id = 0, we need to add daughter energy loss (aka processName) 
-        I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
-        I3Particle daughter(daughter_type);
-        daughter.SetEnergy(edep);
-        daughter.SetPos(position);
-        daughter.SetDir(direction);
+        // since parent id = 0, we need to add daughter energy loss (aka processName)
+        if (energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()){
+            I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
+            I3Particle daughter(daughter_type);
+            daughter.SetEnergy(edep);
+            daughter.SetPos(position);
+            daughter.SetDir(direction);
 
-        I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(1), daughter); // append energy deposition to primary particle
+            I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(1), daughter); // append energy deposition to primary particle
+        } else {
+            std::cout << "oops! no conversion for " << processName << std::endl;
+        }
     }
     else if (parent_id > 0) {
         //std::cout << "energy deposition name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << track_id
@@ -310,14 +314,18 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             // update map 
             DaughterParticleMap[track_id] = daughter.GetID();
         }
+        if (energyLossToI3ParticlePDGCode.find(creationProcessName) != energyLossToI3ParticlePDGCode.end()){
+            // now add energy loss 
+            I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(creationProcessName));
+            I3Particle daughter(daughter_type);
+            daughter.SetEnergy(edep);
+            daughter.SetPos(position);
+            daughter.SetDir(direction);
+            I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id) , daughter);
+        } else {
+            std::cout << "oops! no conversion for " << creationProcessName << std::endl;
+        }
 
-        // now add energy loss 
-        I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(creationProcessName));
-        I3Particle daughter(daughter_type);
-        daughter.SetEnergy(edep);
-        daughter.SetPos(position);
-        daughter.SetDir(direction);
-        I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id) , daughter);
     }
 
     // now back to scint hit things
