@@ -16,6 +16,7 @@
 #include <cmath>
 #include <map>
 
+#include "dataio/I3File.h"
 #include "icetray/ctpl.h"
 #include "icetray/I3Units.h"
 #include "dataclasses/I3Position.h"
@@ -50,17 +51,34 @@ class G4YieldsPerPMT {
     ctpl::thread_pool pool;
     size_t max_cached_vertices = (size_t) 3000;
     std::exception_ptr teptr = nullptr;
-
+    
 public:
     G4YieldsPerPMT();
     template<typename T> void GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, std::deque<I3FramePtr> G4Events, double max_time,
                                            T UV_absorption_length, T scaling, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
+    
+    std::vector<double> GetPlottingInformation(CCMPMTKey key, double uv_absorption, double scaling);
+    template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> GetSummedYieldsMap(std::vector<CCMPMTKey> keys_to_fit, T uv_abs, T scaling); 
+    void TimeComparison(std::vector<CCMPMTKey> keys_to_fit);
+
+    std::deque<I3FramePtr> G4Events_;
+    std::vector<double> G4Times_;
+    std::vector<double> CalculatedTimes_;
+
+    std::vector<double> GetG4Times() { return G4Times_; };
+    std::vector<double> GetCalculatedTimes() { return CalculatedTimes_; }
 };
+
 
 template<typename T> void GrabG4Yields(I3FramePtr frame,
                                        T UV_absorption_length,
                                        std::shared_ptr<std::map<CCMPMTKey, std::vector<g4_photon_yield_summary<T>>>> & all_pmt_yields_map,
                                        std::vector<CCMPMTKey> const & keys_to_fit) {
+    // some constants
+    double c = 2.998 * std::pow(10.0, 8.0); // speed of light in m/s
+    double c_cm_per_nsec = c * std::pow(10.0, -7.0); // speed of light in cm/nsec
+    double uv_index_of_refraction = 1.358;
+    double vis_index_of_refraction = 1.23;
     
     // lets grab necessary things from each frame
     boost::shared_ptr<CCMMCPESeriesMap const> CCMMCPEMap = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>("PMTMCHitsMap");
@@ -80,28 +98,32 @@ template<typename T> void GrabG4Yields(I3FramePtr frame,
         // loop over each CCMMCPE 
         for (size_t m = 0; m < this_key_ccmmcpe.size(); m++){
             CCMMCPE this_ccmmcpe = this_key_ccmmcpe.at(m);
-            double time = this_ccmmcpe.time; // already in units of nsec
-
-            // grab photon summary information related with this photon hit
-            T uv_scaling = 1.0;
-            size_t track_id = this_ccmmcpe.track_id;
-            std::map<int, size_t>::const_iterator it = photon_summary_series_map->find(track_id);
-            if (it != photon_summary_series_map->end()) {
-                PhotonSummary this_photon_summary = photon_summary_series->at(it->second);
-                double distance_travelled_uv = this_photon_summary.distance_uv / I3Units::cm;
-                // now figure out scaling due to uv absorption
-                uv_scaling *= exp(- distance_travelled_uv / UV_absorption_length);
+            // first check the wavelength!! only continue if visible
+            double wavelength = this_ccmmcpe.wavelength * 1e9; // units of nm
+            if (wavelength > 325.0){
+                // grab photon summary information related with this photon hit
+                size_t track_id = this_ccmmcpe.track_id;
+                std::map<int, size_t>::const_iterator it = photon_summary_series_map->find(track_id);
+                if (it != photon_summary_series_map->end()) {
+                    PhotonSummary this_photon_summary = photon_summary_series->at(it->second);
+                    double distance_travelled_uv = this_photon_summary.distance_uv / I3Units::cm;
+                    double distance_travelled_vis = this_photon_summary.distance_visible / I3Units::cm;
+                    // now figure out scaling due to uv absorption
+                    T uv_scaling = exp(- distance_travelled_uv / UV_absorption_length);
+                    
+                    double travel_time_uv = distance_travelled_uv / (c_cm_per_nsec / uv_index_of_refraction); // units of nsec
+                    double travel_time_visible = distance_travelled_vis / (c_cm_per_nsec / vis_index_of_refraction); // units of nsec
+                    double time = travel_time_uv + travel_time_visible;
+                    
+                    // now make a new yield to save
+                    g4_photon_yield_summary<T> this_yield_summary;
+                    this_yield_summary.time = time; 
+                    this_yield_summary.yield = uv_scaling; 
+                    all_pmt_yields_map->at(keys_to_fit.at(k)).push_back(this_yield_summary);
+                }
             }
-            
-            // now make a new yield to save
-            g4_photon_yield_summary<T> this_yield_summary;
-            this_yield_summary.time = time; 
-            this_yield_summary.yield = uv_scaling; 
-            all_pmt_yields_map->at(keys_to_fit.at(k)).push_back(this_yield_summary);
         }
     }
-
-    // ok done!
 }
 
 
@@ -374,6 +396,49 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
         }
     }
 
+}
+
+template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> G4YieldsPerPMT::GetSummedYieldsMap(std::vector<CCMPMTKey> keys_to_fit, T uv_abs, T scaling){
+    
+    // make sure we have filled G4Events_
+    if (G4Events_.size() == 0){
+        std::string g4_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumCenterHEEvents.i3.zst";
+        dataio::I3File g4_file(g4_fname, dataio::I3File::Mode::read);
+        while (g4_file.more()){
+            I3FramePtr g4_frame = g4_file.pop_frame();
+            G4Events_.push_back(g4_frame);
+        }
+    }
+    
+    // now get all yields
+    size_t n_threads = 0;
+    double max_time = 50.0;
+    std::map<CCMPMTKey, std::vector<T>> binned_yields;
+    std::map<CCMPMTKey, std::vector<T>> binned_square_yields;
+
+    GetAllYields<T>(n_threads, keys_to_fit, G4Events_, max_time, uv_abs, scaling, binned_yields, binned_square_yields);
+
+    // now sum binned_yields
+    std::map<CCMPMTKey, T> summed_yields;
+    std::map<CCMPMTKey, T> summed_yields_squared;
+
+    for (const auto& pair : binned_yields) {
+        T total = 0;
+        for (size_t i = 0; i < pair.second.size(); i++){
+            total += pair.second.at(i);
+        }
+        summed_yields.insert(std::make_pair(pair.first, total));
+    }
+    
+    for (const auto& pair : binned_square_yields) {
+        T total = 0;
+        for (size_t i = 0; i < pair.second.size(); i++){
+            total += pair.second.at(i);
+        }
+        summed_yields_squared.insert(std::make_pair(pair.first, total));
+    }
+
+    return std::make_tuple(summed_yields, summed_yields_squared);
 }
 
 #endif

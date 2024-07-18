@@ -30,7 +30,7 @@
 //   
 //
 
-#include <analytic-light-yields/AllPMTcppMinimizer.h>
+#include <analytic-light-yields/StandAloneUVAbsMinimizer.h>
 #include <icetray/python/copy_suite.hpp>
 #include <icetray/python/indexed_property.hpp>
 #include <icetray/python/boost_serializable_pickle_suite.hpp>
@@ -39,22 +39,15 @@
 
 using namespace boost::python;
 
-void register_AllPMTcppMinimizer() {
+void register_StandAloneUVAbsMinimizer() {
 {
 
-    class_<AllPMTcppMinimizer, boost::noncopyable>("AllPMTcppMinimizer")
+    class_<StandAloneUVAbsMinimizer, boost::noncopyable>("StandAloneUVAbsMinimizer")
         .def(init<>())
-        .def("DoubleCheckG4Pred", &AllPMTcppMinimizer::DoubleCheckG4Pred)
-        .def("MultiplePMTMinimization", &AllPMTcppMinimizer::MultiplePMTMinimization)
-        .def("ScanOverTOffsets", &AllPMTcppMinimizer::ScanOverTOffsets)
-        .def("GrabNormSeed", &AllPMTcppMinimizer::GrabNormSeed)
-        .def("GrabPhotonsPerMeVSeed", &AllPMTcppMinimizer::GrabPhotonsPerMeVSeed)
-        .def("FitUVAbsorption", &AllPMTcppMinimizer::FitUVAbsorption)
-        .def("ScanOverUVAbsorption", &AllPMTcppMinimizer::ScanOverUVAbsorption)
-        .def("GetBestFitData", &AllPMTcppMinimizer::GetBestFitData)
-        .def("GetBestFitPred", &AllPMTcppMinimizer::GetBestFitPred)
-        .def("GetBestFitTimes", &AllPMTcppMinimizer::GetBestFitTimes)
-        .def("GetBestTimeOffset", &AllPMTcppMinimizer::GetBestTimeOffset);
+        .def("MinimizeUVAbsorption", &StandAloneUVAbsMinimizer::MinimizeUVAbsorption)
+        .def("MakeSpatialDistros", &StandAloneUVAbsMinimizer::MakeSpatialDistros)
+        .def("GetBestFitPredMultipleUVAbs", &StandAloneUVAbsMinimizer::GetBestFitPredMultipleUVAbs)
+        .def("GetBestFitPred", &StandAloneUVAbsMinimizer::GetBestFitPred);
 
 }
 }

@@ -531,7 +531,7 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
     // let's try looping over our llh grid
     for (size_t i = 0; i < llh_grid.size(); i++){
         double this_time = llh_grid.at(i);
-
+        
         // grab our data
         double k = InterpolationDouble(this_time, data_times, pmt_data.data);
 
