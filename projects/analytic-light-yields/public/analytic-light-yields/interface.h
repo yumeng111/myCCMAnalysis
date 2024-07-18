@@ -244,7 +244,7 @@ public:
 	nVar(0),
 	historySize(10),
 	changeTol(1e-8),
-	gradTol(1e-8),
+	gradTol(1e-12),
 	//gradTol(1e-22),
 	finalFunctionValue(std::numeric_limits<double>::quiet_NaN()),
 	nEvals(0)

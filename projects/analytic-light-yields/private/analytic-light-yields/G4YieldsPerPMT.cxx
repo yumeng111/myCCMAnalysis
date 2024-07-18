@@ -65,15 +65,25 @@ std::vector<double> G4YieldsPerPMT::GetPlottingInformation(CCMPMTKey key, double
     return binned_yields.at(key);
 }
 
-void G4YieldsPerPMT::TimeComparison(std::vector<CCMPMTKey> keys_to_fit){
+void G4YieldsPerPMT::TimeComparison(std::vector<CCMPMTKey> keys_to_fit, double z_offset){
+    
     // make sure we have filled G4Events_
-    if (G4Events_.size() == 0){
-        std::string g4_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumCenterHEEvents.i3.zst";
-        dataio::I3File g4_file(g4_fname, dataio::I3File::Mode::read);
-        while (g4_file.more()){
-            I3FramePtr g4_frame = g4_file.pop_frame();
-            G4Events_.push_back(g4_frame);
+    if (grabbed_g4_events == false){
+        std::vector<std::string> g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumCenterHEEvents.i3.zst", "/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumPlus50HEEvents.i3.zst"};
+        std::vector<double> z_locs = {0.0, 50.0};
+
+        for (size_t f = 0; f < g4_fnames.size(); f++){
+            std::deque<I3FramePtr> this_file_events;
+
+            dataio::I3File g4_file(g4_fnames.at(f), dataio::I3File::Mode::read);
+            while (g4_file.more()){
+                I3FramePtr g4_frame = g4_file.pop_frame();
+                this_file_events.push_back(g4_frame);
+            }
+
+            G4Events_[z_locs.at(f)] = this_file_events;
         }
+
     }
     
     // some constants
@@ -82,8 +92,8 @@ void G4YieldsPerPMT::TimeComparison(std::vector<CCMPMTKey> keys_to_fit){
     double uv_index_of_refraction = 1.358;
     double vis_index_of_refraction = 1.23;
     
-    for (size_t event_it = 0; event_it < G4Events_.size(); event_it ++){
-        I3FramePtr frame = G4Events_.at(event_it);
+    for (size_t event_it = 0; event_it < G4Events_[z_offset].size(); event_it ++){
+        I3FramePtr frame = G4Events_[z_offset].at(event_it);
 
         // lets grab necessary things from each frame
         boost::shared_ptr<CCMMCPESeriesMap const> CCMMCPEMap = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>("PMTMCHitsMap");

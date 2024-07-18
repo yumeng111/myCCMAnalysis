@@ -58,10 +58,11 @@ public:
                                            T UV_absorption_length, T scaling, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
     
     std::vector<double> GetPlottingInformation(CCMPMTKey key, double uv_absorption, double scaling);
-    template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> GetSummedYieldsMap(std::vector<CCMPMTKey> keys_to_fit, T uv_abs, T scaling); 
-    void TimeComparison(std::vector<CCMPMTKey> keys_to_fit);
+    template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> GetSummedYieldsMap(std::vector<CCMPMTKey> keys_to_fit, T uv_abs, T scaling, double z_offset); 
+    void TimeComparison(std::vector<CCMPMTKey> keys_to_fit, double z_offset);
 
-    std::deque<I3FramePtr> G4Events_;
+    std::map<double, std::deque<I3FramePtr>> G4Events_;
+    bool grabbed_g4_events = false;
     std::vector<double> G4Times_;
     std::vector<double> CalculatedTimes_;
 
@@ -398,16 +399,25 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
 
 }
 
-template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> G4YieldsPerPMT::GetSummedYieldsMap(std::vector<CCMPMTKey> keys_to_fit, T uv_abs, T scaling){
+template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> G4YieldsPerPMT::GetSummedYieldsMap(std::vector<CCMPMTKey> keys_to_fit, T uv_abs, T scaling, double z_offset){
     
     // make sure we have filled G4Events_
-    if (G4Events_.size() == 0){
-        std::string g4_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumCenterHEEvents.i3.zst";
-        dataio::I3File g4_file(g4_fname, dataio::I3File::Mode::read);
-        while (g4_file.more()){
-            I3FramePtr g4_frame = g4_file.pop_frame();
-            G4Events_.push_back(g4_frame);
+    if (grabbed_g4_events == false){
+        std::vector<std::string> g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumCenterHEEvents.i3.zst", "/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumPlus50HEEvents.i3.zst"};
+        std::vector<double> z_locs = {0.0, 50.0};
+
+        for (size_t f = 0; f < g4_fnames.size(); f++){
+            std::deque<I3FramePtr> this_file_events;
+
+            dataio::I3File g4_file(g4_fnames.at(f), dataio::I3File::Mode::read);
+            while (g4_file.more()){
+                I3FramePtr g4_frame = g4_file.pop_frame();
+                this_file_events.push_back(g4_frame);
+            }
+
+            G4Events_[z_locs.at(f)] = this_file_events;
         }
+
     }
     
     // now get all yields
@@ -416,7 +426,7 @@ template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> 
     std::map<CCMPMTKey, std::vector<T>> binned_yields;
     std::map<CCMPMTKey, std::vector<T>> binned_square_yields;
 
-    GetAllYields<T>(n_threads, keys_to_fit, G4Events_, max_time, uv_abs, scaling, binned_yields, binned_square_yields);
+    GetAllYields<T>(n_threads, keys_to_fit, G4Events_[z_offset], max_time, uv_abs, scaling, binned_yields, binned_square_yields);
 
     // now sum binned_yields
     std::map<CCMPMTKey, T> summed_yields;

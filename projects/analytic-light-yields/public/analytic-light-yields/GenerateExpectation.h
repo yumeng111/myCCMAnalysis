@@ -76,7 +76,7 @@ public:
     //void GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption);
     //void ComputeBinnedYield(CCMPMTKey key, double max_time);
     void RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs);
-    void GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs);
+    void GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs, double z_loc);
 
     std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                   AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
@@ -102,21 +102,31 @@ public:
 
     T uv_absorption_calculated = 0.0;
     
-    std::deque<I3FramePtr> G4Events;
-    
+    std::map<double, std::deque<I3FramePtr>> G4Events;
+    bool grabbed_g4_events = false;
+
     void GrabG4Events();
 
 };
 
 template<typename T> void GenerateExpectation<T>::GrabG4Events(){
     
-    std::string g4_fname = "/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumCenterHEEvents.i3.zst";
-    dataio::I3File g4_file(g4_fname, dataio::I3File::Mode::read);
-    while (g4_file.more()){
-        I3FramePtr g4_frame = g4_file.pop_frame();
-        G4Events.push_back(g4_frame);
+    std::vector<std::string> g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumCenterHEEvents.i3.zst", "/Users/darcybrewuser/workspaces/CCM/notebooks/G4SodiumPlus50HEEvents.i3.zst"};
+    std::vector<double> z_locs = {0.0, 50.0};
+
+    for (size_t f = 0; f < g4_fnames.size(); f++){
+        std::deque<I3FramePtr> this_file_events;
+
+        dataio::I3File g4_file(g4_fnames.at(f), dataio::I3File::Mode::read);
+        while (g4_file.more()){
+            I3FramePtr g4_frame = g4_file.pop_frame();
+            this_file_events.push_back(g4_frame);
+        }
+
+        G4Events[z_locs.at(f)] = this_file_events;
     }
 
+    grabbed_g4_events = true;
 }
 
 template<typename T> std::vector<T> GenerateExpectation<T>::LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
@@ -137,7 +147,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
             T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields) {
 
-    if (G4Events.size() == 0 and UseG4Yields){
+    if (grabbed_g4_events == false and UseG4Yields){
         GrabG4Events();
     }
 
@@ -169,7 +179,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
         //ComputeBinnedYield(key, max_time);
         uv_absorption_calculated = uv_absorption;
         if (UseG4Yields){
-            GrabG4Yields(keys_to_fit, uv_absorption, photons_per_mev, 2.0 * max_time, fitting_uv_abs);
+            GrabG4Yields(keys_to_fit, uv_absorption, photons_per_mev, 2.0 * max_time, fitting_uv_abs, z_offset);
         }
         else {
             RunMultiThreadedCode(keys_to_fit, uv_absorption, photons_per_mev, 2.0 * max_time, fitting_uv_abs);
@@ -235,14 +245,12 @@ template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(I3VectorC
                                                 binned_yields, binned_square_yields);
 }
 
-template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs){
+template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs, double z_loc){
     g4_yields_and_offset_constructor = std::make_shared<G4YieldsPerPMT>();
 
-    // grab geant4 frames
-    // using fixed path for now...add arguments one day
-
     size_t n_threads = 0;
-    g4_yields_and_offset_constructor->GetAllYields(n_threads, keys_to_fit, G4Events, max_time, uv_absorption, photons_per_mev, binned_yields, binned_square_yields);
+    std::cout << "using simulation data set with " << G4Events[z_loc].size() << " events" << std::endl;
+    g4_yields_and_offset_constructor->GetAllYields(n_threads, keys_to_fit, G4Events[z_loc], max_time, uv_absorption, photons_per_mev, binned_yields, binned_square_yields);
 }
 
 //template<typename T> void GenerateExpectation<T>::GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption) {

@@ -51,7 +51,7 @@ struct UVAbsLikelihoodFunctor {
         }
         
         // first grab the summed yields for given uv abs and scaling
-        std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> yields = yields_constructor->GetSummedYieldsMap<T>(all_keys, x[0], x[1]); 
+        std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> yields = yields_constructor->GetSummedYieldsMap<T>(all_keys, x[0], x[1], 0.0); 
         
         std::map<CCMPMTKey, T> summed_yields;
         std::map<CCMPMTKey, T> summed_yields_squared;
@@ -104,7 +104,7 @@ double StandAloneUVAbsMinimizer::GrabScalingSeed(CCMPMTKey key, double data,  do
    
     // grab yields
     double baseline_scaling = 1.0;
-    std::tuple<std::map<CCMPMTKey, double>, std::map<CCMPMTKey, double>> yields = yields_constructor->GetSummedYieldsMap<double>({key}, uv_abs, baseline_scaling);
+    std::tuple<std::map<CCMPMTKey, double>, std::map<CCMPMTKey, double>> yields = yields_constructor->GetSummedYieldsMap<double>({key}, uv_abs, baseline_scaling, 0.0);
     std::map<CCMPMTKey, double> summed_yields = static_cast<I3MapPMTKeyDouble>(std::get<0>(yields));  
        
     // now get norm scaling to make summed_yields == data
@@ -164,7 +164,7 @@ std::vector<double> StandAloneUVAbsMinimizer::MinimizeUVAbsorption(std::vector<C
         }
     
         // one last thing -- take this best fit point and grab our pred 
-        std::tuple<std::map<CCMPMTKey, double>, std::map<CCMPMTKey, double>> yields = yields_constructor->GetSummedYieldsMap<double>(keys_to_fit, data_to_return.at(2), data_to_return.at(3));
+        std::tuple<std::map<CCMPMTKey, double>, std::map<CCMPMTKey, double>> yields = yields_constructor->GetSummedYieldsMap<double>(keys_to_fit, data_to_return.at(2), data_to_return.at(3), 0.0);
         best_fit_summed_yields = static_cast<I3MapPMTKeyDouble>(std::get<0>(yields));  
     
     } else {
@@ -182,7 +182,7 @@ void StandAloneUVAbsMinimizer::MakeSpatialDistros(std::vector<CCMPMTKey> keys_to
     std::shared_ptr<G4YieldsPerPMT> yields_constructor = std::make_shared<G4YieldsPerPMT>();
     
     for(size_t i = 0; i < uv_abs.size(); i++){
-        std::tuple<std::map<CCMPMTKey, double>, std::map<CCMPMTKey, double>> yields = yields_constructor->GetSummedYieldsMap<double>(keys_to_fit, uv_abs.at(i), scaling);
+        std::tuple<std::map<CCMPMTKey, double>, std::map<CCMPMTKey, double>> yields = yields_constructor->GetSummedYieldsMap<double>(keys_to_fit, uv_abs.at(i), scaling, 0.0);
         best_fit_summed_yields_multiple_uv_abs.push_back(static_cast<I3MapPMTKeyDouble>(std::get<0>(yields)));  
     }
 
