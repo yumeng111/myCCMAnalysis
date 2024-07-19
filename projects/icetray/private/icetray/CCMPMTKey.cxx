@@ -31,7 +31,6 @@
 #include <icetray/serialization.h>
 #include <icetray/CCMPMTKey.h>
 #include <sstream>
-#include <icetray/I3FrameObject.h>
 
 CCMPMTKey::~CCMPMTKey() { }
 
@@ -50,7 +49,6 @@ void CCMPMTKey::load(Archive& ar, unsigned version)
     log_fatal("Attempting to read version %u from file but running version %u of CCMPMTKey class.",
               version,ccmpmtkey_version_);
 
-  I3FrameObject fo;
   ar & make_nvp("RegionNumber",  regionNumber_);
   ar & make_nvp("SensorNumber",  sensorNumber_);
   ar & make_nvp("SubsensorNumber",  subsensorNumber_);

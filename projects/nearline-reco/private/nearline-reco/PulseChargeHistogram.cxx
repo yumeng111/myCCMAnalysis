@@ -59,7 +59,7 @@ std::vector<double> np_logspace(double log_low, double log_high, size_t n_edges,
     return bin_edges;
 }
 
-class CountPulses: public I3Module {
+class PulseChargeHistogram: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     CCMGeometryConstPtr geo;
@@ -79,16 +79,16 @@ class CountPulses: public I3Module {
 
 public:
     void Geometry(I3FramePtr frame);
-    CountPulses(const I3Context&);
+    PulseChargeHistogram(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
     void Finish();
     static inline void AddEntryLog(std::vector<double> & hist, double charge, double log_low, double log_high, size_t n_edges, double base=10.0);
 };
 
-I3_MODULE(CountPulses);
+I3_MODULE(PulseChargeHistogram);
 
-void CountPulses::AddEntryLog(std::vector<double> & hist, double charge, double log_low, double log_high, size_t n_edges, double base) {
+void PulseChargeHistogram::AddEntryLog(std::vector<double> & hist, double charge, double log_low, double log_high, size_t n_edges, double base) {
     if(charge <= 0.0) {
         return;
     }
@@ -103,7 +103,7 @@ void CountPulses::AddEntryLog(std::vector<double> & hist, double charge, double 
     hist.at(bin) += 1.0;
 }
 
-CountPulses::CountPulses(const I3Context& context) : I3Module(context),
+PulseChargeHistogram::PulseChargeHistogram(const I3Context& context) : I3Module(context),
     geo_seen(false), geometry_name_("") {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
         AddParameter("InputPulsesName", "Name of the input pulses", std::string("WavedeformPulses"));
@@ -115,7 +115,7 @@ CountPulses::CountPulses(const I3Context& context) : I3Module(context),
         AddParameter("OutputPerPMT", "Output one file per PMT", bool(false));
 }
 
-void CountPulses::Configure() {
+void PulseChargeHistogram::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("InputPulsesName", pulses_name_);
     GetParameter("OutputPrefix", output_prefix_);
@@ -129,7 +129,7 @@ void CountPulses::Configure() {
     num_triggers_ = boost::make_shared<I3Map<CCMPMTKey, unsigned int>>();
 }
 
-void CountPulses::Geometry(I3FramePtr frame) {
+void PulseChargeHistogram::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
@@ -144,11 +144,11 @@ void CountPulses::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void CountPulses::DAQ(I3FramePtr frame) {
+void PulseChargeHistogram::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("No Geometry frame seen yet.");
     }
-    
+
     CCMRecoPulseSeriesMapConstPtr pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulses_name_);
     if(not pulses) {
         log_fatal("Could not find %s in the DAQ frame.", pulses_name_.c_str());
@@ -164,7 +164,7 @@ void CountPulses::DAQ(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void CountPulses::Finish() {
+void PulseChargeHistogram::Finish() {
     std::string output_prefix = output_prefix_;
     if(output_prefix.empty()) {
         output_prefix = pulses_name_;

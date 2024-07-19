@@ -173,6 +173,23 @@ inline bool operator<(const CCMPMTKey& lhs,const CCMPMTKey& rhs)
   }
 }
 
+inline bool operator>(const CCMPMTKey& lhs,const CCMPMTKey& rhs)
+{
+  if(lhs.GetRegion() > rhs.GetRegion()) {
+    return true;
+  } else if(lhs.GetRegion() < rhs.GetRegion()) {
+    return false;
+  } else if(lhs.GetSensor() > rhs.GetSensor()) {
+    return true;
+  } else if(lhs.GetSensor() < rhs.GetSensor()) {
+    return false;
+  } else if(lhs.GetSubsensor() > rhs.GetSubsensor()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 /**
  * streams an CCMPMTKey to an arbitrary ostream.  These are important,
  * the tray uses these conversion internally.

@@ -26,6 +26,7 @@
 #include <icetray/CCMTriggerKey.h>
 #include <icetray/robust_statistics.h>
 #include <icetray/I3Int.h>
+#include <dataclasses/physics/CCMEventHeader.h>
 #include <dataclasses/I3Double.h>
 #include <dataclasses/I3String.h>
 #include <dataclasses/I3MapCCMPMTKeyMask.h>
@@ -41,17 +42,13 @@
 typedef std::tuple<CCMPMTKey, CCMRecoPulse> PMTKeyPulsePair;
 typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
 
-class IntervalChargeSum: public I3Module {
+class IntervalChargeSumQ: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     CCMGeometryConstPtr geo;
-    double timeWindow_;
+    I3Vector<double> time_windows_;
     std::string input_prefix_;
     std::string output_prefix_;
-
-    bool process_physics_frames_;
-    bool process_daq_frames_;
-
 
     bool check_masked_pulses_;
     bool check_raw_pulses_;
@@ -63,41 +60,36 @@ class IntervalChargeSum: public I3Module {
 
     public:
     void Geometry(I3FramePtr frame);
-    IntervalChargeSum(const I3Context&);
+    IntervalChargeSumQ(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
-    void Physics(I3FramePtr frame);
 };
 
-I3_MODULE(IntervalChargeSum);
+I3_MODULE(IntervalChargeSumQ);
 
-IntervalChargeSum::IntervalChargeSum(const I3Context& context) : I3Module(context),
+IntervalChargeSumQ::IntervalChargeSumQ(const I3Context& context) : I3Module(context),
     geo_seen(false), geometry_name_("") {
-        AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
-        AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
-        AddParameter("ProcessPhysicsFrames", "Process physics frames", true);
-        AddParameter("ProcessDAQFrames", "Process DAQ frames", true);
-        AddParameter("TimeWindow", "Time window for charge estimate", 90.0);
-        AddParameter("InputPulsesMaskName", "Name of the input pulses mask", std::string(""));
-        AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
-        AddParameter("InputEventPrefix", "Prefix for the inputs", std::string(""));
-        AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
+    I3Vector<double> default_time_windows;
+    default_time_windows.push_back(90.0);
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
+    AddParameter("TimeWindows", "Time window for charge estimate", default_time_windows);
+    AddParameter("InputPulsesMaskName", "Name of the input pulses mask", std::string(""));
+    AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
+    AddParameter("InputEventPrefix", "Prefix for the inputs", std::string(""));
+    AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
 }
 
-void IntervalChargeSum::Configure() {
+void IntervalChargeSumQ::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("PMTTypes", pmt_types);
-    GetParameter("ProcessPhysicsFrames", process_physics_frames_);
-    GetParameter("ProcessDAQFrames", process_daq_frames_);
-    GetParameter("TimeWindow", timeWindow_);
+    GetParameter("TimeWindows", time_windows_);
     GetParameter("InputPulsesMaskName", pulses_mask_name_);
     GetParameter("InputRawPulsesName", raw_pulses_name_);
     GetParameter("InputEventPrefix", input_prefix_);
     GetParameter("OutputPrefix", output_prefix_);
 
-    if(not (process_physics_frames_ or process_daq_frames_)) {
-        log_fatal("At least one of ProcessPhysicsFrames or ProcessDAQFrames must be true.");
-    }
+    std::sort(time_windows_.begin(), time_windows_.end());
 
     check_masked_pulses_ = false;
     check_raw_pulses_ = (raw_pulses_name_ != "");
@@ -110,7 +102,7 @@ void IntervalChargeSum::Configure() {
     }
 }
 
-void IntervalChargeSum::Geometry(I3FramePtr frame) {
+void IntervalChargeSumQ::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
@@ -128,15 +120,11 @@ void IntervalChargeSum::Geometry(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void IntervalChargeSum::DAQ(I3FramePtr frame) {
-    if(not process_daq_frames_) {
-        PushFrame(frame);
-        return;
-    }
+void IntervalChargeSumQ::DAQ(I3FramePtr frame) {
     if(not geo_seen) {
         log_fatal("No Geometry frame seen yet.");
     }
-    
+
     bool raw_pulses = false;
     CCMRecoPulseSeriesMapConstPtr pulses;
     if(check_raw_pulses_) {
@@ -184,53 +172,148 @@ void IntervalChargeSum::DAQ(I3FramePtr frame) {
 
     std::sort(pulse_list.begin(), pulse_list.end(), [](auto const & t0, auto const & t1){return std::get<1>(t0).GetTime() < std::get<1>(t1).GetTime();});
 
-    I3VectorDoublePtr event_charge = boost::make_shared<I3VectorDouble>(event_start_times->size(), 0.0);
+    std::vector<I3VectorDoublePtr> event_charge_list;
+    for (size_t i = 0; i < time_windows_.size(); ++i) {
+        I3VectorDoublePtr event_charge = boost::make_shared<I3VectorDouble>(event_start_times->size(), 0.0);
+        event_charge_list.push_back(event_charge);
+    }
 
     size_t event_idx = 0;
     for (PMTKeyPulseVector::const_iterator i = pulse_list.begin(); i != pulse_list.end() and event_idx < event_start_times->size(); ++i) {
         if(event_start_times->at(event_idx) > std::get<1>(*i).GetTime()) {
             continue;
         }
+        size_t time_bin = 0;
         double total_charge = 0.0;
         double start_time = event_start_times->at(event_idx);
         double end_time = event_end_times->at(event_idx);
         for (PMTKeyPulseVector::const_iterator j = i; j != pulse_list.end(); ++j) {
             double time = std::get<1>(*j).GetTime();
-            if(time - start_time > timeWindow_ or time > end_time) {
-                break;
+            if(time - start_time > time_windows_[time_bin] or time > end_time) {
+                event_charge_list[time_bin]->at(event_idx) = total_charge;
+                ++time_bin;
+                if(time_bin == time_windows_.size()) {
+                    break;
+                }
             }
             total_charge += std::get<1>(*j).GetCharge();
         }
-        event_charge->at(event_idx) = total_charge;
+        if(time_bin < time_windows_.size())
+            event_charge_list[time_bin]->at(event_idx) = total_charge;
+        time_bin = 0;
         ++event_idx;
     }
 
-    frame->Put(output_prefix_ + "EventCharges", event_charge);
+    for (size_t i = 0; i < time_windows_.size(); ++i) {
+        std::string output_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_[i])) + "NS";
+        frame->Put(output_key, event_charge_list[i]);
+    }
 
     PushFrame(frame);
 }
 
-void IntervalChargeSum::Physics(I3FramePtr frame) {
-    if(not process_physics_frames_) {
-        PushFrame(frame);
-        return;
-    }
+class IntervalChargeSumP: public I3Module {
+    bool geo_seen;
+    std::string geometry_name_;
+    CCMGeometryConstPtr geo;
+    I3Vector<double> time_windows_;
+    std::string input_prefix_;
+    std::string output_prefix_;
 
-    if(not process_physics_frames_) {
-        PushFrame(frame);
-        return;
+    bool check_masked_pulses_;
+    bool check_raw_pulses_;
+    std::string raw_pulses_name_;
+    std::string pulses_mask_name_;
+
+    I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
+    std::set<CCMPMTKey> pmt_keys;
+
+    public:
+    void Geometry(I3FramePtr frame);
+    IntervalChargeSumP(const I3Context&);
+    void Configure();
+    void Physics(I3FramePtr frame);
+};
+
+I3_MODULE(IntervalChargeSumP);
+
+IntervalChargeSumP::IntervalChargeSumP(const I3Context& context) : I3Module(context),
+    geo_seen(false), geometry_name_("") {
+    I3Vector<double> default_time_windows;
+    default_time_windows.push_back(90.0);
+    AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
+    AddParameter("TimeWindows", "Time window for charge estimate", default_time_windows);
+    AddParameter("InputPulsesMaskName", "Name of the input pulses mask", std::string(""));
+    AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
+    AddParameter("InputEventPrefix", "Prefix for the inputs", std::string(""));
+    AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
+}
+
+void IntervalChargeSumP::Configure() {
+    GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("PMTTypes", pmt_types);
+    GetParameter("TimeWindows", time_windows_);
+    GetParameter("InputPulsesMaskName", pulses_mask_name_);
+    GetParameter("InputRawPulsesName", raw_pulses_name_);
+    GetParameter("InputEventPrefix", input_prefix_);
+    GetParameter("OutputPrefix", output_prefix_);
+
+    std::sort(time_windows_.begin(), time_windows_.end());
+
+    check_masked_pulses_ = false;
+    check_raw_pulses_ = (raw_pulses_name_ != "");
+    check_masked_pulses_ = (pulses_mask_name_ != "");
+    if(not check_masked_pulses_) {
+        pulses_mask_name_ = input_prefix_ + "EventPulses";
+        if(not check_raw_pulses_) {
+            check_masked_pulses_ = true;
+        }
     }
+}
+
+void IntervalChargeSumP::Geometry(I3FramePtr frame) {
+    if(not frame->Has(geometry_name_)) {
+        log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
+    }
+    geo = frame->Get<CCMGeometryConstPtr>(geometry_name_);
+    geo_seen = bool(geo);
+    pmt_keys.clear();
+    if(geo_seen) {
+        std::set<CCMOMGeo::OMType> allowed_pmt_types(pmt_types.begin(), pmt_types.end());
+        for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
+            if(allowed_pmt_types.count(p.second.omtype) == 0)
+                continue;
+            pmt_keys.insert(p.first);
+        }
+    }
+    PushFrame(frame);
+}
+
+void IntervalChargeSumP::Physics(I3FramePtr frame) {
+    std::vector<std::string> keys = frame->keys();
+
     if(not geo_seen) {
         log_fatal("No Geometry frame seen yet.");
     }
 
-    if(process_daq_frames_ and frame->Has(output_prefix_ + "EventCharges") and frame->Has(input_prefix_ + "EventIndex")) {
-        int event_index = frame->Get<I3IntConstPtr>(input_prefix_ + "EventIndex")->value;
-        frame->Put(output_prefix_ + "EventCharge", boost::make_shared<I3Double>(frame->Get<I3VectorDoubleConstPtr>(output_prefix_ + "EventCharges")->at(event_index)));
+    std::string input_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_.at(0))) + "NS";
+
+    size_t event_index = frame->Get<CCMEventHeaderConstPtr>("CCMEventHeader")->GetSubEventID();
+
+    if(frame->Has(input_key)) {
+        for(size_t i = 0; i < time_windows_.size(); ++i) {
+            std::string input_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_[i])) + "NS";
+            std::string output_key = output_prefix_ + "EventCharge" + std::to_string(int(time_windows_[i])) + "NS";
+            if(not frame->Has(input_key)) {
+                log_fatal("Could not find \"%s\" in the frame.", input_key.c_str());
+            }
+            frame->Put(output_key, boost::make_shared<I3Double>(frame->Get<I3VectorDoubleConstPtr>(input_key)->at(event_index)));
+        }
         PushFrame(frame);
         return;
     }
-    
+
     bool raw_pulses = false;
     CCMRecoPulseSeriesMapConstPtr pulses;
     if(check_raw_pulses_) {
@@ -289,26 +372,38 @@ void IntervalChargeSum::Physics(I3FramePtr frame) {
     double start_time = start_time_ptr->value;
     double end_time = end_time_ptr->value;
 
+    std::vector<double> total_charge_list(time_windows_.size(), 0.0);
+
+    size_t time_bin = 0;
     size_t event_idx = 0;
     double total_charge = 0.0;
-    for (PMTKeyPulseVector::const_iterator i = pulse_list.begin(); i != pulse_list.end(); ++i) {
+    for(PMTKeyPulseVector::const_iterator i = pulse_list.begin(); i != pulse_list.end(); ++i) {
         if(start_time > std::get<1>(*i).GetTime()) {
             continue;
         }
         for (PMTKeyPulseVector::const_iterator j = i; j != pulse_list.end(); ++j) {
             double time = std::get<1>(*j).GetTime();
-            if(time - start_time > timeWindow_ or time > end_time) {
+            if(time > end_time)
                 break;
+            if(time - start_time > time_windows_[time_bin]) {
+                ++time_bin;
+                total_charge_list[time_bin] = total_charge;
+                if(time_bin == time_windows_.size()) {
+                    break;
+                }
             }
             total_charge += std::get<1>(*j).GetCharge();
         }
+        if(time_bin < time_windows_.size())
+            total_charge_list[time_bin] = total_charge;
         break;
     }
 
-    I3DoublePtr event_charge = boost::make_shared<I3Double>(total_charge);
-
-    frame->Put(output_prefix_ + "EventCharge", event_charge);
+    for(size_t i = 0; i < time_windows_.size(); ++i) {
+        I3DoublePtr charge = boost::make_shared<I3Double>(total_charge_list[i]);
+        std::string key = output_prefix_ + "EventCharge" + std::to_string(int(time_windows_[i])) + "NS";
+        frame->Put(key, charge);
+    }
 
     PushFrame(frame);
 }
-
