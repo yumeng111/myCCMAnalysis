@@ -38,8 +38,11 @@ struct CCMMCPE {
     // things we want to save about a photon hitting our pmts in simulation
     size_t parent_id;
     size_t track_id;
-    float time; // photon hit time
+    float global_time; // photon hit global_time
+    float local_time; // photon hit global_time
     float wavelength; // wavelength of photon
+    float distance_uv; // distances travelled as uv photon
+    float distance_visible; // distance travelled as visible photon
     I3Position position; // hit position on PMT
     I3Direction direction; // hit direction on PMT
     PhotonSource photon_source; 
@@ -49,8 +52,11 @@ struct CCMMCPE {
     bool operator==(const CCMMCPE& rhs) const {
         return parent_id == rhs.parent_id 
             && track_id == rhs.track_id
-            && time == rhs.time
+            && global_time == rhs.global_time
+            && local_time == rhs.local_time
             && wavelength == rhs.wavelength
+            && distance_uv == rhs.distance_uv
+            && distance_visible == rhs.distance_visible
             && position == rhs.position
             && direction == rhs.direction
             && photon_source == rhs.photon_source;
@@ -59,12 +65,17 @@ struct CCMMCPE {
 
   CCMMCPE(size_t parent_id_ = 0,
           size_t track_id_ = 0,
-          float time_ = 0,
+          float global_time_ = 0,
+          float local_time_ = 0,
           float wavelength_ = 0,
+          float distance_uv_ = 0,
+          float distance_visible_ = 0,
           I3Position position_ = I3Position(0.0, 0.0, 0.0),
           I3Direction direction_ = I3Direction(0.0, 0.0, 0.0),
           PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
-        parent_id(parent_id_), track_id(track_id_), time(time_), wavelength(wavelength_), position(position_), direction(direction_), photon_source(photon_source_) {
+        parent_id(parent_id_), track_id(track_id_), global_time(global_time_), local_time(local_time_), wavelength(wavelength_), 
+        distance_uv(distance_uv_), distance_visible(distance_visible_),
+        position(position_), direction(direction_), photon_source(photon_source_) {
     }
 
 
@@ -80,8 +91,11 @@ struct CCMMCPE {
                     version,ccmmcpe_version_);
         ar & make_nvp("parent_id",parent_id);
         ar & make_nvp("track_id",track_id);
-        ar & make_nvp("time",time);
+        ar & make_nvp("global_time",global_time);
+        ar & make_nvp("local_time",local_time);
         ar & make_nvp("wavelength",wavelength);
+        ar & make_nvp("distance_uv",distance_uv);
+        ar & make_nvp("distance_visible",distance_visible);
         ar & make_nvp("position",position);
         ar & make_nvp("direction",direction);
         ar & make_nvp("photon_source",photon_source);

@@ -16,8 +16,11 @@ std::ostream& CCMMCPE::Print(std::ostream& os) const{
     os << "[ CCMMCPE::"
         << "\n  ParentID :" << parent_id 
         << "\n  TrackID :" << track_id
-        << "\n  Time :" << time
+        << "\n  Global Time :" << global_time
+        << "\n  Local Time :" << local_time
         << "\n  Wavelength :" << wavelength
+        << "\n  Distance UV :" << distance_uv
+        << "\n  Distance Visible :" << distance_visible
         << "\n  Position :" << position 
         << "\n  Direction :" << direction 
         << "\n PhotonSource :" << photonSourceToProcessName.at(photon_source) 

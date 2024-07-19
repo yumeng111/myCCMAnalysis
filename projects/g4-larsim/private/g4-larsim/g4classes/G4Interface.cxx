@@ -339,7 +339,7 @@ void G4Interface::Initialize()
     }
     
     // Set verbosity
-    int32_t verboseLevel = 1;
+    int32_t verboseLevel = 0;
     
     // add random seed for geant4
     G4long myseed = 345354;

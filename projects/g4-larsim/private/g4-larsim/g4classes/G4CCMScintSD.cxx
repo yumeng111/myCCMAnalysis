@@ -189,8 +189,10 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
         }
 
-        //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", distance travelled = " << delta_distance << ", wavelength = " << wavelength 
-        //    << ", creation process = " << creationProcessName << ", distance uv = " << uv_distance << ", distance vis = " << vis_distance << std::endl; 
+        //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", calculated distance travelled = " << delta_distance 
+        //    << ", delta local time = " << aStep->GetPostStepPoint()->GetLocalTime() - aStep->GetPreStepPoint()->GetLocalTime() 
+        //    << ", and calculated delta time = " << (uv_distance / I3Units::cm) / (c_cm_per_nsec / uv_index_of_refraction) + (vis_distance / I3Units::cm)/ (c_cm_per_nsec / vis_index_of_refraction) 
+        //    << std::endl;
 
         //std::cout << "optical_photon_map = " << std::endl;
         //for (const auto& pair : *(optical_photon_map)) {
@@ -321,7 +323,11 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             daughter.SetEnergy(edep);
             daughter.SetPos(position);
             daughter.SetDir(direction);
-            I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id) , daughter);
+            if (DaughterParticleMap.find(track_id) == DaughterParticleMap.end()){
+                std::cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
+            } else {
+                I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id) , daughter);
+            }
         } else {
             std::cout << "oops! no conversion for " << creationProcessName << std::endl;
         }

@@ -122,7 +122,8 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
     I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
-    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+    G4double globalTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+    G4double localTime = aStep->GetPostStepPoint()->GetLocalTime() / nanosecond * I3Units::nanosecond;
     
     G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() / electronvolt;
 
@@ -138,9 +139,16 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     //std::cout << "photon from " << creationProcessName << " with parent id = " << parent_id << " at " << key << std::endl; 
 
+    //std::cout << "photon on " << key << " at post step global time = " << aStep->GetPostStepPoint()->GetGlobalTime() 
+    //    << " and pre step global time = " << aStep->GetPreStepPoint()->GetGlobalTime()  << std::endl;
     //std::cout << "saw " << creationProcessName << " photon on " << key << std::endl;   
-    // now save to CCMMCPE!
-    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, photonTime, photonWavelength, position, direction, processNameToPhotonSource.at(creationProcessName));
+    // now save to CCMMCPE
+    if (processNameToPhotonSource.find(creationProcessName) == processNameToPhotonSource.end()){
+        std::cout << "oops!!! no photon process for " << creationProcessName << std::endl;
+        return false;
+    } 
+
+    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, globalTime, localTime, photonWavelength, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
 
     // Find the correct hit collection
     size_t n = fPMTHitCollection->entries();

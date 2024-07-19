@@ -121,6 +121,11 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
+
+        double c = 2.998 * std::pow(10.0, 8.0); // speed of light in m/s
+        double c_cm_per_nsec = c * std::pow(10.0, -7.0); // speed of light in cm/nsec
+        double uv_index_of_refraction = 1.358;
+        double vis_index_of_refraction = 1.23;
 };
 
 #endif
