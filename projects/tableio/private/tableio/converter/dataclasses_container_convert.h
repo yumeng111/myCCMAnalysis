@@ -14,11 +14,13 @@
 
 #include <icetray/I3PointerTypedefs.h>
 #include <icetray/OMKey.h>
+#include <icetray/CCMPMTKey.h>
 #include <dataclasses/TankKey.h>
 #include <dataclasses/physics/I3Trigger.h>
 #include <dataclasses/physics/I3DOMLaunch.h>
 #include <dataclasses/physics/I3RecoHit.h>
 #include <dataclasses/physics/I3RecoPulse.h>
+#include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/physics/I3MCHit.h>
 #include <dataclasses/physics/I3FlasherInfo.h>
 #include <tableio/I3TableRowDescription.h>
@@ -61,8 +63,10 @@ namespace convert {
   TABLEIO_CONVERTER_FWD(I3RecoHit);
   TABLEIO_CONVERTER_FWD(I3MCHit);
   TABLEIO_CONVERTER_FWD(I3RecoPulse);
+  TABLEIO_CONVERTER_FWD(CCMRecoPulse);
   TABLEIO_CONVERTER_FWD(I3FlasherInfo);
   TABLEIO_CONVERTER_FWD(OMKey);
+  TABLEIO_CONVERTER_FWD(CCMPMTKey);
   TABLEIO_CONVERTER_FWD(TankKey);
 
   struct double_pair
