@@ -20,6 +20,7 @@
 #include "tableio/converter/I3PositionConverter.h"
 #include "tableio/converter/I3TreeConverter.h"
 #include "dataclasses/physics/I3MCTree.h"
+#include "dataclasses/physics/CCMRecoPulse.h"
 #include "tableio/converter/I3WaveformConverter.h"
 #include "tableio/converter/PODConverter.h"
 #include "tableio/converter/CCMEventHeaderConverter.h"
@@ -27,6 +28,7 @@
 #include "tableio/converter/I3FilterResultMapConverter.h"
 
 #include "dataclasses/I3MapOMKeyMask.h"
+#include "dataclasses/I3MapCCMPMTKeyMask.h"
 
 namespace {
 
@@ -36,6 +38,33 @@ namespace {
   }
 
 }
+
+class CCMRecoPulseSeriesMapMaskConverter : public I3ConverterImplementation<CCMRecoPulseSeriesMapMask>
+{
+public:
+    // Again here, different constructors for different argument combinations (both, neither, one, the other)
+    CCMRecoPulseSeriesMapMaskConverter() : base_() {};
+    CCMRecoPulseSeriesMapMaskConverter(bool b, std::string btp) : base_(b, btp) {};
+    CCMRecoPulseSeriesMapMaskConverter(bool b) : base_(b) {};
+    CCMRecoPulseSeriesMapMaskConverter(std::string btp) : base_(btp) {};
+    I3TableRowDescriptionPtr CreateDescription(const CCMRecoPulseSeriesMapMask& m)
+    {
+        CCMRecoPulseSeriesMap mappy;
+        return boost::const_pointer_cast<I3TableRowDescription>(base_.GetDescription(mappy));
+    }
+    size_t GetNumberOfRows(const CCMRecoPulseSeriesMapMask &mask)
+    {
+        return mask.GetSum();
+    }
+    size_t FillRows(const CCMRecoPulseSeriesMapMask &mask, I3TableRowPtr rows)
+    {
+        CCMRecoPulseSeriesMapConstPtr pulses = mask.Apply(*currentFrame_);
+        return base_.Convert(*pulses, rows, currentFrame_);
+    }
+private:
+    typedef I3MapCCMPMTKeyVectorConverter<convert::CCMRecoPulse, CCMRecoPulseSeriesMap> Base;
+    Base base_;
+};
 
 // Make the RecoPulseSeriesMapConverter work on pulse masks.
 class I3RecoPulseSeriesMapMaskConverter : public I3ConverterImplementation<I3RecoPulseSeriesMapMask>
@@ -84,6 +113,14 @@ void register_dataclasses_converters() {
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapKeyVectorDoubleConverter, "Dumps all numbers verbatim");
     typedef I3MapOMKeyVectorConverter< convert::pod<int> > I3MapKeyVectorIntConverter;
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapKeyVectorIntConverter, "Dumps all numbers verbatim");
+
+    typedef I3MapCCMPMTKeyVectorConverter< convert::CCMRecoPulse > CCMRecoPulseSeriesMapConverter;
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(CCMRecoPulseSeriesMapConverter,"Dumps all RecoPulses verbatim.");
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(CCMRecoPulseSeriesMapMaskConverter,"Applies the mask, then dumps the resulting RecoPulses verbatim.");
+    typedef I3MapCCMPMTKeyVectorConverter< convert::pod<double> > I3MapPMTKeyVectorDoubleConverter;
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapPMTKeyVectorDoubleConverter, "Dumps all numbers verbatim");
+    typedef I3MapCCMPMTKeyVectorConverter< convert::pod<int> > I3MapPMTKeyVectorIntConverter;
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapPMTKeyVectorIntConverter, "Dumps all numbers verbatim");
 
     I3CONVERTER_EXPORT_DEFAULT(I3MapStringDoubleConverter,"Dumps a std::map<string,double> verbatim");
     I3CONVERTER_EXPORT_DEFAULT(I3MapStringVectorDoubleConverter,"Dumps a std::map<string,vector<double> > verbatim");

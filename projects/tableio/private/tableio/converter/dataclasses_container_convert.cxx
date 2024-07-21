@@ -162,6 +162,20 @@ namespace convert {
     row->Set<double>("charge", pulse.GetCharge());
   }
 
+  void CCMRecoPulse::AddFields(I3TableRowDescriptionPtr desc, const booked_type&)
+  {
+    desc->AddField<double>("time", "ns", "Leading-edge time of the pulse");
+    desc->AddField<double>("width", "ns", "Duration of the pulse");
+    desc->AddField<double>("charge", "PE", "Integrated pulse charge");
+  }
+
+  void CCMRecoPulse::FillSingleRow(const booked_type& pulse, I3TableRowPtr row)
+  {
+    row->Set<double>("time", pulse.GetTime());
+    row->Set<double>("width", pulse.GetWidth());
+    row->Set<double>("charge", pulse.GetCharge());
+  }
+
 
   void double_pair::AddFields(I3TableRowDescriptionPtr desc, const booked_type&)
   {
@@ -224,6 +238,19 @@ namespace convert {
     row->Set<uint32_t>("om", key.GetOM());
   }
 
+  void CCMPMTKey::AddFields(I3TableRowDescriptionPtr desc, const booked_type&)
+  {
+    desc->AddField<int32_t>("region", "", "Region number");
+    desc->AddField<uint32_t>("sensor", "", "Sensor number");
+    desc->AddField<uint32_t>("subsensor", "", "Sub sensor number");
+  }
+
+  void CCMPMTKey::FillSingleRow(const booked_type &key, I3TableRowPtr row)
+  {
+    row->Set<int32_t>("region", key.GetRegion());
+    row->Set<uint32_t>("sensor", key.GetSensor());
+    row->Set<uint32_t>("subsensor", key.GetSubsensor());
+  }
 
   void TankKey::AddFields(I3TableRowDescriptionPtr desc, const booked_type&)
   {
