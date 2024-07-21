@@ -83,23 +83,28 @@ struct CCMMCPE {
 
     private:
         static const std::unordered_map<CCMMCPE::PhotonSource, std::string> photonSourceToProcessName;
-    
+
     friend class icecube::serialization::access;
-    template <class Archive> void serialize(Archive & ar, const unsigned version) {
-        if (version>ccmmcpe_version_)
-            log_fatal("Attempting to read version %u from file but running version %u of CCMMCPE class.",
-                    version,ccmmcpe_version_);
-        ar & make_nvp("parent_id",parent_id);
-        ar & make_nvp("track_id",track_id);
-        ar & make_nvp("global_time",global_time);
-        ar & make_nvp("local_time",local_time);
-        ar & make_nvp("wavelength",wavelength);
-        ar & make_nvp("distance_uv",distance_uv);
-        ar & make_nvp("distance_visible",distance_visible);
-        ar & make_nvp("position",position);
-        ar & make_nvp("direction",direction);
-        ar & make_nvp("photon_source",photon_source);
-    }
+    template<class Archive> void save(Archive& ar, unsigned version) const;
+    template<class Archive> void load(Archive& ar, unsigned version);
+    I3_SERIALIZATION_SPLIT_MEMBER();
+
+    //friend class icecube::serialization::access;
+    //template <class Archive> void serialize(Archive & ar, const unsigned version) {
+    //    if (version>ccmmcpe_version_)
+    //        log_fatal("Attempting to read version %u from file but running version %u of CCMMCPE class.",
+    //                version,ccmmcpe_version_);
+    //    ar & make_nvp("parent_id",parent_id);
+    //    ar & make_nvp("track_id",track_id);
+    //    ar & make_nvp("global_time",global_time);
+    //    ar & make_nvp("local_time",local_time);
+    //    ar & make_nvp("wavelength",wavelength);
+    //    ar & make_nvp("distance_uv",distance_uv);
+    //    ar & make_nvp("distance_visible",distance_visible);
+    //    ar & make_nvp("position",position);
+    //    ar & make_nvp("direction",direction);
+    //    ar & make_nvp("photon_source",photon_source);
+    //}
 
 };
 
