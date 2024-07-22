@@ -36,7 +36,6 @@ void CCMMCPE::load(Archive& ar, unsigned version) {
     // uncomment to load in old version of ccmmcpe
     //ar & make_nvp("parent_id",parent_id);
     //ar & make_nvp("track_id",track_id);
-    //ar & make_nvp("time",g4_time);
     //ar & make_nvp("wavelength",wavelength);
     //ar & make_nvp("position",position);
     //ar & make_nvp("direction",direction);
