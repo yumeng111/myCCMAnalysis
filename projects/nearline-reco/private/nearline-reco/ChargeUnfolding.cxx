@@ -43,8 +43,9 @@ typedef std::tuple<CCMPMTKey, CCMRecoPulse> PMTKeyPulsePair;
 typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
 
 template<typename T>
-void compute_charge_unfolding(std::vector<double> const & data, double beta_s, double beta_t, double alpha, T & total) {
+void compute_charge_unfolding(std::vector<double> const & data, double beta_s, double beta_t, double alpha, T & total, T & running) {
     total[0] = data[0];
+    running[0] = data[0];
 
     double running_singlet = alpha * data[0];
     double running_triplet = (1 - alpha) * data[0];
@@ -55,13 +56,14 @@ void compute_charge_unfolding(std::vector<double> const & data, double beta_s, d
 
         total[i] = data[i] - running_singlet - running_triplet;
 
-        running_singlet = alpha * total[i];
-        running_triplet = (1 - alpha) * total[i];
+        running_singlet += alpha * total[i];
+        running_triplet += (1 - alpha) * total[i];
+        running[i] = running_singlet + running_triplet;
     }
 }
 
 template<typename T>
-void compute_charge_unfolding_positive(std::vector<double> const & data, double beta_s, double beta_t, double alpha, T & total) {
+void compute_charge_unfolding_positive(std::vector<double> const & data, double beta_s, double beta_t, double alpha, T & total, T & running) {
     total[0] = data[0];
 
     double running_singlet = alpha * data[0];
@@ -77,11 +79,12 @@ void compute_charge_unfolding_positive(std::vector<double> const & data, double 
         total[i] = std::max(0.0, total[i]);
         running_singlet += alpha * total[i];
         running_triplet += (1 - alpha) * total[i];
+        running[i] = running_singlet + running_triplet;
     }
 }
 
 template<typename T>
-void compute_charge_unfolding_bayesian(std::vector<double> const & data, double beta_s, double beta_t, double alpha, T & total) {
+void compute_charge_unfolding_bayesian(std::vector<double> const & data, double beta_s, double beta_t, double alpha, T & total, T & running) {
     total[0] = data[0];
 
     double running_singlet = alpha * data[0];
@@ -106,6 +109,39 @@ void compute_charge_unfolding_bayesian(std::vector<double> const & data, double 
         total[i] = data[i] - mode;
         running_singlet += alpha * total[i];
         running_triplet += (1 - alpha) * total[i];
+        running[i] = running_singlet + running_triplet;
+    }
+}
+
+template<typename T>
+void compute_charge_unfolding_bayesian_positive(std::vector<double> const & data, double beta_s, double beta_t, double alpha, T & total, T & running) {
+    total[0] = data[0];
+
+    double running_singlet = alpha * data[0];
+    double running_triplet = (1 - alpha) * data[0];
+    running[0] = running_singlet;
+
+    for(size_t i=1; i<data.size(); ++i) {
+        running_singlet *= beta_s;
+        running_triplet *= beta_t;
+
+        double a = data[i] + running_singlet + running_triplet;
+        double b = 2;
+        double r = a;
+        double p = b / (1.0 + b);
+        double mode;
+
+        if(r > 1) {
+            mode = (r - 1) * (1 - p) / p;
+        } else {
+            mode = 0;
+        }
+
+        total[i] = data[i] - mode;
+        total[i] = std::max(0.0, total[i]);
+        running_singlet += alpha * total[i];
+        running_triplet += (1 - alpha) * total[i];
+        running[i] = running_singlet + running_triplet;
     }
 }
 
@@ -151,7 +187,7 @@ ChargeUnfolding::ChargeUnfolding(const I3Context& context) : I3Module(context),
     AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
     AddParameter("TauSinglet", "Time constant for singlet light", 8.13);
     AddParameter("TauTriplet", "Time constant for triplet light", 743);
-    AddParameter("SingletTripletRatio", "Ratio of singlet to triplet light", 0.33);
+    AddParameter("SingletTripletRatio", "Ratio of singlet to triplet light", 0.97);
     AddParameter("BinWidth", "Width of the time bins", 2.0);
     AddParameter("InputPulsesMaskName", "Name of the input pulses mask", std::string(""));
     AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
@@ -265,17 +301,32 @@ void ChargeUnfolding::DAQ(I3FramePtr frame) {
         data[bin] += std::get<1>(*i).GetCharge();
     }
 
+    I3VectorDoublePtr raw = boost::make_shared<I3VectorDouble>(data.begin(), data.end());
     I3VectorDoublePtr total = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
     I3VectorDoublePtr total_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
     I3VectorDoublePtr total_bayesian = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    I3VectorDoublePtr total_bayesian_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
 
-    compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, *total);
-    compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, *total_positive);
-    compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, *total_bayesian);
+    I3VectorDoublePtr running = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    I3VectorDoublePtr running_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    I3VectorDoublePtr running_bayesian = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    I3VectorDoublePtr running_bayesian_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
 
+    compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, *total, *running);
+    compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, *total_positive, *running_positive);
+    compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, *total_bayesian, *running_bayesian);
+    compute_charge_unfolding_bayesian_positive(data, beta_s_, beta_t_, alpha_, *total_bayesian_positive, *running_bayesian_positive);
+
+    I3MapPMTKeyVectorDoublePtr raw_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
     I3MapPMTKeyVectorDoublePtr total_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
     I3MapPMTKeyVectorDoublePtr total_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
     I3MapPMTKeyVectorDoublePtr total_bayesian_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    I3MapPMTKeyVectorDoublePtr total_bayesian_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+
+    I3MapPMTKeyVectorDoublePtr running_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    I3MapPMTKeyVectorDoublePtr running_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    I3MapPMTKeyVectorDoublePtr running_bayesian_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    I3MapPMTKeyVectorDoublePtr running_bayesian_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
 
     for (CCMRecoPulseSeriesMap::const_iterator i = pulses->begin();
             i != pulses->end(); i++) {
@@ -288,22 +339,44 @@ void ChargeUnfolding::DAQ(I3FramePtr frame) {
             data[bin] += pulse.GetCharge();
         }
 
+        raw_map->insert(std::make_pair(i->first, std::vector<double>(data.begin(), data.end())));
         total_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
         total_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
         total_bayesian_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        total_bayesian_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
 
-        compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, total_map->at(i->first));
-        compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, total_positive_map->at(i->first));
-        compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, total_bayesian_map->at(i->first));
+        running_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        running_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        running_bayesian_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        running_bayesian_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+
+        compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, total_map->at(i->first), running_map->at(i->first));
+        compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, total_positive_map->at(i->first), running_positive_map->at(i->first));
+        compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, total_bayesian_map->at(i->first), running_bayesian_map->at(i->first));
+        compute_charge_unfolding_bayesian_positive(data, beta_s_, beta_t_, alpha_, total_bayesian_positive_map->at(i->first), running_bayesian_positive_map->at(i->first));
     }
 
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRaw", raw);
     frame->Put(output_prefix_ + "ChargeUnfoldingTotal", total);
     frame->Put(output_prefix_ + "ChargeUnfoldingTotalPositive", total_positive);
     frame->Put(output_prefix_ + "ChargeUnfoldingTotalBayesian", total_bayesian);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalBayesianPositive", total_bayesian_positive);
 
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunning", running);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningPositive", running_positive);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningBayesian", running_bayesian);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningBayesianPositive", running_bayesian_positive);
+
+    frame->Put(output_prefix_ + "ChargeUnfoldingRaw", raw_map);
     frame->Put(output_prefix_ + "ChargeUnfolding", total_map);
     frame->Put(output_prefix_ + "ChargeUnfoldingPositive", total_positive_map);
     frame->Put(output_prefix_ + "ChargeUnfoldingBayesian", total_bayesian_map);
+    frame->Put(output_prefix_ + "ChargeUnfoldingBayesianPositive", total_bayesian_positive_map);
+
+    frame->Put(output_prefix_ + "ChargeUnfoldingRunning", running_map);
+    frame->Put(output_prefix_ + "ChargeUnfoldingRunningPositive", running_positive_map);
+    frame->Put(output_prefix_ + "ChargeUnfoldingRunningBayesian", running_bayesian_map);
+    frame->Put(output_prefix_ + "ChargeUnfoldingRunningBayesianPositive", running_bayesian_positive_map);
 
     PushFrame(frame);
 }
