@@ -44,6 +44,7 @@
 #include "G4PhysListUtil.hh"
 #include "G4EmBuilder.hh"
 #include "globals.hh"
+#include <G4Version.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -95,7 +96,11 @@ void PhysicsList::ConstructProcess()
 {
   AddTransportation();
   
-  G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60*CLHEP::year);
+#if G4VERSION_NUMBER >= 1120
+    G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60*CLHEP::year);
+#else
+    G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation");
+#endif
 
   G4bool ARMflag = false;
   radioactiveDecay->SetARM(ARMflag);        //Atomic Rearangement

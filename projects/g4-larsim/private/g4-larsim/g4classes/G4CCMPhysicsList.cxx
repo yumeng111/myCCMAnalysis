@@ -168,7 +168,12 @@ void G4CCMPhysicsList::ConstructProcess() {
     opticalPhysicsList->ConstructProcess();
 
     // radioactive decay things
+#if G4VERSION_NUMBER >= 1120
     G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60*CLHEP::year);
+#else
+    G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation");
+#endif
+
 
     G4bool ARMflag = false;
     radioactiveDecay->SetARM(ARMflag);        //Atomic Rearangement
