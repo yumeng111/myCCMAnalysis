@@ -32,26 +32,25 @@ void CCMMCPE::load(Archive& ar, unsigned version) {
         log_fatal("Attempting to read version %u from file but running version %u of CCMMCPE class.", version, ccmmcpe_version_);
     
     // uncomment to load in old version of ccmmcpe
-    ar & make_nvp("parent_id",parent_id);
-    ar & make_nvp("track_id",track_id);
-    ar & make_nvp("time",global_time);
-    ar & make_nvp("wavelength",wavelength);
-    ar & make_nvp("position",position);
-    ar & make_nvp("direction",direction);
-    ar & make_nvp("photon_source",photon_source);
-
-    // uncomment to load in new version of ccmmcpe 
     //ar & make_nvp("parent_id",parent_id);
     //ar & make_nvp("track_id",track_id);
-    //ar & make_nvp("global_time",global_time);
-    //ar & make_nvp("local_time",local_time);
+    //ar & make_nvp("time",global_time);
     //ar & make_nvp("wavelength",wavelength);
-    //ar & make_nvp("distance_uv",distance_uv);
-    //ar & make_nvp("distance_visible",distance_visible);
     //ar & make_nvp("position",position);
     //ar & make_nvp("direction",direction);
     //ar & make_nvp("photon_source",photon_source);
 
+    // uncomment to load in new version of ccmmcpe 
+    ar & make_nvp("parent_id",parent_id);
+    ar & make_nvp("track_id",track_id);
+    ar & make_nvp("global_time",global_time);
+    ar & make_nvp("local_time",local_time);
+    ar & make_nvp("wavelength",wavelength);
+    ar & make_nvp("distance_uv",distance_uv);
+    ar & make_nvp("distance_visible",distance_visible);
+    ar & make_nvp("position",position);
+    ar & make_nvp("direction",direction);
+    ar & make_nvp("photon_source",photon_source);
 
 }
 
