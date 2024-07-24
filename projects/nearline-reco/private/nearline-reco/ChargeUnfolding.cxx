@@ -135,6 +135,8 @@ class ChargeUnfolding: public I3Module {
     std::string geometry_name_;
     CCMGeometryConstPtr geo;
 
+    bool split_by_pmt_;
+
     double tau_s_;
     double tau_t_;
     double singlet_triplet_ratio_;
@@ -157,7 +159,7 @@ class ChargeUnfolding: public I3Module {
     I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
     std::set<CCMPMTKey> pmt_keys;
 
-    public:
+public:
     void Geometry(I3FramePtr frame);
     ChargeUnfolding(const I3Context&);
     void Configure();
@@ -171,6 +173,7 @@ ChargeUnfolding::ChargeUnfolding(const I3Context& context) : I3Module(context),
     I3Vector<double> default_time_windows;
     default_time_windows.push_back(90.0);
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("SplitByPMT", "Split the output by PMT", false);
     AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
     AddParameter("TauSinglet", "Time constant for singlet light", 8.13);
     AddParameter("TauTriplet", "Time constant for triplet light", 743);
@@ -185,6 +188,7 @@ ChargeUnfolding::ChargeUnfolding(const I3Context& context) : I3Module(context),
 
 void ChargeUnfolding::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("SplitByPMT", split_by_pmt_);
     GetParameter("PMTTypes", pmt_types);
     GetParameter("TauSinglet", tau_s_);
     GetParameter("TauTriplet", tau_t_);
@@ -301,6 +305,18 @@ void ChargeUnfolding::DAQ(I3FramePtr frame) {
 
     compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, charge_target_, *total, *singlet, *triplet);
 
+    frame->Put(output_prefix_ + "ChargeUnfoldingMinTime", boost::make_shared<I3Double>(min_time));
+
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRaw", raw);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotal", total);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalSinglet", singlet);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalTriplet", triplet);
+
+    if(not split_by_pmt_) {
+        PushFrame(frame);
+        return;
+    }
+
     I3MapPMTKeyVectorDoublePtr raw_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
     I3MapPMTKeyVectorDoublePtr total_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
 
@@ -324,11 +340,6 @@ void ChargeUnfolding::DAQ(I3FramePtr frame) {
         triplet_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
         compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, charge_target_, total_map->at(i->first), singlet_map->at(i->first), triplet_map->at(i->first));
     }
-
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRaw", raw);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotal", total);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalSinglet", singlet);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalTriplet", triplet);
 
     frame->Put(output_prefix_ + "ChargeUnfoldingRaw", raw_map);
     frame->Put(output_prefix_ + "ChargeUnfolding", total_map);
