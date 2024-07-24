@@ -11,7 +11,7 @@ def IntervalChargeSum(tray, name,
         OutputPrefix=None,
         ProcessDAQFrames=True,
         ProcessPhysicsFrames=True,
-        ):
+        If=None):
     kwargs = {
             "CCMGeometryName": CCMGeometryName,
             "PMTTypes": PMTTypes,
@@ -20,6 +20,7 @@ def IntervalChargeSum(tray, name,
             "InputRawPulsesName": InputRawPulsesName,
             "InputEventPrefix": InputEventPrefix,
             "OutputPrefix": OutputPrefix,
+            "If": If,
             }
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
     if not ProcessDAQFrames and not ProcessPhysicsFrames:

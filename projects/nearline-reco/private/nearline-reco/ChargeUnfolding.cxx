@@ -20,6 +20,7 @@
 #include <icetray/I3Frame.h>
 #include <icetray/I3TrayInfo.h>
 #include <icetray/I3Module.h>
+#include <icetray/I3ConditionalModule.h>
 #include <icetray/I3Logging.h>
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
@@ -133,7 +134,7 @@ void compute_charge_unfolding(std::vector<double> const & data, double beta_s, d
     }
 }
 
-class ChargeUnfolding: public I3Module {
+class ChargeUnfolding: public I3ConditionalModule {
     bool geo_seen;
     std::string geometry_name_;
     CCMGeometryConstPtr geo;
@@ -171,7 +172,7 @@ public:
 
 I3_MODULE(ChargeUnfolding);
 
-ChargeUnfolding::ChargeUnfolding(const I3Context& context) : I3Module(context),
+ChargeUnfolding::ChargeUnfolding(const I3Context& context) : I3ConditionalModule(context),
     geo_seen(false), geometry_name_("") {
     I3Vector<double> default_time_windows;
     default_time_windows.push_back(90.0);

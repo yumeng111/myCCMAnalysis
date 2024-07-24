@@ -20,6 +20,7 @@
 #include <icetray/I3Frame.h>
 #include <icetray/I3TrayInfo.h>
 #include <icetray/I3Module.h>
+#include <icetray/I3ConditionalModule.h>
 #include <icetray/I3Logging.h>
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
@@ -42,7 +43,7 @@
 typedef std::tuple<CCMPMTKey, CCMRecoPulse> PMTKeyPulsePair;
 typedef std::vector<PMTKeyPulsePair> PMTKeyPulseVector;
 
-class ComputeChargeContamination: public I3Module {
+class ComputeChargeContamination: public I3ConditionalModule {
     bool geo_seen;
     std::string geometry_name_;
     CCMGeometryConstPtr geo;
@@ -70,7 +71,7 @@ public:
 
 I3_MODULE(ComputeChargeContamination);
 
-ComputeChargeContamination::ComputeChargeContamination(const I3Context& context) : I3Module(context),
+ComputeChargeContamination::ComputeChargeContamination(const I3Context& context) : I3ConditionalModule(context),
     geo_seen(false), geometry_name_("") {
     I3Vector<double> default_time_windows;
     default_time_windows.push_back(90.0);
