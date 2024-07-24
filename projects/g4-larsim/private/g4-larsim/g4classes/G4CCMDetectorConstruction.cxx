@@ -226,7 +226,15 @@ void G4CCMDetectorConstruction::DefineMaterials() {
    
     // now add absorption length -- if UVAbsStatus_ == false, set absorption length to very big 
     if (UVAbsStatus_){
-        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
+        std::vector<G4double> flat_abs = {300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
+                                          300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
+                                          300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
+                                          300000*cm, 300000*cm, 300000*cm, 300000*cm,
+                                          50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 
+                                          50.0*cm, 50.0*cm, 50.0*cm};  
+
+        //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
+        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, flat_abs);
     } 
 
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
