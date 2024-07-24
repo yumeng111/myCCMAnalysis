@@ -95,9 +95,10 @@ void compute_charge_unfolding(std::vector<double> const & data, double beta_s, d
             total[i] = new_charge;
             running_singlet += alpha * total[i];
             running_triplet += (1 - alpha) * total[i];
-            singlet[i] = running_singlet;
-            triplet[i] = running_triplet;
         }
+
+        singlet[i] = running_singlet;
+        triplet[i] = running_triplet;
 
         singlet_window.push_back(running_singlet);
         triplet_window.push_back(running_triplet);
