@@ -34,6 +34,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogSourceRod() { return fSourceRod_log; }
     G4LogicalVolume* GetLogTPBCoating() { return fTPBCoating_log; }
     G4LogicalVolume* GetLogTPBFoil() { return fTPBFoil_log; }
+    G4LogicalVolume* GetLogReflectorFoil() { return fReflectorFoil_log; }
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:
@@ -47,6 +48,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fInnerJacket = nullptr;
     G4Tubs* fArgonOuter = nullptr;
     G4Tubs* fInnerFrame = nullptr;
+    G4Tubs* fReflectorFoil = nullptr;
     G4Tubs* fTPBFoil = nullptr;
     G4Tubs* fFiducialAr = nullptr;
     G4VSolid* fPMTCoated = nullptr; 
@@ -63,6 +65,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fInnerJacket_log = nullptr;
     G4LogicalVolume* fArgonOuter_log = nullptr;
     G4LogicalVolume* fInnerFrame_log = nullptr;
+    G4LogicalVolume* fReflectorFoil_log = nullptr;
     G4LogicalVolume* fTPBFoil_log = nullptr;
     G4LogicalVolume* fFiducialAr_log = nullptr;
     G4LogicalVolume* fPMTCoated_log = nullptr;
@@ -72,6 +75,12 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fPhotocathUncoated_log = nullptr;
     G4LogicalVolume* fSourceRod_log = nullptr;
     G4LogicalVolume* fSodiumSourcePellet_log = nullptr;
+
+    // Physical volumes (necessary for borders)
+    G4VPhysicalVolume* fFiducialAr_phys = nullptr;
+    G4VPhysicalVolume* fTPBFoil_phys = nullptr;
+    G4VPhysicalVolume* fTPBPMT_phys = nullptr;
+    G4VPhysicalVolume* fReflectorFoil_phys = nullptr;
 
     // Sensitive Detectors positions
     std::vector<G4ThreeVector> fPMTPositions;

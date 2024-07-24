@@ -108,6 +108,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* fVacuum;
     G4Material* fPTFE;
     G4Material* fTPBFoil;
+    G4Material* fTPBPMT;
     
     // Geometry
     G4bool fMainVolumeOn = true;
@@ -123,6 +124,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4MaterialPropertiesTable* fVacuum_mt = nullptr;
     G4MaterialPropertiesTable* fPTFE_mt = nullptr;
     G4MaterialPropertiesTable* fTPBFoil_mt = nullptr;
+    G4MaterialPropertiesTable* fTPBPMT_mt = nullptr;
 
     // Sensitive Detector
     G4Cache<G4CCMPMTSD*> fPMT_SD;

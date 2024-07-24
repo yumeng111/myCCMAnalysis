@@ -148,7 +148,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         return false;
     } 
 
-    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, globalTime, localTime, photonWavelength, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
+    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, globalTime, localTime, photonWavelength, 0.0, 0.0, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
 
     // Find the correct hit collection
     size_t n = fPMTHitCollection->entries();

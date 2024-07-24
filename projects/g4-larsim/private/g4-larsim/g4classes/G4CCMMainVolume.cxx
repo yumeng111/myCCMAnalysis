@@ -361,19 +361,24 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fInnerFrame_log= new G4LogicalVolume(fInnerFrame, G4Material::GetMaterial("Alum"), "InnerFrame");
     new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fArgonOuter_log, false, 0, true);
 
+    // Teflon reflector foils
+    G4double totalH = 123.2/2.0;
+    fReflectorFoil = new G4Tubs("PTFEFoil", 0*cm, 96.05*cm, (totalH+0.05)*cm, 0*deg, 360*deg);
+    fReflectorFoil_log = new G4LogicalVolume(fReflectorFoil, G4Material::GetMaterial("PTFE"), "PTFEFoil");
+    fReflectorFoil_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fReflectorFoil_log, "PTFEFoil", fInnerFrame_log, false, 0, true);  
+
     // now let's place the TPB foils
     // note -- using the same thickness for TPB foils across the entire detector, if this isn't true, fix at some point
     G4double basethick = 0.00019*cm;
-    G4double totalH = 123.2/2.0;
 
     fTPBFoil = new G4Tubs("TPBFoil", 0*cm, (96.0*cm+basethick), (totalH*cm+basethick), 0*deg, 360*deg);
     fTPBFoil_log = new G4LogicalVolume(fTPBFoil, G4Material::GetMaterial("TPBFoil"), "TPBFoil");
-    new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fInnerFrame_log, false, 0, true);
+    fTPBFoil_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fInnerFrame_log, false, 0, true);
 
     // now fiducial LAr!
     fFiducialAr = new G4Tubs("FiducialArgon", 0*cm, 96*cm, totalH*cm, 0*deg, 360*deg);
     fFiducialAr_log = new G4LogicalVolume(fFiducialAr, G4Material::GetMaterial("LAr"), "FiducialArgon");
-    new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
+    fFiducialAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
 
     // now let's build PMTs using J4SolidMaker
     // note -- we are construction coated PMTs and uncoated PMTs seperately
@@ -385,7 +390,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // now get TPB coating -- NOT a daughter volume of coated pmt logical volume
     fTPBCoating = J4PMTSolidMaker::GetTPBCoatingSolid();
-    fTPBCoating_log = new G4LogicalVolume(fTPBCoating, G4Material::GetMaterial("TPBFoil"), "TPBCoatingLog");
+    fTPBCoating_log = new G4LogicalVolume(fTPBCoating, G4Material::GetMaterial("TPBPMT"), "TPBCoatingLog");
 
     // now let's also build PMT photocathode!
     fPhotocathCoated = J4PMTSolidMaker::GetPhotcathodeSolid();  
@@ -491,7 +496,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             G4String descriptive_name = "CoatedPMT_" + pmt_name;
             new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoated_log, descriptive_name, fFiducialAr_log, false, k);
             G4String tpb_descriptive_name = "TPBCoating_" + pmt_name;
-            new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, tpb_descriptive_name, fFiducialAr_log, false, k);
+            fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoating_log, tpb_descriptive_name, fFiducialAr_log, false, k);
         }
         else {
             // place uncoated pmts
@@ -506,7 +511,6 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // now let's make our sodium source pellet + rod
     // i'm just doing the thin rod for now -- TODO : add all rod specifics (main part, nuts, thin extension) 
-    //G4double rod_inner_radius = 0.25*cm;
     G4double rod_inner_radius = 0.4*cm;
     G4double rod_outer_radius = 0.5*cm;
     G4double rod_height = 150.0*cm;
@@ -588,20 +592,87 @@ void G4CCMMainVolume::VisAttributes()
 void G4CCMMainVolume::SurfaceProperties()
 {
     // now it's time to define optical surface properties
-    // define optical surface to TPB
+   
+    // TPB foil optical surface 
+    std::vector<G4double> TPBEnergy = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
+                                        2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
+                                        2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
+                                        3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
+                                        6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
+    
+    std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+                                               1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
 
-    G4Material * TPB_material = G4Material::GetMaterial("TPBFoil");
+    std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                              0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
 
-    G4OpticalSurface *TPBOS = new G4OpticalSurface("TPBOpticalSurface");
-    TPBOS->SetModel(unified); 
-    TPBOS->SetType(dielectric_dielectric);
-    TPBOS->SetFinish(ground);
-    TPBOS->SetSigmaAlpha(0.05);
-    TPBOS->SetMaterialPropertiesTable(TPB_material->GetMaterialPropertiesTable());
+    std::vector<G4double> TPBfoilOSEff = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                                          1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
+                                          1., 1., 1., 1., 1.};
+    
+    G4OpticalSurface *TPBFoilOpticalSurface = new G4OpticalSurface("TPBFoilOpticalSurface");
 
-    // create logical skin surfaces for TPB on walls of detector and on PMTs
-    new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBOS);
-    new G4LogicalSkinSurface("TPBCoating_Surface", fTPBCoating_log, TPBOS);
+    TPBFoilOpticalSurface->SetModel(unified); 
+    TPBFoilOpticalSurface->SetType(dielectric_dielectric);
+    TPBFoilOpticalSurface->SetFinish(ground);
+    TPBFoilOpticalSurface->SetSigmaAlpha(0.05);
+    
+    G4MaterialPropertiesTable *TPBFoil_mt = new G4MaterialPropertiesTable();
+    TPBFoil_mt->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
+    TPBFoil_mt->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
+    TPBFoil_mt->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
+    TPBFoilOpticalSurface->SetMaterialPropertiesTable(TPBFoil_mt);
+
+    // note -- usign logical skin surface, might want to use border surface but since using same properties for all TPB on walls, doesnt seem necessary
+    new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBFoilOpticalSurface);
+    new G4LogicalSkinSurface("TPBCoating_Surface", fTPBCoating_log, TPBFoilOpticalSurface);
+    
+    //// create logical border surfaces for TPB on walls of detector and on PMTs
+	//new G4LogicalBorderSurface("TPBFoils_SurfaceForward", fFiducialAr_phys, fTPBFoil_phys, TPBFoilOpticalSurface);
+	//new G4LogicalBorderSurface("TPBFoils_SurfaceBackward", fTPBFoil_phys, fFiducialAr_phys, TPBFoilOpticalSurface);
+	//
+    //// same for TPB coating -- note pretty sure coating + foils have same optical surface properties
+    //new G4LogicalBorderSurface("TPBPMT_SurfaceForward", fFiducialAr_phys, fTPBPMT_phys, TPBFoilOpticalSurface);
+	//new G4LogicalBorderSurface("TPBPMT_SurfaceBackward", fTPBPMT_phys, fFiducialAr_phys, TPBFoilOpticalSurface);
+    
+    // finally define optical surface for PTFE reflector foils
+    G4OpticalSurface *PTFEFoilOpticalSurface = new G4OpticalSurface("PTFEFoilOpticalSurface");
+    
+    PTFEFoilOpticalSurface->SetModel(glisur); //Optical model                    
+    PTFEFoilOpticalSurface->SetType(dielectric_metal);
+    PTFEFoilOpticalSurface->SetFinish(ground);
+    PTFEFoilOpticalSurface->SetSigmaAlpha(1.0);
+    
+    G4MaterialPropertiesTable *reflfoilMPT = new G4MaterialPropertiesTable();
+    std::vector<G4double> PTFEFoilOpticalSurfaceEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
+                                                          2.48*eV,  2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV,  3.124*eV, 3.457*eV,
+                                                          3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+                                                          7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+    G4double uvRf = 0.10; //change uvreflection
+    G4double vsRf = 0.95; //change visible reflectivity
+    //enter the uv and visible reflectivities defined above.
+    std::vector<G4double> PTFEFoilOpticalSurfaceReflect = { vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, 
+                                                            vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, 
+                                                            vsRf, vsRf, vsRf, vsRf, uvRf, uvRf, uvRf, 
+                                                            uvRf, uvRf, uvRf, uvRf};
+    std::vector<G4double> PTFEFoilOpticalSurfaceTransmit = {.02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
+                                                            .02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
+                                                            .02, .02, .02, .02, .02}; //minimal transmittance through foil
+    std::vector<G4double> PTFEFoilOpticalSurfaceEff = { 0., 0., 0., 0., 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                                        0.0, 0.0, 0.0, 0.0, 0., 0., 0., 0., 0., 0.,
+                                                        0., 0., 0., 0., 0.};
+    reflfoilMPT->AddProperty("TRANSMITTANCE", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceTransmit);
+    reflfoilMPT->AddProperty("REFLECTIVITY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceReflect);
+    reflfoilMPT->AddProperty("EFFICIENCY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceEff);
+    PTFEFoilOpticalSurface->SetMaterialPropertiesTable(reflfoilMPT);
+
+    // again using skin, keeping border surface example
+    new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, PTFEFoilOpticalSurface);
+
+	//// now add logical borders for PTFE foil --> TPB foil and LAr
+    //new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceForward", fTPBFoil_phys, fReflectorFoil_phys, PTFEFoilOpticalSurface);
+ 	//new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceBackward", fReflectorFoil_phys, fTPBFoil_phys, PTFEFoilOpticalSurface);
 
 }
 

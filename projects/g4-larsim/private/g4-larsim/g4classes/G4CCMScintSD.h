@@ -87,9 +87,15 @@ class G4CCMScintSD : public G4VSensitiveDetector {
             optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
         } 
 
-        void AddEntryToPhotonSummary(int parent_id, int track_id, double uv_distance, double vis_distance, std::string creationProcessName);
-        void UpdatePhotonSummary(int parent_id, int track_id, double uv_distance, double vis_distance, std::string creationProcessName,
+        void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance, 
+                                     double calculated_uv_distance, double calculated_vis_distance,
+                                     double g4_time, double calculated_time, std::string creationProcessName);
+        void UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
+                                 double calculated_uv_distance, double calculated_vis_distance,
+                                 double g4_time, double calculated_time, std::string creationProcessName,
                                  std::map<int, size_t>::iterator it, bool new_process);
+        
+        double InterpolateRindex(double wavelength);
 
     private:
         G4CCMScintHitsCollection* fScintCollection = nullptr;
@@ -122,10 +128,15 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
 
-        double c = 2.998 * std::pow(10.0, 8.0); // speed of light in m/s
-        double c_cm_per_nsec = c * std::pow(10.0, -7.0); // speed of light in cm/nsec
-        double uv_index_of_refraction = 1.358;
-        double vis_index_of_refraction = 1.23;
+        double c_mm_per_nsec = 299.792458 * (I3Units::mm / I3Units::ns); // speed of light in mm/nsec
+
+        std::vector<double> rindex_wavelength = {99.99909859236817, 109.99897296368657, 119.99889895379226, 123.99888385471958,
+                                                 127.99884206872682, 133.99878562916103, 139.99873802931543, 159.99855258590853,
+                                                 179.99837456270487, 199.99819718473634, 299.9973199734223, 399.99632984597423,
+                                                 499.9954929618409, 599.9944947689613, 699.9936901465773}; // nm 
+
+        std::vector<double> rindex = {1.7898800000000006, 1.6199600000000003, 1.4500400000000002, 1.40284, 1.358,
+                                      1.335167, 1.315166, 1.28071, 1.263128, 1.25475, 1.24, 1.23, 1.225, 1.222, 1.22}; 
 };
 
 #endif

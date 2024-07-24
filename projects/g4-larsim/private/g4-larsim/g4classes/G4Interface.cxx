@@ -337,7 +337,12 @@ void G4Interface::Initialize()
         log_error("G4Interface has already been initialized. Ignoring this call!");
         return;
     }
-    
+
+    // set number of threads
+    //int num_threads = std::thread::hardware_concurrency(); 
+    //std::cout << "setting number of threads = " << num_threads << std::endl; 
+    //runManager_.SetNumberOfThreads(num_threads);
+
     // Set verbosity
     int32_t verboseLevel = 0;
     

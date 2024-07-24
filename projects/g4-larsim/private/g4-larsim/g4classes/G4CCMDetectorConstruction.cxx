@@ -128,10 +128,16 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fGlass->AddElement(fC, 91.533 * perCent);
     fGlass->AddElement(fH, 8.467 * perCent);
 
-    // TPB 
+    // TPB Foil 
     fTPBFoil = new G4Material("TPBFoil", density= 1.079*g/cm3, 2);
     fTPBFoil->AddElement(fC, 28);
     fTPBFoil->AddElement(fH, 22);
+    
+    // TPB PMT 
+    fTPBPMT = new G4Material("TPBPMT", density= 1.079*g/cm3, 2);
+    fTPBPMT->AddElement(fC, 28);
+    fTPBPMT->AddElement(fH, 22);
+
 
     // Plastic for PMT frill
     fPlastic = new G4Material("Plastic", density=1.20*g/cm3,3);
@@ -170,7 +176,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                      205.3758714*cm, 145.6326111*cm, 100.7813004*cm, 63.2898117*cm, 
                                      40.07450411*cm, 11.43903548*cm, 3.626432195*cm }; // spectrum of rayleigh scattering lengths.
 
-    // LAr absorption length...plz change at some point
     std::vector<G4double> LAr_Energy_Abs = {1.239847*eV, 1.26515*eV, 1.2915072916666666*eV, 1.3189861702127659*eV, 1.3476597826086956*eV, 1.3776077777777778*eV,
                                             1.4089170454545454*eV, 1.441682558139535*eV, 1.4760083333333334*eV, 1.512008536585366*eV, 1.54980875*eV, 1.589547435897436*eV,
                                             1.6313776315789474*eV, 1.675468918918919*eV, 1.7220097222222222*eV, 1.77121*eV, 1.823304411764706*eV, 1.8785560606060605*eV,
@@ -190,15 +195,9 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fLAr_mt = new G4MaterialPropertiesTable();
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", LAr_Energy_Scint, LAr_SCINT); 
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT2", LAr_Energy_Scint, LAr_SCINT);
-    //fLAr_mt->AddProperty("RINDEX",        LAr_Energy_RIn,   LAr_RIND);
-    //fLAr_mt->AddProperty("RAYLEIGH",      LAr_Energy_RIn,  LAr_RSL);
     
-    // let's do rindex and rayleigh a different way
-    G4double base = 39.56;//AbsLAr < 200 nm
-    G4double uvlas = 100.0;//AbsLAr 200-300 nm
-    G4double three = 1400.;//AbsLAr 300-400 nm
-    G4double mult = 2400.;//AbsLAr 400+ nm
-    G4double rindex = 1.69;//LAr rindex @ 128
+    // let's do index of refraction and rayleigh now
+    G4double rindex = 1.358;//LAr rindex @ 128
     G4double scaler = 1.0;//scaling slope of rindex
     G4double ray128 = 94.096;//LAr rayleigh length @128
     G4double scalerray = 1.73;//scaling slope of rayleigh
@@ -210,13 +209,13 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> scale = { 0.125, 0.196, 0.345, 0.637, 0.8065, 1.38, 1.78, 3.22, 4.66 };
     for (int i = 0; i < 9; ++i) {
         scale[i] = std::pow(scale[i],scaler)*set+1.24;
-    }//*/
+    }
     G4double rayleigh = ray128*cm;
     std::vector<G4double> lar_RSL = { 3244.9341, 1712.2246, 798.328,   309.35745, 87.855032, 14.852719, 8.9947353, 4.7653069,
                                       2.0378371, 1.445036,  1,         0.6279916, 0.3976383, 0.1135036, 0.035983 };
     for (int i = 0; i < 15; ++i) {
         lar_RSL[i] = std::pow(lar_RSL[i],scalerray)*rayleigh;
-    }//*/
+    }
 
     const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
     std::vector<G4double> lar_RIND  = { 1.22 ,     1.222 ,    1.225 ,    1.23 , 1.24 ,     scale[0] , scale[1] , scale[2] , scale[3] ,
@@ -225,27 +224,18 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
    
-    // back to defining material property table
-    std::cout << "UVAbsStatus_ = " << UVAbsStatus_ << std::endl;
+    // now add absorption length -- if UVAbsStatus_ == false, set absorption length to very big 
     if (UVAbsStatus_){
         fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
-    } else {
-        std::vector<G4double> dummy_LAr_ABS = {2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
-                                               2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
-                                               2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
-                                               2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm};
-        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, dummy_LAr_ABS);
-    }
+    } 
 
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE",0.11); 
     fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", SingletTau_);
     fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2", TripletTau_);
-    std::cout << "set singlet tau = " << SingletTau_ << " and triplet tau = " << TripletTau_ << std::endl;
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",0.25); // for e/m scintillation
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
-
 
     // Set the Birks Constant for the LAr scintillator
     fLAr->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
@@ -312,7 +302,77 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fAlum_mt->AddProperty("ABSLENGTH", alum_abseneg, alum_abslen);
     fAlum->SetMaterialPropertiesTable(fAlum_mt);
 
-    // TPB -- using same values for coating and foils at the moment
+    // now time to define foil + pmt TPB
+    //TPB Variables:
+    G4double foil = 0.80;//foil tpb eff
+    G4double pmt = 0.878;//pmt tpb Eff
+    G4double abs = 0.7215;//all tpb abs (visible light)
+    G4double rin = 1.7;//tpb index of refraction
+    G4double ral = 1.0;//scattering length in foil TPB
+    G4double ray = 1.13;//scattering length in pmt TPB
+
+    // first let's get the scattering length for TPB foils 
+    G4double lengthconst = 0.0019/(std::log(1-foil));
+    G4double wlAbf11 = lengthconst/(std::log(0.067));
+    G4double wlAbf12 = lengthconst/(std::log(0.2));
+    G4double wlAbf15 = lengthconst/(std::log(0.4));
+    G4double wlAbf19 = lengthconst/(std::log(0.533));
+    G4double wlAbf21 = lengthconst/(std::log(0.4));
+    G4double wlAbf24 = lengthconst/(std::log(0.367));
+  
+    std::vector<G4double> TPBWLSAbsorption = { 0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+                                               1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
+                                               10000.000*m, 10000.000*m, 10000.000*m, 10000.000*m, 100000.0*m,
+                                               100000.0*m, 100000.0*m, 100000.0*m, wlAbf24*mm, wlAbf21*mm, 
+                                               wlAbf19*mm, wlAbf15*mm, wlAbf12*mm, wlAbf11*mm, wlAbf11*mm };
+    // now scattering length for TPB on PMTs
+    lengthconst = 0.0019/(std::log(1-pmt));
+    G4double wlsAb110 = lengthconst/(std::log(0.067));
+    G4double wlsAb128 = lengthconst/(std::log(0.2));
+    G4double wlsAb190 = lengthconst/(std::log(0.533));
+    G4double wlsAb213 = lengthconst/(std::log(0.4));
+    G4double wlsAb240 = lengthconst/(std::log(0.367));
+    
+    std::vector<G4double> TPBWLSAbsorption100 = { 0.10000*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
+	                                              1000.00*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
+	                                              10000.0*m, 10000.0*m, 10000.0*m, 10000.0*m, 100000.0*m, 
+	                                              100000.0*m, 100000.0*m, 100000.0*m, wlsAb240*mm, wlsAb213*mm, 
+	                                              wlsAb190*mm, wlsAb213*mm, wlsAb128*mm, wlsAb110*mm, wlsAb110*mm };
+    // now absorption length
+    G4double absltwo = -0.00211/(std::log(abs));
+    G4double abslttw = absltwo*1.4;
+    G4double abslttt = absltwo*1.55;
+    
+    std::vector<G4double> TPBAbsorption = { 0.02000*mm, absltwo*mm, absltwo*mm, absltwo*mm, absltwo*mm,
+                                            abslttw*mm, abslttw*mm, abslttw*mm, abslttw*mm, abslttw*mm,
+                                            abslttt*mm, abslttt*mm, abslttt*mm, 10.0000*mm, 100000.0*m,
+                                            100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m,
+                                            100000.0*m, 100.0000*m, 100.0000*m, 100.0000*m, 100.0000*m };
+    
+    // now rayleigh scattering + index of refraction for foil + PMT type TPB
+    G4double rayl = ray*0.001*mm;
+    G4double rayl2 = ral*0.001*mm;
+
+    std::vector<G4double> TPBRIndex = { rin, rin, rin, rin, rin,
+                                        rin, rin, rin, rin, rin,
+                                        rin, rin, rin, rin, rin,
+                                        rin, rin, rin, rin, rin,
+                                        rin, rin, rin, rin, rin };
+ 
+    std::vector<G4double> TPBRayleigh = { rayl, rayl, rayl, rayl, rayl,
+                                          rayl, rayl, rayl, rayl, rayl,
+                                          rayl, rayl, rayl, rayl, rayl,
+                                          rayl, rayl, rayl, rayl, rayl,
+                                          rayl, rayl, rayl, rayl, rayl };
+
+    std::vector<G4double> TPBRayleigh2 = { rayl2, rayl2, rayl2, rayl2, rayl2,
+                                           rayl2, rayl2, rayl2, rayl2, rayl2,
+                                           rayl2, rayl2, rayl2, rayl2, rayl2,
+                                           rayl2, rayl2, rayl2, rayl2, rayl2,
+                                           rayl2, rayl2, rayl2, rayl2, rayl2 };
+
+
+
     std::vector<G4double> TPBEnergy = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
                                         2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
                                         2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
@@ -326,26 +386,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
                                           0.0000, 0.0000, 0.0000, 0.0000, 0.0000 };
 
-    // Refractive index of the TPB.
-    std::vector<G4double> TPBRIndex = { 1.7, 1.7, 1.7, 1.7, 1.7,
-                                        1.7, 1.7, 1.7, 1.7, 1.7,
-                                        1.7, 1.7, 1.7, 1.7, 1.7,
-                                        1.7, 1.7, 1.7, 1.7, 1.7,
-                                        1.7, 1.7, 1.7, 1.7, 1.7 };
-
-
-    std::vector<G4double> TPBWLSAbsorption = { 0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
-                                               1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
-                                               10000.000*m, 10000.000*m, 10000.000*m, 10000.000*m, 100000.0*m,
-                                               100000.0*m, 100000.0*m, 100000.0*m, 0.*mm, 0.*mm,
-                                               0.*mm, 0.*mm, 0.*mm, 0.*mm, 0.*mm };
-    
-    std::vector<G4double> TPBRayleigh = { 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
-                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
-                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
-                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm,
-                                        1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm, 1.0*0.001*mm };
-    
     std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
                                                1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
 
@@ -357,17 +397,26 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
                                           1., 1., 1., 1., 1.};
 
+    // now finally time to make material properties tables 
     G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
-    fTPBFoil_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
-    //fTPBFoil_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh);
     fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
-    fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption);
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
     fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
-    fTPBFoil_mt->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
-    fTPBFoil_mt->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
-    fTPBFoil_mt->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
+    fTPBFoil_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
+    fTPBFoil_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh2);
+    fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption);
+    fTPBFoil_mt->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption);
     fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
+  
+    G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
+    fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
+    fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
+    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
+    fTPBPMT_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
+    fTPBPMT_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh);
+    fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption100);
+    fTPBPMT_mt->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption);
+    fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the PTFE reflectors.
     std::vector<G4double> TefEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV,
@@ -455,6 +504,7 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             SetSensitiveDetector(fMainVolume->GetLogTPBFoil(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoated(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTUncoated(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogReflectorFoil(), fScint_SD.Get());
             // make sure to include source pellet + rod for SD if enabeled
             if (SodiumSourceRun_){
                 SetSensitiveDetector(fMainVolume->GetLogSodiumPellet(), fScint_SD.Get());

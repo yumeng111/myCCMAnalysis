@@ -16,11 +16,13 @@ void CCMMCPE::save(Archive& ar, unsigned version) const {
 
     ar & make_nvp("parent_id",parent_id);
     ar & make_nvp("track_id",track_id);
-    ar & make_nvp("global_time",global_time);
-    ar & make_nvp("local_time",local_time);
+    ar & make_nvp("g4_time",g4_time);
+    ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
-    ar & make_nvp("distance_uv",distance_uv);
-    ar & make_nvp("distance_visible",distance_visible);
+    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
+    ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     ar & make_nvp("position",position);
     ar & make_nvp("direction",direction);
     ar & make_nvp("photon_source",photon_source);
@@ -34,7 +36,7 @@ void CCMMCPE::load(Archive& ar, unsigned version) {
     // uncomment to load in old version of ccmmcpe
     //ar & make_nvp("parent_id",parent_id);
     //ar & make_nvp("track_id",track_id);
-    //ar & make_nvp("time",global_time);
+    //ar & make_nvp("time",g4_time);
     //ar & make_nvp("wavelength",wavelength);
     //ar & make_nvp("position",position);
     //ar & make_nvp("direction",direction);
@@ -43,11 +45,13 @@ void CCMMCPE::load(Archive& ar, unsigned version) {
     // uncomment to load in new version of ccmmcpe 
     ar & make_nvp("parent_id",parent_id);
     ar & make_nvp("track_id",track_id);
-    ar & make_nvp("global_time",global_time);
-    ar & make_nvp("local_time",local_time);
+    ar & make_nvp("g4_time",g4_time);
+    ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
-    ar & make_nvp("distance_uv",distance_uv);
-    ar & make_nvp("distance_visible",distance_visible);
+    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
+    ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     ar & make_nvp("position",position);
     ar & make_nvp("direction",direction);
     ar & make_nvp("photon_source",photon_source);
@@ -63,11 +67,13 @@ std::ostream& CCMMCPE::Print(std::ostream& os) const{
     os << "[ CCMMCPE::"
         << "\n  ParentID :" << parent_id 
         << "\n  TrackID :" << track_id
-        << "\n  Global Time :" << global_time
-        << "\n  Local Time :" << local_time
+        << "\n  G4 Time :" << g4_time
+        << "\n  Calculated Time :" << calculated_time
         << "\n  Wavelength :" << wavelength
-        << "\n  Distance UV :" << distance_uv
-        << "\n  Distance Visible :" << distance_visible
+        << "\n  G4 Distance UV :" << g4_distance_uv
+        << "\n  G4 Distance Visible :" << g4_distance_visible
+        << "\n  Calculated Distance UV :" << calculated_distance_uv
+        << "\n  Calculated Distance Visible :" << calculated_distance_visible
         << "\n  Position :" << position 
         << "\n  Direction :" << direction 
         << "\n PhotonSource :" << photonSourceToProcessName.at(photon_source) 
