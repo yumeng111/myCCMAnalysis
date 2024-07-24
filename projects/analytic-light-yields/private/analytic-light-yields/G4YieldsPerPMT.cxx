@@ -59,7 +59,7 @@ std::vector<double> G4YieldsPerPMT::GetPlottingInformation(CCMPMTKey key, double
     std::map<CCMPMTKey, std::vector<double>> binned_yields;
     std::map<CCMPMTKey, std::vector<double>> binned_square_yields;
 
-    GetAllYields<double>(n_threads, {key}, G4Events, max_time, uv_absorption, scaling, binned_yields, binned_square_yields);
+    GetAllYields<double>(n_threads, {key}, G4Events, G4Events, false, max_time, 0.0, 0.0, uv_absorption, 0.0, scaling, binned_yields, binned_square_yields);
 
     // now grab yields for this pmt
     return binned_yields.at(key);
@@ -109,7 +109,7 @@ void G4YieldsPerPMT::TimeComparison(std::vector<CCMPMTKey> keys_to_fit, double z
             // loop over each CCMMCPE 
             for (size_t m = 0; m < this_key_ccmmcpe.size(); m++){
                 CCMMCPE this_ccmmcpe = this_key_ccmmcpe.at(m);
-                double g4_time = this_ccmmcpe.time;
+                double g4_time = this_ccmmcpe.global_time;
 
                 // first check the wavelength!! only continue if visible
                 double wavelength = this_ccmmcpe.wavelength * 1e9; // units of nm

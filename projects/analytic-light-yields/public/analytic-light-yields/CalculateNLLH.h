@@ -346,7 +346,7 @@ public:
 
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T normalization, T light_time_offset,
             T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T pmt_efficiency,
-            T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
+            T uv_absorption, T photons_per_mev, bool fitting_uv_abs, T z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields);
 
     //AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
@@ -456,7 +456,7 @@ double CalculateNLLH<T>::InterpolationDouble(double this_time, std::vector<doubl
 template<typename T>
 T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
-            T pmt_efficiency, T uv_absorption, T photons_per_mev, bool fitting_uv_abs, double z_offset, size_t n_sodium_events,
+            T pmt_efficiency, T uv_absorption, T photons_per_mev, bool fitting_uv_abs, T z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields) {
     
     // let's grab our data

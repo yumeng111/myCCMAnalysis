@@ -34,7 +34,8 @@ template <typename T>
 struct G4PhotonPropagationJob {
     std::atomic<bool> running = false;
     size_t event_idx = 0;
-    std::vector<I3FramePtr> this_thread_events;
+    std::vector<I3FramePtr> this_thread_events_above;
+    std::vector<I3FramePtr> this_thread_events_below;
     std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields = nullptr;
     std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared = nullptr;
 };
@@ -54,8 +55,9 @@ class G4YieldsPerPMT {
     
 public:
     G4YieldsPerPMT();
-    template<typename T> void GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, std::deque<I3FramePtr> G4Events, double max_time,
-                                           T UV_absorption_length, T scaling, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
+    template<typename T> void GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, std::deque<I3FramePtr> G4Events_above, std::deque<I3FramePtr> G4Events_below,
+                                           bool need_to_interpolate, double max_time, double z_above, double z_below, T UV_absorption_length, T scaling, T z_offset, std::map<CCMPMTKey,
+                                           std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
     
     std::vector<double> GetPlottingInformation(CCMPMTKey key, double uv_absorption, double scaling);
     template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> GetSummedYieldsMap(std::vector<CCMPMTKey> keys_to_fit, T uv_abs, T scaling, double z_offset); 
@@ -83,8 +85,6 @@ template<typename T> void GrabG4Yields(I3FramePtr frame,
     
     // lets grab necessary things from each frame
     boost::shared_ptr<CCMMCPESeriesMap const> CCMMCPEMap = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>("PMTMCHitsMap");
-    boost::shared_ptr<PhotonSummarySeries const> photon_summary_series = frame->Get<boost::shared_ptr<PhotonSummarySeries const>>("PhotonSummarySeries");
-    boost::shared_ptr<I3Map<int, size_t> const> photon_summary_series_map = frame->Get<boost::shared_ptr<I3Map<int, size_t> const>>("PhotonSummaryMap");
 
     // now loop over all pmts we are fitting
     for(size_t k = 0; k < keys_to_fit.size(); k++){
@@ -102,13 +102,11 @@ template<typename T> void GrabG4Yields(I3FramePtr frame,
             // first check the wavelength!! only continue if visible
             double wavelength = this_ccmmcpe.wavelength * 1e9; // units of nm
             if (wavelength > 325.0){
-                // grab photon summary information related with this photon hit
-                size_t track_id = this_ccmmcpe.track_id;
-                std::map<int, size_t>::const_iterator it = photon_summary_series_map->find(track_id);
-                if (it != photon_summary_series_map->end()) {
-                    PhotonSummary this_photon_summary = photon_summary_series->at(it->second);
-                    double distance_travelled_uv = this_photon_summary.distance_uv / I3Units::cm;
-                    double distance_travelled_vis = this_photon_summary.distance_visible / I3Units::cm;
+                // check to make sure it had photon summary information
+                if ((this_ccmmcpe.distance_uv + this_ccmmcpe.distance_visible) > 0.0){
+                    
+                    double distance_travelled_uv = this_ccmmcpe.distance_uv / I3Units::cm;
+                    double distance_travelled_vis = this_ccmmcpe.distance_visible / I3Units::cm;
                     // now figure out scaling due to uv absorption
                     T uv_scaling = exp(- distance_travelled_uv / UV_absorption_length);
                     
@@ -127,17 +125,8 @@ template<typename T> void GrabG4Yields(I3FramePtr frame,
     }
 }
 
-
-
-template<typename T>
-void FrameThread(std::atomic<bool> & running,
-                 std::vector<CCMPMTKey> const & keys_to_fit,
-                 std::vector<I3FramePtr> sodium_events,
-                 T UV_absorption_length,
-                 T scaling,
-                 double max_time,
-                 std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields,
-                 std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared) {
+template<typename T> void BinEvents(std::vector<I3FramePtr> sodium_events, T UV_absorption_length, double max_time, std::vector<CCMPMTKey> const & keys_to_fit,
+                                    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields, std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared){
 
     // now let's loop over each event in our vector sodium_events
     for (size_t event_it = 0; event_it < sodium_events.size(); event_it ++){
@@ -173,15 +162,89 @@ void FrameThread(std::atomic<bool> & running,
                 this_event_binned_yields_squared->at(key).at(bin_idx) += (yield.yield * yield.yield);
             }
         }
+    }
 
-        // now multiply each bin by the scaling
-        for (auto it = this_event_binned_yields->begin(); it != this_event_binned_yields->end(); it++) {
-            std::vector<T>& this_pmt_yields = it->second;
-            for (size_t y = 0; y < this_pmt_yields.size(); y++){
-                this_pmt_yields.at(y) *= scaling;
+}
+
+template<typename T>
+void FrameThread(std::atomic<bool> & running,
+                 std::vector<CCMPMTKey> const & keys_to_fit,
+                 std::vector<I3FramePtr> sodium_events_above,
+                 std::vector<I3FramePtr> sodium_events_below,
+                 T UV_absorption_length,
+                 T scaling,
+                 T z_offset,
+                 double max_time,
+                 double z_above,
+                 double z_below,
+                 bool need_to_interpolate,
+                 std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields,
+                 std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared) {
+
+    if (need_to_interpolate){
+        // make some maps to hold binned yields for above and below idx
+        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_above = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared_above = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+        
+        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_below = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared_below = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+
+        // now grab our g4 yields + bin both of these guys
+        BinEvents<T>(sodium_events_above, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields_above, this_event_binned_yields_squared_above);
+        BinEvents<T>(sodium_events_below, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields_below, this_event_binned_yields_squared_below);
+
+        size_t n_bins = max_time / 2.0;
+        
+        // now go through each binned yields + linear interpolate
+        for (auto it = this_event_binned_yields_above->begin(); it != this_event_binned_yields_above->end(); it++) {
+            // add this key to this_event_binned_yields
+            (*this_event_binned_yields)[it->first] = std::vector<T>(n_bins, 0.0);
+            (*this_event_binned_yields_squared)[it->first] = std::vector<T>(n_bins, 0.0);
+
+            // grab our binned yields for each key
+            std::vector<T>& this_pmt_yields_above = it->second;
+            std::vector<T>& this_pmt_yields_below = this_event_binned_yields_below->at(it->first);
+            
+            std::vector<T>& this_pmt_yields_squared_above = this_event_binned_yields_squared_above->at(it->first);
+            std::vector<T>& this_pmt_yields_squared_below = this_event_binned_yields_squared_below->at(it->first);
+            
+            // iterate through binned yields + linear interpolate + scale
+            for (size_t y = 0; y < this_pmt_yields_above.size(); y++){
+                T yields_above = this_pmt_yields_above.at(y);
+                T yields_below = this_pmt_yields_below.at(y);
+
+                T interpolated_yields = yields_below + (z_offset - z_below) * ((yields_above - yields_below) / (z_above - z_below));    
+
+                // now do the same for yields squared 
+                T yields_squared_above = this_pmt_yields_squared_above.at(y);
+                T yields_squared_below = this_pmt_yields_squared_below.at(y);
+
+                T interpolated_yields_squared = yields_squared_below + (z_offset - z_below) * ((yields_squared_above - yields_squared_below) / (z_above - z_below));    
+                
+                // now save
+                this_event_binned_yields->at(it->first).at(y) += interpolated_yields * scaling;
+                this_event_binned_yields_squared->at(it->first).at(y) += interpolated_yields_squared * scaling * scaling;
             }
         }
     }
+    else {
+        BinEvents<T>(sodium_events_above, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields, this_event_binned_yields_squared);
+        
+        // apply scaling
+        for (auto it = this_event_binned_yields->begin(); it != this_event_binned_yields->end(); it++) {
+
+            // grab our binned yields for each key
+            std::vector<T>& this_pmt_yields = it->second;
+            
+            // iterate through binned yields + scale
+            for (size_t y = 0; y < this_pmt_yields.size(); y++){
+                // now save
+                this_event_binned_yields->at(it->first).at(y) *= scaling;
+                this_event_binned_yields_squared->at(it->first).at(y) *= (scaling * scaling);
+            }
+        }
+    }
+     
 
     running.store(false);
 }
@@ -192,27 +255,36 @@ void RunFrameThread(ctpl::thread_pool & pool,
                     std::vector<CCMPMTKey> const & keys_to_fit,
                     T UV_absorption_length,
                     T scaling,
-                    double max_time){
+                    T z_offset,
+                    double max_time,
+                    double z_above,
+                    double z_below,
+                    bool need_to_interpolate){
 
     job->running.store(true);
-    pool.push([ &running = job->running, &keys_to_fit, sodium_events = job->this_thread_events,
-                UV_absorption_length, scaling, max_time, job 
+    pool.push([ &running = job->running, &keys_to_fit, sodium_events_above = job->this_thread_events_above, sodium_events_below = job->this_thread_events_below,
+                UV_absorption_length, scaling, z_offset, max_time, z_above, z_below, need_to_interpolate, job 
     ] (int id) {
     FrameThread(running,
                 keys_to_fit,
-                sodium_events,
+                sodium_events_above,
+                sodium_events_below,
                 UV_absorption_length, 
                 scaling,
+                z_offset,
                 max_time,
+                z_above,
+                z_below,
+                need_to_interpolate,
                 job->this_event_binned_yields,
                 job->this_event_binned_yields_squared);
     });
 
 }
 
-template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, std::deque<I3FramePtr> G4Events, double max_time,
-                                                    T UV_absorption_length, T scaling, std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields){
-
+template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, std::deque<I3FramePtr> G4Events_above, std::deque<I3FramePtr> G4Events_below, 
+                                                       bool need_to_interpolate, double max_time, double z_above, double z_below, T UV_absorption_length, T scaling, T z_offset, 
+                                                       std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields){
     // will be used for multi-threading our simulation jobs
     std::deque<G4PhotonPropagationJob<T> *> free_jobs;
     std::deque<G4PhotonPropagationJob<T> *> running_jobs;
@@ -229,39 +301,46 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
     pool.resize(num_threads);
 
     // now let's chunk up our event_vertices so we can give 1 vector of event_vertices to each thread
-    std::vector<std::vector<I3FramePtr>> events_per_thread;
-    size_t n_events_per_thread = G4Events.size() / num_threads;
-    size_t left_over_events = G4Events.size() - (num_threads * n_events_per_thread);
+    std::vector<std::vector<I3FramePtr>> events_per_thread_above;
+    std::vector<std::vector<I3FramePtr>> events_per_thread_below;
+    
+    size_t n_events_per_thread = G4Events_above.size() / num_threads;
+    size_t left_over_events = G4Events_above.size() - (num_threads * n_events_per_thread);
     
     size_t sodium_event_idx = 0;
     size_t accounted_for_left_over_events = 0;
     for (size_t thread_it = 0; thread_it < num_threads; thread_it++){
         // make vector to hold events
-        std::vector<I3FramePtr> this_thread_vector_of_events;
+        std::vector<I3FramePtr> this_thread_vector_of_events_above;
+        std::vector<I3FramePtr> this_thread_vector_of_events_below;
 
         // things to keep track of
         size_t n_events_on_this_thread = 0;
 
         // now time to actaully add the sodium events to this_thread_vector_of_events
         while (n_events_on_this_thread < n_events_per_thread){
-            this_thread_vector_of_events.push_back(G4Events.at(sodium_event_idx));
+            this_thread_vector_of_events_above.push_back(G4Events_above.at(sodium_event_idx));
+            this_thread_vector_of_events_below.push_back(G4Events_below.at(sodium_event_idx));
             n_events_on_this_thread += 1;
             sodium_event_idx += 1;
         }
 
         // check if we've dolled out all of the left over events yet
         if (accounted_for_left_over_events < left_over_events){
-            this_thread_vector_of_events.push_back(G4Events.at(sodium_event_idx));
+            this_thread_vector_of_events_above.push_back(G4Events_above.at(sodium_event_idx));
+            this_thread_vector_of_events_below.push_back(G4Events_below.at(sodium_event_idx));
             sodium_event_idx += 1;
             accounted_for_left_over_events += 1;
         }
 
-        events_per_thread.push_back(this_thread_vector_of_events);
+        events_per_thread_above.push_back(this_thread_vector_of_events_above);
+        events_per_thread_below.push_back(this_thread_vector_of_events_below);
     }
 
     // now let's loop over our pre-made lists of sodium events for each thread
-    for (size_t sodium_it = 0; sodium_it < events_per_thread.size(); ++sodium_it) {
-        std::vector<I3FramePtr> this_thread_events = events_per_thread.at(sodium_it);
+    for (size_t sodium_it = 0; sodium_it < events_per_thread_above.size(); ++sodium_it) {
+        std::vector<I3FramePtr> this_thread_events_above = events_per_thread_above.at(sodium_it);
+        std::vector<I3FramePtr> this_thread_events_below = events_per_thread_below.at(sodium_it);
 
         while(true) {
             // Check if any jobs have finished
@@ -332,7 +411,8 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
                 job->running.store(true);
                 running_jobs.push_back(job);
                 job->event_idx = sodium_it;
-                job->this_thread_events = this_thread_events; 
+                job->this_thread_events_above = this_thread_events_above; 
+                job->this_thread_events_below = this_thread_events_below; 
                 job->this_event_binned_yields = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>(); 
                 job->this_event_binned_yields_squared = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>(); 
                 results.emplace_back();
@@ -340,7 +420,7 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
                 results.back().this_event_binned_yields = job->this_event_binned_yields;
                 results.back().this_event_binned_yields_squared = job->this_event_binned_yields_squared;
                 results.back().done = false;
-                RunFrameThread<T>(pool, job, keys_to_fit, UV_absorption_length, scaling, max_time);
+                RunFrameThread<T>(pool, job, keys_to_fit, UV_absorption_length, scaling, z_offset, max_time, z_above, z_below, need_to_interpolate);
                 break;
             } else if(job != nullptr) {
                 free_jobs.push_back(job);
@@ -426,7 +506,7 @@ template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> 
     std::map<CCMPMTKey, std::vector<T>> binned_yields;
     std::map<CCMPMTKey, std::vector<T>> binned_square_yields;
 
-    GetAllYields<T>(n_threads, keys_to_fit, G4Events_[z_offset], max_time, uv_abs, scaling, binned_yields, binned_square_yields);
+    GetAllYields<T>(n_threads, keys_to_fit, G4Events_[z_offset], G4Events_[z_offset], false, max_time, 50.0, 50.0, uv_abs, z_offset, scaling, binned_yields, binned_square_yields);
 
     // now sum binned_yields
     std::map<CCMPMTKey, T> summed_yields;
