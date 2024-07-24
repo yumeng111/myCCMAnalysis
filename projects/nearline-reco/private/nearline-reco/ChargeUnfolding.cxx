@@ -72,30 +72,32 @@ void compute_charge_unfolding(std::vector<double> const & data, double beta_s, d
         running_singlet *= beta_s;
         running_triplet *= beta_t;
 
-        double S_pred = sum(singlet_window);
-        double T_pred = sum(triplet_window);
-        double Data = sum(data_window);
+        if(data[i] > 0) {
+            double S_pred = sum(singlet_window);
+            double T_pred = sum(triplet_window);
+            double Data = sum(data_window);
 
-        double dLdgamma = 1.0 -
-            (1.0 / beta_t - 1.0)
-            /
-            (std::pow(1.0 / beta_t, data_window.size() + 1.0) - 1.0);
+            double dLdgamma = 1.0 -
+                (1.0 / beta_t - 1.0)
+                /
+                (std::pow(1.0 / beta_t, data_window.size() + 1.0) - 1.0);
 
-        double gamma = Data - (S_pred + T_pred) / dLdgamma;
-        gamma = std::max(0.0, gamma);
+            double gamma = Data - (S_pred + T_pred) / dLdgamma;
+            gamma = std::max(0.0, gamma);
 
-        double k = data[i];
-        double b = running_singlet + running_triplet;
-        double c = std::pow(beta_t, data_window.size() + 1.0);
+            double k = data[i];
+            double b = running_singlet + running_triplet;
+            double c = std::pow(beta_t, data_window.size() + 1.0);
 
-        double new_charge = k - b - gamma * c;
-        new_charge = std::max(0.0, new_charge);
+            double new_charge = k - b - gamma * c;
+            new_charge = std::max(0.0, new_charge);
 
-        total[i] = new_charge;
-        running_singlet += alpha * total[i];
-        running_triplet += (1 - alpha) * total[i];
-        singlet[i] = running_singlet;
-        triplet[i] = running_triplet;
+            total[i] = new_charge;
+            running_singlet += alpha * total[i];
+            running_triplet += (1 - alpha) * total[i];
+            singlet[i] = running_singlet;
+            triplet[i] = running_triplet;
+        }
 
         singlet_window.push_back(running_singlet);
         triplet_window.push_back(running_triplet);
