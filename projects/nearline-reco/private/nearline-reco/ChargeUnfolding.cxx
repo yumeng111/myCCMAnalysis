@@ -145,17 +145,107 @@ void compute_charge_unfolding_bayesian_positive(std::vector<double> const & data
     }
 }
 
+namespace {
+// Template function for computing the sum of a container
+template<typename T>
+double sum(T const & data) {
+    return std::accumulate(data.begin(), data.end(), 0.0);
+}
+}
+
+template<typename T>
+void compute_charge_unfolding_windowed(std::vector<double> const & data, double beta_s, double beta_t, double alpha, double charge_target, T & total, T & singlet, T & triplet) {
+    total[0] = data[0];
+
+    double running_singlet = alpha * data[0];
+    double running_triplet = (1 - alpha) * data[0];
+
+    singlet[0] = running_singlet;
+    triplet[0] = running_triplet;
+
+    std::deque<double> singlet_window;
+    std::deque<double> triplet_window;
+    std::deque<double> data_window;
+
+    singlet_window.push_back(running_singlet);
+    triplet_window.push_back(running_triplet);
+    data_window.push_back(data[0]);
+
+    for(size_t i=1; i<data.size(); ++i) {
+        running_singlet *= beta_s;
+        running_triplet *= beta_t;
+
+        double S_pred = sum(singlet_window);
+        double T_pred = sum(triplet_window);
+        double Data = sum(data_window);
+
+        double dLdgamma = 1.0 -
+            (1.0 / beta_t - 1.0)
+            /
+            (std::pow(1.0 / beta_t, data_window.size() + 1.0) - 1.0);
+
+        double gamma = Data - (S_pred + T_pred) / dLdgamma;
+        gamma = std::max(0.0, gamma);
+
+        double k = data[i];
+        double b = running_singlet + running_triplet;
+        double c = std::pow(beta_t, data_window.size() + 1.0);
+
+        double new_charge = k - b - gamma * c;
+        new_charge = std::max(0.0, new_charge);
+
+        total[i] = new_charge;
+        running_singlet += alpha * total[i];
+        running_triplet += (1 - alpha) * total[i];
+        singlet[i] = running_singlet;
+        triplet[i] = running_triplet;
+
+        singlet_window.push_back(running_singlet);
+        triplet_window.push_back(running_triplet);
+        data_window.push_back(data[i]);
+
+        if(i+1 == data.size())
+            continue;
+        double next_data = data[i+1];
+        double target = charge_target - next_data;
+        double lost = 0.0;
+        double tot_charge = sum(data_window);
+        while(true) {
+            if(data_window.size() <= 1)
+                break;
+            if(tot_charge - data_window.front() < target)
+                break;
+
+            lost = triplet_window.front();
+            tot_charge -= data_window.front();
+
+            singlet_window.pop_front();
+            triplet_window.pop_front();
+            data_window.pop_front();
+        }
+        if(lost > 0.0) {
+            for(size_t j=0; j<data_window.size(); ++j) {
+                lost *= beta_t;
+                singlet_window[j] -= lost;
+                triplet_window[j] -= lost;
+            }
+        }
+    }
+}
+
 class ChargeUnfolding: public I3Module {
     bool geo_seen;
     std::string geometry_name_;
     CCMGeometryConstPtr geo;
 
-
     double tau_s_;
     double tau_t_;
-    double alpha_;
+    double singlet_triplet_ratio_;
     double delta_t_;
 
+    double charge_target_;
+
+    double alpha_;
     double beta_s_;
     double beta_t_;
 
@@ -187,7 +277,8 @@ ChargeUnfolding::ChargeUnfolding(const I3Context& context) : I3Module(context),
     AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
     AddParameter("TauSinglet", "Time constant for singlet light", 8.13);
     AddParameter("TauTriplet", "Time constant for triplet light", 743);
-    AddParameter("SingletTripletRatio", "Ratio of singlet to triplet light", 0.97);
+    AddParameter("SingletTripletRatio", "Ratio of singlet to triplet light", 0.33);
+    AddParameter("ChargeTarget", "Target charge for  triplet light inference", 1.0);
     AddParameter("BinWidth", "Width of the time bins", 2.0);
     AddParameter("InputPulsesMaskName", "Name of the input pulses mask", std::string(""));
     AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
@@ -200,13 +291,17 @@ void ChargeUnfolding::Configure() {
     GetParameter("PMTTypes", pmt_types);
     GetParameter("TauSinglet", tau_s_);
     GetParameter("TauTriplet", tau_t_);
-    GetParameter("SingletTripletRatio", alpha_);
+    GetParameter("SingletTripletRatio", singlet_triplet_ratio_);
+    GetParameter("ChargeTarget", charge_target_);
     GetParameter("BinWidth", delta_t_);
     GetParameter("InputPulsesMaskName", pulses_mask_name_);
     GetParameter("InputRawPulsesName", raw_pulses_name_);
     GetParameter("InputEventPrefix", input_prefix_);
     GetParameter("OutputPrefix", output_prefix_);
 
+    double norm_s = singlet_triplet_ratio_ / tau_s_;
+    double norm_t = (1.0 - singlet_triplet_ratio_) / tau_t_;
+    alpha_ = norm_s / (norm_s + norm_t);
     beta_s_ = exp(-delta_t_ / tau_s_);
     beta_t_ = exp(-delta_t_ / tau_t_);
 
@@ -303,30 +398,33 @@ void ChargeUnfolding::DAQ(I3FramePtr frame) {
 
     I3VectorDoublePtr raw = boost::make_shared<I3VectorDouble>(data.begin(), data.end());
     I3VectorDoublePtr total = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
-    I3VectorDoublePtr total_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
-    I3VectorDoublePtr total_bayesian = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
-    I3VectorDoublePtr total_bayesian_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    //I3VectorDoublePtr total_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    //I3VectorDoublePtr total_bayesian = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    //I3VectorDoublePtr total_bayesian_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
 
-    I3VectorDoublePtr running = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
-    I3VectorDoublePtr running_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
-    I3VectorDoublePtr running_bayesian = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
-    I3VectorDoublePtr running_bayesian_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    I3VectorDoublePtr singlet = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    I3VectorDoublePtr triplet = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    //I3VectorDoublePtr running_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    //I3VectorDoublePtr running_bayesian = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
+    //I3VectorDoublePtr running_bayesian_positive = boost::make_shared<I3VectorDouble>(data.size(), 0.0);
 
-    compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, *total, *running);
-    compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, *total_positive, *running_positive);
-    compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, *total_bayesian, *running_bayesian);
-    compute_charge_unfolding_bayesian_positive(data, beta_s_, beta_t_, alpha_, *total_bayesian_positive, *running_bayesian_positive);
+    //compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, *total, *running);
+    //compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, *total_positive, *running_positive);
+    //compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, *total_bayesian, *running_bayesian);
+    //compute_charge_unfolding_bayesian_positive(data, beta_s_, beta_t_, alpha_, *total_bayesian_positive, *running_bayesian_positive);
+    compute_charge_unfolding_windowed(data, beta_s_, beta_t_, alpha_, charge_target_, *total, *singlet, *triplet);
 
     I3MapPMTKeyVectorDoublePtr raw_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
     I3MapPMTKeyVectorDoublePtr total_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
-    I3MapPMTKeyVectorDoublePtr total_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
-    I3MapPMTKeyVectorDoublePtr total_bayesian_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
-    I3MapPMTKeyVectorDoublePtr total_bayesian_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    //I3MapPMTKeyVectorDoublePtr total_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    //I3MapPMTKeyVectorDoublePtr total_bayesian_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    //I3MapPMTKeyVectorDoublePtr total_bayesian_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
 
-    I3MapPMTKeyVectorDoublePtr running_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
-    I3MapPMTKeyVectorDoublePtr running_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
-    I3MapPMTKeyVectorDoublePtr running_bayesian_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
-    I3MapPMTKeyVectorDoublePtr running_bayesian_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    I3MapPMTKeyVectorDoublePtr singlet_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    I3MapPMTKeyVectorDoublePtr triplet_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    //I3MapPMTKeyVectorDoublePtr running_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    //I3MapPMTKeyVectorDoublePtr running_bayesian_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
+    //I3MapPMTKeyVectorDoublePtr running_bayesian_positive_map = boost::make_shared<I3MapPMTKeyVectorDouble>();
 
     for (CCMRecoPulseSeriesMap::const_iterator i = pulses->begin();
             i != pulses->end(); i++) {
@@ -341,42 +439,49 @@ void ChargeUnfolding::DAQ(I3FramePtr frame) {
 
         raw_map->insert(std::make_pair(i->first, std::vector<double>(data.begin(), data.end())));
         total_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
-        total_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
-        total_bayesian_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
-        total_bayesian_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        //total_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        //total_bayesian_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        //total_bayesian_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
 
-        running_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
-        running_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
-        running_bayesian_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
-        running_bayesian_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        singlet_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        triplet_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        //running_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        //running_bayesian_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
+        //running_bayesian_positive_map->insert(std::make_pair(i->first, std::vector<double>(data.size(), 0.0)));
 
-        compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, total_map->at(i->first), running_map->at(i->first));
-        compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, total_positive_map->at(i->first), running_positive_map->at(i->first));
-        compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, total_bayesian_map->at(i->first), running_bayesian_map->at(i->first));
-        compute_charge_unfolding_bayesian_positive(data, beta_s_, beta_t_, alpha_, total_bayesian_positive_map->at(i->first), running_bayesian_positive_map->at(i->first));
+        //compute_charge_unfolding(data, beta_s_, beta_t_, alpha_, total_map->at(i->first), running_map->at(i->first));
+        //compute_charge_unfolding_positive(data, beta_s_, beta_t_, alpha_, total_positive_map->at(i->first), running_positive_map->at(i->first));
+        //compute_charge_unfolding_bayesian(data, beta_s_, beta_t_, alpha_, total_bayesian_map->at(i->first), running_bayesian_map->at(i->first));
+        //compute_charge_unfolding_bayesian_positive(data, beta_s_, beta_t_, alpha_, total_bayesian_positive_map->at(i->first), running_bayesian_positive_map->at(i->first));
+        compute_charge_unfolding_windowed(data, beta_s_, beta_t_, alpha_, charge_target_, total_map->at(i->first), singlet_map->at(i->first), triplet_map->at(i->first));
     }
 
     frame->Put(output_prefix_ + "ChargeUnfoldingTotalRaw", raw);
     frame->Put(output_prefix_ + "ChargeUnfoldingTotal", total);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalPositive", total_positive);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalBayesian", total_bayesian);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalBayesianPositive", total_bayesian_positive);
-
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunning", running);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningPositive", running_positive);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningBayesian", running_bayesian);
-    frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningBayesianPositive", running_bayesian_positive);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalSinglet", singlet);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTotalTriplet", triplet);
 
     frame->Put(output_prefix_ + "ChargeUnfoldingRaw", raw_map);
     frame->Put(output_prefix_ + "ChargeUnfolding", total_map);
-    frame->Put(output_prefix_ + "ChargeUnfoldingPositive", total_positive_map);
-    frame->Put(output_prefix_ + "ChargeUnfoldingBayesian", total_bayesian_map);
-    frame->Put(output_prefix_ + "ChargeUnfoldingBayesianPositive", total_bayesian_positive_map);
+    frame->Put(output_prefix_ + "ChargeUnfoldingSinglet", singlet_map);
+    frame->Put(output_prefix_ + "ChargeUnfoldingTriplet", triplet_map);
 
-    frame->Put(output_prefix_ + "ChargeUnfoldingRunning", running_map);
-    frame->Put(output_prefix_ + "ChargeUnfoldingRunningPositive", running_positive_map);
-    frame->Put(output_prefix_ + "ChargeUnfoldingRunningBayesian", running_bayesian_map);
-    frame->Put(output_prefix_ + "ChargeUnfoldingRunningBayesianPositive", running_bayesian_positive_map);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingTotalPositive", total_positive);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingTotalBayesian", total_bayesian);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingTotalBayesianPositive", total_bayesian_positive);
+
+    //frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningPositive", running_positive);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningBayesian", running_bayesian);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingTotalRunningBayesianPositive", running_bayesian_positive);
+
+    //frame->Put(output_prefix_ + "ChargeUnfoldingPositive", total_positive_map);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingBayesian", total_bayesian_map);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingBayesianPositive", total_bayesian_positive_map);
+
+    //frame->Put(output_prefix_ + "ChargeUnfoldingRunning", running_map);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingRunningPositive", running_positive_map);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingRunningBayesian", running_bayesian_map);
+    //frame->Put(output_prefix_ + "ChargeUnfoldingRunningBayesianPositive", running_bayesian_positive_map);
 
     PushFrame(frame);
 }
