@@ -354,7 +354,11 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             daughter.SetPos(position);
             daughter.SetDir(direction);
 
-            I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(1), daughter); // append energy deposition to primary particle
+            if (DaughterParticleMap.find(1) == DaughterParticleMap.end()){
+                std::cout << "oops! no primary particle in the map!" << std::endl;
+            } else {
+                I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(1), daughter); // append energy deposition to primary particle
+            }
         } else {
             std::cout << "oops! no conversion for " << processName << std::endl;
         }

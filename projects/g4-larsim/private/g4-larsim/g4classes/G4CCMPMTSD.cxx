@@ -177,12 +177,14 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // so we have the CCMPMTKey and we have the CCMMCPE, let's save!
-    for (auto it = CCMMCPEMap->begin(); it != CCMMCPEMap->end(); ++it) {
-        CCMPMTKey mc_pe_map_key = it->first;
-        if (mc_pe_map_key == key){
-            CCMMCPEMap->at(mc_pe_map_key).push_back(this_mc_pe);
-        }
-    }   
+    CCMMCPEMap->at(key).push_back(this_mc_pe);
+
+    //for (auto it = CCMMCPEMap->begin(); it != CCMMCPEMap->end(); ++it) {
+    //    CCMPMTKey mc_pe_map_key = it->first;
+    //    if (mc_pe_map_key == key){
+    //        CCMMCPEMap->at(mc_pe_map_key).push_back(this_mc_pe);
+    //    }
+    //}   
 
     // now kill photon after registering hit
     aStep->GetTrack()->SetTrackStatus(fStopAndKill); 
