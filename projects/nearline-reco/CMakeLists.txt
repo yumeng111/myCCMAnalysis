@@ -19,6 +19,7 @@ i3_add_library(${PROJECT_NAME}
     private/nearline-reco/BasicVertexReco.cxx
     private/nearline-reco/ChargeUnfolding.cxx
     private/nearline-reco/ComputeChargeContamination.cxx
+    private/nearline-reco/PMTRates.cxx
     IWYU
     USE_TOOLS boost python
     USE_PROJECTS icetray serialization dataio dataclasses phys-services CCMBinary
