@@ -162,6 +162,7 @@ std::ostream& operator<<(std::ostream& os, const I3Map<Key, Value> m){
   return(m.Print(os));
 }
 
+typedef I3Map<double, std::vector<double>> I3MapDoubleVectorDouble;
 typedef I3Map<std::string, double> I3MapStringDouble;
 typedef I3Map<std::string, int> I3MapStringInt;
 typedef I3Map<std::string, bool> I3MapStringBool;
@@ -204,6 +205,7 @@ typedef I3Map<std::tuple<CCMPMTKey, CCMPMTKey>, std::vector<double>> I3MapTupleP
 typedef I3Map<CCMPMTKeyPair, double> I3MapPMTKeyPairDouble;
 typedef I3Map<CCMPMTKeyPair, std::vector<double>> I3MapPMTKeyPairVectorDouble;
 
+I3_POINTER_TYPEDEFS(I3MapDoubleVectorDouble);
 I3_POINTER_TYPEDEFS(I3MapStringDouble);
 I3_POINTER_TYPEDEFS(I3MapStringInt);
 I3_POINTER_TYPEDEFS(I3MapStringBool);

@@ -92,48 +92,48 @@ void G4YieldsPerPMT::TimeComparison(std::vector<CCMPMTKey> keys_to_fit, double z
     double uv_index_of_refraction = 1.358;
     double vis_index_of_refraction = 1.23;
     
-    for (size_t event_it = 0; event_it < G4Events_[z_offset].size(); event_it ++){
-        I3FramePtr frame = G4Events_[z_offset].at(event_it);
+    //for (size_t event_it = 0; event_it < G4Events_[z_offset].size(); event_it ++){
+    //    I3FramePtr frame = G4Events_[z_offset].at(event_it);
 
-        // lets grab necessary things from each frame
-        boost::shared_ptr<CCMMCPESeriesMap const> CCMMCPEMap = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>("PMTMCHitsMap");
-        boost::shared_ptr<PhotonSummarySeries const> photon_summary_series = frame->Get<boost::shared_ptr<PhotonSummarySeries const>>("PhotonSummarySeries");
-        boost::shared_ptr<I3Map<int, size_t> const> photon_summary_series_map = frame->Get<boost::shared_ptr<I3Map<int, size_t> const>>("PhotonSummaryMap");
+    //    // lets grab necessary things from each frame
+    //    boost::shared_ptr<CCMMCPESeriesMap const> CCMMCPEMap = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>("PMTMCHitsMap");
+    //    boost::shared_ptr<PhotonSummarySeries const> photon_summary_series = frame->Get<boost::shared_ptr<PhotonSummarySeries const>>("PhotonSummarySeries");
+    //    boost::shared_ptr<I3Map<int, size_t> const> photon_summary_series_map = frame->Get<boost::shared_ptr<I3Map<int, size_t> const>>("PhotonSummaryMap");
 
-        // now loop over all pmts we are fitting
-        for(size_t k = 0; k < keys_to_fit.size(); k++){
-            
-            // grab the list of CCMMCPEs for this key
-            CCMMCPESeries this_key_ccmmcpe = CCMMCPEMap->at(keys_to_fit.at(k));
-            
-            // loop over each CCMMCPE 
-            for (size_t m = 0; m < this_key_ccmmcpe.size(); m++){
-                CCMMCPE this_ccmmcpe = this_key_ccmmcpe.at(m);
-                double g4_time = this_ccmmcpe.global_time;
+    //    // now loop over all pmts we are fitting
+    //    for(size_t k = 0; k < keys_to_fit.size(); k++){
+    //        
+    //        // grab the list of CCMMCPEs for this key
+    //        CCMMCPESeries this_key_ccmmcpe = CCMMCPEMap->at(keys_to_fit.at(k));
+    //        
+    //        // loop over each CCMMCPE 
+    //        for (size_t m = 0; m < this_key_ccmmcpe.size(); m++){
+    //            CCMMCPE this_ccmmcpe = this_key_ccmmcpe.at(m);
+    //            double g4_time = this_ccmmcpe.global_time;
 
-                // first check the wavelength!! only continue if visible
-                double wavelength = this_ccmmcpe.wavelength * 1e9; // units of nm
-                if (wavelength > 325.0){
-                    // grab photon summary information related with this photon hit
-                    size_t track_id = this_ccmmcpe.track_id;
-                    std::map<int, size_t>::const_iterator it = photon_summary_series_map->find(track_id);
-                    if (it != photon_summary_series_map->end()) {
-                        PhotonSummary this_photon_summary = photon_summary_series->at(it->second);
-                        double distance_travelled_uv = this_photon_summary.distance_uv / I3Units::cm;
-                        double distance_travelled_vis = this_photon_summary.distance_visible / I3Units::cm;
-                        
-                        double travel_time_uv = distance_travelled_uv / (c_cm_per_nsec / uv_index_of_refraction); // units of nsec
-                        double travel_time_visible = distance_travelled_vis / (c_cm_per_nsec / vis_index_of_refraction); // units of nsec
-                        double calculated_time = travel_time_uv + travel_time_visible;
-                        
-                        // now save
-                        G4Times_.push_back(g4_time);
-                        CalculatedTimes_.push_back(calculated_time);
-                    }
-                }
-            }
-        }
-    }
+    //            // first check the wavelength!! only continue if visible
+    //            double wavelength = this_ccmmcpe.wavelength * 1e9; // units of nm
+    //            if (wavelength > 325.0){
+    //                // grab photon summary information related with this photon hit
+    //                size_t track_id = this_ccmmcpe.track_id;
+    //                std::map<int, size_t>::const_iterator it = photon_summary_series_map->find(track_id);
+    //                if (it != photon_summary_series_map->end()) {
+    //                    PhotonSummary this_photon_summary = photon_summary_series->at(it->second);
+    //                    double distance_travelled_uv = this_photon_summary.distance_uv / I3Units::cm;
+    //                    double distance_travelled_vis = this_photon_summary.distance_visible / I3Units::cm;
+    //                    
+    //                    double travel_time_uv = distance_travelled_uv / (c_cm_per_nsec / uv_index_of_refraction); // units of nsec
+    //                    double travel_time_visible = distance_travelled_vis / (c_cm_per_nsec / vis_index_of_refraction); // units of nsec
+    //                    double calculated_time = travel_time_uv + travel_time_visible;
+    //                    
+    //                    // now save
+    //                    G4Times_.push_back(g4_time);
+    //                    CalculatedTimes_.push_back(calculated_time);
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
 }
 
 

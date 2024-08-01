@@ -43,10 +43,10 @@ public:
                           std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events,
                           double best_fit_Rs, double best_fit_tau_s, double best_fit_tau_other, std::vector<double> best_fit_norms);       
 
-    std::vector<double> ScanOverUVAbsorption(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble PMT_efficiencies,
-                                             I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
+    std::vector<double> ScanOverUVAbsorption(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                              I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
-                                             std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events);       
+                                             std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events, 
+                                             bool apply_uv_abs_prior);
 
     std::vector<double> GrabNormSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
                                      double uv_abs, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
@@ -55,7 +55,7 @@ public:
     std::vector<double> FitUVAbsorption(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                         I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                         std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
-                                        bool apply_uv_abs_prior, bool apply_pmt_eff_prior, I3MapPMTKeyVectorDouble pmt_nearby_idx);
+                                        bool apply_uv_abs_prior, I3MapPMTKeyDouble pmt_efficiency);
     
     std::vector<double> GrabPhotonsPerMeVSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
                                               double uv_abs, std::vector<double> z_offsets, size_t n_sodium_events,
@@ -65,11 +65,22 @@ public:
                  I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                  std::vector<std::string> data_file_names, std::vector<double> z_offsets, size_t n_sodium_events, std::vector<double> params); 
 
+    I3MapDoubleVectorDouble NormUVAbsScan(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
+                                          I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
+                                          std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events, 
+                                          std::vector<double> best_fit_params, size_t norm_grid_points, std::vector<size_t> uv_abs_grid_info);
+
     I3MapPMTKeyVectorDouble GetBestFitData(size_t dataset_idx) {return data.at(dataset_idx);};
     I3MapPMTKeyVectorDouble GetBestFitPred(size_t dataset_idx) {return pred.at(dataset_idx);};
     I3MapPMTKeyVectorDouble GetBestFitTimes(size_t dataset_idx) {return times.at(dataset_idx);};
 
     I3MapPMTKeyDouble GetBestTimeOffset(size_t dataset_idx) {return best_time_offsets.at(dataset_idx);};
+
+    std::vector<double> uv_abs_grid;
+    std::vector<double> norm_grid;
+    
+    std::vector<double> GetUVAbsScanGrid() { return uv_abs_grid; };
+    std::vector<double> GetNormScanGrid() { return norm_grid; };
 
 };
 #endif

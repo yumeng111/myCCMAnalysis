@@ -103,16 +103,12 @@ template<typename T> void GrabG4Yields(I3FramePtr frame,
             double wavelength = this_ccmmcpe.wavelength * 1e9; // units of nm
             if (wavelength > 325.0){
                 // check to make sure it had photon summary information
-                if ((this_ccmmcpe.distance_uv + this_ccmmcpe.distance_visible) > 0.0){
+                if ((this_ccmmcpe.g4_distance_uv + this_ccmmcpe.g4_distance_visible) > 0.0){
                     
-                    double distance_travelled_uv = this_ccmmcpe.distance_uv / I3Units::cm;
-                    double distance_travelled_vis = this_ccmmcpe.distance_visible / I3Units::cm;
+                    double distance_travelled_uv = this_ccmmcpe.g4_distance_uv / I3Units::cm;
                     // now figure out scaling due to uv absorption
                     T uv_scaling = exp(- distance_travelled_uv / UV_absorption_length);
-                    
-                    double travel_time_uv = distance_travelled_uv / (c_cm_per_nsec / uv_index_of_refraction); // units of nsec
-                    double travel_time_visible = distance_travelled_vis / (c_cm_per_nsec / vis_index_of_refraction); // units of nsec
-                    double time = travel_time_uv + travel_time_visible;
+                    double time = this_ccmmcpe.g4_time; // already in units of nsec 
                     
                     // now make a new yield to save
                     g4_photon_yield_summary<T> this_yield_summary;

@@ -180,8 +180,7 @@ void cppMinimizer::OnePMTOneDataSetMinimization(std::vector<CCMPMTKey> all_keys_
         CCMPMTKey this_key = all_keys_to_fit.at(k);
         std::cout << "fitting " << this_key << std::endl;
         // let's try scanning over t offset
-        //double t_offset_start = 10.0;
-        double t_offset_start = 15.0;
+        double t_offset_start = 10.0;
         double t_offset_end = 40.0;
         double t_offset_range = t_offset_end - t_offset_start;
         size_t n_t_offsets = 100;

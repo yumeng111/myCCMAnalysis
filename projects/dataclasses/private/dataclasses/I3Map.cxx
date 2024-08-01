@@ -4,6 +4,7 @@
 #include <string>
 
 
+I3_SERIALIZABLE(I3MapDoubleVectorDouble);
 I3_SERIALIZABLE(I3MapStringDouble);
 I3_SERIALIZABLE(I3MapStringInt);
 I3_SERIALIZABLE(I3MapStringBool);

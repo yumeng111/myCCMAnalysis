@@ -106,27 +106,50 @@ public:
     std::vector<double> all_z_offsets;
     bool grabbed_g4_events = false;
 
-    void GrabG4Events();
+    void GrabG4Events(size_t n_events, T z_offset);
 
 };
 
-template<typename T> void GenerateExpectation<T>::GrabG4Events(){
+template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, T z_offset){
     
-    std::vector<std::string> g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium52.0cmHEEvents_470events.i3.zst",
-                                          "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium51.0cmHEEvents_470events.i3.zst",
-                                          "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium49.0cmHEEvents_470events.i3.zst"};
-    
-    all_z_offsets = {52.0, 51.0, 49.0};
+    std::vector<std::string> g4_fnames;
+
+    if (z_offset == 30.0){
+        //g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium32cmHEEvents.i3.zst",
+        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium30cmHEEvents.i3.zst",
+        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium28cmHEEvents.i3.zst"};
+        //all_z_offsets = {32.0, 30.0, 28.0};
+        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium30cmHEEvents.i3.zst"};
+        all_z_offsets = {30.0};
+    }
+    if (z_offset == -30.0){
+        //g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-28cmHEEvents.i3.zst",
+        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-30cmHEEvents.i3.zst",
+        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-32cmHEEvents.i3.zst"};
+        //all_z_offsets = {-28.0, -30.0, -32.0};
+        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-30cmHEEvents.i3.zst"};
+        all_z_offsets = {-30.0};
+    }
+    if (z_offset == 0.0){
+        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium0cmHEEvents.i3.zst"};
+        all_z_offsets = {0.0};
+    }
+    if (z_offset == 50.0){
+        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium50cmHEEvents.i3.zst"};
+        all_z_offsets = {50.0};
+    }
 
     for (size_t f = 0; f < g4_fnames.size(); f++){
         std::deque<I3FramePtr> this_file_events;
 
         dataio::I3File g4_file(g4_fnames.at(f), dataio::I3File::Mode::read);
-        while (g4_file.more()){
+        size_t frames_grabbed = 0;
+        while (frames_grabbed < n_events or !g4_file.more()){
             I3FramePtr g4_frame = g4_file.pop_frame();
             this_file_events.push_back(g4_frame);
+            frames_grabbed += 1;
         }
-
+        std::cout << "grabbed " << this_file_events.size() << " events for sodium at " << all_z_offsets.at(f) << "cm" << std::endl;
         G4Events.push_back(this_file_events);
     }
 
@@ -152,7 +175,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields) {
 
     if (grabbed_g4_events == false and UseG4Yields){
-        GrabG4Events();
+        GrabG4Events(n_sodium_events, z_offset);
     }
 
     // now see if we need to get our yields    
@@ -264,8 +287,7 @@ template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(I3VectorC
 template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, T uv_absorption, T photons_per_mev, double max_time, bool fitting_uv_abs, T z_loc){
     g4_yields_and_offset_constructor = std::make_shared<G4YieldsPerPMT>();
 
-    //size_t n_threads = 0;
-    size_t n_threads = 1;
+    size_t n_threads = 0;
     
     // let's grab set of g4 events at the z offset above and below z_loc
     double z_loc_double;
@@ -274,11 +296,11 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
     } else {
         z_loc_double = z_loc.value();
     }
-    
+
     size_t upper_idx;
     size_t lower_idx;
     bool need_to_interpolate = true;
-    
+
     for (size_t k = 0; k < all_z_offsets.size(); k++){
        // first check if z_loc_double is in all_z_offsets
        if (all_z_offsets.at(k) == z_loc_double){

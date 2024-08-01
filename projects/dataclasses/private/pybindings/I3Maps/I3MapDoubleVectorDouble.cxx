@@ -1,5 +1,5 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim  
+//   Copyright (c) 2004, 2005, 2006, 2007, 2008   Troy D. Straszheim  
 //   
 //   $Id$
 //
@@ -30,34 +30,16 @@
 //   
 //
 
-#include <analytic-light-yields/AllPMTcppMinimizer.h>
-#include <icetray/python/copy_suite.hpp>
-#include <icetray/python/indexed_property.hpp>
-#include <icetray/python/boost_serializable_pickle_suite.hpp>
+#include <dataclasses/I3Map.h>
 #include <icetray/python/dataclass_suite.hpp>
-#include <icetray/python/stream_to_string.hpp>
 
 using namespace boost::python;
 
-void register_AllPMTcppMinimizer() {
+void register_I3MapDoubleVectorDouble()
 {
+  class_<I3MapDoubleVectorDouble, bases<I3FrameObject>, I3MapDoubleVectorDoublePtr>("I3MapDoubleVectorDouble")
+    .def(dataclass_suite<I3MapDoubleVectorDouble >())
+    ;
+  register_pointer_conversions<I3MapDoubleVectorDouble>();
+}
 
-    class_<AllPMTcppMinimizer, boost::noncopyable>("AllPMTcppMinimizer")
-        .def(init<>())
-        .def("DoubleCheckG4Pred", &AllPMTcppMinimizer::DoubleCheckG4Pred)
-        .def("MultiplePMTMinimization", &AllPMTcppMinimizer::MultiplePMTMinimization)
-        .def("ScanOverTOffsets", &AllPMTcppMinimizer::ScanOverTOffsets)
-        .def("GrabNormSeed", &AllPMTcppMinimizer::GrabNormSeed)
-        .def("GrabPhotonsPerMeVSeed", &AllPMTcppMinimizer::GrabPhotonsPerMeVSeed)
-        .def("FitUVAbsorption", &AllPMTcppMinimizer::FitUVAbsorption)
-        .def("NormUVAbsScan", &AllPMTcppMinimizer::NormUVAbsScan)
-        .def("ScanOverUVAbsorption", &AllPMTcppMinimizer::ScanOverUVAbsorption)
-        .def("GetUVAbsScanGrid", &AllPMTcppMinimizer::GetUVAbsScanGrid)
-        .def("GetNormScanGrid", &AllPMTcppMinimizer::GetNormScanGrid)
-        .def("GetBestFitData", &AllPMTcppMinimizer::GetBestFitData)
-        .def("GetBestFitPred", &AllPMTcppMinimizer::GetBestFitPred)
-        .def("GetBestFitTimes", &AllPMTcppMinimizer::GetBestFitTimes)
-        .def("GetBestTimeOffset", &AllPMTcppMinimizer::GetBestTimeOffset);
-    
-}
-}
