@@ -21,7 +21,7 @@
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
 #include <icetray/I3TrayInfo.h>
-#include <icetray/I3Module.h>
+#include <icetray/I3ConditionalModule.h>
 #include <icetray/I3Logging.h>
 #include <icetray/I3PODHolder.h>
 #include <icetray/CCMPMTKey.h>
@@ -82,7 +82,7 @@ std::vector<double> np_logspace(double log_low, double log_high, size_t n_edges,
 }
 }
 
-class PulseChargeTimeHistogram: public I3Module {
+class PulseChargeTimeHistogram: public I3ConditionalModule {
     bool geo_seen;
     std::string geometry_name_;
     CCMGeometryConstPtr geo;
@@ -439,7 +439,7 @@ void PulseChargeTimeHistogram::SaveHists(
 }
 */
 
-PulseChargeTimeHistogram::PulseChargeTimeHistogram(const I3Context& context) : I3Module(context),
+PulseChargeTimeHistogram::PulseChargeTimeHistogram(const I3Context& context) : I3ConditionalModule(context),
     geo_seen(false), geometry_name_("") {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
         AddParameter("InputPulsesName", "Name of the input pulses", std::string("WavedeformPulses"));
@@ -655,7 +655,7 @@ void PulseChargeTimeHistogram::Finish() {
     PushFrame(frame);
 }
 
-class MergePulseChargeTimeHistogram: public I3Module {
+class MergePulseChargeTimeHistogram: public I3ConditionalModule {
     std::string prefix_;
 
     std::vector<std::string> keys_;
@@ -686,7 +686,7 @@ public:
 
 I3_MODULE(MergePulseChargeTimeHistogram);
 
-MergePulseChargeTimeHistogram::MergePulseChargeTimeHistogram(const I3Context& context) : I3Module(context) {
+MergePulseChargeTimeHistogram::MergePulseChargeTimeHistogram(const I3Context& context) : I3ConditionalModule(context) {
     AddParameter("Prefix", "Prefix for the outputs", std::string(""));
 }
 
