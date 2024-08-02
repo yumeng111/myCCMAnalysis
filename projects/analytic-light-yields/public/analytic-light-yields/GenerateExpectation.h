@@ -115,28 +115,32 @@ template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, 
     std::vector<std::string> g4_fnames;
 
     if (z_offset == 30.0){
-        //g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium32cmHEEvents.i3.zst",
-        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium30cmHEEvents.i3.zst",
-        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium28cmHEEvents.i3.zst"};
-        //all_z_offsets = {32.0, 30.0, 28.0};
-        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium30cmHEEvents.i3.zst"};
-        all_z_offsets = {30.0};
+        g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium32cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium30cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium28cmHEEvents.i3.zst"};
+        all_z_offsets = {32.0, 30.0, 28.0};
+        //g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium30cmHEEvents.i3.zst"};
+        //all_z_offsets = {30.0};
     }
     if (z_offset == -30.0){
-        //g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-28cmHEEvents.i3.zst",
-        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-30cmHEEvents.i3.zst",
-        //             "/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-32cmHEEvents.i3.zst"};
-        //all_z_offsets = {-28.0, -30.0, -32.0};
-        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-30cmHEEvents.i3.zst"};
-        all_z_offsets = {-30.0};
+        g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium-28cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium-30cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium-32cmHEEvents.i3.zst"};
+        all_z_offsets = {-28.0, -30.0, -32.0};
+        //g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium-30cmHEEvents.i3.zst"};
+        //all_z_offsets = {-30.0};
     }
     if (z_offset == 0.0){
-        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium0cmHEEvents.i3.zst"};
-        all_z_offsets = {0.0};
+        g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium2cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium0cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium-2cmHEEvents.i3.zst"};
+        all_z_offsets = {2.0, 0.0, -2.0};
     }
     if (z_offset == 50.0){
-        g4_fnames = {"/Users/darcybrewuser/workspaces/CCM/notebooks/G4Sodium50cmHEEvents.i3.zst"};
-        all_z_offsets = {50.0};
+        g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium52cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium50cmHEEvents.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/G4Sodium48cmHEEvents.i3.zst"};
+        all_z_offsets = {52.0, 50.0, 48.0};
     }
 
     for (size_t f = 0; f < g4_fnames.size(); f++){
@@ -316,11 +320,11 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
         }
         
     }
-    //if (need_to_interpolate == false){
-    //    std::cout << "for z = " <<  z_loc_double << " exactly in our list at " << all_z_offsets[upper_idx] << std::endl;
-    //} else {
-    //    std::cout << "for z = " << z_loc_double << ", closest z above = " << all_z_offsets[upper_idx] << " and closest z below = " << all_z_offsets[lower_idx] << std::endl;
-    //}
+    if (need_to_interpolate == false){
+        std::cout << "for z = " <<  z_loc_double << " exactly in our list at " << all_z_offsets[upper_idx] << std::endl;
+    } else {
+        std::cout << "for z = " << z_loc_double << ", closest z above = " << all_z_offsets[upper_idx] << " and closest z below = " << all_z_offsets[lower_idx] << std::endl;
+    }
     
     g4_yields_and_offset_constructor->GetAllYields(n_threads, keys_to_fit, G4Events.at(upper_idx), G4Events.at(lower_idx), need_to_interpolate, max_time,
                                                    all_z_offsets.at(upper_idx), all_z_offsets.at(lower_idx), uv_absorption, photons_per_mev, z_loc, binned_yields, binned_square_yields);
