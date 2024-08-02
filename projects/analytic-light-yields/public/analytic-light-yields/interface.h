@@ -294,7 +294,7 @@ public:
 			                         +std::to_string(nVar-1)+": lower bound "
 			                         +std::to_string(lowerBound)+", upper bound "
 			                         +std::to_string(upperBound));
-	}
+    }
 	///Set the initial value for a parameter
 	///\param idx the index of the parameter to set
 	///\param val the value to set for the parameter

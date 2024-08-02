@@ -59,7 +59,7 @@ std::vector<double> G4YieldsPerPMT::GetPlottingInformation(CCMPMTKey key, double
     std::map<CCMPMTKey, std::vector<double>> binned_yields;
     std::map<CCMPMTKey, std::vector<double>> binned_square_yields;
 
-    GetAllYields<double>(n_threads, {key}, G4Events, G4Events, false, max_time, 0.0, 0.0, uv_absorption, 0.0, scaling, binned_yields, binned_square_yields);
+    GetAllYields<double>(n_threads, {key}, G4Events, G4Events, false, max_time, 0.0, 0.0, {uv_absorption, 0.0}, 0.0, scaling, binned_yields, binned_square_yields);
 
     // now grab yields for this pmt
     return binned_yields.at(key);

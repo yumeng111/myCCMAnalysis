@@ -63,7 +63,6 @@ struct LikelihoodFunctor {
     AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
     std::vector<double> time_offsets;
     ZigZagPrior prior = ZigZagPrior(3.0, 6.0, false); // we want (tau_s - tau_TPB) > 3.0 with 600% scale
-    bool fittining_uv_abs = false;
     double photons_per_mev = 1.0;
     bool use_g4_yields = false;
 
@@ -85,10 +84,10 @@ struct LikelihoodFunctor {
             if (tau_s != tau_TPB){
                 if constexpr (std::is_same<T, double>::value) {
                     total_llh += llh_constructorDouble.at(data_it)->ComputeNLLH(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
-                                 time_offset, x[11], x[12], x[13], x[14], 1.0, x[15], photons_per_mev, fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type, use_g4_yields);
+                                 time_offset, x[11], x[12], x[13], x[14], 1.0, {x[15], 0.0}, photons_per_mev, z_offset.at(data_it), n_sodium_events, light_profile_type, use_g4_yields);
                 } else {
                     total_llh += llh_constructorAD.at(data_it)->ComputeNLLH(key_to_fit, x[0], x[1], x[2], x[3], x[4], x[5], x[6 + data_it], // normalization for data set!!!
-                                 time_offset, x[11], x[12], x[13], x[14], 1.0, x[15], photons_per_mev, fittining_uv_abs, z_offset.at(data_it), n_sodium_events, light_profile_type, use_g4_yields);
+                                 time_offset, x[11], x[12], x[13], x[14], 1.0, {x[15], 0.0}, photons_per_mev, z_offset.at(data_it), n_sodium_events, light_profile_type, use_g4_yields);
                 }
 
                 // and now add our prior!
@@ -287,8 +286,8 @@ void cppMinimizer::OnePMTOneDataSetMinimization(std::vector<CCMPMTKey> all_keys_
 
                 double llh = all_constructorsDouble.at(data_it)->ComputeNLLH(key, data_to_return.at(0+1), data_to_return.at(1+1), data_to_return.at(2+1), data_to_return.at(3+1),
                                  data_to_return.at(4+1), data_to_return.at(5+1), data_to_return.at(6 + data_it + 1), data_to_return.at(10+1),
-                                 data_to_return.at(11+1), data_to_return.at(12+1), data_to_return.at(13+1), data_to_return.at(14+1), 1.0, data_to_return.at(15+1), 1.0,
-                                 false, z_offsets.at(data_it), n_sodium_events, light_profile_type, use_g4_yields);
+                                 data_to_return.at(11+1), data_to_return.at(12+1), data_to_return.at(13+1), data_to_return.at(14+1), 1.0, {data_to_return.at(15+1), 0.0}, 1.0, z_offsets.at(data_it),
+                                 n_sodium_events, light_profile_type, use_g4_yields);
                 // now grab out data etc
                 std::vector<double> this_pmt_data = all_constructorsDouble.at(data_it)->GetDataVector(); 
                 std::vector<double> this_pmt_pred = all_constructorsDouble.at(data_it)->GetPredVector(); 

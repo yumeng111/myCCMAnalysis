@@ -27,6 +27,9 @@ class AllPMTcppMinimizer {
 public:
     AllPMTcppMinimizer();
     
+    typedef double Underlying;
+    typedef phys_tools::autodiff::FD<7 + 200 + 1 + 1 + 4, Underlying> AD;
+    
     // some vectors of maps between CCMPMTKey and vector of doubles to save best fits to
     std::vector<I3MapPMTKeyVectorDouble> data;
     std::vector<I3MapPMTKeyVectorDouble> pred;
@@ -50,7 +53,7 @@ public:
 
     std::vector<double> GrabNormSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
                                      double uv_abs, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
-                                     std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::shared_ptr<CalculateNLLH<double>>> llh_constructorDouble, bool use_g4_yields);
+                                     std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::shared_ptr<CalculateNLLH<AD>>> llh_constructorAD, bool use_g4_yields);
 
     std::vector<double> FitUVAbsorption(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                         I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
@@ -59,7 +62,7 @@ public:
     
     std::vector<double> GrabPhotonsPerMeVSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
                                               double uv_abs, std::vector<double> z_offsets, size_t n_sodium_events,
-                                              std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::shared_ptr<CalculateNLLH<double>>> llh_constructorDouble);
+                                              std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::shared_ptr<CalculateNLLH<AD>>> llh_constructorAD);
 
     void DoubleCheckG4Pred(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                  I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
@@ -69,6 +72,11 @@ public:
                                           I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                           std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events, 
                                           std::vector<double> best_fit_params, size_t norm_grid_points, std::vector<size_t> uv_abs_grid_info);
+
+    void MakeBestFitPredictions(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
+                                I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
+                                std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events, 
+                                std::vector<double> best_fit_params);
 
     I3MapPMTKeyVectorDouble GetBestFitData(size_t dataset_idx) {return data.at(dataset_idx);};
     I3MapPMTKeyVectorDouble GetBestFitPred(size_t dataset_idx) {return pred.at(dataset_idx);};

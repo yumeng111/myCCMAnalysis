@@ -16,6 +16,7 @@ i3_add_library(${PROJECT_NAME}
     private/analytic-light-yields/linpack.cpp
     private/analytic-light-yields/cppMinimizer.cxx
     private/analytic-light-yields/AllPMTcppMinimizer.cxx
+    private/analytic-light-yields/ZOffsetcppMinimizer.cxx
     private/analytic-light-yields/G4YieldsPerPMT.cxx
     private/analytic-light-yields/StandAloneUVAbsMinimizer.cxx
     IWYU
@@ -26,6 +27,7 @@ i3_add_library(${PROJECT_NAME}
 i3_add_pybindings(analytic_light_yields
     private/pybindings/module.cxx
     private/pybindings/AllPMTcppMinimizer.cxx
+    private/pybindings/ZOffsetcppMinimizer.cxx
     private/pybindings/cppMinimizer.cxx
     private/pybindings/YieldsPerPMT.cxx
     private/pybindings/G4YieldsPerPMT.cxx

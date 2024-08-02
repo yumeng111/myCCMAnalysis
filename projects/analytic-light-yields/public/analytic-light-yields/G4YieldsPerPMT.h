@@ -56,7 +56,7 @@ class G4YieldsPerPMT {
 public:
     G4YieldsPerPMT();
     template<typename T> void GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, std::deque<I3FramePtr> G4Events_above, std::deque<I3FramePtr> G4Events_below,
-                                           bool need_to_interpolate, double max_time, double z_above, double z_below, T UV_absorption_length, T scaling, T z_offset, std::map<CCMPMTKey,
+                                           bool need_to_interpolate, double max_time, double z_above, double z_below, std::vector<T> UV_absorption_length, T scaling, T z_offset, std::map<CCMPMTKey,
                                            std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields);
     
     std::vector<double> GetPlottingInformation(CCMPMTKey key, double uv_absorption, double scaling);
@@ -74,7 +74,7 @@ public:
 
 
 template<typename T> void GrabG4Yields(I3FramePtr frame,
-                                       T UV_absorption_length,
+                                       std::vector<T> UV_absorption_length,
                                        std::shared_ptr<std::map<CCMPMTKey, std::vector<g4_photon_yield_summary<T>>>> & all_pmt_yields_map,
                                        std::vector<CCMPMTKey> const & keys_to_fit) {
     // some constants
@@ -107,7 +107,10 @@ template<typename T> void GrabG4Yields(I3FramePtr frame,
                     
                     double distance_travelled_uv = this_ccmmcpe.g4_distance_uv / I3Units::cm;
                     // now figure out scaling due to uv absorption
-                    T uv_scaling = exp(- distance_travelled_uv / UV_absorption_length);
+                    T uv_scaling = exp(- distance_travelled_uv / UV_absorption_length.at(0));
+                    if (UV_absorption_length.at(1) > 0.0){
+                        uv_scaling += exp(- distance_travelled_uv / UV_absorption_length.at(1));
+                    }
                     double time = this_ccmmcpe.g4_time; // already in units of nsec 
                     
                     // now make a new yield to save
@@ -121,7 +124,7 @@ template<typename T> void GrabG4Yields(I3FramePtr frame,
     }
 }
 
-template<typename T> void BinEvents(std::vector<I3FramePtr> sodium_events, T UV_absorption_length, double max_time, std::vector<CCMPMTKey> const & keys_to_fit,
+template<typename T> void BinEvents(std::vector<I3FramePtr> sodium_events, std::vector<T> UV_absorption_length, double max_time, std::vector<CCMPMTKey> const & keys_to_fit,
                                     std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields, std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared){
 
     // now let's loop over each event in our vector sodium_events
@@ -167,7 +170,7 @@ void FrameThread(std::atomic<bool> & running,
                  std::vector<CCMPMTKey> const & keys_to_fit,
                  std::vector<I3FramePtr> sodium_events_above,
                  std::vector<I3FramePtr> sodium_events_below,
-                 T UV_absorption_length,
+                 std::vector<T> UV_absorption_length,
                  T scaling,
                  T z_offset,
                  double max_time,
@@ -249,7 +252,7 @@ template<typename T>
 void RunFrameThread(ctpl::thread_pool & pool,
                     G4PhotonPropagationJob<T> * job,
                     std::vector<CCMPMTKey> const & keys_to_fit,
-                    T UV_absorption_length,
+                    std::vector<T> UV_absorption_length,
                     T scaling,
                     T z_offset,
                     double max_time,
@@ -279,7 +282,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
 }
 
 template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, std::deque<I3FramePtr> G4Events_above, std::deque<I3FramePtr> G4Events_below, 
-                                                       bool need_to_interpolate, double max_time, double z_above, double z_below, T UV_absorption_length, T scaling, T z_offset, 
+                                                       bool need_to_interpolate, double max_time, double z_above, double z_below, std::vector<T> UV_absorption_length, T scaling, T z_offset, 
                                                        std::map<CCMPMTKey, std::vector<T>> & binned_yields, std::map<CCMPMTKey, std::vector<T>> & binned_square_yields){
     // will be used for multi-threading our simulation jobs
     std::deque<G4PhotonPropagationJob<T> *> free_jobs;
@@ -502,7 +505,7 @@ template<typename T> std::tuple<std::map<CCMPMTKey, T>, std::map<CCMPMTKey, T>> 
     std::map<CCMPMTKey, std::vector<T>> binned_yields;
     std::map<CCMPMTKey, std::vector<T>> binned_square_yields;
 
-    GetAllYields<T>(n_threads, keys_to_fit, G4Events_[z_offset], G4Events_[z_offset], false, max_time, 50.0, 50.0, uv_abs, z_offset, scaling, binned_yields, binned_square_yields);
+    GetAllYields<T>(n_threads, keys_to_fit, G4Events_[z_offset], G4Events_[z_offset], false, max_time, 50.0, 50.0, {uv_abs, 0.0}, z_offset, scaling, binned_yields, binned_square_yields);
 
     // now sum binned_yields
     std::map<CCMPMTKey, T> summed_yields;
