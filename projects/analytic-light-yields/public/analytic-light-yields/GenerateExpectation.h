@@ -309,7 +309,7 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
        // first check if z_loc_double is in all_z_offsets
        if (all_z_offsets.at(k) == z_loc_double){
             need_to_interpolate = false;
-            upper_idx = k;
+            upper_idx = k - 1;
             lower_idx = k;
         }
             
@@ -320,11 +320,12 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
         }
         
     }
-    if (need_to_interpolate == false){
-        std::cout << "for z = " <<  z_loc_double << " exactly in our list at " << all_z_offsets[upper_idx] << std::endl;
-    } else {
-        std::cout << "for z = " << z_loc_double << ", closest z above = " << all_z_offsets[upper_idx] << " and closest z below = " << all_z_offsets[lower_idx] << std::endl;
-    }
+    //if (need_to_interpolate == false){
+    //    std::cout << "for z = " <<  z_loc_double << " exactly in our list at " << all_z_offsets[upper_idx] << std::endl;
+    //} else {
+    //    std::cout << "for z = " << z_loc_double << ", closest z above = " << all_z_offsets[upper_idx] << " and closest z below = " << all_z_offsets[lower_idx] << std::endl;
+    //}
+    //std::cout << "for z = " << z_loc_double << ", closest z above = " << all_z_offsets[upper_idx] << " and closest z below = " << all_z_offsets[lower_idx] << std::endl;
     
     g4_yields_and_offset_constructor->GetAllYields(n_threads, keys_to_fit, G4Events.at(upper_idx), G4Events.at(lower_idx), need_to_interpolate, max_time,
                                                    all_z_offsets.at(upper_idx), all_z_offsets.at(lower_idx), uv_absorption, photons_per_mev, z_loc, binned_yields, binned_square_yields);

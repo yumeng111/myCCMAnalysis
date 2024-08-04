@@ -105,6 +105,7 @@ struct ZOffsetFitLikelihoodFunctor {
                 }
             }
         }
+        //std::cout << "total llh = " << total_llh << std::endl;
         return total_llh; 
     }
 };
@@ -273,19 +274,22 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     if (fix_second_abs_length){
         uv_abs_2_seed = 0.0;
     }
-    //size_t reference_pmt_idx = (size_t) (keys_to_fit.size() / 2);
-    //CCMPMTKey reference_pmt = keys_to_fit.at(reference_pmt_idx);
-    //std::vector<double> norm_seeds = GrabNormSeed(reference_pmt, 1.0, LPmu.at(reference_pmt), LPsigma.at(reference_pmt), LPscale.at(reference_pmt),
-    //                                              {uv_abs_1_seed, uv_abs_2_seed}, z_offsets, n_sodium_events, time_offsets, data_file_names);
-    //double total_norm_seed = 0.0;
-    //for (size_t n = 0; n < norm_seeds.size(); n++){
-    //    total_norm_seed += norm_seeds.at(n);
-    //}
-    //double average_norm_seed = total_norm_seed / static_cast<double>(norm_seeds.size());
-    //
-    //std::cout << "norm seeds = " << norm_seeds << " and adding average norm seed = " << average_norm_seed << std::endl;
+    size_t reference_pmt_idx = (size_t) (keys_to_fit.size() / 2);
+    CCMPMTKey reference_pmt = keys_to_fit.at(reference_pmt_idx);
+    double baseline_eff = 1.0;
+    if (pmt_efficiency.find(reference_pmt) != pmt_efficiency.end()){
+        baseline_eff = pmt_efficiency.at(reference_pmt);
+    }
+    std::vector<double> norm_seeds = GrabNormSeed(reference_pmt, baseline_eff, LPmu.at(reference_pmt), LPsigma.at(reference_pmt), LPscale.at(reference_pmt),
+                                                  {uv_abs_1_seed, uv_abs_2_seed}, z_offsets, n_sodium_events, time_offsets, data_file_names);
+    double total_norm_seed = 0.0;
+    for (size_t n = 0; n < norm_seeds.size(); n++){
+        total_norm_seed += norm_seeds.at(n);
+    }
+    double average_norm_seed = total_norm_seed / static_cast<double>(norm_seeds.size());
 
-    double average_norm_seed = 30.0;
+    std::cout << "norm seeds = " << norm_seeds << " and adding average norm seed = " << average_norm_seed << std::endl;
+
     // now add normalization
     minimizer.addParameter(average_norm_seed, 1e-3, average_norm_seed * 1e-5, average_norm_seed * 1e5); // norm
    
@@ -300,7 +304,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     // now add z offsets
     for (size_t n = 0; n < 4; n++){
         if (n < data_file_names.size()){
-            minimizer.addParameter(z_offsets.at(n), 1e-3, z_offsets.at(n) - 2.0, z_offsets.at(n) + 2.0);
+            minimizer.addParameter(z_offsets.at(n), 1e-3, z_offsets.at(n) - 1.99, z_offsets.at(n) + 1.99);
         } else {
             minimizer.addParameter(0.0);
         }
@@ -340,7 +344,6 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
         for (size_t z = 0; z < 4; z++){
             if (z >= data_file_names.size()){
                 minimizer.fixParameter(6 + z);
-                std::cout << "fixing parameter " << 6 + z << std::endl;
             }
         }
     }

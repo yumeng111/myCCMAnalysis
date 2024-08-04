@@ -180,69 +180,69 @@ void FrameThread(std::atomic<bool> & running,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared) {
 
-    if (need_to_interpolate){
-        // make some maps to hold binned yields for above and below idx
-        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_above = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
-        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared_above = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+    //if (need_to_interpolate){
+    // make some maps to hold binned yields for above and below idx
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_above = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared_above = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+    
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_below = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+    std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared_below = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
+
+    // now grab our g4 yields + bin both of these guys
+    BinEvents<T>(sodium_events_above, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields_above, this_event_binned_yields_squared_above);
+    BinEvents<T>(sodium_events_below, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields_below, this_event_binned_yields_squared_below);
+
+    size_t n_bins = max_time / 2.0;
+    
+    // now go through each binned yields + linear interpolate
+    for (auto it = this_event_binned_yields_above->begin(); it != this_event_binned_yields_above->end(); it++) {
+        // add this key to this_event_binned_yields
+        (*this_event_binned_yields)[it->first] = std::vector<T>(n_bins, 0.0);
+        (*this_event_binned_yields_squared)[it->first] = std::vector<T>(n_bins, 0.0);
+
+        // grab our binned yields for each key
+        std::vector<T>& this_pmt_yields_above = it->second;
+        std::vector<T>& this_pmt_yields_below = this_event_binned_yields_below->at(it->first);
         
-        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_below = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
-        std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> this_event_binned_yields_squared_below = std::make_shared<std::map<CCMPMTKey, std::vector<T>>>();
-
-        // now grab our g4 yields + bin both of these guys
-        BinEvents<T>(sodium_events_above, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields_above, this_event_binned_yields_squared_above);
-        BinEvents<T>(sodium_events_below, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields_below, this_event_binned_yields_squared_below);
-
-        size_t n_bins = max_time / 2.0;
+        std::vector<T>& this_pmt_yields_squared_above = this_event_binned_yields_squared_above->at(it->first);
+        std::vector<T>& this_pmt_yields_squared_below = this_event_binned_yields_squared_below->at(it->first);
         
-        // now go through each binned yields + linear interpolate
-        for (auto it = this_event_binned_yields_above->begin(); it != this_event_binned_yields_above->end(); it++) {
-            // add this key to this_event_binned_yields
-            (*this_event_binned_yields)[it->first] = std::vector<T>(n_bins, 0.0);
-            (*this_event_binned_yields_squared)[it->first] = std::vector<T>(n_bins, 0.0);
+        // iterate through binned yields + linear interpolate + scale
+        for (size_t y = 0; y < this_pmt_yields_above.size(); y++){
+            T yields_above = this_pmt_yields_above.at(y);
+            T yields_below = this_pmt_yields_below.at(y);
 
-            // grab our binned yields for each key
-            std::vector<T>& this_pmt_yields_above = it->second;
-            std::vector<T>& this_pmt_yields_below = this_event_binned_yields_below->at(it->first);
+            T interpolated_yields = yields_below + (z_offset - z_below) * ((yields_above - yields_below) / (z_above - z_below));    
+
+            // now do the same for yields squared 
+            T yields_squared_above = this_pmt_yields_squared_above.at(y);
+            T yields_squared_below = this_pmt_yields_squared_below.at(y);
+
+            T interpolated_yields_squared = yields_squared_below + (z_offset - z_below) * ((yields_squared_above - yields_squared_below) / (z_above - z_below));    
             
-            std::vector<T>& this_pmt_yields_squared_above = this_event_binned_yields_squared_above->at(it->first);
-            std::vector<T>& this_pmt_yields_squared_below = this_event_binned_yields_squared_below->at(it->first);
-            
-            // iterate through binned yields + linear interpolate + scale
-            for (size_t y = 0; y < this_pmt_yields_above.size(); y++){
-                T yields_above = this_pmt_yields_above.at(y);
-                T yields_below = this_pmt_yields_below.at(y);
-
-                T interpolated_yields = yields_below + (z_offset - z_below) * ((yields_above - yields_below) / (z_above - z_below));    
-
-                // now do the same for yields squared 
-                T yields_squared_above = this_pmt_yields_squared_above.at(y);
-                T yields_squared_below = this_pmt_yields_squared_below.at(y);
-
-                T interpolated_yields_squared = yields_squared_below + (z_offset - z_below) * ((yields_squared_above - yields_squared_below) / (z_above - z_below));    
-                
-                // now save
-                this_event_binned_yields->at(it->first).at(y) += interpolated_yields * scaling;
-                this_event_binned_yields_squared->at(it->first).at(y) += interpolated_yields_squared * scaling * scaling;
-            }
+            // now save
+            this_event_binned_yields->at(it->first).at(y) += interpolated_yields * scaling;
+            this_event_binned_yields_squared->at(it->first).at(y) += interpolated_yields_squared * scaling * scaling;
         }
     }
-    else {
-        BinEvents<T>(sodium_events_above, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields, this_event_binned_yields_squared);
-        
-        // apply scaling
-        for (auto it = this_event_binned_yields->begin(); it != this_event_binned_yields->end(); it++) {
+    //}
+    //else {
+    //    BinEvents<T>(sodium_events_above, UV_absorption_length, max_time, keys_to_fit, this_event_binned_yields, this_event_binned_yields_squared);
+    //    
+    //    // apply scaling
+    //    for (auto it = this_event_binned_yields->begin(); it != this_event_binned_yields->end(); it++) {
 
-            // grab our binned yields for each key
-            std::vector<T>& this_pmt_yields = it->second;
-            
-            // iterate through binned yields + scale
-            for (size_t y = 0; y < this_pmt_yields.size(); y++){
-                // now save
-                this_event_binned_yields->at(it->first).at(y) *= scaling;
-                this_event_binned_yields_squared->at(it->first).at(y) *= (scaling * scaling);
-            }
-        }
-    }
+    //        // grab our binned yields for each key
+    //        std::vector<T>& this_pmt_yields = it->second;
+    //        
+    //        // iterate through binned yields + scale
+    //        for (size_t y = 0; y < this_pmt_yields.size(); y++){
+    //            // now save
+    //            this_event_binned_yields->at(it->first).at(y) *= scaling;
+    //            this_event_binned_yields_squared->at(it->first).at(y) *= (scaling * scaling);
+    //        }
+    //    }
+    //}
      
 
     running.store(false);
