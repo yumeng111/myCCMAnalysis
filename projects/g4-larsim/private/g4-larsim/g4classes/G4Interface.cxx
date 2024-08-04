@@ -38,11 +38,10 @@
 #include <G4GenericIon.hh>
 #include <G4Geantino.hh> 
 
-G4Interface* G4Interface::g4Interface_ = NULL;
+std::shared_ptr<G4Interface> G4Interface::g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
 
 G4Interface::G4Interface(const std::string& visMacro):
     detector_(NULL), initialized_(false), runInitialized_(false), visMacro_(visMacro) {
-    g4Interface_ = this;
 
     // Visualization manager
     #ifdef G4VIS_USE
@@ -56,16 +55,14 @@ G4Interface::G4Interface(const std::string& visMacro):
 
 
 G4Interface::~G4Interface() {
-    g4Interface_ = NULL;
-
     #ifdef G4VIS_USE
     if(visManager_) delete visManager_;
     #endif
 }
 
 
-void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, bool UVAbsStatus,
-                                  bool TimeCut, bool CerenkovControl) {
+void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, double Rayleigh128,
+                                  bool UVAbsStatus, bool TimeCut, bool CerenkovControl, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -75,7 +72,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
     LArSDStatus_ = LArSDStatus;
 
     if(!detector_) {
-        detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns, UVAbsStatus);
+        detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns, UVAbsStatus, Rayleigh128 / I3Units::cm * CLHEP::cm);
         // set SD status
         detector_->SetPMTSDStatus(PMTSDStatus_);
         detector_->SetLArSDStatus(LArSDStatus_);
@@ -85,7 +82,15 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
         // set sodium rod status
         detector_->InitializeSodiumSourceRun(SodiumSourceRun, SodiumSourceLocation / I3Units::cm * CLHEP::cm);
         // Force reinitializatiion
-        runManager_.ReinitializeGeometry(true);
+        
+        // add random seed for geant4
+        G4Random::setTheSeed(RandomSeed);
+
+        if (runManager_ == nullptr){
+            runManager_ = std::make_shared<G4CCMRunManager>(); 
+        }
+
+        runManager_->ReinitializeGeometry(true);
     }
 
 }
@@ -97,7 +102,7 @@ void G4Interface::InitializeRun()
     }
 
     if(!runInitialized_) {
-        runManager_.InitializeRun();
+        runManager_->InitializeRun();
         runInitialized_ = true;
     }
 }
@@ -300,7 +305,7 @@ void G4Interface::InjectParticle(const I3Particle& particle)
               position.z() / CLHEP::m,
               gun.GetParticleEnergy() / CLHEP::MeV);
 
-    runManager_.InjectParticle(&gun);
+    runManager_->InjectParticle(&gun);
 }
 
 
@@ -327,7 +332,7 @@ void G4Interface::TerminateEvent()
 
 void G4Interface::TerminateRun()
 {
-    runManager_.TerminateRun();
+    runManager_->TerminateRun();
     runInitialized_ = false;
 }
 
@@ -340,28 +345,23 @@ void G4Interface::Initialize()
 
     // set number of threads
     //int num_threads = std::thread::hardware_concurrency(); 
-    //std::cout << "setting number of threads = " << num_threads << std::endl; 
     //runManager_.SetNumberOfThreads(num_threads);
 
     // Set verbosity
     int32_t verboseLevel = 0;
     
-    // add random seed for geant4
-    G4long myseed = 345354;
-    G4Random::setTheSeed(myseed);
-
     log_debug("Init geometry ...");
-    runManager_.SetUserInitialization(detector_);
+    runManager_->SetUserInitialization(detector_);
 
     log_debug("Init physics list ...");
 
     // adding physics list
     G4CCMPhysicsList* physics_list = new G4CCMPhysicsList(verboseLevel);
-    runManager_.SetUserInitialization(physics_list);
+    runManager_->SetUserInitialization(physics_list);
     
     // Initialize G4 kernel
     log_debug("Init run manager ...");
-    runManager_.Initialize();
+    runManager_->Initialize();
 
 
     switch (GetIcetrayLogger()->LogLevelForUnit("G4Interface"))
@@ -382,7 +382,7 @@ void G4Interface::Initialize()
       break;
     }
 
-    runManager_.SetVerboseLevel(verboseLevel);
+    runManager_->SetVerboseLevel(verboseLevel);
     G4EventManager::GetEventManager()->SetVerboseLevel(verboseLevel);
     G4EventManager::GetEventManager()->GetStackManager()->SetVerboseLevel(verboseLevel);
     G4EventManager::GetEventManager()->GetTrackingManager()->SetVerboseLevel(verboseLevel);

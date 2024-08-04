@@ -27,16 +27,19 @@
 
 CCM200Response::CCM200Response(const I3Context& context) :
     CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SodiumSourceRun_(false), SodiumSourceLocation_(0.0 * I3Units::cm),
-    SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond), UVAbsStatus_(true), TimeCut_(true), CerenkovControl_(false){
+    SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond), Rayleigh128_(95.0 * I3Units::cm), UVAbsStatus_(true),
+    TimeCut_(true), CerenkovControl_(false), RandomSeed_(0){
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
     AddParameter("SodiumSourceRun", "true if we want to simulate the sodium source rod + pellet", SodiumSourceRun_);
     AddParameter("SodiumSourceLocation", "z location of the end of the sodium source rod", SodiumSourceLocation_);
     AddParameter("SingletTimeConstant", "LAr singlet tau", SingletTau_);
     AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
+    AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
     AddParameter("UVAbsLenStatus", "turn uv abs on/off", UVAbsStatus_);
     AddParameter("TimeCut", "only track events up to 200nsec", TimeCut_);
     AddParameter("CerenkovControl", "turn cerenkov light on/off", CerenkovControl_);
+    AddParameter("RandomSeed", "seed for geant4 random generator", RandomSeed_);
 }
 
 void CCM200Response::Configure() {
@@ -46,31 +49,33 @@ void CCM200Response::Configure() {
     GetParameter("SodiumSourceLocation", SodiumSourceLocation_);
     GetParameter("SingletTimeConstant", SingletTau_);
     GetParameter("TripletTimeConstant", TripletTau_);
+    GetParameter("Rayleigh128Length", Rayleigh128_);
     GetParameter("UVAbsLenStatus", UVAbsStatus_);
     GetParameter("TimeCut", TimeCut_);
     GetParameter("CerenkovControl", CerenkovControl_);
+    GetParameter("RandomSeed", RandomSeed_);
 }
 
 CCM200Response::~CCM200Response() {
-    if (G4Interface::GetInstance()) {
-        delete g4Interface_;
-    }
+    //if (G4Interface::GetInstance()) {
+    //    delete g4Interface_;
+    //}
 }
 
 void CCM200Response::Initialize() {
 
-    g4Interface_ = G4Interface::GetInstance();
-    if (!g4Interface_) {
-        g4Interface_ = new G4Interface(visMacroFile_);
+    if (g4Interface_ == nullptr){
+        g4Interface_ = G4Interface::GetInstance();
     }
-
+    
     if (!PMTSDStatus_ and !LArSDStatus_){
         log_warn("Oops! Both sensitive detectors are turned off!");
     }
 
     // let's let's construct the detector
-    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SodiumSourceRun_, SodiumSourceLocation_, SingletTau_, TripletTau_, UVAbsStatus_,
-                                  TimeCut_, CerenkovControl_);
+    std::cout << "in ccm200response, Rayleigh128_ = " << Rayleigh128_ << std::endl;
+    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SodiumSourceRun_, SodiumSourceLocation_, SingletTau_, TripletTau_, Rayleigh128_,
+                                  UVAbsStatus_, TimeCut_, CerenkovControl_, RandomSeed_);
     g4Interface_->InitializeRun();
 
 }

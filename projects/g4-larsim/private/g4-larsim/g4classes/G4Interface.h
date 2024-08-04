@@ -27,16 +27,22 @@ class G4CCMDetectorConstruction;
  */
 
 class G4Interface {
-    public:
+    private:
         G4Interface(const std::string& visMacro="");
+    public:
         ~G4Interface();
 
         //  Static method which returns the singleton pointer to this class
-        static G4Interface* GetInstance() {return g4Interface_;}
+        static std::shared_ptr<G4Interface> GetInstance() {
+            if(g4Interface_ == nullptr) {
+                g4Interface_ = std::shared_ptr<G4Interface>(new G4Interface());
+            }
+            return g4Interface_;
+        };
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, bool UVAbsStatus,
-                             bool TimeCut, bool CerenkovControl);
+        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, double Rayleigh128,
+                             bool UVAbsStatus, bool TimeCut, bool CerenkovControl, long RandomSeed);
         /// Initialize event. Most Geant4 global things are initialized the first time this is called.
         void InitializeRun();
         /// To be called after simulating each IceTray event.
@@ -54,9 +60,9 @@ class G4Interface {
     private:
         void Initialize();
 
-        static G4Interface* g4Interface_;
+        static std::shared_ptr<G4Interface> g4Interface_;
 
-        G4CCMRunManager runManager_;
+        std::shared_ptr<G4CCMRunManager> runManager_ = nullptr;
 
         #ifdef G4VIS_USE
         G4VisManager* visManager_;

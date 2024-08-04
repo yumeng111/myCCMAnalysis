@@ -39,11 +39,13 @@ private:
     double SodiumSourceLocation_; // location of end of source rod 
     double SingletTau_; // set LAr singlet time constant
     double TripletTau_; // set LAr triplet time constant
+    double Rayleigh128_; // set rayl scattering length for 128nm light 
     bool UVAbsStatus_; // set uv abs on/off 
     bool TimeCut_; // true ends all events after 200 nsec
     bool CerenkovControl_; // true turns off cerenkov light
+    long RandomSeed_; // random seed for geant4
 
-    G4Interface* g4Interface_;
+    std::shared_ptr<G4Interface> g4Interface_ = nullptr; 
         
     SET_LOGGER("CCM200Response");
 

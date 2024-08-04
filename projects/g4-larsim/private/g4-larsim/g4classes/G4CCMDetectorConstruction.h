@@ -39,7 +39,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
   public:
 
     // constructor and destructor
-    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4bool UVAbsStatus);
+    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4bool UVAbsStatus, G4double Rayleigh128);
     ~G4CCMDetectorConstruction() override;
 
     // build the detector
@@ -140,6 +140,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
 
     G4double SingletTau_ = 8.2 * ns;
     G4double TripletTau_ = 743.0 * ns;
+    G4double Rayleigh128_ = 95.0 * cm;
     G4bool UVAbsStatus_ = true;
 
     G4bool TimeCut_ = true;

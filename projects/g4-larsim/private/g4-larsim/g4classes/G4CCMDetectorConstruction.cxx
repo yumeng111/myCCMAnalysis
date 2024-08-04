@@ -35,10 +35,11 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4bool UVAbsStatus) {
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4bool UVAbsStatus, G4double Rayleigh128) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsStatus_ = UVAbsStatus;
+    Rayleigh128_ = Rayleigh128;
     SetDefaults();
     DefineMaterials();
     fDetectorMessenger = new G4CCMDetectorMessenger(this);
@@ -199,7 +200,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // let's do index of refraction and rayleigh now
     G4double rindex = 1.358;//LAr rindex @ 128
     G4double scaler = 1.0;//scaling slope of rindex
-    G4double ray128 = 94.096;//LAr rayleigh length @128
     G4double scalerray = 1.73;//scaling slope of rayleigh
     std::vector<G4double> lar_Energy_rin = { 1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV , 4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV ,
                                              8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 10.33206*eV , 11.27134*eV , 12.39847*eV }; //energies for refractive index and Rayleigh scattering lengths
@@ -210,12 +210,13 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     for (int i = 0; i < 9; ++i) {
         scale[i] = std::pow(scale[i],scaler)*set+1.24;
     }
-    G4double rayleigh = ray128*cm;
     std::vector<G4double> lar_RSL = { 3244.9341, 1712.2246, 798.328,   309.35745, 87.855032, 14.852719, 8.9947353, 4.7653069,
                                       2.0378371, 1.445036,  1,         0.6279916, 0.3976383, 0.1135036, 0.035983 };
     for (int i = 0; i < 15; ++i) {
-        lar_RSL[i] = std::pow(lar_RSL[i],scalerray)*rayleigh;
+        lar_RSL[i] = std::pow(lar_RSL[i],scalerray) * Rayleigh128_;
     }
+
+    std::cout << "using " << Rayleigh128_ / cm<< " for Rayleigh scattering length at 128nm" << std::endl;
 
     const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
     std::vector<G4double> lar_RIND  = { 1.22 ,     1.222 ,    1.225 ,    1.23 , 1.24 ,     scale[0] , scale[1] , scale[2] , scale[3] ,
@@ -233,8 +234,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 
                                           50.0*cm, 50.0*cm, 50.0*cm};  
 
-        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
-        //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, flat_abs);
+        //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
+        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, flat_abs);
     } 
 
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.

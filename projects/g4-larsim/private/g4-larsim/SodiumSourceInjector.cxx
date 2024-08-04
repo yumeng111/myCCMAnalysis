@@ -66,25 +66,18 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     double pellet_radius = 0.4 * I3Units::cm;
     double pellet_height = 0.3 * I3Units::cm;
 
+    std::cout << "simulating sodium rod at z = " << z_position_ << std::endl;
     // now throw events
-    // note -- using c++ random distributions, but should probably change to use I3GSLRandomService at some point,,.
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> dis_angle(0.0, 2.0*M_PI); // uniform distribution 0 - 2pi
-    std::uniform_real_distribution<double> dis_z(z_position_ + inset, z_position_ + inset + pellet_height); // uniform distribution across z position of sodium pellet 
-    std::uniform_real_distribution<double> dis_radius_squared(0.0, pellet_radius * pellet_radius);
-
     for (size_t p = 0; p < nevents_; p++){
         // let's create and fill our I3Particle
         I3Particle primary(I3Particle::Na22Nucleus);
 
-        double theta_pos = dis_angle(gen);
-        double r = std::sqrt(dis_radius_squared(gen));
+        double theta_pos = randomService_->Uniform(0.0, 2.0*M_PI);
+        double r = std::sqrt(randomService_->Uniform(0.0, pellet_radius * pellet_radius));
         double x = r * std::cos(theta_pos);
         double y = r * std::sin(theta_pos);
-        double z = dis_z(gen);
+        double z = randomService_->Uniform(z_position_ + inset, z_position_ + inset + pellet_height);
 
-        //std::cout << "event location = " << x << ", " << y << ", " << z << std::endl;
         primary.SetPos(x, y, z);
         primary.SetEnergy(0.0 * I3Units::MeV); 
         primary.SetDir(0.0, 0.0, 0.0); // doesnt really matter
