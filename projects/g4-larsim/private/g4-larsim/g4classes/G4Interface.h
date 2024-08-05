@@ -39,6 +39,9 @@ class G4Interface {
             }
             return g4Interface_;
         };
+        static void DestroyInstance() {
+            g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
+        };
 
         /// Add the detector to the geometry. Should not be called after initialized.
         void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, double Rayleigh128,

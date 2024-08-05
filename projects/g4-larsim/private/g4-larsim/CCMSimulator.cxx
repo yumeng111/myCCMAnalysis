@@ -164,7 +164,9 @@ void CCMSimulator::Finish(){
         
         PushFrame(tempframe);
     }
-    
+   
+   // destruct g4 interface
+   response_->DestroyInterface(); 
 }
 
 

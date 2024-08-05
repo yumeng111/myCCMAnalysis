@@ -58,7 +58,7 @@
 G4CCMPhysicsList::G4CCMPhysicsList(G4int ver):  G4VModularPhysicsList()
 {
     defaultCutValue = 0.1*CLHEP::mm;
-    SetVerboseLevel(ver);
+    SetVerboseLevel(0);
 
 	// EM physics
 	emPhysicsList = new G4EmStandardPhysics_option4(ver);

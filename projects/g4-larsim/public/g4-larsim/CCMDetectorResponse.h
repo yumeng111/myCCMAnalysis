@@ -37,6 +37,7 @@ class CCMDetectorResponse : public I3ServiceBase {
 
         // terminate run
         virtual void TerminateRun() = 0;
+        virtual void DestroyInterface() = 0;
 
         // get SD status
         virtual bool GetPMTSDStatus() = 0;

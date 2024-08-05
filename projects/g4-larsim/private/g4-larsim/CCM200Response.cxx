@@ -103,6 +103,11 @@ void CCM200Response::TerminateRun() {
     g4Interface_->TerminateRun(); 
 }
 
+void CCM200Response::DestroyInterface() {
+
+    g4Interface_->DestroyInstance(); 
+}
+
 typedef I3SingleServiceFactory<CCM200Response,CCMDetectorResponse> CCM200ResponseFactory;
 
 I3_SERVICE_FACTORY(CCM200ResponseFactory);

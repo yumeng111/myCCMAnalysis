@@ -60,6 +60,7 @@ public:
     virtual void EndEvent(I3MCTreePtr & LArEnergyDep, boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap,
                           PhotonSummarySeriesPtr & photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> & photon_summary_series_map) override;
     virtual void TerminateRun() override;
+    virtual void DestroyInterface() override;
     virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }
     virtual bool GetLArSDStatus() override { return LArSDStatus_; }
 
