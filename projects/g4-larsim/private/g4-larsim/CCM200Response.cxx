@@ -73,7 +73,6 @@ void CCM200Response::Initialize() {
     }
 
     // let's let's construct the detector
-    std::cout << "in ccm200response, Rayleigh128_ = " << Rayleigh128_ << std::endl;
     g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SodiumSourceRun_, SodiumSourceLocation_, SingletTau_, TripletTau_, Rayleigh128_,
                                   UVAbsStatus_, TimeCut_, CerenkovControl_, RandomSeed_);
     g4Interface_->InitializeRun();

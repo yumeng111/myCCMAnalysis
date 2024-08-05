@@ -66,7 +66,6 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     double pellet_radius = 0.4 * I3Units::cm;
     double pellet_height = 0.3 * I3Units::cm;
 
-    std::cout << "simulating sodium rod at z = " << z_position_ << std::endl;
     // now throw events
     for (size_t p = 0; p < nevents_; p++){
         // let's create and fill our I3Particle
@@ -81,7 +80,7 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
         primary.SetPos(x, y, z);
         primary.SetEnergy(0.0 * I3Units::MeV); 
         primary.SetDir(0.0, 0.0, 0.0); // doesnt really matter
-        
+ 
         I3MCTreeUtils::AddPrimary(*mcTree, primary);
     }
 

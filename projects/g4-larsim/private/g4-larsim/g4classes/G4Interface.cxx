@@ -71,6 +71,13 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
     PMTSDStatus_ = PMTSDStatus;
     LArSDStatus_ = LArSDStatus;
 
+    // add random seed for geant4
+    G4Random::setTheSeed(RandomSeed);
+
+    if (runManager_ == nullptr){
+        runManager_ = std::make_shared<G4CCMRunManager>(); 
+    }
+
     if(!detector_) {
         detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns, UVAbsStatus, Rayleigh128 / I3Units::cm * CLHEP::cm);
         // set SD status
@@ -82,14 +89,6 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
         // set sodium rod status
         detector_->InitializeSodiumSourceRun(SodiumSourceRun, SodiumSourceLocation / I3Units::cm * CLHEP::cm);
         // Force reinitializatiion
-        
-        // add random seed for geant4
-        G4Random::setTheSeed(RandomSeed);
-
-        if (runManager_ == nullptr){
-            runManager_ = std::make_shared<G4CCMRunManager>(); 
-        }
-
         runManager_->ReinitializeGeometry(true);
     }
 
