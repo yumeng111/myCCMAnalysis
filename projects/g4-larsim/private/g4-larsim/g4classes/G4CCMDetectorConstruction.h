@@ -89,26 +89,26 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4VPhysicalVolume* fExperimentalHall_phys = nullptr;
 
     // Materials & Elements
-    G4Element* fH;
-    G4Element* fC;
-    G4Element* fN;
-    G4Element* fO;
-    G4Element* elFe;
-    G4Element* elCr;
-    G4Element* elNi;
-    G4Element* elC;
-    G4Element* elMn;
-    G4Element* elF;
-    G4Material* fGlass;
-    G4Material* fPlastic;
-    G4Material* fBlackPlastic;
-    G4Material* fLAr;
-    G4Material* fAlum;
-    G4Material* fSteel;
-    G4Material* fVacuum;
-    G4Material* fPTFE;
-    G4Material* fTPBFoil;
-    G4Material* fTPBPMT;
+    G4Element* fH = nullptr;
+    G4Element* fC = nullptr;
+    G4Element* fN = nullptr;
+    G4Element* fO = nullptr;
+    G4Element* elFe = nullptr;
+    G4Element* elCr = nullptr;
+    G4Element* elNi = nullptr;
+    G4Element* elC = nullptr;
+    G4Element* elMn = nullptr;
+    G4Element* elF = nullptr;
+    G4Material* fGlass = nullptr;
+    G4Material* fPlastic = nullptr;
+    G4Material* fBlackPlastic = nullptr;
+    G4Material* fLAr = nullptr;
+    G4Material* fAlum = nullptr;
+    G4Material* fSteel = nullptr;
+    G4Material* fVacuum = nullptr;
+    G4Material* fPTFE = nullptr;
+    G4Material* fTPBFoil = nullptr;
+    G4Material* fTPBPMT = nullptr;
     
     // Geometry
     G4bool fMainVolumeOn = true;

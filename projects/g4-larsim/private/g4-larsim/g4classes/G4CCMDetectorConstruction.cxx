@@ -49,36 +49,36 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4doub
 
 G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
 {
-  delete fMainVolume;
-  delete fDetectorMessenger;
-  delete fH;
-  delete fC;
-  delete fN;
-  delete fO;
-  delete elFe;
-  delete elCr;
-  delete elNi;
-  delete elC;
-  delete elMn;
-  delete elF;
-  delete fGlass;
-  delete fPlastic;
-  delete fBlackPlastic;
-  delete fLAr;
-  delete fAlum;
-  delete fSteel;
-  delete fVacuum;
-  delete fPTFE;
-  delete fTPBFoil;
-  delete fGlass_mt;
-  delete fPlastic_mt;
-  delete fBlackPlastic_mt;
-  delete fLAr_mt;
-  delete fAlum_mt;
-  delete fSteel_mt;
-  delete fVacuum_mt;
-  delete fPTFE_mt;
-  delete fTPBFoil_mt;
+  if(fMainVolume != nullptr) delete fMainVolume;
+  if(fDetectorMessenger != nullptr) delete fDetectorMessenger;
+  if(fH != nullptr) delete fH;
+  if(fC != nullptr) delete fC;
+  if(fN != nullptr) delete fN;
+  if(fO != nullptr) delete fO;
+  if(elFe != nullptr) delete elFe;
+  if(elCr != nullptr) delete elCr;
+  if(elNi != nullptr) delete elNi;
+  if(elC != nullptr) delete elC;
+  if(elMn != nullptr) delete elMn;
+  if(elF != nullptr) delete elF;
+  if(fGlass != nullptr) delete fGlass;
+  if(fPlastic != nullptr) delete fPlastic;
+  if(fBlackPlastic != nullptr) delete fBlackPlastic;
+  if(fLAr != nullptr) delete fLAr;
+  if(fAlum != nullptr) delete fAlum;
+  if(fSteel != nullptr) delete fSteel;
+  if(fVacuum != nullptr) delete fVacuum;
+  if(fPTFE != nullptr) delete fPTFE;
+  if(fTPBFoil != nullptr) delete fTPBFoil;
+  if(fGlass_mt != nullptr) delete fGlass_mt;
+  if(fPlastic_mt != nullptr) delete fPlastic_mt;
+  if(fBlackPlastic_mt != nullptr) delete fBlackPlastic_mt;
+  if(fLAr_mt != nullptr) delete fLAr_mt;
+  if(fAlum_mt != nullptr) delete fAlum_mt;
+  if(fSteel_mt != nullptr) delete fSteel_mt;
+  if(fVacuum_mt != nullptr) delete fVacuum_mt;
+  if(fPTFE_mt != nullptr) delete fPTFE_mt;
+  if(fTPBFoil_mt != nullptr) delete fTPBFoil_mt;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
