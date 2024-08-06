@@ -83,6 +83,9 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         // map from volume names to CCMPMTKeys
         std::map<std::string, CCMPMTKey> volumeToKey;
 
+        // map from pmt number to pmt number
+        std::map<G4int, size_t> pmtNumberToIndex;
+
         // return CCMMCPEMap
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
 

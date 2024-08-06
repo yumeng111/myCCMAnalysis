@@ -103,8 +103,8 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
     CCMPMTKey key;
-    std::map<std::string, CCMPMTKey>::iterator it = volumeToKey.find(physVolName);
-    if (it == volumeToKey.end()) {
+    std::map<std::string, CCMPMTKey>::iterator vol_it = volumeToKey.find(physVolName);
+    if (vol_it == volumeToKey.end()) {
         std::stringstream string_stream(physVolName);
         std::string segment;
         std::getline(string_stream, segment, '_');
@@ -116,7 +116,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         key = CCMPMTKey(row, pmt_number);
         volumeToKey.insert(std::pair<std::string, CCMPMTKey>(physVolName, key));
     } else {
-        key = it->second;
+        key = vol_it->second;
     }
     // so now we need to save the info to a CCMMCPE
     // then we will save associated with correct PMT
@@ -158,21 +158,16 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, globalTime, localTime, photonWavelength, 0.0, 0.0, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
 
     // Find the correct hit collection
-    size_t n = fPMTHitCollection->entries();
+    std::map<G4int, size_t>::iterator pmt_it = pmtNumberToIndex.find(pmtNumber);
     G4CCMPMTHit* hit = nullptr;
-    for(size_t i = 0; i < n; ++i) {
-        if((*fPMTHitCollection)[i]->GetPMTNumber() == pmtNumber) {
-            hit = (*fPMTHitCollection)[i];
-            break;
-        }
-    }
-
-    if(hit == nullptr) { // this pmt wasn't previously hit in this event
+    if (pmt_it == pmtNumberToIndex.end()) {
         hit = new G4CCMPMTHit();  // so create new hit
         hit->SetPMTNumber(pmtNumber);
         hit->SetPMTPhysVol(physVol);
         fPMTHitCollection->insert(hit);
         hit->SetPMTPos((*fPMTPositionsX)[pmtNumber], (*fPMTPositionsY)[pmtNumber], (*fPMTPositionsZ)[pmtNumber]);
+    } else { // this pmt wasn't previously hit in this event
+        hit = (*fPMTHitCollection)[pmt_it->second];
     }
 
     hit->IncPhotonCount();  // increment hit for the selected pmt
