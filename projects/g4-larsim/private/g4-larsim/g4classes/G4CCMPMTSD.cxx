@@ -102,15 +102,22 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber 
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
-    std::stringstream string_stream(physVolName);
-    std::string segment;
-    std::getline(string_stream, segment, '_');
-    std::getline(string_stream, segment, '_');
-    int row = std::stoi(segment);
-    std::getline(string_stream, segment);
-    int pmt_number = std::stoi(segment);
+    CCMPMTKey key;
+    std::map<std::string, CCMPMTKey>::iterator it = volumeToKey.find(physVolName);
+    if (it == volumeToKey.end()) {
+        std::stringstream string_stream(physVolName);
+        std::string segment;
+        std::getline(string_stream, segment, '_');
+        std::getline(string_stream, segment, '_');
+        int row = std::stoi(segment);
+        std::getline(string_stream, segment);
+        int pmt_number = std::stoi(segment);
 
-    CCMPMTKey key = CCMPMTKey(row, pmt_number);
+        key = CCMPMTKey(row, pmt_number);
+        volumeToKey.insert(std::pair<std::string, CCMPMTKey>(physVolName, key));
+    } else {
+        key = it->second;
+    }
     // so now we need to save the info to a CCMMCPE
     // then we will save associated with correct PMT
     // we will be saving time, wavelength, positions, direction, and source

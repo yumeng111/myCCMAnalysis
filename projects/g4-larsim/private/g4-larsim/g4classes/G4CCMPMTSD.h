@@ -80,6 +80,9 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         // Store a pmt position
         void SetPmtPositions(const std::vector<G4ThreeVector>& positions);
 
+        // map from volume names to CCMPMTKeys
+        std::map<std::string, CCMPMTKey> volumeToKey;
+
         // return CCMMCPEMap
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
 
