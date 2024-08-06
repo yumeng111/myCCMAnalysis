@@ -166,6 +166,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         hit->SetPMTPhysVol(physVol);
         fPMTHitCollection->insert(hit);
         hit->SetPMTPos((*fPMTPositionsX)[pmtNumber], (*fPMTPositionsY)[pmtNumber], (*fPMTPositionsZ)[pmtNumber]);
+        pmtNumberToIndex.insert(std::pair<G4int, size_t>(pmtNumber, fPMTHitCollection->entries() - 1));
     } else { // this pmt wasn't previously hit in this event
         hit = (*fPMTHitCollection)[pmt_it->second];
     }
