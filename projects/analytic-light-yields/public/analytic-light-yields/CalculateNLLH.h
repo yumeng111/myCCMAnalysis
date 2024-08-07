@@ -346,7 +346,7 @@ public:
 
     T ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T normalization, T light_time_offset,
             T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, T pmt_efficiency,
-            std::vector<T> uv_absorption, T photons_per_mev, T z_offset, size_t n_sodium_events,
+            std::vector<T> uv_absorption, T rayl, T photons_per_mev, T z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields);
 
     //AD GetNLLH(CCMPMTKey key, AnalyticLightYieldGenerator const & params, const double & late_pulse_mu, const double & late_pulse_sigma, const double & late_pulse_scale, double pmt_efficiency);
@@ -456,7 +456,7 @@ double CalculateNLLH<T>::InterpolationDouble(double this_time, std::vector<doubl
 template<typename T>
 T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB,
             T normalization, T light_time_offset, T const_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale, 
-            T pmt_efficiency, std::vector<T> uv_absorption, T photons_per_mev, T z_offset, size_t n_sodium_events,
+            T pmt_efficiency, std::vector<T> uv_absorption, T rayl, T photons_per_mev, T z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields) {
 
     //std::cout << "Rs = " << Rs << ", Rt = " << Rt << ", tau_s = " << tau_s << ", tau_rec = " << tau_rec << ", tau_TPB = " << tau_TPB << 
@@ -474,7 +474,7 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
     // let's grab our expectation
     std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>, boost::shared_ptr<std::vector<T>>> pred = gen_expectation->GetExpectation(key, start_time, max_time,
                                                             peak_time, Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, light_time_offset, late_pulse_mu, late_pulse_sigma, late_pulse_scale,
-                                                            uv_absorption, photons_per_mev, z_offset, n_sodium_events, light_profile_type, UseG4Yields);
+                                                            uv_absorption, rayl, photons_per_mev, z_offset, n_sodium_events, light_profile_type, UseG4Yields);
     // unpack into yields, yields^2, and times
     boost::shared_ptr<std::vector<T>> pred_yields;
     boost::shared_ptr<std::vector<T>> pred_yields_squared;

@@ -27,13 +27,16 @@ class ZOffsetcppMinimizer {
 public:
     ZOffsetcppMinimizer();
     
+    typedef double Underlying;
+    typedef phys_tools::autodiff::FD<3 + 1 + 2 + 1 + 4 + 200, Underlying> AD;
+    
     // some vectors of maps between CCMPMTKey and vector of doubles to save best fits to
     std::vector<I3MapPMTKeyVectorDouble> data;
     std::vector<I3MapPMTKeyVectorDouble> pred;
     std::vector<I3MapPMTKeyVectorDouble> times;
 
     std::vector<double> GrabNormSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
-                                     std::vector<double> uv_abs_lengths, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
+                                     std::vector<double> uv_abs_lengths, double rayl, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
                                      std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::string> data_file_names); 
 
     std::vector<double> FitParameters(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
