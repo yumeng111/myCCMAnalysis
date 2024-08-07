@@ -342,7 +342,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     //    << ", track id = " << track_id << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl; 
 
     // now save to our MCTree!
-    if (parent_id == 0){
+    if (parent_id == 0) {
         //std::cout << "energy deposition name = " << processName << ", parent id = " << parent_id << ", track id = " << track_id
         //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // let's create and fill our I3Particle
