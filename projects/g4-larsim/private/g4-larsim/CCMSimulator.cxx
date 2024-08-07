@@ -134,7 +134,7 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         I3Particle const & particle = *tree_iter;
 
         // Tell the response service of a new event
-        response_->BeginEvent(particle);
+        response_->BeginEvent(particle, edep_tree);
 
         // Tell the response service that the event has ended
         // this will also populate the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
@@ -143,16 +143,15 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
 
         // The following are uninitialized because they get passed by reference to the response service
         // and are overwritten there
-        I3MCTreePtr LArEnergyDep;
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap;
         PhotonSummarySeriesPtr photon_summary_series;
         boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map;
 
-        response_->EndEvent(LArEnergyDep, CCMMCPEMap, photon_summary_series, photon_summary_series_map);
+        response_->EndEvent(CCMMCPEMap, photon_summary_series, photon_summary_series_map);
 
         // Order of these matters
         // Recursively add energy depositions from LArEnergyDep to tree
-        AppendSubTree(edep_tree, particle.GetID(), LArEnergyDep);
+        //AppendSubTree(edep_tree, particle.GetID(), LArEnergyDep);
         // Update photon summary map with new parent/track ids and offset indices
         AppendPhotonSummaryMap(AllPhotonSummaryMap, photon_summary_series_map, max_id, AllPhotonSummarySeries->size());
         // Append photon summary series

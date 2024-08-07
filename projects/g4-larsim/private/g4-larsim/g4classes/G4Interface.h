@@ -52,11 +52,10 @@ class G4Interface {
         void TerminateEvent();
         void TerminateRun();
         /// Simulate a single particle (InitializeRun must be called first)
-        void InjectParticle(const I3Particle& particle);
+        void InjectParticle(const I3Particle& particle, I3MCTreePtr edep_tree);
         
         // return CCMMCPEMap and LAr energy deposition
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap ; }
-        I3MCTreePtr GetLArEnergyDep() { return LArEnergyDep ; }
         PhotonSummarySeriesPtr GetPhotonSummarySeries() { return photon_summary_series; }
         boost::shared_ptr<I3Map<int, size_t>> GetPhotonSummaryMap() { return photon_summary_series_map; }
     
@@ -77,7 +76,6 @@ class G4Interface {
         std::string visMacro_;
     
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
         boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map; 
         PhotonSummarySeriesPtr photon_summary_series = boost::make_shared<PhotonSummarySeries>();
         

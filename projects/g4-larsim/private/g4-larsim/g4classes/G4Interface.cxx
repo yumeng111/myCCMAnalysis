@@ -107,7 +107,7 @@ void G4Interface::InitializeRun()
 }
 
 
-void G4Interface::InjectParticle(const I3Particle& particle)
+void G4Interface::InjectParticle(const I3Particle& particle, I3MCTreePtr edep_tree)
 {
     if(!runInitialized_) {
         log_fatal("No run initialized. Cannot inject particle!");
@@ -115,14 +115,14 @@ void G4Interface::InjectParticle(const I3Particle& particle)
     }
     
     // if we are tracking LAr energy deposition, let's pass on the primary particle information    
-    if (LArSDStatus_){
+    if (LArSDStatus_) {
         G4SDManager* SDman = G4SDManager::GetSDMpointer();
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
         scintSD->ClearResults(); 
-        scintSD->SetPrimaryParticle(particle);
+        scintSD->SetPrimaryParticle(particle, edep_tree);
     }
-    if (PMTSDStatus_){
+    if (PMTSDStatus_) {
         G4SDManager* SDman = G4SDManager::GetSDMpointer();
         G4String sdNamePMT = "/LAr/pmtSD";
         G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
@@ -322,11 +322,9 @@ void G4Interface::TerminateEvent()
     if (LArSDStatus_){
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-        LArEnergyDep = scintSD->GetUpdatedMCTree();
         photon_summary_series = scintSD->GetPhotonSummarySeries();
         photon_summary_series_map = scintSD->GetPhotonSummaryMap();
     }
-
 }
 
 void G4Interface::TerminateRun()

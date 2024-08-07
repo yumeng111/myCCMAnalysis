@@ -362,8 +362,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         } else {
             std::cout << "oops! no conversion for " << processName << std::endl;
         }
-    }
-    else if (parent_id > 0) {
+    } else if (parent_id > 0) {
         //std::cout << "energy deposition name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << track_id
         //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // ok so we've created a new particle

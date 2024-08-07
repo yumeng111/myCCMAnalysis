@@ -58,7 +58,6 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
         
         // return updated MCTree
-        I3MCTreePtr GetUpdatedMCTree(){ return mcTree; }
         PhotonSummarySeriesPtr GetPhotonSummarySeries(){ return photon_summary; }
         boost::shared_ptr<I3Map<int, size_t>> GetPhotonSummaryMap() { return optical_photon_map; }
 
@@ -71,21 +70,22 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool GetCerenkovControlStatus() { return CerenkovControl_; }
         void SetCerenkovControlStatus(bool CerenkovControl) { CerenkovControl_ = CerenkovControl; }
 
-        void SetPrimaryParticle(I3Particle primary) {
+        void SetPrimaryParticle(I3Particle primary, I3MCTreePtr tree) {
+            mcTree = tree;
             // now let's set the primary particle
             ClearResults();
-
-            primaryParticleType_ = primary.GetType();
-            DaughterParticleMap[1] = primary.GetID();
-            I3MCTreeUtils::AddPrimary(*mcTree, primary);
-        } 
+            primary_ = primary;
+            DaughterParticleMap[1] = primary_.GetID();
+            if((not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) and tree != nullptr) {
+                I3MCTreeUtils::AddPrimary(*mcTree, primary_);
+            }
+        }
         
         void ClearResults() {
-            mcTree = boost::make_shared<I3MCTree>();
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
             optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
-        } 
+        }
 
         void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance, 
                                      double calculated_uv_distance, double calculated_vis_distance,
@@ -108,11 +108,9 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool TimeCut_; // true kills tracks after 200 nsec
         bool CerenkovControl_; // true kills cerenkov light
 
-        // let's also grab the primary particle information
-        I3Particle::ParticleType primaryParticleType_;
-
         // our mc tree we will save energy depositions to
-        I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
+        I3MCTreePtr mcTree = nullptr;
+        I3Particle primary_;
 
         // and photon summary that keeps track of optical photons
         // note this is in two parts -- map between track id and idx
