@@ -124,9 +124,6 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
 
     I3MCTreePtr edep_tree = boost::make_shared<I3MCTree>(*injection_tree);
     CCMMCPESeriesMapPtr mcpeseries_map = boost::make_shared<CCMMCPESeriesMap>();
-    PhotonSummarySeriesPtr AllPhotonSummarySeries;
-    boost::shared_ptr<I3Map<int, size_t>> AllPhotonSummaryMap;
-    size_t max_id = 0;
 
     // Iterate over all particles in the MCTree
     typename I3MCTree::fast_const_iterator tree_iter(*injection_tree), tree_end=injection_tree->cend_fast();
@@ -140,18 +137,7 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
         // this will also populate the map between CCMPMTKey and std::vector<CCMMCPE> to save to frame
         // also grab hits in fiducial argon for voxelization
         // note -- if SD not enabled, these will just be empty objects
-
         response_->EndEvent();
-
-        // Order of these matters
-        // Recursively add energy depositions from LArEnergyDep to tree
-        //AppendSubTree(edep_tree, particle.GetID(), LArEnergyDep);
-        // Update photon summary map with new parent/track ids and offset indices
-        //AppendPhotonSummaryMap(AllPhotonSummaryMap, photon_summary_series_map, max_id, AllPhotonSummarySeries->size());
-        // Append photon summary series
-        //AppendPhotonSummarySeries(AllPhotonSummarySeries, particle, photon_summary_series);
-        // Append MCPE map, updating time, parent_id, and track_id
-        //AppendMCPEMap(mcpeseries_map, particle, CCMMCPEMap, max_id);
     }
 
     // sort mcpeseries_map by time
@@ -161,79 +147,8 @@ void CCMSimulator::DAQ(I3FramePtr frame) {
 
     frame->Put(PMTHitSeriesName_, mcpeseries_map);
     frame->Put(LArMCTreeName_, edep_tree);
-    frame->Put(PhotonSummarySeriesName_, AllPhotonSummarySeries);
-    frame->Put("PhotonSummaryMap", AllPhotonSummaryMap);
 
     PushFrame(frame);
-}
-
-void CCMSimulator::AppendSubTree(I3MCTreePtr tree, I3ParticleID primary_id, I3MCTreeConstPtr subtree) {
-    // Append the subtree to the tree
-    std::vector<const I3Particle*> subtree_primaries = I3MCTreeUtils::GetPrimariesPtr(subtree);
-    std::vector<const I3Particle*> subtree_daughters;
-    for (const I3Particle* primary : subtree_primaries) {
-        I3MCTreeUtils::AppendChild(*tree, primary_id, *primary);
-        std::vector<const I3Particle*> daughters = I3MCTreeUtils::GetDaughtersPtr(subtree, primary->GetID());
-        subtree_daughters.insert(subtree_daughters.end(), daughters.begin(), daughters.end());
-    }
-    subtree_primaries = subtree_daughters;
-    subtree_daughters.clear();
-    while(subtree_primaries.size() > 0) {
-        for (const I3Particle* primary : subtree_primaries) {
-            I3Particle const * parent = I3MCTreeUtils::GetParentPtr(subtree, primary->GetID());
-            I3MCTreeUtils::AppendChild(*tree, parent->GetID(), *primary);
-            std::vector<const I3Particle*> daughters = I3MCTreeUtils::GetDaughtersPtr(subtree, primary->GetID());
-            subtree_daughters.insert(subtree_daughters.end(), daughters.begin(), daughters.end());
-        }
-        subtree_primaries = subtree_daughters;
-        subtree_daughters.clear();
-    }
-}
-
-void CCMSimulator::AppendPhotonSummaryMap(boost::shared_ptr<I3Map<int, size_t>> parent_map, boost::shared_ptr<I3Map<int, size_t>> sub_map, size_t max_id, size_t offset) {
-    for(I3Map<int, size_t>::const_iterator it = sub_map->begin(); it != sub_map->end(); ++it) {
-        parent_map->insert(std::make_pair(it->first + max_id, it->second + offset));
-    }
-}
-
-void CCMSimulator::AppendPhotonSummarySeries(PhotonSummarySeriesPtr parent_series, I3Particle const & parent_particle, PhotonSummarySeriesConstPtr sub_series) {
-    double parent_time = parent_particle.GetTime();
-
-    parent_series->reserve(parent_series->size() + sub_series->size());
-    for(PhotonSummary const & ps : *sub_series) {
-        parent_series->push_back(ps);
-        parent_series->back().g4_time += parent_time;
-    }
-}
-
-void CCMSimulator::AppendMCPEMap(CCMMCPESeriesMapPtr parent_map, I3Particle const & parent_particle, CCMMCPESeriesMapConstPtr sub_map, size_t & max_id) {
-
-    size_t sub_map_max_id = 0;
-    for(CCMMCPESeriesMap::const_iterator it = sub_map->begin(); it != sub_map->end(); ++it) {
-        for(CCMMCPE const & mpe : it->second) {
-            sub_map_max_id = std::max(sub_map_max_id, mpe.parent_id);
-            sub_map_max_id = std::max(sub_map_max_id, mpe.track_id);
-        }
-    }
-
-    double parent_time = parent_particle.GetTime();
-    for (CCMMCPESeriesMap::const_iterator it = sub_map->begin(); it != sub_map->end(); ++it) {
-        CCMMCPESeriesMap::iterator parent_it = parent_map->find(it->first);
-        if (parent_it == parent_map->end()) {
-            parent_map->insert(*it);
-        } else {
-            parent_it->second.reserve(parent_it->second.size() + it->second.size());
-            for(CCMMCPE const & mpe : it->second) {
-                parent_it->second.push_back(mpe);
-                CCMMCPE & p = parent_it->second.back();
-                p.g4_time += parent_time;
-                p.parent_id += max_id;
-                p.track_id += max_id;
-            }
-        }
-    }
-
-    max_id += sub_map_max_id + 1;
 }
 
 void CCMSimulator::Finish() {
@@ -242,6 +157,4 @@ void CCMSimulator::Finish() {
     // destruct g4 interface
     response_->DestroyInterface();
 }
-
-
 

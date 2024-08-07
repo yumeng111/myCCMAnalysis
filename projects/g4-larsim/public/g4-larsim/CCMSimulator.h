@@ -43,11 +43,6 @@ class CCMSimulator : public I3Module  {
         CCMParticleInjectorPtr injector_;
         CCMDetectorResponsePtr response_;
 
-        static void AppendSubTree(I3MCTreePtr tree, I3ParticleID primary_id, I3MCTreeConstPtr subtree);
-        static void AppendPhotonSummaryMap(boost::shared_ptr<I3Map<int, size_t>> parent_map, boost::shared_ptr<I3Map<int, size_t>> sub_map, size_t max_id, size_t offset);
-        static void AppendPhotonSummarySeries(PhotonSummarySeriesPtr parent_series, I3Particle const & parent_particle, PhotonSummarySeriesConstPtr sub_series);
-        static void AppendMCPEMap(CCMMCPESeriesMapPtr parent_map, I3Particle const & parent_particle, CCMMCPESeriesMapConstPtr sub_map, size_t & max_id);
-
         bool PMTSDStatus_; // turn PMT SD on/off
         bool LArSDStatus_; // turn fiducial LAr SD on/off
   
