@@ -88,7 +88,7 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g
 void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
                                        double calculated_uv_distance, double calculated_vis_distance,
                                        double g4_time, double calculated_time, std::string creationProcessName,
-                                       std::map<int, size_t>::iterator it, bool new_process){
+                                       std::map<int, size_t>::iterator it, bool new_process) {
     // map contains this photon
     // so we need to grab PhotonSummary and update it -- then update key
     PhotonSummary this_photon_summary = photon_summary->at(it->second);
@@ -181,7 +181,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // let's do a check on the time cut
-    if (TimeCut_){
+    if (TimeCut_) {
         // check time ... doesnt matter what type of particle it is
         G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
         if (time > 200.0){
@@ -276,7 +276,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             } else {
                 // need to add a new photon to our map
                 AddEntryToPhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance, calculated_uv_distance, calculated_vis_distance,
-                                        pre_step_global_time + g4_delta_time_step, pre_step_global_time + calculated_delta_time_step, creationProcessName);
+                                        primary_.GetTime() + pre_step_global_time + g4_delta_time_step, primary_.GetTime() + pre_step_global_time + calculated_delta_time_step, creationProcessName);
             }
         }
         
