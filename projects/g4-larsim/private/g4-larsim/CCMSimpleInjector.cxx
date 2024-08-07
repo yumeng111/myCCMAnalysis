@@ -119,9 +119,13 @@ I3MCTreePtr CCMSimpleInjector::GetMCTree() {
     return mcTree;
 }
 
-//I3FrameObjectPtr CCMSimpleInjector::GetSimulationConfiguration() {
-//    return nullptr;
-//}
+I3FrameObjectPtr CCMSimpleInjector::GetSimulationConfiguration() {
+    I3ParticlePtr primary = boost::make_shared<I3Particle>(particleType_);
+    primary->SetEnergy(energy_);
+    primary->SetPos(location_[0], location_[1], location_[2]);
+    primary->SetDir(direction_[0], direction_[1], direction_[2]);
+    return primary;
+}
 
 typedef I3SingleServiceFactory<CCMSimpleInjector,CCMParticleInjector> CCMSimpleInjectorFactory;
 

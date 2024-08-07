@@ -46,7 +46,7 @@ public:
     virtual void Configure() override;
     virtual void FillMCTree(I3FramePtr frame);
     virtual I3MCTreePtr GetMCTree() override;
-    //virtual I3FrameObjectPtr GetSimulationConfiguration() override;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 };
 
 #endif // CCMSIMPLEINJECTOR_H
