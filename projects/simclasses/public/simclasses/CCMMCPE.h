@@ -66,19 +66,20 @@ struct CCMMCPE {
             && photon_source == rhs.photon_source;
     }
 
+    CCMMCPE(const CCMMCPE&) = default;
 
-  CCMMCPE(size_t parent_id_ = 0,
-          size_t track_id_ = 0,
-          float g4_time_ = 0,
-          float calculated_time_ = 0,
-          float wavelength_ = 0,
-          float g4_distance_uv_ = 0,
-          float g4_distance_visible_ = 0,
-          float calculated_distance_uv_ = 0,
-          float calculated_distance_visible_ = 0,
-          I3Position position_ = I3Position(0.0, 0.0, 0.0),
-          I3Direction direction_ = I3Direction(0.0, 0.0, 0.0),
-          PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
+    CCMMCPE(size_t parent_id_ = 0,
+            size_t track_id_ = 0,
+            float g4_time_ = 0,
+            float calculated_time_ = 0,
+            float wavelength_ = 0,
+            float g4_distance_uv_ = 0,
+            float g4_distance_visible_ = 0,
+            float calculated_distance_uv_ = 0,
+            float calculated_distance_visible_ = 0,
+            I3Position position_ = I3Position(0.0, 0.0, 0.0),
+            I3Direction direction_ = I3Direction(0.0, 0.0, 0.0),
+            PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
         parent_id(parent_id_), track_id(track_id_), g4_time(g4_time_), calculated_time(calculated_time_), wavelength(wavelength_), 
         g4_distance_uv(g4_distance_uv_), g4_distance_visible(g4_distance_visible_),
         calculated_distance_uv(calculated_distance_uv_), calculated_distance_visible(calculated_distance_visible_),
@@ -89,7 +90,7 @@ struct CCMMCPE {
     std::ostream& Print(std::ostream&) const;
 
     private:
-        static const std::unordered_map<CCMMCPE::PhotonSource, std::string> photonSourceToProcessName;
+    static const std::unordered_map<CCMMCPE::PhotonSource, std::string> photonSourceToProcessName;
 
     friend class icecube::serialization::access;
     template<class Archive> void save(Archive& ar, unsigned version) const;

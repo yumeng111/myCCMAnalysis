@@ -29,11 +29,10 @@ class CCMDetectorResponse : public I3ServiceBase {
         virtual void Initialize() = 0;
 
         // begin events
-        virtual void BeginEvent(const I3Particle& primary, I3MCTreePtr tree) = 0;
+        virtual void BeginEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) = 0;
         
         // end events
-        virtual void EndEvent(boost::shared_ptr<CCMMCPESeriesMap> & CCMMCPEMap,
-                              PhotonSummarySeriesPtr & photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> & photon_summary_series_map) = 0;
+        virtual void EndEvent() = 0;
 
         // terminate run
         virtual void TerminateRun() = 0;
