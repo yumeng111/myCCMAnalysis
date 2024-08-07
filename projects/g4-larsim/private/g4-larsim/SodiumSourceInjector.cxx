@@ -80,12 +80,6 @@ void SodiumSourceInjector::Configure() {
         if(randomService_) log_info("+ Random service: %s  (EXTERNAL)",  randomServiceName_.c_str());
         else log_fatal("No random service \"%s\" in context!", randomServiceName_.c_str());
     }
-
-    config_ = boost::make_shared<SodiumInjectorConfig>();
-    config_->z_position_ = z_position_;
-    config_->inset_ = inset_;
-    config_->pellet_radius_ = pellet_radius_;
-    config_->pellet_height_ = pellet_height_;
 }
 
 void SodiumSourceInjector::FillMCTree(I3FramePtr frame) {}
@@ -115,7 +109,12 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
 }
 
 I3FrameObjectPtr SodiumSourceInjector::GetSimulationConfiguration() {
-    return config_;
+    SodiumInjectorConfigPtr config = boost::make_shared<SodiumInjectorConfig>();
+    config->z_position_ = z_position_;
+    config->inset_ = inset_;
+    config->pellet_radius_ = pellet_radius_;
+    config->pellet_height_ = pellet_height_;
+    return config;
 }
 
 typedef I3SingleServiceFactory<SodiumSourceInjector,CCMParticleInjector> SodiumSourceInjectorFactory;

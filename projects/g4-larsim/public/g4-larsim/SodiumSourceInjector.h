@@ -82,8 +82,6 @@ private:
     double pellet_radius_ = 0.4 * I3Units::cm;
     double pellet_height_ = 0.3 * I3Units::cm;
 
-    SodiumInjectorConfigPtr config_;
-
     std::string mcPrimaryName_;
     std::string output_mc_tree_name_;
     std::string randomServiceName_;
