@@ -373,7 +373,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     fTPBFoil = new G4Tubs("TPBFoil", 0*cm, (96.0*cm+basethick), (totalH*cm+basethick), 0*deg, 360*deg);
     fTPBFoil_log = new G4LogicalVolume(fTPBFoil, G4Material::GetMaterial("TPBFoil"), "TPBFoil");
-    fTPBFoil_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fInnerFrame_log, false, 0, true);
+    fTPBFoil_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fReflectorFoil_log, false, 0, true);
 
     // now fiducial LAr!
     fFiducialAr = new G4Tubs("FiducialArgon", 0*cm, 96*cm, totalH*cm, 0*deg, 360*deg);
