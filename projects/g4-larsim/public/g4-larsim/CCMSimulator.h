@@ -26,6 +26,8 @@ class CCMSimulator : public I3Module  {
         void Configure();
         void DetectorStatus(I3FramePtr frame);
         void DAQ(I3FramePtr frame);
+        void Simulation(I3FramePtr frame);
+        void FillSimulationFrame(I3FramePtr frame);
         void Finish();
     private:
   
@@ -35,15 +37,16 @@ class CCMSimulator : public I3Module  {
         std::string PMTHitSeriesName_;
         std::string LArMCTreeName_; 
         std::string PhotonSummarySeriesName_; 
-        I3MCTreePtr mcTree_;
+
+        bool seen_s_frame_ = false;
 
         CCMParticleInjectorPtr injector_;
         CCMDetectorResponsePtr response_;
 
-        std::deque<boost::shared_ptr<CCMMCPESeriesMap>> AllEventsCCMMCPEMap;
-        std::deque<I3MCTreePtr> AllEventsLArEnergyDep;
-        std::deque<PhotonSummarySeriesPtr> AllPhotonSummarySeries;
-        std::deque<boost::shared_ptr<I3Map<int, size_t>>> AllPhotonSummaryMap;
+        static void AppendSubTree(I3MCTreePtr tree, I3ParticleID primary_id, I3MCTreeConstPtr subtree);
+        static void AppendPhotonSummaryMap(boost::shared_ptr<I3Map<int, size_t>> parent_map, boost::shared_ptr<I3Map<int, size_t>> sub_map, size_t max_id, size_t offset);
+        static void AppendPhotonSummarySeries(PhotonSummarySeriesPtr parent_series, I3Particle const & parent_particle, PhotonSummarySeriesConstPtr sub_series);
+        static void AppendMCPEMap(CCMMCPESeriesMapPtr parent_map, I3Particle const & parent_particle, CCMMCPESeriesMapConstPtr sub_map, size_t & max_id);
 
         bool PMTSDStatus_; // turn PMT SD on/off
         bool LArSDStatus_; // turn fiducial LAr SD on/off
