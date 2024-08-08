@@ -346,18 +346,15 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                  G4bool SodiumSourceOn, G4double SodiumSourceLocation)
   // Pass info to the G4PVPlacement constructor
   : G4PVPlacement(pRot, tlate,
-                  // Temp logical volume must be created here
-                  new G4LogicalVolume(new G4Box("temp", 1, 1, 1),
-                                    G4Material::GetMaterial("Vacuum"), "temp"),
-                  "housing", pMotherLogical, pMany, pCopyNo)
+            new G4LogicalVolume(
+                new G4Tubs("Cryogen", 0*cm, 138*cm, 131*cm, 0*deg,360*deg),
+                G4Material::GetMaterial("Steel"), "Cryogen"),
+            "Cryogen", pMotherLogical, false, 0, true)
   , fConstructor(c) {
 
     // now let's build our detector
     // Outer cryogen
-    fCryoVessel = new G4Tubs("Cryogen", 0*cm, 138*cm, 131*cm, 0*deg,360*deg);
-    fCryoVessel_log  = new G4LogicalVolume(fCryoVessel, G4Material::GetMaterial("Steel"), "Cryogen");
-    new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fCryoVessel_log, "Cryogen", pMotherLogical, false, 0, true);
-
+    fCryoVessel_log = GetLogicalVolume();
 
     // 3cm of steel until we get to vacuum
 
@@ -604,7 +601,6 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     VisAttributes();
     SurfaceProperties();
-    SetLogicalVolume(fFiducialAr_log);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
