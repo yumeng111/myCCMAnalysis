@@ -297,7 +297,6 @@ void J4PMTSolidMaker::Create8inchPMTCapsSolid(G4double protrusion_distance) {
     G4ThreeVector centerOfBox(0, 0, z_box_center);
 
     f8inchPMTCapsSolid = new G4IntersectionSolid("8inchPMTCaps", pmt, fBoxSolid, 0, centerOfBox);
-    f8inchPMTCapsSolid = pmt;
 }
 
 void J4PMTSolidMaker::Create8inchPMTWallSolid(G4double cylinder_radius, G4double protrusion_distance) {
@@ -315,7 +314,6 @@ void J4PMTSolidMaker::Create8inchPMTWallSolid(G4double cylinder_radius, G4double
     G4ThreeVector centerOfTub(0, 0, z_center);
 
     f8inchPMTWallSolid = new G4IntersectionSolid("8inchPMTWall", pmt, fTubSolid, rotationMatrix, centerOfTub);
-    f8inchPMTWallSolid = pmt;
 }
 
 void J4PMTSolidMaker::CreateTPBCoatingCapsSolid(G4double protrusion_distance) {
@@ -332,7 +330,6 @@ void J4PMTSolidMaker::CreateTPBCoatingCapsSolid(G4double protrusion_distance) {
     G4ThreeVector centerOfBox(0, 0, z_box_center);
 
     fTPBCoatingCapsSolid = new G4IntersectionSolid("TPBCoatingCaps", tpb, fBoxSolid, 0, centerOfBox);
-    fTPBCoatingCapsSolid = tpb;
 }
 
 void J4PMTSolidMaker::CreateTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance) {
@@ -350,7 +347,6 @@ void J4PMTSolidMaker::CreateTPBCoatingWallSolid(G4double cylinder_radius, G4doub
     G4ThreeVector centerOfTub(0, 0, z_center);
 
     fTPBCoatingWallSolid = new G4IntersectionSolid("TPBCoatingWall", tpb, fTubSolid, rotationMatrix, centerOfTub);
-    fTPBCoatingWallSolid = tpb;
 }
 
 ///////////////////////////////////////////////////////
