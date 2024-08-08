@@ -27,30 +27,6 @@
 #include <sstream>
 #include <random>
 
-std::ostream & SodiumInjectorConfig::Print(std::ostream& oss) const {
-    oss << "SodiumInjectorConfig: " << std::endl;
-    oss << "  z_position: " << z_position_ << std::endl;
-    oss << "  inset: " << inset_ << std::endl;
-    oss << "  pellet_radius: " << pellet_radius_ << std::endl;
-    oss << "  pellet_height: " << pellet_height_ << std::endl;
-    return oss;
-}
-
-bool SodiumInjectorConfig::operator==(const SodiumInjectorConfig& rhs) const {
-    return (z_position_ == rhs.z_position_ &&
-            inset_ == rhs.inset_ &&
-            pellet_radius_ == rhs.pellet_radius_ &&
-            pellet_height_ == rhs.pellet_height_);
-}
-
-std::ostream& operator<<(std::ostream& oss, SodiumInjectorConfig const & bcm) {
-    return bcm.Print(oss);
-}
-
-std::ostream& operator<<(std::ostream& oss, SodiumInjectorConfig & bcm) {
-    return bcm.Print(oss);
-}
-
 SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
     CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree"), randomServiceName_("") {
     AddParameter("SourceZPosition", "z location of source pellet", z_position_);
@@ -99,6 +75,7 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     double y = r * std::sin(theta_pos);
     double z = randomService_->Uniform(z_position_ + inset_, z_position_ + inset_ + pellet_height_);
 
+    primary.SetTime(0.0);
     primary.SetPos(x, y, z);
     primary.SetEnergy(0.0 * I3Units::MeV);
     primary.SetDir(0.0, 0.0, 0.0); // doesnt really matter
