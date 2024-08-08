@@ -611,27 +611,49 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
 void G4CCMMainVolume::VisAttributes()
 {
-    auto argon_va = new G4VisAttributes(G4Colour(0., 0., 1.0)); //blue
-    fFiducialAr_log->SetVisAttributes(argon_va);
-
     // let's make other layers of detector invisible
-    fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fArgonOuter_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    auto lilac = new G4VisAttributes(G4Colour(153/255., 153/255., 153/255.));
+    //lilac->SetForceSolid(true);
+    auto salmon = new G4VisAttributes(G4Colour(255/255., 128/255., 128/255.));
+    //salmon->SetForceSolid(true);
+    auto dark_blue = new G4VisAttributes(G4Colour(0., 0., 128/255.));
+    //dark_blue->SetForceSolid(true);
+    auto green = new G4VisAttributes(G4Colour(51/255., 153/255., 102/255.));
+    //green->SetForceSolid(true);
+    auto orange = new G4VisAttributes(G4Colour(255/255., 153/255., 0.));
+    //orange->SetForceSolid(true);
+    auto teal = new G4VisAttributes(G4Colour(0., 128/255., 128/255.));
+    //teal->SetForceSolid(true);
+    auto pink = new G4VisAttributes(G4Colour(255/255., 0., 255/255.));
+    //pink->SetForceSolid(true);
+
+    fCryoVessel_log->SetVisAttributes(lilac);
+    fVacuum_log->SetVisAttributes(salmon);
+    fInnerJacket_log->SetVisAttributes(dark_blue);
+    fArgonOuter_log->SetVisAttributes(green);
+    fInnerFrame_log->SetVisAttributes(orange);
+    fTPBFoil_log->SetVisAttributes(teal);
+    fFiducialAr_log->SetVisAttributes(pink);
+
+    //fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fArgonOuter_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPMTCoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPMTUncoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fTPBCoating_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPhotocathCoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPhotocathUncoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
-    //auto pmt_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8)); //grey idk
-    //pmt_va->SetForceSolid(true);
-    //fPMTCoated_log->SetVisAttributes(pmt_va);
-    //fPMTUncoated_log->SetVisAttributes(pmt_va);
-    //
+    auto pmt_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8)); //grey idk
+    pmt_va->SetForceSolid(true);
+    fPMTCoatedWall_log->SetVisAttributes(pmt_va);
+    fPMTCoatedCaps_log->SetVisAttributes(pmt_va);
+    fPMTUncoatedWall_log->SetVisAttributes(pmt_va);
+    fPMTUncoatedCaps_log->SetVisAttributes(pmt_va);
+    
     //auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     //tpb_coating_va->SetForceSolid(true);
     //fTPBCoating_log->SetVisAttributes(tpb_coating_va);
@@ -642,15 +664,17 @@ void G4CCMMainVolume::VisAttributes()
     //fPhotocathUncoated_log->SetVisAttributes(photocath_va);
 
     // make our source rod green
-    auto source_rod_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
-    source_rod_va->SetForceSolid(true);
-    fSourceRod_log->SetVisAttributes(source_rod_va);
-    //fSourceRod_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //auto source_rod_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
+    //source_rod_va->SetForceSolid(true);
+    //fSourceRod_log->SetVisAttributes(source_rod_va);
+    fSourceRod_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
-    // and make sodium pellet blue
-    auto sodium_pellet_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
-    sodium_pellet_va->SetForceSolid(true);
-    fSodiumSourcePellet_log->SetVisAttributes(sodium_pellet_va);
+    //// and make sodium pellet blue
+    //auto sodium_pellet_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
+    //sodium_pellet_va->SetForceSolid(true);
+    //fSodiumSourcePellet_log->SetVisAttributes(sodium_pellet_va);
+    fSodiumSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible()); 
+    
 
 }
 
