@@ -302,8 +302,10 @@ std::pair<double, double> xy_position_from_cylinder_pmt_number(
     return {radius * cos(angle), radius * sin(angle)};
 }
 
-std::vector<double> get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
-    double z = pmt_region_z_positions[pmt_row];
+std::vector<double> get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0, double z=0.0) {
+    if(z == 0.0) {
+        z = pmt_region_z_positions[pmt_row];
+    }
     std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
             pmt_number,
             ring_radii[ring_number],
@@ -317,8 +319,23 @@ std::vector<double> get_pmt_cap_position(int pmt_row, int ring_number, int pmt_n
     return pos;
 }
 
-std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0) {
-    return get_pmt_cap_position(pmt_row, 0, pmt_number, starting_pmt_number, angular_offset);
+std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0, double radius=0.0) {
+    int ring_number = 0;
+    double z = pmt_region_z_positions[pmt_row];
+    if(radius <= 0.0) {
+        radius = ring_pmt_pos_count[ring_number];
+    }
+    std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
+            pmt_number,
+            ring_radii[ring_number],
+            starting_pmt_number,
+            ring_pmt_pos_count[ring_number],
+            angular_offset);
+    std::vector<double> pos;
+    pos.push_back(xy.first);
+    pos.push_back(xy.second);
+    pos.push_back(z);
+    return pos;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -434,6 +451,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     //fPhotocathUncoated_log = new G4LogicalVolume(fPhotocathUncoated, G4Material::GetMaterial("Vacuum"), "photocathUncoated_log");
     //new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocathUncoated_log, "photocathUncoated", fPMTUncoated_log, false, 0);
 
+    double pmt_radius_cm = (fiducial_lar_radius + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
+    double pmt_height_cm = (fiducial_lar_half_height + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
+
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
     for (size_t i = 0; i < position_id.size(); i++) {
@@ -449,7 +469,13 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             int col = std::atoi(position_string.substr(2, n_row_chars - 1).c_str());
             int ring = std::atoi(position_string.substr(1, 1).c_str());
             row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
-            position = get_pmt_cap_position(row, ring, col);
+            if(row == 0) {
+                position = get_pmt_cap_position(row, ring, col, 1, 0.0, pmt_height_cm);
+            } else if(row == 6) {
+                position = get_pmt_cap_position(row, ring, col, 1, 0.0, -pmt_height_cm);
+            } else {
+                throw std::runtime_error("Bad cap row");
+            }
             for(std::pair<const int, int> const & p : ring_pmt_pos_count)
                 if(p.first < ring and p.first > 0)
                     pmt_number += p.second;
@@ -460,7 +486,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         } else {
             int col = std::atoi(position_string.substr(1, r_pos - 1).c_str());
             row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
-            position = get_pmt_wall_position(row, col);
+            position = get_pmt_wall_position(row, col, 1, 0.0, pmt_radius_cm);
             pmt_number = col;
             if( (row ==  1 and col % 4 == 1) or
                 (row ==  2 and col % 4 == 3) or
@@ -476,14 +502,14 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
         // let's make appropriate rotation matrix
         G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
-        double distance_to_translate = 10.0; // distance in cm to pull pmts back by
+        //double distance_to_translate = 10.0; // distance in cm to pull pmts back by
 
         if (row == 0) {
             // top face pmts
             // rotate so they are pointing downwards
             G4double rotationAngle = M_PI;
             rotationMatrix->rotateX(rotationAngle); // Rotate around the x axis
-            position[2] += distance_to_translate; // pulling pmts back a tad
+            //position[2] += distance_to_translate; // pulling pmts back a tad
             pmt_pos.setX(position[0]*cm);
             pmt_pos.setY(position[1]*cm);
             pmt_pos.setZ(position[2]*cm);
@@ -493,7 +519,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             // bottom face pmts
             // note -- don't actually need to do a rotation for bottom face pmts
             // but do need to adjust z position slightly
-            position[2] -= distance_to_translate;
+            //position[2] -= distance_to_translate;
             pmt_pos.setX(position[0]*cm);
             pmt_pos.setY(position[1]*cm);
             pmt_pos.setZ(position[2]*cm);
@@ -517,10 +543,10 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
             // also need to pull the pmts back a touch
             // we're going to change the magnitude of facing direction vector to equal distance_to_translate
-            G4double translation_x = facing_dir_x * distance_to_translate / 2 + position[0];
-            G4double translation_y = facing_dir_y * distance_to_translate / 2 + position[1];
-            pmt_pos.setX(translation_x*cm);
-            pmt_pos.setY(translation_y*cm);
+            //G4double translation_x = facing_dir_x * distance_to_translate / 2 + position[0];
+            //G4double translation_y = facing_dir_y * distance_to_translate / 2 + position[1];
+            pmt_pos.setX(position[0]*cm);
+            pmt_pos.setY(position[1]*cm);
             pmt_pos.setZ(position[2]*cm);
 
         }

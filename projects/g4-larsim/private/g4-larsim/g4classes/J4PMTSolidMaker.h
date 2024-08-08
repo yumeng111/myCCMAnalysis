@@ -44,8 +44,6 @@ class J4PMTSolidMaker {
     static G4VSolid * GetTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance);
 
   private:
-
-
     static G4double f8inchPMTRadius;
     static G4double fTPBThickness;
     static G4double fCylinderRadius;
