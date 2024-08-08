@@ -323,11 +323,11 @@ std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double st
     int ring_number = 0;
     double z = pmt_region_z_positions[pmt_row];
     if(radius <= 0.0) {
-        radius = ring_pmt_pos_count[ring_number];
+        radius = ring_radii[ring_number];
     }
     std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
             pmt_number,
-            ring_radii[ring_number],
+            radius, 
             starting_pmt_number,
             ring_pmt_pos_count[ring_number],
             angular_offset);
