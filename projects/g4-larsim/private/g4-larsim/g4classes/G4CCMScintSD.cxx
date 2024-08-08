@@ -164,12 +164,19 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4Track* track = aStep->GetTrack();
 
     // Check if the particle has decayed
-    if (track->GetTrackStatus() == fStopAndKill) {
-        // Check if it's a primary particle (ParentID == 0)
-        if (track->GetParentID() == 0) {
+    // Check if it's a primary particle (ParentID == 0)
+    if(track->GetParentID() == 0 and track->GetTrackStatus() == fStopAndKill) {
+        G4String processName;
+        const G4VProcess* currentProcess = aStep->GetPostStepPoint()->GetProcessDefinedStep();
+        if (currentProcess) {
+            processName = static_cast<std::string>(currentProcess->GetProcessName());
+        }
+        //std::cout << "process name = " << processName << std::endl;
+        if(processName == "Radioactivation") {
+            // G4String parentName = track->GetDefinition()->GetParticleName();
+            // std::cout << "for parent particle = " << parentName << ", secondaries = " << std::endl;
+
             // Get the list of secondaries
-            G4String parentName = track->GetDefinition()->GetParticleName();
-            //std::cout << "for parent particle = " << parentName << ", secondaries = " << std::endl;
             const G4TrackVector* secondaries = aStep->GetSecondary();
             // Modify the start time of each secondary particle
             for (size_t i = 0; i < secondaries->size(); ++i) {
