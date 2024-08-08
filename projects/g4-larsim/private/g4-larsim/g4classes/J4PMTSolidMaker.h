@@ -7,7 +7,7 @@
 //* --------------------
 //* (Description)
 //* 	J4PMTSolidMaker discribes how to make glass solid for DEgg
-//*    
+//*
 //* (Update Record)
 //*	2021/05/27  K.Hoshina	Original version.
 //*************************************************************************
@@ -22,8 +22,8 @@ class J4PMTSolidMaker {
   public:
 
     static void Create8inchPMTSolid();
-    static void CreateTPBCoatingSolid(); 
-    static void CreatePhotocathodeSolid(); 
+    static void CreateTPBCoatingSolid();
+    static void CreatePhotocathodeSolid();
 
     static void Create8inchPMTCapsSolid(G4double protrusion_distance);
     static void Create8inchPMTWallSolid(G4double cylinder_radius, G4double protrusion_distance);
