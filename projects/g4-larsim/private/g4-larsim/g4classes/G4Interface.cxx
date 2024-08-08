@@ -127,7 +127,7 @@ void G4Interface::InjectParticle(const I3Particle& particle, I3MCTreePtr edep_tr
         G4SDManager* SDman = G4SDManager::GetSDMpointer();
         G4String sdNamePMT = "/LAr/pmtSD";
         G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
-        pmtSD->ClearCCMMCPEMap();
+        pmtSD->Reset();
     }
 
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
