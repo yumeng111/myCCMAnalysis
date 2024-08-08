@@ -71,6 +71,7 @@ G4VSolid * J4PMTSolidMaker::Get8inchPMTCapsSolid(G4double protrusion_distance) {
         fPMTProtrusionDistance = protrusion_distance;
         Create8inchPMTCapsSolid(protrusion_distance);
     }
+    return f8inchPMTCapsSolid;
 }
 
 G4VSolid * J4PMTSolidMaker::Get8inchPMTWallSolid(G4double cylinder_radius, G4double protrusion_distance) {
@@ -79,6 +80,7 @@ G4VSolid * J4PMTSolidMaker::Get8inchPMTWallSolid(G4double cylinder_radius, G4dou
         fPMTProtrusionDistance = protrusion_distance;
         Create8inchPMTWallSolid(cylinder_radius, protrusion_distance);
     }
+    return f8inchPMTWallSolid;
 }
 
 G4VSolid * J4PMTSolidMaker::GetTPBCoatingCapsSolid(G4double protrusion_distance) {
@@ -86,6 +88,7 @@ G4VSolid * J4PMTSolidMaker::GetTPBCoatingCapsSolid(G4double protrusion_distance)
         fPMTProtrusionDistance = protrusion_distance;
         CreateTPBCoatingCapsSolid(protrusion_distance);
     }
+    return fTPBCoatingCapsSolid;
 }
 
 G4VSolid * J4PMTSolidMaker::GetTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance) {
@@ -94,6 +97,7 @@ G4VSolid * J4PMTSolidMaker::GetTPBCoatingWallSolid(G4double cylinder_radius, G4d
         fPMTProtrusionDistance = protrusion_distance;
         CreateTPBCoatingWallSolid(cylinder_radius, protrusion_distance);
     }
+    return fTPBCoatingWallSolid;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -293,6 +297,7 @@ void J4PMTSolidMaker::Create8inchPMTCapsSolid(G4double protrusion_distance) {
     G4ThreeVector centerOfBox(0, 0, z_box_center);
 
     f8inchPMTCapsSolid = new G4IntersectionSolid("8inchPMTCaps", pmt, fBoxSolid, 0, centerOfBox);
+    f8inchPMTCapsSolid = pmt;
 }
 
 void J4PMTSolidMaker::Create8inchPMTWallSolid(G4double cylinder_radius, G4double protrusion_distance) {
@@ -310,6 +315,7 @@ void J4PMTSolidMaker::Create8inchPMTWallSolid(G4double cylinder_radius, G4double
     G4ThreeVector centerOfTub(0, 0, z_center);
 
     f8inchPMTWallSolid = new G4IntersectionSolid("8inchPMTWall", pmt, fTubSolid, rotationMatrix, centerOfTub);
+    f8inchPMTWallSolid = pmt;
 }
 
 void J4PMTSolidMaker::CreateTPBCoatingCapsSolid(G4double protrusion_distance) {
@@ -326,6 +332,7 @@ void J4PMTSolidMaker::CreateTPBCoatingCapsSolid(G4double protrusion_distance) {
     G4ThreeVector centerOfBox(0, 0, z_box_center);
 
     fTPBCoatingCapsSolid = new G4IntersectionSolid("TPBCoatingCaps", tpb, fBoxSolid, 0, centerOfBox);
+    fTPBCoatingCapsSolid = tpb;
 }
 
 void J4PMTSolidMaker::CreateTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance) {
@@ -343,6 +350,7 @@ void J4PMTSolidMaker::CreateTPBCoatingWallSolid(G4double cylinder_radius, G4doub
     G4ThreeVector centerOfTub(0, 0, z_center);
 
     fTPBCoatingWallSolid = new G4IntersectionSolid("TPBCoatingWall", tpb, fTubSolid, rotationMatrix, centerOfTub);
+    fTPBCoatingWallSolid = tpb;
 }
 
 ///////////////////////////////////////////////////////
