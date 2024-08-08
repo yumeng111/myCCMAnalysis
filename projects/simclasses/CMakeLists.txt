@@ -7,6 +7,7 @@ i3_project(${PROJECT_NAME}
 SET(LIB_${PROJECT_NAME}_SOURCEFILES
     private/simclasses/CCMMCPE.cxx
     private/simclasses/PhotonSummary.cxx
+    private/simclasses/SodiumInjectorConfig.cxx
 )
 
 
