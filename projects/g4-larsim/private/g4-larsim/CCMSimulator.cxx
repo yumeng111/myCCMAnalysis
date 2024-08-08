@@ -44,9 +44,7 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     AddOutBox("OutBox");
 }
 
-
 CCMSimulator::~CCMSimulator() { }
-
 
 void CCMSimulator::Configure() {
     log_info("Configuring the CCMSimulator:");
