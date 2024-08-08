@@ -443,11 +443,11 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBCoatingCaps_log = new G4LogicalVolume(fTPBCoatingCaps, G4Material::GetMaterial("TPBPMT"), "TPBCoatingCapsLog");
 
     // now let's also build PMT photocathode!
-    //fPhotocathCoated = J4PMTSolidMaker::GetPhotcathodeSolid();
+    //fPhotocathCoated = J4PMTSolidMaker::GetPhotocathodeSolid();
     //fPhotocathCoated_log = new G4LogicalVolume(fPhotocathCoated, G4Material::GetMaterial("Vacuum"), "photocathCoated_log");
     //new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocathCoated_log, "photocathCoated", fPMTCoated_log, false, 0);
 
-    //fPhotocathUncoated = J4PMTSolidMaker::GetPhotcathodeSolid();
+    //fPhotocathUncoated = J4PMTSolidMaker::GetPhotocathodeSolid();
     //fPhotocathUncoated_log = new G4LogicalVolume(fPhotocathUncoated, G4Material::GetMaterial("Vacuum"), "photocathUncoated_log");
     //new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocathUncoated_log, "photocathUncoated", fPMTUncoated_log, false, 0);
 

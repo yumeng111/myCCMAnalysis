@@ -57,7 +57,7 @@ G4VSolid* J4PMTSolidMaker::GetTPBCoatingSolid()
    return fTPBCoatingSolid;
 }
 
-G4VSolid* J4PMTSolidMaker::GetPhotcathodeSolid()
+G4VSolid* J4PMTSolidMaker::GetPhotocathodeSolid()
 {
    if (!fPhotocathodeSolid) {
        CreatePhotocathodeSolid();
