@@ -32,7 +32,7 @@ class J4PMTSolidMaker {
 
     static G4VSolid * Get8inchPMTSolid();
     static G4VSolid * GetTPBCoatingSolid();
-    static G4VSolid * GetPhotcathodeSolid();
+    static G4VSolid * GetPhotocathodeSolid();
 
     static G4double Get8inchPMTRadius() { return f8inchPMTRadius; }
     static G4double GetTPBThickness() { return fTPBThickness; }
