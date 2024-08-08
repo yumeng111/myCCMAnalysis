@@ -492,8 +492,10 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoated(), fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoated(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedCaps(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fPMT_SD.Get());
         }
 
     }
@@ -509,10 +511,16 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBCoating(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingCaps(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogTPBFoil(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoated(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoated(), fScint_SD.Get());
+
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedCaps(), fScint_SD.Get());
+
+
             SetSensitiveDetector(fMainVolume->GetLogReflectorFoil(), fScint_SD.Get());
             // make sure to include source pellet + rod for SD if enabeled
             if (SodiumSourceRun_){
