@@ -27,13 +27,20 @@ class G4CCMMainVolume : public G4PVPlacement
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
                 G4CCMDetectorConstruction* c, G4bool SodiumSourceOn, G4double SodiumSourceLocation);
 
-    G4LogicalVolume* GetLogPMTCoated() { return fPMTCoated_log; }
-    G4LogicalVolume* GetLogPMTUncoated() { return fPMTUncoated_log; }
+    G4LogicalVolume* GetLogPMTCoatedWall() { return fPMTCoatedWall_log; }
+    G4LogicalVolume* GetLogPMTCoatedCaps() { return fPMTCoatedCaps_log; }
+    G4LogicalVolume* GetLogPMTUncoatedWall() { return fPMTUncoatedWall_log; }
+    G4LogicalVolume* GetLogPMTUncoatedCaps() { return fPMTUncoatedCaps_log; }
+
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
     G4LogicalVolume* GetLogSodiumPellet() { return fSodiumSourcePellet_log; }
     G4LogicalVolume* GetLogSourceRod() { return fSourceRod_log; }
-    G4LogicalVolume* GetLogTPBCoating() { return fTPBCoating_log; }
+
+    G4LogicalVolume* GetLogTPBCoatingWall() { return fTPBCoatingWall_log; }
+    G4LogicalVolume* GetLogTPBCoatingCaps() { return fTPBCoatingCaps_log; }
+
     G4LogicalVolume* GetLogTPBFoil() { return fTPBFoil_log; }
+
     G4LogicalVolume* GetLogReflectorFoil() { return fReflectorFoil_log; }
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
@@ -51,9 +58,18 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fReflectorFoil = nullptr;
     G4Tubs* fTPBFoil = nullptr;
     G4Tubs* fFiducialAr = nullptr;
+
     G4VSolid* fPMTCoated = nullptr; 
+    G4VSolid* fPMTCoatedWall = nullptr;
+    G4VSolid* fPMTCoatedCaps = nullptr;
+
     G4VSolid* fPMTUncoated = nullptr; 
-    G4VSolid* fTPBCoating = nullptr; 
+    G4VSolid* fPMTUncoatedWall = nullptr;
+    G4VSolid* fPMTUncoatedCaps = nullptr;
+
+    G4VSolid* fTPBCoatingWall = nullptr; 
+    G4VSolid* fTPBCoatingCaps = nullptr; 
+
     G4VSolid* fPhotocathCoated = nullptr; 
     G4VSolid* fPhotocathUncoated = nullptr; 
     G4Tubs* fSourceRod = nullptr;
@@ -68,9 +84,16 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fReflectorFoil_log = nullptr;
     G4LogicalVolume* fTPBFoil_log = nullptr;
     G4LogicalVolume* fFiducialAr_log = nullptr;
-    G4LogicalVolume* fPMTCoated_log = nullptr;
-    G4LogicalVolume* fPMTUncoated_log = nullptr;
-    G4LogicalVolume* fTPBCoating_log = nullptr; 
+
+    G4LogicalVolume* fPMTCoatedWall_log = nullptr;
+    G4LogicalVolume* fPMTCoatedCaps_log = nullptr;
+
+    G4LogicalVolume* fPMTUncoatedWall_log = nullptr;
+    G4LogicalVolume* fPMTUncoatedCaps_log = nullptr;
+
+    G4LogicalVolume* fTPBCoatingWall_log = nullptr; 
+    G4LogicalVolume* fTPBCoatingCaps_log = nullptr; 
+
     G4LogicalVolume* fPhotocathCoated_log = nullptr;
     G4LogicalVolume* fPhotocathUncoated_log = nullptr;
     G4LogicalVolume* fSourceRod_log = nullptr;

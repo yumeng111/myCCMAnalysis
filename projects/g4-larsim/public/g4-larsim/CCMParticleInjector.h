@@ -24,7 +24,7 @@ class CCMParticleInjector : public I3ServiceBase {
 
         // get I3MCTree and Configuration for simulation
         virtual I3MCTreePtr GetMCTree() = 0;
-        //virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
+        virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
 
     protected:
         template <class ParamType>

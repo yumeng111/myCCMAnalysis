@@ -2,6 +2,8 @@
 #define SODIUMSOURCEINJECTOR_H
 // standard library stuff
 
+#include "simclasses/SodiumInjectorConfig.h"
+
 #include "dataclasses/I3Double.h"
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
@@ -28,10 +30,12 @@ private:
     SodiumSourceInjector operator= (const SodiumSourceInjector& rhs);
 
     double z_position_;
-    size_t nevents_;
+    double inset_ = 0.25 * I3Units::cm;
+    double pellet_radius_ = 0.4 * I3Units::cm;
+    double pellet_height_ = 0.3 * I3Units::cm;
+
     std::string mcPrimaryName_;
     std::string output_mc_tree_name_;
-    I3Particle::ParticleType particleType_;
     std::string randomServiceName_;
     I3RandomServicePtr randomService_;
 
@@ -45,6 +49,7 @@ public:
     virtual void Configure() override;
     virtual void FillMCTree(I3FramePtr frame);
     virtual I3MCTreePtr GetMCTree() override;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 };
 
 #endif // SODIUMSOURCEINJECTOR_H

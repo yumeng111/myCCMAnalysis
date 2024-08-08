@@ -111,12 +111,12 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4Element* elNi = nistManager->FindOrBuildElement("Ni");
     G4Element* elC = nistManager->FindOrBuildElement("C");
     G4Element* elMn = nistManager->FindOrBuildElement("Mn");
-    G4Material* fSteel = new G4Material("Steel", 7.8*g/cm3, 5); // 5 elements in stainless steel
+    G4Material* fSteel = new G4Material("Steel", 7.8*g/cm3, 4); // 5 elements in stainless steel
     fSteel->AddElement(elFe, 0.70); // 70% Iron
-    fSteel->AddElement(elCr, 0.18); // 18% Chromium
-    fSteel->AddElement(elNi, 0.10); // 10% Nickel
-    fSteel->AddElement(elC,  0.02); // 2% Carbon
-    fSteel->AddElement(elMn, 0.005); // 0.5% Manganese
+    fSteel->AddElement(elCr, 0.20); // 20% Chromium
+    fSteel->AddElement(elNi, 0.08); // 8% Nickel
+    //fSteel->AddElement(elC,  0.008); // 0.08% Carbon
+    fSteel->AddElement(elMn, 0.02); // 2% Manganese
 
     // PTFE (for reflector foils) 
     G4Element* elF = nistManager->FindOrBuildElement("F");
@@ -492,8 +492,10 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoated(), fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoated(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedCaps(), fPMT_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fPMT_SD.Get());
         }
 
     }
@@ -509,10 +511,16 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBCoating(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingCaps(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogTPBFoil(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoated(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoated(), fScint_SD.Get());
+
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedCaps(), fScint_SD.Get());
+
+
             SetSensitiveDetector(fMainVolume->GetLogReflectorFoil(), fScint_SD.Get());
             // make sure to include source pellet + rod for SD if enabeled
             if (SodiumSourceRun_){

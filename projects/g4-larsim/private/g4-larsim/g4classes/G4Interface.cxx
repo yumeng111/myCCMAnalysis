@@ -36,7 +36,7 @@
 #include <G4RadioactiveDecay.hh>
 #include <G4BetaPlusDecay.hh>
 #include <G4GenericIon.hh>
-#include <G4Geantino.hh> 
+#include <G4Geantino.hh>
 
 std::shared_ptr<G4Interface> G4Interface::g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
 
@@ -75,7 +75,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
     G4Random::setTheSeed(RandomSeed);
 
     if (runManager_ == nullptr){
-        runManager_ = std::make_shared<G4CCMRunManager>(); 
+        runManager_ = std::make_shared<G4CCMRunManager>();
     }
 
     if(!detector_) {
@@ -107,28 +107,29 @@ void G4Interface::InitializeRun()
 }
 
 
-void G4Interface::InjectParticle(const I3Particle& particle)
+void G4Interface::InjectParticle(const I3Particle& particle, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries)
 {
+    mcpeseries_result_ = mcpeseries;
+
     if(!runInitialized_) {
         log_fatal("No run initialized. Cannot inject particle!");
         return;
     }
-    
-    // if we are tracking LAr energy deposition, let's pass on the primary particle information    
-    if (LArSDStatus_){
+
+    // if we are tracking LAr energy deposition, let's pass on the primary particle information
+    if (LArSDStatus_) {
         G4SDManager* SDman = G4SDManager::GetSDMpointer();
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-        scintSD->ClearResults(); 
-        scintSD->SetPrimaryParticle(particle);
+        scintSD->SetPrimaryParticle(particle, edep_tree);
     }
-    if (PMTSDStatus_){
+    if (PMTSDStatus_) {
         G4SDManager* SDman = G4SDManager::GetSDMpointer();
         G4String sdNamePMT = "/LAr/pmtSD";
         G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
-        pmtSD->ClearCCMMCPEMap(); 
+        pmtSD->Reset();
     }
-    
+
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
     G4ParticleDefinition* particleDef = NULL;
     bool sodium_run = false;
@@ -263,12 +264,12 @@ void G4Interface::InjectParticle(const I3Particle& particle)
       log_warn("Man, check out that strange particle \"%s\" ?!", particle.GetTypeString().c_str());
       return;
     }
- 
+
     G4ParticleGun gun(1);
-    
+
     // special logic for adding sodium particle
     if (sodium_run){
-    
+
         G4int Z = 11, A = 22;
         G4double ionCharge   = 0.*eplus;
         G4double excitEnergy = 0.*keV;
@@ -282,12 +283,12 @@ void G4Interface::InjectParticle(const I3Particle& particle)
         return;
     }
 
-    
+
     // Particle position in G4 units
     G4ThreeVector position((particle.GetX() / I3Units::m) * CLHEP::m,
                            (particle.GetY() / I3Units::m) * CLHEP::m,
                            (particle.GetZ() / I3Units::m) * CLHEP::m);
-    
+
     G4ThreeVector direction(particle.GetDir().GetX(),
                             particle.GetDir().GetY(),
                             particle.GetDir().GetZ());
@@ -308,25 +309,105 @@ void G4Interface::InjectParticle(const I3Particle& particle)
 }
 
 
-void G4Interface::TerminateEvent()
-{
+void G4Interface::TerminateEvent() {
     // let's grab the CCMMCPE map from G4Interface
     // now let's grab SD information
     G4SDManager* SDman = G4SDManager::GetSDMpointer();
-    if (PMTSDStatus_){
+
+    boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap;
+    boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map;
+    PhotonSummarySeriesPtr photon_summary_series;
+
+    if (PMTSDStatus_) {
         G4String sdNamePMT = "/LAr/pmtSD";
         G4CCMPMTSD* pmtSD = (G4CCMPMTSD*) SDman->FindSensitiveDetector(sdNamePMT);
         CCMMCPEMap = pmtSD->GetCCMMCPEMap();
     }
 
-    if (LArSDStatus_){
+    if (LArSDStatus_) {
         G4String sdNameScint = "/LAr/scintSD";
         G4CCMScintSD* scintSD = (G4CCMScintSD*) SDman->FindSensitiveDetector(sdNameScint);
-        LArEnergyDep = scintSD->GetUpdatedMCTree();
         photon_summary_series = scintSD->GetPhotonSummarySeries();
         photon_summary_series_map = scintSD->GetPhotonSummaryMap();
     }
 
+    if(PMTSDStatus_ and LArSDStatus_) {
+        MergeMCPESeries(mcpeseries_result_, CCMMCPEMap, photon_summary_series_map, photon_summary_series);
+    } else if(PMTSDStatus_) {
+        MergeMCPESeries(mcpeseries_result_, CCMMCPEMap);
+    }
+}
+
+void G4Interface::MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, PhotonSummarySeriesPtr photon_summary_series) {
+    // Iterate over PMTs in source map
+    for (CCMMCPESeriesMap::iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
+
+        // Find the corresponding PMT in the destination map
+        CCMMCPESeriesMap::iterator it_dest = mcpeseries_dest->find(it->first);
+
+        // If the PMT is not in the destination, then insert an empty vector
+        if(it_dest == mcpeseries_dest->end()) {
+            mcpeseries_dest->insert(std::make_pair(it->first, CCMMCPESeries()));
+            // Update the iterator so it points to our new entry
+            it_dest = mcpeseries_dest->find(it->first);
+        }
+
+        // Reference to the destination
+        CCMMCPESeries & dest_series = it_dest->second;
+
+        // Iterate over the vector of CCMMCPE in the source map for this PMT
+        for (CCMMCPESeries::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+            CCMMCPE const & pe = *it2;
+
+            // Check if the photon has everything properly recorded
+            I3Map<int, size_t>::iterator it_map = photon_summary_series_map->find(pe.track_id);
+            // If not trash it as an edge case
+            if(it_map == photon_summary_series_map->end())
+                continue;
+
+            // Grab the summary information for this photon track
+            PhotonSummary const & this_photon_summary = photon_summary_series->at(it_map->second);
+
+            // Copy the CCMMCPE from source to destination
+            dest_series.emplace_back(pe);
+            // Grab a reference to the CCMMCPE in the destination
+            CCMMCPE & dest = dest_series.back();
+
+            // Update the destination CCMMCPE with the summary information
+            dest.g4_time = this_photon_summary.g4_time;
+            dest.calculated_time = this_photon_summary.calculated_time;
+            dest.g4_distance_uv = this_photon_summary.g4_distance_uv;
+            dest.g4_distance_visible = this_photon_summary.g4_distance_visible;
+            dest.calculated_distance_uv = this_photon_summary.calculated_distance_uv;
+            dest.calculated_distance_visible = this_photon_summary.calculated_distance_visible;
+        }
+    }
+}
+
+void G4Interface::MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source) {
+    // Iterate over PMTs in source map
+    for (CCMMCPESeriesMap::iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
+
+        // Find the corresponding PMT in the destination map
+        CCMMCPESeriesMap::iterator it_dest = mcpeseries_dest->find(it->first);
+
+        // If the PMT is not in the destination, then insert an empty vector
+        if(it_dest == mcpeseries_dest->end()) {
+            mcpeseries_dest->insert(std::make_pair(it->first, CCMMCPESeries()));
+            // Update the iterator so it points to our new entry
+            it_dest = mcpeseries_dest->find(it->first);
+        }
+
+        // Reference to the destination
+        CCMMCPESeries & dest_series = it_dest->second;
+
+        // Iterate over the vector of CCMMCPE in the source map for this PMT
+        for (CCMMCPESeries::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+            CCMMCPE const & pe = *it2;
+            // Copy the CCMMCPE from source to destination
+            dest_series.emplace_back(pe);
+        }
+    }
 }
 
 void G4Interface::TerminateRun()
@@ -343,12 +424,12 @@ void G4Interface::Initialize()
     }
 
     // set number of threads
-    //int num_threads = std::thread::hardware_concurrency(); 
+    //int num_threads = std::thread::hardware_concurrency();
     //runManager_.SetNumberOfThreads(num_threads);
 
     // Set verbosity
     int32_t verboseLevel = 0;
-    
+
     log_debug("Init geometry ...");
     runManager_->SetUserInitialization(detector_);
 
@@ -357,7 +438,7 @@ void G4Interface::Initialize()
     // adding physics list
     G4CCMPhysicsList* physics_list = new G4CCMPhysicsList(verboseLevel);
     runManager_->SetUserInitialization(physics_list);
-    
+
     // Initialize G4 kernel
     log_debug("Init run manager ...");
     runManager_->Initialize();

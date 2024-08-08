@@ -52,13 +52,12 @@ class G4Interface {
         void TerminateEvent();
         void TerminateRun();
         /// Simulate a single particle (InitializeRun must be called first)
-        void InjectParticle(const I3Particle& particle);
+        void InjectParticle(const I3Particle& particle, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries);
+
+        static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, PhotonSummarySeriesPtr photon_summary_series);
+        static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source);
         
-        // return CCMMCPEMap and LAr energy deposition
-        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap ; }
-        I3MCTreePtr GetLArEnergyDep() { return LArEnergyDep ; }
-        PhotonSummarySeriesPtr GetPhotonSummarySeries() { return photon_summary_series; }
-        boost::shared_ptr<I3Map<int, size_t>> GetPhotonSummaryMap() { return photon_summary_series_map; }
+        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap() { return mcpeseries_result_ ; }
     
     private:
         void Initialize();
@@ -71,15 +70,12 @@ class G4Interface {
         G4VisManager* visManager_;
         #endif
 
+        CCMMCPESeriesMapPtr mcpeseries_result_;
+
         G4CCMDetectorConstruction* detector_;
         bool initialized_;
         bool runInitialized_;
         std::string visMacro_;
-    
-        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
-        I3MCTreePtr LArEnergyDep = boost::make_shared<I3MCTree>();
-        boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map; 
-        PhotonSummarySeriesPtr photon_summary_series = boost::make_shared<PhotonSummarySeries>();
         
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off

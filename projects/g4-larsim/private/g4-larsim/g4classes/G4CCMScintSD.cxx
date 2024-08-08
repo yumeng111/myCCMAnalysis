@@ -88,7 +88,7 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g
 void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
                                        double calculated_uv_distance, double calculated_vis_distance,
                                        double g4_time, double calculated_time, std::string creationProcessName,
-                                       std::map<int, size_t>::iterator it, bool new_process){
+                                       std::map<int, size_t>::iterator it, bool new_process) {
     // map contains this photon
     // so we need to grab PhotonSummary and update it -- then update key
     PhotonSummary this_photon_summary = photon_summary->at(it->second);
@@ -164,12 +164,19 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4Track* track = aStep->GetTrack();
 
     // Check if the particle has decayed
-    if (track->GetTrackStatus() == fStopAndKill) {
-        // Check if it's a primary particle (ParentID == 0)
-        if (track->GetParentID() == 0) {
+    // Check if it's a primary particle (ParentID == 0)
+    if(track->GetParentID() == 0 and track->GetTrackStatus() == fStopAndKill) {
+        G4String processName;
+        const G4VProcess* currentProcess = aStep->GetPostStepPoint()->GetProcessDefinedStep();
+        if (currentProcess) {
+            processName = static_cast<std::string>(currentProcess->GetProcessName());
+        }
+        //std::cout << "process name = " << processName << std::endl;
+        if(processName == "Radioactivation") {
+            // G4String parentName = track->GetDefinition()->GetParticleName();
+            // std::cout << "for parent particle = " << parentName << ", secondaries = " << std::endl;
+
             // Get the list of secondaries
-            G4String parentName = track->GetDefinition()->GetParticleName();
-            //std::cout << "for parent particle = " << parentName << ", secondaries = " << std::endl;
             const G4TrackVector* secondaries = aStep->GetSecondary();
             // Modify the start time of each secondary particle
             for (size_t i = 0; i < secondaries->size(); ++i) {
@@ -181,7 +188,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // let's do a check on the time cut
-    if (TimeCut_){
+    if (TimeCut_) {
         // check time ... doesnt matter what type of particle it is
         G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
         if (time > 200.0){
@@ -276,7 +283,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             } else {
                 // need to add a new photon to our map
                 AddEntryToPhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance, calculated_uv_distance, calculated_vis_distance,
-                                        pre_step_global_time + g4_delta_time_step, pre_step_global_time + calculated_delta_time_step, creationProcessName);
+                                        primary_.GetTime() + pre_step_global_time + g4_delta_time_step, primary_.GetTime() + pre_step_global_time + calculated_delta_time_step, creationProcessName);
             }
         }
         
@@ -342,7 +349,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     //    << ", track id = " << track_id << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl; 
 
     // now save to our MCTree!
-    if (parent_id == 0){
+    if (parent_id == 0) {
         //std::cout << "energy deposition name = " << processName << ", parent id = " << parent_id << ", track id = " << track_id
         //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // let's create and fill our I3Particle
@@ -362,8 +369,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         } else {
             std::cout << "oops! no conversion for " << processName << std::endl;
         }
-    }
-    else if (parent_id > 0) {
+    } else if (parent_id > 0) {
         //std::cout << "energy deposition name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << track_id
         //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
         // ok so we've created a new particle

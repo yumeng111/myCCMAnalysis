@@ -28,9 +28,11 @@
 #include <random>
 
 SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
-    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), nevents_(1), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree"), randomServiceName_("") {
+    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree"), randomServiceName_("") {
     AddParameter("SourceZPosition", "z location of source pellet", z_position_);
-    AddParameter("NEvents", "number of sodium events to simulate", nevents_);
+    AddParameter("Inset", "Inset of the source pellet", inset_);
+    AddParameter("PelletRadius", "Radius of the source pellet", pellet_radius_);
+    AddParameter("PelletHeight", "Height of the source pellet", pellet_height_);
     AddParameter("PrimaryName", "Name of the primary particle in the frame.", mcPrimaryName_);
     AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
     randomService_ = I3RandomServicePtr();
@@ -39,7 +41,9 @@ SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
 
 void SodiumSourceInjector::Configure() {
     GetParameter("SourceZPosition", z_position_);
-    GetParameter("NEvents", nevents_);
+    GetParameter("Inset", inset_);
+    GetParameter("PelletRadius", pellet_radius_);
+    GetParameter("PelletHeight", pellet_height_);
     GetParameter("PrimaryName", mcPrimaryName_);
     GetParameter("OutputMCTreeName", output_mc_tree_name_);
     GetParameter("RandomServiceName", randomServiceName_);
@@ -61,32 +65,34 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     I3MCTreePtr mcTree = boost::make_shared<I3MCTree>();
 
     // let's make the location of our event randomly within our sodium pellet
-    // set up geometry of sodium source pellet
-    double inset = 0.25 * I3Units::cm;
-    double pellet_radius = 0.4 * I3Units::cm;
-    double pellet_height = 0.3 * I3Units::cm;
 
-    // now throw events
-    for (size_t p = 0; p < nevents_; p++){
-        // let's create and fill our I3Particle
-        I3Particle primary(I3Particle::Na22Nucleus);
+    // let's create and fill our I3Particle
+    I3Particle primary(I3Particle::Na22Nucleus);
 
-        double theta_pos = randomService_->Uniform(0.0, 2.0*M_PI);
-        double r = std::sqrt(randomService_->Uniform(0.0, pellet_radius * pellet_radius));
-        double x = r * std::cos(theta_pos);
-        double y = r * std::sin(theta_pos);
-        double z = randomService_->Uniform(z_position_ + inset, z_position_ + inset + pellet_height);
+    double theta_pos = randomService_->Uniform(0.0, 2.0*M_PI);
+    double r = std::sqrt(randomService_->Uniform(0.0, pellet_radius_ * pellet_radius_));
+    double x = r * std::cos(theta_pos);
+    double y = r * std::sin(theta_pos);
+    double z = randomService_->Uniform(z_position_ + inset_, z_position_ + inset_ + pellet_height_);
 
-        primary.SetPos(x, y, z);
-        primary.SetEnergy(0.0 * I3Units::MeV); 
-        primary.SetDir(0.0, 0.0, 0.0); // doesnt really matter
- 
-        I3MCTreeUtils::AddPrimary(*mcTree, primary);
-    }
+    primary.SetTime(0.0);
+    primary.SetPos(x, y, z);
+    primary.SetEnergy(0.0 * I3Units::MeV);
+    primary.SetDir(0.0, 0.0, 0.0); // doesnt really matter
+
+    I3MCTreeUtils::AddPrimary(*mcTree, primary);
 
     return mcTree;
 }
 
+I3FrameObjectPtr SodiumSourceInjector::GetSimulationConfiguration() {
+    SodiumInjectorConfigPtr config = boost::make_shared<SodiumInjectorConfig>();
+    config->z_position_ = z_position_;
+    config->inset_ = inset_;
+    config->pellet_radius_ = pellet_radius_;
+    config->pellet_height_ = pellet_height_;
+    return config;
+}
 
 typedef I3SingleServiceFactory<SodiumSourceInjector,CCMParticleInjector> SodiumSourceInjectorFactory;
 

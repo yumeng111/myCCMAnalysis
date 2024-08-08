@@ -102,15 +102,22 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber 
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
-    std::stringstream string_stream(physVolName);
-    std::string segment;
-    std::getline(string_stream, segment, '_');
-    std::getline(string_stream, segment, '_');
-    int row = std::stoi(segment);
-    std::getline(string_stream, segment);
-    int pmt_number = std::stoi(segment);
+    CCMPMTKey key;
+    std::map<std::string, CCMPMTKey>::iterator vol_it = volumeToKey.find(physVolName);
+    if (vol_it == volumeToKey.end()) {
+        std::stringstream string_stream(physVolName);
+        std::string segment;
+        std::getline(string_stream, segment, '_');
+        std::getline(string_stream, segment, '_');
+        int row = std::stoi(segment);
+        std::getline(string_stream, segment);
+        int pmt_number = std::stoi(segment);
 
-    CCMPMTKey key = CCMPMTKey(row, pmt_number);
+        key = CCMPMTKey(row, pmt_number);
+        volumeToKey.insert(std::pair<std::string, CCMPMTKey>(physVolName, key));
+    } else {
+        key = vol_it->second;
+    }
     // so now we need to save the info to a CCMMCPE
     // then we will save associated with correct PMT
     // we will be saving time, wavelength, positions, direction, and source
@@ -151,21 +158,17 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, globalTime, localTime, photonWavelength, 0.0, 0.0, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
 
     // Find the correct hit collection
-    size_t n = fPMTHitCollection->entries();
+    std::map<G4int, size_t>::iterator pmt_it = pmtNumberToIndex.find(pmtNumber);
     G4CCMPMTHit* hit = nullptr;
-    for(size_t i = 0; i < n; ++i) {
-        if((*fPMTHitCollection)[i]->GetPMTNumber() == pmtNumber) {
-            hit = (*fPMTHitCollection)[i];
-            break;
-        }
-    }
-
-    if(hit == nullptr) { // this pmt wasn't previously hit in this event
+    if (pmt_it == pmtNumberToIndex.end()) {
         hit = new G4CCMPMTHit();  // so create new hit
         hit->SetPMTNumber(pmtNumber);
         hit->SetPMTPhysVol(physVol);
         fPMTHitCollection->insert(hit);
         hit->SetPMTPos((*fPMTPositionsX)[pmtNumber], (*fPMTPositionsY)[pmtNumber], (*fPMTPositionsZ)[pmtNumber]);
+        pmtNumberToIndex.insert(std::pair<G4int, size_t>(pmtNumber, fPMTHitCollection->entries() - 1));
+    } else { // this pmt wasn't previously hit in this event
+        hit = (*fPMTHitCollection)[pmt_it->second];
     }
 
     hit->IncPhotonCount();  // increment hit for the selected pmt
