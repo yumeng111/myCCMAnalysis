@@ -28,6 +28,7 @@
 #include <icetray/CCMTriggerKey.h>
 #include <icetray/robust_statistics.h>
 #include <icetray/I3Int.h>
+#include <dataclasses/I3UInt32.h>
 #include <dataclasses/I3Double.h>
 #include <dataclasses/I3String.h>
 #include <dataclasses/I3TimeWindow.h>
@@ -848,6 +849,7 @@ void MergePulseChargeTimeHistogram::Physics(I3FramePtr frame) {
             tot_time_chargeW_output_var_->at(i) += tot_time_chargeW_output_var->at(i);
         }
     }
+    PushFrame(frame);
 }
 
 void MergePulseChargeTimeHistogram::Finish() {
@@ -867,6 +869,8 @@ void MergePulseChargeTimeHistogram::Finish() {
     frame->Put(prefix_ + "TotChargeHist", tot_charge_output_);
     frame->Put(prefix_ + "TotTimeChargeWHist", tot_time_chargeW_output_);
     frame->Put(prefix_ + "TotTimeChargeWHistVar", tot_time_chargeW_output_var_);
+
+    frame->Put(prefix_ + "Merged", boost::make_shared<I3UInt32>(1));
 
     PushFrame(frame);
 }
