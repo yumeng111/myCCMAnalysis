@@ -203,20 +203,20 @@ class I3Particle : public I3FrameObject
     SMPMinus = -2000009501,
   
     // adding some additonal codes for energy loss in LAr
-    phot = 2000000001,
-    compt = 2000000002,
-    conv = 2000000003,
-    Rayl = 2000000004,
-    msc = 2000000005,
-    eIoni = 2000000006,
-    eBrem = 2000000007,
-    ePairProd = 2000000008,
-    CoulombScat = 2000000009,
-    annihil = 2000000010,
-    Cerenkov = 2000000011,
+    PhotoElectricEffect = 2000000001,
+    ComptonScattering = 2000000002,
+    ElectronPositronConversion = 2000000003,
+    RayleighScattering = 2000000004,
+    MultipleScattering = 2000000005,
+    ElectronIonization = 2000000006,
+    ElectronBremsstrahlung = 2000000007,
+    ElectronPairProduction = 2000000008,
+    CoulombScattering = 2000000009,
+    Annihilation = 2000000010,
+    Cherenkov = 2000000011,
     Radioactivation = 2000000012,
     Scintillation = 2000000013,
-    OpWLS = 2000000014,
+    OpticalWLS = 2000000014,
   };
 
  public:
@@ -431,9 +431,12 @@ std::string i3particle_type_string(int32_t pdg_code);
     (CherenkovPhoton)(Nu)(Monopole)(Brems)(DeltaE)(PairProd)(NuclInt)(MuPair)     \
     (Hadrons)(ContinuousEnergyLoss)(FiberLaser)(N2Laser)(YAGLaser)                \
     (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)                                      \
-    (phot)(compt)(conv)(Rayl)(msc)(eIoni)(eBrem)(ePairProd)(CoulombScat)(annihil) \
-    (Na22Nucleus)(ExcitedNe22Nuclus)(Cerenkov)(Radioactivation)                   \
-    (Scintillation)(OpWLS)                                                        \
+    (PhotoElectricEffect)(ComptonScattering)(ElectronPositronConversion)          \
+    (RayleighScattering)(MultipleScattering)(ElectronIonization)                  \
+    (ElectronBremsstrahlung)(ElectronPairProduction)                              \
+    (CoulombScattering)(Annihilation)                                             \
+    (Na22Nucleus)(ExcitedNe22Nuclus)(Cherenkov)(Radioactivation)                  \
+    (Scintillation)(OpticalWLS)                                                   \
 
 std::ostream& operator<<(std::ostream& oss, const I3Particle& d);
 
