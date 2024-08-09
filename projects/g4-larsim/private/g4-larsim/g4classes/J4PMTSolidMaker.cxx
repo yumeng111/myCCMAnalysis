@@ -333,9 +333,9 @@ void J4PMTSolidMaker::CreateFrillWallSolid(G4double bridle_radius, G4double fril
 
 }
 
-void J4PMTSolidMaker::CreateFrillCapsSolid(G4double bride_radius, G4double frill_radius, G4double frill_width) {
+void J4PMTSolidMaker::CreateFrillCapsSolid(G4double bridle_radius, G4double frill_radius, G4double frill_width) {
 
-    fFrillCaps = new G4Tubs("FrillCaps", bride_radius, frill_radius, frill_width/2.0, 0*deg, 360*deg);
+    fFrillCaps = new G4Tubs("FrillCaps", bridle_radius, frill_radius, frill_width/2.0, 0*deg, 360*deg);
 
 }
 

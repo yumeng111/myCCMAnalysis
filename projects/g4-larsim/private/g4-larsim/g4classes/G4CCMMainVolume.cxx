@@ -382,7 +382,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     G4double frame_height = 1239.6*mm;
     G4double frame_half_height = frame_height / 2.0;
-    G4double frame_radius = 1037.0*mm;
+    G4double frame_radius = 1037.0*mm - 3.15*mm; // reducing radius by 1/2cm to account for flexing of PTFE sheets
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
@@ -390,7 +390,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fArgonOuter_log, false, 0, true);
 
     G4double frame_thickness = 1.0 * mm;
-    G4double ptfe_thickness = 5.0 * mm; // effectively moving active volume in by 1/2cm in radius from the inner frame
+    G4double ptfe_thickness = 0.5 * mm; 
     G4double tpb_thickness = 0.0019 * mm;
 
     G4double ptfe_half_height = frame_half_height - frame_thickness;
@@ -431,17 +431,17 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // now let's build our bridle + frills that go around the PMTs
     G4double bridle_width = 12.0 * mm;
-    G4double bridle_radius = 209.55 * mm;
+    G4double bridle_radius = 209.55 / 2.0 * mm;
     G4double frill_width = 0.813 * mm;
-    G4double frill_radius = 228.6 * mm;
+    G4double frill_radius = 228.6 / 2.0 * mm;
     fBridleWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance);
     fBridleCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance);
     fFrillWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius);
     fFrillCaps = J4PMTSolidMaker::GetFrillCaps(bridle_radius, frill_radius, frill_width);
-    fBridleWall_log = new G4LogicalVolume(fBridleWall, G4Material::GetMaterial("Plastic"), "BridleWallLog");
-    fBridleCaps_log = new G4LogicalVolume(fBridleCaps, G4Material::GetMaterial("Plastic"), "BridleCapsLog");
-    fFrillWall_log = new G4LogicalVolume(fFrillWall, G4Material::GetMaterial("BlackPlastic"), "FrillWallLog");
-    fFrillCaps_log = new G4LogicalVolume(fFrillCaps, G4Material::GetMaterial("BlackPlastic"), "FrillCapsLog");
+    fBridleWall_log = new G4LogicalVolume(fBridleWall, G4Material::GetMaterial("BlackPlastic"), "BridleWallLog");
+    fBridleCaps_log = new G4LogicalVolume(fBridleCaps, G4Material::GetMaterial("BlackPlastic"), "BridleCapsLog");
+    fFrillWall_log = new G4LogicalVolume(fFrillWall, G4Material::GetMaterial("Plastic"), "FrillWallLog");
+    fFrillCaps_log = new G4LogicalVolume(fFrillCaps, G4Material::GetMaterial("Plastic"), "FrillCapsLog");
 
     // now get TPB coating
     G4double tpb_protrusion = pmt_protrusion_distance - bridle_width;
@@ -461,6 +461,10 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     double pmt_radius_cm = (fiducial_lar_radius + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
     double pmt_height_cm = (fiducial_lar_half_height + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
+    double bridle_height_cm = (fiducial_lar_half_height - (bridle_width / 2.0)) / cm;
+    double frill_height_cm = (fiducial_lar_half_height - (frill_width / 2.0)) / cm;
+    double bridle_radius_cm = fiducial_lar_radius / cm;
+    double frill_radius_cm =  fiducial_lar_radius / cm;
 
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
@@ -471,6 +475,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         bool on_caps = n_row_chars > 2;
         int row;
         std::vector<double> position;
+        std::vector<double> bridle_position;
+        std::vector<double> frill_position;
         int pmt_number = 0;
         bool coated = true;
         if(on_caps) {
@@ -479,8 +485,12 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
             if(row == 0) {
                 position = get_pmt_cap_position(row, ring, col, 1, 0.0, pmt_height_cm);
+                bridle_position = get_pmt_cap_position(row, ring, col, 1, 0.0, bridle_height_cm);
+                frill_position = get_pmt_cap_position(row, ring, col, 1, 0.0, frill_height_cm);
             } else if(row == 6) {
                 position = get_pmt_cap_position(row, ring, col, 1, 0.0, -pmt_height_cm);
+                bridle_position = get_pmt_cap_position(row, ring, col, 1, 0.0, -bridle_height_cm);
+                frill_position = get_pmt_cap_position(row, ring, col, 1, 0.0, -frill_height_cm);
             } else {
                 throw std::runtime_error("Bad cap row");
             }
@@ -495,6 +505,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             int col = std::atoi(position_string.substr(1, r_pos - 1).c_str());
             row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
             position = get_pmt_wall_position(row, col, 1, 0.0, pmt_radius_cm);
+            bridle_position = get_pmt_wall_position(row, col, 1, 0.0, bridle_radius_cm);
+            frill_position = get_pmt_wall_position(row, col, 1, 0.0, frill_radius_cm);
             pmt_number = col;
             if( (row ==  1 and col % 4 == 1) or
                 (row ==  2 and col % 4 == 3) or
@@ -507,31 +519,31 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         // let's make the string key to save it to
         G4String pmt_name = std::to_string(row) + "_" + std::to_string(pmt_number);
         G4ThreeVector pmt_pos;
+        pmt_pos.setX(position[0]*cm);
+        pmt_pos.setY(position[1]*cm);
+        pmt_pos.setZ(position[2]*cm);
+        
+        G4ThreeVector bridle_pos;
+        bridle_pos.setX(bridle_position[0]*cm);
+        bridle_pos.setY(bridle_position[1]*cm);
+        bridle_pos.setZ(bridle_position[2]*cm);
+        
+        G4ThreeVector frill_pos;
+        frill_pos.setX(frill_position[0]*cm);
+        frill_pos.setY(frill_position[1]*cm);
+        frill_pos.setZ(frill_position[2]*cm);
 
         // let's make appropriate rotation matrix
         G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
-        //double distance_to_translate = 10.0; // distance in cm to pull pmts back by
 
         if (row == 0) {
             // top face pmts
             // rotate so they are pointing downwards
             G4double rotationAngle = M_PI;
             rotationMatrix->rotateX(rotationAngle); // Rotate around the x axis
-            //position[2] += distance_to_translate; // pulling pmts back a tad
-            pmt_pos.setX(position[0]*cm);
-            pmt_pos.setY(position[1]*cm);
-            pmt_pos.setZ(position[2]*cm);
 
         }
-        if (row == 6){
-            // bottom face pmts
-            // note -- don't actually need to do a rotation for bottom face pmts
-            // but do need to adjust z position slightly
-            //position[2] -= distance_to_translate;
-            pmt_pos.setX(position[0]*cm);
-            pmt_pos.setY(position[1]*cm);
-            pmt_pos.setZ(position[2]*cm);
-        }
+        // note -- don't actually need to do a rotation for bottom face pmts -- skipping for now
         if (row > 0 and row < 6){
             // side pmts
             // we want to calculate facing direction essentially
@@ -548,15 +560,6 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
             rotationMatrix->rotateZ(-phi); // rotate rotate
             rotationMatrix->rotateY(theta); // rotate rotate
-
-            // also need to pull the pmts back a touch
-            // we're going to change the magnitude of facing direction vector to equal distance_to_translate
-            //G4double translation_x = facing_dir_x * distance_to_translate / 2 + position[0];
-            //G4double translation_y = facing_dir_y * distance_to_translate / 2 + position[1];
-            pmt_pos.setX(position[0]*cm);
-            pmt_pos.setY(position[1]*cm);
-            pmt_pos.setZ(position[2]*cm);
-
         }
         if(coated) {
             // place coated pmts
@@ -568,13 +571,13 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             if(row > 0 and row < 6) {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedWall_log, descriptive_name, fFiducialAr_log, false, k);
                 fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingWall_log, tpb_descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k);
             } else {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedCaps_log, descriptive_name, fFiducialAr_log, false, k);
                 fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingCaps_log, tpb_descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k);
             }
         } else {
             // place uncoated pmts
@@ -584,12 +587,12 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
             if(row > 0 and row < 6) {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedWall_log, descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k);
             } else {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedCaps_log, descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k);
-                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k);
             }
         }
 
@@ -649,11 +652,11 @@ void G4CCMMainVolume::VisAttributes()
     //pink->SetForceSolid(true);
 
     fCryoVessel_log->SetVisAttributes(lilac);
-    fVacuum_log->SetVisAttributes(salmon);
+    fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fInnerJacket_log->SetVisAttributes(dark_blue);
     fArgonOuter_log->SetVisAttributes(green);
     fInnerFrame_log->SetVisAttributes(orange);
-    fTPBFoil_log->SetVisAttributes(teal);
+    fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fFiducialAr_log->SetVisAttributes(pink);
 
     //fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
@@ -679,6 +682,13 @@ void G4CCMMainVolume::VisAttributes()
     tpb_coating_va->SetForceSolid(true);
     fTPBCoatingWall_log->SetVisAttributes(tpb_coating_va);
     fTPBCoatingCaps_log->SetVisAttributes(tpb_coating_va);
+
+    salmon->SetForceSolid(true);
+    teal->SetForceSolid(true);
+    fBridleWall_log->SetVisAttributes(salmon);
+    fBridleCaps_log->SetVisAttributes(salmon);
+    fFrillWall_log->SetVisAttributes(teal);
+    fFrillCaps_log->SetVisAttributes(teal);
 
     //auto photocath_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
     //photocath_va->SetForceSolid(true);
