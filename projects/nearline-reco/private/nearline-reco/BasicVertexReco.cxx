@@ -57,6 +57,7 @@ class BasicVertexReco: public I3ConditionalModule {
     bool check_raw_pulses_;
     std::string raw_pulses_name_;
     std::string pulses_mask_name_;
+    bool charge_sq_weighting_;
 
     I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
     std::set<CCMPMTKey> pmt_keys;
@@ -80,7 +81,9 @@ BasicVertexReco::BasicVertexReco(const I3Context& context) : I3ConditionalModule
     AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
     AddParameter("InputEventPrefix", "Prefix for the inputs", std::string(""));
     AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
+    AddParameter("ChargeSquareWeighting", "Weight by charge squared", bool(false));
 }
+
 
 void BasicVertexReco::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
@@ -91,6 +94,7 @@ void BasicVertexReco::Configure() {
     GetParameter("InputRawPulsesName", raw_pulses_name_);
     GetParameter("InputEventPrefix", input_prefix_);
     GetParameter("OutputPrefix", output_prefix_);
+    GetParameter("ChargeSquareWeighting", charge_sq_weighting_);
 
     check_masked_pulses_ = false;
     check_raw_pulses_ = (raw_pulses_name_ != "");
@@ -192,9 +196,14 @@ void BasicVertexReco::Physics(I3FramePtr frame) {
                 break;
             total_charge += i->GetCharge();
         }
+        if(charge_sq_weighting_) {
+            total_charge = total_charge*total_charge;
+        }
+
         total_weight += total_charge;
         (*reco_vertex) += pos * total_charge;
     }
+
 
     (*reco_vertex) /= total_weight;
 
