@@ -307,7 +307,7 @@ void J4PMTSolidMaker::Create8inchPMTWallSolid(G4double cylinder_radius, G4double
     fTubSolid = new G4Tubs("InnerFrame", 0*cm, cylinder_radius, max_diameter/2.0, 0*deg, 360*deg);
 
     G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
-    rotationMatrix->rotateX(M_PI / 2.0); // Rotate 90degrees around the x axis
+    rotationMatrix->rotateY(M_PI / 2.0); // Rotate 90degrees around the x axis
 
     G4double z_center = f8inchPMTRadius - protrusion_distance + cylinder_radius;
 
@@ -340,7 +340,7 @@ void J4PMTSolidMaker::CreateTPBCoatingWallSolid(G4double cylinder_radius, G4doub
     fTubSolid = new G4Tubs("InnerFrame", 0*cm, cylinder_radius, max_diameter/2.0, 0*deg, 360*deg);
 
     G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
-    rotationMatrix->rotateX(M_PI / 2.0); // Rotate 90degrees around the x axis
+    rotationMatrix->rotateY(M_PI / 2.0); // Rotate 90degrees around the x axis
 
     G4double z_center = f8inchPMTRadius - protrusion_distance + cylinder_radius;
 
