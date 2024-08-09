@@ -430,10 +430,10 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fPMTUncoatedCaps_log = new G4LogicalVolume(fPMTUncoatedCaps, G4Material::GetMaterial("Glass"), "PMTUncoatedCapsLog");
 
     // now let's build our bridle + frills that go around the PMTs
-    G4double bridle_width = 1.0 * cm; // placeholder!!!
-    G4double bridle_radius = 1.0 * cm; // placeholder!!!
-    G4double frill_width = 1.0 * cm; // placeholder!!!
-    G4double frill_radius = 1.0 * cm; // placeholder!!!
+    G4double bridle_width = 12.0 * mm;
+    G4double bridle_radius = 209.55 * mm;
+    G4double frill_width = 0.813 * mm;
+    G4double frill_radius = 228.6 * mm;
     fBridleWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance);
     fBridleCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance);
     fFrillWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius);
@@ -443,7 +443,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fFrillWall_log = new G4LogicalVolume(fFrillWall, G4Material::GetMaterial("BlackPlastic"), "FrillWallLog");
     fFrillCaps_log = new G4LogicalVolume(fFrillCaps, G4Material::GetMaterial("BlackPlastic"), "FrillCapsLog");
 
-    // now get TPB coating -- NOT a daughter volume of coated pmt logical volume
+    // now get TPB coating
     G4double tpb_protrusion = pmt_protrusion_distance - bridle_width;
     fTPBCoatingWall = J4PMTSolidMaker::GetTPBCoatingWallSolid(fiducial_lar_radius, pmt_protrusion_distance);
     fTPBCoatingCaps = J4PMTSolidMaker::GetTPBCoatingCapsSolid(pmt_protrusion_distance);
