@@ -827,9 +827,9 @@ L111:
     nfgv = 1;
 /*     Compute the infinity norm of the (-) projected gradient. */
     projgr_(n, &l[1], &u[1], &nbd[1], scale, &x[1], &g[1], &sbgnrm);
-    if (sbgnrm <= *pgtol) {
+    if (sbgnrm <= *pgtol) { //std::cout << "sbgnrm = " << sbgnrm << ", pgtol" << *pgtol << std::endl;
 /*                                terminate the algorithm. */
-	s_copy(task, "CONVERGENCE: NORM_OF_PROJECTED_GRADIENT_<=_PGTOL", (
+    s_copy(task, "CONVERGENCE: NORM_OF_PROJECTED_GRADIENT_<=_PGTOL", (
 		ftnlen)60, (ftnlen)48);
 	goto L999;
     }
@@ -1007,7 +1007,7 @@ L666:
     }
 L777:
 /*     Test for termination. */
-    if (sbgnrm <= *pgtol) {
+    if (sbgnrm <= *pgtol) { //std::cout << "sbgnrm = " << sbgnrm << ", pgtol" << *pgtol << std::endl;
 /*                                terminate the algorithm. */
 	s_copy(task, "CONVERGENCE: NORM_OF_PROJECTED_GRADIENT_<=_PGTOL", (
 		ftnlen)60, (ftnlen)48);
@@ -3187,6 +3187,10 @@ L999:
 /* Computing MAX */
 	assert(scale[i__-1] > 0);
 	d__1 = *sbgnrm, d__2 = fabs(gi)*scale[i__-1];
+    //std::cout << "gi = " << gi << ", fabs(gi) = " << fabs(gi) << std::endl;
+    //std::cout << "scale[i__-1] = " << scale[i__-1] << ", fabs(gi)*scale[i__-1] = " << fabs(gi)*scale[i__-1] << std::endl;
+    //std::cout << "*sbgnrm = " << *sbgnrm << std::endl;
+    //std::cout << "d__1 = " << d__1 << ", d__2 = " << d__2 << std::endl;
 	*sbgnrm = max(d__1,d__2);
 /* L15: */
     }

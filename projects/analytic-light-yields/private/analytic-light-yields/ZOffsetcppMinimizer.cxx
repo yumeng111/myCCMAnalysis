@@ -267,8 +267,8 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
 
     minimizer.addParameter(0.33, 1e-3, 0.1, 0.5); // Rs
-    minimizer.addParameter(7.0, 1e-3, 2.0, 16.0); // tau_s
-    minimizer.addParameter(3.0, 1e-3, 1.0, 9.0); // tau_TPB
+    minimizer.addParameter(7.0, 1e-3, 1.0, 16.0); // tau_s
+    minimizer.addParameter(3.0, 1e-3, 0.001, 9.0); // tau_TPB
 
     // let's grab the norm seed
     double uv_abs_1_seed = 45.0;
@@ -305,7 +305,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     }
     
     // now add rayleigh scattering length
-    minimizer.addParameter(rayl_seed, 1e-3, 70.01, 94.99);
+    minimizer.addParameter(rayl_seed, 1e-3, 55.01, 94.99);
     
     // now add z offsets
     for (size_t n = 0; n < 4; n++){

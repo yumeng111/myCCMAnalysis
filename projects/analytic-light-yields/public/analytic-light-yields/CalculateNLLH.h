@@ -459,8 +459,9 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
             T pmt_efficiency, std::vector<T> uv_absorption, T rayl, T photons_per_mev, T z_offset, size_t n_sodium_events,
             AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, bool UseG4Yields) {
 
-    //std::cout << "Rs = " << Rs << ", Rt = " << Rt << ", tau_s = " << tau_s << ", tau_rec = " << tau_rec << ", tau_TPB = " << tau_TPB << 
-    //    ", norm = " << normalization << ", pmt eff = " << pmt_efficiency << ", uv abs = " << uv_absorption << ", photons/mev = " << photons_per_mev << std::endl;
+    //std::cout << "In CalculateNLLH<T>::ComputeNLLH : Rs = " << Rs << ", tau_s = " << tau_s << ", tau_TPB = " << tau_TPB << 
+    //    ", norm = " << normalization << ", pmt eff = " << pmt_efficiency << ", uv abs = " << uv_absorption << ", photons/mev = "
+    //    << photons_per_mev << ", rayl = " << rayl << std::endl;
     // let's grab our data
     SinglePMTInfo const & pmt_data = data[key];
     double start_time = pmt_data.start_time;
