@@ -196,14 +196,12 @@ void BasicVertexReco::Physics(I3FramePtr frame) {
                 break;
             total_charge += i->GetCharge();
         }
-        if(charge_sq_weighting_) {
+        if(charge_sq_weighting_)
             total_charge = total_charge*total_charge;
-        }
 
         total_weight += total_charge;
         (*reco_vertex) += pos * total_charge;
     }
-
 
     (*reco_vertex) /= total_weight;
 
