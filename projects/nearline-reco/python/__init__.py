@@ -5,9 +5,11 @@ from icecube.load_pybindings import load_pybindings
 from . import IntervalChargeSum
 from . import FractionUncoated
 from . import ChargeRatio
+from . import BCMCuts
 
 IntervalChargeSum = IntervalChargeSum.IntervalChargeSum
 FractionUncoated = FractionUncoated.FractionUncoated
 ChargeRatio = ChargeRatio.ChargeRatio
+BCMCuts = BCMCuts.BCMCuts
 
 del icetray

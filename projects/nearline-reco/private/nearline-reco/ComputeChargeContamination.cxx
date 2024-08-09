@@ -59,6 +59,8 @@ class ComputeChargeContamination: public I3ConditionalModule {
     std::string unfolding_input_prefix_;
     std::string output_prefix_;
 
+    I3Vector<double> time_windows_;
+
     I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
     std::set<CCMPMTKey> pmt_keys;
 
@@ -76,6 +78,7 @@ ComputeChargeContamination::ComputeChargeContamination(const I3Context& context)
     I3Vector<double> default_time_windows;
     default_time_windows.push_back(90.0);
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
+    AddParameter("TimeWindows", "Time windows to measure charge in", default_time_windows);
     AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
     AddParameter("TauSinglet", "Time constant for singlet light", 8.13);
     AddParameter("TauTriplet", "Time constant for triplet light", 743);
@@ -87,6 +90,7 @@ ComputeChargeContamination::ComputeChargeContamination(const I3Context& context)
 
 void ComputeChargeContamination::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
+    GetParameter("TimeWindows", time_windows_);
     GetParameter("PMTTypes", pmt_types);
     GetParameter("TauSinglet", tau_s_);
     GetParameter("TauTriplet", tau_t_);
@@ -139,27 +143,57 @@ void ComputeChargeContamination::Physics(I3FramePtr frame) {
     if(not end_time)
         log_fatal(("I3Double " + event_input_prefix_ + "EventEndTime" + " not found in the frame.").c_str());
 
-    double total_charge = 0.0;
+    double total_event_charge = 0;
     I3DoubleConstPtr event_charge = frame->Get<I3DoubleConstPtr>(event_input_prefix_ + "EventTotalCharge");
-    if(event_charge) {
-        total_charge = event_charge->value;
-    } else {
+    if(event_charge)
+        total_event_charge = event_charge->value;
+    std::vector<double> total_charges(time_windows_.size(), 0.0);
+    std::vector<size_t> time_window_indices;
+    std::vector<bool> have_event_charge(time_windows_.size(), false);
+    for(size_t i = 0; i < time_windows_.size(); i++) {
+        I3DoubleConstPtr event_charge = frame->Get<I3DoubleConstPtr>(event_input_prefix_ + "EventTotalCharge" + std::to_string(int(time_windows_[i])) + "NS");
+        if(event_charge) {
+            total_charges[i] = event_charge->value;
+            have_event_charge[i] = true;
+        } else {
+            time_window_indices.push_back(i);
+        }
+    }
+    if((not event_charge) or time_window_indices.size() > 0) {
         CCMRecoPulseSeriesMapConstPtr pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(event_input_prefix_ + "EventPulses");
         if(not pulses)
             log_fatal(("CCMRecoPulseSeriesMapMask " + event_input_prefix_ + "EventPulses" + " not found in the frame.").c_str());
 
+        size_t time_window_index = 0;
         // Compute total charge
         for(CCMRecoPulseSeriesMap::const_iterator i = pulses->begin(); i != pulses->end(); i++) {
             if(pmt_keys.count(i->first) == 0)
                 continue;
+            double total_charge = 0.0;
             for(CCMRecoPulse const & pulse: i->second) {
                 if(pulse.GetTime() < start_time->value)
                     continue;
                 if(pulse.GetTime() > end_time->value)
                     break;
                 total_charge += pulse.GetCharge();
+                if(time_window_index < time_window_indices.size()) {
+                    if(pulse.GetTime() > time_windows_[time_window_indices[time_window_index]]) {
+                        total_charges[time_window_indices[time_window_index]] = total_charge;
+                        time_window_index++;
+                    }
+                }
             }
+            for(; time_window_index < time_window_indices.size(); ++time_window_index)
+                total_charges[time_window_indices[time_window_index]] = total_charge;
+            if(not event_charge)
+                total_event_charge += total_charge;
+            time_window_index = 0;
         }
+    }
+
+    if(not event_charge) {
+        I3DoublePtr total_event_charge_ptr = boost::make_shared<I3Double>(total_event_charge);
+        frame->Put(event_input_prefix_ + "EventTotalCharge", total_event_charge_ptr);
     }
 
     if(singlet->size() != triplet->size())
@@ -170,35 +204,38 @@ void ComputeChargeContamination::Physics(I3FramePtr frame) {
 
     // Compute contamination
     size_t first_bin = std::max(std::floor((start_time->value - min_time->value) / delta_t_), 0.0);
-    size_t last_bin = std::max(std::floor((end_time->value - min_time->value) / delta_t_), 0.0);
     first_bin = std::min(first_bin + 1, singlet->size()) - 1;
-    last_bin = std::min(last_bin + 1, singlet->size()) - 1;
-    size_t n_bins = last_bin - first_bin + 1;
 
-    double starting_singlet = 0.0;
-    double starting_triplet = 0.0;
-    if(first_bin == 0) {
-        starting_singlet = singlet->at(0);
-        starting_triplet = triplet->at(0);
-        starting_singlet /= beta_s_;
-        starting_triplet /= beta_t_;
-    } else {
-        starting_singlet = singlet->at(first_bin - 1);
-        starting_triplet = triplet->at(first_bin - 1);
-    }
+    for(size_t i = 0; i < time_windows_.size(); i++) {
+        size_t last_bin = std::max(std::floor(time_windows_[i] / delta_t_), 0.0);
+        last_bin = std::min(last_bin + 1, singlet->size()) - 1;
+        size_t n_bins = last_bin - first_bin + 1;
 
-    double total_singlet = starting_singlet * (1.0 - std::pow(beta_s_, n_bins)) / (1.0 / beta_s_ - 1.0);
-    double total_triplet = starting_triplet * (1.0 - std::pow(beta_t_, n_bins)) / (1.0 / beta_t_ - 1.0);
+        double starting_singlet = 0.0;
+        double starting_triplet = 0.0;
+        if(first_bin == 0) {
+            starting_singlet = singlet->at(0);
+            starting_triplet = triplet->at(0);
+            starting_singlet /= beta_s_;
+            starting_triplet /= beta_t_;
+        } else {
+            starting_singlet = singlet->at(first_bin - 1);
+            starting_triplet = triplet->at(first_bin - 1);
+        }
 
-    I3DoublePtr total_contamination = boost::make_shared<I3Double>(total_singlet + total_triplet);
-    I3DoublePtr total_contamination_fraction = boost::make_shared<I3Double>((total_singlet + total_triplet) / total_charge);
+        double total_singlet = starting_singlet * (1.0 - std::pow(beta_s_, n_bins)) / (1.0 / beta_s_ - 1.0);
+        double total_triplet = starting_triplet * (1.0 - std::pow(beta_t_, n_bins)) / (1.0 / beta_t_ - 1.0);
 
-    frame->Put(output_prefix_ + "ChargeContamination", total_contamination);
-    frame->Put(output_prefix_ + "ChargeContaminationFraction", total_contamination_fraction);
+        I3DoublePtr total_contamination = boost::make_shared<I3Double>(total_singlet + total_triplet);
+        I3DoublePtr total_contamination_fraction = boost::make_shared<I3Double>((total_singlet + total_triplet) / total_charges[i]);
 
-    if(not event_charge) {
-        I3DoublePtr total_charge_ptr = boost::make_shared<I3Double>(total_charge);
-        frame->Put(event_input_prefix_ + "EventTotalCharge", total_charge_ptr);
+        frame->Put(output_prefix_ + "ChargeContamination" + std::to_string(int(time_windows_[i])) + "NS", total_contamination);
+        frame->Put(output_prefix_ + "ChargeContaminationFraction" + std::to_string(int(time_windows_[i])) + "NS", total_contamination_fraction);
+
+        if(not have_event_charge[i]) {
+            I3DoublePtr total_charge_ptr = boost::make_shared<I3Double>(total_charges[i]);
+            frame->Put(event_input_prefix_ + "EventTotalCharge" + std::to_string(int(time_windows_[i])) + "NS", total_charge_ptr);
+        }
     }
 
     PushFrame(frame);
