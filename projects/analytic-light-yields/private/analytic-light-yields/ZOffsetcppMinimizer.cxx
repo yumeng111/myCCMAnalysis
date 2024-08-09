@@ -215,6 +215,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
                                                        std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
                                                        I3MapPMTKeyDouble pmt_efficiency, std::vector<bool> fit_flags){
 
+    std::cout << "fitting to " << data_file_names.size() << " data files" << std::endl;
     bool use_tau_prior = fit_flags.at(0);
     bool fix_z_offset = fit_flags.at(1);
     bool fix_pmt_eff = fit_flags.at(2);
@@ -280,18 +281,19 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     size_t reference_pmt_idx = (size_t) (keys_to_fit.size() / 2);
     CCMPMTKey reference_pmt = keys_to_fit.at(reference_pmt_idx);
     double baseline_eff = 1.0;
-    //if (pmt_efficiency.find(reference_pmt) != pmt_efficiency.end()){
-    //    baseline_eff = pmt_efficiency.at(reference_pmt);
-    //}
-    std::vector<double> norm_seeds = GrabNormSeed(reference_pmt, baseline_eff, LPmu.at(reference_pmt), LPsigma.at(reference_pmt), LPscale.at(reference_pmt),
-                                                  {uv_abs_1_seed, uv_abs_2_seed}, rayl_seed, z_offsets, n_sodium_events, time_offsets, data_file_names);
-    double total_norm_seed = 0.0;
-    for (size_t n = 0; n < norm_seeds.size(); n++){
-        total_norm_seed += norm_seeds.at(n);
+    if (pmt_efficiency.find(reference_pmt) != pmt_efficiency.end()){
+        baseline_eff = pmt_efficiency.at(reference_pmt);
     }
-    double average_norm_seed = total_norm_seed / static_cast<double>(norm_seeds.size());
-
-    std::cout << "norm seeds = " << norm_seeds << " and adding average norm seed = " << average_norm_seed << std::endl;
+    //std::vector<double> norm_seeds = GrabNormSeed(reference_pmt, baseline_eff, LPmu.at(reference_pmt), LPsigma.at(reference_pmt), LPscale.at(reference_pmt),
+    //                                              {uv_abs_1_seed, uv_abs_2_seed}, rayl_seed, z_offsets, n_sodium_events, time_offsets, data_file_names);
+    //double total_norm_seed = 0.0;
+    //for (size_t n = 0; n < norm_seeds.size(); n++){
+    //    total_norm_seed += norm_seeds.at(n);
+    //}
+    //double average_norm_seed = total_norm_seed / static_cast<double>(norm_seeds.size());
+    
+    //std::cout << "norm seeds = " << norm_seeds << " and adding average norm seed = " << average_norm_seed << std::endl;
+    double average_norm_seed = 1.0;
 
     // now add normalization
     minimizer.addParameter(average_norm_seed, 1e-3, average_norm_seed * 1e-5, average_norm_seed * 1e5); // norm
@@ -318,19 +320,19 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     
     // now we are adding our pmt efficincy terms
     for (size_t n = 0; n < 200; n++){
-        //if (n < keys_to_fit.size()){
-        //    CCMPMTKey this_key = keys_to_fit.at(n);
-        //    if (pmt_efficiency.find(this_key) != pmt_efficiency.end()){
-        //        minimizer.addParameter(pmt_efficiency.at(this_key), 1e-3, pmt_efficiency.at(this_key) * 1e-2, pmt_efficiency.at(this_key) * 1e2); // pmt eff
-        //    } 
-        //    else {
-        //        minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
-        //    }
-        //}
-        //else {
-        //    minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
-        //}
-        minimizer.addParameter(baseline_eff, 1e-3, 0.001, 5.0); // pmt eff
+        if (n < keys_to_fit.size()){
+            CCMPMTKey this_key = keys_to_fit.at(n);
+            if (pmt_efficiency.find(this_key) != pmt_efficiency.end()){
+                minimizer.addParameter(pmt_efficiency.at(this_key), 1e-3, pmt_efficiency.at(this_key) * 1e-2, pmt_efficiency.at(this_key) * 1e2); // pmt eff
+            } 
+            else {
+                minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
+            }
+        }
+        else {
+            minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
+        }
+        //minimizer.addParameter(baseline_eff, 1e-3, 0.001, 5.0); // pmt eff
     } 
     
     minimizer.setHistorySize(20);
