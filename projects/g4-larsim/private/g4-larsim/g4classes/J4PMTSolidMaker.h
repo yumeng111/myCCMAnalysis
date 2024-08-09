@@ -29,6 +29,10 @@ class J4PMTSolidMaker {
     static void Create8inchPMTWallSolid(G4double cylinder_radius, G4double protrusion_distance);
     static void CreateTPBCoatingCapsSolid(G4double protrusion_distance);
     static void CreateTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance);
+    static void CreateBridleWallSolid(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance);
+    static void CreateBridleCapsSolid(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance);
+    static void CreateFrillWallSolid(G4double bridle_radius, G4double frill_radius, G4double frill_width, G4double tpb_foil_radius);
+    static void CreateFrillCapsSolid(G4double bride_radius, G4double frill_radius, G4double frill_width);
 
     static G4VSolid * Get8inchPMTSolid();
     static G4VSolid * GetTPBCoatingSolid();
@@ -42,6 +46,10 @@ class J4PMTSolidMaker {
     static G4VSolid * Get8inchPMTWallSolid(G4double cylinder_radius, G4double protrusion_distance);
     static G4VSolid * GetTPBCoatingCapsSolid(G4double protrusion_distance);
     static G4VSolid * GetTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance);
+    static G4VSolid * GetBridleWall(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance);
+    static G4VSolid * GetBridleCaps(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance);
+    static G4VSolid * GetFrillWall(G4double bridle_radius, G4double frill_radius,  G4double frill_width, G4double tpb_foil_radius);
+    static G4VSolid * GetFrillCaps(G4double bridle_radius, G4double frill_radius, G4double frill_width);
 
   private:
     static G4double f8inchPMTRadius;
@@ -61,7 +69,11 @@ class J4PMTSolidMaker {
     static G4VSolid * fTPBCoatingCapsSolid;
     static G4VSolid * fTPBCoatingWallSolid;
 
-
+    static G4VSolid * fBridleWall;
+    static G4VSolid * fBridleCaps;
+    static G4VSolid * fFrillWall;
+    static G4VSolid * fFrillCaps;
+    
     static G4VSolid * fPhotocathodeSolid;
     static G4double fPhotocathodeDelta;
 

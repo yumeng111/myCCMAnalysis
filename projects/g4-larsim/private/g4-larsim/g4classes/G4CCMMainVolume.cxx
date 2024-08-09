@@ -390,7 +390,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fArgonOuter_log, false, 0, true);
 
     G4double frame_thickness = 1.0 * mm;
-    G4double ptfe_thickness = 0.5 * mm;
+    G4double ptfe_thickness = 5.0 * mm; // effectively moving active volume in by 1/2cm in radius from the inner frame
     G4double tpb_thickness = 0.0019 * mm;
 
     G4double ptfe_half_height = frame_half_height - frame_thickness;
@@ -419,21 +419,32 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double pmt_protrusion_distance = 61.89 * mm;
 
     // now let's build PMTs using J4SolidMaker
-    // note -- we are construction coated PMTs and uncoated PMTs seperately
-    //fPMTCoated = J4PMTSolidMaker::Get8inchPMTSolid();
     fPMTCoatedWall = J4PMTSolidMaker::Get8inchPMTWallSolid(fiducial_lar_radius, pmt_protrusion_distance);
     fPMTCoatedCaps = J4PMTSolidMaker::Get8inchPMTCapsSolid(pmt_protrusion_distance);
-
     fPMTCoatedWall_log = new G4LogicalVolume(fPMTCoatedWall, G4Material::GetMaterial("Glass"), "PMTCoatedWallLog");
     fPMTCoatedCaps_log = new G4LogicalVolume(fPMTCoatedCaps, G4Material::GetMaterial("Glass"), "PMTCoatedCapsLog");
 
     fPMTUncoatedWall = J4PMTSolidMaker::Get8inchPMTWallSolid(fiducial_lar_radius, pmt_protrusion_distance);
     fPMTUncoatedCaps = J4PMTSolidMaker::Get8inchPMTCapsSolid(pmt_protrusion_distance);
-
     fPMTUncoatedWall_log = new G4LogicalVolume(fPMTUncoatedWall, G4Material::GetMaterial("Glass"), "PMTUncoatedWallLog");
     fPMTUncoatedCaps_log = new G4LogicalVolume(fPMTUncoatedCaps, G4Material::GetMaterial("Glass"), "PMTUncoatedCapsLog");
 
+    // now let's build our bridle + frills that go around the PMTs
+    G4double bridle_width = 1.0 * cm; // placeholder!!!
+    G4double bridle_radius = 1.0 * cm; // placeholder!!!
+    G4double frill_width = 1.0 * cm; // placeholder!!!
+    G4double frill_radius = 1.0 * cm; // placeholder!!!
+    fBridleWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance);
+    fBridleCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance);
+    fFrillWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius);
+    fFrillCaps = J4PMTSolidMaker::GetFrillCaps(bridle_radius, frill_radius, frill_width);
+    fBridleWall_log = new G4LogicalVolume(fBridleWall, G4Material::GetMaterial("Plastic"), "BridleWallLog");
+    fBridleCaps_log = new G4LogicalVolume(fBridleCaps, G4Material::GetMaterial("Plastic"), "BridleCapsLog");
+    fFrillWall_log = new G4LogicalVolume(fFrillWall, G4Material::GetMaterial("BlackPlastic"), "FrillWallLog");
+    fFrillCaps_log = new G4LogicalVolume(fFrillCaps, G4Material::GetMaterial("BlackPlastic"), "FrillCapsLog");
+
     // now get TPB coating -- NOT a daughter volume of coated pmt logical volume
+    G4double tpb_protrusion = pmt_protrusion_distance - bridle_width;
     fTPBCoatingWall = J4PMTSolidMaker::GetTPBCoatingWallSolid(fiducial_lar_radius, pmt_protrusion_distance);
     fTPBCoatingCaps = J4PMTSolidMaker::GetTPBCoatingCapsSolid(pmt_protrusion_distance);
     fTPBCoatingWall_log = new G4LogicalVolume(fTPBCoatingWall, G4Material::GetMaterial("TPBPMT"), "TPBCoatingWallLog");
@@ -551,20 +562,34 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             // place coated pmts
             G4String descriptive_name = "CoatedPMT_" + pmt_name;
             G4String tpb_descriptive_name = "TPBCoating_" + pmt_name;
+            G4String bridle_descriptive_name = "Bridle_" + pmt_name;
+            G4String frill_descriptive_name = "Frill_" + pmt_name;
+
             if(row > 0 and row < 6) {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedWall_log, descriptive_name, fFiducialAr_log, false, k);
                 fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingWall_log, tpb_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k);
             } else {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedCaps_log, descriptive_name, fFiducialAr_log, false, k);
                 fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingCaps_log, tpb_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k);
             }
         } else {
             // place uncoated pmts
             G4String descriptive_name = "UncoatedPMT_" + pmt_name;
+            G4String bridle_descriptive_name = "Bridle_" + pmt_name;
+            G4String frill_descriptive_name = "Frill_" + pmt_name;
+
             if(row > 0 and row < 6) {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedWall_log, descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k);
             } else {
                 new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedCaps_log, descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k);
+                new G4PVPlacement(rotationMatrix, pmt_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k);
             }
         }
 

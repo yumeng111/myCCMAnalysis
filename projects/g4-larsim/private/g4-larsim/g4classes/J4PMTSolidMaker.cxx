@@ -37,6 +37,10 @@ G4VSolid * J4PMTSolidMaker::f8inchPMTCapsSolid;
 G4VSolid * J4PMTSolidMaker::f8inchPMTWallSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingCapsSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingWallSolid;
+G4VSolid * J4PMTSolidMaker::fBridleWall; 
+G4VSolid * J4PMTSolidMaker::fBridleCaps;
+G4VSolid * J4PMTSolidMaker::fFrillWall; 
+G4VSolid * J4PMTSolidMaker::fFrillCaps;
 
 //////////////////////////////////////////////////////////////////////////////////////
 G4VSolid* J4PMTSolidMaker::Get8inchPMTSolid()
@@ -65,6 +69,35 @@ G4VSolid* J4PMTSolidMaker::GetPhotocathodeSolid()
 
    return fPhotocathodeSolid;
 }
+
+G4VSolid * J4PMTSolidMaker::GetBridleWall(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance) {
+    if (!fBridleWall) {
+        CreateBridleWallSolid(bridle_radius, bridle_width, tpb_foil_radius, protrusion_distance);
+    }
+    return fBridleWall;
+}
+
+G4VSolid * J4PMTSolidMaker::GetBridleCaps(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance) {
+    if (!fBridleCaps) {
+        CreateBridleCapsSolid(bridle_radius, bridle_width, protrusion_distance);
+    }
+    return fBridleCaps;
+}
+
+G4VSolid * J4PMTSolidMaker::GetFrillWall(G4double bridle_radius, G4double frill_radius,  G4double frill_width, G4double tpb_foil_radius) {
+    if (!fFrillWall) {
+        CreateFrillWallSolid(bridle_radius, frill_radius, frill_width, tpb_foil_radius);
+    }
+    return fFrillWall;
+}
+
+G4VSolid * J4PMTSolidMaker::GetFrillCaps(G4double bridle_radius, G4double frill_radius, G4double frill_width) {
+    if (!fFrillCaps) {
+        CreateFrillCapsSolid(bridle_radius, frill_radius, frill_width);
+    }
+    return fFrillCaps;
+}
+
 
 G4VSolid * J4PMTSolidMaker::Get8inchPMTCapsSolid(G4double protrusion_distance) {
     if (!f8inchPMTCapsSolid or fPMTProtrusionDistance != protrusion_distance) {
@@ -280,6 +313,65 @@ void J4PMTSolidMaker::CreateTPBCoatingSolid()
 
     J4UnionSolid *solid1 = new J4UnionSolid("solid1", sphere, polycone1, 0, centerOfPolycone);
     fTPBCoatingSolid = solid1;
+
+}
+
+void J4PMTSolidMaker::CreateFrillWallSolid(G4double bridle_radius, G4double frill_radius, G4double frill_width, G4double tpb_foil_radius) {
+
+    G4double max_diameter = 250 * mm;
+    G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", bridle_radius, frill_radius, max_diameter/2.0, 0*deg, 360*deg);
+
+    G4VSolid * fFrillSurface = new G4Tubs("FrillSurface", tpb_foil_radius - frill_width, tpb_foil_radius, frill_radius * 2, 0*deg, 360*deg);
+
+    G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
+    rotationMatrix->rotateY(M_PI / 2.0); // Rotate 90degrees around the Y axis
+
+    G4double z_center = tpb_foil_radius;
+    G4ThreeVector centerOfTub(0, 0, z_center);
+
+    fFrillWall = new G4IntersectionSolid("FrillWall", fFrillPunchOut, fFrillSurface, rotationMatrix, centerOfTub);
+
+}
+
+void J4PMTSolidMaker::CreateFrillCapsSolid(G4double bride_radius, G4double frill_radius, G4double frill_width) {
+
+    fFrillCaps = new G4Tubs("FrillCaps", bride_radius, frill_radius, frill_width/2.0, 0*deg, 360*deg);
+
+}
+
+
+void J4PMTSolidMaker::CreateBridleWallSolid(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance) {
+
+    G4double max_diameter = 250 * mm;
+    G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, max_diameter/2.0, 0*deg, 360*deg);
+
+    G4VSolid * pmt = Get8inchPMTSolid();
+
+    G4VSolid * fBridleSurface = new G4Tubs("BridleSurface", tpb_foil_radius - bridle_width, tpb_foil_radius, bridle_radius * 2, 0*deg, 360*deg);
+
+    G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
+    rotationMatrix->rotateY(M_PI / 2.0); // Rotate 90degrees around the Y axis
+
+    G4double z_center = tpb_foil_radius;
+    G4ThreeVector centerOfTub(0, 0, z_center);
+
+    G4VSolid * fBridleSurfaceBridlePunchOut = new G4IntersectionSolid("BridlePunchOut", fBridlePunchOut, fBridleSurface, rotationMatrix, centerOfTub);
+
+    G4double z_center_bridle = f8inchPMTRadius - protrusion_distance;
+    G4ThreeVector centerofPMT(0, 0, z_center_bridle);
+
+    fBridleWall = new G4SubtractionSolid("Bridle", fBridleSurfaceBridlePunchOut, pmt, 0, centerofPMT);
+}
+
+void J4PMTSolidMaker::CreateBridleCapsSolid(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance) {
+
+    G4VSolid * pmt = Get8inchPMTSolid();
+
+    G4VSolid * fBridleDisk = new G4Tubs("BridleDisk", 0*cm, bridle_radius, bridle_width/2.0, 0*deg, 360*deg);
+
+    G4double z_offset = -(f8inchPMTRadius - protrusion_distance + bridle_width / 2.0);
+    G4ThreeVector centerofBridlePMT(0, 0, z_offset);
+    fBridleCaps = new G4SubtractionSolid("BridleCaps", fBridleDisk, pmt, 0, centerofBridlePMT);
 
 }
 

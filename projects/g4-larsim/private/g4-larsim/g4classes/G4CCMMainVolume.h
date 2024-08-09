@@ -59,13 +59,15 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fTPBFoil = nullptr;
     G4Tubs* fFiducialAr = nullptr;
 
-    G4VSolid* fPMTCoated = nullptr; 
     G4VSolid* fPMTCoatedWall = nullptr;
     G4VSolid* fPMTCoatedCaps = nullptr;
-
-    G4VSolid* fPMTUncoated = nullptr; 
     G4VSolid* fPMTUncoatedWall = nullptr;
     G4VSolid* fPMTUncoatedCaps = nullptr;
+
+    G4VSolid* fBridleWall = nullptr;
+    G4VSolid* fBridleCaps = nullptr;
+    G4VSolid* fFrillWall = nullptr;
+    G4VSolid* fFrillCaps = nullptr;
 
     G4VSolid* fTPBCoatingWall = nullptr; 
     G4VSolid* fTPBCoatingCaps = nullptr; 
@@ -87,9 +89,13 @@ class G4CCMMainVolume : public G4PVPlacement
 
     G4LogicalVolume* fPMTCoatedWall_log = nullptr;
     G4LogicalVolume* fPMTCoatedCaps_log = nullptr;
-
     G4LogicalVolume* fPMTUncoatedWall_log = nullptr;
     G4LogicalVolume* fPMTUncoatedCaps_log = nullptr;
+    
+    G4LogicalVolume* fBridleWall_log = nullptr;
+    G4LogicalVolume* fBridleCaps_log = nullptr;
+    G4LogicalVolume* fFrillWall_log = nullptr;
+    G4LogicalVolume* fFrillCaps_log = nullptr;
 
     G4LogicalVolume* fTPBCoatingWall_log = nullptr; 
     G4LogicalVolume* fTPBCoatingCaps_log = nullptr; 
