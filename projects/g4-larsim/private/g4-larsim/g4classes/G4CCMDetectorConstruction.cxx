@@ -275,12 +275,12 @@ void G4CCMDetectorConstruction::DefineMaterials() {
    
     G4MaterialPropertiesTable* fPlastic_mt = new G4MaterialPropertiesTable(); 
     fPlastic_mt->AddProperty("ABSLENGTH", plastic_Energy, plastic_AbsLength);
-    fPlastic_mt->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
+    fPlastic_mt->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect); // pretty sure this doesnt do anything
     fPlastic_mt->AddProperty("RINDEX", plastic_Energy, plastic_RIND);
     fPlastic->SetMaterialPropertiesTable(fPlastic_mt);
    
     G4MaterialPropertiesTable* fBlackPlastic_mt = new G4MaterialPropertiesTable();  
-    fBlackPlastic_mt->AddProperty("ABSLENGTH", plastic_Energy, blackplastic_AbsLength);
+    fBlackPlastic_mt->AddProperty("ABSLENGTH", plastic_Energy, blackplastic_AbsLength); // pretty sure this doesnt do anything
     fBlackPlastic_mt->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
     fBlackPlastic_mt->AddProperty("RINDEX", plastic_Energy, plastic_RIND);
     fBlackPlastic->SetMaterialPropertiesTable(fBlackPlastic_mt);

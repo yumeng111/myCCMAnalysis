@@ -797,6 +797,29 @@ void G4CCMMainVolume::SurfaceProperties()
 	//// now add logical borders for PTFE foil --> TPB foil and LAr
     //new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceForward", fTPBFoil_phys, fReflectorFoil_phys, PTFEFoilOpticalSurface);
  	//new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceBackward", fReflectorFoil_phys, fTPBFoil_phys, PTFEFoilOpticalSurface);
+    
+    // and skin surface for the frill!
+    // Definition of MPT for Plastic frills
+    std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.6*eV };
+    std::vector<G4double> plastic_reflect = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
+    
+    G4OpticalSurface *PlasticOpticalSurface = new G4OpticalSurface("PlasticOpticalSurface");
+
+    PlasticOpticalSurface->SetModel(unified);
+    PlasticOpticalSurface->SetType(dielectric_dielectric);
+    PlasticOpticalSurface->SetFinish(ground);
+    PlasticOpticalSurface->SetSigmaAlpha(0.05);
+
+    G4MaterialPropertiesTable *Plastic_MT = new G4MaterialPropertiesTable();
+    Plastic_MT->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
+    Plastic_MT->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
+    Plastic_MT->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
+    PlasticOpticalSurface->SetMaterialPropertiesTable(Plastic_MT);
+    
+    new G4LogicalSkinSurface("FrillWall_Surface", fFrillWall_log, PlasticOpticalSurface);
+    new G4LogicalSkinSurface("FrillCaps_Surface", fFrillCaps_log, PlasticOpticalSurface);
+    new G4LogicalSkinSurface("BridleWall_Surface", fBridleWall_log, PlasticOpticalSurface);
+    new G4LogicalSkinSurface("BridleCaps_Surface", fBridleCaps_log, PlasticOpticalSurface);
 
 }
 
