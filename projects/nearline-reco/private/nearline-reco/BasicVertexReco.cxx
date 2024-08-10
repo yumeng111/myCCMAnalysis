@@ -81,7 +81,7 @@ BasicVertexReco::BasicVertexReco(const I3Context& context) : I3ConditionalModule
     AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
     AddParameter("InputEventPrefix", "Prefix for the inputs", std::string(""));
     AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
-    AddParameter("ChargeSquareWeighting", "Weight by charge squared", bool(false));
+    AddParameter("ChargeSquaredWeighting", "Weight by charge squared", bool(false));
 }
 
 
