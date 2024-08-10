@@ -94,7 +94,7 @@ void BasicVertexReco::Configure() {
     GetParameter("InputRawPulsesName", raw_pulses_name_);
     GetParameter("InputEventPrefix", input_prefix_);
     GetParameter("OutputPrefix", output_prefix_);
-    GetParameter("ChargeSquareWeighting", charge_sq_weighting_);
+    GetParameter("ChargeSquaredWeighting", charge_sq_weighting_);
 
     check_masked_pulses_ = false;
     check_raw_pulses_ = (raw_pulses_name_ != "");
