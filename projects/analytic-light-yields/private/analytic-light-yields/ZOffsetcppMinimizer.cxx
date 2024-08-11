@@ -167,7 +167,6 @@ std::vector<double> ZOffsetcppMinimizer::GrabNormSeed(CCMPMTKey key, double base
         std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
         this_llh_constructorDouble->SetKeys(I3VectorCCMPMTKey({key}));
         this_llh_constructorDouble->SetData(this_data_frame);
-        this_llh_constructorDouble->SetGeo(geo_frame);
 
         // now save!
         all_constructorsDouble.push_back(this_llh_constructorDouble);
@@ -249,7 +248,6 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
         std::shared_ptr<CalculateNLLH<AD>> this_llh_constructorAD = std::make_shared<CalculateNLLH<AD>>();
         this_llh_constructorAD->SetKeys(keys_to_fit);
         this_llh_constructorAD->SetData(this_data_frame);
-        this_llh_constructorAD->SetGeo(geo_frame);
 
         // now save!
         all_constructorsAD.push_back(this_llh_constructorAD);

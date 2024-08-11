@@ -65,7 +65,7 @@ class G4YieldsPerPMT {
 
 public:
     G4YieldsPerPMT();
-    template<typename T> void GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, double max_time,
+    template<typename T> void GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, double max_time, double light_times_per_bin,
                                            std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q11_events,
                                            std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q12_events,
                                            std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q21_events,
@@ -77,6 +77,7 @@ public:
                                            std::vector<T> UV_absorption_length,
                                            T desired_z_offset,
                                            T desired_rayl,
+                                           bool fix_z_rayl,
                                            std::map<CCMPMTKey, std::vector<T>> & binned_yields,
                                            std::map<CCMPMTKey, std::vector<T>> & binned_yields_squared);
 
@@ -96,13 +97,16 @@ public:
 template<typename T> void ScaleAndBinG4Yields(std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & all_sodium_events,
                                               std::vector<CCMPMTKey> const & keys_to_fit,
                                               double & max_time,
+                                              double & light_times_per_bin,
                                               size_t & event_start,
                                               size_t & event_end,
                                               std::vector<T> UV_absorption_length,
                                               std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields,
                                               std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & this_event_binned_yields_squared){
 
-    size_t n_bins = max_time / 2.0;
+    size_t n_data_bins = (max_time + 1) * 2.0;
+    size_t n_bins = n_data_bins * light_times_per_bin;
+    double bin_width = 2.0 / light_times_per_bin;
     // now let's loop over each event in our vector sodium_events
     for (size_t event_it = event_start; event_it < event_end; event_it ++){
 
@@ -136,7 +140,7 @@ template<typename T> void ScaleAndBinG4Yields(std::vector<std::map<CCMPMTKey, st
                 double time = this_ccmmcpe.g4_time / I3Units::nanosecond;
 
                 // now grab time bin and save!
-                size_t bin_idx = time / 2.0;
+                size_t bin_idx = time / bin_width;
                 if(bin_idx >= n_bins) {
                     continue;
                 }
@@ -158,6 +162,7 @@ void FrameThread(std::atomic<bool> & running,
                  size_t & event_end,
                  std::vector<T> UV_absorption_length,
                  double max_time,
+                 double light_times_per_bin,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & Q11_binned_yields,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & Q11_binned_yields_squared,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & Q12_binned_yields,
@@ -168,10 +173,10 @@ void FrameThread(std::atomic<bool> & running,
                  std::shared_ptr<std::map<CCMPMTKey, std::vector<T>>> & Q22_binned_yields_squared){
 
     // just need to bin!
-    ScaleAndBinG4Yields<T>(Q11_events, keys_to_fit, max_time, event_start, event_end, UV_absorption_length, Q11_binned_yields, Q11_binned_yields_squared);
-    ScaleAndBinG4Yields<T>(Q12_events, keys_to_fit, max_time, event_start, event_end, UV_absorption_length, Q12_binned_yields, Q12_binned_yields_squared);
-    ScaleAndBinG4Yields<T>(Q21_events, keys_to_fit, max_time, event_start, event_end, UV_absorption_length, Q21_binned_yields, Q21_binned_yields_squared);
-    ScaleAndBinG4Yields<T>(Q22_events, keys_to_fit, max_time, event_start, event_end, UV_absorption_length, Q22_binned_yields, Q22_binned_yields_squared);
+    ScaleAndBinG4Yields<T>(Q11_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q11_binned_yields, Q11_binned_yields_squared);
+    ScaleAndBinG4Yields<T>(Q12_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q12_binned_yields, Q12_binned_yields_squared);
+    ScaleAndBinG4Yields<T>(Q21_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q21_binned_yields, Q21_binned_yields_squared);
+    ScaleAndBinG4Yields<T>(Q22_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q22_binned_yields, Q22_binned_yields_squared);
 
     running.store(false);
 }
@@ -182,6 +187,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
                     std::vector<CCMPMTKey> const & keys_to_fit,
                     std::vector<T> UV_absorption_length,
                     double max_time,
+                    double light_times_per_bin,
                     std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q11_events,
                     std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q12_events,
                     std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q21_events,
@@ -198,6 +204,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
                 &event_end = job->event_ranges.second,
                 UV_absorption_length,
                 max_time,
+                light_times_per_bin,
                 job
     ] (int id) {
     FrameThread(running,
@@ -210,6 +217,7 @@ void RunFrameThread(ctpl::thread_pool & pool,
                 event_end,
                 UV_absorption_length,
                 max_time,
+                light_times_per_bin,
                 job->Q11_binned_yields,
                 job->Q11_binned_yields_squared,
                 job->Q12_binned_yields,
@@ -238,7 +246,7 @@ template<typename T> void GeneralInterpolation(T desired_x, float x_below, float
     }
 }
 
-template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, double max_time,
+template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::vector<CCMPMTKey> const & keys_to_fit, double max_time, double light_times_per_bin,
                                                        std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q11_events,
                                                        std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q12_events,
                                                        std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> const & Q21_events,
@@ -250,6 +258,7 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
                                                        std::vector<T> UV_absorption_length,
                                                        T desired_z_offset,
                                                        T desired_rayl,
+                                                       bool fix_z_rayl,
                                                        std::map<CCMPMTKey, std::vector<T>> & binned_yields,
                                                        std::map<CCMPMTKey, std::vector<T>> & binned_yields_squared){
 
@@ -415,7 +424,7 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
                 results.back().Q22_binned_yields = job->Q22_binned_yields;
                 results.back().Q22_binned_yields_squared = job->Q22_binned_yields_squared;
                 results.back().done = false;
-                RunFrameThread<T>(pool, job, keys_to_fit, UV_absorption_length, max_time, Q11_events, Q12_events, Q21_events, Q22_events);
+                RunFrameThread<T>(pool, job, keys_to_fit, UV_absorption_length, max_time, light_times_per_bin, Q11_events, Q12_events, Q21_events, Q22_events);
                 break;
             } else if(job != nullptr) {
                 free_jobs.push_back(job);
@@ -496,7 +505,6 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
 
     // iterate through all the keys in our binned yields
     for (auto it = Q11_binned_yields.begin(); it != Q11_binned_yields.end(); ++it) {
- 
         std::vector<T> & this_key_Q11 = it->second;
         std::vector<T> & this_key_Q12 = Q12_binned_yields.at(it->first);
         std::vector<T> & this_key_Q21 = Q21_binned_yields.at(it->first);
@@ -505,6 +513,12 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
         std::vector<T> & this_key_Q12_squared = Q12_binned_yields_squared.at(it->first);
         std::vector<T> & this_key_Q21_squared = Q21_binned_yields_squared.at(it->first);
         std::vector<T> & this_key_Q22_squared = Q22_binned_yields_squared.at(it->first);
+
+        if (fix_z_rayl){
+            binned_yields.at(it->first) = this_key_Q11;
+            binned_yields_squared.at(it->first) = this_key_Q11_squared;
+            continue;
+        }
 
         // now interpolate in the x direction
         std::vector<T> interpolate_x_y_below (this_key_Q11.size(), 0.0);

@@ -101,15 +101,13 @@ void register_GenerateExpectation() {
 {
 
     class_<GenerateExpectation, boost::noncopyable>("GenerateExpectation")
-        .def(init<I3VectorCCMPMTKey,size_t,I3FramePtr,double,double,double>())
-        .def("GetSodiumVertices", &GenerateExpectation::GetSodiumVertices)
-        .def("GetYieldsAndOffsets", &GenerateExpectation::GetYieldsAndOffsets)
+        .def(init<I3VectorCCMPMTKey>())
         //.def("LightProfile", LightProfile)
         //.def("LightProfileValue", LightProfileValue)
         //.def("LightProfileGrad", LightProfileGrad)
-        .def("GetLightProfileDebug", &GenerateExpectation::GetLightProfileDebug)
-        .def("GetLightProfileTimesDebug", &GenerateExpectation::GetLightProfileTimesDebug)
-        .def("GetLightProfileTOffsetGradDebug", &GenerateExpectation::GetLightProfileTOffsetGradDebug)
+        //.def("GetLightProfileDebug", &GenerateExpectation::GetLightProfileDebug)
+        //.def("GetLightProfileTimesDebug", &GenerateExpectation::GetLightProfileTimesDebug)
+        //.def("GetLightProfileTOffsetGradDebug", &GenerateExpectation::GetLightProfileTOffsetGradDebug)
         //.def("DLightProfile", &GenerateExpectation::DLightProfile)
         //.def("GetExpectationGrad", GetExpectationGrad)
     ;

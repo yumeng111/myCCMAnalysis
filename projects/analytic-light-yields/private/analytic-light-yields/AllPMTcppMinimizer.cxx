@@ -183,7 +183,6 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         std::shared_ptr<CalculateNLLH<AD>> this_llh_constructorAD = std::make_shared<CalculateNLLH<AD>>();
         this_llh_constructorAD->SetKeys(keys_to_fit);
         this_llh_constructorAD->SetData(this_data_frame);
-        this_llh_constructorAD->SetGeo(geo_frame);
     
         // now save!
         all_constructorsAD.push_back(this_llh_constructorAD);
@@ -192,7 +191,6 @@ std::vector<double> AllPMTcppMinimizer::MultiplePMTMinimization(I3VectorCCMPMTKe
         //std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
         //this_llh_constructorDouble->SetKeys(keys_to_fit);
         //this_llh_constructorDouble->SetData(this_data_frame);
-        //this_llh_constructorDouble->SetGeo(geo_frame);
     
         //// now save!
         //all_constructorsDouble.push_back(this_llh_constructorDouble);
@@ -357,7 +355,6 @@ void AllPMTcppMinimizer::ScanOverTOffsets(I3VectorCCMPMTKey keys_to_fit, I3MapPM
         std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
         this_llh_constructorDouble->SetKeys(keys_to_fit);
         this_llh_constructorDouble->SetData(this_data_frame);
-        this_llh_constructorDouble->SetGeo(geo_frame);
     
         // now save!
         all_constructorsDouble.push_back(this_llh_constructorDouble);
@@ -503,7 +500,6 @@ std::vector<double> AllPMTcppMinimizer::ScanOverUVAbsorption(I3VectorCCMPMTKey k
         std::shared_ptr<CalculateNLLH<AD>> this_llh_constructorAD = std::make_shared<CalculateNLLH<AD>>();
         this_llh_constructorAD->SetKeys(keys_to_fit);
         this_llh_constructorAD->SetData(this_data_frame);
-        this_llh_constructorAD->SetGeo(geo_frame);
     
         // now save!
         all_constructorsAD.push_back(this_llh_constructorAD);
@@ -512,7 +508,6 @@ std::vector<double> AllPMTcppMinimizer::ScanOverUVAbsorption(I3VectorCCMPMTKey k
         //std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
         //this_llh_constructorDouble->SetKeys(keys_to_fit);
         //this_llh_constructorDouble->SetData(this_data_frame);
-        //this_llh_constructorDouble->SetGeo(geo_frame);
     
         //// now save!
         //all_constructorsDouble.push_back(this_llh_constructorDouble);
@@ -773,7 +768,6 @@ std::vector<double> AllPMTcppMinimizer::FitUVAbsorption(I3VectorCCMPMTKey keys_t
         std::shared_ptr<CalculateNLLH<AD>> this_llh_constructorAD = std::make_shared<CalculateNLLH<AD>>();
         this_llh_constructorAD->SetKeys(keys_to_fit);
         this_llh_constructorAD->SetData(this_data_frame);
-        this_llh_constructorAD->SetGeo(geo_frame);
     
         // now save!
         all_constructorsAD.push_back(this_llh_constructorAD);
@@ -981,7 +975,6 @@ void AllPMTcppMinimizer::DoubleCheckG4Pred(I3VectorCCMPMTKey keys_to_fit, I3MapP
         std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
         this_llh_constructorDouble->SetKeys(keys_to_fit);
         this_llh_constructorDouble->SetData(this_data_frame);
-        this_llh_constructorDouble->SetGeo(geo_frame);
     
         // now save!
         all_constructorsDouble.push_back(this_llh_constructorDouble);
@@ -1044,7 +1037,6 @@ I3MapDoubleVectorDouble AllPMTcppMinimizer::NormUVAbsScan(I3VectorCCMPMTKey keys
         std::shared_ptr<CalculateNLLH<AD>> this_llh_constructorAD = std::make_shared<CalculateNLLH<AD>>();
         this_llh_constructorAD->SetKeys(keys_to_fit);
         this_llh_constructorAD->SetData(this_data_frame);
-        this_llh_constructorAD->SetGeo(geo_frame);
     
         // now save!
         all_constructorsAD.push_back(this_llh_constructorAD);
@@ -1155,7 +1147,6 @@ void AllPMTcppMinimizer::MakeBestFitPredictions(I3VectorCCMPMTKey keys_to_fit, I
         std::shared_ptr<CalculateNLLH<double>> this_llh_constructorDouble = std::make_shared<CalculateNLLH<double>>();
         this_llh_constructorDouble->SetKeys(keys_to_fit);
         this_llh_constructorDouble->SetData(this_data_frame);
-        this_llh_constructorDouble->SetGeo(geo_frame);
     
         // now save!
         all_constructorsDouble.push_back(this_llh_constructorDouble);

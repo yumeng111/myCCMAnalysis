@@ -24,7 +24,7 @@ class cppMinimizer {
 public:
     cppMinimizer();
     void OnePMTOneDataSetMinimization(std::vector<CCMPMTKey> all_keys_to_fit, std::vector<std::string> data_file_names, std::vector<double> z_offsets,
-                                                     double norm_seed, size_t n_sodium_events, bool use_g4_yields);
+                                                     double norm_seed, size_t n_sodium_events);
     std::vector<double> OnePMTMultipleDataSetMinimization(CCMPMTKey this_key, std::vector<std::string> data_file_names, std::vector<double> z_offsets,
                         std::vector<double> time_offsets, std::vector<double> norm_seeds, size_t n_sodium_events, bool use_g4_yields);
     
