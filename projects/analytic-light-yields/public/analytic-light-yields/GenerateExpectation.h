@@ -37,6 +37,7 @@
 #include "icetray/CCMPMTKey.h"
 #include "dataio/I3File.h"
 #include "icetray/I3Units.h"
+#include "simclasses/CCMMCPE.h"
 #include "dataclasses/I3Position.h"
 #include "dataclasses/I3Map.h"
 #include "dataclasses/I3Vector.h"
@@ -47,6 +48,7 @@
 #include <analytic-light-yields/G4YieldsPerPMT.h>
 #include <analytic-light-yields/LArScintillationLightProfile.h>
 #include "analytic-light-yields/autodiff.h"
+
 
 template<typename T>
 class GenerateExpectation {
@@ -75,7 +77,7 @@ public:
     //void GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption);
     //void ComputeBinnedYield(CCMPMTKey key, double max_time);
     void RunMultiThreadedCode(I3VectorCCMPMTKey keys_to_fit, std::vector<T> uv_absorption, T photons_per_mev, double max_time);
-    void GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, std::vector<T> uv_absorption, T photons_per_mev, double max_time, T rayl);
+    void GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, std::vector<T> uv_absorption, T photons_per_mev, double max_time, T rayl, T z_offset);
 
     std::vector<T> LightProfile(T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                   AnalyticLightYieldGenerator::LArLightProfileType light_profile_type, std::vector<T> const & times);
@@ -84,8 +86,8 @@ public:
                        double start_time, double max_time, double peak_time,
                        T Rs, T Rt, T tau_s, T tau_t, T tau_rec, T tau_TPB, T light_time_offset, T late_pulse_mu, T late_pulse_sigma, T late_pulse_scale,
                        std::vector<T> uv_absorption, T rayl, T photons_per_mev, T z_offset, size_t n_sodium_events, AnalyticLightYieldGenerator::LArLightProfileType light_profile_type,
-                       bool UseG4Yields); 
-    
+                       bool UseG4Yields);
+
     std::vector<double> light_prof_debug;
     std::vector<double> light_prof_times_debug;
     std::vector<double> light_prof_time_offset_grad_debug;
@@ -93,37 +95,30 @@ public:
     std::vector<double> GetLightProfileDebug() {return light_prof_debug;};
     std::vector<double> GetLightProfileTimesDebug() {return light_prof_times_debug;};
     std::vector<double> GetLightProfileTOffsetGradDebug() {return light_prof_time_offset_grad_debug;};
-    
-    // now define some class members    
+
+    // now define some class members
     std::map<CCMPMTKey, std::vector<T>> binned_yields;
     std::map<CCMPMTKey, std::vector<T>> binned_square_yields;
     std::vector<boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>>> yields_per_pmt_per_event;
 
     std::vector<T> uv_absorption_calculated = {0.0, 0.0};
     T rayl_calculated = 0.0;
-    
-    std::vector<std::deque<I3FramePtr>> G4Events;
-    std::vector<double> all_rayl = {95.0, 85.0, 75.0, 65.0, 55.0};
-    //std::vector<double> all_rayl = {95.0, 85.0, 75.0, 65.0, 55.0, 45.0, 35.0, 25.0};
-    //std::vector<double> all_rayl = {95.0, 85.0};
-    bool grabbed_g4_events = false;
+    T z_calculated = 0.0;
 
+    bool grabbed_g4_events = false;
+    std::vector<std::pair<float, float>> z_rayl_indexing; // idx of z, rayl used for simulation
+    std::vector<std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>>> collated_events; // first idx corresponds to z, rayl in map
+                                                                                                     // second idx corresponds to each event
+                                                                                                     // map is between CCMPMTKey and photon hits for each event
     void GrabG4Events(size_t n_events, T z_offset);
 
 };
 
 template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, T z_offset){
- 
-    double z_offset_double;
-    if constexpr (std::is_same<T, double>::value) {
-        z_offset_double = z_offset;
-    } else {
-        z_offset_double = z_offset.value();
-    }
 
     std::vector<std::string> g4_fnames;
 
-    if (z_offset == 30.0){
+    if (z_offset >= 26.0 and z_offset <= 34.0){
         g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset95.0cmRayleigh2628Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset85.0cmRayleigh2578Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset75.0cmRayleigh2463Events.i3.zst",
@@ -133,7 +128,7 @@ template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, 
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset35.0cmRayleigh2335Events.i3.zst",
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset25.0cmRayleigh2138Events.i3.zst"};
     }
-    if (z_offset == -30.0){
+    if (z_offset >= -34.0 and z_offset <= -26.0){
         g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset95.0cmRayleigh2732Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset85.0cmRayleigh2713Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset75.0cmRayleigh2816Events.i3.zst",
@@ -143,7 +138,7 @@ template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, 
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset35.0cmRayleigh2438Events.i3.zst",
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset25.0cmRayleigh2355Events.i3.zst"};
     }
-    if (z_offset == 0.0){
+    if (z_offset >= -4.0 and z_offset <= 4.0){
         g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset95.0cmRayleigh3488Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset85.0cmRayleigh3383Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset75.0cmRayleigh3448Events.i3.zst",
@@ -153,7 +148,7 @@ template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, 
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset35.0cmRayleigh3114Events.i3.zst",
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset25.0cmRayleigh2906Events.i3.zst"};
     }
-    if (z_offset == 50.0){
+    if (z_offset >= 46.0 and z_offset <= 54.0){
         g4_fnames = {"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium50.0cmZOffset95.0cmRayleigh1303Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium50.0cmZOffset85.0cmRayleigh1353Events.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium50.0cmZOffset75.0cmRayleigh1370Events.i3.zst",
@@ -165,17 +160,69 @@ template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, 
     }
 
     for (size_t f = 0; f < g4_fnames.size(); f++){
-        std::deque<I3FramePtr> this_file_events;
+        // start with some string parsing to get z and rayl
+        std::string path = g4_fnames.at(f);
+        size_t n_sodium = 6;
+        size_t z_offset_pre = path.find("Sodium");
+        size_t z_offset_post = path.find("cmZOffset");
+        float this_z_offset = std::stoi(path.substr(z_offset_pre + n_sodium , z_offset_post - (z_offset_pre + n_sodium)));
 
+        size_t n_zoffset = 7;
+        size_t rayl_pre = path.find("ZOffset");
+        size_t rayl_post = path.find("cmRayleigh");
+        float this_rayl = std::stoi(path.substr(rayl_pre + n_zoffset , rayl_post - (rayl_pre + n_zoffset)));
+
+        // now set up object to save each event
+        std::vector<std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>>> this_simulation_events;
+
+        // now loop over frames
         dataio::I3File g4_file(g4_fnames.at(f), dataio::I3File::Mode::read);
         size_t frames_grabbed = 0;
         while (frames_grabbed < n_events or !g4_file.more()){
+            // set up object to hold data
+            std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>> this_event_info;
+
+            // grab our frame
             I3FramePtr g4_frame = g4_file.pop_frame();
-            this_file_events.push_back(g4_frame);
+
+            // grab + loop through ccmmcpe object
+            boost::shared_ptr<CCMMCPESeriesMap const> mcpeseries_source = g4_frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>("PMTMCHitsMap");
+
+            // Iterate over PMTs in source map
+            for (auto it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
+
+                // check if this pmt is in this_event_info
+                if(this_event_info.find(it->first) == this_event_info.end()) {
+                    this_event_info[it->first] = std::vector<ccmmcpe_lightweight>();
+                }
+
+                // Iterate over the vector of CCMMCPE in the source map for this PMT
+                for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                    CCMMCPE const & pe = *it2;
+
+                    // check the wavelength
+                    if (pe.wavelength / I3Units::nanometer < 325.0){
+                        continue;
+                    }
+
+                    // make a new ccmmcpe_lightweight
+                    ccmmcpe_lightweight pe_light;
+                    pe_light.g4_time = pe.g4_time;
+                    pe_light.g4_distance_uv = pe.g4_distance_uv;
+
+                    // now save
+                    this_event_info[it->first].push_back(pe_light);
+                }
+            }
+
+            // now save this event info!
+            this_simulation_events.push_back(this_event_info);
             frames_grabbed += 1;
         }
-        std::cout << "grabbed " << this_file_events.size() << " events for sodium at z = " << z_offset_double << "cm and rayl = " << all_rayl.at(f) << "cm" << std::endl;
-        G4Events.push_back(this_file_events);
+        // now save this_simulation_events
+        collated_events.push_back(this_simulation_events);
+        z_rayl_indexing.push_back(std::make_pair(this_z_offset, this_rayl));
+        std::cout << "grabbed " << this_simulation_events.size() << " events for sodium at z = " << this_z_offset << "cm and rayl = " << this_rayl << "cm" << std::endl;
     }
 
     grabbed_g4_events = true;
@@ -203,7 +250,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
         GrabG4Events(n_sodium_events, z_offset);
     }
 
-    // now see if we need to get our yields    
+    // now see if we need to get our yields
     bool compute_vertices = sodium_events_constructor == nullptr;
     bool compute_yields;
     if (UseG4Yields){
@@ -227,6 +274,13 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
             binned_square_yields.clear();
             compute_yields = true;
         }
+
+        // check if z has changed
+        if (z_offset != z_calculated){
+            binned_yields.clear();
+            binned_square_yields.clear();
+            compute_yields = true;
+        }
     }
 
     // check that we made our sodium event vertices
@@ -238,8 +292,9 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
         //ComputeBinnedYield(key, max_time);
         uv_absorption_calculated = uv_absorption;
         rayl_calculated = rayl;
+        z_calculated = z_offset;
         if (UseG4Yields){
-            GrabG4Yields(keys_to_fit, uv_absorption, photons_per_mev, 2.0 * max_time, rayl);
+            GrabG4Yields(keys_to_fit, uv_absorption, photons_per_mev, 2.0 * max_time, rayl, z_offset);
         }
         else {
             RunMultiThreadedCode(keys_to_fit, uv_absorption, photons_per_mev, 2.0 * max_time);
@@ -248,7 +303,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
 
     std::vector<T> const & binned_yield = binned_yields.at(key);
     std::vector<T> const & binned_square_yield = binned_square_yields.at(key);
-   
+
     peak_time += 40.0;
     size_t n_light_bins = size_t(max_time / 2.0) + 1 + 40;
     size_t offset = size_t(start_time / 2.0);
@@ -258,7 +313,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
     for(size_t i = 0; i < n_light_bins; i++) {
         light_times[i] = 2.0 * i - peak_time;
     }
-    
+
     // now grab our light profile!
     std::vector<T> LAr_light_profile = LightProfile(Rs, Rt, tau_s, tau_t, tau_rec, tau_TPB, late_pulse_mu, late_pulse_sigma, late_pulse_scale, light_profile_type, light_times);
     std::vector<T> LAr_light_profile_squared(n_light_bins);
@@ -280,7 +335,7 @@ template<typename T> std::tuple<boost::shared_ptr<std::vector<T>>, boost::shared
         for(size_t j = 0; j <= tot_idx; j++) {
             size_t k = tot_idx - j;
             expectation->at(i) += binned_yield.at(k) * LAr_light_profile.at(j);
-            expectation_squared->at(i) += binned_square_yield.at(k) * LAr_light_profile_squared.at(j); 
+            expectation_squared->at(i) += binned_square_yield.at(k) * LAr_light_profile_squared.at(j);
         }
     }
     return std::make_tuple(expectation, expectation_squared, extended_light_times);
@@ -309,39 +364,58 @@ template<typename T> void GenerateExpectation<T>::RunMultiThreadedCode(I3VectorC
                                                 binned_yields, binned_square_yields);
 }
 
-template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, std::vector<T> uv_absorption, T photons_per_mev, double max_time, T rayl){
+template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey keys_to_fit, std::vector<T> uv_absorption, T photons_per_mev, double max_time, T rayl, T z_offset){
     g4_yields_and_offset_constructor = std::make_shared<G4YieldsPerPMT>();
 
     size_t n_threads = 0;
     
-    // let's grab set of g4 events at the z offset above and below rayl 
-    
-    size_t upper_idx;
-    size_t lower_idx;
-    bool need_to_interpolate = true;
-
-    for (size_t k = 0; k < all_rayl.size(); k++){
-        if (all_rayl.at(k) > rayl){
-             upper_idx = k;
-             lower_idx = upper_idx + 1;
-        }
-        
-    }
-    //if (need_to_interpolate == false){
-    //    std::cout << "for rayl = " <<  rayl << " exactly in our list at " << all_rayl[upper_idx] << std::endl;
-    //} else {
-    //    std::cout << "for rayl = " << rayl << ", closest rayl above = " << all_rayl[upper_idx] << " and closest rayl below = " << all_rayl[lower_idx] << std::endl;
-    //}
+    double z_offset_double;
     double rayl_double;
     if constexpr (std::is_same<T, double>::value) {
+        z_offset_double = z_offset;
         rayl_double = rayl;
     } else {
+        z_offset_double = z_offset.value();
         rayl_double = rayl.value();
     }
-    //std::cout << "for rayl = " << rayl_double << ", closest rayl above = " << all_rayl[upper_idx] << " and closest rayl below = " << all_rayl[lower_idx] << std::endl;
-    
-    g4_yields_and_offset_constructor->GetAllYields(n_threads, keys_to_fit, G4Events.at(upper_idx), G4Events.at(lower_idx), need_to_interpolate, max_time,
-                                                   all_rayl.at(upper_idx), all_rayl.at(lower_idx), uv_absorption, photons_per_mev, rayl, binned_yields, binned_square_yields);
+
+    // let's figure out the z and rayl above / below where we want to evaluate
+    size_t Q11; // idx of z below and rayl below
+    size_t Q12; // idx of z below and rayl above
+    size_t Q21; // idx of z above and rayl below
+    size_t Q22; // idx of z above and rayl above
+
+    for (size_t m = 0; m < z_rayl_indexing.size(); m++){
+        float this_z = z_rayl_indexing.at(m).first;
+        float this_rayl = z_rayl_indexing.at(m).second;
+
+        float delta_z = std::abs(this_z - z_offset_double);
+        float delta_rayl = std::abs(this_rayl - rayl_double);
+
+        if (delta_z <= 2.0 and delta_rayl <= 10.0){
+            // ok so we are around the z, rayl pair we want
+            if (this_z <= z_offset_double and this_rayl <= rayl_double){
+                Q11 = m;
+            }
+            if (this_z <= z_offset_double and this_rayl > rayl_double){
+                Q12 = m;
+            }
+            if (this_z > z_offset_double and this_rayl <= rayl_double){
+                Q21 = m;
+            }
+            if (this_z > z_offset_double and this_rayl > rayl_double){
+                Q22 = m;
+            }
+        }
+    }
+
+    std::cout << "Q11{z, rayl} = " << z_rayl_indexing.at(Q11) << ", Q12{z, rayl} = " << z_rayl_indexing.at(Q12)
+        << ", Q21{z, rayl} = " << z_rayl_indexing.at(Q21) << ", Q22{z, rayl} = " << z_rayl_indexing.at(Q22) << std::endl;
+
+    g4_yields_and_offset_constructor->GetAllYields(n_threads, keys_to_fit, max_time,
+                                                   collated_events.at(Q11), collated_events.at(Q12), collated_events.at(Q21),collated_events.at(Q22),
+                                                   z_rayl_indexing.at(Q11), z_rayl_indexing.at(Q12), z_rayl_indexing.at(Q21), z_rayl_indexing.at(Q22),
+                                                   uv_absorption, z_offset, rayl, binned_yields, binned_square_yields);
 }
 
 //template<typename T> void GenerateExpectation<T>::GetYieldsAndOffsets(CCMPMTKey key, T uv_absorption) {
@@ -349,8 +423,8 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
 //    binned_yields.clear();
 //    binned_square_yields.clear();
 //    yields_and_offset_constructor = std::make_shared<YieldsPerPMT>(geo_frame, portion_light_reflected_by_tpb, desired_chunk_width, desired_chunk_height);
-//    
-//    // now loop over events and get map between CCMPMTKey and std::vector<photon_yield_summary> 
+//
+//    // now loop over events and get map between CCMPMTKey and std::vector<photon_yield_summary>
 //    for (size_t sodium_it = 0; sodium_it < event_vertices->size(); ++sodium_it) {
 //        boost::shared_ptr<std::map<CCMPMTKey, std::vector<photon_yield_summary<T>>>> yields_per_event = yields_and_offset_constructor->GetAllYields(event_vertices->at(sodium_it), uv_absorption, {key});
 //        yields_per_pmt_per_event.push_back(yields_per_event);
