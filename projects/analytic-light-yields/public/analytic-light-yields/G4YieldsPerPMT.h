@@ -106,7 +106,7 @@ template<typename T> void ScaleAndBinG4Yields(std::vector<std::map<CCMPMTKey, st
     // now let's loop over each event in our vector sodium_events
     for (size_t event_it = event_start; event_it < event_end; event_it ++){
 
-        std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>> parsed_event = all_sodium_events.at(event_it);
+        std::map<CCMPMTKey, std::vector<ccmmcpe_lightweight>> const & parsed_event = all_sodium_events.at(event_it);
 
         // now loop over all pmts we are fitting
         for(size_t k = 0; k < keys_to_fit.size(); k++){
@@ -121,11 +121,11 @@ template<typename T> void ScaleAndBinG4Yields(std::vector<std::map<CCMPMTKey, st
             }
 
             // grab the list of lightweight CCMMCPEs for this key
-            std::vector<ccmmcpe_lightweight> & this_key_ccmmcpe = parsed_event.at(this_key);
+            std::vector<ccmmcpe_lightweight> const & this_key_ccmmcpe = parsed_event.at(this_key);
 
             // loop over each lightweight CCMMCPE
             for (size_t m = 0; m < this_key_ccmmcpe.size(); m++){
-                ccmmcpe_lightweight this_ccmmcpe = this_key_ccmmcpe.at(m);
+                ccmmcpe_lightweight const & this_ccmmcpe = this_key_ccmmcpe.at(m);
 
                 double distance_travelled_uv = this_ccmmcpe.g4_distance_uv / I3Units::cm;
                 // now figure out scaling due to uv absorption
