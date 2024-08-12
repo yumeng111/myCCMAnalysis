@@ -240,20 +240,16 @@ void RunFrameThread(ctpl::thread_pool & pool,
 
 template<typename T> void GeneralInterpolation(T desired_x, float x_below, float x_above,
                                                std::vector<T> & Q_below, std::vector<T> & Q_above,
-                                               std::vector<T> interpolation_results) {
+                                               std::vector<T> & interpolation_results) {
 
     T coeff_below = (x_above - desired_x) / (x_above - x_below);
     T coeff_above = (desired_x - x_below) / (x_above - x_below);
-    std::cout << "interpolating at desired x = " << desired_x << std::endl;
-    std::cout << "x below = " << x_below << " and x above = " << x_above << std::endl;
     // now loop over each time
     for (size_t i = 0; i < Q_below.size(); i++){
         T this_Q_below = Q_below.at(i);
         T this_Q_above = Q_above.at(i);
-        std::cout << "Q below = " << this_Q_below << " and Q above = " << this_Q_above << std::endl;
         T interp_result = (coeff_below * this_Q_below) + (coeff_above * this_Q_above);
-        std::cout << "interp result at " << i << " = " << interp_result << std::endl;
-        interpolation_results.at(i) += interp_result; 
+        interpolation_results.at(i) += interp_result;
     }
 }
 
@@ -519,11 +515,9 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
     }
     // ok we finished binning!!! time to interpolate!!!!
     // iterate through all the keys in our binned yields
-
     for (auto it = Q11_binned_yields.begin(); it != Q11_binned_yields.end(); ++it) {
         std::vector<T> & this_key_Q11 = it->second;
         std::vector<T> & this_key_Q11_squared = Q11_binned_yields_squared.at(it->first);
-
         if (fit_z_rayl){
             std::vector<T> & this_key_Q12 = Q12_binned_yields.at(it->first);
             std::vector<T> & this_key_Q21 = Q21_binned_yields.at(it->first);
@@ -531,7 +525,6 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
             std::vector<T> & this_key_Q12_squared = Q12_binned_yields_squared.at(it->first);
             std::vector<T> & this_key_Q21_squared = Q21_binned_yields_squared.at(it->first);
             std::vector<T> & this_key_Q22_squared = Q22_binned_yields_squared.at(it->first);
-
 
             // now interpolate in the x direction
             std::vector<T> interpolate_x_y_below (this_key_Q11.size(), 0.0);
