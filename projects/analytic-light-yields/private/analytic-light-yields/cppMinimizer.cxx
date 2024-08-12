@@ -175,10 +175,10 @@ void cppMinimizer::OnePMTOneDataSetMinimization(std::vector<CCMPMTKey> all_keys_
         CCMPMTKey this_key = all_keys_to_fit.at(k);
         std::cout << "fitting " << this_key << std::endl;
         // let's try scanning over t offset
-        double t_offset_start = 12.0;
-        double t_offset_end = 35.0;
+        double t_offset_start = -10.0;
+        double t_offset_end = 10.0;
         double t_offset_range = t_offset_end - t_offset_start;
-        size_t n_t_offsets = 60;
+        size_t n_t_offsets = 40;
 
         std::vector<double> func_val;
         std::vector<std::vector<double>> params;
@@ -197,11 +197,11 @@ void cppMinimizer::OnePMTOneDataSetMinimization(std::vector<CCMPMTKey> all_keys_
 
             phys_tools::lbfgsb::LBFGSB_Driver minimizer;
 
-            minimizer.addParameter(0.35, 1e-1, 0.1, 0.38); // Rs
+            minimizer.addParameter(0.35, 1e-1, 0.1, 0.6); // Rs
             minimizer.addParameter(6.0, 1e-1, 1.0, 16.0); // tau_s
             minimizer.addParameter(1.0, 1e-1, 0.0001, 9.0); // tau_other
             minimizer.addParameter(this_t_offset); // time offset
-            minimizer.addParameter(1.0, 1e-1, 0.001, 2.5e6); //norm
+            minimizer.addParameter(0.05, 1e-1, 0.008, 10.0); //norm
             minimizer.addParameter(50.0, 1e-1, 30.0, 70.0); // late pulse mu
             minimizer.addParameter(8.0, 1e-1, 3.0, 20.0); // late pulse sigma
             minimizer.addParameter(0.01, 1e-1, 1e-5, 0.1); // late pulse scale

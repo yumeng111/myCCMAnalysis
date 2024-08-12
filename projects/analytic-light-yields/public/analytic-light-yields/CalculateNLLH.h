@@ -370,60 +370,53 @@ T CalculateNLLH<T>::ComputeNLLH(CCMPMTKey key, T Rs, T Rt, T tau_s, T tau_t, T t
     pred_yields = std::get<0>(pred);
     pred_yields_squared = std::get<1>(pred);
 
-    T total_nllh = 0.0;
+    T total_nllh(0.0);
 
-    //size_t n_bins = pmt_data.data.size();
+    size_t n_bins = pmt_data.data.size();
 
-    //// let's make a llh grid -- this combines both the times we have data values at along with the times we have prediction values at
-    //double starting_llh_grid_time = data_times.front();
-    //double ending_llh_grid_time = data_times.back();
-    //
-    //// to make things easier, let's make sure we have a vector of doubles containing pred times
-    //std::vector<double> pred_times_double;
-    //for (size_t j = 0; j < pred_times->size(); j++){
-    //    if constexpr (std::is_same<T, double>::value) {
-    //        pred_times_double.push_back(pred_times->at(j) + light_time_offset);
-    //    } else {
-    //        pred_times_double.push_back(pred_times->at(j).value() + light_time_offset.value());
-    //    }
-    //}
+    MCLLH::LEff leff;
 
+    size_t no_llh_begin = event_start_bin;
+    size_t no_llh_end = no_llh_begin + 3.0;
 
-    //std::vector<double> llh_grid;
-    //for (size_t i = 0; i < data_times.size(); i++){
-    //    llh_grid.push_back(data_times.at(i));
-    //}
-    //for (size_t i = 0; i < pred_times_double.size(); i++){
-    //    if (pred_times_double.at(i) >= starting_llh_grid_time and pred_times_double.at(i) <= ending_llh_grid_time){
-    //        llh_grid.push_back(pred_times_double.at(i));
-    //    }
-    //}
+    // let's empty vectors to save data, pred, and times
+    data_vector.clear();
+    pred_vector.clear();
+    times_vector.clear();
 
-    //std::vector<T> pred_times_offset;
-    //for (size_t j = 0; j < pred_times->size(); j++){
-    //    pred_times_offset.push_back(pred_times->at(j) + light_time_offset);
-    //}
-    //
-    //// now sort our llh grid!
-    //std::sort(llh_grid.begin(), llh_grid.end());
+    double n_event_scaling = n_data_events / (double)n_sodium_events;
 
-    //// let's empty vectors to save data, pred, and times
-    //data_vector.clear();
-    //pred_vector.clear();
-    //times_vector.clear();
+    // now loop over the time bins in our data
+    for(size_t i=0; i<n_bins; ++i) {
 
-    //// set some times at the beginning of the wf to ignore for llh calculation!
-    //double ignore_start = 0.0;
-    //double ignore_end = 6.0;
-    //double n_event_scaling = n_data_events / (double)n_sodium_events;
+        double k = pmt_data.data.at(i);
+
+        T adjusted_norm = normalization * pmt_efficiency * n_event_scaling;
+        T mu = pred_yields->at(i) * adjusted_norm + pre_event_average;
+        T sigma_squared = (pred_yields_squared->at(i) * adjusted_norm * adjusted_norm) + (pre_event_average * pre_event_average);
+
+        // save for debugging
+        data_vector.push_back(k);
+        times_vector.push_back(((double)i - (double)event_start_bin) * 2.0);
+        if constexpr (std::is_same<T, double>::value) {
+            pred_vector.push_back(mu);
+        } else {
+            pred_vector.push_back(mu.value());
+        }
+
+        // We want to compute the llh everywhere except first 3 bins
+        if(i >= no_llh_begin and i < no_llh_end)
+            continue;
+
+        total_nllh += leff(k, mu, sigma_squared);
+
+    }
+    return total_nllh;
 
     //// let's try looping over our llh grid
     //for (size_t i = 0; i < llh_grid.size(); i++){
     //    double this_time = llh_grid.at(i);
     //
-    //    // grab our data
-    //    double k = InterpolationDouble(this_time, data_times, pmt_data.data);
-
     //    // now call our interpolation function for pred yields
     //    T pred_yields_this_time = Interpolation(this_time, pred_times_offset, *pred_yields);
     //    T pred_yields_squared_this_time = Interpolation(this_time, pred_times_offset, *pred_yields_squared);
@@ -554,20 +547,21 @@ template<typename T> void CalculateNLLH<T>::SetData(I3FramePtr data_frame) {
         // let's also get the event start bin using derivs
         bool found_start = false;
         double deriv_threshold = (pre_event_deriv / pre_event_bins) * 5.0;
-        pmt_data.data_times.push_back(0.0);
+        //pmt_data.data_times.push_back(0.0);
         for (size_t data_it = 1; data_it < pmt_data.data.size(); data_it++){
             double deriv = pmt_data.data.at(data_it) - pmt_data.data.at(data_it - 1);
             if (deriv > deriv_threshold and found_start == false){
                 pmt_data.event_start_bin = data_it - 1;
                 found_start = true;
             }
-            pmt_data.data_times.push_back(pmt_data.data_times[data_it - 1] + 2.0);
+            //pmt_data.data_times.push_back(pmt_data.data_times[data_it - 1] + 2.0);
         }
 
         // let's subtract off our event start time from pmt_data.data_times
-        for (size_t i = 0; i < pmt_data.data_times.size(); i++){
-            pmt_data.data_times.at(i) -= (pmt_data.event_start_bin * 2.0);
-        }
+        //pmt_data.start_time = (50 - min_idx) * 2.0;
+        //for (size_t i = 0; i < pmt_data.data_times.size(); i++){
+        //    pmt_data.data_times.at(i) -= pmt_data.start_time;
+        //}
         pmt_data.pre_event_average = pre_event_values / pre_event_bins;
         data[pmt_data.key] = pmt_data;
     }

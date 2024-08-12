@@ -63,16 +63,16 @@ struct ZOffsetFitLikelihoodFunctor {
     I3MapPMTKeyDouble LPmu; // map between CCMPMTKey and LPmu
     I3MapPMTKeyDouble LPsigma; // map between CCMPMTKey and LPsigma
     I3MapPMTKeyDouble LPscale; // map between CCMPMTKey and LPscale
-    std::vector<I3MapPMTKeyDouble> time_offsets; // map between CCMPMTKey and time offset (1 map/data set) 
+    std::vector<I3MapPMTKeyDouble> time_offsets; // map between CCMPMTKey and time offset (1 map/data set)
     double Rt = 0.0;
     double tau_t = 743.0;
     double tau_rec = 0.0;
     double const_offset = 0.0;
     double photons_per_mev = 1.0;
     std::vector<size_t> n_sodium_events;
-    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified;
     ZigZagPrior prior = ZigZagPrior(3.0, 6.0, false); // we want (tau_s - tau_TPB) > 3.0 with 600% scale
-    bool use_g4_yields = true;
+    bool fit_z_rayl = true;
     bool use_tau_prior = true;
 
     // This returns the LLH
@@ -100,14 +100,14 @@ struct ZOffsetFitLikelihoodFunctor {
                 CCMPMTKey key = all_keys.at(pmt_it);
                 total_llh += llh_constructorAD.at(data_it)->ComputeNLLH(key, Rs, Rt, tau_s, tau_t, tau_rec, tau_other, norm,
                                 time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), x[11 + pmt_it], // pmt eff!
-                                {uv_abs_1, uv_abs_2}, rayl_length, photons_per_mev, this_z_offset, n_sodium_events.at(data_it), light_profile_type, use_g4_yields);
+                                {uv_abs_1, uv_abs_2}, rayl_length, photons_per_mev, this_z_offset, n_sodium_events.at(data_it), light_profile_type, fit_z_rayl);
                 if (use_tau_prior){
-                    total_llh += prior(tau_s - tau_other); 
+                    total_llh += prior(tau_s - tau_other);
                 }
             }
         }
-        //std::cout << "total llh = " << total_llh << std::endl;
-        return total_llh; 
+        std::cout << "total llh = " << total_llh << std::endl;
+        return total_llh;
     }
 };
 
@@ -117,7 +117,7 @@ private:
     FuncType func;
 public:
     BFGS_Function(FuncType f) : func(f) {}
-    
+
     // This evaluates the NLLH value
     virtual double evalF(std::vector<double> x) const {
         return 0.0; // not using!!! plz dont need
@@ -129,7 +129,7 @@ public:
         const size_t size=x.size();
         using GradType = phys_tools::autodiff::FD<FuncType::NewDerivativeDimension>;
         std::vector<GradType> params(size);
-        for(size_t i=0; i<size; i++)                                                                                                                                                         
+        for(size_t i=0; i<size; i++)
             params[i] = GradType(x[i],i);
         GradType result=func.template evaluateLikelihood<GradType>(params);
         std::vector<double> grad(size);
@@ -143,18 +143,14 @@ typedef ZOffsetFitLikelihoodFunctor LikelihoodType;
 
 ZOffsetcppMinimizer::ZOffsetcppMinimizer() {}
 
-std::vector<double> ZOffsetcppMinimizer::GrabNormSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale, 
+std::vector<double> ZOffsetcppMinimizer::GrabNormSeed(CCMPMTKey key, double baseline_efficiency, double LPmu, double LPsigma, double LPscale,
                                                      std::vector<double> uv_abs_lengths, double rayl, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
-                                                     std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::string> data_file_names){ 
-    
+                                                     std::vector<I3MapPMTKeyDouble> time_offsets, std::vector<std::string> data_file_names){
+
     // for each data set, going to grab expectation for benchmark PMT
     // then we can get a reasonable looking norm
-    
+
     // let's initialize our constructor
-    // grab our geomtry frame
-    std::string geometry_fname = "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/geo_run012490.i3.zst";
-    dataio::I3File geometry_file(geometry_fname, dataio::I3File::Mode::read);
-    I3FramePtr geo_frame = geometry_file.pop_frame();
 
     // now grab data frame(s) to make our constructors
     std::vector<std::shared_ptr<CalculateNLLH<double>>> all_constructorsDouble;
@@ -171,7 +167,7 @@ std::vector<double> ZOffsetcppMinimizer::GrabNormSeed(CCMPMTKey key, double base
         // now save!
         all_constructorsDouble.push_back(this_llh_constructorDouble);
     }
-   
+
     double Rs = 0.3;
     double Rt = 0.0;
     double tau_s = 8.0;
@@ -182,25 +178,25 @@ std::vector<double> ZOffsetcppMinimizer::GrabNormSeed(CCMPMTKey key, double base
     double photons_per_mev = 1.0;
     bool use_g4_yields = true;
     double norm_seed = 1e12;
-    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+    AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified;
 
-    std::vector<double> norm_seeds; 
+    std::vector<double> norm_seeds;
     for (size_t data_it = 0; data_it < all_constructorsDouble.size(); data_it ++){
         // loop over each data set we are fitting to
-        double llh = all_constructorsDouble.at(data_it)->ComputeNLLH(key, Rs, Rt, tau_s, tau_t, tau_rec, tau_other, norm_seed, 
+        double llh = all_constructorsDouble.at(data_it)->ComputeNLLH(key, Rs, Rt, tau_s, tau_t, tau_rec, tau_other, norm_seed,
                          time_offsets.at(data_it).at(key), const_offset, LPmu, LPsigma, LPscale, baseline_efficiency,
                          uv_abs_lengths, rayl, photons_per_mev, z_offsets.at(data_it), n_sodium_events.at(data_it), light_profile_type, use_g4_yields);
-        
+
         // now grab out data etc
-        std::vector<double> this_pmt_data = all_constructorsDouble.at(data_it)->GetDataVector(); 
-        std::vector<double> this_pmt_pred = all_constructorsDouble.at(data_it)->GetPredVector(); 
-        
+        std::vector<double> this_pmt_data = all_constructorsDouble.at(data_it)->GetDataVector();
+        std::vector<double> this_pmt_pred = all_constructorsDouble.at(data_it)->GetPredVector();
+
         // now let's get norm scaling
         size_t data_max_idx = std::distance(this_pmt_data.begin(), std::max_element(this_pmt_data.begin(), this_pmt_data.end()));
         size_t pred_max_idx = std::distance(this_pmt_pred.begin(), std::max_element(this_pmt_pred.begin(), this_pmt_pred.end()));
-        
+
         double norm_scaling = (this_pmt_data.at(data_max_idx) / this_pmt_pred.at(pred_max_idx)) * norm_seed;
-        
+
         // now save
         norm_seeds.push_back(norm_scaling);
     }
@@ -216,21 +212,15 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
 
     std::cout << "fitting to " << data_file_names.size() << " data files" << std::endl;
     bool use_tau_prior = fit_flags.at(0);
-    bool fix_z_offset = fit_flags.at(1);
-    bool fix_pmt_eff = fit_flags.at(2);
-    bool fix_second_abs_length = fit_flags.at(3);
-    bool fix_rayl = fit_flags.at(4);
+    bool fix_pmt_eff = fit_flags.at(1);
+    bool fix_second_abs_length = fit_flags.at(2);
 
-    std::vector<I3MapPMTKeyDouble> time_offsets = {time_offset1, time_offset2, time_offset3, time_offset4}; 
+    std::vector<I3MapPMTKeyDouble> time_offsets = {time_offset1, time_offset2, time_offset3, time_offset4};
     std::vector<std::string> paramter_names = {"Rs", "tau_s", "tau_other", "norm", "uv_abs_1", "uv_abs_2", "rayl"};
 
     std::vector<double> data_to_return;
 
     // let's initialize our constructor
-    // grab our geomtry frame
-    std::string geometry_fname = "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/geo_run012490.i3.zst";
-    dataio::I3File geometry_file(geometry_fname, dataio::I3File::Mode::read);
-    I3FramePtr geo_frame = geometry_file.pop_frame();
 
     // now set up our likelihood object
     LikelihoodType likelihood;
@@ -261,12 +251,13 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     likelihood.LPscale = LPscale;
     likelihood.time_offsets = time_offsets;
     likelihood.use_tau_prior = use_tau_prior;
+    likelihood.fit_z_rayl = true;
 
     // now set up our minimizer
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
 
-    minimizer.addParameter(0.33, 1e-3, 0.1, 0.5); // Rs
-    minimizer.addParameter(7.0, 1e-3, 1.0, 16.0); // tau_s
+    minimizer.addParameter(0.33, 1e-3, 0.1, 0.6); // Rs
+    minimizer.addParameter(6.0, 1e-3, 1.0, 16.0); // tau_s
     minimizer.addParameter(3.0, 1e-3, 0.001, 9.0); // tau_TPB
 
     // let's grab the norm seed
@@ -275,13 +266,13 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     if (fix_second_abs_length){
         uv_abs_2_seed = 0.0;
     }
-    double rayl_seed = 84.0;
+    double rayl_seed = 90.0;
     size_t reference_pmt_idx = (size_t) (keys_to_fit.size() / 2);
     CCMPMTKey reference_pmt = keys_to_fit.at(reference_pmt_idx);
     double baseline_eff = 1.0;
-    if (pmt_efficiency.find(reference_pmt) != pmt_efficiency.end()){
-        baseline_eff = pmt_efficiency.at(reference_pmt);
-    }
+    //if (pmt_efficiency.find(reference_pmt) != pmt_efficiency.end()){
+    //    baseline_eff = pmt_efficiency.at(reference_pmt);
+    //}
     //std::vector<double> norm_seeds = GrabNormSeed(reference_pmt, baseline_eff, LPmu.at(reference_pmt), LPsigma.at(reference_pmt), LPscale.at(reference_pmt),
     //                                              {uv_abs_1_seed, uv_abs_2_seed}, rayl_seed, z_offsets, n_sodium_events, time_offsets, data_file_names);
     //double total_norm_seed = 0.0;
@@ -289,13 +280,13 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     //    total_norm_seed += norm_seeds.at(n);
     //}
     //double average_norm_seed = total_norm_seed / static_cast<double>(norm_seeds.size());
-    
+
     //std::cout << "norm seeds = " << norm_seeds << " and adding average norm seed = " << average_norm_seed << std::endl;
-    double average_norm_seed = 1.0;
+    double average_norm_seed = 0.1;
 
     // now add normalization
     minimizer.addParameter(average_norm_seed, 1e-3, average_norm_seed * 1e-5, average_norm_seed * 1e5); // norm
-   
+
     // now add uv abs
     minimizer.addParameter(uv_abs_1_seed, 1e-4, 5.0, 2800.0); // uv absorption 1!!!
     if (fix_second_abs_length){
@@ -303,36 +294,37 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     } else {
         minimizer.addParameter(uv_abs_2_seed, 1e-4, 5.0, 2800.0); // uv absorption 2!!! using!
     }
-    
+
     // now add rayleigh scattering length
-    minimizer.addParameter(rayl_seed, 1e-3, 55.01, 94.99);
-    
+    minimizer.addParameter(rayl_seed, 1e-3, 85.0, 95.0);
+
     // now add z offsets
     for (size_t n = 0; n < 4; n++){
         if (n < data_file_names.size()){
-            minimizer.addParameter(z_offsets.at(n), 1e-3, z_offsets.at(n) - 1.99, z_offsets.at(n) + 1.99);
+            std::cout << "adding z offset lb = " << z_offsets.at(n) - 4.0 << ", seed = " << z_offsets.at(n) - 0.5 << " and ub = " << z_offsets.at(n) << std::endl;
+            minimizer.addParameter(z_offsets.at(n) - 0.5, 1e-3, z_offsets.at(n) - 4.0, z_offsets.at(n));
         } else {
             minimizer.addParameter(0.0);
         }
     }
-    
+
     // now we are adding our pmt efficincy terms
     for (size_t n = 0; n < 200; n++){
-        if (n < keys_to_fit.size()){
-            CCMPMTKey this_key = keys_to_fit.at(n);
-            if (pmt_efficiency.find(this_key) != pmt_efficiency.end()){
-                minimizer.addParameter(pmt_efficiency.at(this_key), 1e-3, pmt_efficiency.at(this_key) * 1e-2, pmt_efficiency.at(this_key) * 1e2); // pmt eff
-            } 
-            else {
-                minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
-            }
-        }
-        else {
-            minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
-        }
-        //minimizer.addParameter(baseline_eff, 1e-3, 0.001, 5.0); // pmt eff
-    } 
-    
+        //if (n < keys_to_fit.size()){
+        //    CCMPMTKey this_key = keys_to_fit.at(n);
+        //    if (pmt_efficiency.find(this_key) != pmt_efficiency.end()){
+        //        minimizer.addParameter(pmt_efficiency.at(this_key), 1e-3, pmt_efficiency.at(this_key) * 1e-2, pmt_efficiency.at(this_key) * 1e2); // pmt eff
+        //    }
+        //    else {
+        //        minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
+        //    }
+        //}
+        //else {
+        //    minimizer.addParameter(1.0, 1e-3, 0.001, 5.0); // pmt eff
+        //}
+        minimizer.addParameter(baseline_eff, 1e-3, 0.001, 5.0); // pmt eff
+    }
+
     minimizer.setHistorySize(20);
 
     // now fix some parameters
@@ -342,33 +334,38 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     }
 
     // if fix_rayl, fix rayl scattering length
-    if (fix_rayl){
-        minimizer.fixParameter(6);
-    }
+    //if (fix_rayl){
+    //    minimizer.fixParameter(6);
+    //}
 
     // if fix_z_offset, fix ALL z offsets
     // otherwise only fix z offsets for data sets not in our fit
-    if (fix_z_offset){
-        for (size_t z = 0; z < 4; z++){
+    //if (fix_z_offset){
+    //    for (size_t z = 0; z < 4; z++){
+    //        minimizer.fixParameter(7 + z);
+    //    }
+    //} else {
+    //    for (size_t z = 0; z < 4; z++){
+    //        if (z >= data_file_names.size()){
+    //            minimizer.fixParameter(7 + z);
+    //        }
+    //    }
+    //}
+    for (size_t z = 0; z < 4; z++){
+        if (z >= data_file_names.size()){
             minimizer.fixParameter(7 + z);
         }
-    } else {
-        for (size_t z = 0; z < 4; z++){
-            if (z >= data_file_names.size()){
-                minimizer.fixParameter(7 + z);
-            }
-        }
     }
-    
+
     // same thing for pmt effiency
     if (fix_pmt_eff){
         for (size_t p = 0; p < 200; p++){
-            minimizer.fixParameter(11 + p);    
+            minimizer.fixParameter(11 + p);
         }
     } else{
         for (size_t p = 0; p < 200; p++){
             if (p >= keys_to_fit.size()){
-                minimizer.fixParameter(11 + p);    
+                minimizer.fixParameter(11 + p);
             }
         }
     }
@@ -376,15 +373,15 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     std::cout << "effective number of variables = " << minimizer.GeteffectivenVar() << std::endl;
 
     bool succeeded = minimizer.minimize(BFGS_Function<LikelihoodType>(likelihood));
- 
+
     if(succeeded) {
         std::cout << "joint fit converged!" << std::endl;
-        std::cout << "minimization finished with " << minimizer.errorMessage() << " error message" << std::endl; 
-        
+        std::cout << "minimization finished with " << minimizer.errorMessage() << " error message" << std::endl;
+
         // save things for returning!
-        double value = minimizer.minimumValue();                                                                                                                                                 
+        double value = minimizer.minimumValue();
         std::vector<double> params = minimizer.minimumPosition();
-        
+
         std::cout << "Function value at minimum: " << value << " after " << minimizer.numberOfEvaluations() << " function evaluations" << std::endl;
         std::cout << "Parameters: " << std::endl;
         data_to_return.push_back(value);
@@ -397,31 +394,31 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
                 std::cout << params.at(i) << std::endl;
             }
         }
-    
+
         // one last thing -- take this best fit point and grab our data, pred, and times
         double Rt = 0.0;
         double tau_t = 743.0;
         double tau_rec = 0.0;
         double const_offset = 0.0;
         double photons_per_mev = 1.0;
-        bool use_g4_yields = true;
-        AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified; 
+        bool fit_z_rayl = true;
+        AnalyticLightYieldGenerator::LArLightProfileType light_profile_type = AnalyticLightYieldGenerator::LArLightProfileType::Simplified;
         for (size_t data_it = 0; data_it < all_constructorsAD.size(); data_it ++){
             // loop over each data set we are fitting to
-            I3MapPMTKeyVectorDouble this_data; 
-            I3MapPMTKeyVectorDouble this_pred; 
-            I3MapPMTKeyVectorDouble this_times; 
-            
+            I3MapPMTKeyVectorDouble this_data;
+            I3MapPMTKeyVectorDouble this_pred;
+            I3MapPMTKeyVectorDouble this_times;
+
             for (size_t pmt_it = 0; pmt_it < keys_to_fit.size(); pmt_it ++){
                 // loop over each PMT
                 CCMPMTKey key = keys_to_fit.at(pmt_it);
-                double llh = all_constructorsAD.at(data_it)->ComputeNLLH(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3), 
+                double llh = all_constructorsAD.at(data_it)->ComputeNLLH(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3),
                                  time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(11 + pmt_it),
-                                 {params.at(4), params.at(5)}, params.at(6), photons_per_mev, params.at(7 + data_it), n_sodium_events.at(data_it), light_profile_type, use_g4_yields).value();
+                                 {params.at(4), params.at(5)}, params.at(6), photons_per_mev, params.at(7 + data_it), n_sodium_events.at(data_it), light_profile_type, fit_z_rayl).value();
                 // now grab out data etc
-                std::vector<double> this_pmt_data = all_constructorsAD.at(data_it)->GetDataVector(); 
-                std::vector<double> this_pmt_pred = all_constructorsAD.at(data_it)->GetPredVector(); 
-                std::vector<double> this_pmt_times = all_constructorsAD.at(data_it)->GetTimesVector(); 
+                std::vector<double> this_pmt_data = all_constructorsAD.at(data_it)->GetDataVector();
+                std::vector<double> this_pmt_pred = all_constructorsAD.at(data_it)->GetPredVector();
+                std::vector<double> this_pmt_times = all_constructorsAD.at(data_it)->GetTimesVector();
                 // now save
                 this_data[key] = this_pmt_data;
                 this_pred[key] = this_pmt_pred;
@@ -431,11 +428,11 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
             pred.push_back(this_pred);
             times.push_back(this_times);
         }
-    
+
     } else {
         std::cout << "minimizer did not converge :( error message = " << minimizer.errorMessage() << std::endl;
     }
-        
+
 
     return data_to_return;
 
