@@ -49,6 +49,7 @@ void CCMParticleInjector::DAQ(I3FramePtr frame) {
     // now save to a frame
     frame->Put(mcPrimaryName_, primary);
     frame->Put(output_mc_tree_name_, mcTree);
+    PushFrame(frame);
 }
 
 void CCMParticleInjector::FillSimulationFrame(I3FramePtr frame) {
