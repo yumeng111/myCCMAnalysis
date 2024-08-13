@@ -30,7 +30,7 @@ class CCMDetectorResponse : public I3ServiceBase {
 
         // begin events
         virtual void BeginEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) = 0;
-        
+
         // end events
         virtual void EndEvent() = 0;
 
@@ -55,7 +55,7 @@ class CCMDetectorResponse : public I3ServiceBase {
 
         const I3Context& GetContext()
         { return I3ServiceBase::GetContext(); }
-        
+
         SET_LOGGER("CCMDetectorResponse");
 };
 

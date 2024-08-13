@@ -209,7 +209,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         } 
         
         // check if we want to kill cerenkov photons 
-        if (CerenkovControl_){
+        if (KillCherenkov_){
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
             std::string creationProcessName = "Unknown";
             if (creationProcess) {

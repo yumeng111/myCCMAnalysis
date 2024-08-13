@@ -61,8 +61,9 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SodiumSourceRun, double SodiumSourceLocation, double SingletTau, double TripletTau, double Rayleigh128,
-                                  bool UVAbsStatus, bool TimeCut, bool CerenkovControl, long RandomSeed) {
+void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun, 
+                                  double SingletTau, double TripletTau, double Rayleigh128,
+                                  bool UVAbsStatus, bool TimeCut, bool KillCherenkov, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -85,9 +86,9 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sodiu
         detector_->SetLArSDStatus(LArSDStatus_);
         // set time cut and cerenkov control
         detector_->SetTimeCut(TimeCut);
-        detector_->SetCerenkovControl(CerenkovControl);
+        detector_->SetKillCherenkov(KillCherenkov);
         // set sodium rod status
-        detector_->InitializeSodiumSourceRun(SodiumSourceRun, SodiumSourceLocation / I3Units::cm * CLHEP::cm);
+        detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun);
         // Force reinitializatiion
         runManager_->ReinitializeGeometry(true);
     }

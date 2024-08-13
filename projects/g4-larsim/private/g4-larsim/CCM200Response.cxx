@@ -24,43 +24,42 @@
 #include <string>
 #include <algorithm>
 
-
 CCM200Response::CCM200Response(const I3Context& context) :
-    CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SodiumSourceRun_(false), SodiumSourceLocation_(0.0 * I3Units::cm),
-    SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond), Rayleigh128_(95.0 * I3Units::cm), UVAbsStatus_(true),
-    TimeCut_(true), CerenkovControl_(false), RandomSeed_(0){
+    CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
+    CobaltSourceRun_(false), SodiumSourceRun_(false), SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
+    Rayleigh128_(95.0 * I3Units::cm), UVAbsStatus_(true), TimeCut_(true), KillCherenkov_(false), RandomSeed_(0){
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
-    AddParameter("SodiumSourceRun", "true if we want to simulate the sodium source rod + pellet", SodiumSourceRun_);
-    AddParameter("SodiumSourceLocation", "z location of the end of the sodium source rod", SodiumSourceLocation_);
+    AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", SourceRodIn_);
+    AddParameter("SourceRodLocation", "z location of the end of the sodium source rod", SourceRodLocation_);
+    AddParameter("CobaltSourceRun", "true if we want to simulate cobalt source pellet", CobaltSourceRun_);
+    AddParameter("SodiumSourceRun", "true if we want to simulate sodium source pellet", SodiumSourceRun_);
     AddParameter("SingletTimeConstant", "LAr singlet tau", SingletTau_);
     AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
     AddParameter("UVAbsLenStatus", "turn uv abs on/off", UVAbsStatus_);
     AddParameter("TimeCut", "only track events up to 200nsec", TimeCut_);
-    AddParameter("CerenkovControl", "turn cerenkov light on/off", CerenkovControl_);
+    AddParameter("KillCherenkov", "turn cherenkov light on/off", KillCherenkov_);
     AddParameter("RandomSeed", "seed for geant4 random generator", RandomSeed_);
 }
 
 void CCM200Response::Configure() {
     GetParameter("PMTSDStatus", PMTSDStatus_);
     GetParameter("LArSDStatus", LArSDStatus_);
+    GetParameter("SourceRodIn", SourceRodIn_);
+    GetParameter("SourceRodLocation", SourceRodLocation_);
+    GetParameter("CobaltSourceRun", CobaltSourceRun_);
     GetParameter("SodiumSourceRun", SodiumSourceRun_);
-    GetParameter("SodiumSourceLocation", SodiumSourceLocation_);
     GetParameter("SingletTimeConstant", SingletTau_);
     GetParameter("TripletTimeConstant", TripletTau_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
     GetParameter("UVAbsLenStatus", UVAbsStatus_);
     GetParameter("TimeCut", TimeCut_);
-    GetParameter("CerenkovControl", CerenkovControl_);
+    GetParameter("KillCherenkov", KillCherenkov_);
     GetParameter("RandomSeed", RandomSeed_);
 }
 
-CCM200Response::~CCM200Response() {
-    //if (G4Interface::GetInstance()) {
-    //    delete g4Interface_;
-    //}
-}
+CCM200Response::~CCM200Response() {}
 
 void CCM200Response::Initialize() {
 
@@ -73,8 +72,9 @@ void CCM200Response::Initialize() {
     }
 
     // let's let's construct the detector
-    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SodiumSourceRun_, SodiumSourceLocation_, SingletTau_, TripletTau_, Rayleigh128_,
-                                  UVAbsStatus_, TimeCut_, CerenkovControl_, RandomSeed_);
+    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, 
+                                  SingletTau_, TripletTau_, Rayleigh128_,
+                                  UVAbsStatus_, TimeCut_, KillCherenkov_, RandomSeed_);
     g4Interface_->InitializeRun();
 
 }

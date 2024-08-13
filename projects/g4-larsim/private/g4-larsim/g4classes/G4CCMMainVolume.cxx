@@ -343,7 +343,7 @@ std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double st
 G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                                  G4LogicalVolume* pMotherLogical, G4bool pMany,
                                  G4int pCopyNo, G4CCMDetectorConstruction* c,
-                                 G4bool SodiumSourceOn, G4double SodiumSourceLocation)
+                                 G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun)
   // Pass info to the G4PVPlacement constructor
   : G4PVPlacement(pRot, tlate,
             new G4LogicalVolume(
@@ -601,30 +601,34 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         ++k;
     }
 
-    // now let's make our sodium source pellet + rod
-    // i'm just doing the thin rod for now -- TODO : add all rod specifics (main part, nuts, thin extension)
-    G4double rod_inner_radius = 0.4*cm;
-    G4double rod_outer_radius = 0.5*cm;
-    G4double rod_height = 150.0*cm;
-    fSourceRod = new G4Tubs("SourceRod", rod_inner_radius, rod_outer_radius, rod_height/2, 0, 360*deg);
-    fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
-
-    // now make sodium pellet -- really guessing on these measurements
-    G4double pellet_radius = 4.0*mm;
-    G4double pellet_height = 3.0*mm;
-    fSodiumSourcePellet = new G4Tubs("SodiumSourcePellet", 0, pellet_radius, pellet_height/2.0, 0, 360*deg);
-    G4NistManager* nistManager = G4NistManager::Instance();
-    G4Material* fNa = nistManager->FindOrBuildMaterial("G4_Na");
-    fSodiumSourcePellet_log  = new G4LogicalVolume(fSodiumSourcePellet, fNa, "SodiumSourcePelletLog");
-
-    if (SodiumSourceOn){
-        G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SodiumSourceLocation + rod_height/2);
+    if (SourceRodIn){
+        // now let's make our source rod
+        // i'm just doing the thin rod for now -- TODO : add all rod specifics (main part, nuts, thin extension)
+        G4double rod_inner_radius = 0.4*cm;
+        G4double rod_outer_radius = 0.5*cm;
+        G4double rod_height = 150.0*cm;
+        fSourceRod = new G4Tubs("SourceRod", rod_inner_radius, rod_outer_radius, rod_height/2, 0, 360*deg);
+        fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
+        G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SourceRodLocation + rod_height/2);
         new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0);
 
-        // and now put the sodium pellet at the end of the rod (inset 1/4cm)
-        G4double inset = 0.25 * cm;
-        G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SodiumSourceLocation + pellet_height/2.0 + inset);
-        new G4PVPlacement(nullptr, pelletPosition, fSodiumSourcePellet_log, "SodiumSourcePellet", fFiducialAr_log, false, 0);
+        if (CobaltSourceRun or SodiumSourceRun){
+            // now make source pellet -- really guessing on these measurements
+            G4double pellet_radius = 4.0*mm;
+            G4double pellet_height = 3.0*mm;
+            fSourcePellet = new G4Tubs("SourcePellet", 0, pellet_radius, pellet_height/2.0, 0, 360*deg);
+            G4NistManager* nistManager = G4NistManager::Instance();
+            G4Material* fSource = nistManager->FindOrBuildMaterial("G4_Na");
+            if (CobaltSourceRun){
+                fSource = nistManager->FindOrBuildMaterial("G4_Co");
+            }
+            fSourcePellet_log  = new G4LogicalVolume(fSourcePellet, fSource, "SourcePelletLog");
+            
+            // and now put the source pellet at the end of the rod (inset 1/4cm)
+            G4double inset = 0.25 * cm;
+            G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
+            new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0);
+        }
     }
 
     VisAttributes();
@@ -705,7 +709,7 @@ void G4CCMMainVolume::VisAttributes()
     //auto sodium_pellet_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
     //sodium_pellet_va->SetForceSolid(true);
     //fSodiumSourcePellet_log->SetVisAttributes(sodium_pellet_va);
-    fSodiumSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible()); 
+    fSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible()); 
     
 
 }

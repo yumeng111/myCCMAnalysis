@@ -25,7 +25,7 @@ class G4CCMMainVolume : public G4PVPlacement
   public:
     G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
-                G4CCMDetectorConstruction* c, G4bool SodiumSourceOn, G4double SodiumSourceLocation);
+                G4CCMDetectorConstruction* c, G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun);
 
     G4LogicalVolume* GetLogPMTCoatedWall() { return fPMTCoatedWall_log; }
     G4LogicalVolume* GetLogPMTCoatedCaps() { return fPMTCoatedCaps_log; }
@@ -33,7 +33,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogPMTUncoatedCaps() { return fPMTUncoatedCaps_log; }
 
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
-    G4LogicalVolume* GetLogSodiumPellet() { return fSodiumSourcePellet_log; }
+    G4LogicalVolume* GetLogSourcePellet() { return fSourcePellet_log; }
     G4LogicalVolume* GetLogSourceRod() { return fSourceRod_log; }
 
     G4LogicalVolume* GetLogTPBCoatingWall() { return fTPBCoatingWall_log; }
@@ -75,7 +75,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4VSolid* fPhotocathCoated = nullptr; 
     G4VSolid* fPhotocathUncoated = nullptr; 
     G4Tubs* fSourceRod = nullptr;
-    G4Tubs* fSodiumSourcePellet = nullptr;
+    G4Tubs* fSourcePellet = nullptr;
 
     // Logical volumes
     G4LogicalVolume* fCryoVessel_log = nullptr;
@@ -103,7 +103,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fPhotocathCoated_log = nullptr;
     G4LogicalVolume* fPhotocathUncoated_log = nullptr;
     G4LogicalVolume* fSourceRod_log = nullptr;
-    G4LogicalVolume* fSodiumSourcePellet_log = nullptr;
+    G4LogicalVolume* fSourcePellet_log = nullptr;
 
     // Physical volumes (necessary for borders)
     G4VPhysicalVolume* fFiducialAr_phys = nullptr;

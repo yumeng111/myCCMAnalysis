@@ -35,18 +35,20 @@ private:
 
     bool PMTSDStatus_; // turn PMT SD on/off
     bool LArSDStatus_; // turn fiducial LAr SD on/off
-    bool SodiumSourceRun_; // turn source run on/off 
-    double SodiumSourceLocation_; // location of end of source rod 
+    bool SourceRodIn_; // place source rod into detector geometry
+    double SourceRodLocation_; // location of end of source rod
+    bool CobaltSourceRun_; // true for cobalt57
+    bool SodiumSourceRun_; // true for sodium22
     double SingletTau_; // set LAr singlet time constant
     double TripletTau_; // set LAr triplet time constant
-    double Rayleigh128_; // set rayl scattering length for 128nm light 
-    bool UVAbsStatus_; // set uv abs on/off 
+    double Rayleigh128_; // set rayl scattering length for 128nm light
+    bool UVAbsStatus_; // set uv abs on/off
     bool TimeCut_; // true ends all events after 200 nsec
-    bool CerenkovControl_; // true turns off cerenkov light
+    bool KillCherenkov_; // true turns off cherenkov light
     long RandomSeed_; // random seed for geant4
 
-    std::shared_ptr<G4Interface> g4Interface_ = nullptr; 
-        
+    std::shared_ptr<G4Interface> g4Interface_ = nullptr;
+
     SET_LOGGER("CCM200Response");
 
 public:

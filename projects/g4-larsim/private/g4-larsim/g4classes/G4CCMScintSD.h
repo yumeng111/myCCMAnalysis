@@ -67,8 +67,8 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool GetTimeCutStatus() { return TimeCut_; }
         void SetTimeCutStatus(bool TimeCut) { TimeCut_ = TimeCut; }
         
-        bool GetCerenkovControlStatus() { return CerenkovControl_; }
-        void SetCerenkovControlStatus(bool CerenkovControl) { CerenkovControl_ = CerenkovControl; }
+        bool GetKillCherenkovStatus() { return KillCherenkov_; }
+        void SetKillCherenkovStatus(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
 
         void SetPrimaryParticle(I3Particle primary, I3MCTreePtr tree) {
             mcTree = tree;
@@ -106,7 +106,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool PMTSDStatus_; 
 
         bool TimeCut_; // true kills tracks after 200 nsec
-        bool CerenkovControl_; // true kills cerenkov light
+        bool KillCherenkov_; // true kills cerenkov light
 
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = nullptr;

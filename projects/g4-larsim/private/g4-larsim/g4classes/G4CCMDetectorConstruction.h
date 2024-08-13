@@ -64,20 +64,18 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     bool GetLArSDStatus() { return LArSDStatus_; }
  
     // set sodium source calibration run status
-    void InitializeSodiumSourceRun(bool SodiumSourceRun, G4double SodiumSourceLocation){
-        SodiumSourceRun_ = SodiumSourceRun; 
-        SodiumSourceLocation_ = SodiumSourceLocation;
+    void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun){
+        SourceRodIn_ = SourceRodIn; 
+        SourceRodLocation_ = SourceRodLocation;
+        CobaltSourceRun_ = CobaltSourceRun;
+        SodiumSourceRun_ = SodiumSourceRun;
     }
 
     // set time cut
     void SetTimeCut(bool TimeCut){ TimeCut_ = TimeCut; }
     
     // set cerenkov control
-    void SetCerenkovControl(bool CerenkovControl) { CerenkovControl_ = CerenkovControl; }    
-
-    // get sodium source calibration run status
-    bool GetSodiumSourceRun() { return SodiumSourceRun_; }
-    G4double GetSodiumSourcePosition() { return SodiumSourceLocation_; }
+    void SetKillCherenkov(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }    
 
   private:
     
@@ -135,8 +133,10 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     bool LArSDStatus_ = true; // turn fiducial LAr SD on/off
 
     // controls to turn sodium source on/off
+    bool SourceRodIn_ = false;
+    G4double SourceRodLocation_ = 0.0; 
+    bool CobaltSourceRun_ = false;
     bool SodiumSourceRun_ = false;
-    G4double SodiumSourceLocation_ = 0.0; 
 
     G4double SingletTau_ = 8.2 * ns;
     G4double TripletTau_ = 743.0 * ns;
@@ -144,7 +144,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4bool UVAbsStatus_ = true;
 
     G4bool TimeCut_ = true;
-    G4bool CerenkovControl_ = false;
+    G4bool KillCherenkov_ = false;
 };
 
 #endif

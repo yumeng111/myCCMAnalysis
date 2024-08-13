@@ -466,7 +466,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 
     // Place the main volume
     if(fMainVolumeOn) {
-        fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this, SodiumSourceRun_, SodiumSourceLocation_);
+        fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_);
     }
 
     return fExperimentalHall_phys;
@@ -507,7 +507,7 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             auto scint_SD = new G4CCMScintSD("/LAr/scintSD");
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             scint_SD->SetTimeCutStatus(TimeCut_);
-            scint_SD->SetCerenkovControlStatus(CerenkovControl_);
+            scint_SD->SetKillCherenkovStatus(KillCherenkov_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
@@ -523,10 +523,12 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
 
             SetSensitiveDetector(fMainVolume->GetLogReflectorFoil(), fScint_SD.Get());
             // make sure to include source pellet + rod for SD if enabeled
-            if (SodiumSourceRun_){
-                SetSensitiveDetector(fMainVolume->GetLogSodiumPellet(), fScint_SD.Get());
+            if (SourceRodIn_){
                 SetSensitiveDetector(fMainVolume->GetLogSourceRod(), fScint_SD.Get());
             } 
+            if (CobaltSourceRun_ or SodiumSourceRun_){
+                SetSensitiveDetector(fMainVolume->GetLogSourcePellet(), fScint_SD.Get());
+            }
         }
 
     }
