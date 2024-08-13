@@ -40,53 +40,12 @@ I3ParticlePtr get_most_energetic_primary(const I3MCTree& t){
   else return I3ParticlePtr();
 }
 
-I3ParticlePtr get_most_energetic_inice(const I3MCTree& t){
-  I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergeticInIce(t);
-  if(p) return I3ParticlePtr(new I3Particle(p.get()));
-  else return I3ParticlePtr();
-}
-
 I3ParticlePtr get_most_energetic(const I3MCTree& t, I3Particle::ParticleType pt){
   I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergetic(t,pt);
   if(p) return I3ParticlePtr(new I3Particle(p.get()));
   else return I3ParticlePtr();
 }
  
-I3ParticlePtr get_most_energetic_track(const I3MCTree& t){
-  I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergeticTrack(t);
-  if(p) return I3ParticlePtr(new I3Particle(p.get()));
-  else return I3ParticlePtr();
-}
-
-I3ParticlePtr get_most_energetic_cascade(const I3MCTree& t){
-  I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergeticCascade(t);
-  if(p) return I3ParticlePtr(new I3Particle(p.get()));
-  else return I3ParticlePtr();
-}
-
-I3ParticlePtr get_most_energetic_inice_cascade(const I3MCTree& t){
-  I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergeticInIceCascade(t);
-  if(p) return I3ParticlePtr(new I3Particle(p.get()));
-  else return I3ParticlePtr();
-}
-
-I3ParticlePtr get_most_energetic_neutrino(const I3MCTree& t){
-  I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergeticNeutrino(t);
-  if(p) return I3ParticlePtr(new I3Particle(p.get()));
-  else return I3ParticlePtr();
-}
-
-I3ParticlePtr get_most_energetic_muon(const I3MCTree& t){
-  I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergeticMuon(t);
-  if(p) return I3ParticlePtr(new I3Particle(p.get()));
-  else return I3ParticlePtr();
-}
-
-I3ParticlePtr get_most_energetic_nucleus(const I3MCTree& t){
-  I3MCTree::optional_value p = I3MCTreePhysicsLibrary::GetMostEnergeticNucleus(t);
-  if(p) return I3ParticlePtr(new I3Particle(p.get()));
-  else return I3ParticlePtr();
-}
 
 
 #endif

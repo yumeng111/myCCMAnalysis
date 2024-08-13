@@ -9,7 +9,6 @@ I3MCTreeUtils::AddPrimary(I3MCTree& t, const I3Particle& p)
   t.insert_after(p);
   I3MCTree::iterator iter(t,p);
   i3_assert( iter != t.end() );
-  iter->SetShape(I3Particle::Primary);
 }
 
 void
@@ -91,7 +90,7 @@ I3MCTreeUtils::GetParent(const I3MCTree& t, const I3ParticleID& child)
 {
   I3MCTree::optional_value parent = t.parent(child);
   if (parent)
-    return parent;
+    return parent.value();
   else
     log_fatal("no parent found");
 }

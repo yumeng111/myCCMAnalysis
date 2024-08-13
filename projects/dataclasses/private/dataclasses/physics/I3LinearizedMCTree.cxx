@@ -71,9 +71,7 @@ bool I3Stochastic::operator<(const I3Stochastic &other) const
 bool
 I3Stochastic::IsCompressible(const I3Particle &parent, const I3Particle &p)
 {
-	if ((p.IsCascade() && p.GetLocationType() == I3Particle::InIce)
-	    && (p.GetFitStatus() == I3Particle::NotSet) && (p.GetLength() == 0.*I3Units::m)
-	    && (p.GetSpeed() == I3Constants::c) && (p.GetDir() == parent.GetDir())) {
+	if ((p.GetLength() == 0.*I3Units::m) && (p.GetSpeed() == I3Constants::c) && (p.GetDir() == parent.GetDir())) {
 		    I3Particle newp(p);
 		    Propagate(newp, parent.GetTime() - p.GetTime());
 		    double position_err = (newp.GetPos()-parent.GetPos()).Magnitude();
@@ -88,9 +86,6 @@ I3Stochastic::Reconstruct(const I3Particle &parent) const
 {
 	I3Particle p(major_id_, minor_id_);
 	
-	p.SetShape(I3Particle::Null);
-	p.SetFitStatus(I3Particle::NotSet);
-	p.SetLocationType(I3Particle::InIce);
 	p.SetSpeed(I3Constants::c);
 	p.SetLength(0.*I3Units::m);
 	

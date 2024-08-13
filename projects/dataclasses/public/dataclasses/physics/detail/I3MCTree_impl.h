@@ -1383,8 +1383,6 @@ namespace TreeBase {
       // the same ParticleID.  This was always forbidden, but not easy to enforce
       // in the old tree.  It's enforced in the new tree.  We want a clone here
       // for the sole purpose of generating a new unique ID.
-      if (item.GetShape() == I3Particle::Dark)
-        return item.Clone();
       // Any duplicate particles get a new ID by default
       // TODO: track these changes and keep the ID for the particle with daughters
       if (tree_ptr->at(item))

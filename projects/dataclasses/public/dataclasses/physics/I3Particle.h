@@ -105,7 +105,9 @@ class I3Particle : public I3FrameObject
     Ne20Nucleus = 1000100200,
     Ne21Nucleus = 1000100210,
     Ne22Nucleus = 1000100220,
+    ExcitedNe22Nuclus = 1000100221,
     Na23Nucleus = 1000110230,
+    Na22Nucleus = 1000110220,
     Mg24Nucleus = 1000120240,
     Mg25Nucleus = 1000120250,
     Mg26Nucleus = 1000120260,
@@ -199,79 +201,37 @@ class I3Particle : public I3FrameObject
     STauMinus = -2000009132,
     SMPPlus = -2000009500,
     SMPMinus = -2000009501,
-  };
-
-  enum ParticleShape { 
-    Null = 0, 
-    Primary = 10, 
-    TopShower = 20, 
-    Cascade = 30, 
-    CascadeSegment = 31, 
-    InfiniteTrack = 40, 
-    StartingTrack = 50, 
-    StoppingTrack = 60, 
-    ContainedTrack = 70,
-    MCTrack = 80,
-    Dark = 90
-  };
-
-  enum FitStatus {
-    NotSet = -1,
-    OK = 0,
-    GeneralFailure = 10,
-    InsufficientHits = 20,
-    FailedToConverge = 30,
-    MissingSeed = 40,
-    InsufficientQuality = 50
-  };
-
-  enum LocationType {
-    Anywhere = 0,
-    IceTop = 10,
-    InIce = 20,
-    InActiveVolume = 30
+  
+    // adding some additonal codes for energy loss in LAr
+    PhotoElectricEffect = 2000000001,
+    ComptonScattering = 2000000002,
+    ElectronPositronConversion = 2000000003,
+    RayleighScattering = 2000000004,
+    MultipleScattering = 2000000005,
+    ElectronIonization = 2000000006,
+    ElectronBremsstrahlung = 2000000007,
+    ElectronPairProduction = 2000000008,
+    CoulombScattering = 2000000009,
+    Annihilation = 2000000010,
+    Cherenkov = 2000000011,
+    Radioactivation = 2000000012,
+    Scintillation = 2000000013,
+    OpticalWLS = 2000000014,
   };
 
  public:
   /** @brief Constructor for a simple particle with generated ID
-   * useful in applications where the shape and type of an particle are in focus
-   * @param shape Shape of the track
    * @param type Particle type
   */
-  I3Particle(ParticleShape shape = Null, ParticleType type = unknown);
-
-  /** @brief Constructor for I3Particle, focusing on directional properties
-   * @param pos Position of the vertex
-   * @param dir Direction of the track
-   * @param vertextime time that the vertex is happening
-   * @param shape Shape of the track
-   * @param length
-   */
-#ifndef __CINT__
-  I3Particle(const I3Position pos, const I3Direction dir, const double vertextime, 
-             ParticleShape shape = Null, double length=NAN);
-#else
-  I3Particle(const I3Position pos, const I3Direction dir, const double vertextime, 
-             ParticleShape shape, double length);
-#endif
-
-#ifndef __CINT__
-  /** @brief Constructor for particle from boost::optional<I3Particle>
-   * @param p A particle
-   */
-  I3Particle(const boost::optional<I3Particle>& p);
-#endif
-
+  
+  I3Particle(ParticleType type = unknown);
+  I3Particle(const I3Position pos, const I3Direction dir, const double vertextime, double length);
+          
   ~I3Particle();
   
   std::ostream& Print(std::ostream&) const override;
 
-  bool IsTrack() const;
-  bool IsCascade() const;
-  bool IsTopShower() const;
   bool IsNeutrino() const;
-  bool IsNucleus() const;
-
   bool HasPosition() const;
   bool HasDirection() const;
   bool HasEnergy() const;
@@ -280,30 +240,23 @@ class I3Particle : public I3FrameObject
   I3Particle& operator=(const I3Particle& rhs) {
     ID_ = rhs.ID_;
     pdgEncoding_ = rhs.pdgEncoding_;
-    shape_ = rhs.shape_;
-    status_ = rhs.status_;
     pos_ = rhs.pos_;
     dir_ = rhs.dir_;
     time_ = rhs.time_;
     energy_ = rhs.energy_;
     length_ = rhs.length_;
     speed_ = rhs.speed_;
-    locationType_ = rhs.locationType_;
     return *this;
   }
   bool operator==(const I3Particle& rhs) const {
     return ( ID_ == rhs.ID_ &&
         pdgEncoding_ == rhs.pdgEncoding_ &&
-        shape_ == rhs.shape_ &&
-        status_ == rhs.status_ &&
         pos_ == rhs.pos_ &&
         dir_ == rhs.dir_ &&
         CompareFloatingPoint::Compare_NanEqual(time_, rhs.time_) &&
         CompareFloatingPoint::Compare_NanEqual(energy_, rhs.energy_) &&
         CompareFloatingPoint::Compare_NanEqual(length_, rhs.length_) &&
-        CompareFloatingPoint::Compare_NanEqual(speed_, rhs.speed_) &&
-        locationType_ == rhs.locationType_
-    );
+        CompareFloatingPoint::Compare_NanEqual(speed_, rhs.speed_));
   }
   bool operator!=(const I3Particle& rhs) const {
     return !(*this == rhs);
@@ -326,21 +279,6 @@ class I3Particle : public I3FrameObject
 
   void SetType(ParticleType type) { pdgEncoding_ = type; };
   void SetTypeString(const std::string &str);
-
-  ParticleShape GetShape() const { return shape_; }
-  std::string GetShapeString() const;
-  void SetShape(ParticleShape shape) { shape_ = shape; }
-  void SetShapeString(const std::string &str);
-
-  FitStatus GetFitStatus() const { return status_; }
-  std::string GetFitStatusString() const;
-  void SetFitStatus(FitStatus status) { status_ = status; }
-  void SetFitStatusString(const std::string &str);
-
-  LocationType GetLocationType() const { return locationType_; }
-  std::string GetLocationTypeString() const;
-  void SetLocationType(LocationType type) { locationType_ = type; }
-  void SetLocationTypeString(const std::string &str);
 
   const I3Position& GetPos() const { return pos_; }
   void SetPos(const I3Position& p) { pos_=p; }
@@ -419,21 +357,19 @@ class I3Particle : public I3FrameObject
 
   I3ParticleID ID_;
   int32_t pdgEncoding_;
-  ParticleShape shape_;
   I3Position pos_;
   I3Direction dir_;
   double time_;
   double energy_;
   double length_;
   double speed_;
-  FitStatus status_;
-  LocationType locationType_;
 
   /** @brief Constructor for particle as a unique identifier by majorID and minorID
    * useful in iteration processes (in I3MCTree) where unique tagging is required
    * @param major MajorID of that particle
    * @param minor MinorID of that particle
    */
+          
   I3Particle(const uint64_t major, const int32_t minor);
   
   /** @brief generate a new, unique ID combination
@@ -494,18 +430,13 @@ std::string i3particle_type_string(int32_t pdg_code);
     (Fe54Nucleus)(Fe55Nucleus)(Fe56Nucleus)(Fe57Nucleus)(Fe58Nucleus)(Qball)      \
     (CherenkovPhoton)(Nu)(Monopole)(Brems)(DeltaE)(PairProd)(NuclInt)(MuPair)     \
     (Hadrons)(ContinuousEnergyLoss)(FiberLaser)(N2Laser)(YAGLaser)                \
-    (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)
-
-#define I3PARTICLE_H_I3Particle_ParticleShape                                     \
-    (Null)(Primary)(TopShower)(Cascade)(CascadeSegment)(InfiniteTrack)(StartingTrack)             \
-    (StoppingTrack)(ContainedTrack)(MCTrack)(Dark)
-    
-#define I3PARTICLE_H_I3Particle_FitStatus                                         \
-    (NotSet)(OK)(GeneralFailure)(InsufficientHits)(FailedToConverge)              \
-    (MissingSeed)(InsufficientQuality)
-
-#define I3PARTICLE_H_I3Particle_LocationType                                      \
-    (Anywhere)(IceTop)(InIce)(InActiveVolume)
+    (STauPlus)(STauMinus)(SMPPlus)(SMPMinus)                                      \
+    (PhotoElectricEffect)(ComptonScattering)(ElectronPositronConversion)          \
+    (RayleighScattering)(MultipleScattering)(ElectronIonization)                  \
+    (ElectronBremsstrahlung)(ElectronPairProduction)                              \
+    (CoulombScattering)(Annihilation)                                             \
+    (Na22Nucleus)(ExcitedNe22Nuclus)(Cherenkov)(Radioactivation)                  \
+    (Scintillation)(OpticalWLS)                                                   \
 
 std::ostream& operator<<(std::ostream& oss, const I3Particle& d);
 

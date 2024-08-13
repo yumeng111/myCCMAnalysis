@@ -1,0 +1,24 @@
+#################
+##
+## This example demonstrates the cerenkov process by using a 200 MeV mu+
+## particle in a geometry configuration that shows the cerenkov cone
+## and pmts hit by it.
+##
+#################
+
+/control/verbose 1
+/tracking/verbose 0
+/run/verbose 1
+/control/cout/ignoreThreadsExcept 0
+/process/optical/verbose 1
+
+/run/initialize
+
+/CCM/eventVerbose 0
+/CCM/detector/defaults
+
+/gun/particle ion
+/gun/ion 11 22 0 0  # Set particle to Na22 (Z=11, A=22, Q=0, E=0)
+/gun/position 0. 0. 0.  # Set the position to the center of the rod or any desired location
+
+/run/beamOn 1

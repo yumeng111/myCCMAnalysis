@@ -28,14 +28,8 @@ I3TableRowDescriptionPtr I3ParticleConverter::CreateDescription(const I3Particle
     // skip: major_id/minor_id
     
     MAKE_ENUM_VECTOR(type,I3Particle,I3Particle::ParticleType,I3PARTICLE_H_I3Particle_ParticleType);
-    MAKE_ENUM_VECTOR(shape,I3Particle,I3Particle::ParticleShape,I3PARTICLE_H_I3Particle_ParticleShape);
-    MAKE_ENUM_VECTOR(location,I3Particle,I3Particle::LocationType,I3PARTICLE_H_I3Particle_LocationType);
-    MAKE_ENUM_VECTOR(fit_status,I3Particle,I3Particle::FitStatus,I3PARTICLE_H_I3Particle_FitStatus);
     
     desc->AddEnumField<I3Particle::ParticleType> ("type",      type,"","");
-    desc->AddEnumField<I3Particle::ParticleShape>("shape",     shape,"","");
-    desc->AddEnumField<I3Particle::LocationType> ("location",  location,"","");
-    desc->AddEnumField<I3Particle::FitStatus>    ("fit_status",fit_status,"","");
     
     return desc;
 };
@@ -56,9 +50,6 @@ size_t I3ParticleConverter::FillRows(const I3Particle& particle, I3TableRowPtr r
     #endif
     
     rows->Set<I3Particle::ParticleType> ("type",      particle.GetType());
-    rows->Set<I3Particle::ParticleShape>("shape",     particle.GetShape());
-    rows->Set<I3Particle::LocationType> ("location",  particle.GetLocationType());
-    rows->Set<I3Particle::FitStatus>    ("fit_status",particle.GetFitStatus());
 
     return 1;
 };
