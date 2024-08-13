@@ -35,10 +35,10 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4bool UVAbsStatus, G4double Rayleigh128) {
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double Rayleigh128) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
-    UVAbsStatus_ = UVAbsStatus;
+    UVAbsLength_ = UVAbsLength;
     Rayleigh128_ = Rayleigh128;
     SetDefaults();
     DefineMaterials();
@@ -225,18 +225,16 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
    
-    // now add absorption length -- if UVAbsStatus_ == false, set absorption length to very big 
-    if (UVAbsStatus_){
-        std::vector<G4double> flat_abs = {300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
-                                          300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
-                                          300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
-                                          300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                          50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 50.0*cm, 
-                                          50.0*cm, 50.0*cm, 50.0*cm};  
+    // now add absorption length 
+    std::vector<G4double> flat_abs = {300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
+                                      300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
+                                      300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 
+                                      300000*cm, 300000*cm, 300000*cm, 300000*cm,
+                                      UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_,
+                                      UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};  
 
-        //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
-        fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, flat_abs);
-    } 
+    //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
+    fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, flat_abs);
 
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);

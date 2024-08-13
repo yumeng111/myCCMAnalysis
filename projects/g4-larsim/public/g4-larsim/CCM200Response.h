@@ -42,7 +42,7 @@ private:
     double SingletTau_; // set LAr singlet time constant
     double TripletTau_; // set LAr triplet time constant
     double Rayleigh128_; // set rayl scattering length for 128nm light
-    bool UVAbsStatus_; // set uv abs on/off
+    bool UVAbsLength_; // set uv abs length at 128nm
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
     long RandomSeed_; // random seed for geant4

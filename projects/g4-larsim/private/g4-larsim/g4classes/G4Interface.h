@@ -46,7 +46,7 @@ class G4Interface {
         /// Add the detector to the geometry. Should not be called after initialized.
         void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun, 
                              double SingletTau, double TripletTau, double Rayleigh128,
-                             bool UVAbsStatus, bool TimeCut, bool KillCherenkov, long RandomSeed);
+                             double UVAbsLength, bool TimeCut, bool KillCherenkov, long RandomSeed);
         /// Initialize event. Most Geant4 global things are initialized the first time this is called.
         void InitializeRun();
         /// To be called after simulating each IceTray event.
