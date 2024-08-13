@@ -16,21 +16,14 @@
 
 I3_MODULE(CCMSimulator);
 
-// Name of the IncEventID boolean in the frame (see I3MCTimeGeneratorService)
-const std::string CCMSimulator::INC_ID_NAME = "MCTimeIncEventID";
-
 CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
-    injector_ = CCMParticleInjectorPtr();
     response_ = CCMDetectorResponsePtr();
 
     responseServiceName_ = "CCM200Response";
     AddParameter("ResponseServiceName", "Name of the detector response service.", responseServiceName_);
 
-    injectorServiceName_ = "CCMSimpleInjector";
-    AddParameter("InjectorServiceName", "Name of the injector service.", injectorServiceName_);
-
-    mcPrimaryName_ = "MCPrimary";
-    AddParameter("PrimaryName", "Name of the primary particle in the frame.", mcPrimaryName_);
+    input_mc_tree_name_ = "I3MCTree";
+    AddParameter("InputMCTreeName", "Name of the input MC tree in the frame.", input_mc_tree_name_);
 
     PMTHitSeriesName_ = "PMTMCHitsMap";
     AddParameter("PMTHitSeriesName", "Name of the resulting PMT hit map in the frame.", PMTHitSeriesName_);
@@ -44,23 +37,16 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     AddOutBox("OutBox");
 }
 
-CCMSimulator::~CCMSimulator() { }
-
 void CCMSimulator::Configure() {
     log_info("Configuring the CCMSimulator:");
-
-    GetParameter("InjectorServiceName", injectorServiceName_);
-    log_info("+ Injector Service: %s", injectorServiceName_.c_str());
-    injector_ = GetContext().Get<CCMParticleInjectorPtr>(injectorServiceName_);
-    if(!injector_) log_fatal("No injector service \"%s\" in context", injectorServiceName_.c_str());
 
     GetParameter("ResponseServiceName", responseServiceName_);
     log_info("+ Response Service: %s", responseServiceName_.c_str());
     response_ = GetContext().Get<CCMDetectorResponsePtr>(responseServiceName_);
     if(!response_) log_fatal("No response service \"%s\" in context", responseServiceName_.c_str());
 
-    GetParameter("PrimaryName", mcPrimaryName_);
-    log_info("+ MC primary: %s", mcPrimaryName_.c_str());
+    GetParameter("InputMCTreeName", input_mc_tree_name_);
+    log_info("+ Input MC Tree : %s", input_mc_tree_name_.c_str());
 
     GetParameter("PMTHitSeriesName", PMTHitSeriesName_);
     log_info("+ PMT hit series : %s", PMTHitSeriesName_.c_str());
@@ -71,9 +57,7 @@ void CCMSimulator::Configure() {
     GetParameter("PhotonSummarySeriesName", PhotonSummarySeriesName_);
     log_info("+ PhotonSummarySeries : %s", PhotonSummarySeriesName_.c_str());
 
-    // initialize injector and response services
-    //injector_->Configure();
-    //response_->Configure();
+    // initialize the response services
     response_->Initialize();
 
     // set our controls over SD
@@ -81,48 +65,29 @@ void CCMSimulator::Configure() {
     LArSDStatus_ = response_->GetLArSDStatus();
 }
 
-
-// we don't have DetectorStatus frames at this moment...
-void CCMSimulator::DetectorStatus(I3FramePtr frame) {
-    // Configure and initialize response and injector services
-    //response_->Configure();
-    //response_->Initialize();
-
-    //injector_->SetResponseService(response_);
-    //injector_->Configure();
-
-    PushFrame(frame);
-}
-
 void CCMSimulator::Simulation(I3FramePtr frame) {
     seen_s_frame_ = true;
-    FillSimulationFrame(frame);
+    // Do nothing with the simulation frame so far
+    // Could later be used to load systematic information
     PushFrame(frame);
-}
-
-void CCMSimulator::FillSimulationFrame(I3FramePtr frame) {
-    // put mcTree into frame
-    I3FrameObjectPtr obj = injector_->GetSimulationConfiguration();
-    frame->Put("InjectorConfiguration", obj);
 }
 
 void CCMSimulator::DAQ(I3FramePtr frame) {
-    if(not seen_s_frame_) {
-        I3FramePtr sim_frame = boost::make_shared<I3Frame>(I3Frame::Simulation);
-        FillSimulationFrame(sim_frame);
-        PushFrame(sim_frame);
-        seen_s_frame_ = true;
+    if(!seen_s_frame_) {
+        log_fatal("No simulation frame seen before DAQ frame");
     }
 
-    log_debug("   Simulating CCM");
-
     // let's grab the mcPrimary from the injector
-    I3MCTreePtr injection_tree = injector_->GetMCTree();
-    frame->Put("I3MCTree", injection_tree);
+    I3MCTreeConstPtr injection_tree = frame->Get<I3MCTreeConstPtr>(input_mc_tree_name_);
+    if(!injection_tree) {
+        log_fatal("No MCTree found in frame with name %s", input_mc_tree_name_.c_str());
+    }
 
     I3MCTreePtr edep_tree = boost::make_shared<I3MCTree>(*injection_tree);
     CCMMCPESeriesMapPtr mcpeseries_map = boost::make_shared<CCMMCPESeriesMap>();
 
+
+    log_debug("Simulating CCM");
     // Iterate over all particles in the MCTree
     typename I3MCTree::fast_const_iterator tree_iter(*injection_tree), tree_end=injection_tree->cend_fast();
     for(;tree_iter != tree_end; tree_iter++) {

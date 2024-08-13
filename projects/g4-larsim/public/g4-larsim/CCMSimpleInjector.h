@@ -12,10 +12,10 @@
 #include "icetray/I3Frame.h"
 #include "icetray/I3Units.h"
 #include "icetray/I3Module.h"
+#include "icetray/I3ConditionalModule.h"
 #include "icetray/I3Logging.h"
 #include "icetray/IcetrayFwd.h"
 #include "icetray/I3FrameObject.h"
-#include "icetray/I3ServiceBase.h"
 
 #include "phys-services/I3RandomService.h"
 
@@ -23,9 +23,22 @@
 #include <string>
 #include <algorithm>
 
-class CCMSimpleInjector : public CCMParticleInjector {
+class CCMSimpleInjector : public I3ConditionalModule {
+public:
+    CCMSimpleInjector(const I3Context& context);
+    ~CCMSimpleInjector() = default;
+
+    void Configure();
+    void Simulation(I3FramePtr frame);
+    void DAQ(I3FramePtr frame);
+
+    I3MCTreePtr GetMCTree();
+    I3FrameObjectPtr GetSimulationConfiguration();
+
+    void FillSimulationFrame(I3FramePtr frame);
+
 private:
-    CCMSimpleInjector operator= (const CCMSimpleInjector& rhs);
+    bool seen_s_frame_ = false;
 
     double energy_;
     I3Vector<double> location_;
@@ -34,19 +47,8 @@ private:
     std::string mcPrimaryName_;
     std::string output_mc_tree_name_;
     I3Particle::ParticleType particleType_;
-    I3Particle::ParticleType GetParticleType(const std::string& typeName);
-
-    SET_LOGGER("CCMSimpleInjector");
-
 public:
-
-    CCMSimpleInjector(const I3Context& context);
-    virtual ~CCMSimpleInjector() override = default;
-
-    virtual void Configure() override;
-    virtual void FillMCTree(I3FramePtr frame);
-    virtual I3MCTreePtr GetMCTree() override;
-    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
+    I3Particle::ParticleType GetParticleType(const std::string& typeName);
 };
 
 #endif // CCMSIMPLEINJECTOR_H

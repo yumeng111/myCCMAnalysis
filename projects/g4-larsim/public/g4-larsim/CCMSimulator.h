@@ -14,41 +14,35 @@
 #include "simclasses/PhotonSummary.h"
 
 /**
- * \brief The CCMSimulator module handles the whole simulation and 
+ * \brief The CCMSimulator module handles the whole simulation and
  * stores the results in the frame.
  */
 
 class CCMSimulator : public I3Module  {
-    public:
-        CCMSimulator(const I3Context& context);
-        ~CCMSimulator();
+public:
+    CCMSimulator(const I3Context& context);
+    ~CCMSimulator() = default;
 
-        void Configure();
-        void DetectorStatus(I3FramePtr frame);
-        void DAQ(I3FramePtr frame);
-        void Simulation(I3FramePtr frame);
-        void FillSimulationFrame(I3FramePtr frame);
-        void Finish();
-    private:
-  
-        std::string injectorServiceName_;
-        std::string responseServiceName_;
-        std::string mcPrimaryName_;
-        std::string PMTHitSeriesName_;
-        std::string LArMCTreeName_; 
-        std::string PhotonSummarySeriesName_; 
+    void Configure();
+    void DAQ(I3FramePtr frame);
+    void Simulation(I3FramePtr frame);
+    void Finish();
+private:
+    std::string responseServiceName_;
+    std::string input_mc_tree_name_;
 
-        bool seen_s_frame_ = false;
+    std::string PMTHitSeriesName_;
+    std::string LArMCTreeName_;
+    std::string PhotonSummarySeriesName_;
 
-        CCMParticleInjectorPtr injector_;
-        CCMDetectorResponsePtr response_;
+    bool seen_s_frame_ = false;
 
-        bool PMTSDStatus_; // turn PMT SD on/off
-        bool LArSDStatus_; // turn fiducial LAr SD on/off
-  
-        static const std::string INC_ID_NAME;
-  
-        SET_LOGGER("CCMSimulator");
+    CCMDetectorResponsePtr response_;
+
+    bool PMTSDStatus_; // turn PMT SD on/off
+    bool LArSDStatus_; // turn fiducial LAr SD on/off
+
+    SET_LOGGER("CCMSimulator");
 };
 
 #endif

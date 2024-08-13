@@ -13,8 +13,6 @@
 #include "icetray/I3Module.h"
 #include "icetray/I3Logging.h"
 #include "icetray/IcetrayFwd.h"
-#include "icetray/I3ServiceBase.h"
-#include "icetray/I3SingleServiceFactory.h"
 
 #include "phys-services/I3RandomService.h"
 
@@ -28,37 +26,36 @@
 
 #define PARTICLE_TYPE_MAP_APPEND(r, data, t) types[BOOST_PP_STRINGIZE(t)] = I3Particle::t;
 namespace {
-  const std::map<std::string, I3Particle::ParticleType>& AvailableTypes()
-  {
+const std::map<std::string, I3Particle::ParticleType>& AvailableTypes() {
     static std::map<std::string, I3Particle::ParticleType> types;
     if (types.size() == 0) {
-      // default types for backward compatibility
-      types["mu-"] = I3Particle::MuMinus;
-      types["mu+"] = I3Particle::MuPlus;
-      types["e-"] = I3Particle::EMinus;
-      types["e+"] = I3Particle::EPlus;
-      types["gamma"] = I3Particle::Gamma;
-      types["p+"] = I3Particle::PPlus;
-      types["p-"] = I3Particle::PMinus;
-      types["n"] = I3Particle::Neutron;
-      types["nbar"] = I3Particle::NeutronBar;
-      types["pi0"] = I3Particle::Pi0;
-      types["pi+"] = I3Particle::PiPlus;
-      types["pi-"] = I3Particle::PiMinus;
-      BOOST_PP_SEQ_FOR_EACH(PARTICLE_TYPE_MAP_APPEND, ~, I3PARTICLE_H_I3Particle_ParticleType);
+        // default types for backward compatibility
+        types["mu-"] = I3Particle::MuMinus;
+        types["mu+"] = I3Particle::MuPlus;
+        types["e-"] = I3Particle::EMinus;
+        types["e+"] = I3Particle::EPlus;
+        types["gamma"] = I3Particle::Gamma;
+        types["p+"] = I3Particle::PPlus;
+        types["p-"] = I3Particle::PMinus;
+        types["n"] = I3Particle::Neutron;
+        types["nbar"] = I3Particle::NeutronBar;
+        types["pi0"] = I3Particle::Pi0;
+        types["pi+"] = I3Particle::PiPlus;
+        types["pi-"] = I3Particle::PiMinus;
+        BOOST_PP_SEQ_FOR_EACH(PARTICLE_TYPE_MAP_APPEND, ~, I3PARTICLE_H_I3Particle_ParticleType);
     }
     return types;
-  }
+}
 }
 
-CCMSimpleInjector::CCMSimpleInjector(const I3Context& context) :
-    CCMParticleInjector(context), energy_(1.0 * I3Units::MeV), location_({0.0, 0.0, 0.0}), direction_({1.0, 0., 0.}),
-    typeName_("e-"), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree") {
+CCMSimpleInjector::CCMSimpleInjector(const I3Context& context) : I3ConditionalModule(context),
+    energy_(1.0 * I3Units::MeV), location_({0.0, 0.0, 0.0}), direction_({1.0, 0., 0.}),
+    typeName_("e-"), mcPrimaryName_("MCPrimaries"), output_mc_tree_name_("I3MCTree") {
     AddParameter("ParticleEnergy", "energy of particle to inject into Geant4 in MeV", energy_);
     AddParameter("ParticleLocation", "location of particle to inject into Geant4 in m", location_);
     AddParameter("ParticleDirection", "direction of particle to inject into Geant4", direction_);
     AddParameter("ParticleType", "type of particle to inject into Geant4", typeName_);
-    AddParameter("PrimaryName", "Name of the primary particle in the frame.", mcPrimaryName_);
+    AddParameter("PrimariesName", "Name of the output frame key for the primary particles.", mcPrimaryName_);
     AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
 }
 
@@ -66,7 +63,6 @@ void CCMSimpleInjector::Configure() {
     GetParameter("ParticleEnergy", energy_);
     GetParameter("ParticleLocation", location_);
     GetParameter("ParticleDirection", direction_);
-    //GetParameter("ParticleType", particle_type_);
    
     std::string typeName;
     GetParameter("ParticleType", typeName);
@@ -81,18 +77,23 @@ void CCMSimpleInjector::Configure() {
     }
     log_info("+ Particle type: %s", typeName.c_str());
     
-    GetParameter("PrimaryName", mcPrimaryName_);
+    GetParameter("PrimariesName", mcPrimaryName_);
     GetParameter("OutputMCTreeName", output_mc_tree_name_);
 }
 
-I3Particle::ParticleType CCMSimpleInjector::GetParticleType(const std::string& typeName) {
-    std::map<std::string, I3Particle::ParticleType>::const_iterator p = AvailableTypes().find(typeName);
-    if (p != AvailableTypes().end())
-        return p->second;
-    return I3Particle::unknown;
+void CCMSimpleInjector::Simulation(I3FramePtr frame) {
+    seen_s_frame_ = true;
+    FillSimulationFrame(frame);
+    PushFrame(frame);
 }
 
-void CCMSimpleInjector::FillMCTree(I3FramePtr frame) {
+void CCMSimpleInjector::DAQ(I3FramePtr frame) {
+    if(not seen_s_frame_) {
+        I3FramePtr sim_frame = boost::make_shared<I3Frame>(I3Frame::Simulation);
+        FillSimulationFrame(sim_frame);
+        PushFrame(sim_frame);
+        seen_s_frame_ = true;
+    }
 
     I3MCTreePtr mcTree = GetMCTree();
 
@@ -127,8 +128,18 @@ I3FrameObjectPtr CCMSimpleInjector::GetSimulationConfiguration() {
     return primary;
 }
 
-typedef I3SingleServiceFactory<CCMSimpleInjector,CCMParticleInjector> CCMSimpleInjectorFactory;
+void CCMSimpleInjector::FillSimulationFrame(I3FramePtr frame) {
+    I3FrameObjectPtr obj = this->GetSimulationConfiguration();
+    frame->Put("InjectorConfiguration", obj);
+}
 
-I3_SERVICE_FACTORY(CCMSimpleInjectorFactory);
+I3Particle::ParticleType CCMSimpleInjector::GetParticleType(const std::string& typeName) {
+    std::map<std::string, I3Particle::ParticleType>::const_iterator p = AvailableTypes().find(typeName);
+    if (p != AvailableTypes().end())
+        return p->second;
+    return I3Particle::unknown;
+}
+
+I3_MODULE(CCMSimpleInjector);
 
 
