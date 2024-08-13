@@ -88,8 +88,12 @@ struct ZOffsetFitLikelihoodFunctor {
         T rayl_length = x[6];
 
         std::cout << "Rs = " << Rs.value() << ", tau_s = " << tau_s.value() << ", tau_other = " << tau_other.value() << ", norm = " << norm.value()
-            << ", uv abs 1 = " << uv_abs_1.value() << ", uv abs 2 = " << uv_abs_2.value() << ", rayl = " << rayl_length.value() << ", and z offsets = " << x[7].value()
-            << ", " << x[8].value() << ", " << x[9].value() << ", " << x[10].value() << std::endl;
+            << ", uv abs 1 = " << uv_abs_1.value() << ", uv abs 2 = " << uv_abs_2.value() << ", rayl = " << rayl_length.value() << ", z offsets = " << x[7].value()
+            << ", " << x[8].value() << ", " << x[9].value() << ", " << x[10].value() << ", and pmt effs = " << std::endl;
+
+        for (size_t i = 0; i < all_keys.size(); i ++){
+            std::cout << x[11 + i].value() << std::endl;
+        }
 
         for (size_t data_it = 0; data_it < llh_constructorAD.size(); data_it ++){
             // loop over each data set we are fitting to
@@ -106,7 +110,7 @@ struct ZOffsetFitLikelihoodFunctor {
                 }
             }
         }
-        std::cout << "total llh = " << total_llh << std::endl;
+        //std::cout << "total llh = " << total_llh << std::endl;
         return total_llh;
     }
 };
@@ -256,12 +260,12 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     // now set up our minimizer
     phys_tools::lbfgsb::LBFGSB_Driver minimizer;
 
-    minimizer.addParameter(0.33, 1e-3, 0.1, 0.6); // Rs
-    minimizer.addParameter(6.0, 1e-3, 1.0, 16.0); // tau_s
-    minimizer.addParameter(3.0, 1e-3, 0.001, 9.0); // tau_TPB
+    minimizer.addParameter(0.355771, 1e-3, 0.1, 0.6); // Rs
+    minimizer.addParameter(2.84774, 1e-3, 1.0, 16.0); // tau_s
+    minimizer.addParameter(0.145103, 1e-3, 0.001, 9.0); // tau_TPB
 
     // let's grab the norm seed
-    double uv_abs_1_seed = 45.0;
+    double uv_abs_1_seed = 60.3228;
     double uv_abs_2_seed = 70.0;
     if (fix_second_abs_length){
         uv_abs_2_seed = 0.0;
@@ -282,7 +286,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     //double average_norm_seed = total_norm_seed / static_cast<double>(norm_seeds.size());
 
     //std::cout << "norm seeds = " << norm_seeds << " and adding average norm seed = " << average_norm_seed << std::endl;
-    double average_norm_seed = 0.1;
+    double average_norm_seed = 0.104922;
 
     // now add normalization
     minimizer.addParameter(average_norm_seed, 1e-3, average_norm_seed * 1e-5, average_norm_seed * 1e5); // norm
@@ -296,17 +300,22 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     }
 
     // now add rayleigh scattering length
-    minimizer.addParameter(rayl_seed, 1e-3, 85.0, 95.0);
+    minimizer.addParameter(rayl_seed, 1e-3, 85.01, 94.99);
 
     // now add z offsets
-    for (size_t n = 0; n < 4; n++){
-        if (n < data_file_names.size()){
-            std::cout << "adding z offset lb = " << z_offsets.at(n) - 4.0 << ", seed = " << z_offsets.at(n) - 0.5 << " and ub = " << z_offsets.at(n) << std::endl;
-            minimizer.addParameter(z_offsets.at(n) - 0.5, 1e-3, z_offsets.at(n) - 4.0, z_offsets.at(n));
-        } else {
-            minimizer.addParameter(0.0);
-        }
-    }
+    minimizer.addParameter(-0.199918, 1e-3, 0.0 - 1.99, 0.0 + 1.99);
+    minimizer.addParameter(-30.5108, 1e-3, -30.0 - 1.99, -30.0 + 1.99);
+    minimizer.addParameter(29.7104, 1e-3, 30.0 - 1.99, 30.0 + 1.99);
+    minimizer.addParameter(49.6093, 1e-3, 50.0 - 1.99, 50.0 + 1.99);
+    
+    //for (size_t n = 0; n < 4; n++){
+    //    if (n < data_file_names.size()){
+    //        std::cout << "adding z offset lb = " << z_offsets.at(n) - 4.0 << ", seed = " << z_offsets.at(n) - 0.5 << " and ub = " << z_offsets.at(n) << std::endl;
+    //        minimizer.addParameter(z_offsets.at(n) - 0.5, 1e-3, z_offsets.at(n) - 3.99, z_offsets.at(n) - 0.01);
+    //    } else {
+    //        minimizer.addParameter(0.0);
+    //    }
+    //}
 
     // now we are adding our pmt efficincy terms
     for (size_t n = 0; n < 200; n++){
