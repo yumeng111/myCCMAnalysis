@@ -28,24 +28,21 @@
 #include <random>
 
 SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
-    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), mcPrimaryName_("CCMMCPrimary"), output_mc_tree_name_("CCMMCTree"), randomServiceName_("") {
+    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), randomServiceName_("") {
     AddParameter("SourceZPosition", "z location of source pellet", z_position_);
     AddParameter("Inset", "Inset of the source pellet", inset_);
     AddParameter("PelletRadius", "Radius of the source pellet", pellet_radius_);
     AddParameter("PelletHeight", "Height of the source pellet", pellet_height_);
-    AddParameter("PrimaryName", "Name of the primary particle in the frame.", mcPrimaryName_);
-    AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
     randomService_ = I3RandomServicePtr();
     AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
 }
 
 void SodiumSourceInjector::Configure() {
+    CCMParticleInjector::Configure();
     GetParameter("SourceZPosition", z_position_);
     GetParameter("Inset", inset_);
     GetParameter("PelletRadius", pellet_radius_);
     GetParameter("PelletHeight", pellet_height_);
-    GetParameter("PrimaryName", mcPrimaryName_);
-    GetParameter("OutputMCTreeName", output_mc_tree_name_);
     GetParameter("RandomServiceName", randomServiceName_);
     if(randomServiceName_.empty()) {
         randomService_ = I3RandomServicePtr(new I3GSLRandomService(0));
@@ -57,8 +54,6 @@ void SodiumSourceInjector::Configure() {
         else log_fatal("No random service \"%s\" in context!", randomServiceName_.c_str());
     }
 }
-
-void SodiumSourceInjector::FillMCTree(I3FramePtr frame) {}
 
 I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     // first let's create our MC tree
@@ -94,8 +89,5 @@ I3FrameObjectPtr SodiumSourceInjector::GetSimulationConfiguration() {
     return config;
 }
 
-typedef I3SingleServiceFactory<SodiumSourceInjector,CCMParticleInjector> SodiumSourceInjectorFactory;
-
-I3_SERVICE_FACTORY(SodiumSourceInjectorFactory);
-
+I3_MODULE(SodiumSourceInjector);
 

@@ -1,48 +1,48 @@
-#ifndef CCMPARTICLEINJECTOR_H
-#define CCMPARTICLEINJECTOR_H
+#ifndef CCMParticleInjector_H
+#define CCMParticleInjector_H
+// standard library stuff
 
+#include "dataclasses/I3Double.h"
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
 
-#include "icetray/I3Context.h"
-#include "icetray/I3ServiceBase.h"
-#include "icetray/I3Configuration.h"
-#include "icetray/I3PointerTypedefs.h"
-#include "icetray/I3SingleServiceFactory.h"
+#include "g4-larsim/CCMParticleInjector.h"
 
-class CCMParticleInjector : public I3ServiceBase {
-    public:
-        // construct self & declare configuration parameters
-        CCMParticleInjector(const I3Context &context): I3ServiceBase(context) {}
+#include "icetray/I3Frame.h"
+#include "icetray/I3Units.h"
+#include "icetray/I3Module.h"
+#include "icetray/I3ConditionalModule.h"
+#include "icetray/I3Logging.h"
+#include "icetray/IcetrayFwd.h"
+#include "icetray/I3FrameObject.h"
 
-        // cleanup
-        virtual ~CCMParticleInjector() = default;
+#include "phys-services/I3RandomService.h"
 
-        // get configuration parameters
-        virtual void Configure() = 0;
+#include <vector>
+#include <string>
+#include <algorithm>
 
-        // get I3MCTree and Configuration for simulation
-        virtual I3MCTreePtr GetMCTree() = 0;
-        virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
+class CCMParticleInjector : public I3ConditionalModule {
+public:
+    CCMParticleInjector(const I3Context& context);
+    ~CCMParticleInjector() = default;
 
-    protected:
-        template <class ParamType>
-        void AddParameter(const std::string& name,
-                        const std::string& description,
-                        const ParamType& defaultValue)
-        { I3ServiceBase::AddParameter<ParamType>(name, description, defaultValue); }
+    void Configure();
+    void Simulation(I3FramePtr frame);
+    void DAQ(I3FramePtr frame);
 
-        template <class ParamType>
-        void GetParameter(const std::string& name, ParamType& value) const
-        { I3ServiceBase::GetParameter<ParamType>(name, value); }
+    virtual I3MCTreePtr GetMCTree() = 0;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
 
-        const I3Context& GetContext()
-        { return I3ServiceBase::GetContext(); }
+    void FillSimulationFrame(I3FramePtr frame);
 
-        SET_LOGGER("CCMParticleInjector");
+private:
+    bool seen_s_frame_ = false;
+
+    std::string mcPrimaryName_;
+    std::string output_mc_tree_name_;
 };
 
-I3_POINTER_TYPEDEFS(CCMParticleInjector);
+#endif // CCMParticleInjector_H
 
-#endif

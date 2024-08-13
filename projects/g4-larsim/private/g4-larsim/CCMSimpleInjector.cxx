@@ -48,18 +48,18 @@ const std::map<std::string, I3Particle::ParticleType>& AvailableTypes() {
 }
 }
 
-CCMSimpleInjector::CCMSimpleInjector(const I3Context& context) : I3ConditionalModule(context),
+CCMSimpleInjector::CCMSimpleInjector(const I3Context& context) : CCMParticleInjector(context),
     energy_(1.0 * I3Units::MeV), location_({0.0, 0.0, 0.0}), direction_({1.0, 0., 0.}),
-    typeName_("e-"), mcPrimaryName_("MCPrimaries"), output_mc_tree_name_("I3MCTree") {
+    typeName_("e-") {
     AddParameter("ParticleEnergy", "energy of particle to inject into Geant4 in MeV", energy_);
     AddParameter("ParticleLocation", "location of particle to inject into Geant4 in m", location_);
     AddParameter("ParticleDirection", "direction of particle to inject into Geant4", direction_);
     AddParameter("ParticleType", "type of particle to inject into Geant4", typeName_);
-    AddParameter("PrimariesName", "Name of the output frame key for the primary particles.", mcPrimaryName_);
-    AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
 }
 
 void CCMSimpleInjector::Configure() {
+    CCMParticleInjector::Configure();
+
     GetParameter("ParticleEnergy", energy_);
     GetParameter("ParticleLocation", location_);
     GetParameter("ParticleDirection", direction_);
@@ -76,33 +76,6 @@ void CCMSimpleInjector::Configure() {
         log_fatal("%s",msg.str().c_str());
     }
     log_info("+ Particle type: %s", typeName.c_str());
-    
-    GetParameter("PrimariesName", mcPrimaryName_);
-    GetParameter("OutputMCTreeName", output_mc_tree_name_);
-}
-
-void CCMSimpleInjector::Simulation(I3FramePtr frame) {
-    seen_s_frame_ = true;
-    FillSimulationFrame(frame);
-    PushFrame(frame);
-}
-
-void CCMSimpleInjector::DAQ(I3FramePtr frame) {
-    if(not seen_s_frame_) {
-        I3FramePtr sim_frame = boost::make_shared<I3Frame>(I3Frame::Simulation);
-        FillSimulationFrame(sim_frame);
-        PushFrame(sim_frame);
-        seen_s_frame_ = true;
-    }
-
-    I3MCTreePtr mcTree = GetMCTree();
-
-    std::vector<I3Particle> primaries = I3MCTreeUtils::GetPrimaries(*mcTree);
-    I3VectorI3ParticlePtr primary(new I3Vector<I3Particle>(primaries.begin(), primaries.end()));
-
-    // now save to a frame
-    frame->Put(mcPrimaryName_, primary);
-    frame->Put(output_mc_tree_name_, mcTree);
 }
 
 I3MCTreePtr CCMSimpleInjector::GetMCTree() {
@@ -126,11 +99,6 @@ I3FrameObjectPtr CCMSimpleInjector::GetSimulationConfiguration() {
     primary->SetPos(location_[0], location_[1], location_[2]);
     primary->SetDir(direction_[0], direction_[1], direction_[2]);
     return primary;
-}
-
-void CCMSimpleInjector::FillSimulationFrame(I3FramePtr frame) {
-    I3FrameObjectPtr obj = this->GetSimulationConfiguration();
-    frame->Put("InjectorConfiguration", obj);
 }
 
 I3Particle::ParticleType CCMSimpleInjector::GetParticleType(const std::string& typeName) {

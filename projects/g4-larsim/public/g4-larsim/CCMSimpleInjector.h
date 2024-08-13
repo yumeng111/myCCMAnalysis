@@ -23,20 +23,15 @@
 #include <string>
 #include <algorithm>
 
-class CCMSimpleInjector : public I3ConditionalModule {
+class CCMSimpleInjector : public CCMParticleInjector {
 public:
     CCMSimpleInjector(const I3Context& context);
     ~CCMSimpleInjector() = default;
 
-    void Configure();
-    void Simulation(I3FramePtr frame);
-    void DAQ(I3FramePtr frame);
+    virtual void Configure() override;
 
-    I3MCTreePtr GetMCTree();
-    I3FrameObjectPtr GetSimulationConfiguration();
-
-    void FillSimulationFrame(I3FramePtr frame);
-
+    virtual I3MCTreePtr GetMCTree() override;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 private:
     bool seen_s_frame_ = false;
 
@@ -44,8 +39,6 @@ private:
     I3Vector<double> location_;
     I3Vector<double> direction_;
     std::string typeName_;
-    std::string mcPrimaryName_;
-    std::string output_mc_tree_name_;
     I3Particle::ParticleType particleType_;
 public:
     I3Particle::ParticleType GetParticleType(const std::string& typeName);

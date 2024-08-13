@@ -26,32 +26,22 @@
 #include <algorithm>
 
 class SodiumSourceInjector : public CCMParticleInjector {
-private:
-    SodiumSourceInjector operator= (const SodiumSourceInjector& rhs);
+public:
+    SodiumSourceInjector(const I3Context& context);
+    ~SodiumSourceInjector() = default;
 
+    virtual void Configure() override;
+    virtual I3MCTreePtr GetMCTree() override;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
+private:
     double z_position_;
     double inset_ = 0.25 * I3Units::cm;
     double pellet_radius_ = 0.4 * I3Units::cm;
     double pellet_height_ = 0.3 * I3Units::cm;
 
-    std::string mcPrimaryName_;
-    std::string output_mc_tree_name_;
     std::string randomServiceName_;
     I3RandomServicePtr randomService_;
-
-    SET_LOGGER("SodiumSourceInjector");
-
-public:
-
-    SodiumSourceInjector(const I3Context& context);
-    virtual ~SodiumSourceInjector() override = default;
-
-    virtual void Configure() override;
-    virtual void FillMCTree(I3FramePtr frame);
-    virtual I3MCTreePtr GetMCTree() override;
-    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 };
 
 #endif // SODIUMSOURCEINJECTOR_H
-
 
