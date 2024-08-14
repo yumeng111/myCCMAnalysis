@@ -703,13 +703,13 @@ void G4CCMMainVolume::VisAttributes()
     //auto source_rod_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     //source_rod_va->SetForceSolid(true);
     //fSourceRod_log->SetVisAttributes(source_rod_va);
-    fSourceRod_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fSourceRod_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     //// and make sodium pellet blue
     //auto sodium_pellet_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
     //sodium_pellet_va->SetForceSolid(true);
     //fSodiumSourcePellet_log->SetVisAttributes(sodium_pellet_va);
-    fSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
 
 }
