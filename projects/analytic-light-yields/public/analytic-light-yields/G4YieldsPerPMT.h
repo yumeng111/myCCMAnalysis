@@ -177,9 +177,9 @@ void FrameThread(std::atomic<bool> & running,
     ScaleAndBinG4Yields<T>(Q11_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q11_binned_yields, Q11_binned_yields_squared);
 
     if (fit_z_rayl){
-        ScaleAndBinG4Yields<T>(Q12_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q12_binned_yields, Q12_binned_yields_squared);
+        //ScaleAndBinG4Yields<T>(Q12_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q12_binned_yields, Q12_binned_yields_squared);
         ScaleAndBinG4Yields<T>(Q21_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q21_binned_yields, Q21_binned_yields_squared);
-        ScaleAndBinG4Yields<T>(Q22_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q22_binned_yields, Q22_binned_yields_squared);
+        //ScaleAndBinG4Yields<T>(Q22_events, keys_to_fit, max_time, light_times_per_bin, event_start, event_end, UV_absorption_length, Q22_binned_yields, Q22_binned_yields_squared);
     }
 
 
@@ -359,24 +359,24 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
                         if (final_results_uninitialized[e->first]){
                             Q11_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
                             Q11_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
-                            Q12_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
-                            Q12_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
+                            //Q12_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                            //Q12_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
                             Q21_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
                             Q21_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
-                            Q22_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
-                            Q22_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
+                            //Q22_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                            //Q22_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
                             final_results_uninitialized[e->first] = false;
                         }
                         for (size_t b = 0; b < e->second.size(); b++){
                             Q11_binned_yields[e->first].at(b) += e->second.at(b);
                             Q11_binned_yields_squared[e->first].at(b) += (results.at(i).Q11_binned_yields_squared)->at(e->first).at(b);
                             if (fit_z_rayl){
-                                Q12_binned_yields[e->first].at(b) += e->second.at(b);
-                                Q12_binned_yields_squared[e->first].at(b) += (results.at(i).Q12_binned_yields_squared)->at(e->first).at(b);
+                                //Q12_binned_yields[e->first].at(b) += e->second.at(b);
+                                //Q12_binned_yields_squared[e->first].at(b) += (results.at(i).Q12_binned_yields_squared)->at(e->first).at(b);
                                 Q21_binned_yields[e->first].at(b) += e->second.at(b);
                                 Q21_binned_yields_squared[e->first].at(b) += (results.at(i).Q21_binned_yields_squared)->at(e->first).at(b);
-                                Q22_binned_yields[e->first].at(b) += e->second.at(b);
-                                Q22_binned_yields_squared[e->first].at(b) += (results.at(i).Q22_binned_yields_squared)->at(e->first).at(b);
+                                //Q22_binned_yields[e->first].at(b) += e->second.at(b);
+                                //Q22_binned_yields_squared[e->first].at(b) += (results.at(i).Q22_binned_yields_squared)->at(e->first).at(b);
                             }
                         }
                     }
@@ -466,24 +466,24 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
                     if (final_results_uninitialized[e->first]){
                         Q11_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
                         Q11_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
-                        Q12_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
-                        Q12_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
+                        //Q12_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                        //Q12_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
                         Q21_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
                         Q21_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
-                        Q22_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
-                        Q22_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
+                        //Q22_binned_yields[e->first] = std::vector<T>(e->second.size(), 0.0);
+                        //Q22_binned_yields_squared[e->first] = std::vector<T>(e->second.size(), 0.0);
                         final_results_uninitialized[e->first] = false;
                     }
                     for (size_t b = 0; b < e->second.size(); b++){
                         Q11_binned_yields[e->first].at(b) += e->second.at(b);
                         Q11_binned_yields_squared[e->first].at(b) += (results.at(i).Q11_binned_yields_squared)->at(e->first).at(b);
                             if (fit_z_rayl){
-                                Q12_binned_yields[e->first].at(b) += e->second.at(b);
-                                Q12_binned_yields_squared[e->first].at(b) += (results.at(i).Q12_binned_yields_squared)->at(e->first).at(b);
+                                //Q12_binned_yields[e->first].at(b) += e->second.at(b);
+                                //Q12_binned_yields_squared[e->first].at(b) += (results.at(i).Q12_binned_yields_squared)->at(e->first).at(b);
                                 Q21_binned_yields[e->first].at(b) += e->second.at(b);
                                 Q21_binned_yields_squared[e->first].at(b) += (results.at(i).Q21_binned_yields_squared)->at(e->first).at(b);
-                                Q22_binned_yields[e->first].at(b) += e->second.at(b);
-                                Q22_binned_yields_squared[e->first].at(b) += (results.at(i).Q22_binned_yields_squared)->at(e->first).at(b);
+                                //Q22_binned_yields[e->first].at(b) += e->second.at(b);
+                                //Q22_binned_yields_squared[e->first].at(b) += (results.at(i).Q22_binned_yields_squared)->at(e->first).at(b);
                             }
                     }
                 }
@@ -519,12 +519,12 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
         std::vector<T> & this_key_Q11 = it->second;
         std::vector<T> & this_key_Q11_squared = Q11_binned_yields_squared.at(it->first);
         if (fit_z_rayl){
-            std::vector<T> & this_key_Q12 = Q12_binned_yields.at(it->first);
+            //std::vector<T> & this_key_Q12 = Q12_binned_yields.at(it->first);
             std::vector<T> & this_key_Q21 = Q21_binned_yields.at(it->first);
-            std::vector<T> & this_key_Q22 = Q22_binned_yields.at(it->first);
-            std::vector<T> & this_key_Q12_squared = Q12_binned_yields_squared.at(it->first);
+            //std::vector<T> & this_key_Q22 = Q22_binned_yields.at(it->first);
+            //std::vector<T> & this_key_Q12_squared = Q12_binned_yields_squared.at(it->first);
             std::vector<T> & this_key_Q21_squared = Q21_binned_yields_squared.at(it->first);
-            std::vector<T> & this_key_Q22_squared = Q22_binned_yields_squared.at(it->first);
+            //std::vector<T> & this_key_Q22_squared = Q22_binned_yields_squared.at(it->first);
 
             // now interpolate in the x direction
             std::vector<T> interpolate_x_y_below (this_key_Q11.size(), 0.0);
@@ -532,19 +532,21 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
             std::vector<T> interpolate_x_y_below_squared (this_key_Q11.size(), 0.0);
             std::vector<T> interpolate_x_y_above_squared (this_key_Q11.size(), 0.0);
             GeneralInterpolation<T>(desired_z_offset, z_below, z_above, this_key_Q11, this_key_Q21, interpolate_x_y_below);
-            GeneralInterpolation<T>(desired_z_offset, z_below, z_above, this_key_Q12, this_key_Q22, interpolate_x_y_above);
+            //GeneralInterpolation<T>(desired_z_offset, z_below, z_above, this_key_Q12, this_key_Q22, interpolate_x_y_above);
             GeneralInterpolation<T>(desired_z_offset, z_below, z_above, this_key_Q11_squared, this_key_Q21_squared, interpolate_x_y_below_squared);
-            GeneralInterpolation<T>(desired_z_offset, z_below, z_above, this_key_Q12_squared, this_key_Q22_squared, interpolate_x_y_above_squared);
+            //GeneralInterpolation<T>(desired_z_offset, z_below, z_above, this_key_Q12_squared, this_key_Q22_squared, interpolate_x_y_above_squared);
+            binned_yields[it->first] = interpolate_x_y_below;
+            binned_yields_squared[it->first] = interpolate_x_y_below_squared;
 
             // now interpolate in the y direction
-            std::vector<T> final_interpolation(this_key_Q11.size(), 0.0);
-            std::vector<T> final_interpolation_squared(this_key_Q11_squared.size(), 0.0);
-            GeneralInterpolation<T>(desired_rayl, rayl_below, rayl_above, interpolate_x_y_below, interpolate_x_y_above, final_interpolation);
-            GeneralInterpolation<T>(desired_rayl, rayl_below, rayl_above, interpolate_x_y_below_squared, interpolate_x_y_above_squared, final_interpolation_squared);
+            //std::vector<T> final_interpolation(this_key_Q11.size(), 0.0);
+            //std::vector<T> final_interpolation_squared(this_key_Q11_squared.size(), 0.0);
+            //GeneralInterpolation<T>(desired_rayl, rayl_below, rayl_above, interpolate_x_y_below, interpolate_x_y_above, final_interpolation);
+            //GeneralInterpolation<T>(desired_rayl, rayl_below, rayl_above, interpolate_x_y_below_squared, interpolate_x_y_above_squared, final_interpolation_squared);
 
             // all done! now save
-            binned_yields[it->first] = final_interpolation;
-            binned_yields_squared[it->first] = final_interpolation_squared;
+            //binned_yields[it->first] = final_interpolation;
+            //binned_yields_squared[it->first] = final_interpolation_squared;
         } else {
             binned_yields[it->first] = this_key_Q11;
             binned_yields_squared[it->first] = this_key_Q11_squared;

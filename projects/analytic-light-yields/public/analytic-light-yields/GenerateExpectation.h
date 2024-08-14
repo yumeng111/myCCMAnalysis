@@ -95,43 +95,43 @@ template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, 
     if (z_offset >= 26.0 and z_offset <= 34.0){
         g4_fnames = {//"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium26.0cmZOffset85.0cmRayleigh6952Events_v2.i3.zst",
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium26.0cmZOffset95.0cmRayleigh7168Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium32.0cmZOffset85.0cmRayleigh5968Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium32.0cmZOffset85.0cmRayleigh5968Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium32.0cmZOffset95.0cmRayleigh6028Events_v2.i3.zst", 
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset85.0cmRayleigh6350Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset85.0cmRayleigh6350Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium30.0cmZOffset95.0cmRayleigh6324Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium28.0cmZOffset85.0cmRayleigh6644Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium28.0cmZOffset85.0cmRayleigh6644Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium28.0cmZOffset95.0cmRayleigh6717Events_v2.i3.zst"};
     }
     if (z_offset >= -34.0 and z_offset <= -26.0){
         g4_fnames = {//"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-34.0cmZOffset85.0cmRayleigh5517Events_v2.i3.zst",
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-34.0cmZOffset95.0cmRayleigh5640Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-28.0cmZOffset95.0cmRayleigh7082Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-28.0cmZOffset85.0cmRayleigh6918Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset85.0cmRayleigh6583Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-28.0cmZOffset85.0cmRayleigh6918Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset85.0cmRayleigh6583Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-30.0cmZOffset95.0cmRayleigh6690Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-32.0cmZOffset95.0cmRayleigh6185Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-32.0cmZOffset85.0cmRayleigh6245Events_v2.i3.zst"};
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-32.0cmZOffset95.0cmRayleigh6185Events_v2.i3.zst"};
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-32.0cmZOffset85.0cmRayleigh6245Events_v2.i3.zst"};
 
     }
     if (z_offset >= -4.0 and z_offset <= 4.0){
         g4_fnames = {//"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-4.0cmZOffset85.0cmRayleigh8537Events_v2.i3.zst",
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-4.0cmZOffset95.0cmRayleigh8672Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium2.0cmZOffset85.0cmRayleigh8616Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium2.0cmZOffset85.0cmRayleigh8616Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium2.0cmZOffset95.0cmRayleigh8760Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset85.0cmRayleigh8559Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset85.0cmRayleigh8559Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium0.0cmZOffset95.0cmRayleigh8582Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-2.0cmZOffset85.0cmRayleigh8596Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-2.0cmZOffset85.0cmRayleigh8596Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium-2.0cmZOffset95.0cmRayleigh8675Events_v2.i3.zst"};
     }
     if (z_offset >= 46.0 and z_offset <= 54.0){
         g4_fnames = {//"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium46.0cmZOffset85.0cmRayleigh6051Events_v2.i3.zst",
                      //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium46.0cmZOffset95.0cmRayleigh6087Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium52.0cmZOffset95.0cmRayleigh4111Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium52.0cmZOffset85.0cmRayleigh4239Events_v2.i3.zst",
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium52.0cmZOffset85.0cmRayleigh4239Events_v2.i3.zst",
                      "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium50.0cmZOffset95.0cmRayleigh4043Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium50.0cmZOffset85.0cmRayleigh4076Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium48.0cmZOffset95.0cmRayleigh5725Events_v2.i3.zst",
-                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium48.0cmZOffset85.0cmRayleigh5684Events_v2.i3.zst"};
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium50.0cmZOffset85.0cmRayleigh4076Events_v2.i3.zst",
+                     "/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium48.0cmZOffset95.0cmRayleigh5725Events_v2.i3.zst"};
+                     //"/lustre/scratch4/turquoise/darcyn/geant4_sodium_selected_events/UpdatedGeometryG4Sodium48.0cmZOffset85.0cmRayleigh5684Events_v2.i3.zst"};
     }
 
     for (size_t f = 0; f < g4_fnames.size(); f++){
@@ -329,7 +329,7 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
                                                                bool fit_z_rayl){
     g4_yields_and_offset_constructor = std::make_shared<G4YieldsPerPMT>();
 
-    size_t n_threads = 15;
+    size_t n_threads = 100;
 
     double z_offset_double;
     double rayl_double;
@@ -357,13 +357,13 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
             if (this_z <= z_offset_double and this_rayl <= rayl_double){
                 Q11 = m;
             }
-            if (this_z <= z_offset_double and this_rayl > rayl_double){
+            if (this_z <= z_offset_double and this_rayl >= rayl_double){
                 Q12 = m;
             }
             if (this_z > z_offset_double and this_rayl <= rayl_double){
                 Q21 = m;
             }
-            if (this_z > z_offset_double and this_rayl > rayl_double){
+            if (this_z > z_offset_double and this_rayl >= rayl_double){
                 Q22 = m;
             }
         }
@@ -375,10 +375,8 @@ template<typename T> void GenerateExpectation<T>::GrabG4Yields(I3VectorCCMPMTKey
     float z_above = z_rayl_indexing.at(Q22).first;
     float rayl_above = z_rayl_indexing.at(Q22).second;
 
-    //std::cout << "For desired z = " << z_offset_double << " and desired rayl = " << rayl_double << ", z below = " << z_below
-    //    << ", rayl below = " << rayl_below
-    //    << ", z above = " << z_above
-    //    << ", and rayl above = " << rayl_above << std::endl;
+    //std::cout << "For desired z = " << z_offset_double << " and desired rayl = " << rayl_double
+    //    << ", Q11(z, rayl) = " << z_rayl_indexing.at(Q11) << " and Q21(z, rayl) = " << z_rayl_indexing.at(Q21) << std::endl;
 
     g4_yields_and_offset_constructor->GetAllYields(n_threads, keys_to_fit, max_time, light_times_per_bin,
                                                    collated_events.at(Q11), collated_events.at(Q12), collated_events.at(Q21),collated_events.at(Q22),
