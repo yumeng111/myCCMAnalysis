@@ -327,7 +327,7 @@ std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double st
     }
     std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
             pmt_number,
-            radius, 
+            radius,
             starting_pmt_number,
             ring_pmt_pos_count[ring_number],
             angular_offset);
@@ -390,7 +390,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fArgonOuter_log, false, 0, true);
 
     G4double frame_thickness = 1.0 * mm;
-    G4double ptfe_thickness = 0.5 * mm; 
+    G4double ptfe_thickness = 0.5 * mm;
     G4double tpb_thickness = 0.0019 * mm;
 
     G4double ptfe_half_height = frame_half_height - frame_thickness;
@@ -522,12 +522,12 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         pmt_pos.setX(position[0]*cm);
         pmt_pos.setY(position[1]*cm);
         pmt_pos.setZ(position[2]*cm);
-        
+
         G4ThreeVector bridle_pos;
         bridle_pos.setX(bridle_position[0]*cm);
         bridle_pos.setY(bridle_position[1]*cm);
         bridle_pos.setZ(bridle_position[2]*cm);
-        
+
         G4ThreeVector frill_pos;
         frill_pos.setX(frill_position[0]*cm);
         frill_pos.setY(frill_position[1]*cm);
@@ -623,7 +623,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 fSource = nistManager->FindOrBuildMaterial("G4_Co");
             }
             fSourcePellet_log  = new G4LogicalVolume(fSourcePellet, fSource, "SourcePelletLog");
-            
+
             // and now put the source pellet at the end of the rod (inset 1/4cm)
             G4double inset = 0.25 * cm;
             G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
@@ -681,7 +681,7 @@ void G4CCMMainVolume::VisAttributes()
     fPMTCoatedCaps_log->SetVisAttributes(pmt_va);
     fPMTUncoatedWall_log->SetVisAttributes(pmt_va);
     fPMTUncoatedCaps_log->SetVisAttributes(pmt_va);
-    
+
     auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     tpb_coating_va->SetForceSolid(true);
     fTPBCoatingWall_log->SetVisAttributes(tpb_coating_va);
@@ -709,8 +709,8 @@ void G4CCMMainVolume::VisAttributes()
     //auto sodium_pellet_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
     //sodium_pellet_va->SetForceSolid(true);
     //fSodiumSourcePellet_log->SetVisAttributes(sodium_pellet_va);
-    fSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible()); 
-    
+    fSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+
 
 }
 
@@ -801,12 +801,12 @@ void G4CCMMainVolume::SurfaceProperties()
 	//// now add logical borders for PTFE foil --> TPB foil and LAr
     //new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceForward", fTPBFoil_phys, fReflectorFoil_phys, PTFEFoilOpticalSurface);
  	//new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceBackward", fReflectorFoil_phys, fTPBFoil_phys, PTFEFoilOpticalSurface);
-    
+
     // and skin surface for the frill!
     // Definition of MPT for Plastic frills
     std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.6*eV };
     std::vector<G4double> plastic_reflect = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
-    
+
     G4OpticalSurface *PlasticOpticalSurface = new G4OpticalSurface("PlasticOpticalSurface");
 
     PlasticOpticalSurface->SetModel(unified);
@@ -819,7 +819,7 @@ void G4CCMMainVolume::SurfaceProperties()
     Plastic_MT->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
     Plastic_MT->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
     PlasticOpticalSurface->SetMaterialPropertiesTable(Plastic_MT);
-    
+
     new G4LogicalSkinSurface("FrillWall_Surface", fFrillWall_log, PlasticOpticalSurface);
     new G4LogicalSkinSurface("FrillCaps_Surface", fFrillCaps_log, PlasticOpticalSurface);
     new G4LogicalSkinSurface("BridleWall_Surface", fBridleWall_log, PlasticOpticalSurface);
