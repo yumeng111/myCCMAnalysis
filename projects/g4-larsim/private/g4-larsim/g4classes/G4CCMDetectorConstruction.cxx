@@ -195,7 +195,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     G4MaterialPropertiesTable* fLAr_mt = new G4MaterialPropertiesTable();
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", LAr_Energy_Scint, LAr_SCINT);
-    fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT2", LAr_Energy_Scint, LAr_SCINT);
+    //fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT2", LAr_Energy_Scint, LAr_SCINT);
 
     // let's do index of refraction and rayleigh now
     G4double rindex = 1.358;//LAr rindex @ 128
