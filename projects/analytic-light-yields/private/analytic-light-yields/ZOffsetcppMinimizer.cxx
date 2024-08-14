@@ -320,7 +320,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     }
 
     // add delta z
-    minimizer.addParameter(0.0, 1e-3, -1.99, 1.99);
+    minimizer.addParameter(-0.1, 1e-3, -1.99, 1.99);
 
     // now we are adding our pmt efficincy terms
     for (size_t n = 0; n < 200; n++){
