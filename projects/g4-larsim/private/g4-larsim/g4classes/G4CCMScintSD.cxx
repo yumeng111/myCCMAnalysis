@@ -52,6 +52,10 @@ const std::unordered_map<std::string, int> G4CCMScintSD::energyLossToI3ParticleP
                                                                                           {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012},
                                                                                           {"Scintillation", 2000000013}, {"OpWLS", 2000000014}};
 
+const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMScintSD::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
+                                                                                                              {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
+                                                                                                              {"Cerenkov", PhotonSummary::PhotonSource::Cerenkov}};
+
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
 }
@@ -67,7 +71,7 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
     hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
 }
 
-void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance, 
+void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
                                            double calculated_uv_distance, double calculated_vis_distance,
                                            double g4_time, double calculated_time, std::string creationProcessName){
     // map does not have key -- let's add our PhotonSummary then update map
@@ -75,11 +79,11 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g
     if (creationProcessName == "OpWLS"){
         n_wls = 1;
     }
-    PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, g4_vis_distance, 
+    PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, g4_vis_distance,
                                                       calculated_uv_distance, calculated_vis_distance,
-                                                      g4_time, calculated_time, n_wls);
+                                                      g4_time, calculated_time, n_wls, processNameToPhotonSource.at(creationProcessName));
     photon_summary->push_back(this_photon_summary);
-    //std::cout << "adding entry to optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv 
+    //std::cout << "adding entry to optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv
     //          << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
     //std::cout << "" << std::endl;
     optical_photon_map->insert(std::make_pair(track_id, photon_summary->size() - 1));
@@ -115,11 +119,11 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
 
 double G4CCMScintSD::InterpolateRindex(double wavelength){
     // this function takes a wavelength
-    // and interpolates to find closed rindex 
+    // and interpolates to find closed rindex
 
     auto it = std::min_element(rindex_wavelength.begin(), rindex_wavelength.end(), [wavelength](double a, double b) {
                                    return std::abs(a - wavelength) < std::abs(b - wavelength); });
-    
+
     size_t closest_idx = std::distance(rindex_wavelength.begin(), it);
 
     size_t upper_idx;
@@ -143,16 +147,16 @@ double G4CCMScintSD::InterpolateRindex(double wavelength){
     }
 
     double wavelength_above = rindex_wavelength.at(upper_idx);
-    double rindex_above = rindex.at(upper_idx); 
-    
+    double rindex_above = rindex.at(upper_idx);
+
     double wavelength_below = rindex_wavelength.at(lower_idx);
-    double rindex_below = rindex.at(lower_idx); 
+    double rindex_below = rindex.at(lower_idx);
 
 
     // now interpolate!
     double interpolated_rindex = rindex_below + (wavelength - wavelength_below) * ((rindex_above - rindex_below) / (wavelength_above - wavelength_below));
-    
-    return interpolated_rindex; 
+
+    return interpolated_rindex;
 
 }
 
@@ -196,9 +200,9 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             return false;
         }
     }
-    
+
     // ok back to SD logic
-    // our scint SD is tracking energy deposited in the fiducial argon 
+    // our scint SD is tracking energy deposited in the fiducial argon
     // we don't care about optical photons for getting energy deposited in LAr
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
@@ -206,9 +210,9 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;
-        } 
-        
-        // check if we want to kill cerenkov photons 
+        }
+
+        // check if we want to kill cerenkov photons
         if (KillCherenkov_){
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
             std::string creationProcessName = "Unknown";
@@ -218,21 +222,21 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             if (creationProcessName == "Cerenkov"){
                 aStep->GetTrack()->SetTrackStatus(fStopAndKill);
                 return false;
-            } 
+            }
         }
 
         // ok if we survived all checks, add an entry to our photon summary
-        // we need parent id, track id, distance travelled, and wavelength 
+        // we need parent id, track id, distance travelled, and wavelength
         G4int parent_id = aStep->GetTrack()->GetParentID();
         G4int track_id = aStep->GetTrack()->GetTrackID();
-        
+
         double g4_delta_distance = (aStep->GetStepLength() / mm) * I3Units::mm;
         double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
-        double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond; 
+        double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
 
         double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
         double interpolated_rindx = InterpolateRindex(wavelength);
-        
+
         // based on the wavelength, let's classify as uv or vis
         double g4_vis_distance = 0.0;
         double g4_uv_distance = 0.0;
@@ -242,7 +246,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if (wavelength <= 325.0){
             g4_uv_distance = g4_delta_distance;
             calculated_uv_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
-        } else { 
+        } else {
             g4_vis_distance = g4_delta_distance;
             calculated_vis_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
         }
@@ -258,8 +262,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
 
         //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", step lenght = " << aStep->GetStepLength()
-        //    << ", delta local time = " << aStep->GetPostStepPoint()->GetLocalTime() - aStep->GetPreStepPoint()->GetLocalTime() 
-        //    << ", and calculated delta time = " << (uv_distance / I3Units::cm) / (c_cm_per_nsec / uv_index_of_refraction) + (vis_distance / I3Units::cm)/ (c_cm_per_nsec / vis_index_of_refraction) 
+        //    << ", delta local time = " << aStep->GetPostStepPoint()->GetLocalTime() - aStep->GetPreStepPoint()->GetLocalTime()
+        //    << ", and calculated delta time = " << (uv_distance / I3Units::cm) / (c_cm_per_nsec / uv_index_of_refraction) + (vis_distance / I3Units::cm)/ (c_cm_per_nsec / vis_index_of_refraction)
         //    << std::endl;
 
         // ok now let's save
@@ -286,13 +290,13 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                                         primary_.GetTime() + pre_step_global_time + g4_delta_time_step, primary_.GetTime() + pre_step_global_time + calculated_delta_time_step, creationProcessName);
             }
         }
-        
+
         //std::cout << "new process = " << new_process << std::endl;
 
 
         return false;
     }
-    
+
     // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
 
     // now let's check energy deposited
@@ -316,7 +320,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if (creationProcess) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
-    
+
     // process name -- use for parent id == 0!
     std::string processName = "Unknown";
     const G4VProcess* currentProcess = aStep->GetPostStepPoint()->GetProcessDefinedStep();
@@ -334,24 +338,24 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4int pdg = fParticleDefinition->GetPDGEncoding();
     G4String particleName = fParticleDefinition->GetParticleName();
 
-    // kill neutrinos 
+    // kill neutrinos
     if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
         aStep->GetTrack()->SetTrackStatus(fStopAndKill);
         return false;
-    } 
-    
+    }
+
     // do not add entry to MCTree for no energy deposition
     if(edep == 0.){
-        return false; 
+        return false;
     }
-    
+
     //std::cout << "creation process name = " << creationProcessName << ", processName = " << processName << ", parent id = " << parent_id
-    //    << ", track id = " << track_id << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl; 
+    //    << ", track id = " << track_id << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl;
 
     // now save to our MCTree!
     if (parent_id == 0) {
         //std::cout << "energy deposition name = " << processName << ", parent id = " << parent_id << ", track id = " << track_id
-        //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
+        //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl;
         // let's create and fill our I3Particle
         // since parent id = 0, we need to add daughter energy loss (aka processName)
         if (energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()){
@@ -371,7 +375,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
     } else if (parent_id > 0) {
         //std::cout << "energy deposition name = " << creationProcessName << ", parent id = " << parent_id << ", track id = " << track_id
-        //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl; 
+        //    << ", particle name = " << particleName << ", edep = "  << edep << std::endl;
         // ok so we've created a new particle
         // if this is the first time we're seeing this particle -- add particle + energy loss
         // if we've already added this daughter particle -- only add energy loss
@@ -382,12 +386,12 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             I3Particle daughter(daughter_type);
 
             I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
-        
-            // update map 
+
+            // update map
             DaughterParticleMap[track_id] = daughter.GetID();
         }
         if (energyLossToI3ParticlePDGCode.find(creationProcessName) != energyLossToI3ParticlePDGCode.end()){
-            // now add energy loss 
+            // now add energy loss
             I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(creationProcessName));
             I3Particle daughter(daughter_type);
             daughter.SetEnergy(edep);
@@ -405,7 +409,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // now back to scint hit things
-    G4StepPoint* thePrePoint = aStep->GetPreStepPoint(); 
+    G4StepPoint* thePrePoint = aStep->GetPreStepPoint();
     auto theTouchable = (G4TouchableHistory*) (aStep->GetPreStepPoint()->GetTouchable());
     G4VPhysicalVolume* thePrePV = theTouchable->GetVolume();
 

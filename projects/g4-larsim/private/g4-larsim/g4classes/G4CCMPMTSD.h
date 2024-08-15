@@ -111,7 +111,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         const G4double hc =  hbarc * (2 * 3.14159265358979323846); // eV * nm
 
         G4int fHitCID = -1;
-    
+
         static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
 
         boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
