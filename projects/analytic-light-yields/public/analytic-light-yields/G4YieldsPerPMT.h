@@ -525,7 +525,7 @@ template<typename T> void G4YieldsPerPMT::GetAllYields(size_t n_threads, std::ve
             //std::vector<T> & this_key_Q12_squared = Q12_binned_yields_squared.at(it->first);
             std::vector<T> & this_key_Q21_squared = Q21_binned_yields_squared.at(it->first);
             //std::vector<T> & this_key_Q22_squared = Q22_binned_yields_squared.at(it->first);
-
+            
             // now interpolate in the x direction
             std::vector<T> interpolate_x_y_below (this_key_Q11.size(), 0.0);
             std::vector<T> interpolate_x_y_above (this_key_Q11.size(), 0.0);

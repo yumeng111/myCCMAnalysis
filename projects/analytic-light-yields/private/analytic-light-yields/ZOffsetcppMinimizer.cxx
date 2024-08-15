@@ -216,7 +216,7 @@ std::vector<double> ZOffsetcppMinimizer::GrabNormSeed(CCMPMTKey key, double base
 std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                                        I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                                        std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
-                                                       I3MapPMTKeyDouble pmt_efficiency, std::vector<bool> fit_flags){
+                                                       I3MapPMTKeyDouble pmt_efficiency, std::vector<bool> fit_flags, double delta_z){
 
     std::cout << "fitting to " << data_file_names.size() << " data files" << std::endl;
     bool use_tau_prior = fit_flags.at(0);
@@ -260,7 +260,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     likelihood.LPscale = LPscale;
     likelihood.time_offsets = time_offsets;
     likelihood.use_tau_prior = use_tau_prior;
-    likelihood.fit_z_rayl = !fix_z;
+    likelihood.fit_z_rayl = true;
     likelihood.z_offsets = z_offsets;
 
     // now set up our minimizer
@@ -271,7 +271,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     minimizer.addParameter(2.0, 1e-3, 0.001, 9.0); // tau_TPB
 
     // let's grab the norm seed
-    double uv_abs_1_seed = 45.0;
+    double uv_abs_1_seed = 50.0;
     double uv_abs_2_seed = 70.0;
     if (fix_second_abs_length){
         uv_abs_2_seed = 0.0;
@@ -320,7 +320,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
     }
 
     // add delta z
-    minimizer.addParameter(-0.1, 1e-3, -1.99, 1.99);
+    minimizer.addParameter(delta_z, 1e-3, -1.99, 1.99);
 
     // now we are adding our pmt efficincy terms
     for (size_t n = 0; n < 200; n++){
@@ -434,7 +434,7 @@ std::vector<double> ZOffsetcppMinimizer::FitParameters(I3VectorCCMPMTKey keys_to
                 double llh = all_constructorsAD.at(data_it)->ComputeNLLH(key, params.at(0), Rt, params.at(1), tau_t, tau_rec, params.at(2), params.at(3),
                                  time_offsets.at(data_it).at(key), const_offset, LPmu.at(key), LPsigma.at(key), LPscale.at(key), params.at(12 + pmt_it),
                                  {params.at(4), params.at(5)}, params.at(6), photons_per_mev, params.at(7 + data_it) + params.at(11),
-                                 n_sodium_events.at(data_it), light_profile_type, fix_z).value();
+                                 n_sodium_events.at(data_it), light_profile_type, true).value();
                 // now grab out data etc
                 std::vector<double> this_pmt_data = all_constructorsAD.at(data_it)->GetDataVector();
                 std::vector<double> this_pmt_pred = all_constructorsAD.at(data_it)->GetPredVector();

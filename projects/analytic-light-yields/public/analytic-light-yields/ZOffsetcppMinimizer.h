@@ -42,7 +42,7 @@ public:
     std::vector<double> FitParameters(I3VectorCCMPMTKey keys_to_fit, I3MapPMTKeyDouble LPmu, I3MapPMTKeyDouble LPsigma, I3MapPMTKeyDouble LPscale,
                                       I3MapPMTKeyDouble time_offset1, I3MapPMTKeyDouble time_offset2, I3MapPMTKeyDouble time_offset3, I3MapPMTKeyDouble time_offset4,
                                       std::vector<std::string> data_file_names, std::vector<double> z_offsets, std::vector<size_t> n_sodium_events,
-                                      I3MapPMTKeyDouble pmt_efficiency, std::vector<bool> fit_flags);
+                                      I3MapPMTKeyDouble pmt_efficiency, std::vector<bool> fit_flags, double delta_z);
 
     I3MapPMTKeyVectorDouble GetBestFitData(size_t dataset_idx) {return data.at(dataset_idx);};
     I3MapPMTKeyVectorDouble GetBestFitPred(size_t dataset_idx) {return pred.at(dataset_idx);};
