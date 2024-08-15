@@ -1,5 +1,5 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007, 2008   Troy D. Straszheim  
+//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim  
 //   
 //   $Id$
 //
@@ -30,12 +30,28 @@
 //   
 //
 
-#include "I3Vectors.h"
+#include <analytic-light-yields/YieldsPerPMT.h>
+#include <icetray/python/copy_suite.hpp>
+#include <icetray/python/indexed_property.hpp>
+#include <icetray/python/boost_serializable_pickle_suite.hpp>
+#include <icetray/python/dataclass_suite.hpp>
+#include <icetray/python/stream_to_string.hpp>
 
-void register_I3VectorDouble()
+using namespace boost::python;
+
+void register_YieldsPerPMT() {
 {
-	register_i3vector_of<double>("Double");
-    register_i3vector_of<I3Vector<double>>("I3VectorDouble");
-    register_i3vector_of<I3Vector<I3Vector<double>>>("I3VectorI3VectorDouble");
-}
 
+    class_<YieldsPerPMT, boost::noncopyable>("YieldsPerPMT")
+        .def(init<I3FramePtr, double, double, double>())
+        //.def("GetPMTInformation", &YieldsPerPMT::GetPMTInformation)
+        //.def("GetSecondaryLocs", &YieldsPerPMT::GetSecondaryLocs)
+        .def("GetPlottingInformation", &YieldsPerPMT::GetPlottingInformation)
+        .def("GetYieldsPlotting", &YieldsPerPMT::GetYieldsPlotting)
+        .def("MakeSpatialDistribution", &YieldsPerPMT::MakeSpatialDistribution)
+        .def("GetSpatialDistribution", &YieldsPerPMT::GetSpatialDistribution)
+        .def("GetAllYields", &YieldsPerPMT::GetAllYields<double>);
+        //.def("GetAllYields", &YieldsPerPMT::GetAllYields);
+
+}
+}

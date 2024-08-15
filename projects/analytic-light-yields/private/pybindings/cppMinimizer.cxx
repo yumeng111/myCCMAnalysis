@@ -1,5 +1,5 @@
 //
-//   Copyright (c) 2004, 2005, 2006, 2007, 2008   Troy D. Straszheim  
+//   Copyright (c) 2004, 2005, 2006, 2007   Troy D. Straszheim  
 //   
 //   $Id$
 //
@@ -30,12 +30,26 @@
 //   
 //
 
-#include "I3Vectors.h"
+#include <analytic-light-yields/cppMinimizer.h>
+#include <icetray/python/copy_suite.hpp>
+#include <icetray/python/indexed_property.hpp>
+#include <icetray/python/boost_serializable_pickle_suite.hpp>
+#include <icetray/python/dataclass_suite.hpp>
+#include <icetray/python/stream_to_string.hpp>
 
-void register_I3VectorDouble()
+using namespace boost::python;
+
+void register_cppMinimizer() {
 {
-	register_i3vector_of<double>("Double");
-    register_i3vector_of<I3Vector<double>>("I3VectorDouble");
-    register_i3vector_of<I3Vector<I3Vector<double>>>("I3VectorI3VectorDouble");
-}
 
+    class_<cppMinimizer, boost::noncopyable>("cppMinimizer")
+        .def(init<>())
+        .def("OnePMTOneDataSetMinimization", &cppMinimizer::OnePMTOneDataSetMinimization)
+        .def("GetBestFitAtPMTIdx", &cppMinimizer::GetBestFitAtPMTIdx)
+        .def("OnePMTMultipleDataSetMinimization", &cppMinimizer::OnePMTMultipleDataSetMinimization)
+        .def("GetBestFitData", &cppMinimizer::GetBestFitData)
+        .def("GetBestFitPred", &cppMinimizer::GetBestFitPred)
+        .def("GetBestFitTimes", &cppMinimizer::GetBestFitTimes);
+
+}
+}

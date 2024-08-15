@@ -51,11 +51,11 @@ namespace bp = boost::python;
   (I3Time)(I3Position)(I3Direction)(I3Geometry)(I3MCTree)               \
   (CCMRecoPulse)                                                        \
   (I3Particle)(I3RecoPulse)(I3LinearizedMCTree)(I3TimeWindow)           \
-  (CCMWaveform)(CCMBCMSummary)(CCMFP3Summary)(NIMLogicPulse)            \
+  (CCMWaveform)(CCMBCMSummary)(NIMLogicPulse)                           \
   (VectorCCMWaveformStatusCompound)                                     \
   (I3Waveform)(I3WaveformSeries)(I3WaveformSeriesMap)                   \
   (VectorI3WaveformStatusCompound)(I3DOMLaunch)(I3DOMLaunchSeries)      \
-  (I3DOMLaunchSeriesMap)(I3EventHeader)(CCMEventHeader)                 \
+  (I3DOMLaunchSeriesMap)(I3EventHeader)                                 \
   (I3RecoHit)(I3FlasherInfo)(I3Matrix)(I3ParticleID)                    \
   (I3MCHit)(vectorI3MCHit)(mapOMKeyI3MCHit)(I3MCHitSeriesMap)           \
   (CCMCalibration)(CCMPMTCalibration)(MapCCMPMTKeyCCMPMTCalibration)    \
@@ -68,7 +68,7 @@ namespace bp = boost::python;
   (I3DOMFunctions)(I3MapUnsignedUnsigned)(I3MapUShortUShort)            \
   (I3MapUIntInt)(I3MapUIntVectorUInt)(I3MapUIntVectorDouble)            \
   (I3MapIntVectorInt)(I3MapIntSizeT)(I3MapKeyVectorDouble)              \
-  (I3MapKeyDouble)                                                      \
+  (I3MapKeyDouble)(I3MapDoubleVectorDouble)                             \
   (I3MapKeyUInt)(I3MapKeyVectorInt)(I3MapTriggerDouble)                 \
   (I3MapPMTKeyVectorVectorDouble)(I3MapPMTKeyVectorDouble)              \
   (I3MapPMTKeyDouble)                                                   \
@@ -111,8 +111,8 @@ namespace bp = boost::python;
   (IceActKey)(I3IceActGeo)(I3IceActRecoPulseSeries)                     \
   (I3IceActRecoPulseSeriesMap)                                          \
   (I3IceActWaveform)(I3IceActWaveformMap)(I3IceActPixelPositionMap)     \
-  (I3IceActTriggerMap)(I3VectorCCMTriggerKey)
-
+  (I3IceActTriggerMap)(I3VectorCCMTriggerKey)                           \
+  (CCMEventHeader)                                                      \
 
 #define I3_REGISTRATION_FN_DECL(r, data, t) void BOOST_PP_CAT(register_,t)();
 #define I3_REGISTER(r, data, t) BOOST_PP_CAT(register_,t)();
