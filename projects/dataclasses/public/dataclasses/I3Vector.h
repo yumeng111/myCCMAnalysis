@@ -110,6 +110,7 @@ typedef I3Vector<CCMPMTType> I3VectorCCMPMTType;
 
 
 typedef I3Vector<I3Vector<double>> I3VectorI3VectorDouble;
+typedef I3Vector<I3Vector<I3Vector<double>>> I3VectorI3VectorI3VectorDouble;
 
 typedef I3Vector<I3Vector<uint8_t>> I3VectorI3VectorUInt8;
 typedef I3Vector<I3Vector<uint16_t>> I3VectorI3VectorUInt16;
@@ -148,6 +149,7 @@ I3_POINTER_TYPEDEFS(I3VectorI3Position);
 
 
 I3_POINTER_TYPEDEFS(I3VectorI3VectorDouble);
+I3_POINTER_TYPEDEFS(I3VectorI3VectorI3VectorDouble);
 
 I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt8);
 I3_POINTER_TYPEDEFS(I3VectorI3VectorUInt16);

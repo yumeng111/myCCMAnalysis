@@ -30,6 +30,7 @@ I3_SERIALIZABLE(I3VectorDoubleDouble);
 I3_SERIALIZABLE(I3VectorI3Position);
 
 I3_SERIALIZABLE(I3VectorI3VectorDouble);
+I3_SERIALIZABLE(I3VectorI3VectorI3VectorDouble);
 
 I3_SERIALIZABLE(I3VectorI3VectorUInt8);
 I3_SERIALIZABLE(I3VectorI3VectorUInt16);

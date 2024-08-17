@@ -38,6 +38,9 @@
 #include <G4GenericIon.hh>
 #include <G4Geantino.hh>
 
+const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> G4Interface::PhotonSummarytoCCMMCPEPhotonSource = {{PhotonSummary::PhotonSource::Unknown, CCMMCPE::PhotonSource::Unknown},
+                                                                                                                    {PhotonSummary::PhotonSource::Scintillation, CCMMCPE::PhotonSource::Scintillation},
+                                                                                                                    {PhotonSummary::PhotonSource::Cerenkov, CCMMCPE::PhotonSource::Cerenkov}};
 std::shared_ptr<G4Interface> G4Interface::g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
 
 G4Interface::G4Interface(const std::string& visMacro):
@@ -382,6 +385,7 @@ void G4Interface::MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESe
             dest.g4_distance_visible = this_photon_summary.g4_distance_visible;
             dest.calculated_distance_uv = this_photon_summary.calculated_distance_uv;
             dest.calculated_distance_visible = this_photon_summary.calculated_distance_visible;
+            dest.photon_source = PhotonSummarytoCCMMCPEPhotonSource.at(this_photon_summary.photon_source);
         }
     }
 }

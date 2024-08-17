@@ -36,4 +36,6 @@ void register_I3VectorDouble()
 {
 	register_i3vector_of<double>("Double");
     register_i3vector_of<I3Vector<double>>("I3VectorDouble");
+    register_i3vector_of<I3Vector<I3Vector<double>>>("I3VectorI3VectorDouble");
 }
+

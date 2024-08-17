@@ -3,7 +3,7 @@ set(PROJECT_NAME daqtools)
 i3_project(${PROJECT_NAME}
     DOCS_DIR resources/docs
     PYTHON_DIR python
-    #PYTHON_DEST icecube/${PROJECT_NAME}
+    PYTHON_DEST icecube/${PROJECT_NAME}
 )
 
 i3_add_library(${PROJECT_NAME}
@@ -33,4 +33,11 @@ i3_add_library(${PROJECT_NAME}
     IWYU
     USE_TOOLS boost python nlopt
     USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services
+)
+
+i3_add_pybindings(${PROJECT_NAME}
+    private/pybindings/module.cxx
+    private/pybindings/*.cxx
+    USE_TOOLS boost python
+    USE_PROJECTS icetray serialization dataio dataclasses CCMBinary phys-services daqtools
 )
