@@ -1,15 +1,4 @@
-#ifndef g4_larsim_StackTrace_H
-#define g4_larsim_StackTrace_H
-
-#include <memory>
-#include <string>
-#include <cstdlib>
-#include <dlfcn.h>
-#include <cxxabi.h>
-#include <iostream>
-#include <typeinfo>
-#include <execinfo.h>
-#include <cpptrace/cpptrace.hpp>
+#include <icetray/StackTrace.h>
 
 namespace {
     void * last_frames[20];
@@ -34,5 +23,3 @@ extern "C" {
         rethrow(ex,info,dest);
     }
 }
-
-#endif // g4_larsim_StackTrace_H

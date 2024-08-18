@@ -7,7 +7,6 @@ if(GEANT4_FOUND)
     )
 
     i3_add_library(${PROJECT_NAME}
-        private/g4-larsim/StackTrace.cxx
         private/g4-larsim/CCMParticleInjector.cxx
         private/g4-larsim/CCMSimpleInjector.cxx
         private/g4-larsim/CCM200Response.cxx
