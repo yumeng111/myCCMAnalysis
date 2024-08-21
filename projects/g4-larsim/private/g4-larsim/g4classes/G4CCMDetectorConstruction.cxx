@@ -311,119 +311,38 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fAlum->SetMaterialPropertiesTable(fAlum_mt);
 
     // now time to define foil + pmt TPB
-    //TPB Variables:
-    G4double foil = 0.80;//foil tpb eff
-    G4double pmt = 0.878;//pmt tpb Eff
-    G4double abs = 0.7215;//all tpb abs (visible light)
-    G4double rin = 1.7;//tpb index of refraction
-    G4double ral = 1.0;//scattering length in foil TPB
-    G4double ray = 1.13;//scattering length in pmt TPB
+    // at the moment, getting the same properties, but one day might assign different properties
 
-    // first let's get the scattering length for TPB foils
-    G4double lengthconst = 0.0019/(std::log(1-foil));
-    G4double wlAbf11 = lengthconst/(std::log(0.067));
-    G4double wlAbf12 = lengthconst/(std::log(0.2));
-    G4double wlAbf15 = lengthconst/(std::log(0.4));
-    G4double wlAbf19 = lengthconst/(std::log(0.533));
-    G4double wlAbf21 = lengthconst/(std::log(0.4));
-    G4double wlAbf24 = lengthconst/(std::log(0.367));
+    // Emission spectrum of TPB is controlled by "WLSCOMPONENT"
+    // using energy and normalized spectrum pulled from lower right plot in Fig. 4 (axes are emission wavelength vs intensity) from https://arxiv.org/pdf/1210.3793
+    // note -- noralized the intensity to integrate to one
+    // also padding spectrum with 0.0 on either end
+    std::vector<G4double> TPB_Emission_Energy = {14.0*eV, 6.191827936846959*eV, 5.985915350705116*eV, 5.797096561555699*eV, 5.619825649392834*eV, 5.453074671411217*eV, 5.29593417314788*eV, 5.147596594361829*eV, 5.007335004365769*eV, 4.874528346529596*eV, 4.748577742204919*eV, 4.628971952001313*eV, 4.515243321093366*eV, 4.406969051582301*eV, 4.30376595016281*eV, 4.205285896902584*eV, 4.1112094336510205*eV, 4.021254798859424*eV, 3.9351500718048067*eV, 3.852655461651022*eV, 3.7735485879663107*eV, 3.697624967454319*eV, 3.6246962490169308*eV, 3.5545849330007373*eV, 3.4871415918821045*eV, 3.422206435859456*eV, 3.3596454258854105*eV, 3.299330694912653*eV, 3.2411442800215085*eV, 3.188161671147352*eV, 3.1650988602873977*eV, 3.143008879989636*eV, 3.126053146367847*eV, 3.1140603757294354*eV, 3.1045536357451335*eV, 3.0927311249607796*eV, 3.0810005119229347*eV, 3.0716920690275646*eV, 3.0624410589818924*eV, 3.0509524010395817*eV, 3.0418267773138186*eV, 3.035031683887979*eV, 3.026002440867842*eV, 3.014775940025159*eV, 3.0014295188687776*eV, 2.9896455058927986*eV, 2.9860222588842675*eV, 2.9772916471557287*eV, 2.9642464379640887*eV, 2.9556287466209663*eV, 2.943843976767722*eV, 2.9300487609963777*eV, 2.9181210155948856*eV, 2.901263781362373*eV, 2.869912416373187*eV, 2.8273936530372312*eV, 2.7824018812493883*eV, 2.7439574872768895*eV, 2.7307391797993827*eV, 2.70544267579332*eV, 2.683719966807585*eV, 2.6628862604766415*eV, 2.652536961389666*eV, 2.634547901929533*eV, 2.6186539079884374*eV, 2.603447114507513*eV, 2.5917228450898007*eV, 2.571896476516571*eV, 2.555605444519763*eV, 2.5379231746909836*eV, 2.5236283984124293*eV, 2.512620790605399*eV, 2.498613217988123*eV, 2.4808292949218753*eV, 2.468041727171535*eV, 2.4545208082744616*eV, 2.435265951301829*eV, 2.417765505500488*eV, 2.399079069815766*eV, 2.3792869076076886*eV, 2.3598204192783827*eV, 2.3366072022471*eV, 2.3085649215936406*eV, 2.2799024796941434*eV, 2.2519482645733313*eV, 2.224675827928228*eV, 2.1980564645366782*eV, 2.1720678198737606*eV, 2.1466890592211167*eV, 2.1218984607956104*eV, 2.0976766090773373*eV, 2.075065069877949*eV, 1.0};
 
-    std::vector<G4double> TPBWLSAbsorption = { 0.10000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
-                                               1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m, 1000.000*m,
-                                               10000.000*m, 10000.000*m, 10000.000*m, 10000.000*m, 100000.0*m,
-                                               100000.0*m, 100000.0*m, 100000.0*m, wlAbf24*mm, wlAbf21*mm,
-                                               wlAbf19*mm, wlAbf15*mm, wlAbf12*mm, wlAbf11*mm, wlAbf11*mm };
-    // now scattering length for TPB on PMTs
-    lengthconst = 0.0019/(std::log(1-pmt));
-    G4double wlsAb110 = lengthconst/(std::log(0.067));
-    G4double wlsAb128 = lengthconst/(std::log(0.2));
-    G4double wlsAb190 = lengthconst/(std::log(0.533));
-    G4double wlsAb213 = lengthconst/(std::log(0.4));
-    G4double wlsAb240 = lengthconst/(std::log(0.367));
+    std::vector<G4double> TPB_Emission_Normalized_Intensity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0005622062600842365, 0.001503443199733779, 0.0026926709198067202, 0.00391638544559267, 0.004946015400875132, 0.006256319802282813, 0.007427329763164467, 0.008648983308141366, 0.00990864412545381, 0.011199957182825777, 0.01274446357640978, 0.01406109842582936, 0.015366503729714128, 0.016719714500980264, 0.018044765363484924, 0.020021405757084138, 0.021304732838133247, 0.02269521490746361, 0.024290389469406978, 0.025572157686232836, 0.026822322831527422, 0.0281135990125032, 0.02993660824221481, 0.03136630612234021, 0.03315213779863045, 0.034577574563899136, 0.035347364552504305, 0.035614350090406414, 0.03451754987676052, 0.03336382675093531, 0.032206445245944675, 0.03057497963396541, 0.02922781229918319, 0.028185856262140697, 0.02673140671075951, 0.025163638920597316, 0.024167427175013936, 0.022795658015919158, 0.021390003546106935, 0.02024183646397373, 0.019017679421433554, 0.017726046768627976, 0.0167113148774046, 0.015573301096354564, 0.01403743080355351, 0.0131925609585961, 0.01188573523056196, 0.010583875523880844, 0.009646674206949535, 0.008278977840944609, 0.007244057586158524, 0.0062790737094087275, 0.005132904976745019, 0.004124581383703269, 0.0031618124320831067, 0.002424637627796259, 0.0018900371598903282, 0.0013738525407463174, 0.0009144030554235511, 0.0005743442364584392, 0.0003292414245426639, 0.00021870894738393895, 6.332776967286204e-05, 0.0};
+    
+    // based on best fit from Fig 13 in https://arxiv.org/pdf/1709.05002, using 0.605 as mean number of photons
+    G4double wls_mean_num_photons = 0.605;
 
-    std::vector<G4double> TPBWLSAbsorption100 = { 0.10000*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
-	                                              1000.00*m, 1000.00*m, 1000.00*m, 1000.00*m, 1000.000*m,
-	                                              10000.0*m, 10000.0*m, 10000.0*m, 10000.0*m, 100000.0*m,
-	                                              100000.0*m, 100000.0*m, 100000.0*m, wlsAb240*mm, wlsAb213*mm,
-	                                              wlsAb190*mm, wlsAb213*mm, wlsAb128*mm, wlsAb110*mm, wlsAb110*mm };
-    // now absorption length
-    G4double absltwo = -0.00211/(std::log(abs));
-    G4double abslttw = absltwo*1.4;
-    G4double abslttt = absltwo*1.55;
+    // we control the WLS response as a function of incident energy using WLSABSLENGTH
+    // Using Fig 13 best fit for VUV photons and Fig 11 for 250 onwards from https://arxiv.org/pdf/1709.05002
+    std::vector<G4double> TPB_WLSAbsLength_Energy = {12.39835823924519*eV, 4.520784914393557*eV, 4.403204903803938*eV, 4.314967417290872*eV, 4.236201285563993*eV, 4.157961750495743*eV, 4.085069083133975*eV, 4.0443177306841145*eV, 3.9817633828435217*eV, 3.9225321515018465*eV, 3.9205742918328146*eV, 3.8448631783865683*eV, 3.8025712231071136*eV, 3.7652970652514997*eV, 3.762862815865301*eV, 3.703191726710966*eV, 3.6412533430538785*eV, 3.5831817960708783*eV, 3.5290710713006566*eV, 3.48851021668889*eV, 3.4699110804911135*eV, 3.4361647119545338*eV, 3.3817661197965347*eV, 3.3459286055866837*eV, 3.3214274015068077*eV, 3.2755707229674424*eV, 3.2586507642702967*eV, 3.243867614987933*eV, 3.2225605676408287*eV, 3.2182531899038254*eV, 3.2039575153849125*eV, 3.1855614510225836*eV, 3.170859339074369*eV, 3.165441570938464*eV, 3.1390881863227924*eV, 3.1120639907749723*eV, 3.0930600046021595*eV, 3.079724230541368*eV, 3.0627397742099034*eV, 3.0456037796888635*eV, 3.032631087118836*eV, 3.019467387075414*eV, 2.999845732513397*eV, 2.983711394762438*eV, 2.971691329508609*eV, 2.96551484559134*eV, 2.9466766809674496*eV, 2.936310020028604*eV, 2.917122828423819*eV, 2.898127963726499*eV, 2.878918640363774*eV, 2.859390696395847*eV, 2.8394316919309692*eV, 2.820180762358608*eV, 2.8017086319312554*eV, 2.7875621787203357*eV, 2.7762497220260878*eV, 1.5497947799056488*eV, 1.0331965199370992*eV};
 
-    std::vector<G4double> TPBAbsorption = { 0.02000*mm, absltwo*mm, absltwo*mm, absltwo*mm, absltwo*mm,
-                                            abslttw*mm, abslttw*mm, abslttw*mm, abslttw*mm, abslttw*mm,
-                                            abslttt*mm, abslttt*mm, abslttt*mm, 10.0000*mm, 100000.0*m,
-                                            100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m, 100000.0*m,
-                                            100000.0*m, 100.0000*m, 100.0000*m, 100.0000*m, 100.0000*m };
+    std::vector<G4double> TPB_WLSAbsLength = {425.0*nm, 103.83329986337642*nm, 107.98073112246271*nm, 106.40677312247695*nm, 101.76697185101447*nm, 101.05172421787127*nm, 90.58455101512752*nm, 73.72675461199395*nm, 61.95847711489636*nm, 49.85890980317873*nm, 58.14673257532595*nm, 41.70021143667599*nm, 38.80279864198152*nm, 37.82386620617285*nm, 30.431746756020132*nm, 29.071521590291532*nm, 28.82888338356318*nm, 29.324649474231183*nm, 29.91384462882476*nm, 31.802265335516566*nm, 40.38391252461217*nm, 37.222095886705205*nm, 53.50121319296904*nm, 63.289058767089*nm, 88.9206377946115*nm, 108.02360627084354*nm, 153.5032805631189*nm, 199.85823080844185*nm, 255.85822744954626*nm, 200.48621550244906*nm, 353.05033779572574*nm, 480.5566616748119*nm, 629.3261989758672*nm, 791.1551509826332*nm, 1036.4431202910403*nm, 1573.3202940562826*nm, 2195.402325808518*nm, 2904.7461061188183*nm, 3531.1084066403014*nm, 4938.293668651343*nm, 5931.319058258765*nm, 7701.344462077818*nm, 11224.3487112599*nm, 15220.323839686669*nm, 18401.537167766*nm, 21435.851020054517*nm, 27132.275975142325*nm, 35858.47052646484*nm, 51842.61999393237*nm, 75873.60320297175*nm, 109030.37626309693*nm, 158887.77188864764*nm, 239537.8727919214*nm, 354962.3984602222*nm, 513931.57477543503*nm, 709624.1774047639*nm, 861003.9340108575*nm, 4.0740917253503145e+35*nm, 4.0740917253503145e+35*nm};
 
-    // now rayleigh scattering + index of refraction for foil + PMT type TPB
-    G4double rayl = ray*0.001*mm;
-    G4double rayl2 = ral*0.001*mm;
-
-    std::vector<G4double> TPBRIndex = { rin, rin, rin, rin, rin,
-                                        rin, rin, rin, rin, rin,
-                                        rin, rin, rin, rin, rin,
-                                        rin, rin, rin, rin, rin,
-                                        rin, rin, rin, rin, rin };
-
-    std::vector<G4double> TPBRayleigh = { rayl, rayl, rayl, rayl, rayl,
-                                          rayl, rayl, rayl, rayl, rayl,
-                                          rayl, rayl, rayl, rayl, rayl,
-                                          rayl, rayl, rayl, rayl, rayl,
-                                          rayl, rayl, rayl, rayl, rayl };
-
-    std::vector<G4double> TPBRayleigh2 = { rayl2, rayl2, rayl2, rayl2, rayl2,
-                                           rayl2, rayl2, rayl2, rayl2, rayl2,
-                                           rayl2, rayl2, rayl2, rayl2, rayl2,
-                                           rayl2, rayl2, rayl2, rayl2, rayl2,
-                                           rayl2, rayl2, rayl2, rayl2, rayl2 };
-
-
-
-    std::vector<G4double> TPBEnergy = { 0.602*eV/*(2066nm)*/, 0.689*eV/*(1799nm)*/, 1.030*eV/*(1204nm)*/, 1.926*eV/*(644nm)*/, 2.138*eV/* (580nm)*/,
-                                        2.250*eV/*(551nm)*/,  2.380*eV/*(521nm)*/,  2.480*eV/*(500nm)*/,  2.583*eV/*(480nm)*/, 2.800*eV/*(443nm)*/,
-                                        2.880*eV/*(431nm)*/,  2.980*eV/*(416nm)*/,  3.124*eV/*(397nm)*/,  3.457*eV/*(359nm)*/, 3.643*eV/*(341nm)*/,
-                                        3.812*eV/*(325nm)*/,  4.086*eV/*(304nm)*/,  4.511*eV/*(275nm)*/,  5.166*eV/*(240nm)*/, 5.821*eV/*(213nm)*/,
-                                        6.526*eV/*(190nm)*/,  8.266*eV/*(150nm)*/,  9.686*eV/*(128nm)*/,  11.27*eV/*(110nm)*/, 12.60*eV/*(98nm)*/  };
-
-    // Emission spectrum for TPB; basically probabilities of photon being reemitted in the various energy bins.
-    std::vector<G4double> TPBEmission = { 0.0000, 0.0000, 0.0000, 0.0000, 0.0005,
-                                          0.0015, 0.0030, 0.0050, 0.0070, 0.0110,
-                                          0.0110, 0.0060, 0.0020, 0.0000, 0.0000,
-                                          0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                                          0.0000, 0.0000, 0.0000, 0.0000, 0.0000 };
-
-    std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-                                               1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
-
-    std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
-
-    std::vector<G4double> TPBfoilOSEff = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                                          1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
-                                          1., 1., 1., 1., 1.};
-
-    // now finally time to make material properties tables
+    
     G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
-    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
-    fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
-    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
-    fTPBFoil_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
-    fTPBFoil_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh2);
-    fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption);
-    fTPBFoil_mt->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption);
+    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission_Normalized_Intensity);
+    fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", wls_mean_num_photons);
+    fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
-
+    
     G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
-    fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPBEnergy, TPBEmission);
-    fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 1.7*ns);
-    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
-    fTPBPMT_mt->AddProperty("RINDEX", TPBEnergy, TPBRIndex);
-    fTPBPMT_mt->AddProperty("RAYLEIGH", TPBEnergy, TPBRayleigh);
-    fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPBEnergy, TPBWLSAbsorption100);
-    fTPBPMT_mt->AddProperty("ABSLENGTH", TPBEnergy, TPBAbsorption);
+    fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission_Normalized_Intensity);
+    fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", wls_mean_num_photons);
+    fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the PTFE reflectors.
@@ -433,8 +352,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                        3.124*eV, 3.457*eV, 3.643*eV, 3.812*eV, 4.086*eV,
                                        4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                        7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
-    std::vector<G4double> TefReflect = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-                                        1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 0.99};
 
     std::vector<G4double> TefRIndex = {10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
                                        10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
@@ -443,7 +360,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     G4MaterialPropertiesTable* fPTFE_mt = new G4MaterialPropertiesTable();
     fPTFE_mt->AddProperty("RINDEX", TefEnergy, TefRIndex);
-    fPTFE_mt->AddProperty("REFLECTIVITY", TefEnergy, TefReflect);
     fPTFE->SetMaterialPropertiesTable(fPTFE_mt);
 
 
