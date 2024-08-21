@@ -12,6 +12,4 @@ FractionUncoated = FractionUncoated.FractionUncoated
 ChargeRatio = ChargeRatio.ChargeRatio
 BCMCuts = BCMCuts.BCMCuts
 
-load_pybindings(__name__, __path__)
-
 del icetray
