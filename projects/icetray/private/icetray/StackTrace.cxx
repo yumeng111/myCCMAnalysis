@@ -17,7 +17,7 @@ extern "C" {
         exception_name = demangle(reinterpret_cast<const std::type_info*>(info)->name());
         last_size = backtrace(last_frames, sizeof last_frames/sizeof(void*));
 
-        cpptrace::generate_trace().print();
+        //cpptrace::generate_trace().print();
 
         static void (*const rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) = (void (*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
         rethrow(ex,info,dest);
