@@ -95,6 +95,7 @@ if(ZSTD_FOUND)
 endif(ZSTD_FOUND)
 
 i3_add_library(icetray
+  private/icetray/StackTrace.cxx
   private/icetray/I3Tray.cxx
   private/icetray/I3Frame.cxx
   private/icetray/I3FrameObject.cxx
@@ -105,7 +106,7 @@ i3_add_library(icetray
   private/icetray/I3Parameter.cxx
   private/icetray/I3Module.cxx
   private/icetray/I3ConditionalModule.cxx
-  private/icetray/I3PacketModule.cxx  
+  private/icetray/I3PacketModule.cxx
   private/icetray/I3ServiceFactory.cxx
   private/icetray/I3TrayInfo.cxx
   private/icetray/I3TrayInfoService.cxx
@@ -167,7 +168,7 @@ i3_add_library(icetray
 
   IWYU
   USE_PROJECTS serialization
-  USE_TOOLS boost python ${OPTIONAL_TOOLS}
+  USE_TOOLS boost python cpptrace ${OPTIONAL_TOOLS}
   LINK_LIBRARIES ${BOOST_PYTHON} ${LIBARCHIVE_LIBRARIES}
   )
 #

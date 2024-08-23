@@ -16,13 +16,13 @@ if(GEANT4_FOUND)
         private/g4-larsim/g4classes/*.cxx
         visualization/*.cxx
         visualization/*.h
-        USE_TOOLS boost python clhep geant4 gsl
+        USE_TOOLS boost python clhep geant4 gsl cpptrace
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses
     )
 
     i3_executable(g4larsim
         apps/*.cxx
-        USE_TOOLS clhep geant4
+        USE_TOOLS clhep geant4 cpptrace
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses g4-larsim
         NO_PREFIX
     )

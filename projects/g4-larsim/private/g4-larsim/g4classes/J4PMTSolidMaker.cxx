@@ -27,7 +27,7 @@ G4VSolid * J4PMTSolidMaker::f8inchPMTSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingSolid;
 G4VSolid * J4PMTSolidMaker::fPhotocathodeSolid;
 G4double   J4PMTSolidMaker::f8inchPMTRadius = 131.0 * mm;
-G4double   J4PMTSolidMaker::fTPBThickness = 0.002 * mm;
+G4double   J4PMTSolidMaker::fTPBThickness = 0.000203892 * cm; // from Richard
 G4double   J4PMTSolidMaker::fPhotocathodeDelta = 3.0 * mm; // idk just needs to be greater than the pmt glass thickness
 G4double   J4PMTSolidMaker::fCylinderRadius;
 G4double   J4PMTSolidMaker::fPMTProtrusionDistance;

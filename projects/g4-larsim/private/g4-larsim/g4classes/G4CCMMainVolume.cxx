@@ -382,7 +382,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     G4double frame_height = 1239.6*mm;
     G4double frame_half_height = frame_height / 2.0;
-    G4double frame_radius = 1037.0*mm - 3.15*mm; // reducing radius by 1/2cm to account for flexing of PTFE sheets
+    G4double frame_radius = 1037.0*mm - 3.15*mm; // reducing radius by ~1/2cm to account for flexing of PTFE sheets
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
@@ -391,7 +391,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     G4double frame_thickness = 1.0 * mm;
     G4double ptfe_thickness = 0.5 * mm;
-    G4double tpb_thickness = 0.0019 * mm;
+    G4double tpb_thickness = 0.000278035 * cm; // from Vincent Basque's thesis https://pure.manchester.ac.uk/ws/portalfiles/portal/205622566/FULL_TEXT.PDF
 
     G4double ptfe_half_height = frame_half_height - frame_thickness;
     G4double ptfe_radius = frame_radius - frame_thickness;
@@ -730,31 +730,31 @@ void G4CCMMainVolume::SurfaceProperties()
     std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
                                                1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
 
-    std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
+    //std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    //                                          0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    //                                          0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
 
     std::vector<G4double> TPBfoilOSEff = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                                           1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
                                           1., 1., 1., 1., 1.};
 
-    G4OpticalSurface *TPBFoilOpticalSurface = new G4OpticalSurface("TPBFoilOpticalSurface");
+    //G4OpticalSurface *TPBFoilOpticalSurface = new G4OpticalSurface("TPBFoilOpticalSurface");
 
-    TPBFoilOpticalSurface->SetModel(unified);
-    TPBFoilOpticalSurface->SetType(dielectric_dielectric);
-    TPBFoilOpticalSurface->SetFinish(ground);
-    TPBFoilOpticalSurface->SetSigmaAlpha(0.05);
+    //TPBFoilOpticalSurface->SetModel(unified);
+    //TPBFoilOpticalSurface->SetType(dielectric_dielectric);
+    //TPBFoilOpticalSurface->SetFinish(ground);
+    //TPBFoilOpticalSurface->SetSigmaAlpha(0.05);
 
-    G4MaterialPropertiesTable *TPBFoil_mt = new G4MaterialPropertiesTable();
-    TPBFoil_mt->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
-    TPBFoil_mt->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
-    TPBFoil_mt->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
-    TPBFoilOpticalSurface->SetMaterialPropertiesTable(TPBFoil_mt);
+    //G4MaterialPropertiesTable *TPBFoil_mt = new G4MaterialPropertiesTable();
+    //TPBFoil_mt->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
+    //TPBFoil_mt->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
+    //TPBFoil_mt->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
+    //TPBFoilOpticalSurface->SetMaterialPropertiesTable(TPBFoil_mt);
 
-    // note -- usign logical skin surface, might want to use border surface but since using same properties for all TPB on walls, doesnt seem necessary
-    new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBFoilOpticalSurface);
-    new G4LogicalSkinSurface("TPBCoatingWall_Surface", fTPBCoatingWall_log, TPBFoilOpticalSurface);
-    new G4LogicalSkinSurface("TPBCoatingCaps_Surface", fTPBCoatingCaps_log, TPBFoilOpticalSurface);
+    //// note -- usign logical skin surface, might want to use border surface but since using same properties for all TPB on walls, doesnt seem necessary
+    //new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBFoilOpticalSurface);
+    //new G4LogicalSkinSurface("TPBCoatingWall_Surface", fTPBCoatingWall_log, TPBFoilOpticalSurface);
+    //new G4LogicalSkinSurface("TPBCoatingCaps_Surface", fTPBCoatingCaps_log, TPBFoilOpticalSurface);
 
     //// create logical border surfaces for TPB on walls of detector and on PMTs
 	//new G4LogicalBorderSurface("TPBFoils_SurfaceForward", fFiducialAr_phys, fTPBFoil_phys, TPBFoilOpticalSurface);
@@ -764,13 +764,13 @@ void G4CCMMainVolume::SurfaceProperties()
     //new G4LogicalBorderSurface("TPBPMT_SurfaceForward", fFiducialAr_phys, fTPBPMT_phys, TPBFoilOpticalSurface);
 	//new G4LogicalBorderSurface("TPBPMT_SurfaceBackward", fTPBPMT_phys, fFiducialAr_phys, TPBFoilOpticalSurface);
 
-    // finally define optical surface for PTFE reflector foils
+    // define optical surface for PTFE reflector foils
+    // note -- having PTFE describe the TPB reflections as well -- using Lambertian distribution (diffuse)
     G4OpticalSurface *PTFEFoilOpticalSurface = new G4OpticalSurface("PTFEFoilOpticalSurface");
 
-    PTFEFoilOpticalSurface->SetModel(glisur); //Optical model
-    PTFEFoilOpticalSurface->SetType(dielectric_metal);
-    PTFEFoilOpticalSurface->SetFinish(ground);
-    PTFEFoilOpticalSurface->SetSigmaAlpha(1.0);
+    PTFEFoilOpticalSurface->SetModel(unified);
+    PTFEFoilOpticalSurface->SetType(dielectric_dielectric);
+    PTFEFoilOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
 
     G4MaterialPropertiesTable *reflfoilMPT = new G4MaterialPropertiesTable();
     std::vector<G4double> PTFEFoilOpticalSurfaceEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
@@ -787,12 +787,8 @@ void G4CCMMainVolume::SurfaceProperties()
     std::vector<G4double> PTFEFoilOpticalSurfaceTransmit = {.02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
                                                             .02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
                                                             .02, .02, .02, .02, .02}; //minimal transmittance through foil
-    std::vector<G4double> PTFEFoilOpticalSurfaceEff = { 0., 0., 0., 0., 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                                        0.0, 0.0, 0.0, 0.0, 0., 0., 0., 0., 0., 0.,
-                                                        0., 0., 0., 0., 0.};
-    reflfoilMPT->AddProperty("TRANSMITTANCE", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceTransmit);
+    //reflfoilMPT->AddProperty("TRANSMITTANCE", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceTransmit);
     reflfoilMPT->AddProperty("REFLECTIVITY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceReflect);
-    reflfoilMPT->AddProperty("EFFICIENCY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceEff);
     PTFEFoilOpticalSurface->SetMaterialPropertiesTable(reflfoilMPT);
 
     // again using skin, keeping border surface example
@@ -824,6 +820,56 @@ void G4CCMMainVolume::SurfaceProperties()
     new G4LogicalSkinSurface("FrillCaps_Surface", fFrillCaps_log, PlasticOpticalSurface);
     new G4LogicalSkinSurface("BridleWall_Surface", fBridleWall_log, PlasticOpticalSurface);
     new G4LogicalSkinSurface("BridleCaps_Surface", fBridleCaps_log, PlasticOpticalSurface);
+
+
+    // let's also give the pmt glass some reflection properties
+    G4OpticalSurface *CoatedPMTGlassOpticalSurface = new G4OpticalSurface("CoatedPMTGlassOpticalSurface");
+    G4OpticalSurface *UncoatedPMTGlassOpticalSurface = new G4OpticalSurface("UncoatedPMTGlassOpticalSurface");
+
+    // define uncoated pmts --> ground
+    UncoatedPMTGlassOpticalSurface->SetModel(unified);
+    UncoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
+    UncoatedPMTGlassOpticalSurface->SetFinish(ground);
+    UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.8);
+
+    // define coated pmts --> groundfrontpainted (all diffuse since modelling TPB + ground glass reflections at once)
+    CoatedPMTGlassOpticalSurface->SetModel(unified);
+    CoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
+    CoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted);
+
+    // define reflectivity for PMT glass (to be used on both coated and uncoated pmts)
+    G4MaterialPropertiesTable *PMTGlassMPT = new G4MaterialPropertiesTable();
+    std::vector<G4double> PMTGlassEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
+                                            2.48*eV,  2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV,  3.124*eV, 3.457*eV,
+                                            3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+                                            7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+
+    G4double uvTransmittance = 0.0;
+    G4double vsTransmittance = 0.90;
+
+    std::vector<G4double> PMTGlassTransmittance = { vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
+                                                    vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
+                                                    vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, uvTransmittance, uvTransmittance, uvTransmittance,
+                                                    uvTransmittance, uvTransmittance, uvTransmittance, uvTransmittance};
+
+    G4double uvReflection = 0.06;
+    G4double vsReflection = 0.10;
+
+    std::vector<G4double> PMTGlassReflection = { vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection,
+                                                    vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection,
+                                                    vsReflection, vsReflection, vsReflection, vsReflection, uvReflection, uvReflection, uvReflection,
+                                                    uvReflection, uvReflection, uvReflection, uvReflection};
+
+    PMTGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTGlassReflection);
+    PMTGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
+
+    CoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTGlassMPT);
+    UncoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTGlassMPT);
+
+    new G4LogicalSkinSurface("CoatedPMTGlassWall_Surface", fPMTCoatedWall_log, CoatedPMTGlassOpticalSurface);
+    new G4LogicalSkinSurface("CoatedPMTGlassCaps_Surface", fPMTCoatedCaps_log, CoatedPMTGlassOpticalSurface);
+    new G4LogicalSkinSurface("UncoatedPMTGlassWall_Surface", fPMTUncoatedWall_log, UncoatedPMTGlassOpticalSurface);
+    new G4LogicalSkinSurface("UncoatedPMTGlassCaps_Surface", fPMTUncoatedCaps_log, UncoatedPMTGlassOpticalSurface);
 
 }
 
