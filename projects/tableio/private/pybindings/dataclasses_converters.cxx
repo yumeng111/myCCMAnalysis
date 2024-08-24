@@ -15,6 +15,7 @@
 #include "tableio/converter/dataclasses_vector_converters.h"
 #include "tableio/converter/I3DirectionConverter.h"
 #include "tableio/converter/I3MapStringConverter.h"
+#include "tableio/converter/I3MapCCMPMTKeyConverter.h"
 #include "tableio/converter/I3MapStringVectorDoubleConverter.h"
 #include "tableio/converter/I3ParticleConverter.h"
 #include "tableio/converter/I3PositionConverter.h"
@@ -121,6 +122,21 @@ void register_dataclasses_converters() {
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapPMTKeyVectorDoubleConverter, "Dumps all numbers verbatim");
     typedef I3MapCCMPMTKeyVectorConverter< convert::pod<int> > I3MapPMTKeyVectorIntConverter;
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapPMTKeyVectorIntConverter, "Dumps all numbers verbatim");
+
+
+    typedef I3MapCCMPMTKeyConverter< convert::pod<double> > I3MapCCMPMTKeyDoubleConverter;
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyDoubleConverter, "Dumps all numbers verbatim");
+    typedef I3MapCCMPMTKeyConverter< convert::pod<int> > I3MapCCMPMTKeyIntConverter;
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyIntConverter, "Dumps all numbers verbatim");
+    typedef I3MapCCMPMTKeyConverter< convert::pod<unsigned int> > I3MapCCMPMTKeyUIntConverter;
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyUIntConverter, "Dumps all numbers verbatim");
+    typedef I3MapCCMPMTKeyConverter< convert::pod<bool> > I3MapCCMPMTKeyBoolConverter;
+    I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyBoolConverter, "Dumps all numbers verbatim");
+
+    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyDoubleConverter,"Dumps a std::map<CCMPMTKey,double> verbatim");
+    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyIntConverter,"Dumps a std::map<CCMPMTKey,int> verbatim");
+    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyUIntConverter,"Dumps a std::map<CCMPMTKey,unsigned int> verbatim");
+    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyBoolConverter,"Dumps a std::map<CCMPMTKey,bool> verbatim");
 
     I3CONVERTER_EXPORT_DEFAULT(I3MapStringDoubleConverter,"Dumps a std::map<string,double> verbatim");
     I3CONVERTER_EXPORT_DEFAULT(I3MapStringVectorDoubleConverter,"Dumps a std::map<string,vector<double> > verbatim");
