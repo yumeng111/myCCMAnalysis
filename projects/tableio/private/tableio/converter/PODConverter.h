@@ -45,7 +45,7 @@ char PODConverter_NoUnit[] = "";
 char PODConverter_BoolUnit[] = "bool";
 
 typedef PODConverter<I3Double, double,   PODConverter_NoUnit>   I3DoubleConverter;
-typedef PODConverter<I3Int,    int32_t,  PODConverter_NoUnit>   I3IntConverter;
+//typedef PODConverter<I3Int,    int32_t,  PODConverter_NoUnit>   I3IntConverter;
 typedef PODConverter<I3Int8,   int8_t,   PODConverter_NoUnit>   I3Int8Converter;
 typedef PODConverter<I3Int16,  int16_t,  PODConverter_NoUnit>   I3Int16Converter;
 typedef PODConverter<I3Int32,  int32_t,  PODConverter_NoUnit>   I3Int32Converter;

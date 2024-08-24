@@ -123,7 +123,6 @@ void register_dataclasses_converters() {
     typedef I3MapCCMPMTKeyVectorConverter< convert::pod<int> > I3MapPMTKeyVectorIntConverter;
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapPMTKeyVectorIntConverter, "Dumps all numbers verbatim");
 
-
     typedef I3MapCCMPMTKeyConverter< convert::pod<double> > I3MapCCMPMTKeyDoubleConverter;
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyDoubleConverter, "Dumps all numbers verbatim");
     typedef I3MapCCMPMTKeyConverter< convert::pod<int> > I3MapCCMPMTKeyIntConverter;
@@ -132,11 +131,6 @@ void register_dataclasses_converters() {
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyUIntConverter, "Dumps all numbers verbatim");
     typedef I3MapCCMPMTKeyConverter< convert::pod<bool> > I3MapCCMPMTKeyBoolConverter;
     I3_MAP_CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyBoolConverter, "Dumps all numbers verbatim");
-
-    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyDoubleConverter,"Dumps a std::map<CCMPMTKey,double> verbatim");
-    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyIntConverter,"Dumps a std::map<CCMPMTKey,int> verbatim");
-    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyUIntConverter,"Dumps a std::map<CCMPMTKey,unsigned int> verbatim");
-    I3CONVERTER_EXPORT_DEFAULT(I3MapCCMPMTKeyBoolConverter,"Dumps a std::map<CCMPMTKey,bool> verbatim");
 
     I3CONVERTER_EXPORT_DEFAULT(I3MapStringDoubleConverter,"Dumps a std::map<string,double> verbatim");
     I3CONVERTER_EXPORT_DEFAULT(I3MapStringVectorDoubleConverter,"Dumps a std::map<string,vector<double> > verbatim");
@@ -270,7 +264,7 @@ void register_dataclasses_converters() {
     I3CONVERTER_EXPORT_DEFAULT(I3TriggerHierarchyConverter,"Dumps all triggers in the I3TriggerHierarchy tree");
 
     I3CONVERTER_EXPORT_DEFAULT(I3DoubleConverter, "Dumps I3Double objects");
-    I3CONVERTER_EXPORT_DEFAULT(I3IntConverter,    "Dumps I3Int objects");
+    //I3CONVERTER_EXPORT_DEFAULT(I3IntConverter,    "Dumps I3Int objects");
     I3CONVERTER_EXPORT_DEFAULT(I3Int8Converter,   "Dumps I3Int8 objects");
     I3CONVERTER_EXPORT_DEFAULT(I3Int16Converter,  "Dumps I3Int16 objects");
     I3CONVERTER_EXPORT_DEFAULT(I3Int32Converter,  "Dumps I3Int32 objects");

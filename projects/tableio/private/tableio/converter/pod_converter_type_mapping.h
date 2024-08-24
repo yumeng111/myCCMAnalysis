@@ -19,7 +19,7 @@ namespace detail {
   struct pod_converter_type_mapping {
     typedef T type;
   };
-    
+
   template <>
   struct pod_converter_type_mapping<signed short> {
     typedef int16_t type;
