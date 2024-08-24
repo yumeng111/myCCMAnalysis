@@ -807,8 +807,9 @@ void G4CCMMainVolume::SurfaceProperties()
 
     PlasticOpticalSurface->SetModel(unified);
     PlasticOpticalSurface->SetType(dielectric_dielectric);
-    PlasticOpticalSurface->SetFinish(ground);
-    PlasticOpticalSurface->SetSigmaAlpha(0.05);
+    //PlasticOpticalSurface->SetFinish(ground);
+    PlasticOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+    //PlasticOpticalSurface->SetSigmaAlpha(0.05);
 
     G4MaterialPropertiesTable *Plastic_MT = new G4MaterialPropertiesTable();
     Plastic_MT->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
@@ -829,8 +830,9 @@ void G4CCMMainVolume::SurfaceProperties()
     // define uncoated pmts --> ground
     UncoatedPMTGlassOpticalSurface->SetModel(unified);
     UncoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
-    UncoatedPMTGlassOpticalSurface->SetFinish(ground);
-    UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.8);
+    //UncoatedPMTGlassOpticalSurface->SetFinish(ground);
+    UncoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+    //UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.8);
 
     // define coated pmts --> groundfrontpainted (all diffuse since modelling TPB + ground glass reflections at once)
     CoatedPMTGlassOpticalSurface->SetModel(unified);
