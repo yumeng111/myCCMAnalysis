@@ -102,7 +102,10 @@ namespace bp = boost::python;
   (I3RecoPulseSeriesMapApplySPECorrection)(I3FlasherStatus)             \
   (I3FlasherStatusMap)(I3FlasherSubrunMap)                              \
   (I3RecoPulseSeriesMapCombineByModule)                                 \
-  (I3Int64)(I3UInt64)(I3UInt32)                                 \
+  (I3Int8)(I3UInt8)                                                     \
+  (I3Int16)(I3UInt16)                                                   \
+  (I3Int32)(I3UInt32)                                                   \
+  (I3Int64)(I3UInt64)                                                   \
   (ScintKey)(I3ScintGeo)(I3ScintRecoPulseSeriesMap)                     \
   (I3ScintWaveformSeriesMap)                                            \
   (AntennaKey)(I3AntennaChannel)(I3AntennaDataMap)(I3AntennaGeo)        \

@@ -253,12 +253,25 @@ void register_dataclasses_converters() {
     typedef I3TreeConverter<convert::I3Trigger> I3TriggerHierarchyConverter;
     I3CONVERTER_EXPORT_DEFAULT(I3TriggerHierarchyConverter,"Dumps all triggers in the I3TriggerHierarchy tree");
 
-    I3CONVERTER_EXPORT_DEFAULT(I3DoubleConverter,"Dumps I3Double objects");
-    I3CONVERTER_EXPORT_DEFAULT(I3IntConverter,"Dumps I3Int objects");
-    I3CONVERTER_EXPORT_DEFAULT(I3BoolConverter,"Dumps I3Bool objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3DoubleConverter, "Dumps I3Double objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3IntConverter,    "Dumps I3Int objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3Int8Converter,   "Dumps I3Int8 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3Int16Converter,  "Dumps I3Int16 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3Int32Converter,  "Dumps I3Int32 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3Int64Converter,  "Dumps I3Int64 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3UInt8Converter,  "Dumps I3UInt8 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3UInt16Converter, "Dumps I3UInt16 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3UInt32Converter, "Dumps I3UInt32 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3UInt64Converter, "Dumps I3UInt64 objects");
+    I3CONVERTER_EXPORT_DEFAULT(I3BoolConverter,   "Dumps I3Bool objects");
 
     typedef I3VectorConverter< convert::pod<bool> > I3VectorBoolConverter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorBoolConverter, "Dumps an I3Vector of bools");
+
+    typedef I3VectorConverter< convert::pod<int8_t> > I3VectorInt8Converter;
+    I3CONVERTER_EXPORT_DEFAULT(I3VectorInt8Converter, "Dumps an I3Vector of int8_t");
+    typedef I3VectorConverter< convert::pod<uint8_t> > I3VectorUInt8Converter;
+    I3CONVERTER_EXPORT_DEFAULT(I3VectorUInt8Converter, "Dumps an I3Vector of uint8_t");
 
     typedef I3VectorConverter< convert::pod<int16_t> > I3VectorShortConverter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorShortConverter, "Dumps an I3Vector of shorts");
@@ -270,15 +283,18 @@ void register_dataclasses_converters() {
     typedef I3VectorConverter< convert::pod<uint32_t> > I3VectorUIntConverter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorUIntConverter, "Dumps an I3Vector of unsigned ints");
 
-    typedef I3VectorConverter< convert::pod<I3VectorInt64::value_type> > I3VectorInt64Converter;
+    typedef I3VectorConverter< convert::pod<int64_t> > I3VectorInt64Converter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorInt64Converter, "Dumps an I3Vector of 64bit ints");
-    typedef I3VectorConverter< convert::pod<I3VectorUInt64::value_type> > I3VectorUInt64Converter;
+    typedef I3VectorConverter< convert::pod<uint64_t> > I3VectorUInt64Converter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorUInt64Converter, "Dumps an I3Vector of unsigned 64bit ints");
 
     typedef I3VectorConverter< convert::pod<float> > I3VectorFloatConverter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorFloatConverter, "Dumps an I3Vector of floats");
     typedef I3VectorConverter< convert::pod<double> > I3VectorDoubleConverter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorDoubleConverter, "Dumps an I3Vector of doubles");
+
+    typedef I3VectorConverter< convert::CCMPMTKey > I3VectorCCMPMTKeyConverter;
+    I3CONVERTER_EXPORT_DEFAULT(I3VectorCCMPMTKeyConverter, "Dumps an I3Vector of CCMPMTKeys");
 
     typedef I3VectorConverter< convert::OMKey > I3VectorOMKeyConverter;
     I3CONVERTER_EXPORT_DEFAULT(I3VectorOMKeyConverter, "Dumps an I3Vector of OMKeys");
