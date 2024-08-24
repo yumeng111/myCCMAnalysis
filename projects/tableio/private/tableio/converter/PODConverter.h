@@ -16,6 +16,14 @@
 #include "dataclasses/I3Double.h"
 #include "icetray/I3Bool.h"
 #include "icetray/I3Int.h"
+#include "dataclasses/I3Int8.h"
+#include "dataclasses/I3Int16.h"
+#include "dataclasses/I3Int32.h"
+#include "dataclasses/I3Int64.h"
+#include "dataclasses/I3UInt8.h"
+#include "dataclasses/I3UInt16.h"
+#include "dataclasses/I3UInt32.h"
+#include "dataclasses/I3UInt64.h"
 
 template<class FrmObj, typename TableType, const char* unit>
 class PODConverter : public I3ConverterImplementation<FrmObj> {
@@ -36,8 +44,16 @@ class PODConverter : public I3ConverterImplementation<FrmObj> {
 char PODConverter_NoUnit[] = "";
 char PODConverter_BoolUnit[] = "bool";
 
-typedef PODConverter<I3Double,double , PODConverter_NoUnit> I3DoubleConverter;
-typedef PODConverter<I3Int   ,int32_t, PODConverter_NoUnit> I3IntConverter;
-typedef PODConverter<I3Bool  ,bool   , PODConverter_BoolUnit> I3BoolConverter;
+typedef PODConverter<I3Double, double,   PODConverter_NoUnit>   I3DoubleConverter;
+//typedef PODConverter<I3Int,    int32_t,  PODConverter_NoUnit>   I3IntConverter;
+typedef PODConverter<I3Int8,   int8_t,   PODConverter_NoUnit>   I3Int8Converter;
+typedef PODConverter<I3Int16,  int16_t,  PODConverter_NoUnit>   I3Int16Converter;
+typedef PODConverter<I3Int32,  int32_t,  PODConverter_NoUnit>   I3Int32Converter;
+typedef PODConverter<I3Int64,  int64_t,  PODConverter_NoUnit>   I3Int64Converter;
+typedef PODConverter<I3UInt8,  uint8_t,  PODConverter_NoUnit>   I3UInt8Converter;
+typedef PODConverter<I3UInt16, uint16_t, PODConverter_NoUnit>   I3UInt16Converter;
+typedef PODConverter<I3UInt32, uint32_t, PODConverter_NoUnit>   I3UInt32Converter;
+typedef PODConverter<I3UInt64, uint64_t, PODConverter_NoUnit>   I3UInt64Converter;
+typedef PODConverter<I3Bool,   bool,     PODConverter_BoolUnit> I3BoolConverter;
 
 #endif // TABLEIO_PODCONVERTER_H_INCLUDED

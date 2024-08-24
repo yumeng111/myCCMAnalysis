@@ -35,9 +35,9 @@
 #include <icetray/I3DefaultName.h>
 #include <icetray/I3PODHolder.h>
 
-typedef I3PODHolder<int> I3Int;
+typedef I3PODHolder<int32_t> I3Int;
 
 I3_POINTER_TYPEDEFS(I3Int);
-I3_DEFAULT_NAME(I3Int);
+I3_DEFAULT_NAME(I3Int, I3Int32);
 
 #endif
