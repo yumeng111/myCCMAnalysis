@@ -134,7 +134,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
 
     // controls to turn sodium source on/off
     bool SourceRodIn_ = false;
-    G4double SourceRodLocation_ = 0.0; 
+    G4double SourceRodLocation_ = 0.0 * cm; 
     bool CobaltSourceRun_ = false;
     bool SodiumSourceRun_ = false;
 

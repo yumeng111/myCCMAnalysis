@@ -302,11 +302,11 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           0.9058671, 0.8866637, 0.862769,  0.8436296, 0.8228502,
                                           0.8005955, 0.7798801, 0.7591648, 0.001,     0.001 };
 
-    std::vector<G4double> alum_abslen = { 1.0e-3*cm, 1.0e-3*cm};
+    std::vector<G4double> alum_abslen = { 1.0e-3*mm, 1.0e-3*mm};
     std::vector<G4double> alum_abseneg = { 1.5498*eV, 20.664*eV};
 
     G4MaterialPropertiesTable* fAlum_mt = new G4MaterialPropertiesTable();
-    fAlum_mt->AddProperty("REFLECTIVITY", alum_energy, alum_reflect);
+    //fAlum_mt->AddProperty("REFLECTIVITY", alum_energy, alum_reflect); this doesnt do anything...
     fAlum_mt->AddProperty("ABSLENGTH", alum_abseneg, alum_abslen);
     fAlum->SetMaterialPropertiesTable(fAlum_mt);
 
@@ -452,7 +452,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> tpb_rin = {1.7, 1.7};
 
     G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
-    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_PTFE_Emission_Energy, TPB_PTFE_Emission);
+    //fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_PTFE_Emission_Energy, TPB_PTFE_Emission); -- NOTE : not using this spectrum! TPB is on mylar backing
+    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
     fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", wls_mean_num_photons);
     fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
