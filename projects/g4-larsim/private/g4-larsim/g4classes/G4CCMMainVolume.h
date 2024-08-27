@@ -40,8 +40,11 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogTPBCoatingCaps() { return fTPBCoatingCaps_log; }
 
     G4LogicalVolume* GetLogTPBFoil() { return fTPBFoil_log; }
-
     G4LogicalVolume* GetLogReflectorFoil() { return fReflectorFoil_log; }
+    G4LogicalVolume* GetShinyC406R0() { return fShinyC406R0_log; }
+    G4LogicalVolume* GetShinyTop() { return fShinyTop_log; }
+    G4LogicalVolume* GetShinyBottom() { return fShinyBottom_log; }
+
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:
