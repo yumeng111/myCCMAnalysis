@@ -250,7 +250,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // Set PMT glass constants
     std::vector<G4double> glass_energy = {7.0*eV, 7.07*eV, 7.14*eV};
-    std::vector<G4double> glass_AbsLength = { 420. * cm, 420. * cm, 420. * cm };
+    //std::vector<G4double> glass_AbsLength = { 420. * cm, 420. * cm, 420. * cm };
+    std::vector<G4double> glass_AbsLength = {1e-12*mm, 1e-12*mm, 1e-12*mm};
     std::vector<G4double> glass_RIND = {1.49,1.49,1.49};
 
     G4MaterialPropertiesTable* fGlass_mt = new G4MaterialPropertiesTable();
