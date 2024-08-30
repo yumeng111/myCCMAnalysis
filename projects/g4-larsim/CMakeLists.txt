@@ -22,7 +22,7 @@ if(GEANT4_FOUND)
 
     i3_executable(g4larsim
         apps/*.cxx
-        USE_TOOLS clhep geant4 cpptrace
+        USE_TOOLS clhep geant4
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses g4-larsim
         NO_PREFIX
     )
