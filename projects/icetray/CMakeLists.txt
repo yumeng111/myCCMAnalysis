@@ -105,7 +105,7 @@ i3_add_library(icetray
   private/icetray/I3Parameter.cxx
   private/icetray/I3Module.cxx
   private/icetray/I3ConditionalModule.cxx
-  private/icetray/I3PacketModule.cxx  
+  private/icetray/I3PacketModule.cxx
   private/icetray/I3ServiceFactory.cxx
   private/icetray/I3TrayInfo.cxx
   private/icetray/I3TrayInfoService.cxx

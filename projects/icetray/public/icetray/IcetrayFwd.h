@@ -45,6 +45,7 @@ typedef char __signed;
 #include <stdint.h> //int64_t, etc
 #endif
 
+// #include <icetray/StackTrace.h>
 #include <icetray/I3Logging.h>
 #include <icetray/I3PointerTypedefs.h>
 

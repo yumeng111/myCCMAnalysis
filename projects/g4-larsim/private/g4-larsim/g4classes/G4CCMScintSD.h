@@ -123,6 +123,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         const G4double hc =  hbarc * (2 * 3.14159265358979323846); // eV * nm
         
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
+        static const std::unordered_map<std::string, PhotonSummary::PhotonSource> processNameToPhotonSource;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
 

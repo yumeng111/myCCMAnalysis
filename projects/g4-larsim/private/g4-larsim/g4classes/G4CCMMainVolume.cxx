@@ -218,6 +218,7 @@ std::vector<std::string> position_id = {"C101R0",
                                         "C307R6",
                                         "C204R6",
                                         "C406R6",
+                                        "C406R0",
                                         "C205R6",
                                         "C408R6",
                                         "C306R6",
@@ -228,11 +229,11 @@ std::map<size_t, double> pmt_region_z_positions = {
     {-2, 75.00},
     {-1, 65.00},
     {0,  58.00},
-    {1,  46.22},
-    {2,  23.11},
+    {1,  46.00},
+    {2,  23.00},
     {3,   0.00},
-    {4, -23.11},
-    {5, -46.22},
+    {4, -23.00},
+    {5, -46.00},
     {6, -58.00},
     {7, -65.00},
     {8, -75.00},
@@ -241,10 +242,10 @@ std::map<size_t, double> pmt_region_z_positions = {
 // The radii of rings of pmts
 std::map<size_t, double> ring_radii = {
     {0,  96.0}, // Outer wall
-    {1,  20.0}, // Inner ring on top/bottom
-    {2,  42.0}, //
-    {3,  64.2}, //
-    {4,  85.5}, // Outer ring on top/bottom
+    {1,  24.0}, // Inner ring on top/bottom
+    {2,  45.0}, //
+    {3,  66.0}, //
+    {4,  87.0}, // Outer ring on top/bottom
     {5, 101.6},  // Veto VT and VB rings
     {6, 111.6}  // Veto VCT and VCB rings
 };
@@ -327,7 +328,7 @@ std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double st
     }
     std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
             pmt_number,
-            radius, 
+            radius,
             starting_pmt_number,
             ring_pmt_pos_count[ring_number],
             angular_offset);
@@ -379,19 +380,18 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // Radius of inner frame is 1037mm, inner radius is 1036mm
     // Total height of inner frame is 1239.6mm (half height is 619.8mm)
+    G4double frame_thickness = 1.0 * mm;
+    G4double ptfe_thickness = 0.5 * mm;
+    G4double tpb_thickness = 0.00278035 * mm; // from Vincent Basque's thesis https://pure.manchester.ac.uk/ws/portalfiles/portal/205622566/FULL_TEXT.PDF
 
-    G4double frame_height = 1239.6*mm;
+    G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + tpb_thickness) * 2.0;
     G4double frame_half_height = frame_height / 2.0;
-    G4double frame_radius = 1037.0*mm - 3.15*mm; // reducing radius by 1/2cm to account for flexing of PTFE sheets
+    G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + tpb_thickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
     fInnerFrame_log= new G4LogicalVolume(fInnerFrame, G4Material::GetMaterial("Alum"), "InnerFrame");
     new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fArgonOuter_log, false, 0, true);
-
-    G4double frame_thickness = 1.0 * mm;
-    G4double ptfe_thickness = 0.5 * mm; 
-    G4double tpb_thickness = 0.0019 * mm;
 
     G4double ptfe_half_height = frame_half_height - frame_thickness;
     G4double ptfe_radius = frame_radius - frame_thickness;
@@ -450,14 +450,22 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBCoatingWall_log = new G4LogicalVolume(fTPBCoatingWall, G4Material::GetMaterial("TPBPMT"), "TPBCoatingWallLog");
     fTPBCoatingCaps_log = new G4LogicalVolume(fTPBCoatingCaps, G4Material::GetMaterial("TPBPMT"), "TPBCoatingCapsLog");
 
-    // now let's also build PMT photocathode!
-    //fPhotocathCoated = J4PMTSolidMaker::GetPhotocathodeSolid();
-    //fPhotocathCoated_log = new G4LogicalVolume(fPhotocathCoated, G4Material::GetMaterial("Vacuum"), "photocathCoated_log");
-    //new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocathCoated_log, "photocathCoated", fPMTCoated_log, false, 0);
+    // let's build the shiny guy who is at C406R0
+    // we are placing it in our loop over PMT position IDs!
+    G4double shiny_radius = 205.0 / 2.0 * mm; // making the assumption that it is the same radius as the bridle 
+    G4double shiny_half_height = 0.125 * mm;
+    fShinyC406R0 = new G4Tubs("ShinyC406R0", 0*cm, shiny_radius, shiny_half_height, 0*deg, 360*deg); 
+    fShinyC406R0_log= new G4LogicalVolume(fShinyC406R0, G4Material::GetMaterial("Alum"), "ShinyC406R0");
 
-    //fPhotocathUncoated = J4PMTSolidMaker::GetPhotocathodeSolid();
-    //fPhotocathUncoated_log = new G4LogicalVolume(fPhotocathUncoated, G4Material::GetMaterial("Vacuum"), "photocathUncoated_log");
-    //new G4PVPlacement(nullptr, G4ThreeVector(0., 0., 0.), fPhotocathUncoated_log, "photocathUncoated", fPMTUncoated_log, false, 0);
+    // speaking of shiny, let's build our shiny reflective circles that go on top and bottom of detector
+    // documentation (https://docdb.lns.mit.edu/cgi-bin/captainmills/ShowDocument?docid=567) says it's 5.25in radius
+    G4double top_shiny_radius = 13.335 * cm;
+    fShinyTop = new G4Tubs("ShinyTop", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
+    fShinyTop_log= new G4LogicalVolume(fShinyTop, G4Material::GetMaterial("Alum"), "ShinyTop");
+    new G4PVPlacement(0, G4ThreeVector(0, 0, fiducial_lar_half_height - shiny_half_height), fShinyTop_log, "ShinyTop", fFiducialAr_log, false, 0);
+    fShinyBottom = new G4Tubs("ShinyBottom", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
+    fShinyBottom_log= new G4LogicalVolume(fShinyBottom, G4Material::GetMaterial("Alum"), "ShinyBottom");
+    new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialAr_log, false, 0);
 
     double pmt_radius_cm = (fiducial_lar_radius + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
     double pmt_height_cm = (fiducial_lar_half_height + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
@@ -515,6 +523,11 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 coated = false;
             }
         }
+        if (position_string == "C406R0"){
+            // now place our shiny circle!
+            new G4PVPlacement(0, G4ThreeVector(position[0]*cm, position[1]*cm, fiducial_lar_half_height - shiny_half_height), fShinyC406R0_log, "ShinyC406R0", fFiducialAr_log, false, 0);
+            continue;
+        }
         // so we have our pmt info
         // let's make the string key to save it to
         G4String pmt_name = std::to_string(row) + "_" + std::to_string(pmt_number);
@@ -522,12 +535,12 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         pmt_pos.setX(position[0]*cm);
         pmt_pos.setY(position[1]*cm);
         pmt_pos.setZ(position[2]*cm);
-        
+
         G4ThreeVector bridle_pos;
         bridle_pos.setX(bridle_position[0]*cm);
         bridle_pos.setY(bridle_position[1]*cm);
         bridle_pos.setZ(bridle_position[2]*cm);
-        
+
         G4ThreeVector frill_pos;
         frill_pos.setX(frill_position[0]*cm);
         frill_pos.setY(frill_position[1]*cm);
@@ -603,10 +616,10 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     if (SourceRodIn){
         // now let's make our source rod
-        // i'm just doing the thin rod for now -- TODO : add all rod specifics (main part, nuts, thin extension)
-        G4double rod_inner_radius = 0.4*cm;
-        G4double rod_outer_radius = 0.5*cm;
-        G4double rod_height = 150.0*cm;
+        // i'm just doing the bayonet for now since it is >1m tall, it should only matter for sodium runs above -50cm 
+        G4double rod_inner_radius = 0.0*cm;
+        G4double rod_outer_radius = 6.31 * mm;
+        G4double rod_height = fiducial_lar_half_height - SourceRodLocation - (shiny_half_height * 2.0);
         fSourceRod = new G4Tubs("SourceRod", rod_inner_radius, rod_outer_radius, rod_height/2, 0, 360*deg);
         fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
         G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SourceRodLocation + rod_height/2);
@@ -623,7 +636,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 fSource = nistManager->FindOrBuildMaterial("G4_Co");
             }
             fSourcePellet_log  = new G4LogicalVolume(fSourcePellet, fSource, "SourcePelletLog");
-            
+
             // and now put the source pellet at the end of the rod (inset 1/4cm)
             G4double inset = 0.25 * cm;
             G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
@@ -631,13 +644,13 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         }
     }
 
-    VisAttributes();
+    VisAttributes(SourceRodIn);
     SurfaceProperties();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMMainVolume::VisAttributes()
+void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
 {
     // let's make other layers of detector invisible
     auto lilac = new G4VisAttributes(G4Colour(153/255., 153/255., 153/255.));
@@ -655,7 +668,7 @@ void G4CCMMainVolume::VisAttributes()
     auto pink = new G4VisAttributes(G4Colour(255/255., 0., 255/255.));
     //pink->SetForceSolid(true);
 
-    fCryoVessel_log->SetVisAttributes(lilac);
+    fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fInnerJacket_log->SetVisAttributes(dark_blue);
     fArgonOuter_log->SetVisAttributes(green);
@@ -681,11 +694,17 @@ void G4CCMMainVolume::VisAttributes()
     fPMTCoatedCaps_log->SetVisAttributes(pmt_va);
     fPMTUncoatedWall_log->SetVisAttributes(pmt_va);
     fPMTUncoatedCaps_log->SetVisAttributes(pmt_va);
+    //fPMTCoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fPMTCoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fPMTUncoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fPMTUncoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     
     auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     tpb_coating_va->SetForceSolid(true);
     fTPBCoatingWall_log->SetVisAttributes(tpb_coating_va);
     fTPBCoatingCaps_log->SetVisAttributes(tpb_coating_va);
+    //fTPBCoatingWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fTPBCoatingCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     salmon->SetForceSolid(true);
     teal->SetForceSolid(true);
@@ -693,24 +712,29 @@ void G4CCMMainVolume::VisAttributes()
     fBridleCaps_log->SetVisAttributes(salmon);
     fFrillWall_log->SetVisAttributes(teal);
     fFrillCaps_log->SetVisAttributes(teal);
+    //fBridleWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fBridleCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fFrillWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fFrillCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
-    //auto photocath_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
-    //photocath_va->SetForceSolid(true);
-    //fPhotocathCoated_log->SetVisAttributes(photocath_va);
-    //fPhotocathUncoated_log->SetVisAttributes(photocath_va);
+    // add shiny guy!
+    auto red = new G4VisAttributes(G4Colour(1., 0., 0.));
+    red->SetForceSolid(true);
+    fShinyC406R0_log->SetVisAttributes(red);
+    fShinyTop_log->SetVisAttributes(red);
+    fShinyBottom_log->SetVisAttributes(red);
 
     // make our source rod green
-    //auto source_rod_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
-    //source_rod_va->SetForceSolid(true);
-    //fSourceRod_log->SetVisAttributes(source_rod_va);
-    fSourceRod_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if (SourceRodIn)
+        fSourceRod_log->SetVisAttributes(tpb_coating_va);
+    //fSourceRod_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     //// and make sodium pellet blue
     //auto sodium_pellet_va = new G4VisAttributes(G4Colour(0., 0., 1.)); // blue
     //sodium_pellet_va->SetForceSolid(true);
     //fSodiumSourcePellet_log->SetVisAttributes(sodium_pellet_va);
-    fSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible()); 
-    
+    //fSourcePellet_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+
 
 }
 
@@ -730,47 +754,17 @@ void G4CCMMainVolume::SurfaceProperties()
     std::vector<G4double> TPBfoilOSTransmit = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
                                                1., 1., 1., 1., 1., 1., 1., 1.}; // set to 1 and have all absorption in bulk
 
-    std::vector<G4double> TPBfoilOSReflect = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                              0.0, 0.0, 0.0, 0., 0., 0., 0., 0.};
-
     std::vector<G4double> TPBfoilOSEff = {0., 0., 0., 0., 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                                           1.0, 1.0, 1.0, 1.0, 1., 1., 1., 1., 1., 1.,
                                           1., 1., 1., 1., 1.};
 
-    G4OpticalSurface *TPBFoilOpticalSurface = new G4OpticalSurface("TPBFoilOpticalSurface");
-
-    TPBFoilOpticalSurface->SetModel(unified);
-    TPBFoilOpticalSurface->SetType(dielectric_dielectric);
-    TPBFoilOpticalSurface->SetFinish(ground);
-    TPBFoilOpticalSurface->SetSigmaAlpha(0.05);
-
-    G4MaterialPropertiesTable *TPBFoil_mt = new G4MaterialPropertiesTable();
-    TPBFoil_mt->AddProperty("REFLECTIVITY", TPBEnergy, TPBfoilOSReflect);
-    TPBFoil_mt->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
-    TPBFoil_mt->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
-    TPBFoilOpticalSurface->SetMaterialPropertiesTable(TPBFoil_mt);
-
-    // note -- usign logical skin surface, might want to use border surface but since using same properties for all TPB on walls, doesnt seem necessary
-    new G4LogicalSkinSurface("TPBFoils_Surface", fTPBFoil_log, TPBFoilOpticalSurface);
-    new G4LogicalSkinSurface("TPBCoatingWall_Surface", fTPBCoatingWall_log, TPBFoilOpticalSurface);
-    new G4LogicalSkinSurface("TPBCoatingCaps_Surface", fTPBCoatingCaps_log, TPBFoilOpticalSurface);
-
-    //// create logical border surfaces for TPB on walls of detector and on PMTs
-	//new G4LogicalBorderSurface("TPBFoils_SurfaceForward", fFiducialAr_phys, fTPBFoil_phys, TPBFoilOpticalSurface);
-	//new G4LogicalBorderSurface("TPBFoils_SurfaceBackward", fTPBFoil_phys, fFiducialAr_phys, TPBFoilOpticalSurface);
-	//
-    //// same for TPB coating -- note pretty sure coating + foils have same optical surface properties
-    //new G4LogicalBorderSurface("TPBPMT_SurfaceForward", fFiducialAr_phys, fTPBPMT_phys, TPBFoilOpticalSurface);
-	//new G4LogicalBorderSurface("TPBPMT_SurfaceBackward", fTPBPMT_phys, fFiducialAr_phys, TPBFoilOpticalSurface);
-
-    // finally define optical surface for PTFE reflector foils
+    // define optical surface for PTFE reflector foils
+    // note -- having PTFE describe the TPB reflections as well -- using Lambertian distribution (diffuse)
     G4OpticalSurface *PTFEFoilOpticalSurface = new G4OpticalSurface("PTFEFoilOpticalSurface");
 
-    PTFEFoilOpticalSurface->SetModel(glisur); //Optical model
-    PTFEFoilOpticalSurface->SetType(dielectric_metal);
-    PTFEFoilOpticalSurface->SetFinish(ground);
-    PTFEFoilOpticalSurface->SetSigmaAlpha(1.0);
+    PTFEFoilOpticalSurface->SetModel(unified);
+    PTFEFoilOpticalSurface->SetType(dielectric_dielectric);
+    PTFEFoilOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
 
     G4MaterialPropertiesTable *reflfoilMPT = new G4MaterialPropertiesTable();
     std::vector<G4double> PTFEFoilOpticalSurfaceEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
@@ -784,46 +778,109 @@ void G4CCMMainVolume::SurfaceProperties()
                                                             vsRf, vsRf, vsRf, vsRf, vsRf, vsRf, vsRf,
                                                             vsRf, vsRf, vsRf, vsRf, uvRf, uvRf, uvRf,
                                                             uvRf, uvRf, uvRf, uvRf};
-    std::vector<G4double> PTFEFoilOpticalSurfaceTransmit = {.02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
-                                                            .02, .02, .02, .02, .02, .02, .02, .02, .02, .02,
-                                                            .02, .02, .02, .02, .02}; //minimal transmittance through foil
-    std::vector<G4double> PTFEFoilOpticalSurfaceEff = { 0., 0., 0., 0., 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                                        0.0, 0.0, 0.0, 0.0, 0., 0., 0., 0., 0., 0.,
-                                                        0., 0., 0., 0., 0.};
-    reflfoilMPT->AddProperty("TRANSMITTANCE", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceTransmit);
     reflfoilMPT->AddProperty("REFLECTIVITY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceReflect);
-    reflfoilMPT->AddProperty("EFFICIENCY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceEff);
     PTFEFoilOpticalSurface->SetMaterialPropertiesTable(reflfoilMPT);
-
-    // again using skin, keeping border surface example
+    
+    // now add logical skin surface
     new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, PTFEFoilOpticalSurface);
 
-	//// now add logical borders for PTFE foil --> TPB foil and LAr
-    //new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceForward", fTPBFoil_phys, fReflectorFoil_phys, PTFEFoilOpticalSurface);
- 	//new G4LogicalBorderSurface("TPBFoilPTFE_SurfaceBackward", fReflectorFoil_phys, fTPBFoil_phys, PTFEFoilOpticalSurface);
-    
-    // and skin surface for the frill!
+    // and surface properties for the frill + bridle
     // Definition of MPT for Plastic frills
     std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.6*eV };
     std::vector<G4double> plastic_reflect = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
-    
+
     G4OpticalSurface *PlasticOpticalSurface = new G4OpticalSurface("PlasticOpticalSurface");
 
     PlasticOpticalSurface->SetModel(unified);
     PlasticOpticalSurface->SetType(dielectric_dielectric);
-    PlasticOpticalSurface->SetFinish(ground);
-    PlasticOpticalSurface->SetSigmaAlpha(0.05);
+    PlasticOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
 
     G4MaterialPropertiesTable *Plastic_MT = new G4MaterialPropertiesTable();
     Plastic_MT->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
     Plastic_MT->AddProperty("TRANSMITTANCE", TPBEnergy, TPBfoilOSTransmit);
     Plastic_MT->AddProperty("EFFICIENCY", TPBEnergy, TPBfoilOSEff);
     PlasticOpticalSurface->SetMaterialPropertiesTable(Plastic_MT);
-    
+
     new G4LogicalSkinSurface("FrillWall_Surface", fFrillWall_log, PlasticOpticalSurface);
     new G4LogicalSkinSurface("FrillCaps_Surface", fFrillCaps_log, PlasticOpticalSurface);
     new G4LogicalSkinSurface("BridleWall_Surface", fBridleWall_log, PlasticOpticalSurface);
     new G4LogicalSkinSurface("BridleCaps_Surface", fBridleCaps_log, PlasticOpticalSurface);
 
+    // let's also give the pmt glass some reflection properties
+    G4OpticalSurface *CoatedPMTGlassOpticalSurface = new G4OpticalSurface("CoatedPMTGlassOpticalSurface");
+    G4OpticalSurface *UncoatedPMTGlassOpticalSurface = new G4OpticalSurface("UncoatedPMTGlassOpticalSurface");
+
+    // define uncoated pmts --> ground
+    UncoatedPMTGlassOpticalSurface->SetModel(unified);
+    UncoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
+    UncoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+
+    // define coated pmts --> groundfrontpainted (all diffuse since modelling TPB + ground glass reflections at once)
+    CoatedPMTGlassOpticalSurface->SetModel(unified);
+    CoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
+    CoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted);
+
+    // define reflectivity for PMT glass (to be used on both coated and uncoated pmts)
+    G4MaterialPropertiesTable *PMTGlassMPT = new G4MaterialPropertiesTable();
+    std::vector<G4double> PMTGlassEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
+                                            2.48*eV,  2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV,  3.124*eV, 3.457*eV,
+                                            3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+                                            7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+
+    G4double uvTransmittance = 0.0;
+    G4double vsTransmittance = 0.90;
+
+    std::vector<G4double> PMTGlassTransmittance = { vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
+                                                    vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
+                                                    vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, uvTransmittance, uvTransmittance, uvTransmittance,
+                                                    uvTransmittance, uvTransmittance, uvTransmittance, uvTransmittance};
+
+    G4double uvReflection = 0.06;
+    G4double vsReflection = 0.10;
+
+    std::vector<G4double> PMTGlassReflection = { vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection,
+                                                    vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection,
+                                                    vsReflection, vsReflection, vsReflection, vsReflection, uvReflection, uvReflection, uvReflection,
+                                                    uvReflection, uvReflection, uvReflection, uvReflection};
+
+    PMTGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTGlassReflection);
+    PMTGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
+
+    CoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTGlassMPT);
+    UncoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTGlassMPT);
+
+    new G4LogicalSkinSurface("CoatedPMTGlassWall_Surface", fPMTCoatedWall_log, CoatedPMTGlassOpticalSurface);
+    new G4LogicalSkinSurface("CoatedPMTGlassCaps_Surface", fPMTCoatedCaps_log, CoatedPMTGlassOpticalSurface);
+    new G4LogicalSkinSurface("UncoatedPMTGlassWall_Surface", fPMTUncoatedWall_log, UncoatedPMTGlassOpticalSurface);
+    new G4LogicalSkinSurface("UncoatedPMTGlassCaps_Surface", fPMTUncoatedCaps_log, UncoatedPMTGlassOpticalSurface);
+
+    // finally, add surface properties for the shiny guys
+    // we have the shiny reflectors at (0, 0) on top + bottom and shiny guy on top off center
+    G4OpticalSurface *ReflectorOpticalSurface = new G4OpticalSurface("ReflectorOpticalSurface");
+
+    ReflectorOpticalSurface->SetModel(unified);
+    ReflectorOpticalSurface->SetType(dielectric_metal);
+    ReflectorOpticalSurface->SetFinish(polished);
+
+    // let's add reflection properties as a function of energy
+    std::vector<G4double> MylarReflectionEnergy = {1.239835823924519*eV, 2.1758440843642446*eV, 2.2155183016259334*eV, 2.2540941739092317*eV, 2.2965084198409396*eV,
+            2.3398220945804553*eV, 2.3853127919447585*eV, 2.432339257160777*eV, 2.4816594267685304*eV, 2.5316156616832233*eV, 2.584054978035275*eV, 2.639307340578113*eV,
+            2.6963833000212216*eV, 2.7566402380421113*eV, 2.820482241642379*eV, 2.8840814650497304*eV, 2.9538999741438468*eV, 3.0256914075766623*eV, 3.104173784836434*eV,
+            3.1423952308218324*eV, 3.1815179074033235*eV, 3.2230571642902683*eV, 3.2634554851366535*eV, 3.306493319706959*eV, 3.352069231820206*eV, 3.445795378257322*eV,
+            3.541505417163459*eV, 3.647364059603557*eV, 3.7597652297046125*eV, 3.876624049427723*eV, 4.000980170596548*eV, 4.135062961692673*eV, 4.276792392741077*eV,
+            4.430351962448966*eV, 8.265572159496793*eV, 12.39835823924519*eV};
+
+    std::vector<G4double> MylarReflection = {99.3226740868548, 99.3226740868548, 99.7628366612554, 99.7214862392674, 98.91393146613707, 98.91530448108364, 98.96965285731727, 98.76966534546983,
+            98.1497114120479, 98.72409290812726, 98.32154569778484, 98.03407282162186, 97.82027684556721, 98.53168216346992, 97.48482826997746, 96.10633382322926, 96.51396948976577,
+            96.65116783853793, 95.91151864322745, 95.30515359961677, 91.25574897695003, 81.90244998989932, 41.8931179140657, 24.101847317428096, 12.26957594631375, 12.06518399527252,
+            12.58223308670786, 12.888602883272128, 14.106365509586524, 14.817742868938694, 15.529120228290893, 14.721537496610026, 13.103799846600765, 12.245584179933772, 0.0, 0.0};
+
+    G4MaterialPropertiesTable *ReflectiveFoilMPT = new G4MaterialPropertiesTable();
+    ReflectiveFoilMPT->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
+    ReflectorOpticalSurface->SetMaterialPropertiesTable(ReflectiveFoilMPT);
+    
+    new G4LogicalSkinSurface("ShinyC406R0_Surface", fShinyC406R0_log, ReflectorOpticalSurface);
+    new G4LogicalSkinSurface("ShinyTop_Surface", fShinyTop_log, ReflectorOpticalSurface);
+    new G4LogicalSkinSurface("ShinyBottom_Surface", fShinyBottom_log, ReflectorOpticalSurface);
 }
 

@@ -44,7 +44,7 @@ class G4Interface {
         };
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun, 
+        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun,
                              double SingletTau, double TripletTau, double Rayleigh128,
                              double UVAbsLength, bool TimeCut, bool KillCherenkov, long RandomSeed);
         /// Initialize event. Most Geant4 global things are initialized the first time this is called.
@@ -57,9 +57,9 @@ class G4Interface {
 
         static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, PhotonSummarySeriesPtr photon_summary_series);
         static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source);
-        
+
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap() { return mcpeseries_result_ ; }
-    
+
     private:
         void Initialize();
 
@@ -77,10 +77,12 @@ class G4Interface {
         bool initialized_;
         bool runInitialized_;
         std::string visMacro_;
-        
+
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off
         bool LArSDStatus_; // turn fiducial LAr SD on/off
+
+        static const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> PhotonSummarytoCCMMCPEPhotonSource;
 
         SET_LOGGER("G4Interface");
 };

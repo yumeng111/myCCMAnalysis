@@ -40,12 +40,15 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogTPBCoatingCaps() { return fTPBCoatingCaps_log; }
 
     G4LogicalVolume* GetLogTPBFoil() { return fTPBFoil_log; }
-
     G4LogicalVolume* GetLogReflectorFoil() { return fReflectorFoil_log; }
+    G4LogicalVolume* GetShinyC406R0() { return fShinyC406R0_log; }
+    G4LogicalVolume* GetShinyTop() { return fShinyTop_log; }
+    G4LogicalVolume* GetShinyBottom() { return fShinyBottom_log; }
+
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:
-    void VisAttributes();
+    void VisAttributes(G4bool SourceRodIn);
     void SurfaceProperties();
     G4CCMDetectorConstruction* fConstructor = nullptr;
 
@@ -77,6 +80,10 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fSourceRod = nullptr;
     G4Tubs* fSourcePellet = nullptr;
 
+    G4Tubs* fShinyC406R0 = nullptr;
+    G4Tubs* fShinyTop = nullptr;
+    G4Tubs* fShinyBottom = nullptr;
+
     // Logical volumes
     G4LogicalVolume* fCryoVessel_log = nullptr;
     G4LogicalVolume* fVacuum_log = nullptr;
@@ -104,6 +111,10 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fPhotocathUncoated_log = nullptr;
     G4LogicalVolume* fSourceRod_log = nullptr;
     G4LogicalVolume* fSourcePellet_log = nullptr;
+    
+    G4LogicalVolume* fShinyC406R0_log = nullptr;
+    G4LogicalVolume* fShinyTop_log = nullptr;
+    G4LogicalVolume* fShinyBottom_log = nullptr;
 
     // Physical volumes (necessary for borders)
     G4VPhysicalVolume* fFiducialAr_phys = nullptr;
