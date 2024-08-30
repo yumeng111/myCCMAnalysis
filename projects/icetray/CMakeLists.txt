@@ -95,7 +95,6 @@ if(ZSTD_FOUND)
 endif(ZSTD_FOUND)
 
 i3_add_library(icetray
-  private/icetray/StackTrace.cxx
   private/icetray/I3Tray.cxx
   private/icetray/I3Frame.cxx
   private/icetray/I3FrameObject.cxx
