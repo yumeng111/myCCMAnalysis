@@ -16,7 +16,7 @@ if(GEANT4_FOUND)
         private/g4-larsim/g4classes/*.cxx
         visualization/*.cxx
         visualization/*.h
-        USE_TOOLS boost python clhep geant4 gsl cpptrace
+        USE_TOOLS boost python clhep geant4 gsl
         USE_PROJECTS serialization icetray dataclasses phys-services simclasses
     )
 
