@@ -8,7 +8,6 @@ set(ALL_TOOLS pthread python boost boostnumpy root
     cfitsio healpix hdf5 minuit2 clhep geant4 zlib
     opencl cuda gmp zmq
     multinest nlopt zstd fftw3 photospline
-    cpptrace
     ${I3_EXTRA_TOOLS}   # add the extra tools and dedupe
     )
 list(REMOVE_DUPLICATES ALL_TOOLS)
