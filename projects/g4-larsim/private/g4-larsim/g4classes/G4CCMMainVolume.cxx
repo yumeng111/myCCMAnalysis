@@ -876,7 +876,8 @@ void G4CCMMainVolume::SurfaceProperties()
             12.58223308670786, 12.888602883272128, 14.106365509586524, 14.817742868938694, 15.529120228290893, 14.721537496610026, 13.103799846600765, 12.245584179933772, 0.0, 0.0};
 
     G4MaterialPropertiesTable *ReflectiveFoilMPT = new G4MaterialPropertiesTable();
-    ReflectiveFoilMPT->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
+    //ReflectiveFoilMPT->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
+    ReflectiveFoilMPT->AddProperty("REFLECTIVITY", {1.0*eV, 14.0*eV}, {0.0, 0.0});
     ReflectorOpticalSurface->SetMaterialPropertiesTable(ReflectiveFoilMPT);
     
     new G4LogicalSkinSurface("ShinyC406R0_Surface", fShinyC406R0_log, ReflectorOpticalSurface);
