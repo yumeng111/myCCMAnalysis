@@ -452,9 +452,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // let's build the shiny guy who is at C406R0
     // we are placing it in our loop over PMT position IDs!
-    G4double shiny_radius = 205.0 / 2.0 * mm; // making the assumption that it is the same radius as the bridle 
+    G4double shiny_radius = 205.0 / 2.0 * mm; // making the assumption that it is the same radius as the bridle
     G4double shiny_half_height = 0.125 * mm;
-    fShinyC406R0 = new G4Tubs("ShinyC406R0", 0*cm, shiny_radius, shiny_half_height, 0*deg, 360*deg); 
+    fShinyC406R0 = new G4Tubs("ShinyC406R0", 0*cm, shiny_radius, shiny_half_height, 0*deg, 360*deg);
     fShinyC406R0_log= new G4LogicalVolume(fShinyC406R0, G4Material::GetMaterial("Alum"), "ShinyC406R0");
 
     // speaking of shiny, let's build our shiny reflective circles that go on top and bottom of detector
@@ -616,7 +616,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     if (SourceRodIn){
         // now let's make our source rod
-        // i'm just doing the bayonet for now since it is >1m tall, it should only matter for sodium runs above -50cm 
+        // i'm just doing the bayonet for now since it is >1m tall, it should only matter for sodium runs above -50cm
         G4double rod_inner_radius = 0.0*cm;
         G4double rod_outer_radius = 6.31 * mm;
         G4double rod_height = fiducial_lar_half_height - SourceRodLocation - (shiny_half_height * 2.0);
@@ -698,7 +698,7 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     //fPMTCoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPMTUncoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPMTUncoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    
+
     auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     tpb_coating_va->SetForceSolid(true);
     fTPBCoatingWall_log->SetVisAttributes(tpb_coating_va);
@@ -780,7 +780,7 @@ void G4CCMMainVolume::SurfaceProperties()
                                                             uvRf, uvRf, uvRf, uvRf};
     reflfoilMPT->AddProperty("REFLECTIVITY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceReflect);
     PTFEFoilOpticalSurface->SetMaterialPropertiesTable(reflfoilMPT);
-    
+
     // now add logical skin surface
     new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, PTFEFoilOpticalSurface);
 
@@ -879,7 +879,7 @@ void G4CCMMainVolume::SurfaceProperties()
     //ReflectiveFoilMPT->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
     ReflectiveFoilMPT->AddProperty("REFLECTIVITY", {1.0*eV, 14.0*eV}, {0.0, 0.0});
     ReflectorOpticalSurface->SetMaterialPropertiesTable(ReflectiveFoilMPT);
-    
+
     new G4LogicalSkinSurface("ShinyC406R0_Surface", fShinyC406R0_log, ReflectorOpticalSurface);
     new G4LogicalSkinSurface("ShinyTop_Surface", fShinyTop_log, ReflectorOpticalSurface);
     new G4LogicalSkinSurface("ShinyBottom_Surface", fShinyBottom_log, ReflectorOpticalSurface);
