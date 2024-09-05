@@ -56,7 +56,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         void Initialize(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
-        
+
         // return updated MCTree
         PhotonSummarySeriesPtr GetPhotonSummarySeries(){ return photon_summary; }
         boost::shared_ptr<I3Map<int, size_t>> GetPhotonSummaryMap() { return optical_photon_map; }
@@ -66,7 +66,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         bool GetTimeCutStatus() { return TimeCut_; }
         void SetTimeCutStatus(bool TimeCut) { TimeCut_ = TimeCut; }
-        
+
         bool GetKillCherenkovStatus() { return KillCherenkov_; }
         void SetKillCherenkovStatus(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
 
@@ -80,30 +80,30 @@ class G4CCMScintSD : public G4VSensitiveDetector {
                 I3MCTreeUtils::AddPrimary(*mcTree, primary_);
             }
         }
-        
+
         void ClearResults() {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
             optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
         }
 
-        void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance, 
+        void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
                                      double calculated_uv_distance, double calculated_vis_distance,
                                      double g4_time, double calculated_time, std::string creationProcessName);
         void UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
                                  double calculated_uv_distance, double calculated_vis_distance,
                                  double g4_time, double calculated_time, std::string creationProcessName,
                                  std::map<int, size_t>::iterator it, bool new_process);
-        
+
         double InterpolateRindex(double wavelength);
 
     private:
         G4CCMScintHitsCollection* fScintCollection = nullptr;
         G4int fHitsCID = -1;
-        
+
         // controls to turn SD on/off (set by our response service)
         // we just need to know if PMTSD is on --> if so, we do NOT kill tracks, but if it is off, we DO kill tracks after registering one hit
-        bool PMTSDStatus_; 
+        bool PMTSDStatus_;
 
         bool TimeCut_; // true kills tracks after 200 nsec
         bool KillCherenkov_; // true kills cerenkov light
@@ -117,11 +117,11 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // and vector containing photon summaries (idx in vector corresponds to track id)
         boost::shared_ptr<I3Map<int, size_t>> optical_photon_map = boost::make_shared<I3Map<int, size_t>>(); // map between track id and idx in vector
         PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
-        
+
         // define a few things for converting energy to wavelength
         const G4double hbarc = 197.326; //eV * nm
         const G4double hc =  hbarc * (2 * 3.14159265358979323846); // eV * nm
-        
+
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
         static const std::unordered_map<std::string, PhotonSummary::PhotonSource> processNameToPhotonSource;
 
@@ -132,10 +132,10 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         std::vector<double> rindex_wavelength = {99.99909859236817, 109.99897296368657, 119.99889895379226, 123.99888385471958,
                                                  127.99884206872682, 133.99878562916103, 139.99873802931543, 159.99855258590853,
                                                  179.99837456270487, 199.99819718473634, 299.9973199734223, 399.99632984597423,
-                                                 499.9954929618409, 599.9944947689613, 699.9936901465773}; // nm 
+                                                 499.9954929618409, 599.9944947689613, 699.9936901465773}; // nm
 
         std::vector<double> rindex = {1.7898800000000006, 1.6199600000000003, 1.4500400000000002, 1.40284, 1.358,
-                                      1.335167, 1.315166, 1.28071, 1.263128, 1.25475, 1.24, 1.23, 1.225, 1.222, 1.22}; 
+                                      1.335167, 1.315166, 1.28071, 1.263128, 1.25475, 1.24, 1.23, 1.225, 1.222, 1.22};
 };
 
 #endif

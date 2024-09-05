@@ -195,7 +195,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if (TimeCut_) {
         // check time ... doesnt matter what type of particle it is
         G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
-        if (time > 200.0){
+        if (time > 100.0){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;
         }

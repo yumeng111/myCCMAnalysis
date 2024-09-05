@@ -468,7 +468,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
-    // Defines properties of the PTFE reflectors.
+    // Defines properties of the reflectors.
     std::vector<G4double> TefEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV,
                                        2.138*eV, 2.25*eV,  2.38*eV,  2.48*eV,
                                        2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV,
@@ -476,13 +476,16 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                        4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                        7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
-    std::vector<G4double> TefRIndex = {10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
-                                       10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
-                                        10., 10., 10., 10., 10.};
+    std::vector<G4double> TefRIndex = {1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64,
+                                       1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64,
+                                        1.64, 1.64, 1.64, 1.64, 1.64};
 
+    std::vector<G4double> ptfe_energy = {7.0*eV, 7.07*eV, 7.14*eV};
+    std::vector<G4double> ptfe_AbsLength = {1e-12*mm, 1e-12*mm, 1e-12*mm};
 
     G4MaterialPropertiesTable* fPTFE_mt = new G4MaterialPropertiesTable();
     fPTFE_mt->AddProperty("RINDEX", TefEnergy, TefRIndex);
+    fPTFE_mt->AddProperty("ABSLENGTH", ptfe_energy, ptfe_AbsLength);
     fPTFE->SetMaterialPropertiesTable(fPTFE_mt);
 
 
