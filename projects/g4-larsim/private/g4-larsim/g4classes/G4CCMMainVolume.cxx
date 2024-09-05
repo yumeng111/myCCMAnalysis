@@ -805,8 +805,26 @@ void G4CCMMainVolume::SurfaceProperties()
     //reflfoilMPT->AddProperty("REFLECTIVITY", PTFEFoilOpticalSurfaceEnergy, PTFEFoilOpticalSurfaceReflect);
     //PTFEFoilOpticalSurface->SetMaterialPropertiesTable(reflfoilMPT);
 
-    // now add logical skin surface
-    new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, ReflectorOpticalSurface);
+    G4OpticalSurface *PTFEOpticalSurface = new G4OpticalSurface("PTFEOpticalSurface");
+
+    PTFEOpticalSurface->SetModel(unified);
+    PTFEOpticalSurface->SetType(dielectric_dielectric);
+    PTFEOpticalSurface->SetFinish(ground);
+    PTFEOpticalSurface->SetSigmaAlpha(0.1);
+
+    std::vector<G4double> pp = {2.038*eV, 4.144*eV};
+    std::vector<G4double> specularlobe = {0.3, 0.3};
+    std::vector<G4double> specularspike = {0.1, 0.1};
+    std::vector<G4double> backscatter = {0.1, 0.1};
+    
+    G4MaterialPropertiesTable* PTFE_mpt = new G4MaterialPropertiesTable();
+    PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
+    PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
+    PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
+    PTFE_mpt->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
+    PTFEOpticalSurface->SetMaterialPropertiesTable(PTFE_mpt);
+
+    new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, PTFEOpticalSurface);
 
     // and surface properties for the frill + bridle
     // Definition of MPT for Plastic frills

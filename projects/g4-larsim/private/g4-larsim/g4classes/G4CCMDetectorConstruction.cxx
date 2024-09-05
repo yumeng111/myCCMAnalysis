@@ -423,7 +423,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                 0.006429042527016761, 0.006351121504550237, 0.005727753324816705, 0.00549399025741633, 0.00549399025741633, 0.00549399025741633, 0.00549399025741633, 0.005722558589985408,
                 0.0055719112798828544, 0.00549399025741633, 0.00549399025741633, 0.0058835953697500215, 0.006506963549483285, 0.007208252751683876, 0.007208252751683876,
                 0.007208252751683876, 0.006896568661816977, 0.00674072661688366, 0.006351121504550237, 0.008355856254790841};
-    
+
     // based on best fit from Fig 13 in https://arxiv.org/pdf/1709.05002, using 0.605 as mean number of photons
     G4double wls_mean_num_photons = 0.605;
 
@@ -449,7 +449,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // I dont think this makes a difference, but adding index of refraction just in case
     std::vector<G4double> tpb_rin_energy = {1.0*eV, 14.0*eV};
-    std::vector<G4double> tpb_rin = {1.7, 1.7};
+    std::vector<G4double> tpb_rin = {1.62, 1.62};
 
     G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
     //fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_PTFE_Emission_Energy, TPB_PTFE_Emission); -- NOTE : not using this spectrum! TPB is on mylar backing
