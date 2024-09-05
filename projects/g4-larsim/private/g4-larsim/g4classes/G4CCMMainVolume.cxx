@@ -813,9 +813,9 @@ void G4CCMMainVolume::SurfaceProperties()
     PTFEOpticalSurface->SetSigmaAlpha(0.1);
 
     std::vector<G4double> pp = {2.038*eV, 4.144*eV};
-    std::vector<G4double> specularlobe = {0.3, 0.3};
-    std::vector<G4double> specularspike = {0.1, 0.1};
-    std::vector<G4double> backscatter = {0.1, 0.1};
+    std::vector<G4double> specularlobe = {0.1, 0.1};
+    std::vector<G4double> specularspike = {0.05, 0.05};
+    std::vector<G4double> backscatter = {0.05, 0.05};
     
     G4MaterialPropertiesTable* PTFE_mpt = new G4MaterialPropertiesTable();
     PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
