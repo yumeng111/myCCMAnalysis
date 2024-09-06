@@ -39,9 +39,6 @@ private:
 
     CCMDetectorResponsePtr response_;
 
-    bool PMTSDStatus_; // turn PMT SD on/off
-    bool LArSDStatus_; // turn fiducial LAr SD on/off
-
     SET_LOGGER("CCMSimulator");
 };
 

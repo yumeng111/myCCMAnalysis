@@ -59,10 +59,6 @@ void CCMSimulator::Configure() {
 
     // initialize the response services
     response_->Initialize();
-
-    // set our controls over SD
-    PMTSDStatus_ = response_->GetPMTSDStatus();
-    LArSDStatus_ = response_->GetLArSDStatus();
 }
 
 void CCMSimulator::Simulation(I3FramePtr frame) {
