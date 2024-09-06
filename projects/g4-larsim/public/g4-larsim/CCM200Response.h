@@ -64,9 +64,6 @@ public:
     virtual void EndEvent() override;
     virtual void TerminateRun() override;
     virtual void DestroyInterface() override;
-    virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }
-    virtual bool GetLArSDStatus() override { return LArSDStatus_; }
-
 };
 
 #endif // CCM200RESPONSE_H
