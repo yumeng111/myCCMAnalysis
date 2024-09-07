@@ -69,6 +69,25 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
         fHitsCID = G4SDManager::GetSDMpointer()->GetCollectionID(fScintCollection);
     }
     hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
+
+    event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+
+    primary_ = readout->GetPrimary(event_id);
+    mcTree = readout->GetMCTree(event_id);
+
+    if (mcTree == nullptr) {
+        mcTree = I3MCTreePtr(new I3MCTree());
+    }
+
+    DaughterParticleMap[1] = primary_.GetID();
+    if((not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) and tree != nullptr) {
+        I3MCTreeUtils::AddPrimary(*mcTree, primary_);
+    }
+}
+
+void G4CCMScintSD::EndOfEvent(G4HCofThisEvent*) {
+    readout->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, optical_photon_map, photon_summary);
+    Reset();
 }
 
 void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,

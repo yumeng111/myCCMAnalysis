@@ -85,6 +85,13 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
         fHitCID = G4SDManager::GetSDMpointer()->GetCollectionID(fPMTHitCollection);
     }
     hitsCE->AddHitsCollection(fHitCID, fPMTHitCollection);
+
+    event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+}
+
+void G4CCMPMTSD::EndOfEvent(G4HCofThisEvent*) {
+    readout->AddEntry(G4Threading::G4GetThreadId(), event_id, CCMMCPEMap);
+    Reset();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
