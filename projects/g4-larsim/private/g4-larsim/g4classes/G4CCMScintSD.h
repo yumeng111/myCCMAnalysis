@@ -35,6 +35,7 @@
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
+#include "g4-larsim/g4classes/G4CCMReadout.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "dataclasses/I3Map.h"
 #include "simclasses/PhotonSummary.h"
@@ -54,7 +55,10 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         G4CCMScintSD(G4String name);
         ~G4CCMScintSD() override = default;
 
+        void SetReadout(G4CCMReadout * readout) { readout = readout; }
+
         void Initialize(G4HCofThisEvent*) override;
+        void EndOfEvent(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
 
         // return updated MCTree
@@ -73,7 +77,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         void SetPrimaryParticle(I3Particle primary, I3MCTreePtr tree) {
             mcTree = tree;
             // now let's set the primary particle
-            ClearResults();
+            Reset();
             primary_ = primary;
             DaughterParticleMap[1] = primary_.GetID();
             if((not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) and tree != nullptr) {
@@ -81,10 +85,11 @@ class G4CCMScintSD : public G4VSensitiveDetector {
             }
         }
 
-        void ClearResults() {
+        void Reset() {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
             optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
+            mcTree = nullptr;
         }
 
         void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
@@ -98,6 +103,8 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         double InterpolateRindex(double wavelength);
 
     private:
+        int event_id = -1;
+        G4CCMReadout * readout = nullptr;
         G4CCMScintHitsCollection* fScintCollection = nullptr;
         G4int fHitsCID = -1;
 
