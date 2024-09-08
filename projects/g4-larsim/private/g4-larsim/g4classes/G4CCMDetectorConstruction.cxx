@@ -545,7 +545,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 
 
 // construct our pmts SD
-void G4CCMDetectorConstruction::ConstructSDandField(){
+void G4CCMDetectorConstruction::ConstructSDandField() {
     if(!fMainVolume)
         return;
 
@@ -560,6 +560,7 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
 
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+            pmt_SD->SetReadout(readout_);
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fPMT_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fPMT_SD.Get());
@@ -577,6 +578,7 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             scint_SD->SetTimeCutStatus(TimeCut_);
             scint_SD->SetKillCherenkovStatus(KillCherenkov_);
+            scint_DS->SetReadout(readout_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());

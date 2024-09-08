@@ -74,8 +74,8 @@ public:
     I3Particle GetPrimary(size_t i) const { return primaries.at(i); }
     void SetPrimary(size_t i, I3Particle primary) { primaries.at(i) = primary; }
 
-    I3MCTreePtr GetEdepTree(size_t i) const { return edep_trees.at(i); }
-    void SetEdepTree(size_t i, I3MCTreePtr edep_tree) { edep_trees.at(i) = edep_tree; }
+    I3MCTreePtr GetMCTree(size_t i) const { return edep_trees.at(i); }
+    void SetMCTree(size_t i, I3MCTreePtr edep_tree) { edep_trees.at(i) = edep_tree; }
 
 private:
     Readout readout;

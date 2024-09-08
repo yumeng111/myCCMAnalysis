@@ -62,7 +62,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         G4CCMPMTSD(G4String name);
         ~G4CCMPMTSD() override;
 
-        void SetReadout(G4CCMReadout * readout) { readout = readout; }
+        void SetReadout(G4CCMReadout * readout) { readout_ = readout; }
 
         void Initialize(G4HCofThisEvent*) override;
         void EndOfEvent(G4HCofThisEvent*) override;
@@ -99,7 +99,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
 
     private:
         int event_id = -1;
-        G4CCMReadout * readout = nullptr;
+        G4CCMReadout * readout_ = nullptr;
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
 
         G4DataVector* fPMTPositionsX = nullptr;

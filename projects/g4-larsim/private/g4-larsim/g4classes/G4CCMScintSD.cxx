@@ -72,8 +72,8 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
 
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
 
-    primary_ = readout->GetPrimary(event_id);
-    mcTree = readout->GetMCTree(event_id);
+    primary_ = readout_->GetPrimary(event_id);
+    mcTree = readout_->GetMCTree(event_id);
 
     if (mcTree == nullptr) {
         mcTree = I3MCTreePtr(new I3MCTree());
@@ -86,7 +86,7 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
 }
 
 void G4CCMScintSD::EndOfEvent(G4HCofThisEvent*) {
-    readout->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, optical_photon_map, photon_summary);
+    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, optical_photon_map, photon_summary);
     Reset();
 }
 
