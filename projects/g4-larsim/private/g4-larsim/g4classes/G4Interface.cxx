@@ -65,8 +65,8 @@ G4Interface::~G4Interface() {
 
 
 void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun, 
-                                  double SingletTau, double TripletTau, double Rayleigh128,
-                                  double UVAbsLength, bool TimeCut, bool KillCherenkov, long RandomSeed) {
+                                  double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength, double WLSNPhotonsFoil, double WLSNPhotonsPMT,
+                                  bool TimeCut, bool KillCherenkov, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -84,7 +84,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
 
     if(!detector_) {
         detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns,
-                                                  UVAbsLength / I3Units::cm * CLHEP::cm, Rayleigh128 / I3Units::cm * CLHEP::cm);
+                                                  UVAbsLength / I3Units::cm * CLHEP::cm, WLSNPhotonsFoil, WLSNPhotonsPMT, Rayleigh128 / I3Units::cm * CLHEP::cm);
         // set SD status
         detector_->SetPMTSDStatus(PMTSDStatus_);
         detector_->SetLArSDStatus(LArSDStatus_);

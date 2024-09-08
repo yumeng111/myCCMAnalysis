@@ -35,10 +35,12 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double Rayleigh128) {
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength_ = UVAbsLength;
+    WLSNPhotonsFoil_ = WLSNPhotonsFoil;
+    WLSNPhotonsPMT_ = WLSNPhotonsPMT;
     Rayleigh128_ = Rayleigh128;
     SetDefaults();
     DefineMaterials();
@@ -445,7 +447,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                 255.85822744954626*nm, 199.85823080844185*nm, 153.5032805631189*nm, 108.02360627084354*nm, 88.9206377946115*nm, 63.289058767089*nm, 53.50121319296904*nm, 37.222095886705205*nm,
                 40.38391252461217*nm, 31.802265335516566*nm, 29.91384462882476*nm, 29.324649474231183*nm, 28.82888338356318*nm, 29.071521590291532*nm, 30.431746756020132*nm, 37.82386620617285*nm,
                 38.80279864198152*nm, 41.70021143667599*nm, 58.14673257532595*nm, 49.85890980317873*nm, 61.95847711489636*nm, 73.72675461199395*nm, 90.58455101512752*nm, 101.05172421787127*nm,
-                101.76697185101447*nm, 106.40677312247695*nm, 107.98073112246271*nm, 103.83329986337642*nm, 425.0*nm};
+                101.76697185101447*nm, 106.40677312247695*nm, 107.98073112246271*nm, 103.83329986337642*nm, 100.0*nm};
 
     // I dont think this makes a difference, but adding index of refraction just in case
     std::vector<G4double> tpb_rin_energy = {1.0*eV, 14.0*eV};
@@ -455,7 +457,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     //fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_PTFE_Emission_Energy, TPB_PTFE_Emission); -- NOTE : not using this spectrum! TPB is on mylar backing
     fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", wls_mean_num_photons * 0.8);
+    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
+    std::cout << "for the TPB foils, have " << WLSNPhotonsFoil_ << " mean number of photons per wls" << std::endl;
     fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoil_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
@@ -463,7 +466,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
     fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", wls_mean_num_photons);
+    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
+    std::cout << "for the TPB on PMTs, have " << WLSNPhotonsPMT_ << " mean number of photons per wls" << std::endl;
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);

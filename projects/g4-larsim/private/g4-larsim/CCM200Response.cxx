@@ -27,7 +27,7 @@
 CCM200Response::CCM200Response(const I3Context& context) :
     CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
-    Rayleigh128_(95.0 * I3Units::cm), UVAbsLength_(55.0 * I3Units::cm), TimeCut_(true), KillCherenkov_(false), RandomSeed_(0){
+    Rayleigh128_(95.0 * I3Units::cm), UVAbsLength_(55.0 * I3Units::cm), WLSNPhotonsFoil_(0.484), WLSNPhotonsPMT_(0.605), TimeCut_(true), KillCherenkov_(false), RandomSeed_(0){
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
     AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", SourceRodIn_);
@@ -38,6 +38,8 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
     AddParameter("UVAbsLength", "set UV absorption length at 128nm", UVAbsLength_);
+    AddParameter("WLSNPhotonsFoil", "mean number of photons produced per WLS for TPB foils", WLSNPhotonsFoil_);
+    AddParameter("WLSNPhotonsPMT", "mean number of photons produced per WLS for TPB on PMTs", WLSNPhotonsPMT_);
     AddParameter("TimeCut", "only track events up to 200nsec", TimeCut_);
     AddParameter("KillCherenkov", "turn cherenkov light on/off", KillCherenkov_);
     AddParameter("RandomSeed", "seed for geant4 random generator", RandomSeed_);
@@ -54,6 +56,8 @@ void CCM200Response::Configure() {
     GetParameter("TripletTimeConstant", TripletTau_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
     GetParameter("UVAbsLength", UVAbsLength_);
+    GetParameter("WLSNPhotonsFoil", WLSNPhotonsFoil_);
+    GetParameter("WLSNPhotonsPMT", WLSNPhotonsPMT_);
     GetParameter("TimeCut", TimeCut_);
     GetParameter("KillCherenkov", KillCherenkov_);
     GetParameter("RandomSeed", RandomSeed_);
@@ -73,8 +77,8 @@ void CCM200Response::Initialize() {
 
     // let's let's construct the detector
     g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, 
-                                  SingletTau_, TripletTau_, Rayleigh128_,
-                                  UVAbsLength_, TimeCut_, KillCherenkov_, RandomSeed_);
+                                  SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsFoil_, WLSNPhotonsPMT_,
+                                  TimeCut_, KillCherenkov_, RandomSeed_);
     g4Interface_->InitializeRun();
 
 }
