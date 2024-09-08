@@ -1,7 +1,7 @@
 #include "G4CCMActionInitialization.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 #include "G4CCMEventAction.h"
-#include "G4CCMPrimaryGeneratorAction.h"
+#include "G4CCMVisPrimaryGeneratorAction.h"
 #include "G4CCMRunAction.h"
 #include "G4CCMStackingAction.h"
 #include "G4CCMSteppingAction.h"
@@ -25,7 +25,7 @@ void G4CCMActionInitialization::BuildForMaster() const
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void G4CCMActionInitialization::Build() const {
-    G4CCMPrimaryGeneratorAction* primary = new G4CCMPrimaryGeneratorAction();
+    G4CCMVisPrimaryGeneratorAction* primary = new G4CCMVisPrimaryGeneratorAction();
     SetUserAction(primary);
 
     G4CCMRunAction* runAction = new G4CCMRunAction(primary);

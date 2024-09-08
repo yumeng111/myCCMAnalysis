@@ -24,61 +24,35 @@
 // ********************************************************************
 //
 //
-/// \file optical/LXe/src/LXeRunAction.cc
-/// \brief Implementation of the LXeRunAction class
+/// \file optical/LXe/include/LXePrimaryGeneratorAction.hh
+/// \brief Definition of the LXePrimaryGeneratorAction class
 //
 //
-#include "G4CCMRunAction.h"
-#include "G4CCMRun.h"
-#include "G4ParticleGun.hh"
+#ifndef G4CCMVisPrimaryGeneratorAction_h
+#define G4CCMVisPrimaryGeneratorAction_h 1
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+#include "G4VUserPrimaryGeneratorAction.hh"
+#include "G4GeneralParticleSource.hh"
 
-G4CCMRunAction::G4CCMRunAction(G4CCMVisPrimaryGeneratorAction* kin) : fPrimary(kin) {
-    //fHistoManager = new HistoManager();
-}
+class G4ParticleGun;
+class G4Event;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-//G4CCMRunAction::~G4CCMRunAction() { delete fHistoManager; }
-G4CCMRunAction::~G4CCMRunAction() { }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4Run* G4CCMRunAction::GenerateRun()
+class G4CCMVisPrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 {
-  fRun = new G4CCMRun();
-  return fRun;
-}
+ public:
+  G4CCMVisPrimaryGeneratorAction();
+  ~G4CCMVisPrimaryGeneratorAction() override;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  void GeneratePrimaries(G4Event* anEvent) override;
 
-void G4CCMRunAction::BeginOfRunAction(const G4Run*) {
-    // keep run condition
-    if (fPrimary) { 
-        G4ParticleDefinition* particle = fPrimary->GetParticleGun()->GetParticleDefinition();
-        G4double energy = fPrimary->GetParticleGun()->GetParticleEnergy();
-        fRun->SetPrimary(particle, energy);
-    }    
-    //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    //if(analysisManager->IsActive())
-    //{
-    //  analysisManager->OpenFile();
-    //}
-}
+  // method to access particle gps
+  //const G4GeneralParticleSource *GetGeneralParticleSource() const { return fGeneralParticleSource; }
+  G4ParticleGun* GetParticleGun() { return fParticleGun;} ;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+ private:
+  //G4GeneralParticleSource *fGeneralParticleSource; // pointer a to G4 GeneralParticleSource class
+  G4ParticleGun* fParticleGun = nullptr;
+};
 
-void G4CCMRunAction::EndOfRunAction(const G4Run*)
-{
-  if(isMaster)
-    fRun->EndOfRun();
-
-  // save histograms
-  //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-  //if(analysisManager->IsActive())
-  //{
-  //  analysisManager->Write();
-  //  analysisManager->CloseFile();
-  //}
-}
+#endif
 

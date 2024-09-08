@@ -33,7 +33,7 @@
 #include "G4CCMRun.h"
 
 #include "G4SystemOfUnits.hh"
-#include "G4CCMPrimaryGeneratorAction.h"
+#include "G4CCMVisPrimaryGeneratorAction.h"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 void G4CCMRun::SetPrimary(G4ParticleDefinition* particle, G4double energy)

@@ -24,61 +24,63 @@
 // ********************************************************************
 //
 //
-/// \file optical/LXe/src/LXeRunAction.cc
-/// \brief Implementation of the LXeRunAction class
+/// \file optical/LXe/src/LXePrimaryGeneratorAction.cc
+/// \brief Implementation of the LXePrimaryGeneratorAction class
 //
 //
-#include "G4CCMRunAction.h"
-#include "G4CCMRun.h"
+#include "G4CCMVisPrimaryGeneratorAction.h"
+
+#include "globals.hh"
+#include "G4Event.hh"
+#include "G4ParticleDefinition.hh"
 #include "G4ParticleGun.hh"
+#include "G4ParticleTable.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4Geantino.hh"
+#include "G4IonTable.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMRunAction::G4CCMRunAction(G4CCMVisPrimaryGeneratorAction* kin) : fPrimary(kin) {
-    //fHistoManager = new HistoManager();
+G4CCMVisPrimaryGeneratorAction::G4CCMVisPrimaryGeneratorAction(){
+    G4int n_particle = 1;
+    fParticleGun = new G4ParticleGun(n_particle);
+
+    G4ParticleTable *particleTable = G4ParticleTable::GetParticleTable();
+    G4ParticleDefinition *particle = particleTable->FindParticle("geantino");
+
+    G4double inset = 0.25 * cm;
+    G4ThreeVector pos(0.,0.,0. + inset);
+    G4ThreeVector mom(0.,0.,-1.);
+
+    fParticleGun->SetParticlePosition(pos);
+    fParticleGun->SetParticleMomentumDirection(mom);
+    fParticleGun->SetParticleMomentum(0.*GeV);
+    fParticleGun->SetParticleDefinition(particle);
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-//G4CCMRunAction::~G4CCMRunAction() { delete fHistoManager; }
-G4CCMRunAction::~G4CCMRunAction() { }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4Run* G4CCMRunAction::GenerateRun()
-{
-  fRun = new G4CCMRun();
-  return fRun;
+G4CCMVisPrimaryGeneratorAction::~G4CCMVisPrimaryGeneratorAction() { 
+    delete fParticleGun; 
+    //delete fGeneralParticleSource;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMRunAction::BeginOfRunAction(const G4Run*) {
-    // keep run condition
-    if (fPrimary) { 
-        G4ParticleDefinition* particle = fPrimary->GetParticleGun()->GetParticleDefinition();
-        G4double energy = fPrimary->GetParticleGun()->GetParticleEnergy();
-        fRun->SetPrimary(particle, energy);
+void G4CCMVisPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
+    if (fParticleGun->GetParticleDefinition() == G4Geantino::Geantino()) {  
+        G4int Z = 11, A = 22;
+        G4double ionCharge   = 0.*eplus;
+        G4double excitEnergy = 0.*keV;
+
+        G4ParticleDefinition* ion
+           = G4IonTable::GetIonTable()->GetIon(Z,A,excitEnergy);
+        fParticleGun->SetParticleDefinition(ion);
+        fParticleGun->SetParticleCharge(ionCharge);
     }    
-    //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-    //if(analysisManager->IsActive())
-    //{
-    //  analysisManager->OpenFile();
-    //}
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void G4CCMRunAction::EndOfRunAction(const G4Run*)
-{
-  if(isMaster)
-    fRun->EndOfRun();
-
-  // save histograms
-  //G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-  //if(analysisManager->IsActive())
-  //{
-  //  analysisManager->Write();
-  //  analysisManager->CloseFile();
-  //}
+    //create vertex
+    //   
+    fParticleGun->GeneratePrimaryVertex(anEvent);
 }
 
