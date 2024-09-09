@@ -74,17 +74,6 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool GetKillCherenkovStatus() { return KillCherenkov_; }
         void SetKillCherenkovStatus(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
 
-        void SetPrimaryParticle(I3Particle primary, I3MCTreePtr tree) {
-            mcTree = tree;
-            // now let's set the primary particle
-            Reset();
-            primary_ = primary;
-            DaughterParticleMap[1] = primary_.GetID();
-            if((not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) and tree != nullptr) {
-                I3MCTreeUtils::AddPrimary(*mcTree, primary_);
-            }
-        }
-
         void Reset() {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
