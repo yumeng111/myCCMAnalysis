@@ -11,8 +11,12 @@
 #include "icetray/I3Bool.h"
 #include "icetray/I3Frame.h"
 #include "icetray/I3Context.h"
+#include "icetray/I3Module.h"
+#include "icetray/I3Logging.h"
 
 #include <stdexcept>
+
+#define i3_log(format, ...) log_trace("%s: " format, this->GetName().c_str(), ##__VA_ARGS__)
 
 I3_MODULE(CCMSimulator);
 
@@ -110,7 +114,7 @@ void CCMSimulator::Process() {
                 DAQMultiThreaded();
                 ProcessNormally(frame);
             }
-        else {
+        } else {
             frame_queue_.push_back(frame);
         }
     }
@@ -166,7 +170,6 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
     I3MCTreePtr edep_tree = boost::make_shared<I3MCTree>(*injection_tree);
     CCMMCPESeriesMapPtr mcpeseries_map = boost::make_shared<CCMMCPESeriesMap>();
 
-
     log_debug("Simulating CCM");
     // Iterate over all particles in the MCTree
     typename I3MCTree::fast_const_iterator tree_iter(*injection_tree), tree_end=injection_tree->cend_fast();
@@ -187,7 +190,7 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-void CCMSimulator::DAQMultiThreaded(I3FramePtr frame) {
+void CCMSimulator::DAQMultiThreaded() {
     // Pop everything until the first DAQ frame, processing / passing other frame types as appropriate
     while(frame_queue_.size() > 0 && frame_queue_.front()->GetStop() != I3Frame::DAQ) {
         ProcessNormally(frame_queue_.front());
@@ -246,13 +249,22 @@ void CCMSimulator::DAQMultiThreaded(I3FramePtr frame) {
     // Now need to merge everything into individual data structures for each event
     size_t particle_idx = 0;
     for(size_t i=0; i<daq_frames.size(); ++i) {
-        CCMMCPESeriesMapPtr> mcpeseries_map = mcpeseries_maps.at(particle_idx);
-        for(size_t j=1; i<particles_per_event.at(i); ++j) {
+        I3MCTreePtr edep_tree = edep_trees.at(particle_idx);
+        CCMMCPESeriesMapPtr mcpeseries_map = mcpeseries_maps.at(particle_idx);
 
-            mcpeseries_map->insert(mcpeseries_map->end(), mcpeseries_maps.at(particle_idx+i)->begin(), mcpeseries_maps.at(particle_idx+i)->end());
+        final_edep_trees.push_back(edep_tree);
+        final_mcpeseries_maps.push_back(mcpeseries_map);
+        for(size_t j=1; i<particles_per_event.at(i); ++j) {
+            MergeEDepTrees(edep_tree, edep_trees.at(particle_idx+j), particles.at(particle_idx+j));
+            MergeMCPESeries(mcpeseries_map, mcpeseries_maps.at(particle_idx+j));
         }
 
-        ++particle_idx;
+        // sort mcpeseries_map by time
+        for (CCMMCPESeriesMap::iterator it = mcpeseries_map->begin(); it != mcpeseries_map->end(); ++it) {
+            std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.g4_time < b.g4_time; });
+        }
+
+        particle_idx += particles_per_event.at(i);
     }
 
     // Put it all back into the DAQ frames
@@ -280,9 +292,56 @@ void CCMSimulator::DAQMultiThreaded(I3FramePtr frame) {
 }
 
 void CCMSimulator::Finish() {
-    // terminate geant4
-    response_->TerminateRun();
     // destruct g4 interface
     response_->DestroyInterface();
 }
 
+void CCMSimulator::MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source) {
+    // Iterate over PMTs in source map
+    for (CCMMCPESeriesMap::iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
+        // Find the corresponding PMT in the destination map
+        CCMMCPESeriesMap::iterator it_dest = mcpeseries_dest->find(it->first);
+
+        // If the PMT is not in the destination, then insert an empty vector
+        if(it_dest == mcpeseries_dest->end()) {
+            mcpeseries_dest->insert(std::make_pair(it->first, CCMMCPESeries()));
+            // Update the iterator so it points to our new entry
+            it_dest = mcpeseries_dest->find(it->first);
+        }
+
+        // Reference to the destination
+        CCMMCPESeries & dest_series = it_dest->second;
+        dest_series.insert(dest_series.end(), it->second.begin(), it->second.end());
+    }
+}
+
+void CCMSimulator::MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary) {
+   I3Particle * source_particle = I3MCTreeUtils::GetParticlePtr(source, primary.GetID());
+   I3Particle * dest_particle = I3MCTreeUtils::GetParticlePtr(dest, primary.GetID());
+
+   if(source_particle == NULL) {
+       log_fatal("Source particle not found in source tree");
+   }
+   if(dest_particle == NULL) {
+       log_fatal("Source particle not found in destination tree");
+   }
+
+   std::vector<I3Particle *> daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_particle->GetID());
+   std::deque<std::tuple<I3Particle *, I3Particle *>> source_children(daughters.size());
+   for(size_t i=0; i<daughters.size(); ++i) {
+       source_children[i] = std::make_tuple(source_particle, daughters.at(i));
+   }
+
+   while(source_children.size() > 0) {
+       I3Particle * source_parent = std::get<0>(source_children.front());
+       I3Particle * source_child = std::get<1>(source_children.front());
+       source_children.pop_front();
+
+       I3MCTreeUtils::AppendChild(*dest, source_parent->GetID(), *source_child);
+       daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_child->GetID());
+
+       for(size_t i=0; i<daughters.size(); ++i) {
+           source_children.push_back(std::make_tuple(source_child, daughters.at(i)));
+       }
+   }
+}

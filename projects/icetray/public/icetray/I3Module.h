@@ -64,6 +64,7 @@ I3_POINTER_TYPEDEFS(I3Module);
 
 class I3Module
 {
+protected:
   typedef std::map<std::string, std::pair<FrameFifoPtr, I3ModulePtr> > outboxmap_t;
 
   typedef std::map<I3Frame::Stream, boost::function<void(I3FramePtr)> > methods_t;

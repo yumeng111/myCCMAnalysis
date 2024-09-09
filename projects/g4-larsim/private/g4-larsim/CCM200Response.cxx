@@ -86,7 +86,7 @@ void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, 
 }
 
 void CCM200Response::SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
-    g4Interface_->SimulateEvent(primaries, trees, mcpeseries);
+    g4Interface_->SimulateEvents(primaries, trees, mcpeseries);
 }
 
 void CCM200Response::DestroyInterface() {

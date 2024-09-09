@@ -35,6 +35,9 @@ public:
     void Simulation(I3FramePtr frame);
 
     void Finish();
+
+    static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source);
+    static void MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary);
 private:
     std::string responseServiceName_;
     std::string input_mc_tree_name_;
@@ -44,7 +47,7 @@ private:
     std::string PhotonSummarySeriesName_;
 
     bool multithreaded_;
-    int batch_size_;
+    size_t batch_size_;
     std::deque<I3FramePtr> frame_queue_;
 
     bool seen_s_frame_ = false;

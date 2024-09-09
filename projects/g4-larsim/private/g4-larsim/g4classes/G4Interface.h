@@ -55,6 +55,7 @@ class G4Interface {
 
     private:
         void Initialize();
+        void InitializeRun();
 
         static std::shared_ptr<G4Interface> g4Interface_;
 
@@ -69,7 +70,6 @@ class G4Interface {
 
         G4CCMDetectorConstruction * detector_ = nullptr;
         bool initialized_;
-        bool runInitialized_;
         std::string visMacro_;
 
         // controls to turn SD on/off (set by our response service)

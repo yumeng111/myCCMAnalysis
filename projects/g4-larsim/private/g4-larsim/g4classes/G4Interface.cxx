@@ -9,6 +9,7 @@
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include "g4-larsim/g4classes/G4CCMActionInitialization.h"
 
 #ifdef G4VIS_USE
 #include <G4VisExecutive.hh>
@@ -41,7 +42,7 @@
 std::shared_ptr<G4Interface> G4Interface::g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
 
 G4Interface::G4Interface(const std::string& visMacro):
-    detector_(NULL), initialized_(false), runInitialized_(false), visMacro_(visMacro) {
+    detector_(NULL), initialized_(false), visMacro_(visMacro) {
 
     // Visualization manager
     #ifdef G4VIS_USE
@@ -110,43 +111,39 @@ void G4Interface::InitializeRun() {
         Initialize();
     }
 
-    if(!runInitialized_) {
-        runManager_->InitializeRun();
-        runInitialized_ = true;
-    }
     readout_->Reset();
 }
 
 void G4Interface::SimulateEvent(const I3Particle& particle, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
     InitializeRun();
 
-    std::vector<I3Particle> primaries = {particle};
+    std::vector<I3Particle> particles = {particle};
     std::vector<I3MCTreePtr> trees = {tree};
 
     // Set the particle list used for the primary generator user action
-    particle_list_->SetParticles(primaries);
+    particle_list_->SetParticles(particles);
 
     // Set readout information for sensitive detectors
-    readout_->SetInput(primaries, trees);
+    readout_->SetInput(particles, trees);
 
     // Run the event
-    runManager->SimulateEvent(particle, tree, mcpeseries);
+    runManager_->SimulateEvent(particle, tree, mcpeseries);
 
     // I3MCTree and CCMMCPESeriesMap were passed as shared pointers to readout_,
     // and so have already been updated
 }
 
-void G4Interface::SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
+void G4Interface::SimulateEvents(std::vector<I3Particle> const & particles, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
     InitializeRun();
 
     // Set the particle list used for the primary generator user action
-    particle_list_->SetParticles(primaries);
+    particle_list_->SetParticles(particles);
 
     // Set readout information for sensitive detectors
-    readout_->SetInput(primaries, trees);
+    readout_->SetInput(particles, trees);
 
     // Run the event
-    runManager->SimulateEvents(particles, trees, mcpeseries);
+    runManager_->SimulateEvents(particles, trees, mcpeseries);
 
     // I3MCTree and CCMMCPESeriesMap were passed as shared pointers to readout_,
     // and so have already been updated
@@ -162,7 +159,7 @@ void G4Interface::Initialize() {
     if(n_cores_ == 0) {
         n_cores_ = std::thread::hardware_concurrency();
     }
-    runManager_.SetNumberOfThreads(n_cores_);
+    runManager_->SetNumberOfThreads(n_cores_);
     readout_->SetNumberOfThreads(n_cores_);
 
     // Set verbosity

@@ -578,7 +578,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             scint_SD->SetTimeCutStatus(TimeCut_);
             scint_SD->SetKillCherenkovStatus(KillCherenkov_);
-            scint_DS->SetReadout(readout_);
+            scint_SD->SetReadout(readout_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
@@ -623,4 +623,6 @@ void G4CCMDetectorConstruction::SetMainVolumeOn(G4bool b) {
 }
 
 
-
+void G4CCMDetectorConstruction::SetReadout(G4CCMReadout * readout) {
+   readout_ = readout;
+}
