@@ -24,8 +24,16 @@ public:
     ~CCMSimulator() = default;
 
     void Configure();
+
+    void Process();
+    void ProcessNormally(I3FramePtr frame);
+
+    void DAQSingleThreaded(I3FramePtr frame);
+    void DAQMultiThreaded();
     void DAQ(I3FramePtr frame);
+
     void Simulation(I3FramePtr frame);
+
     void Finish();
 private:
     std::string responseServiceName_;
@@ -35,7 +43,12 @@ private:
     std::string LArMCTreeName_;
     std::string PhotonSummarySeriesName_;
 
+    bool multithreaded_;
+    int batch_size_;
+    std::deque<I3FramePtr> frame_queue_;
+
     bool seen_s_frame_ = false;
+    unsigned int n_daq_frames_ = 0;
 
     CCMDetectorResponsePtr response_;
 
