@@ -453,13 +453,17 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> tpb_rin_energy = {1.0*eV, 14.0*eV};
     std::vector<G4double> tpb_rin = {1.62, 1.62};
 
+    // trying something here -- let's add bulk absorption to tpb
+    std::vector<G4double> tpb_bulk_abs_energy = {1.0*eV, 3.0*eV, 3.01*eV, 14.0*eV};
+    std::vector<G4double> tpb_bulk_abs = {0.02*mm, 0.02*mm, 1e6*m, 1e6*m};
+
     G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
     //fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_PTFE_Emission_Energy, TPB_PTFE_Emission); -- NOTE : not using this spectrum! TPB is on mylar backing
     fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
     fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
-    std::cout << "for the TPB foils, have " << WLSNPhotonsFoil_ << " mean number of photons per wls" << std::endl;
     fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
+    fTPBFoil_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
     fTPBFoil_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
 
@@ -467,8 +471,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
     fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
-    std::cout << "for the TPB on PMTs, have " << WLSNPhotonsPMT_ << " mean number of photons per wls" << std::endl;
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
+    fTPBPMT_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
