@@ -18,7 +18,7 @@
 class G4CCMReadout {
 public:
     G4CCMReadout() = default;
-    G4CCMReadout(size_t n_threads) : readout(n_threads), primaries(n_threads), edep_trees(n_threads, nullptr)
+    G4CCMReadout(size_t n_threads) : n_threads(0), readout(n_threads), primaries(), edep_trees()
     {}
     ~G4CCMReadout() = default;
 
@@ -33,6 +33,10 @@ public:
 
     typedef std::deque<SingleThreadReadout> Readout;
 
+    void SetInput(std::vector<I3Particle> primaries, std::vector<I3MCTreePtr> edep_trees) {
+        this->primaries = primaries;
+        this->edep_trees = edep_trees;
+    }
     void SetNumberOfThreads(size_t n_threads) { readout.resize(n_threads); }
 
     SingleThreadReadout & GetReadout(size_t thread_id) { return readout.at(thread_id); }
@@ -77,8 +81,16 @@ public:
     I3MCTreePtr GetMCTree(size_t i) const { return edep_trees.at(i); }
     void SetMCTree(size_t i, I3MCTreePtr edep_tree) { edep_trees.at(i) = edep_tree; }
 
+    void Reset() {
+        readout = Readout(n_threads);
+        primaries = std::vector<I3Particle>();
+        edep_trees = std::vector<I3MCTreePtr>();
+    }
+
 private:
+    size_t n_threads = 0;
     Readout readout;
+
     std::vector<I3Particle> primaries;
     std::vector<I3MCTreePtr> edep_trees;
 };
