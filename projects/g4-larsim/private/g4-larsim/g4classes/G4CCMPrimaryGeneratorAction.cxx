@@ -1,6 +1,6 @@
 #include <cmath>
 
-#include "g4-larsim/G4CCMPrimaryGeneratorAction.h"
+#include "g4-larsim/g4classes/G4CCMPrimaryGeneratorAction.h"
 
 #include "globals.hh"
 #include "G4Event.hh"
@@ -51,70 +51,49 @@ void G4CCMPrimaryGeneratorAction::GeneratePrimaries(G4Event * evt) {
         p.SetTime(0.);
     }
 
-    // Create a new vertex
-    //
-    auto* vertex =
-        new G4PrimaryVertex(particle_position,particle_time);
+    G4PrimaryVertex * vertex = CreatePrimaryVertex(p);
 
-    // Create new primaries and set them to the vertex
-    //
-    G4double mass =  particle_definition->GetPDGMass();
-    for( G4int i=0; i<NumberOfParticlesToBeGenerated; ++i )
-    {
-        auto* particle =
-            new G4PrimaryParticle(particle_definition);
-        particle->SetKineticEnergy( particle_energy );
-        particle->SetMass( mass );
-        particle->SetMomentumDirection( particle_momentum_direction );
-        particle->SetCharge( particle_charge );
-        particle->SetPolarization(particle_polarization.x(),
-                particle_polarization.y(),
-                particle_polarization.z());
-        particle->SetWeight( particle_weight );
-        vertex->SetPrimary( particle );
-    }
-    evt->AddPrimaryVertex( vertex );
+    evt->AddPrimaryVertex(vertex);
 }
 
-G4PrimaryVertex * CreatePrimaryVertex(I3Particle const & primary) {
+G4PrimaryVertex * CreatePrimaryVertex(I3Particle const & particle) {
 
 
-    G4Double x = (particle.GetX() / I3Units::m) * CLHEP::m;
-    G4Double y = (particle.GetY() / I3Units::m) * CLHEP::m;
-    G4Double z = (particle.GetZ() / I3Units::m) * CLHEP::m;
+    G4double x = (particle.GetX() / I3Units::m) * CLHEP::m;
+    G4double y = (particle.GetY() / I3Units::m) * CLHEP::m;
+    G4double z = (particle.GetZ() / I3Units::m) * CLHEP::m;
 
     G4ThreeVector direction(particle.GetDir().GetX(),
                             particle.GetDir().GetY(),
                             particle.GetDir().GetZ());
 
-    G4Double time = particle.GetTime() / I3Units::ns * CLHEP::ns;
+    G4double time = particle.GetTime() / I3Units::ns * CLHEP::ns;
 
     G4PrimaryVertex * vertex = new G4PrimaryVertex(x, y, z, time);
     G4ParticleTable * particleTable = G4ParticleTable::GetParticleTable();
     G4ParticleDefinition * particleDefinition = GetParticleDefinition(particle);
 
-    G4Double mass = particleDefinition->GetPDGMass();
-    G4Double energy = primary.GetEnergy() / I3Units::MeV * CLHEP::MeV;
+    G4double mass = particleDefinition->GetPDGMass();
+    G4double energy = particle.GetEnergy() / I3Units::MeV * CLHEP::MeV;
 
-    G4PrimaryParticle * particle = new G4PrimaryParticle(particleDefinition);
+    G4PrimaryParticle * g4_particle = new G4PrimaryParticle(particleDefinition);
 
-    particle->SetMass(mass);
-    particle->SetKineticEnergy(energy);
-    particle->SetMomentumDirection(momentum_dir);
-    particle->SetCharge(primary.GetCharge());
+    g4_particle->SetMass(mass);
+    g4_particle->SetKineticEnergy(energy);
+    g4_particle->SetMomentumDirection(direction);
 
     if(particle.GetType() == I3Particle::Na22Nucleus) {
-        particle->SetCharge(0.);
+        g4_particle->SetCharge(0.);
     }
 
-    vertex->SetPrimary(particle);
+    vertex->SetPrimary(g4_particle);
 
     log_trace("Injecting %s: x=%.2f m, y=%.2f m, z=%.2f m, E=%.3f MeV",
               particle.GetTypeString().c_str(),
-              position.x() / CLHEP::m,
-              position.y() / CLHEP::m,
-              position.z() / CLHEP::m,
-              particle.GetEnergy() / CLHEP::MeV);
+              x / CLHEP::m,
+              y / CLHEP::m,
+              z / CLHEP::m,
+              energy / CLHEP::MeV);
 
     return vertex;
 }
@@ -122,6 +101,8 @@ G4PrimaryVertex * CreatePrimaryVertex(I3Particle const & primary) {
 G4ParticleDefinition * GetParticleDefinition(I3Particle const & particle) {
     G4ParticleTable * particleTable = G4ParticleTable::GetParticleTable();
     G4ParticleDefinition* particleDef = NULL;
+
+    bool sodium_run = false;
 
     switch(particle.GetType()) {
     case I3Particle::Gamma:
@@ -251,7 +232,7 @@ G4ParticleDefinition * GetParticleDefinition(I3Particle const & particle) {
        break;
     default:
       log_warn("Man, check out that strange particle \"%s\" ?!", particle.GetTypeString().c_str());
-      return;
+      return nullptr;
     }
 
     // special logic for adding sodium particle
@@ -265,7 +246,7 @@ G4ParticleDefinition * GetParticleDefinition(I3Particle const & particle) {
 
     if(!particleDef) {
         log_warn("You passed NULL particleDef \"%s\" ?!", particle.GetTypeString().c_str());
-        return;
+        return nullptr;
     }
 
     return particleDef;

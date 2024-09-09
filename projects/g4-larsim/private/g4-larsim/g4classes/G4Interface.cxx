@@ -38,9 +38,6 @@
 #include <G4GenericIon.hh>
 #include <G4Geantino.hh>
 
-const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> G4Interface::PhotonSummarytoCCMMCPEPhotonSource = {{PhotonSummary::PhotonSource::Unknown, CCMMCPE::PhotonSource::Unknown},
-                                                                                                                    {PhotonSummary::PhotonSource::Scintillation, CCMMCPE::PhotonSource::Scintillation},
-                                                                                                                    {PhotonSummary::PhotonSource::Cerenkov, CCMMCPE::PhotonSource::Cerenkov}};
 std::shared_ptr<G4Interface> G4Interface::g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
 
 G4Interface::G4Interface(const std::string& visMacro):
@@ -153,39 +150,6 @@ void G4Interface::SimulateEvents(std::vector<I3Particle> const & primaries, std:
 
     // I3MCTree and CCMMCPESeriesMap were passed as shared pointers to readout_,
     // and so have already been updated
-}
-
-void G4Interface::UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, PhotonSummarySeriesPtr photon_summary_series) {
-    // Iterate over PMTs in source map
-    for (CCMMCPESeriesMap::iterator it = mcpeseries->begin(); it != mcpeseries->end(); ++it) {
-        // Reference to the PE series
-        CCMMCPESeries & pe_series = it->second;
-
-        // Iterate backwards over the vector of CCMMCPE in the source map for this PMT
-        for(int i=pe_series.size()-1; i>=0; --i) {
-            CCMMCPE & pe = pe_series[i];
-
-            // Check if the photon has everything properly recorded
-            I3Map<int, size_t>::iterator it_map = photon_summary_series_map->find(pe.track_id);
-            // If not trash it as an edge case
-            if(it_map == photon_summary_series_map->end()) {
-                pe_series.erase(pe_series.begin() + i);
-                continue;
-            }
-
-            // Grab the summary information for this photon track
-            PhotonSummary const & this_photon_summary = photon_summary_series->at(it_map->second);
-
-            // Update the destination CCMMCPE with the summary information
-            pe.g4_time = this_photon_summary.g4_time;
-            pe.calculated_time = this_photon_summary.calculated_time;
-            pe.g4_distance_uv = this_photon_summary.g4_distance_uv;
-            pe.g4_distance_visible = this_photon_summary.g4_distance_visible;
-            pe.calculated_distance_uv = this_photon_summary.calculated_distance_uv;
-            pe.calculated_distance_visible = this_photon_summary.calculated_distance_visible;
-            pe.photon_source = PhotonSummarytoCCMMCPEPhotonSource.at(this_photon_summary.photon_source);
-        }
-    }
 }
 
 void G4Interface::Initialize() {

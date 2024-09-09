@@ -33,6 +33,7 @@
 
 #include <G4ios.hh>
 #include <G4Step.hh>
+#include <G4Event.hh>
 #include <G4Track.hh>
 #include <G4VProcess.hh>
 #include <G4SDManager.hh>
@@ -80,13 +81,13 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
     }
 
     DaughterParticleMap[1] = primary_.GetID();
-    if((not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) and tree != nullptr) {
+    if(not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) {
         I3MCTreeUtils::AddPrimary(*mcTree, primary_);
     }
 }
 
 void G4CCMScintSD::EndOfEvent(G4HCofThisEvent*) {
-    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, optical_photon_map, photon_summary);
+    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, photon_summary, optical_photon_map);
     Reset();
 }
 

@@ -7,9 +7,9 @@
 #include <dataclasses/physics/I3Particle.h>
 #include <dataclasses/physics/I3MCTreeUtils.h>
 
+#include "g4-larsim/g4classes/G4CCMPrimaryGeneratorAction.h"
 #include "g4-larsim/g4classes/G4CCMRunManager.h"
 #include "g4-larsim/g4classes/G4CCMReadout.h"
-#include "g4-larsim/g4classes/G4VUserPrimaryGeneratorAction.hh"
 
 #include <icetray/I3Logging.h>
 #include <icetray/CCMPMTKey.h>
@@ -53,10 +53,6 @@ class G4Interface {
         void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
         void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);
 
-        G4ParticleGun * GetParticleGun(I3Particle const & primary);
-
-        static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, PhotonSummarySeriesPtr photon_summary_series);
-
     private:
         void Initialize();
 
@@ -79,8 +75,6 @@ class G4Interface {
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off
         bool LArSDStatus_; // turn fiducial LAr SD on/off
-
-        static const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> PhotonSummarytoCCMMCPEPhotonSource;
 
         SET_LOGGER("G4Interface");
 };

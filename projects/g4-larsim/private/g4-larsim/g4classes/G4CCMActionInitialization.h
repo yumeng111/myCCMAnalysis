@@ -1,7 +1,7 @@
 #ifndef G4CCMActionInitialization_h
 #define G4CCMActionInitialization_h 1
 
-#include "g4-larsim/G4CCMPrimaryGeneratorAction.h"
+#include "g4-larsim/g4classes/G4CCMPrimaryGeneratorAction.h"
 
 #include "G4VUserActionInitialization.hh"
 

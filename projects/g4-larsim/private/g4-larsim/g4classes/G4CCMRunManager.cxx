@@ -28,7 +28,7 @@ void G4CCMRunManager::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree,
     }
     assert(currentRun); // the G4Exception() above calls abort(). This assert() silences the clang static analyzer
 
-    DoEventLoop(n_event, macroFile, n_select);
+    DoEventLoop(numberOfEventToBeProcessed, nullptr, -1);
     RunTermination();
 }
 
@@ -46,7 +46,7 @@ void G4CCMRunManager::SimulateEvents(std::vector<I3Particle> const & primaries, 
     }
     assert(currentRun); // the G4Exception() above calls abort(). This assert() silences the clang static analyzer
 
-    DoEventLoop(n_event, macroFile, n_select);
+    DoEventLoop(numberOfEventToBeProcessed, nullptr, -1);
     RunTermination();
 }
 

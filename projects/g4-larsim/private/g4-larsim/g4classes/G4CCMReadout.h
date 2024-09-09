@@ -8,6 +8,7 @@
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "dataclasses/I3Map.h"
 #include "simclasses/PhotonSummary.h"
+#include "simclasses/CCMMCPE.h"
 
 #include <vector>
 #include <string>
@@ -17,11 +18,6 @@
 
 class G4CCMReadout {
 public:
-    G4CCMReadout() = default;
-    G4CCMReadout(size_t n_threads) : n_threads(0), readout(n_threads), primaries(), edep_trees()
-    {}
-    ~G4CCMReadout() = default;
-
     struct SingleEventReadout {
         I3MCTreePtr edep_tree;
         CCMMCPESeriesMapPtr mcpeseries;
@@ -29,63 +25,28 @@ public:
         boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map;
     };
 
-    typedef std::map<int, SingleEventReadout> SingleThreadReadout;
+    using SingleThreadReadout = std::map<int, SingleEventReadout>;
+    using Readout = std::deque<SingleThreadReadout>;
 
-    typedef std::deque<SingleThreadReadout> Readout;
+    G4CCMReadout() = default;
+    G4CCMReadout(size_t n_threads);
+    ~G4CCMReadout() = default;
 
-    void SetInput(std::vector<I3Particle> primaries, std::vector<I3MCTreePtr> edep_trees) {
-        this->primaries = primaries;
-        this->edep_trees = edep_trees;
-    }
-    void SetNumberOfThreads(size_t n_threads) { readout.resize(n_threads); }
+    static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map);
 
-    SingleThreadReadout & GetReadout(size_t thread_id) { return readout.at(thread_id); }
+    void SetInput(std::vector<I3Particle> primaries, std::vector<I3MCTreePtr> edep_trees);
+    void SetNumberOfThreads(size_t n_threads);
 
-    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map) {
-        SingleThreadReadout & thread_readout = GetReadout(thread_id);
-        SingleThreadReadout::iterator it = thread_readout.find(event_id);
-        // Add a blank entry if it doesn't exist
-        if (it != thread_readout.end()) {
-            thread_readout.insert(it, {event_id, {edep_tree, nullptr, photon_summary_series, photon_summary_series_map}});
-        } else {
-            CCMMCPESeriesMapPtr mcpeseries = it->second.mcpeseries;
-            UpdateMCPESeries(mcpeseries, edep_tree, photon_summary_series, photon_summary_series_map);
-            it->second = {edep_tree, mcpeseries, nullptr, nullptr};
-        }
-    }
+    SingleThreadReadout & GetReadout(size_t thread_id);
 
-    void AddEntry(size_t thread_id, int event_id, CCMMCPESeriesMapPtr mcpeseries) {
-        SingleThreadReadout & thread_readout = GetReadout(thread_id);
-        SingleThreadReadout::iterator it = thread_readout.find(event_id);
-        // Add a blank entry if it doesn't exist
-        if (it != thread_readout.end()) {
-            thread_readout.insert(it, {event_id, {nullptr, mcpeseries, nullptr, nullptr}});
-        } else {
-            I3MCTreePtr edep_tree = it->second.edep_tree;
-            PhotonSummarySeriesPtr photon_summary_series = it->second.photon_summary_series;
-            boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map = it->second.photon_summary_series_map;
-            UpdateMCPESeries(mcpeseries, edep_tree, photon_summary_series, photon_summary_series_map);
-            it->second = {edep_tree, mcpeseries, nullptr, nullptr};
-        }
-    }
-
-    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map) {
-        SingleThreadReadout & thread_readout = GetReadout(thread_id);
-        UpdateMCPESeries(mcpeseries, edep_tree, photon_summary_series, photon_summary_series_map);
-        thread_readout[event_id] = {edep_tree, mcpeseries, nullptr, nullptr};
-    }
-
-    I3Particle GetPrimary(size_t i) const { return primaries.at(i); }
-    void SetPrimary(size_t i, I3Particle primary) { primaries.at(i) = primary; }
-
-    I3MCTreePtr GetMCTree(size_t i) const { return edep_trees.at(i); }
-    void SetMCTree(size_t i, I3MCTreePtr edep_tree) { edep_trees.at(i) = edep_tree; }
-
-    void Reset() {
-        readout = Readout(n_threads);
-        primaries = std::vector<I3Particle>();
-        edep_trees = std::vector<I3MCTreePtr>();
-    }
+    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map);
+    void AddEntry(size_t thread_id, int event_id, CCMMCPESeriesMapPtr mcpeseries);
+    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map);
+    I3Particle GetPrimary(size_t i) const;
+    void SetPrimary(size_t i, I3Particle primary);
+    I3MCTreePtr GetMCTree(size_t i) const;
+    void SetMCTree(size_t i, I3MCTreePtr edep_tree);
+    void Reset();
 
 private:
     size_t n_threads = 0;
@@ -93,6 +54,8 @@ private:
 
     std::vector<I3Particle> primaries;
     std::vector<I3MCTreePtr> edep_trees;
+
+    static const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> PhotonSummarytoCCMMCPEPhotonSource;
 };
 
 #endif // G4CCMReadout_h

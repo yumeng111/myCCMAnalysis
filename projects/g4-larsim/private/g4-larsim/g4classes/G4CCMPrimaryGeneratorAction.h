@@ -2,10 +2,11 @@
 #define G4CCMPrimaryGeneratorAction_h
 
 #include <mutex>
-#include <vertex>
+#include <vector>
 
 #include "dataclasses/physics/I3Particle.h"
 
+#include "G4PrimaryVertex.hh"
 #include "G4VUserPrimaryGeneratorAction.hh"
 
 class G4Event;
