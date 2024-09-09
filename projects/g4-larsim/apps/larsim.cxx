@@ -29,7 +29,7 @@
 //
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-#include "../visualization/G4CCMActionInitialization.h"
+#include "../visualization/G4CCMVisActionInitialization.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 
@@ -79,7 +79,7 @@ int main(int argc, char** argv)
   //runManager->SetUserInitialization(physicsList);
   runManager->SetUserInitialization(new G4CCMPhysicsList(1));
 
-  runManager->SetUserInitialization(new G4CCMActionInitialization(det));
+  runManager->SetUserInitialization(new G4CCMVisActionInitialization(det));
 
   // initialize visualization
   G4VisManager* visManager = new G4VisExecutive;

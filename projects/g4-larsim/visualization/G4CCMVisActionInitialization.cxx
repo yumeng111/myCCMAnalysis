@@ -1,4 +1,4 @@
-#include "G4CCMActionInitialization.h"
+#include "G4CCMVisActionInitialization.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 #include "G4CCMEventAction.h"
 #include "G4CCMVisPrimaryGeneratorAction.h"
@@ -9,7 +9,7 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMActionInitialization::G4CCMActionInitialization(
+G4CCMVisActionInitialization::G4CCMVisActionInitialization(
     G4CCMDetectorConstruction const * det)
     : G4VUserActionInitialization()
     , fDetector(det)
@@ -17,14 +17,14 @@ G4CCMActionInitialization::G4CCMActionInitialization(
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMActionInitialization::BuildForMaster() const
+void G4CCMVisActionInitialization::BuildForMaster() const
 {
     SetUserAction(new G4CCMRunAction(nullptr));
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMActionInitialization::Build() const {
+void G4CCMVisActionInitialization::Build() const {
     G4CCMVisPrimaryGeneratorAction* primary = new G4CCMVisPrimaryGeneratorAction();
     SetUserAction(primary);
 
