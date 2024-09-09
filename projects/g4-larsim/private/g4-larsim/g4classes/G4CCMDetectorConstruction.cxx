@@ -605,8 +605,6 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
         }
 
     }
-
-
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
