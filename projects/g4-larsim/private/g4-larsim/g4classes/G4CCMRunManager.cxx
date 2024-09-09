@@ -14,73 +14,41 @@
 
 G4CCMRunManager::G4CCMRunManager(): G4RunManager() {}
 
-void G4CCMRunManager::InitializeRun()
-{
-    // Reset the event counter 
-    numberOfEventToBeProcessed = 0;
+void G4CCMRunManager::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
+    // Reset the event counter
+    fakeRun = false;
+    numberOfEventToBeProcessed = 1;
+    numberOfEventProcessed = 0;
     ConstructScoringWorlds();
     RunInitialization();
 
-    if(verboseLevel>0) timer->Start();
-}
-
-
-void G4CCMRunManager::InjectParticle(G4ParticleGun* particleGun)
-{
-    if(!currentRun){
-        G4String text = "Run needs to be initialized before injecting a particle.";
-        G4Exception("G4CCMRunManager::InjectParticle()", "G4CCMRunManager002", FatalException, text);
+    if(!currentRun) {
+        G4String text = "Run needs to be initialized before simulating an event.";
+        G4Exception("G4CCMRunManager::SimulateEvent()", "G4CCMRunManager001", FatalException, text);
     }
     assert(currentRun); // the G4Exception() above calls abort(). This assert() silences the clang static analyzer
-    
-    numberOfEventToBeProcessed++;
-    currentRun->SetNumberOfEventToBeProcessed(numberOfEventToBeProcessed);
 
-    currentEvent = GenerateEvent(numberOfEventToBeProcessed);
-    particleGun->GeneratePrimaryVertex(currentEvent);
-
-    G4EventManager* eventManager = G4EventManager::GetEventManager();
-    eventManager->ProcessOneEvent(currentEvent);
-
-    AnalyzeEvent(currentEvent);
-    Update_Scoring();
-    //StackPreviousEvent(currentEvent);
-    //currentEvent = 0;
-
-    if(runAborted) TerminateRun();
-}
-
-
-G4Event* G4CCMRunManager::GenerateEvent(G4int i_event)
-{
-    G4Event* anEvent = new G4Event(i_event);
-    return anEvent;
-}
-
-
-void G4CCMRunManager::TerminateRun()
-{
-    if(verboseLevel>0){
-        timer->Stop();
-        G4cout << "Run terminated." << G4endl;
-        G4cout << "Run Summary" << G4endl;
-    if(runAborted){
-        G4cout << "  Run Aborted after " << numberOfEventToBeProcessed << " events processed." << G4endl;
-    }
-    else{
-        G4cout << "  Number of events processed : " << numberOfEventToBeProcessed << G4endl;
-    }
-
-    G4cout << "  "  << *timer << G4endl;
-    }
-    
+    DoEventLoop(n_event, macroFile, n_select);
     RunTermination();
 }
 
-//
-// The following method is an exact copy of 
-// UpdateScoring which is private in the G4RunManager
-//
+void G4CCMRunManager::SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
+    // Reset the event counter
+    fakeRun = false;
+    numberOfEventToBeProcessed = primaries.size();
+    numberOfEventProcessed = 0;
+    ConstructScoringWorlds();
+    RunInitialization();
+
+    if(!currentRun) {
+        G4String text = "Run needs to be initialized before simulating an event.";
+        G4Exception("G4CCMRunManager::SimulateEvent()", "G4CCMRunManager001", FatalException, text);
+    }
+    assert(currentRun); // the G4Exception() above calls abort(). This assert() silences the clang static analyzer
+
+    DoEventLoop(n_event, macroFile, n_select);
+    RunTermination();
+}
 
 #include <G4ScoringManager.hh>
 #include <G4HCofThisEvent.hh>

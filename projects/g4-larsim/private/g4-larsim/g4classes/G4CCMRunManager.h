@@ -34,9 +34,9 @@ class G4CCMRunManager: public G4RunManager {
         void InjectParticle(G4ParticleGun* particleGun);
         void TerminateRun();
         void GetFinalScores(const G4Event* anEvent);
-    
-    protected:
-        G4Event* GenerateEvent(G4int i_event);
+
+        void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
+        void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);
 
     private:
         // This method is an exact copy of UpdateScoring which is private in the G4RunManager
