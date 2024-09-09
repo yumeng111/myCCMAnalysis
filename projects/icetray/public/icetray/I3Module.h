@@ -362,9 +362,11 @@ public:
   /** module name */
   std::string name_;
 
+ protected:
   unsigned nphyscall_, ndaqcall_;
   double systime_, usertime_;
 
+ private:
   // cache of previous metadata frames (per-outbox)
   std::map<std::string, boost::shared_ptr<I3FrameMixer> > cachemap_;
   void SyncCache(std::string outbox, I3FramePtr frame);
