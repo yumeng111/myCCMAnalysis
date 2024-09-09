@@ -70,7 +70,7 @@ void CCM200Response::Initialize() {
     if (g4Interface_ == nullptr){
         g4Interface_ = G4Interface::GetInstance();
     }
-    
+
     if (!PMTSDStatus_ and !LArSDStatus_){
         log_warn("Oops! Both sensitive detectors are turned off!");
     }
@@ -79,27 +79,19 @@ void CCM200Response::Initialize() {
     g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, 
                                   SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsFoil_, WLSNPhotonsPMT_,
                                   TimeCut_, KillCherenkov_, RandomSeed_);
-    g4Interface_->InitializeRun();
-
 }
 
-void CCM200Response::BeginEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
-    // inject our particle
-    g4Interface_->InjectParticle(primary, tree, mcpeseries);
+void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
+    g4Interface_->SimulateEvent(primary, tree, mcpeseries);
 }
 
-void CCM200Response::EndEvent() {
-    g4Interface_->TerminateEvent(); // this ends event and grabs salient information from geant4
-}
-
-void CCM200Response::TerminateRun() {
-
-    g4Interface_->TerminateRun(); 
+void CCM200Response::SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
+    g4Interface_->SimulateEvent(primaries, trees, mcpeseries);
 }
 
 void CCM200Response::DestroyInterface() {
 
-    g4Interface_->DestroyInstance(); 
+    g4Interface_->DestroyInstance();
 }
 
 typedef I3SingleServiceFactory<CCM200Response,CCMDetectorResponse> CCM200ResponseFactory;

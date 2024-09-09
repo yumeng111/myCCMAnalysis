@@ -59,10 +59,13 @@ public:
     virtual ~CCM200Response() override;
 
     virtual void Configure() override;
+
+    // initialize geant4 detector
     virtual void Initialize() override;
-    virtual void BeginEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) override;
-    virtual void EndEvent() override;
-    virtual void TerminateRun() override;
+
+    virtual void SimulateEvent(I3Particle const & primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) override;
+    virtual void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) override;
+
     virtual void DestroyInterface() override;
 };
 
