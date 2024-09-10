@@ -108,7 +108,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     //G4VPhysicalVolume* physVol = aStep->GetPostStepPoint()->GetTouchable()->GetVolume(1);
     G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(0);
     //G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(1);
-    std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber 
+    std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
     CCMPMTKey key;
@@ -130,7 +130,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // so now we need to save the info to a CCMMCPE
     // then we will save associated with correct PMT
     // we will be saving time, wavelength, positions, direction, and source
-    
+
     // let's grab everything from our step
     G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
     I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
@@ -140,49 +140,32 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     G4double globalTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
     G4double localTime = aStep->GetPostStepPoint()->GetLocalTime() / nanosecond * I3Units::nanosecond;
-    
+
     G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() / electronvolt;
 
-    G4double photonWavelength = hc / photonEnergy * I3Units::nanometer; 
-    
+    G4double photonWavelength = hc / photonEnergy * I3Units::nanometer;
+
     const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
     std::string creationProcessName = "Unknown";
     if (creationProcess) {
         creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
     }
     G4int parent_id = aStep->GetTrack()->GetParentID();
-    G4int track_id = aStep->GetTrack()->GetTrackID(); 
+    G4int track_id = aStep->GetTrack()->GetTrackID();
 
-    //std::cout << "photon from " << creationProcessName << " with parent id = " << parent_id << " at " << key << std::endl; 
+    //std::cout << "photon from " << creationProcessName << " with parent id = " << parent_id << " at " << key << std::endl;
 
-    //std::cout << "photon on " << key << " at post step global time = " << aStep->GetPostStepPoint()->GetGlobalTime() 
+    //std::cout << "photon on " << key << " at post step global time = " << aStep->GetPostStepPoint()->GetGlobalTime()
     //    << " and pre step global time = " << aStep->GetPreStepPoint()->GetGlobalTime()  << std::endl;
-    //std::cout << "saw " << creationProcessName << " photon on " << key << std::endl;   
+    //std::cout << "saw " << creationProcessName << " photon on " << key << std::endl;
     // now save to CCMMCPE
     if (processNameToPhotonSource.find(creationProcessName) == processNameToPhotonSource.end()){
         std::cout << "oops!!! no photon process for " << creationProcessName << std::endl;
         return false;
-    } 
+    }
 
     CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, globalTime, localTime, photonWavelength, 0.0, 0.0, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
 
-    // Find the correct hit collection
-    std::map<G4int, size_t>::iterator pmt_it = pmtNumberToIndex.find(pmtNumber);
-    G4CCMPMTHit* hit = nullptr;
-    if (pmt_it == pmtNumberToIndex.end()) {
-        hit = new G4CCMPMTHit();  // so create new hit
-        hit->SetPMTNumber(pmtNumber);
-        hit->SetPMTPhysVol(physVol);
-        fPMTHitCollection->insert(hit);
-        hit->SetPMTPos((*fPMTPositionsX)[pmtNumber], (*fPMTPositionsY)[pmtNumber], (*fPMTPositionsZ)[pmtNumber]);
-        pmtNumberToIndex.insert(std::pair<G4int, size_t>(pmtNumber, fPMTHitCollection->entries() - 1));
-    } else { // this pmt wasn't previously hit in this event
-        hit = (*fPMTHitCollection)[pmt_it->second];
-    }
-
-    hit->IncPhotonCount();  // increment hit for the selected pmt
-    hit->SetDrawit(true);
-    
     // let's add this CCMPMTKey to CCMMCPEMap if it does not exist already
     if (CCMMCPEMap->find(key) == CCMMCPEMap->end()) {
         (*CCMMCPEMap)[key] = CCMMCPESeries ();
@@ -196,10 +179,10 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     //    if (mc_pe_map_key == key){
     //        CCMMCPEMap->at(mc_pe_map_key).push_back(this_mc_pe);
     //    }
-    //}   
+    //}
 
     // now kill photon after registering hit
-    aStep->GetTrack()->SetTrackStatus(fStopAndKill); 
+    aStep->GetTrack()->SetTrackStatus(fStopAndKill);
 
     return true;
 }
