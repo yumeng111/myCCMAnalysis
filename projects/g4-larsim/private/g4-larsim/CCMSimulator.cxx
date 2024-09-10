@@ -70,11 +70,15 @@ void CCMSimulator::Configure() {
     GetParameter("Multithreaded", multithreaded_);
     log_info("+ Multithreaded : %s", multithreaded_ ? "true" : "false");
 
+    GetParameter("BatchSize", batch_size_);
+    log_info("+ BatchSize : %zu", batch_size_);
+
     // initialize the response services
     response_->Initialize();
 }
 
 void CCMSimulator::Process() {
+
     i3_log("%s", __PRETTY_FUNCTION__);
 
     if (inbox_)
@@ -82,8 +86,9 @@ void CCMSimulator::Process() {
 
     I3FramePtr frame = PopFrame();
 
-    if (!frame)
+    if (!frame) {
         return;
+    }
 
     methods_t::iterator miter = methods_.find(frame->GetStop());
 
@@ -98,6 +103,7 @@ void CCMSimulator::Process() {
     }
 
     if(frame->GetStop() == I3Frame::DAQ) {
+        frame_queue_.push_back(frame);
         ++n_daq_frames_;
         if(n_daq_frames_ == batch_size_) {
             n_daq_frames_ = 0;
@@ -197,6 +203,7 @@ void CCMSimulator::DAQMultiThreaded() {
         frame_queue_.pop_front();
     }
 
+    size_t max_queue_index = 0;
     std::deque<I3FramePtr> daq_frames;
     // Get all the DAQ frames until the next frame that supersedes them
     for(size_t i=0; i<frame_queue_.size(); ++i) {
@@ -205,6 +212,7 @@ void CCMSimulator::DAQMultiThreaded() {
             break;
         } else if(frame->GetStop() == I3Frame::DAQ) {
             daq_frames.push_back(frame);
+            max_queue_index = i;
         }
     }
 
@@ -245,7 +253,6 @@ void CCMSimulator::DAQMultiThreaded() {
     std::vector<I3MCTreePtr> final_edep_trees;
     std::vector<CCMMCPESeriesMapPtr> final_mcpeseries_maps;
 
-    // TODO
     // Now need to merge everything into individual data structures for each event
     size_t particle_idx = 0;
     for(size_t i=0; i<daq_frames.size(); ++i) {
@@ -254,7 +261,7 @@ void CCMSimulator::DAQMultiThreaded() {
 
         final_edep_trees.push_back(edep_tree);
         final_mcpeseries_maps.push_back(mcpeseries_map);
-        for(size_t j=1; i<particles_per_event.at(i); ++j) {
+        for(size_t j=1; j<particles_per_event.at(i); ++j) {
             MergeEDepTrees(edep_tree, edep_trees.at(particle_idx+j), particles.at(particle_idx+j));
             MergeMCPESeries(mcpeseries_map, mcpeseries_maps.at(particle_idx+j));
         }
@@ -274,14 +281,20 @@ void CCMSimulator::DAQMultiThreaded() {
         frame->Put(LArMCTreeName_, final_edep_trees.at(i));
     }
 
+    size_t original_frame_queue_size = frame_queue_.size();
+
+    size_t daq_frames_pushed = 0;
     // Push the frames
-    for(size_t i=0; i<frame_queue_.size(); ++i) {
-        I3FramePtr frame = frame_queue_.at(i);
+    for(size_t i=0; i<original_frame_queue_size and daq_frames_pushed<daq_frames.size(); ++i) {
+        I3FramePtr frame = frame_queue_.front();
         if(frame->GetStop() == I3Frame::Geometry or frame->GetStop() == I3Frame::Calibration or frame->GetStop() == I3Frame::DetectorStatus or frame->GetStop() == I3Frame::Simulation) {
             break;
         }
         frame_queue_.pop_front();
         PushFrame(frame);
+        if(frame->GetStop() == I3Frame::DAQ) {
+            ++daq_frames_pushed;
+        }
     }
 
     // Pop everything until the first DAQ frame, processing / passing other frame types as appropriate
@@ -292,6 +305,10 @@ void CCMSimulator::DAQMultiThreaded() {
 }
 
 void CCMSimulator::Finish() {
+    if(frame_queue_.size() > 0) {
+        // Process all frames in the queue
+        DAQMultiThreaded();
+    }
     // destruct g4 interface
     response_->DestroyInterface();
 }
@@ -316,32 +333,32 @@ void CCMSimulator::MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPES
 }
 
 void CCMSimulator::MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary) {
-   I3Particle * source_particle = I3MCTreeUtils::GetParticlePtr(source, primary.GetID());
-   I3Particle * dest_particle = I3MCTreeUtils::GetParticlePtr(dest, primary.GetID());
+    I3Particle * source_particle = I3MCTreeUtils::GetParticlePtr(source, primary.GetID());
+    I3Particle * dest_particle = I3MCTreeUtils::GetParticlePtr(dest, primary.GetID());
 
-   if(source_particle == NULL) {
-       log_fatal("Source particle not found in source tree");
-   }
-   if(dest_particle == NULL) {
-       log_fatal("Source particle not found in destination tree");
-   }
+    if(source_particle == NULL) {
+        log_fatal("Source particle not found in source tree");
+    }
+    if(dest_particle == NULL) {
+        log_fatal("Source particle not found in destination tree");
+    }
 
-   std::vector<I3Particle *> daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_particle->GetID());
-   std::deque<std::tuple<I3Particle *, I3Particle *>> source_children(daughters.size());
-   for(size_t i=0; i<daughters.size(); ++i) {
-       source_children[i] = std::make_tuple(source_particle, daughters.at(i));
-   }
+    std::vector<I3Particle *> daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_particle->GetID());
+    std::deque<std::tuple<I3Particle *, I3Particle *>> source_children(daughters.size());
+    for(size_t i=0; i<daughters.size(); ++i) {
+        source_children[i] = std::make_tuple(source_particle, daughters.at(i));
+    }
 
-   while(source_children.size() > 0) {
-       I3Particle * source_parent = std::get<0>(source_children.front());
-       I3Particle * source_child = std::get<1>(source_children.front());
-       source_children.pop_front();
+    while(source_children.size() > 0) {
+        I3Particle * source_parent = std::get<0>(source_children.front());
+        I3Particle * source_child = std::get<1>(source_children.front());
+        source_children.pop_front();
 
-       I3MCTreeUtils::AppendChild(*dest, source_parent->GetID(), *source_child);
-       daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_child->GetID());
+        I3MCTreeUtils::AppendChild(*dest, source_parent->GetID(), *source_child);
+        daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_child->GetID());
 
-       for(size_t i=0; i<daughters.size(); ++i) {
-           source_children.push_back(std::make_tuple(source_child, daughters.at(i)));
-       }
-   }
+        for(size_t i=0; i<daughters.size(); ++i) {
+            source_children.push_back(std::make_tuple(source_child, daughters.at(i)));
+        }
+    }
 }
