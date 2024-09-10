@@ -25,16 +25,16 @@ public:
 
     void Configure();
 
-    void Process();
+    void Process() override;
     void ProcessNormally(I3FramePtr frame);
 
     void DAQSingleThreaded(I3FramePtr frame);
     void DAQMultiThreaded();
-    void DAQ(I3FramePtr frame);
+    void DAQ(I3FramePtr frame) override;
 
-    void Simulation(I3FramePtr frame);
+    void Simulation(I3FramePtr frame) override;
 
-    void Finish();
+    void Finish() override;
 
     static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source);
     static void MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary);
