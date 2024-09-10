@@ -15,16 +15,14 @@
 
 #include <vector>
 
-#include <G4RunManager.hh>
+#include <G4MTRunManager.hh>
 #include <G4DataVector.hh>
 #include <G4SystemOfUnits.hh>
-
-class G4ParticleGun;
 
 /**
  * Implementation of G4RunManager
  */
-class G4CCMRunManager: public G4RunManager {
+class G4CCMRunManager: public G4MTRunManager {
     public:
         G4CCMRunManager();
 
@@ -32,6 +30,8 @@ class G4CCMRunManager: public G4RunManager {
 
         void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
         void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);
+
+        void AnalyzeEvent(G4Event* anEvent) override;
 
     private:
         // This method is an exact copy of UpdateScoring which is private in the G4RunManager

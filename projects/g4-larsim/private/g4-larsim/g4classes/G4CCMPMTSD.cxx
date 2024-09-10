@@ -90,7 +90,9 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
 }
 
 void G4CCMPMTSD::EndOfEvent(G4HCofThisEvent*) {
-    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, CCMMCPEMap);
+    int thread_id = G4Threading::G4GetThreadId();
+    std::cout << "G4CCMPMTSD::EndOfEvent Thread ID: " << thread_id << std::endl;
+    readout_->AddEntry(thread_id, event_id, CCMMCPEMap);
     Reset();
 }
 

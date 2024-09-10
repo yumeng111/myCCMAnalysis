@@ -49,9 +49,9 @@ public:
     void Reset();
 
 private:
-    size_t n_threads = 0;
-    Readout readout;
+    size_t n_threads_ = 0;
 
+    Readout readout;
     std::vector<I3Particle> primaries;
     std::vector<I3MCTreePtr> edep_trees;
 

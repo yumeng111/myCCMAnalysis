@@ -525,7 +525,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             } else {
                 throw std::runtime_error("Bad cap row");
             }
-            for(std::pair<const int, int> const & p : ring_pmt_pos_count)
+            for(std::pair<int, int> const & p : ring_pmt_pos_count)
                 if(p.first < ring and p.first > 0)
                     pmt_number += p.second;
             pmt_number += col;

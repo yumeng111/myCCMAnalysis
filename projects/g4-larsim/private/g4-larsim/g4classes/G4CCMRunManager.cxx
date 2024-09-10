@@ -12,7 +12,9 @@
 #include <G4ParticleGun.hh>
 #include <G4EventManager.hh>
 
-G4CCMRunManager::G4CCMRunManager(): G4RunManager() {}
+G4CCMRunManager::G4CCMRunManager(): G4MTRunManager() {}
+
+void G4CCMRunManager::AnalyzeEvent(G4Event* anEvent) {}
 
 void G4CCMRunManager::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
     // Reset the event counter
