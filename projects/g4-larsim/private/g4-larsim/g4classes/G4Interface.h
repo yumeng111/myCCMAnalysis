@@ -61,7 +61,7 @@ class G4Interface {
 
         size_t n_cores_ = 0;
         std::shared_ptr<G4CCMReadout> readout_;
-        std::shared_ptr<G4CCMRunManager> runManager_;
+        std::shared_ptr<G4MTRunManager> runManager_;
         std::shared_ptr<G4CCMParticleList> particle_list_;
 
         #ifdef G4VIS_USE

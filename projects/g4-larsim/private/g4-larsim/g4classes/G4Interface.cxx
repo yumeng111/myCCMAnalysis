@@ -81,7 +81,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
     }
 
     if(runManager_ == nullptr) {
-        runManager_ = std::make_shared<G4CCMRunManager>();
+        runManager_ = std::make_shared<G4MTRunManager>();
     }
 
     if(particle_list_ == nullptr) {
@@ -127,7 +127,7 @@ void G4Interface::SimulateEvent(const I3Particle& particle, I3MCTreePtr tree, CC
     readout_->SetInput(particles, trees);
 
     // Run the event
-    runManager_->SimulateEvent(particle, tree, mcpeseries);
+    runManager_->BeamOn(1);
 
     // I3MCTree and CCMMCPESeriesMap were passed as shared pointers to readout_,
     // and so have already been updated
@@ -143,7 +143,7 @@ void G4Interface::SimulateEvents(std::vector<I3Particle> const & particles, std:
     readout_->SetInput(particles, trees);
 
     // Run the event
-    runManager_->SimulateEvents(particles, trees, mcpeseries);
+    runManager_->BeamOn(particles.size());
 
     // I3MCTree and CCMMCPESeriesMap were passed as shared pointers to readout_,
     // and so have already been updated
