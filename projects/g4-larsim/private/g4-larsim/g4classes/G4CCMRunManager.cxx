@@ -14,60 +14,10 @@
 
 G4CCMRunManager::G4CCMRunManager(): G4MTRunManager() {}
 
-void G4CCMRunManager::AnalyzeEvent(G4Event* anEvent) {}
-
 void G4CCMRunManager::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
-    // Reset the event counter
-    fakeRun = false;
-    numberOfEventToBeProcessed = 1;
-    numberOfEventProcessed = 0;
-    ConstructScoringWorlds();
-    RunInitialization();
-
-    if(!currentRun) {
-        G4String text = "Run needs to be initialized before simulating an event.";
-        G4Exception("G4CCMRunManager::SimulateEvent()", "G4CCMRunManager001", FatalException, text);
-    }
-    assert(currentRun); // the G4Exception() above calls abort(). This assert() silences the clang static analyzer
-
-    DoEventLoop(numberOfEventToBeProcessed, nullptr, -1);
-    RunTermination();
+    BeamOn(1);
 }
 
 void G4CCMRunManager::SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
-    // Reset the event counter
-    fakeRun = false;
-    numberOfEventToBeProcessed = primaries.size();
-    numberOfEventProcessed = 0;
-    ConstructScoringWorlds();
-    RunInitialization();
-
-    if(!currentRun) {
-        G4String text = "Run needs to be initialized before simulating an event.";
-        G4Exception("G4CCMRunManager::SimulateEvent()", "G4CCMRunManager001", FatalException, text);
-    }
-    assert(currentRun); // the G4Exception() above calls abort(). This assert() silences the clang static analyzer
-
-    DoEventLoop(numberOfEventToBeProcessed, nullptr, -1);
-    RunTermination();
-}
-
-#include <G4ScoringManager.hh>
-#include <G4HCofThisEvent.hh>
-#include <G4VHitsCollection.hh>
-
-void G4CCMRunManager::Update_Scoring() {
-    G4ScoringManager* ScM = G4ScoringManager::GetScoringManagerIfExist();
-    if(!ScM) return;
-    G4int nPar = ScM->GetNumberOfMesh();
-    if(nPar<1) return;
-
-    G4HCofThisEvent* HCE = currentEvent->GetHCofThisEvent();
-    if(!HCE) return;
-    G4int nColl = HCE->GetCapacity();
-    for(G4int i=0;i<nColl;i++)
-    {
-    G4VHitsCollection* HC = HCE->GetHC(i);
-    if(HC) ScM->Accumulate(HC);
-    }
+    BeamOn(primaries.size());
 }

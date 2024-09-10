@@ -30,40 +30,6 @@ class G4CCMRunManager: public G4MTRunManager {
 
         void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
         void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);
-
-        void AnalyzeEvent(G4Event* anEvent) override;
-
-    private:
-        // This method is an exact copy of UpdateScoring which is private in the G4RunManager
-        void Update_Scoring();
-
-        G4int fScintCollID = -1;
-        G4int fPMTCollID = -1;
-        G4int fVerbose = 2;
-        G4int fPMTThreshold = 1;
-
-        CCMPMTKey fKey;
-        std::vector<CCMMCPE> fCCMMCPEVector;
-
-        G4int fHitCount = 0;
-        G4int fPhotonCount_Scint = 0;
-        G4int fPhotonCount_Ceren = 0;
-        G4int fAbsorptionCount = 0;
-        G4int fBoundaryAbsorptionCount = 0;
-
-        G4double fTotE = 0.;
-
-        // These only have meaning if totE > 0
-        // If totE = 0 then these won't be set by EndOfEventAction
-
-        G4ThreeVector fEWeightPos;
-        G4ThreeVector fReconPos;  // Also relies on hitCount>0
-        G4ThreeVector fConvPos;   // true (initial) converstion position
-        G4bool fConvPosSet = false;
-        G4ThreeVector fPosMax;
-        G4double fEdepMax = 0.;
-
-        G4int fPMTsAboveThreshold = 0;
 };
 
 #endif
