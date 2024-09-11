@@ -463,7 +463,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
     fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
     fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
-    fTPBFoil_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
+    //fTPBFoil_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
     fTPBFoil_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
 
@@ -472,7 +472,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
     fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
-    fTPBPMT_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
+    //fTPBPMT_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
