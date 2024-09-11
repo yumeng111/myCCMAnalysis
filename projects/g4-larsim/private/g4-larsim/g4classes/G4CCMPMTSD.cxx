@@ -87,6 +87,8 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
     hitsCE->AddHitsCollection(fHitCID, fPMTHitCollection);
 
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+
+    CCMMCPEMap = readout_->GetMCPESeries(event_id);
 }
 
 void G4CCMPMTSD::EndOfEvent(G4HCofThisEvent*) {

@@ -91,7 +91,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
 
         void Reset() {
-            CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap>();
+            CCMMCPEMap = nullptr;
         }
 
     private:
@@ -111,7 +111,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
 
         static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
 
-        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap>();
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = nullptr;
 };
 
 #endif

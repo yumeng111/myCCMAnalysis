@@ -625,4 +625,12 @@ void G4CCMDetectorConstruction::SetMainVolumeOn(G4bool b) {
 
 void G4CCMDetectorConstruction::SetReadout(G4CCMReadout * readout) {
    readout_ = readout;
+    G4CCMPMTSD* pmt = fPMT_SD.Get();
+    if(pmt) {
+        pmt->SetReadout(readout_);
+    }
+    G4CCMScintSD * scint = fScint_SD.Get();
+    if(scint) {
+        scint->SetReadout(readout_);
+    }
 }

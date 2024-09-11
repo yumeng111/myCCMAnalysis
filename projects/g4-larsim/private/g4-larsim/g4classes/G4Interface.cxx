@@ -119,12 +119,13 @@ void G4Interface::SimulateEvent(const I3Particle& particle, I3MCTreePtr tree, CC
 
     std::vector<I3Particle> particles = {particle};
     std::vector<I3MCTreePtr> trees = {tree};
+    std::vector<CCMMCPESeriesMapPtr> mcpeseries_list = {mcpeseries};
 
     // Set the particle list used for the primary generator user action
     particle_list_->SetParticles(particles);
 
     // Set readout information for sensitive detectors
-    readout_->SetInput(particles, trees);
+    readout_->SetInput(particles, mcpeseries_list, trees);
 
     // Run the event
     runManager_->BeamOn(1);
@@ -140,7 +141,7 @@ void G4Interface::SimulateEvents(std::vector<I3Particle> const & particles, std:
     particle_list_->SetParticles(particles);
 
     // Set readout information for sensitive detectors
-    readout_->SetInput(particles, trees);
+    readout_->SetInput(particles, mcpeseries, trees);
 
     // Run the event
     runManager_->BeamOn(particles.size());

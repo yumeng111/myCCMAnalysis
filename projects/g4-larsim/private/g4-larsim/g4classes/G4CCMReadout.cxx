@@ -24,8 +24,9 @@ const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> G4C
 
 G4CCMReadout::G4CCMReadout(size_t n_threads) : n_threads_(n_threads), readout(n_threads), primaries(), edep_trees() {}
 
-void G4CCMReadout::SetInput(std::vector<I3Particle> primaries, std::vector<I3MCTreePtr> edep_trees) {
+void G4CCMReadout::SetInput(std::vector<I3Particle> primaries, std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> edep_trees) {
     this->primaries = primaries;
+    this->mcpeseries = mcpeseries;
     this->edep_trees = edep_trees;
 }
 
@@ -75,6 +76,9 @@ void G4CCMReadout::SetPrimary(size_t i, I3Particle primary) { primaries.at(i) = 
 
 I3MCTreePtr G4CCMReadout::GetMCTree(size_t i) const { return edep_trees.at(i); }
 void G4CCMReadout::SetMCTree(size_t i, I3MCTreePtr edep_tree) { edep_trees.at(i) = edep_tree; }
+
+CCMMCPESeriesMapPtr G4CCMReadout::GetMCPESeries(size_t i) const { return mcpeseries.at(i); }
+void G4CCMReadout::SetMCPESeries(size_t i, CCMMCPESeriesMapPtr mcpeseries) { this->mcpeseries.at(i) = mcpeseries; }
 
 void G4CCMReadout::Reset() {
     readout.clear();
