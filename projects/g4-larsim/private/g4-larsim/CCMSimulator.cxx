@@ -106,6 +106,7 @@ void CCMSimulator::Process() {
         frame_queue_.push_back(frame);
         ++n_daq_frames_;
         if(n_daq_frames_ == batch_size_) {
+            ndaqcall_ += n_daq_frames_;
             n_daq_frames_ = 0;
             // Reached the batch size, process all frames in the queue
             DAQMultiThreaded();
