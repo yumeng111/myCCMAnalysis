@@ -172,7 +172,7 @@ void LargestPMTFraction::Physics(I3FramePtr frame) {
     double start_time = start_time_ptr->value;
     double end_time = end_time_ptr->value;
 
-    std::vector<size_t> fractions(time_windows_.size(), 0);
+    std::vector<double> fractions(time_windows_.size(), 0);
     std::vector<double> max_charge(time_windows_.size(), 0);
     std::vector<double> total_charge(time_windows_.size(), 0);
     for(CCMRecoPulseSeriesMap::const_iterator p = pulses->begin();
@@ -187,6 +187,9 @@ void LargestPMTFraction::Physics(I3FramePtr frame) {
                 continue;
             if(end_time < time)
                 break;
+
+            charge += i->GetCharge();
+
             if(time_windows_[time_bin] < time) {
                 max_charge[time_bin] = std::max(max_charge[time_bin], charge);
                 total_charge[time_bin] += charge;
@@ -194,7 +197,6 @@ void LargestPMTFraction::Physics(I3FramePtr frame) {
                 if(time_bin == time_windows_.size())
                     break;
             }
-            charge += i->GetCharge();
         }
         if(time_bin < time_windows_.size()) {
             max_charge[time_bin] = std::max(max_charge[time_bin], charge);
