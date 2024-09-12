@@ -411,19 +411,20 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBFoilSides_log = new G4LogicalVolume(fTPBFoilSides, G4Material::GetMaterial("TPBFoilSides"), "TPBFoilSidesLogical");
 
     // Create the top and bottom disks
-    fTPBFoilTopBottom = new G4Tubs("TPBFoilTopBottom", 0*cm, tpb_radius, tpb_thickness/2.0, 0.*deg, 360.*deg);
-    fTPBFoilTop_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilTopLogical");
-    fTPBFoilBottom_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilBottomLogical");
+    fTPBFoilTop = new G4Tubs("TPBFoilTop", 0*cm, tpb_radius, tpb_thickness/2.0, 0.*deg, 360.*deg);
+    fTPBFoilBottom = new G4Tubs("TPBFoilBottom", 0*cm, tpb_radius, tpb_thickness/2.0, 0.*deg, 360.*deg);
+    fTPBFoilTop_log = new G4LogicalVolume(fTPBFoilTop, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilTopLogical");
+    fTPBFoilBottom_log = new G4LogicalVolume(fTPBFoilBottom, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilBottomLogical");
 
     // Place the side cylinder in the world volume
-    fTPBFoilSides_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fTPBFoilSides_log, "TPBFoilSides", fReflectorFoil_log, false, 0);
+    fTPBFoilSides_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fTPBFoilSides_log, "TPBFoilSides", fReflectorFoil_log, false, 0, true);
 
     // Place the top and bottom disks
-    G4double zTopPosition = tpb_half_height + tpb_thickness/2;
-    G4double zBottomPosition = -tpb_half_height - tpb_thickness/2;
+    G4double zTopPosition = tpb_half_height - tpb_thickness/2;
+    G4double zBottomPosition = -tpb_half_height + tpb_thickness/2;
 
-    fTPBFoilTop_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zTopPosition), fTPBFoilTop_log, "TPBFoilTop", fTPBFoilSides_log, false, 0);
-    fTPBFoilBottom_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zBottomPosition), fTPBFoilBottom_log, "TPBFoilBottom", fTPBFoilSides_log, false, 0);
+    fTPBFoilTop_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zTopPosition), fTPBFoilTop_log, "TPBFoilTop", fTPBFoilSides_log, false, 0, true);
+    fTPBFoilBottom_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zBottomPosition), fTPBFoilBottom_log, "TPBFoilBottom", fTPBFoilSides_log, false, 0, true);
 
     //fTPBFoil = new G4Tubs("TPBFoil", 0*cm, tpb_radius, tpb_half_height, 0*deg, 360*deg);
     //fTPBFoil_log = new G4LogicalVolume(fTPBFoil, G4Material::GetMaterial("TPBFoil"), "TPBFoil");

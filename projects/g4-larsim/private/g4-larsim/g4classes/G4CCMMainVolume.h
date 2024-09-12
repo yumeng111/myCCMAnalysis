@@ -62,7 +62,8 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fInnerFrame = nullptr;
     G4Tubs* fReflectorFoil = nullptr;
     G4Tubs* fTPBFoilSides = nullptr;
-    G4Tubs* fTPBFoilTopBottom = nullptr;
+    G4Tubs* fTPBFoilTop = nullptr;
+    G4Tubs* fTPBFoilBottom = nullptr;
     G4Tubs* fFiducialAr = nullptr;
 
     G4VSolid* fPMTCoatedWall = nullptr;
