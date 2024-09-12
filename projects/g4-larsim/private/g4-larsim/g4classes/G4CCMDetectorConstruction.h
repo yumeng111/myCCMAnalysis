@@ -105,7 +105,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* fSteel = nullptr;
     G4Material* fVacuum = nullptr;
     G4Material* fPTFE = nullptr;
-    G4Material* fTPBFoil = nullptr;
+    G4Material* fTPBFoilSides = nullptr;
+    G4Material* fTPBFoilTopBottom = nullptr;
     G4Material* fTPBPMT = nullptr;
     
     // Geometry
@@ -121,7 +122,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4MaterialPropertiesTable* fSteel_mt = nullptr;
     G4MaterialPropertiesTable* fVacuum_mt = nullptr;
     G4MaterialPropertiesTable* fPTFE_mt = nullptr;
-    G4MaterialPropertiesTable* fTPBFoil_mt = nullptr;
+    G4MaterialPropertiesTable* fTPBFoilSides_mt = nullptr;
+    G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = nullptr;
     G4MaterialPropertiesTable* fTPBPMT_mt = nullptr;
 
     // Sensitive Detector

@@ -71,7 +71,8 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
   if(fSteel != nullptr) delete fSteel;
   if(fVacuum != nullptr) delete fVacuum;
   if(fPTFE != nullptr) delete fPTFE;
-  if(fTPBFoil != nullptr) delete fTPBFoil;
+  if(fTPBFoilSides != nullptr) delete fTPBFoilSides;
+  if(fTPBFoilTopBottom != nullptr) delete fTPBFoilTopBottom;
   if(fGlass_mt != nullptr) delete fGlass_mt;
   if(fPlastic_mt != nullptr) delete fPlastic_mt;
   if(fBlackPlastic_mt != nullptr) delete fBlackPlastic_mt;
@@ -80,7 +81,8 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
   if(fSteel_mt != nullptr) delete fSteel_mt;
   if(fVacuum_mt != nullptr) delete fVacuum_mt;
   if(fPTFE_mt != nullptr) delete fPTFE_mt;
-  if(fTPBFoil_mt != nullptr) delete fTPBFoil_mt;
+  if(fTPBFoilSides_mt != nullptr) delete fTPBFoilSides_mt;
+  if(fTPBFoilTopBottom_mt != nullptr) delete fTPBFoilTopBottom_mt;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -132,9 +134,13 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fGlass->AddElement(fH, 8.467 * perCent);
 
     // TPB Foil
-    fTPBFoil = new G4Material("TPBFoil", density= 1.079*g/cm3, 2);
-    fTPBFoil->AddElement(fC, 28);
-    fTPBFoil->AddElement(fH, 22);
+    fTPBFoilSides = new G4Material("TPBFoilSides", density= 1.079*g/cm3, 2);
+    fTPBFoilSides->AddElement(fC, 28);
+    fTPBFoilSides->AddElement(fH, 22);
+
+    fTPBFoilTopBottom = new G4Material("TPBFoilTopBottom", density= 1.079*g/cm3, 2);
+    fTPBFoilTopBottom->AddElement(fC, 28);
+    fTPBFoilTopBottom->AddElement(fH, 22);
 
     // TPB PMT
     fTPBPMT = new G4Material("TPBPMT", density= 1.079*g/cm3, 2);
@@ -457,22 +463,36 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> tpb_bulk_abs_energy = {1.0*eV, 3.0*eV, 3.01*eV, 14.0*eV};
     std::vector<G4double> tpb_bulk_abs = {0.02*mm, 0.02*mm, 1e6*m, 1e6*m};
 
-    G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
-    //fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_PTFE_Emission_Energy, TPB_PTFE_Emission); -- NOTE : not using this spectrum! TPB is on mylar backing
-    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
-    fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
-    //fTPBFoil_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
-    fTPBFoil_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
-    fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
+    // now make our tpb foils!
+    // making different ones for sides and top/bottom :)
 
+    // side cylinder of TPB foil
+    G4MaterialPropertiesTable* fTPBFoilSides_mt = new G4MaterialPropertiesTable();
+    fTPBFoilSides_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
+    fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for side tpb foils" << std::endl;
+    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
+    fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
+    fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
+    fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
+
+    // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
+    G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
+    fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsFoil_ << " for top/bottom tpb foils" << std::endl;
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
+    fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
+    fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
+    fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
+
+    // tpb on pmts
     G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
     fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for pmt tpb foils" << std::endl;
     fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
-    //fTPBPMT_mt->AddProperty("ABSLENGTH", tpb_bulk_abs_energy, tpb_bulk_abs);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 

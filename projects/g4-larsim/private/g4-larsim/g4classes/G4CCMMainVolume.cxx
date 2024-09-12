@@ -408,12 +408,12 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     // note -- trying to make TPB side foils different material than TPB top/bottom foils
     // Create the side cylinder
     fTPBFoilSides = new G4Tubs("TPBFoilSides", 0*cm, tpb_radius, tpb_half_height, 0.*deg, 360.*deg);
-    fTPBFoilSides_log = new G4LogicalVolume(fTPBFoilSides, G4Material::GetMaterial("TPBFoil"), "TPBFoilSidesLogical");
+    fTPBFoilSides_log = new G4LogicalVolume(fTPBFoilSides, G4Material::GetMaterial("TPBFoilSides"), "TPBFoilSidesLogical");
 
     // Create the top and bottom disks
     fTPBFoilTopBottom = new G4Tubs("TPBFoilTopBottom", 0*cm, tpb_radius, tpb_thickness/2.0, 0.*deg, 360.*deg);
-    fTPBFoilTop_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoil"), "TPBFoilTopLogical");
-    fTPBFoilBottom_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoil"), "TPBFoilBottomLogical");
+    fTPBFoilTop_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilTopLogical");
+    fTPBFoilBottom_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilBottomLogical");
 
     // Place the side cylinder in the world volume
     fTPBFoilSides_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fTPBFoilSides_log, "TPBFoilSides", fReflectorFoil_log, false, 0);
