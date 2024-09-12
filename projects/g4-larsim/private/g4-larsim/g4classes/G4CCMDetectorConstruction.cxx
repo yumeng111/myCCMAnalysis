@@ -562,7 +562,9 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogTPBCoatingWall(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogTPBCoatingCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBFoil(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBFoilSides(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBFoilTop(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBFoilBottom(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fScint_SD.Get());

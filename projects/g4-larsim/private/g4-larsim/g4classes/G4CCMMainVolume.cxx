@@ -396,7 +396,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double ptfe_half_height = frame_half_height - frame_thickness;
     G4double ptfe_radius = frame_radius - frame_thickness;
 
-    // Teflon reflector foils
+    // Reflector foils
     fReflectorFoil = new G4Tubs("PTFEFoil", 0*cm, ptfe_radius, ptfe_half_height, 0*deg, 360*deg);
     fReflectorFoil_log = new G4LogicalVolume(fReflectorFoil, G4Material::GetMaterial("PTFE"), "PTFEFoil");
     fReflectorFoil_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fReflectorFoil_log, "PTFEFoil", fInnerFrame_log, false, 0, true);
@@ -404,9 +404,30 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double tpb_half_height = ptfe_half_height - ptfe_thickness;
     G4double tpb_radius = ptfe_radius - ptfe_thickness;
 
-    fTPBFoil = new G4Tubs("TPBFoil", 0*cm, tpb_radius, tpb_half_height, 0*deg, 360*deg);
-    fTPBFoil_log = new G4LogicalVolume(fTPBFoil, G4Material::GetMaterial("TPBFoil"), "TPBFoil");
-    fTPBFoil_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fReflectorFoil_log, false, 0, true);
+    // TPB on the foils
+    // note -- trying to make TPB side foils different material than TPB top/bottom foils
+    // Create the side cylinder
+    fTPBFoilSides = new G4Tubs("TPBFoilSides", 0*cm, tpb_radius, tpb_half_height, 0.*deg, 360.*deg);
+    fTPBFoilSides_log = new G4LogicalVolume(fTPBFoilSides, G4Material::GetMaterial("TPBFoil"), "TPBFoilSidesLogical");
+
+    // Create the top and bottom disks
+    fTPBFoilTopBottom = new G4Tubs("TPBFoilTopBottom", 0*cm, tpb_radius, tpb_thickness/2.0, 0.*deg, 360.*deg);
+    fTPBFoilTop_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoil"), "TPBFoilTopLogical");
+    fTPBFoilBottom_log = new G4LogicalVolume(fTPBFoilTopBottom, G4Material::GetMaterial("TPBFoil"), "TPBFoilBottomLogical");
+
+    // Place the side cylinder in the world volume
+    fTPBFoilSides_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fTPBFoilSides_log, "TPBFoilSides", fReflectorFoil_log, false, 0);
+
+    // Place the top and bottom disks
+    G4double zTopPosition = tpb_half_height + tpb_thickness/2;
+    G4double zBottomPosition = -tpb_half_height - tpb_thickness/2;
+
+    fTPBFoilTop_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zTopPosition), fTPBFoilTop_log, "TPBFoilTop", fTPBFoilSides_log, false, 0);
+    fTPBFoilBottom_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zBottomPosition), fTPBFoilBottom_log, "TPBFoilBottom", fTPBFoilSides_log, false, 0);
+
+    //fTPBFoil = new G4Tubs("TPBFoil", 0*cm, tpb_radius, tpb_half_height, 0*deg, 360*deg);
+    //fTPBFoil_log = new G4LogicalVolume(fTPBFoil, G4Material::GetMaterial("TPBFoil"), "TPBFoil");
+    //fTPBFoil_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fReflectorFoil_log, false, 0, true);
 
     G4double fiducial_lar_half_height = tpb_half_height - tpb_thickness;
     G4double fiducial_lar_radius = tpb_radius - tpb_thickness;
@@ -414,7 +435,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     // now fiducial LAr!
     fFiducialAr = new G4Tubs("FiducialArgon", 0*cm, fiducial_lar_radius, fiducial_lar_half_height, 0*deg, 360*deg);
     fFiducialAr_log = new G4LogicalVolume(fFiducialAr, G4Material::GetMaterial("LAr"), "FiducialArgon");
-    fFiducialAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
+    //fFiducialAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
+    fFiducialAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoilSides_log, false, 0, true);
 
     G4double pmt_protrusion_distance = 61.89 * mm;
 
@@ -673,7 +695,7 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     fInnerJacket_log->SetVisAttributes(dark_blue);
     fArgonOuter_log->SetVisAttributes(green);
     fInnerFrame_log->SetVisAttributes(orange);
-    fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fFiducialAr_log->SetVisAttributes(pink);
 
     //fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
@@ -690,32 +712,32 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
 
     auto pmt_va = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8)); //grey idk
     pmt_va->SetForceSolid(true);
-    fPMTCoatedWall_log->SetVisAttributes(pmt_va);
-    fPMTCoatedCaps_log->SetVisAttributes(pmt_va);
-    fPMTUncoatedWall_log->SetVisAttributes(pmt_va);
-    fPMTUncoatedCaps_log->SetVisAttributes(pmt_va);
-    //fPMTCoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fPMTCoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fPMTUncoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fPMTUncoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fPMTCoatedWall_log->SetVisAttributes(pmt_va);
+    //fPMTCoatedCaps_log->SetVisAttributes(pmt_va);
+    //fPMTUncoatedWall_log->SetVisAttributes(pmt_va);
+    //fPMTUncoatedCaps_log->SetVisAttributes(pmt_va);
+    fPMTCoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPMTCoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPMTUncoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fPMTUncoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     tpb_coating_va->SetForceSolid(true);
-    fTPBCoatingWall_log->SetVisAttributes(tpb_coating_va);
-    fTPBCoatingCaps_log->SetVisAttributes(tpb_coating_va);
-    //fTPBCoatingWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fTPBCoatingCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fTPBCoatingWall_log->SetVisAttributes(tpb_coating_va);
+    //fTPBCoatingCaps_log->SetVisAttributes(tpb_coating_va);
+    fTPBCoatingWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fTPBCoatingCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     salmon->SetForceSolid(true);
     teal->SetForceSolid(true);
-    fBridleWall_log->SetVisAttributes(salmon);
-    fBridleCaps_log->SetVisAttributes(salmon);
-    fFrillWall_log->SetVisAttributes(teal);
-    fFrillCaps_log->SetVisAttributes(teal);
-    //fBridleWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fBridleCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fFrillWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fFrillCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fBridleWall_log->SetVisAttributes(salmon);
+    //fBridleCaps_log->SetVisAttributes(salmon);
+    //fFrillWall_log->SetVisAttributes(teal);
+    //fFrillCaps_log->SetVisAttributes(teal);
+    fBridleWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fBridleCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fFrillWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fFrillCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     // add shiny guy!
     auto red = new G4VisAttributes(G4Colour(1., 0., 0.));
@@ -723,6 +745,11 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     fShinyC406R0_log->SetVisAttributes(red);
     fShinyTop_log->SetVisAttributes(red);
     fShinyBottom_log->SetVisAttributes(red);
+    
+    // tpb foils!
+    fTPBFoilSides_log->SetVisAttributes(salmon);
+    fTPBFoilTop_log->SetVisAttributes(teal);
+    fTPBFoilBottom_log->SetVisAttributes(pmt_va);
 
     // make our source rod green
     if (SourceRodIn)
