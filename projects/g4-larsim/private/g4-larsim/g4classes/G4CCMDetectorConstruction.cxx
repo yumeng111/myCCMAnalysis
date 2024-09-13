@@ -35,11 +35,13 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128) {
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsEndCapFoil,
+        G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength_ = UVAbsLength;
-    WLSNPhotonsFoil_ = WLSNPhotonsFoil;
+    WLSNPhotonsEndCapFoil_ = WLSNPhotonsEndCapFoil;
+    WLSNPhotonsSideFoil_ = WLSNPhotonsSideFoil;
     WLSNPhotonsPMT_ = WLSNPhotonsPMT;
     Rayleigh128_ = Rayleigh128;
     SetDefaults();
@@ -470,8 +472,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBFoilSides_mt = new G4MaterialPropertiesTable();
     fTPBFoilSides_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for side tpb foils" << std::endl;
-    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsSideFoil_ << " for side tpb foils" << std::endl;
+    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsSideFoil_);
     fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
@@ -480,8 +482,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
     fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << WLSNPhotonsFoil_ << " for top/bottom tpb foils" << std::endl;
-    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsEndCapFoil_ << " for top/bottom tpb foils" << std::endl;
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsEndCapFoil_);
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);

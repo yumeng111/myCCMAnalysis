@@ -43,7 +43,8 @@ private:
     double TripletTau_; // set LAr triplet time constant
     double Rayleigh128_; // set rayl scattering length for 128nm light
     double UVAbsLength_; // set uv abs length at 128nm
-    double WLSNPhotonsFoil_;
+    double WLSNPhotonsEndCapFoil_;
+    double WLSNPhotonsSideFoil_;
     double WLSNPhotonsPMT_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light

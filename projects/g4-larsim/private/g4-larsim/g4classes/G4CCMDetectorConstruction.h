@@ -39,7 +39,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
   public:
 
     // constructor and destructor
-    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128);
+    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128);
     ~G4CCMDetectorConstruction() override;
 
     void SetReadout(G4CCMReadout * readout);
@@ -148,7 +148,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4double TripletTau_ = 743.0 * ns;
     G4double Rayleigh128_ = 95.0 * cm;
     G4double UVAbsLength_ = 55.0 * cm;
-    G4double WLSNPhotonsFoil_ = 0.605;
+    G4double WLSNPhotonsEndCapFoil_ = 0.605;
+    G4double WLSNPhotonsSideFoil_ = 0.605;
     G4double WLSNPhotonsPMT_ = 0.605;  
 
     G4bool TimeCut_ = true;
