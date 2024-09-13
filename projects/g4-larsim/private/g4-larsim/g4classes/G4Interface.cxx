@@ -102,7 +102,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
         // set sodium rod status
         detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun);
         // Force reinitializatiion
-        runManager_->ReinitializeGeometry(true);
+        //runManager_->ReinitializeGeometry(true);
     }
 }
 
