@@ -364,11 +364,6 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         return false;
     }
 
-    // do not add entry to MCTree for no energy deposition
-    if(edep == 0.){
-        return false;
-    }
-
     //std::cout << "creation process name = " << creationProcessName << ", processName = " << processName << ", parent id = " << parent_id
     //    << ", track id = " << track_id << ", name = " << particleName << ", edep = "  << edep << ", e kin = " << ekin << ", and time = " << photonTime << std::endl;
 
