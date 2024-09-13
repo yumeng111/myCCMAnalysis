@@ -78,7 +78,7 @@ istream& operator>>(istream& is, CCMChannelKey& key)
   if (boost::regex_search(s, matches, reg)) {
     // try the 3 entry version first
     CCMChannelKey newkey;
-    log_trace("matches: %s %s %s", matches.str(1).c_str(), matches.str(2).c_str());
+    log_trace("matches: %s %s", matches.str(1).c_str(), matches.str(2).c_str());
     newkey.SetBoard(boost::lexical_cast<int>(matches.str(1)));
     newkey.SetChannel(boost::lexical_cast<unsigned>(matches.str(2)));
     key = newkey;

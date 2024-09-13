@@ -28,19 +28,10 @@ class CCMDetectorResponse : public I3ServiceBase {
         // initialize geant4 detector
         virtual void Initialize() = 0;
 
-        // begin events
-        virtual void BeginEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) = 0;
+        virtual void SimulateEvent(I3Particle const & primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) = 0;
+        virtual void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) = 0;
 
-        // end events
-        virtual void EndEvent() = 0;
-
-        // terminate run
-        virtual void TerminateRun() = 0;
         virtual void DestroyInterface() = 0;
-
-        // get SD status
-        virtual bool GetPMTSDStatus() = 0;
-        virtual bool GetLArSDStatus() = 0;
 
     protected:
         template <class ParamType>

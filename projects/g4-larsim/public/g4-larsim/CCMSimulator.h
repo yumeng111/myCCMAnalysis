@@ -24,9 +24,20 @@ public:
     ~CCMSimulator() = default;
 
     void Configure();
-    void DAQ(I3FramePtr frame);
-    void Simulation(I3FramePtr frame);
-    void Finish();
+
+    void Process() override;
+    void ProcessNormally(I3FramePtr frame);
+
+    void DAQSingleThreaded(I3FramePtr frame);
+    void DAQMultiThreaded();
+    void DAQ(I3FramePtr frame) override;
+
+    void Simulation(I3FramePtr frame) override;
+
+    void Finish() override;
+
+    static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source);
+    static void MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary);
 private:
     std::string responseServiceName_;
     std::string input_mc_tree_name_;
@@ -35,12 +46,14 @@ private:
     std::string LArMCTreeName_;
     std::string PhotonSummarySeriesName_;
 
+    bool multithreaded_;
+    size_t batch_size_;
+    std::deque<I3FramePtr> frame_queue_;
+
     bool seen_s_frame_ = false;
+    unsigned int n_daq_frames_ = 0;
 
     CCMDetectorResponsePtr response_;
-
-    bool PMTSDStatus_; // turn PMT SD on/off
-    bool LArSDStatus_; // turn fiducial LAr SD on/off
 
     SET_LOGGER("CCMSimulator");
 };

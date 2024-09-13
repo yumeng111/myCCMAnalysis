@@ -64,6 +64,7 @@ I3_POINTER_TYPEDEFS(I3Module);
 
 class I3Module
 {
+protected:
   typedef std::map<std::string, std::pair<FrameFifoPtr, I3ModulePtr> > outboxmap_t;
 
   typedef std::map<I3Frame::Stream, boost::function<void(I3FramePtr)> > methods_t;
@@ -362,9 +363,11 @@ public:
   /** module name */
   std::string name_;
 
+ protected:
   unsigned nphyscall_, ndaqcall_;
   double systime_, usertime_;
 
+ private:
   // cache of previous metadata frames (per-outbox)
   std::map<std::string, boost::shared_ptr<I3FrameMixer> > cachemap_;
   void SyncCache(std::string outbox, I3FramePtr frame);

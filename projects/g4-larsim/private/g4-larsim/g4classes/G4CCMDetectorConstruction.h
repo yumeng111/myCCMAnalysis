@@ -11,6 +11,7 @@ Global variables include most of the important volumes and materials.
 #include "icetray/CCMPMTKey.h"
 #include "dataclasses/I3Map.h"
 #include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
+#include "g4-larsim/g4classes/G4CCMReadout.h"
 
 #include <G4Cache.hh>
 #include <G4Material.hh>
@@ -34,13 +35,14 @@ class G4Sphere;
 class G4Tubs;
 class G4VPhysicalVolume;
 
-class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
-{
+class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
   public:
 
     // constructor and destructor
-    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double Rayleigh128);
+    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128);
     ~G4CCMDetectorConstruction() override;
+
+    void SetReadout(G4CCMReadout * readout);
 
     // build the detector
     G4VPhysicalVolume* Construct() override;
@@ -64,7 +66,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     bool GetLArSDStatus() { return LArSDStatus_; }
  
     // set sodium source calibration run status
-    void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun){
+    void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun) {
         SourceRodIn_ = SourceRodIn; 
         SourceRodLocation_ = SourceRodLocation;
         CobaltSourceRun_ = CobaltSourceRun;
@@ -78,6 +80,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     void SetKillCherenkov(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }    
 
   private:
+
+    G4CCMReadout * readout_ = nullptr;
     
     void DefineMaterials();
     G4CCMDetectorMessenger* fDetectorMessenger = nullptr;
@@ -105,7 +109,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* fSteel = nullptr;
     G4Material* fVacuum = nullptr;
     G4Material* fPTFE = nullptr;
-    G4Material* fTPBFoil = nullptr;
+    G4Material* fTPBFoilSides = nullptr;
+    G4Material* fTPBFoilTopBottom = nullptr;
     G4Material* fTPBPMT = nullptr;
     
     // Geometry
@@ -121,7 +126,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4MaterialPropertiesTable* fSteel_mt = nullptr;
     G4MaterialPropertiesTable* fVacuum_mt = nullptr;
     G4MaterialPropertiesTable* fPTFE_mt = nullptr;
-    G4MaterialPropertiesTable* fTPBFoil_mt = nullptr;
+    G4MaterialPropertiesTable* fTPBFoilSides_mt = nullptr;
+    G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = nullptr;
     G4MaterialPropertiesTable* fTPBPMT_mt = nullptr;
 
     // Sensitive Detector
@@ -142,6 +148,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction
     G4double TripletTau_ = 743.0 * ns;
     G4double Rayleigh128_ = 95.0 * cm;
     G4double UVAbsLength_ = 55.0 * cm;
+    G4double WLSNPhotonsFoil_ = 0.605;
+    G4double WLSNPhotonsPMT_ = 0.605;  
 
     G4bool TimeCut_ = true;
     G4bool KillCherenkov_ = false;

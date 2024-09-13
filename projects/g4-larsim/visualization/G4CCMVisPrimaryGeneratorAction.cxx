@@ -28,7 +28,7 @@
 /// \brief Implementation of the LXePrimaryGeneratorAction class
 //
 //
-#include "G4CCMPrimaryGeneratorAction.h"
+#include "G4CCMVisPrimaryGeneratorAction.h"
 
 #include "globals.hh"
 #include "G4Event.hh"
@@ -41,7 +41,7 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPrimaryGeneratorAction::G4CCMPrimaryGeneratorAction(){
+G4CCMVisPrimaryGeneratorAction::G4CCMVisPrimaryGeneratorAction(){
     G4int n_particle = 1;
     fParticleGun = new G4ParticleGun(n_particle);
 
@@ -61,14 +61,14 @@ G4CCMPrimaryGeneratorAction::G4CCMPrimaryGeneratorAction(){
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMPrimaryGeneratorAction::~G4CCMPrimaryGeneratorAction() { 
+G4CCMVisPrimaryGeneratorAction::~G4CCMVisPrimaryGeneratorAction() { 
     delete fParticleGun; 
     //delete fGeneralParticleSource;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
+void G4CCMVisPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
     if (fParticleGun->GetParticleDefinition() == G4Geantino::Geantino()) {  
         G4int Z = 11, A = 22;
         G4double ionCharge   = 0.*eplus;

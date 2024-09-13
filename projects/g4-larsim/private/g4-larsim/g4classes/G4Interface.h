@@ -7,7 +7,9 @@
 #include <dataclasses/physics/I3Particle.h>
 #include <dataclasses/physics/I3MCTreeUtils.h>
 
-#include <g4-larsim/g4classes/G4CCMRunManager.h>
+#include "g4-larsim/g4classes/G4CCMPrimaryGeneratorAction.h"
+#include "g4-larsim/g4classes/G4CCMRunManager.h"
+#include "g4-larsim/g4classes/G4CCMReadout.h"
 
 #include <icetray/I3Logging.h>
 #include <icetray/CCMPMTKey.h>
@@ -45,44 +47,34 @@ class G4Interface {
 
         /// Add the detector to the geometry. Should not be called after initialized.
         void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun,
-                             double SingletTau, double TripletTau, double Rayleigh128,
-                             double UVAbsLength, bool TimeCut, bool KillCherenkov, long RandomSeed);
-        /// Initialize event. Most Geant4 global things are initialized the first time this is called.
-        void InitializeRun();
-        /// To be called after simulating each IceTray event.
-        void TerminateEvent();
-        void TerminateRun();
-        /// Simulate a single particle (InitializeRun must be called first)
-        void InjectParticle(const I3Particle& particle, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries);
+                             double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength, double WLSNPhotonsFoil, double WLSNPhotonsPMT, 
+                             bool TimeCut, bool KillCherenkov, long RandomSeed);
 
-        static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, PhotonSummarySeriesPtr photon_summary_series);
-        static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source);
-
-        boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap() { return mcpeseries_result_ ; }
+        void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
+        void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);
 
     private:
         void Initialize();
+        void InitializeRun();
 
         static std::shared_ptr<G4Interface> g4Interface_;
 
-        std::shared_ptr<G4CCMRunManager> runManager_ = nullptr;
+        size_t n_cores_ = 0;
+        std::shared_ptr<G4CCMReadout> readout_;
+        std::shared_ptr<G4MTRunManager> runManager_;
+        std::shared_ptr<G4CCMParticleList> particle_list_;
 
         #ifdef G4VIS_USE
         G4VisManager* visManager_;
         #endif
 
-        CCMMCPESeriesMapPtr mcpeseries_result_;
-
-        G4CCMDetectorConstruction* detector_;
+        G4CCMDetectorConstruction * detector_ = nullptr;
         bool initialized_;
-        bool runInitialized_;
         std::string visMacro_;
 
         // controls to turn SD on/off (set by our response service)
         bool PMTSDStatus_; // turn PMT SD on/off
         bool LArSDStatus_; // turn fiducial LAr SD on/off
-
-        static const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> PhotonSummarytoCCMMCPEPhotonSource;
 
         SET_LOGGER("G4Interface");
 };

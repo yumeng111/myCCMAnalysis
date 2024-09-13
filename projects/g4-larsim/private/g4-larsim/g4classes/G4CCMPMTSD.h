@@ -38,6 +38,7 @@
 
 #include "g4-larsim/g4classes/G4CCMPMTHit.h"
 #include "g4-larsim/g4classes/G4CCMMainVolume.h"
+#include "g4-larsim/g4classes/G4CCMReadout.h"
 
 #include "icetray/CCMPMTKey.h"
 
@@ -61,7 +62,10 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         G4CCMPMTSD(G4String name);
         ~G4CCMPMTSD() override;
 
+        void SetReadout(G4CCMReadout * readout) { readout_ = readout; }
+
         void Initialize(G4HCofThisEvent*) override;
+        void EndOfEvent(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
 
         // Initialize the arrays to store pmt positions
@@ -83,23 +87,16 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         // map from volume names to CCMPMTKeys
         std::map<std::string, CCMPMTKey> volumeToKey;
 
-        // map from pmt number to pmt number
-        std::map<G4int, size_t> pmtNumberToIndex;
-
         // return CCMMCPEMap
         boost::shared_ptr<CCMMCPESeriesMap> GetCCMMCPEMap(){ return CCMMCPEMap; }
 
         void Reset() {
-            ClearCCMMCPEMap();
-            ClearPMTNumberIndex();
-            ClearVolumeToKey();
+            CCMMCPEMap = nullptr;
         }
 
-        void ClearCCMMCPEMap(){ CCMMCPEMap->clear(); }
-        void ClearPMTNumberIndex(){ pmtNumberToIndex.clear(); }
-        void ClearVolumeToKey(){ volumeToKey.clear(); }
-
     private:
+        int event_id = -1;
+        G4CCMReadout * readout_ = nullptr;
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
 
         G4DataVector* fPMTPositionsX = nullptr;
@@ -114,7 +111,7 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
 
         static const std::unordered_map<std::string, CCMMCPE::PhotonSource> processNameToPhotonSource;
 
-        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = boost::make_shared<CCMMCPESeriesMap> ();
+        boost::shared_ptr<CCMMCPESeriesMap> CCMMCPEMap = nullptr;
 };
 
 #endif

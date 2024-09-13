@@ -28,8 +28,8 @@
 /// \brief Definition of the LXePrimaryGeneratorAction class
 //
 //
-#ifndef G4CCMPrimaryGeneratorAction_h
-#define G4CCMPrimaryGeneratorAction_h 1
+#ifndef G4CCMVisPrimaryGeneratorAction_h
+#define G4CCMVisPrimaryGeneratorAction_h 1
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "G4GeneralParticleSource.hh"
@@ -37,11 +37,11 @@
 class G4ParticleGun;
 class G4Event;
 
-class G4CCMPrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
+class G4CCMVisPrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 {
  public:
-  G4CCMPrimaryGeneratorAction();
-  ~G4CCMPrimaryGeneratorAction() override;
+  G4CCMVisPrimaryGeneratorAction();
+  ~G4CCMVisPrimaryGeneratorAction() override;
 
   void GeneratePrimaries(G4Event* anEvent) override;
 

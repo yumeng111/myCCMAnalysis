@@ -29,7 +29,7 @@
 //
 //
 #include "G4UserRunAction.hh"
-#include "G4CCMPrimaryGeneratorAction.h"
+#include "G4CCMVisPrimaryGeneratorAction.h"
 
 #ifndef G4CCMRunAction_h
 #define G4CCMRunAction_h 1
@@ -42,7 +42,7 @@ class G4Run;
 class G4CCMRunAction : public G4UserRunAction
 {
  public:
-  G4CCMRunAction(G4CCMPrimaryGeneratorAction*);
+  G4CCMRunAction(G4CCMVisPrimaryGeneratorAction*);
   ~G4CCMRunAction() override;
 
   G4Run* GenerateRun() override;
@@ -51,7 +51,7 @@ class G4CCMRunAction : public G4UserRunAction
 
  private:
   G4CCMRun* fRun = nullptr;
-  G4CCMPrimaryGeneratorAction* fPrimary = nullptr;
+  G4CCMVisPrimaryGeneratorAction* fPrimary = nullptr;
   //G4CCMHistoManager* fHistoManager = nullptr;
 };
 

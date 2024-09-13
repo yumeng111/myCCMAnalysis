@@ -33,6 +33,7 @@
 
 #include <G4ios.hh>
 #include <G4Step.hh>
+#include <G4Event.hh>
 #include <G4Track.hh>
 #include <G4VProcess.hh>
 #include <G4SDManager.hh>
@@ -69,6 +70,25 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
         fHitsCID = G4SDManager::GetSDMpointer()->GetCollectionID(fScintCollection);
     }
     hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
+
+    event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+
+    primary_ = readout_->GetPrimary(event_id);
+    mcTree = readout_->GetMCTree(event_id);
+
+    if (mcTree == nullptr) {
+        mcTree = I3MCTreePtr(new I3MCTree());
+    }
+
+    DaughterParticleMap[1] = primary_.GetID();
+    if(not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) {
+        I3MCTreeUtils::AddPrimary(*mcTree, primary_);
+    }
+}
+
+void G4CCMScintSD::EndOfEvent(G4HCofThisEvent*) {
+    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, photon_summary, optical_photon_map);
+    Reset();
 }
 
 void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
@@ -341,11 +361,6 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // kill neutrinos
     if (fParticleDefinition == G4NeutrinoE::NeutrinoE()){
         aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-        return false;
-    }
-
-    // do not add entry to MCTree for no energy deposition
-    if(edep == 0.){
         return false;
     }
 

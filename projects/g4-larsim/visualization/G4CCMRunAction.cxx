@@ -34,7 +34,7 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4CCMRunAction::G4CCMRunAction(G4CCMPrimaryGeneratorAction* kin) : fPrimary(kin) {
+G4CCMRunAction::G4CCMRunAction(G4CCMVisPrimaryGeneratorAction* kin) : fPrimary(kin) {
     //fHistoManager = new HistoManager();
 }
 

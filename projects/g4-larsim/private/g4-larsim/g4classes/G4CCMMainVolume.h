@@ -39,7 +39,9 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogTPBCoatingWall() { return fTPBCoatingWall_log; }
     G4LogicalVolume* GetLogTPBCoatingCaps() { return fTPBCoatingCaps_log; }
 
-    G4LogicalVolume* GetLogTPBFoil() { return fTPBFoil_log; }
+    G4LogicalVolume* GetLogTPBFoilSides() { return fTPBFoilSides_log; }
+    G4LogicalVolume* GetLogTPBFoilTop() { return fTPBFoilTop_log; }
+    G4LogicalVolume* GetLogTPBFoilBottom() { return fTPBFoilBottom_log; }
     G4LogicalVolume* GetLogReflectorFoil() { return fReflectorFoil_log; }
     G4LogicalVolume* GetShinyC406R0() { return fShinyC406R0_log; }
     G4LogicalVolume* GetShinyTop() { return fShinyTop_log; }
@@ -59,7 +61,9 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fArgonOuter = nullptr;
     G4Tubs* fInnerFrame = nullptr;
     G4Tubs* fReflectorFoil = nullptr;
-    G4Tubs* fTPBFoil = nullptr;
+    G4Tubs* fTPBFoilSides = nullptr;
+    G4Tubs* fTPBFoilTop = nullptr;
+    G4Tubs* fTPBFoilBottom = nullptr;
     G4Tubs* fFiducialAr = nullptr;
 
     G4VSolid* fPMTCoatedWall = nullptr;
@@ -91,7 +95,9 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fArgonOuter_log = nullptr;
     G4LogicalVolume* fInnerFrame_log = nullptr;
     G4LogicalVolume* fReflectorFoil_log = nullptr;
-    G4LogicalVolume* fTPBFoil_log = nullptr;
+    G4LogicalVolume* fTPBFoilSides_log = nullptr;
+    G4LogicalVolume* fTPBFoilTop_log = nullptr;
+    G4LogicalVolume* fTPBFoilBottom_log = nullptr;
     G4LogicalVolume* fFiducialAr_log = nullptr;
 
     G4LogicalVolume* fPMTCoatedWall_log = nullptr;
@@ -118,7 +124,9 @@ class G4CCMMainVolume : public G4PVPlacement
 
     // Physical volumes (necessary for borders)
     G4VPhysicalVolume* fFiducialAr_phys = nullptr;
-    G4VPhysicalVolume* fTPBFoil_phys = nullptr;
+    G4VPhysicalVolume* fTPBFoilSides_phys = nullptr;
+    G4VPhysicalVolume* fTPBFoilTop_phys = nullptr;
+    G4VPhysicalVolume* fTPBFoilBottom_phys = nullptr;
     G4VPhysicalVolume* fTPBPMT_phys = nullptr;
     G4VPhysicalVolume* fReflectorFoil_phys = nullptr;
 

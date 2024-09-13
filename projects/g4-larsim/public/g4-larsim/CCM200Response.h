@@ -43,6 +43,8 @@ private:
     double TripletTau_; // set LAr triplet time constant
     double Rayleigh128_; // set rayl scattering length for 128nm light
     double UVAbsLength_; // set uv abs length at 128nm
+    double WLSNPhotonsFoil_;
+    double WLSNPhotonsPMT_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
     long RandomSeed_; // random seed for geant4
@@ -57,14 +59,14 @@ public:
     virtual ~CCM200Response() override;
 
     virtual void Configure() override;
-    virtual void Initialize() override;
-    virtual void BeginEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) override;
-    virtual void EndEvent() override;
-    virtual void TerminateRun() override;
-    virtual void DestroyInterface() override;
-    virtual bool GetPMTSDStatus() override { return PMTSDStatus_; }
-    virtual bool GetLArSDStatus() override { return LArSDStatus_; }
 
+    // initialize geant4 detector
+    virtual void Initialize() override;
+
+    virtual void SimulateEvent(I3Particle const & primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) override;
+    virtual void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) override;
+
+    virtual void DestroyInterface() override;
 };
 
 #endif // CCM200RESPONSE_H

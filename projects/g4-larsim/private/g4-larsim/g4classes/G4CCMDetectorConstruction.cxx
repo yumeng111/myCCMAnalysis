@@ -35,10 +35,12 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double Rayleigh128) {
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength_ = UVAbsLength;
+    WLSNPhotonsFoil_ = WLSNPhotonsFoil;
+    WLSNPhotonsPMT_ = WLSNPhotonsPMT;
     Rayleigh128_ = Rayleigh128;
     SetDefaults();
     DefineMaterials();
@@ -69,7 +71,8 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
   if(fSteel != nullptr) delete fSteel;
   if(fVacuum != nullptr) delete fVacuum;
   if(fPTFE != nullptr) delete fPTFE;
-  if(fTPBFoil != nullptr) delete fTPBFoil;
+  if(fTPBFoilSides != nullptr) delete fTPBFoilSides;
+  if(fTPBFoilTopBottom != nullptr) delete fTPBFoilTopBottom;
   if(fGlass_mt != nullptr) delete fGlass_mt;
   if(fPlastic_mt != nullptr) delete fPlastic_mt;
   if(fBlackPlastic_mt != nullptr) delete fBlackPlastic_mt;
@@ -78,7 +81,8 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
   if(fSteel_mt != nullptr) delete fSteel_mt;
   if(fVacuum_mt != nullptr) delete fVacuum_mt;
   if(fPTFE_mt != nullptr) delete fPTFE_mt;
-  if(fTPBFoil_mt != nullptr) delete fTPBFoil_mt;
+  if(fTPBFoilSides_mt != nullptr) delete fTPBFoilSides_mt;
+  if(fTPBFoilTopBottom_mt != nullptr) delete fTPBFoilTopBottom_mt;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -130,9 +134,13 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fGlass->AddElement(fH, 8.467 * perCent);
 
     // TPB Foil
-    fTPBFoil = new G4Material("TPBFoil", density= 1.079*g/cm3, 2);
-    fTPBFoil->AddElement(fC, 28);
-    fTPBFoil->AddElement(fH, 22);
+    fTPBFoilSides = new G4Material("TPBFoilSides", density= 1.079*g/cm3, 2);
+    fTPBFoilSides->AddElement(fC, 28);
+    fTPBFoilSides->AddElement(fH, 22);
+
+    fTPBFoilTopBottom = new G4Material("TPBFoilTopBottom", density= 1.079*g/cm3, 2);
+    fTPBFoilTopBottom->AddElement(fC, 28);
+    fTPBFoilTopBottom->AddElement(fH, 22);
 
     // TPB PMT
     fTPBPMT = new G4Material("TPBPMT", density= 1.079*g/cm3, 2);
@@ -250,7 +258,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // Set PMT glass constants
     std::vector<G4double> glass_energy = {7.0*eV, 7.07*eV, 7.14*eV};
-    //std::vector<G4double> glass_AbsLength = { 420. * cm, 420. * cm, 420. * cm };
     std::vector<G4double> glass_AbsLength = {1e-12*mm, 1e-12*mm, 1e-12*mm};
     std::vector<G4double> glass_RIND = {1.49,1.49,1.49};
 
@@ -303,7 +310,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                           0.9058671, 0.8866637, 0.862769,  0.8436296, 0.8228502,
                                           0.8005955, 0.7798801, 0.7591648, 0.001,     0.001 };
 
-    std::vector<G4double> alum_abslen = { 1.0e-3*mm, 1.0e-3*mm};
+    std::vector<G4double> alum_abslen = { 1.0e-10*mm, 1.0e-10*mm};
     std::vector<G4double> alum_abseneg = { 1.5498*eV, 20.664*eV};
 
     G4MaterialPropertiesTable* fAlum_mt = new G4MaterialPropertiesTable();
@@ -424,7 +431,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                 0.006429042527016761, 0.006351121504550237, 0.005727753324816705, 0.00549399025741633, 0.00549399025741633, 0.00549399025741633, 0.00549399025741633, 0.005722558589985408,
                 0.0055719112798828544, 0.00549399025741633, 0.00549399025741633, 0.0058835953697500215, 0.006506963549483285, 0.007208252751683876, 0.007208252751683876,
                 0.007208252751683876, 0.006896568661816977, 0.00674072661688366, 0.006351121504550237, 0.008355856254790841};
-    
+
     // based on best fit from Fig 13 in https://arxiv.org/pdf/1709.05002, using 0.605 as mean number of photons
     G4double wls_mean_num_photons = 0.605;
 
@@ -446,30 +453,50 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                 255.85822744954626*nm, 199.85823080844185*nm, 153.5032805631189*nm, 108.02360627084354*nm, 88.9206377946115*nm, 63.289058767089*nm, 53.50121319296904*nm, 37.222095886705205*nm,
                 40.38391252461217*nm, 31.802265335516566*nm, 29.91384462882476*nm, 29.324649474231183*nm, 28.82888338356318*nm, 29.071521590291532*nm, 30.431746756020132*nm, 37.82386620617285*nm,
                 38.80279864198152*nm, 41.70021143667599*nm, 58.14673257532595*nm, 49.85890980317873*nm, 61.95847711489636*nm, 73.72675461199395*nm, 90.58455101512752*nm, 101.05172421787127*nm,
-                101.76697185101447*nm, 106.40677312247695*nm, 107.98073112246271*nm, 103.83329986337642*nm, 425.0*nm};
+                101.76697185101447*nm, 106.40677312247695*nm, 107.98073112246271*nm, 103.83329986337642*nm, 100.0*nm};
 
     // I dont think this makes a difference, but adding index of refraction just in case
     std::vector<G4double> tpb_rin_energy = {1.0*eV, 14.0*eV};
-    std::vector<G4double> tpb_rin = {1.7, 1.7};
+    std::vector<G4double> tpb_rin = {1.62, 1.62};
 
-    G4MaterialPropertiesTable* fTPBFoil_mt = new G4MaterialPropertiesTable();
-    //fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_PTFE_Emission_Energy, TPB_PTFE_Emission); -- NOTE : not using this spectrum! TPB is on mylar backing
-    fTPBFoil_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBFoil_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    fTPBFoil_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", wls_mean_num_photons);
-    fTPBFoil_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
-    fTPBFoil_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
-    fTPBFoil->SetMaterialPropertiesTable(fTPBFoil_mt);
+    // trying something here -- let's add bulk absorption to tpb
+    std::vector<G4double> tpb_bulk_abs_energy = {1.0*eV, 3.0*eV, 3.01*eV, 14.0*eV};
+    std::vector<G4double> tpb_bulk_abs = {0.02*mm, 0.02*mm, 1e6*m, 1e6*m};
 
+    // now make our tpb foils!
+    // making different ones for sides and top/bottom :)
+
+    // side cylinder of TPB foil
+    G4MaterialPropertiesTable* fTPBFoilSides_mt = new G4MaterialPropertiesTable();
+    fTPBFoilSides_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
+    fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for side tpb foils" << std::endl;
+    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
+    fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
+    fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
+    fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
+
+    // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
+    G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
+    fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsFoil_ << " for top/bottom tpb foils" << std::endl;
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
+    fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
+    fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
+    fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
+
+    // tpb on pmts
     G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
     fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", wls_mean_num_photons);
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for pmt tpb foils" << std::endl;
+    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
-    // Defines properties of the PTFE reflectors.
+    // Defines properties of the reflectors.
     std::vector<G4double> TefEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV,
                                        2.138*eV, 2.25*eV,  2.38*eV,  2.48*eV,
                                        2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV,
@@ -477,13 +504,16 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                        4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                        7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
-    std::vector<G4double> TefRIndex = {10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
-                                       10., 10., 10., 10., 10., 10., 10., 10., 10., 10.,
-                                        10., 10., 10., 10., 10.};
+    std::vector<G4double> TefRIndex = {1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64,
+                                       1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64, 1.64,
+                                        1.64, 1.64, 1.64, 1.64, 1.64};
 
+    std::vector<G4double> ptfe_energy = {7.0*eV, 7.07*eV, 7.14*eV};
+    std::vector<G4double> ptfe_AbsLength = {1e-12*mm, 1e-12*mm, 1e-12*mm};
 
     G4MaterialPropertiesTable* fPTFE_mt = new G4MaterialPropertiesTable();
     fPTFE_mt->AddProperty("RINDEX", TefEnergy, TefRIndex);
+    fPTFE_mt->AddProperty("ABSLENGTH", ptfe_energy, ptfe_AbsLength);
     fPTFE->SetMaterialPropertiesTable(fPTFE_mt);
 
 
@@ -515,7 +545,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 
 
 // construct our pmts SD
-void G4CCMDetectorConstruction::ConstructSDandField(){
+void G4CCMDetectorConstruction::ConstructSDandField() {
     if(!fMainVolume)
         return;
 
@@ -530,6 +560,7 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
 
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+            pmt_SD->SetReadout(readout_);
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fPMT_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fPMT_SD.Get());
@@ -547,12 +578,15 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             scint_SD->SetTimeCutStatus(TimeCut_);
             scint_SD->SetKillCherenkovStatus(KillCherenkov_);
+            scint_SD->SetReadout(readout_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogTPBCoatingWall(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogTPBCoatingCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBFoil(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBFoilSides(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBFoilTop(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogTPBFoilBottom(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fScint_SD.Get());
@@ -571,8 +605,6 @@ void G4CCMDetectorConstruction::ConstructSDandField(){
         }
 
     }
-
-
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -591,4 +623,14 @@ void G4CCMDetectorConstruction::SetMainVolumeOn(G4bool b) {
 }
 
 
-
+void G4CCMDetectorConstruction::SetReadout(G4CCMReadout * readout) {
+   readout_ = readout;
+    G4CCMPMTSD* pmt = fPMT_SD.Get();
+    if(pmt) {
+        pmt->SetReadout(readout_);
+    }
+    G4CCMScintSD * scint = fScint_SD.Get();
+    if(scint) {
+        scint->SetReadout(readout_);
+    }
+}
