@@ -152,10 +152,11 @@ size_t FindStartIndex(WaveformSmootherDerivative & smoother, size_t peak_index, 
     size_t N = std::max(size_t(1), std::min(smoother.Size(), peak_index + 1)) - 1;
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_its = smoother.GetFullSmoothedWaveform();
     size_t start_index = 0;
-    for(std::vector<double>::const_iterator it=smoothed_its.first+N; it!=smoothed_its.first; --it) {
+
+    for(std::vector<double>::const_reverse_iterator it=rbegin; it!=rend; --it) {
         double value = *it - baseline;
         if(value < noise_threshold) {
-            start_index = std::distance(smoothed_its.first, it) + 1;
+            start_index = N - std::distance(rbegin, it) + 1;
             break;
         }
     }
