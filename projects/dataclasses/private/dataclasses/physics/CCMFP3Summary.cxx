@@ -3,14 +3,15 @@
 
 std::ostream & CCMFP3Gamma::Print(std::ostream& oss) const {
     oss << "[Gamma:\n"
-        << "      StartTime : " << gamma_start_time << '\n'
-        << "        EndTime : " << gamma_end_time << '\n'
-        << "       PeakTime : " << gamma_peak_time << '\n'
-        << "   PeakADCCount : " << gamma_peak_value << '\n'
-        << "       Integral : " << gamma_integral << '\n'
-        << "     Derivative : " << gamma_derivative << '\n'
-        << "  2ndDerivative : " << gamma_second_derivative << '\n'
-        << "   LocalAverage : " << gamma_local_average << "\n]";
+        << "        StartTime : " << gamma_start_time << '\n'
+        << "          EndTime : " << gamma_end_time << '\n'
+        << "         PeakTime : " << gamma_peak_time << '\n'
+        << "     PeakADCCount : " << gamma_peak_value << '\n'
+        << "         Integral : " << gamma_integral << '\n'
+        << "       Derivative : " << gamma_derivative << '\n'
+        << "    2ndDerivative : " << gamma_second_derivative << '\n'
+        << "     LocalAverage : " << gamma_local_average << '\n'
+        << "AttachedToNeutron : " << attached_to_neutron << "\n]";
 
     return oss;
 }
@@ -44,14 +45,15 @@ std::ostream & CCMFP3Summary::Print(std::ostream& oss) const {
         << "              [\n";
         for(CCMFP3Gamma const & gamma : fp3_gammas) {
     oss << "                [Gamma:\n"
-        << "                    StartTime : " << gamma.gamma_start_time << '\n'
-        << "                      EndTime : " << gamma.gamma_end_time << '\n'
-        << "                     PeakTime : " << gamma.gamma_peak_time << '\n'
-        << "                 PeakADCCount : " << gamma.gamma_peak_value << '\n'
-        << "                     Integral : " << gamma.gamma_integral << '\n'
-        << "                   Derivative : " << gamma.gamma_derivative << '\n'
-        << "                2ndDerivative : " << gamma.gamma_second_derivative << '\n'
-        << "                 LocalAverage : " << gamma.gamma_local_average
+        << "                        StartTime : " << gamma.gamma_start_time << '\n'
+        << "                          EndTime : " << gamma.gamma_end_time << '\n'
+        << "                         PeakTime : " << gamma.gamma_peak_time << '\n'
+        << "                     PeakADCCount : " << gamma.gamma_peak_value << '\n'
+        << "                         Integral : " << gamma.gamma_integral << '\n'
+        << "                       Derivative : " << gamma.gamma_derivative << '\n'
+        << "                    2ndDerivative : " << gamma.gamma_second_derivative << '\n'
+        << "                     LocalAverage : " << gamma.gamma_local_average << '\n'
+        << "                AttachedToNeutron : " << gamma.attached_to_neutron << "\n"
         << "                ]\n";
         }
         oss << "              ]\n"
