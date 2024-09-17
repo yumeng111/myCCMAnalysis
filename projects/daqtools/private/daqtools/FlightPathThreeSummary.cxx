@@ -153,6 +153,9 @@ size_t FindStartIndex(WaveformSmootherDerivative & smoother, size_t peak_index, 
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_its = smoother.GetFullSmoothedWaveform();
     size_t start_index = 0;
 
+    std::vector<double>::const_reverse_iterator rbegin(smoothed_its.first + N);
+    std::vector<double>::const_reverse_iterator rend(smoothed_its.first);
+
     for(std::vector<double>::const_reverse_iterator it=rbegin; it!=rend; --it) {
         double value = *it - baseline;
         if(value < noise_threshold) {
