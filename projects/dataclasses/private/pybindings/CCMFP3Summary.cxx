@@ -36,6 +36,9 @@ void register_CCMFP3Gamma() {
     .def_readwrite("attached_to_neutron", &CCMFP3Gamma::attached_to_neutron)
     .def(bp::dataclass_suite<CCMFP3Gamma>())
     ;
+
+    bp::class_<std::vector<CCMFP3Gamma>, boost::shared_ptr<std::vector<CCMFP3Gamma>> >("CCMFP3GammaSeries")
+    .def(bp::dataclass_suite<std::vector<CCMFP3Gamma>>());
 }
 
 void register_CCMFP3Summary() {
