@@ -152,10 +152,14 @@ size_t FindStartIndex(WaveformSmootherDerivative & smoother, size_t peak_index, 
     size_t N = std::max(size_t(1), std::min(smoother.Size(), peak_index + 1)) - 1;
     std::pair<std::vector<double>::const_iterator, std::vector<double>::const_iterator> smoothed_its = smoother.GetFullSmoothedWaveform();
     size_t start_index = 0;
-    for(std::vector<double>::const_iterator it=smoothed_its.first+N; it!=smoothed_its.first; --it) {
+
+    std::vector<double>::const_reverse_iterator rbegin(smoothed_its.first + N);
+    std::vector<double>::const_reverse_iterator rend(smoothed_its.first);
+
+    for(std::vector<double>::const_reverse_iterator it=rbegin; it!=rend; --it) {
         double value = *it - baseline;
         if(value < noise_threshold) {
-            start_index = std::distance(smoothed_its.first, it) + 1;
+            start_index = N - std::distance(rbegin, it) + 1;
             break;
         }
     }
@@ -198,6 +202,48 @@ std::vector<Extreme> SelectGammaExtrema(std::vector<Extreme> const & extrema, si
         }
     }
     return gamma_extrema;
+}
+
+std::vector<Extreme> SelectAttachedGammaExtrema(std::vector<Extreme> const & extrema, std::vector<Extreme> const & gamma_extrema, size_t neutron_peak_index, double gamma_threshold, double local_average_threshold) {
+    std::vector<Extreme> attached_gamma_extrema;
+
+    size_t max_gamma_position = 0.0;
+    for(Extreme const & e : gamma_extrema) {
+        max_gamma_position = std::max(max_gamma_position, e.position);
+    }
+
+    std::vector<Extreme> candidate_extrema;
+    for(Extreme const & e : extrema) {
+        if(e.position >= max_gamma_position and e.position <= neutron_peak_index)
+            candidate_extrema.push_back(e);
+    }
+
+    std::sort(candidate_extrema.begin(), candidate_extrema.end(), [](Extreme const & a, Extreme const & b) {
+        return a.position < b.position;
+    });
+
+    std::vector<size_t> minima_indices;
+    for(size_t i=0; i<candidate_extrema.size(); ++i) {
+        Extreme const & e = candidate_extrema[i];
+        if(e.second_derivative < 0)
+            continue;
+        if((i > 0 and candidate_extrema[i-1].value <= e.value))
+            continue;
+        if(i < candidate_extrema.size()-1 and candidate_extrema[i+1].value <= e.value)
+            continue;
+        minima_indices.push_back(i);
+    }
+
+    for(size_t i=0; i<minima_indices.size(); ++i) {
+        size_t j = minima_indices[i];
+        if(j == 0)
+            continue;
+        Extreme const & e = candidate_extrema[j];
+        if(e.value > gamma_threshold and e.local_average > local_average_threshold and e.second_derivative < 0)
+            attached_gamma_extrema.push_back(candidate_extrema[j-1]);
+    }
+
+    return attached_gamma_extrema;
 }
 
 double ComputeTimeOffset(bool & valid_time_offset, NIMLogicPulseSeriesMap const & nim_pulses, CCMTriggerKey const & bcm_board_key, CCMTriggerKey const & fp3_board_key, CCMBCMSummary const & bcm_summary) {
@@ -260,6 +306,7 @@ void ComputeGammaSummary(CCMFP3Summary & summary, std::vector<Extreme> const & g
         gamma_entry.gamma_derivative = gamma.derivative / (1.0 / I3Units::ns);
         gamma_entry.gamma_second_derivative = gamma.second_derivative / (1.0 / (I3Units::ns * I3Units::ns));
         gamma_entry.gamma_local_average = gamma.local_average;
+        gamma_entry.attached_to_neutron = gamma.position > neutron_start_index;
         gamma_entries.push_back(gamma_entry);
     }
 }
@@ -427,7 +474,13 @@ void FlightPathThreeSummary::DAQ(I3FramePtr frame) {
         log_warn("Noise average and noise max are both zero. Skipping gamma peak search.");
     } else {
         gamma_extrema = SelectGammaExtrema(extrema, neutron_start_index, gamma_threshold_, noise_average);
+        std::vector<Extreme> attached_gamma_extrema = SelectAttachedGammaExtrema(extrema, gamma_extrema, neutron_peak_index, gamma_threshold_, noise_average);
+        gamma_extrema.insert(gamma_extrema.end(), attached_gamma_extrema.begin(), attached_gamma_extrema.end());
     }
+
+    std::sort(gamma_extrema.begin(), gamma_extrema.end(), [](Extreme const & a, Extreme const & b) {
+        return a.position < b.position;
+    });
 
     // Compute the gamma entries
     boost::shared_ptr<CCMFP3Summary> summary = boost::make_shared<CCMFP3Summary>();

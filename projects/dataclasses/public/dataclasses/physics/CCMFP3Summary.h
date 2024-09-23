@@ -42,6 +42,8 @@ public:
     // The local average of the gamma waveform at the peak
     double gamma_local_average;
 
+    bool attached_to_neutron;
+
 public:
 
     CCMFP3Gamma() :
@@ -52,7 +54,8 @@ public:
         gamma_integral(std::numeric_limits<double>::quiet_NaN()),
         gamma_derivative(std::numeric_limits<double>::quiet_NaN()),
         gamma_second_derivative(std::numeric_limits<double>::quiet_NaN()),
-        gamma_local_average(std::numeric_limits<double>::quiet_NaN())
+        gamma_local_average(std::numeric_limits<double>::quiet_NaN()),
+        attached_to_neutron(false)
     {}
 
     std::ostream& Print(std::ostream&) const;
@@ -66,7 +69,8 @@ public:
                 gamma_integral,
                 gamma_derivative,
                 gamma_second_derivative,
-                gamma_local_average
+                gamma_local_average,
+                attached_to_neutron
                 )
             == std::tie(
                 rhs.gamma_start_time,
@@ -76,7 +80,8 @@ public:
                 rhs.gamma_integral,
                 rhs.gamma_derivative,
                 rhs.gamma_second_derivative,
-                rhs.gamma_local_average
+                rhs.gamma_local_average,
+                attached_to_neutron
                 );
     }
 private:
@@ -188,6 +193,7 @@ void CCMFP3Gamma::serialize(Archive& ar, unsigned version) {
     ar & make_nvp("gamma_derivative", gamma_derivative);
     ar & make_nvp("gamma_second_derivative", gamma_second_derivative);
     ar & make_nvp("gamma_local_average", gamma_local_average);
+    ar & make_nvp("attached_to_neutron", attached_to_neutron);
 }
 
 template <class Archive>

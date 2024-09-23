@@ -33,8 +33,12 @@ void register_CCMFP3Gamma() {
     .def_readwrite("derivative", &CCMFP3Gamma::gamma_derivative)
     .def_readwrite("second_derivative", &CCMFP3Gamma::gamma_second_derivative)
     .def_readwrite("local_average", &CCMFP3Gamma::gamma_local_average)
+    .def_readwrite("attached_to_neutron", &CCMFP3Gamma::attached_to_neutron)
     .def(bp::dataclass_suite<CCMFP3Gamma>())
     ;
+
+    bp::class_<std::vector<CCMFP3Gamma>, boost::shared_ptr<std::vector<CCMFP3Gamma>> >("CCMFP3GammaSeries")
+    .def(bp::dataclass_suite<std::vector<CCMFP3Gamma>>());
 }
 
 void register_CCMFP3Summary() {
