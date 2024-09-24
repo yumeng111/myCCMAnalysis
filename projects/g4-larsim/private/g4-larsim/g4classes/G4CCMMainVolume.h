@@ -25,7 +25,8 @@ class G4CCMMainVolume : public G4PVPlacement
   public:
     G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
-                G4CCMDetectorConstruction* c, G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun);
+                G4CCMDetectorConstruction* c, G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun,
+                G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness);
 
     G4LogicalVolume* GetLogPMTCoatedWall() { return fPMTCoatedWall_log; }
     G4LogicalVolume* GetLogPMTCoatedCaps() { return fPMTCoatedCaps_log; }

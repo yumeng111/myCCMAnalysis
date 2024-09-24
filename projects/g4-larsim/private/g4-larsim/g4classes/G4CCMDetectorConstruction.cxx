@@ -36,13 +36,17 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsEndCapFoil,
-        G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128) {
+                                                     G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
+                                                     G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness, G4double Rayleigh128) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength_ = UVAbsLength;
     WLSNPhotonsEndCapFoil_ = WLSNPhotonsEndCapFoil;
     WLSNPhotonsSideFoil_ = WLSNPhotonsSideFoil;
     WLSNPhotonsPMT_ = WLSNPhotonsPMT;
+    EndCapFoilTPBThickness_ = EndCapFoilTPBThickness;
+    SideFoilTPBThickness_ = SideFoilTPBThickness;
+    PMTTPBThickness_ = PMTTPBThickness;
     Rayleigh128_ = Rayleigh128;
     SetDefaults();
     DefineMaterials();
@@ -537,7 +541,9 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 
     // Place the main volume
     if(fMainVolumeOn) {
-        fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_);
+        fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this,
+                                          SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_,
+                                          EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_);
     }
 
     return fExperimentalHall_phys;

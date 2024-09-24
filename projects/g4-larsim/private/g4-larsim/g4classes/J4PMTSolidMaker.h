@@ -44,8 +44,8 @@ class J4PMTSolidMaker {
 
     static G4VSolid * Get8inchPMTCapsSolid(G4double protrusion_distance);
     static G4VSolid * Get8inchPMTWallSolid(G4double cylinder_radius, G4double protrusion_distance);
-    static G4VSolid * GetTPBCoatingCapsSolid(G4double protrusion_distance);
-    static G4VSolid * GetTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance);
+    static G4VSolid * GetTPBCoatingCapsSolid(G4double protrusion_distance, G4double PMTTPBThickness);
+    static G4VSolid * GetTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance, G4double PMTTPBThickness);
     static G4VSolid * GetBridleWall(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance);
     static G4VSolid * GetBridleCaps(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance);
     static G4VSolid * GetFrillWall(G4double bridle_radius, G4double frill_radius,  G4double frill_width, G4double tpb_foil_radius);

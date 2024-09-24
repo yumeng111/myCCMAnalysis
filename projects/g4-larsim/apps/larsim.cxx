@@ -58,7 +58,7 @@ int main(int argc, char** argv)
 
   auto runManager = G4RunManagerFactory::CreateRunManager();
 
-  auto det = new G4CCMDetectorConstruction(8.2 * ns, 743.0 * ns, 94.0 * cm, 0.605, 0.605, 0.605, true);
+  auto det = new G4CCMDetectorConstruction(8.2 * ns, 743.0 * ns, 94.0 * cm, 0.605, 0.605, 0.605, 0.002 * mm, 0.002 * mm, 0.002 * mm, true);
   runManager->SetUserInitialization(det);
 
   //G4VModularPhysicsList* physicsList = new FTFP_BERT;

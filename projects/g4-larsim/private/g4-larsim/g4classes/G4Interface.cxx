@@ -65,6 +65,7 @@ G4Interface::~G4Interface() {
 void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun, 
                                   double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength,
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
+                                  double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                                   bool TimeCut, bool KillCherenkov, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
@@ -92,6 +93,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
     if(detector_ == nullptr) {
         detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns,
                                                   UVAbsLength / I3Units::cm * CLHEP::cm, WLSNPhotonsEndCapFoil, WLSNPhotonsSideFoil, WLSNPhotonsPMT,
+                                                  EndCapFoilTPBThickness / I3Units::mm * CLHEP::mm, SideFoilTPBThickness / I3Units::mm * CLHEP::mm, PMTTPBThickness / I3Units::mm * CLHEP::mm,
                                                   Rayleigh128 / I3Units::cm * CLHEP::cm);
         // set readout
         detector_->SetReadout(readout_.get());

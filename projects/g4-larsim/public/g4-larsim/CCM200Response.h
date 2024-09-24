@@ -46,6 +46,9 @@ private:
     double WLSNPhotonsEndCapFoil_;
     double WLSNPhotonsSideFoil_;
     double WLSNPhotonsPMT_;
+    double EndCapFoilTPBThickness_;
+    double SideFoilTPBThickness_;
+    double PMTTPBThickness_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
     long RandomSeed_; // random seed for geant4

@@ -49,6 +49,7 @@ class G4Interface {
         void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun,
                              double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength,
                              double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
+                             double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                              bool TimeCut, bool KillCherenkov, long RandomSeed);
 
         void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
