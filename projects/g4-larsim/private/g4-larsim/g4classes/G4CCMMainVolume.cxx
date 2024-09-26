@@ -385,6 +385,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double ptfe_thickness = 0.5 * mm;
     //G4double tpb_thickness = 0.00278035 * mm; // from Vincent Basque's thesis https://pure.manchester.ac.uk/ws/portalfiles/portal/205622566/FULL_TEXT.PDF
 
+    std::cout << "endcap tpb thickness = " << EndCapFoilTPBThickness << ", side foil tpb thickness = " << SideFoilTPBThickness << ", and pmt tpb thickness = " << PMTTPBThickness << std::endl;
+
     G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + EndCapFoilTPBThickness) * 2.0;
     G4double frame_half_height = frame_height / 2.0;
     G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
