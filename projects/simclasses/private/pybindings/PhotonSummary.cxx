@@ -22,11 +22,14 @@ void register_PhotonSummary() {
         .def_readwrite("calculated_time",&PhotonSummary::calculated_time)
         .def_readwrite("n_wls",&PhotonSummary::n_wls)
         .def_readwrite("photon_source",&PhotonSummary::photon_source)
+        .def_readwrite("temp_parent",&PhotonSummary::temp_parent)
+        .def_readwrite("current_process",&PhotonSummary::current_process)
         ;
     enum_<PhotonSummary::PhotonSource>("PhotonSource")
       .value("Unknown", PhotonSummary::PhotonSource::Unknown)
       .value("Scintillation", PhotonSummary::PhotonSource::Scintillation)
       .value("Cerenkov", PhotonSummary::PhotonSource::Cerenkov)
+      .value("OpWLS", PhotonSummary::PhotonSource::OpWLS)
       .export_values()
       ;
     }

@@ -4,6 +4,7 @@
 
 const std::unordered_map<PhotonSummary::PhotonSource, std::string> PhotonSummary::photonSourceToProcessName = {{PhotonSummary::PhotonSource::Unknown, "Unknown"},
                                                                                                                {PhotonSummary::PhotonSource::Scintillation, "Scintillation"},
+                                                                                                               {PhotonSummary::PhotonSource::OpWLS, "OpWLS"},
                                                                                                                {PhotonSummary::PhotonSource::Cerenkov, "Cerenkov"}};
 
 
@@ -21,6 +22,8 @@ void PhotonSummary::save(Archive& ar, unsigned version) const {
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("n_wls",n_wls);
     ar & make_nvp("photon_source",photon_source);
+    ar & make_nvp("temp_parent",temp_parent);
+    ar & make_nvp("current_process",current_process);
 }
 
 template <class Archive>
@@ -36,10 +39,18 @@ void PhotonSummary::load(Archive& ar, unsigned version) {
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("n_wls",n_wls);
 
-    if (photonsummary_version_ > 0){
+    if (photonsummary_version_ == 1){
         ar & make_nvp("photon_source",photon_source);
+        temp_parent = PhotonSummary::PhotonSource::Unknown; 
+        current_process = PhotonSummary::PhotonSource::Unknown; 
+    } else if (photonsummary_version_ == 2){
+        ar & make_nvp("photon_source",photon_source);
+        ar & make_nvp("temp_parent",temp_parent);
+        ar & make_nvp("current_process",current_process);
     } else {
         photon_source = PhotonSummary::PhotonSource::Unknown;
+        temp_parent = PhotonSummary::PhotonSource::Unknown; 
+        current_process = PhotonSummary::PhotonSource::Unknown; 
     }
 }
 
@@ -54,6 +65,8 @@ std::ostream& PhotonSummary::Print(std::ostream& os) const{
         << "\n  Calculated Time :" << calculated_time
         << "\n  Number WLS :" << n_wls
         << "\n  Photon Source :" << photonSourceToProcessName.at(photon_source)
+        << "\n  Temporary Parent Type :" << photonSourceToProcessName.at(temp_parent)
+        << "\n  Current Process :" << photonSourceToProcessName.at(current_process)
         << " ]";
     return os;
 }

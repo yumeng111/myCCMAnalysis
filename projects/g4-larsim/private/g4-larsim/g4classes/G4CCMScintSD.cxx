@@ -55,7 +55,13 @@ const std::unordered_map<std::string, int> G4CCMScintSD::energyLossToI3ParticleP
 
 const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMScintSD::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
                                                                                                               {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
-                                                                                                              {"Cerenkov", PhotonSummary::PhotonSource::Cerenkov}};
+                                                                                                              {"Cerenkov", PhotonSummary::PhotonSource::Cerenkov},
+                                                                                                              {"OpWLS", PhotonSummary::PhotonSource::OpWLS}};
+
+const std::unordered_map<PhotonSummary::PhotonSource, std::string> G4CCMScintSD::photonSourceToProcessName = {{PhotonSummary::PhotonSource::Unknown, "Unknown"},
+                                                                                                              {PhotonSummary::PhotonSource::Scintillation, "Scintillation"},
+                                                                                                              {PhotonSummary::PhotonSource::Cerenkov, "Cerenkov"},
+                                                                                                              {PhotonSummary::PhotonSource::OpWLS, "OpWLS"}};
 
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
@@ -101,11 +107,16 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g
     }
     PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, g4_vis_distance,
                                                       calculated_uv_distance, calculated_vis_distance,
-                                                      g4_time, calculated_time, n_wls, processNameToPhotonSource.at(creationProcessName));
+                                                      g4_time, calculated_time, n_wls,
+                                                      processNameToPhotonSource.at(creationProcessName),
+                                                      processNameToPhotonSource.at(creationProcessName),
+                                                      processNameToPhotonSource.at(creationProcessName));
     photon_summary->push_back(this_photon_summary);
-    //std::cout << "adding entry to optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv
-    //          << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
-    //std::cout << "" << std::endl;
+    //std::cout << "adding entry to optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.g4_distance_uv
+    //          //<< ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
+    //          << ", time = " << this_photon_summary.g4_time
+    //          << std::endl;
+    //std::cout << " " << std::endl;
     optical_photon_map->insert(std::make_pair(track_id, photon_summary->size() - 1));
 }
 
@@ -122,19 +133,35 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
     this_photon_summary.calculated_distance_visible += calculated_vis_distance;
     this_photon_summary.g4_time += g4_time;
     this_photon_summary.calculated_time += calculated_time;
+    this_photon_summary.current_process = processNameToPhotonSource.at(creationProcessName);
+
+    if (new_process){
+        this_photon_summary.temp_parent = photon_summary->at(optical_photon_map->find(parent_id)->second).current_process;
+    }
 
     if (creationProcessName == "OpWLS" and new_process){
         this_photon_summary.n_wls += 1;
     }
+    
+    if  (creationProcessName == "OpWLS"){
+        std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
+            << ", creation process = " << creationProcessName
+            << ", photon source = " << photonSourceToProcessName.at(this_photon_summary.photon_source)
+            << ", temp parent = " << photonSourceToProcessName.at(this_photon_summary.temp_parent)
+            << ", new_process = " << new_process
+            << ", and n_wls = " << this_photon_summary.n_wls << std::endl;
+    }
 
     // now update the photon_summary, delete from map, and add new entry to the map
-    size_t pos = it->second;
-    photon_summary->at(pos) = this_photon_summary;
-    //std::cout << "updating optical photon map for photon at track id = " << track_id << ", distance uv = " << this_photon_summary.distance_uv
-    //          << ", distance vis = " << this_photon_summary.distance_visible <<  ", and n_wls = " << this_photon_summary.n_wls << std::endl;
-    //std::cout << "" << std::endl;
-    //optical_photon_map->erase(it);
-    optical_photon_map->insert(std::make_pair(track_id, pos));
+    photon_summary->push_back(this_photon_summary);
+    size_t new_pos = photon_summary->size() - 1;
+    //std::cout << "updating optical photon map for parent id = " << parent_id << " and track id = " << track_id << ", distance uv = " << this_photon_summary.g4_distance_uv
+    //          << ", time = " << this_photon_summary.g4_time
+    //          << std::endl;
+    //std::cout << " " << std::endl;
+    //optical_photon_map->insert(std::make_pair(track_id, new_pos));
+    (*optical_photon_map)[track_id] = new_pos;
+    //std::cout << "inserted " << track_id << ", " << new_pos << " into optical_photon_map " << std::endl;
 }
 
 double G4CCMScintSD::InterpolateRindex(double wavelength){
@@ -281,31 +308,47 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
         }
 
-        //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", step lenght = " << aStep->GetStepLength()
-        //    << ", delta local time = " << aStep->GetPostStepPoint()->GetLocalTime() - aStep->GetPreStepPoint()->GetLocalTime()
-        //    << ", and calculated delta time = " << (uv_distance / I3Units::cm) / (c_cm_per_nsec / uv_index_of_refraction) + (vis_distance / I3Units::cm)/ (c_cm_per_nsec / vis_index_of_refraction)
-        //    << std::endl;
+        //if  (creationProcessName == "OpWLS"){
+        //    std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id << ", and creation process = " << creationProcessName << std::endl;
+        //}
+        // Print the contents of the map
+        //std::cout << "Contents of optical_photon_map:" << std::endl;
+        //for (const auto& pair : *optical_photon_map) {
+        //    std::cout << "Key: " << pair.first << ", Value: " << pair.second << std::endl;
+        //}
+        //std::cout << "photon summary has " << photon_summary->size() << " entries" << std::endl;
+        
+        std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id 
+                  << ", creation process = " << creationProcessName
+                  //<< ", distance uv = " << g4_uv_distance 
+                  //<< ", and time = " << g4_delta_time_step
+                  << std::endl;
 
         // ok now let's save
-        // check to see if the parent id is in our map
-        bool new_process = true;
-        std::map<int, size_t>::iterator it = optical_photon_map->find(parent_id);
+        // check to see if the track id is in our map
+        bool new_process = false;
+        std::map<int, size_t>::iterator it = optical_photon_map->find(track_id);
+
         if (it != optical_photon_map->end()) {
-            // update our optical photon map
+            // ok so this photon is in our map, let's just update
+            //std::cout << "calling UpdatePhotonSummary -- updating entry at track id" << std::endl;
             UpdatePhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance,
                                 calculated_uv_distance, calculated_vis_distance,
                                 g4_delta_time_step, calculated_delta_time_step, creationProcessName, it, new_process);
         } else {
-            // check if this track id is in our map
-            std::map<int, size_t>::iterator track_it = optical_photon_map->find(track_id);
-            bool new_process = false;
-            if (track_it != optical_photon_map->end()){
-                // ok so this photon is in our map, let's just update
+            // check if this parent id is in our map
+            std::map<int, size_t>::iterator parent_it = optical_photon_map->find(parent_id);
+            
+            bool new_process = true;
+            if (parent_it != optical_photon_map->end()){
+                // this is a new process! let's update our map
+                //std::cout << "calling UpdatePhotonSummary -- updating entry at parent id" << std::endl;
                 UpdatePhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance,
                                     calculated_uv_distance, calculated_vis_distance,
-                                    g4_delta_time_step, calculated_delta_time_step, creationProcessName, track_it, new_process);
+                                    g4_delta_time_step, calculated_delta_time_step, creationProcessName, parent_it, new_process);
             } else {
                 // need to add a new photon to our map
+                //std::cout << "calling AddEntryToPhotonSummary" << std::endl;
                 AddEntryToPhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance, calculated_uv_distance, calculated_vis_distance,
                                         primary_.GetTime() + pre_step_global_time + g4_delta_time_step, primary_.GetTime() + pre_step_global_time + calculated_delta_time_step, creationProcessName);
             }

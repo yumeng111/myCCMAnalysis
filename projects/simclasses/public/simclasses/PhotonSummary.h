@@ -10,14 +10,15 @@
 #include <icetray/I3Logging.h>
 #include "dataclasses/I3Vector.h"
 
-static const unsigned photonsummary_version_ = 1;
+static const unsigned photonsummary_version_ = 2;
 
 class PhotonSummary : public I3FrameObject {
     public:
     enum class PhotonSource : int8_t {
         Unknown = 0,
         Scintillation = 1,
-        Cerenkov = 2
+        Cerenkov = 2,
+        OpWLS = 3
     };
 
     float g4_distance_uv; // record distance as given by GetStepLength
@@ -28,6 +29,8 @@ class PhotonSummary : public I3FrameObject {
     float calculated_time; // time as calculated using g4 distance
     size_t n_wls;
     PhotonSource photon_source; 
+    PhotonSource temp_parent; 
+    PhotonSource current_process; 
 
     SET_LOGGER("PhotonSummary");
 
@@ -39,16 +42,21 @@ class PhotonSummary : public I3FrameObject {
             && g4_time == rhs.g4_time
             && calculated_time == rhs.calculated_time
             && n_wls == rhs.n_wls
-            && photon_source == rhs.photon_source;
+            && photon_source == rhs.photon_source
+            && temp_parent == rhs.temp_parent
+            && current_process == rhs.current_process;
     }
 
 
   PhotonSummary(float g4_distance_uv_ = 0, float g4_distance_visible_ = 0, 
                 float calculated_distance_uv_ = 0, float calculated_distance_visible_ = 0,
-                float g4_time_ = 0, float calculated_time_ = 0, size_t n_wls_ = 0, PhotonSource photon_source_ = PhotonSummary::PhotonSource::Unknown): 
+                float g4_time_ = 0, float calculated_time_ = 0, size_t n_wls_ = 0,
+                PhotonSource photon_source_ = PhotonSummary::PhotonSource::Unknown, PhotonSource temp_parent_ = PhotonSummary::PhotonSource::Unknown,
+                PhotonSource current_process_ = PhotonSummary::PhotonSource::Unknown): 
                 g4_distance_uv(g4_distance_uv_), g4_distance_visible(g4_distance_visible_), 
                 calculated_distance_uv(calculated_distance_uv_), calculated_distance_visible(calculated_distance_visible_),
-                g4_time(g4_time_), calculated_time(calculated_time_), n_wls(n_wls_), photon_source(photon_source_) {
+                g4_time(g4_time_), calculated_time(calculated_time_), n_wls(n_wls_), photon_source(photon_source_),
+                temp_parent(temp_parent_), current_process(current_process_) {
     }
 
 
