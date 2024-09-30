@@ -88,7 +88,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         void UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
                                  double calculated_uv_distance, double calculated_vis_distance,
                                  double g4_time, double calculated_time, std::string creationProcessName,
-                                 std::map<int, size_t>::iterator it, bool new_process);
+                                 std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep);
 
         double InterpolateRindex(double wavelength);
 
@@ -123,6 +123,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
         static const std::unordered_map<std::string, PhotonSummary::PhotonSource> processNameToPhotonSource;
         static const std::unordered_map<PhotonSummary::PhotonSource, std::string> photonSourceToProcessName;
+        static const std::unordered_map<PhotonSummary::WLSLocation, std::string> wlsLocationToProcessName;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
 

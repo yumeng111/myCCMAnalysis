@@ -7,6 +7,13 @@ const std::unordered_map<PhotonSummary::PhotonSource, std::string> PhotonSummary
                                                                                                                {PhotonSummary::PhotonSource::OpWLS, "OpWLS"},
                                                                                                                {PhotonSummary::PhotonSource::Cerenkov, "Cerenkov"}};
 
+const std::unordered_map<PhotonSummary::WLSLocation, std::string> PhotonSummary::wlsLocationToProcessName = {{PhotonSummary::WLSLocation::Unknown, "Unknown"},
+                                                                                                             {PhotonSummary::WLSLocation::PMT, "PMT"},
+                                                                                                             {PhotonSummary::WLSLocation::FoilTop, "FoilTop"},
+                                                                                                             {PhotonSummary::WLSLocation::FoilBottom, "FoilBottom"},
+                                                                                                             {PhotonSummary::WLSLocation::FoilSides, "FoilSides"}};
+
+
 
 template <class Archive>
 void PhotonSummary::save(Archive& ar, unsigned version) const {
@@ -22,6 +29,7 @@ void PhotonSummary::save(Archive& ar, unsigned version) const {
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("n_wls",n_wls);
     ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
+    ar & make_nvp("wls_loc",wls_loc);
     ar & make_nvp("photon_source",photon_source);
     ar & make_nvp("temp_parent",temp_parent);
     ar & make_nvp("current_process",current_process);
@@ -40,6 +48,7 @@ void PhotonSummary::load(Archive& ar, unsigned version) {
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("n_wls",n_wls);
     ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
+    ar & make_nvp("wls_loc",wls_loc);
     ar & make_nvp("photon_source",photon_source);
     ar & make_nvp("temp_parent",temp_parent);
     ar & make_nvp("current_process",current_process);
@@ -61,6 +70,11 @@ void PhotonSummary::load(Archive& ar, unsigned version) {
 
 
 std::ostream& PhotonSummary::Print(std::ostream& os) const{
+    std::vector<std::string> wls_loc_string = {};
+    for (size_t w = 0; w < wls_loc.size(); w++){
+        wls_loc_string.push_back(wlsLocationToProcessName.at(wls_loc.at(w)));
+    }
+
     os << "[ PhotonSummary::"
         << "\n  G4 Distance UV  :" << g4_distance_uv
         << "\n  G4 Distance Visible :" << g4_distance_visible
@@ -70,6 +84,7 @@ std::ostream& PhotonSummary::Print(std::ostream& os) const{
         << "\n  Calculated Time :" << calculated_time
         << "\n  Number WLS :" << n_wls
         << "\n  Number Photons Per WLS :" << n_photons_per_wls
+        << "\n  WLS Location :" << wls_loc_string
         << "\n  Photon Source :" << photonSourceToProcessName.at(photon_source)
         << "\n  Temporary Parent Type :" << photonSourceToProcessName.at(temp_parent)
         << "\n  Current Process :" << photonSourceToProcessName.at(current_process)
