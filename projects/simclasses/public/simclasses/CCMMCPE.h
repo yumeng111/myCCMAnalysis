@@ -19,7 +19,7 @@
 
 #include <icetray/CCMPMTKey.h>
 
-static const unsigned ccmmcpe_version_ = 0;
+static const unsigned ccmmcpe_version_ = 1;
 
 /**
  * @brief CCMMCPE struct that stores the photon arrival time
@@ -38,6 +38,8 @@ struct CCMMCPE {
     // things we want to save about a photon hitting our pmts in simulation
     size_t parent_id;
     size_t track_id;
+    size_t n_wls;
+    std::vector<size_t> n_photons_per_wls;
     float g4_time; 
     float calculated_time; 
     float wavelength; // wavelength of photon
@@ -54,6 +56,8 @@ struct CCMMCPE {
     bool operator==(const CCMMCPE& rhs) const {
         return parent_id == rhs.parent_id 
             && track_id == rhs.track_id
+            && n_wls == rhs.n_wls
+            && n_photons_per_wls == rhs.n_photons_per_wls
             && g4_time == rhs.g4_time
             && calculated_time == rhs.calculated_time
             && wavelength == rhs.wavelength
@@ -70,6 +74,8 @@ struct CCMMCPE {
 
     CCMMCPE(size_t parent_id_ = 0,
             size_t track_id_ = 0,
+            size_t n_wls_ = 0,
+            std::vector<size_t> n_photons_per_wls_ = {0},
             float g4_time_ = 0,
             float calculated_time_ = 0,
             float wavelength_ = 0,
@@ -80,7 +86,7 @@ struct CCMMCPE {
             I3Position position_ = I3Position(0.0, 0.0, 0.0),
             I3Direction direction_ = I3Direction(0.0, 0.0, 0.0),
             PhotonSource photon_source_ = CCMMCPE::PhotonSource::Unknown):
-        parent_id(parent_id_), track_id(track_id_), g4_time(g4_time_), calculated_time(calculated_time_), wavelength(wavelength_), 
+        parent_id(parent_id_), track_id(track_id_), n_wls(n_wls_), n_photons_per_wls(n_photons_per_wls_), g4_time(g4_time_), calculated_time(calculated_time_), wavelength(wavelength_), 
         g4_distance_uv(g4_distance_uv_), g4_distance_visible(g4_distance_visible_),
         calculated_distance_uv(calculated_distance_uv_), calculated_distance_visible(calculated_distance_visible_),
         position(position_), direction(direction_), photon_source(photon_source_) {

@@ -78,6 +78,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
             optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
+            wls_parent_daughter_map = boost::make_shared<I3Map<int, std::vector<int>>>();
             mcTree = nullptr;
         }
 
@@ -112,6 +113,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // note this is in two parts -- map between track id and idx
         // and vector containing photon summaries (idx in vector corresponds to track id)
         boost::shared_ptr<I3Map<int, size_t>> optical_photon_map = boost::make_shared<I3Map<int, size_t>>(); // map between track id and idx in vector
+        boost::shared_ptr<I3Map<int, std::vector<int>>> wls_parent_daughter_map = boost::make_shared<I3Map<int, std::vector<int>>>(); // map between parent id and group of track ids
         PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
 
         // define a few things for converting energy to wavelength

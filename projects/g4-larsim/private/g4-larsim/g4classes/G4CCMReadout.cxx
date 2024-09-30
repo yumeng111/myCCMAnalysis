@@ -119,6 +119,8 @@ void G4CCMReadout::UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummar
             pe.calculated_distance_uv = this_photon_summary.calculated_distance_uv;
             pe.calculated_distance_visible = this_photon_summary.calculated_distance_visible;
             pe.photon_source = PhotonSummarytoCCMMCPEPhotonSource.at(this_photon_summary.photon_source);
+            pe.n_wls = this_photon_summary.n_wls;
+            pe.n_photons_per_wls = this_photon_summary.n_photons_per_wls;
         }
 
         std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.g4_time < b.g4_time; });

@@ -16,6 +16,8 @@ void CCMMCPE::save(Archive& ar, unsigned version) const {
 
     ar & make_nvp("parent_id",parent_id);
     ar & make_nvp("track_id",track_id);
+    ar & make_nvp("n_wls",n_wls);
+    ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
     ar & make_nvp("g4_time",g4_time);
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
@@ -33,17 +35,15 @@ void CCMMCPE::load(Archive& ar, unsigned version) {
     if (version > ccmmcpe_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMMCPE class.", version, ccmmcpe_version_);
     
-    // uncomment to load in old version of ccmmcpe
-    //ar & make_nvp("parent_id",parent_id);
-    //ar & make_nvp("track_id",track_id);
-    //ar & make_nvp("wavelength",wavelength);
-    //ar & make_nvp("position",position);
-    //ar & make_nvp("direction",direction);
-    //ar & make_nvp("photon_source",photon_source);
-
-    // uncomment to load in new version of ccmmcpe 
     ar & make_nvp("parent_id",parent_id);
     ar & make_nvp("track_id",track_id);
+    if (ccmmcpe_version_ == 0){
+        n_wls = 0;
+        n_photons_per_wls = {};
+    } else {
+        ar & make_nvp("n_wls",n_wls);
+        ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
+    }
     ar & make_nvp("g4_time",g4_time);
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
@@ -66,6 +66,8 @@ std::ostream& CCMMCPE::Print(std::ostream& os) const{
     os << "[ CCMMCPE::"
         << "\n  ParentID :" << parent_id 
         << "\n  TrackID :" << track_id
+        << "\n  NWLS :" << n_wls 
+        << "\n  NPhotons Per WLS :" << n_photons_per_wls 
         << "\n  G4 Time :" << g4_time
         << "\n  Calculated Time :" << calculated_time
         << "\n  Wavelength :" << wavelength

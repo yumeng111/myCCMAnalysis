@@ -21,6 +21,7 @@ void PhotonSummary::save(Archive& ar, unsigned version) const {
     ar & make_nvp("g4_time",g4_time);
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("n_wls",n_wls);
+    ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
     ar & make_nvp("photon_source",photon_source);
     ar & make_nvp("temp_parent",temp_parent);
     ar & make_nvp("current_process",current_process);
@@ -38,20 +39,24 @@ void PhotonSummary::load(Archive& ar, unsigned version) {
     ar & make_nvp("g4_time",g4_time);
     ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("n_wls",n_wls);
+    ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
+    ar & make_nvp("photon_source",photon_source);
+    ar & make_nvp("temp_parent",temp_parent);
+    ar & make_nvp("current_process",current_process);
 
-    if (photonsummary_version_ == 1){
-        ar & make_nvp("photon_source",photon_source);
-        temp_parent = PhotonSummary::PhotonSource::Unknown; 
-        current_process = PhotonSummary::PhotonSource::Unknown; 
-    } else if (photonsummary_version_ == 2){
-        ar & make_nvp("photon_source",photon_source);
-        ar & make_nvp("temp_parent",temp_parent);
-        ar & make_nvp("current_process",current_process);
-    } else {
-        photon_source = PhotonSummary::PhotonSource::Unknown;
-        temp_parent = PhotonSummary::PhotonSource::Unknown; 
-        current_process = PhotonSummary::PhotonSource::Unknown; 
-    }
+    //if (version == 1){
+    //    ar & make_nvp("photon_source",photon_source);
+    //    temp_parent = PhotonSummary::PhotonSource::Unknown; 
+    //    current_process = PhotonSummary::PhotonSource::Unknown; 
+    //} else if (version == 2){
+    //    ar & make_nvp("photon_source",photon_source);
+    //    ar & make_nvp("temp_parent",temp_parent);
+    //    ar & make_nvp("current_process",current_process);
+    //} else {
+    //    photon_source = PhotonSummary::PhotonSource::Unknown;
+    //    temp_parent = PhotonSummary::PhotonSource::Unknown; 
+    //    current_process = PhotonSummary::PhotonSource::Unknown; 
+    //}
 }
 
 
@@ -64,6 +69,7 @@ std::ostream& PhotonSummary::Print(std::ostream& os) const{
         << "\n  G4 Global Time :" << g4_time
         << "\n  Calculated Time :" << calculated_time
         << "\n  Number WLS :" << n_wls
+        << "\n  Number Photons Per WLS :" << n_photons_per_wls
         << "\n  Photon Source :" << photonSourceToProcessName.at(photon_source)
         << "\n  Temporary Parent Type :" << photonSourceToProcessName.at(temp_parent)
         << "\n  Current Process :" << photonSourceToProcessName.at(current_process)
