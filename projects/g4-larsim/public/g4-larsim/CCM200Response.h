@@ -22,6 +22,7 @@
 
 #include "simclasses/CCMMCPE.h"
 #include "simclasses/PhotonSummary.h"
+#include "simclasses/DetectorResponseConfig.h"
 
 #include <vector>
 #include <string>
@@ -63,6 +64,7 @@ public:
     virtual ~CCM200Response() override;
 
     virtual void Configure() override;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 
     // initialize geant4 detector
     virtual void Initialize() override;

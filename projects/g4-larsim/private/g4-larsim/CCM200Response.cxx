@@ -91,6 +91,18 @@ void CCM200Response::Initialize() {
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TimeCut_, KillCherenkov_, RandomSeed_);
 }
 
+I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
+    DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
+    config->rayleigh_scattering_length_ = Rayleigh128_;
+    config->pmt_tpb_qe_ = WLSNPhotonsPMT_;
+    config->endcap_tpb_qe_ = WLSNPhotonsEndCapFoil_;
+    config->side_tpb_qe_ = WLSNPhotonsSideFoil_;
+    config->pmt_tpb_thickness_ = PMTTPBThickness_;
+    config->endcap_tpb_thickness_ = EndCapFoilTPBThickness_;
+    config->side_tpb_thickness_ = SideFoilTPBThickness_;
+    return config;
+}
+
 void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
     g4Interface_->SimulateEvent(primary, tree, mcpeseries);
 }

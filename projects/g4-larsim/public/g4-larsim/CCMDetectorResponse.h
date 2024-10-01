@@ -24,6 +24,9 @@ class CCMDetectorResponse : public I3ServiceBase {
 
         // get configuration parameters
         virtual void Configure() = 0;
+        
+        // get config information
+        virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
 
         // initialize geant4 detector
         virtual void Initialize() = 0;

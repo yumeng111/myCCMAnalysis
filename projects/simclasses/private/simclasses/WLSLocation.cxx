@@ -28,9 +28,7 @@ void WLSLocation::load(Archive& ar, unsigned version) {
 
 
 std::ostream& WLSLocation::Print(std::ostream& os) const{
-    os << "[ WLSLocation::"
-        << "\n  WLS Location :" << wlsLocationToProcessName.at(wls_loc) 
-        << " ]";
+    os << wlsLocationToProcessName.at(wls_loc) << ", "; 
     return os;
 }
 
