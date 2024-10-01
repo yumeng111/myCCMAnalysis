@@ -123,7 +123,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
         static const std::unordered_map<std::string, PhotonSummary::PhotonSource> processNameToPhotonSource;
         static const std::unordered_map<PhotonSummary::PhotonSource, std::string> photonSourceToProcessName;
-        static const std::unordered_map<PhotonSummary::WLSLocation, std::string> wlsLocationToProcessName;
+        static const std::unordered_map<WLSLocation::WLSLoc, std::string> wlsLocationToProcessName;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
 

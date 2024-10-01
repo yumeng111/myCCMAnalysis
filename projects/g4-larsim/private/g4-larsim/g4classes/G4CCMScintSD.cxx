@@ -63,11 +63,11 @@ const std::unordered_map<PhotonSummary::PhotonSource, std::string> G4CCMScintSD:
                                                                                                               {PhotonSummary::PhotonSource::Cerenkov, "Cerenkov"},
                                                                                                               {PhotonSummary::PhotonSource::OpWLS, "OpWLS"}};
 
-const std::unordered_map<PhotonSummary::WLSLocation, std::string> G4CCMScintSD::wlsLocationToProcessName = {{PhotonSummary::WLSLocation::Unknown, "Unknown"},
-                                                                                                             {PhotonSummary::WLSLocation::PMT, "PMT"},
-                                                                                                             {PhotonSummary::WLSLocation::FoilTop, "FoilTop"},
-                                                                                                             {PhotonSummary::WLSLocation::FoilBottom, "FoilBottom"},
-                                                                                                             {PhotonSummary::WLSLocation::FoilSides, "FoilSides"}};
+const std::unordered_map<WLSLocation::WLSLoc, std::string> G4CCMScintSD::wlsLocationToProcessName = {{WLSLocation::WLSLoc::Unknown, "Unknown"},
+                                                                                                             {WLSLocation::WLSLoc::PMT, "PMT"},
+                                                                                                             {WLSLocation::WLSLoc::FoilTop, "FoilTop"},
+                                                                                                             {WLSLocation::WLSLoc::FoilBottom, "FoilBottom"},
+                                                                                                             {WLSLocation::WLSLoc::FoilSides, "FoilSides"}};
 
 G4CCMScintSD::G4CCMScintSD(G4String name) : G4VSensitiveDetector(name) {
     collectionName.insert("scintCollection");
@@ -112,7 +112,7 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g
     PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, g4_vis_distance,
                                                       calculated_uv_distance, calculated_vis_distance,
                                                       g4_time, calculated_time,
-                                                      n_wls, n_photons_per_wls, {PhotonSummary::WLSLocation::Unknown},
+                                                      n_wls, n_photons_per_wls, WLSLocationSeries(),
                                                       processNameToPhotonSource.at(creationProcessName),
                                                       processNameToPhotonSource.at(creationProcessName),
                                                       processNameToPhotonSource.at(creationProcessName));
@@ -145,21 +145,22 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
         // let's save where this wls occured
         std::string wls_loc_string = static_cast<std::string>(aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()); 
 
-        PhotonSummary::WLSLocation wls_loc = PhotonSummary::WLSLocation::Unknown;
+        WLSLocation::WLSLoc wls_loc = WLSLocation::WLSLoc::Unknown;
 
         if (wls_loc_string.find("Coating") != std::string::npos) {
-            wls_loc = PhotonSummary::WLSLocation::PMT;
+            wls_loc = WLSLocation::WLSLoc::PMT;
         } else if (wls_loc_string.find("FoilTop") != std::string::npos) {
-            wls_loc = PhotonSummary::WLSLocation::FoilTop;
+            wls_loc = WLSLocation::WLSLoc::FoilTop;
         } else if (wls_loc_string.find("FoilBottom") != std::string::npos) {
-            wls_loc = PhotonSummary::WLSLocation::FoilBottom;
+            wls_loc = WLSLocation::WLSLoc::FoilBottom;
         } else if (wls_loc_string.find("FoilSides") != std::string::npos) {
-            wls_loc = PhotonSummary::WLSLocation::FoilSides;
+            wls_loc = WLSLocation::WLSLoc::FoilSides;
         }
 
 
-        if (this_photon_summary.n_wls == 1){
-            this_photon_summary.wls_loc.at(0) = wls_loc;
+        size_t saving_idx = this_photon_summary.n_wls - 1;
+        if (this_photon_summary.wls_loc.size() > saving_idx){
+             this_photon_summary.wls_loc.at(saving_idx) = wls_loc;
         } else {
             this_photon_summary.wls_loc.push_back(wls_loc);
         }
@@ -243,9 +244,9 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
             << ", photons produced per wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_photons_per_wls 
             << ", pre step vol = " << aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()
             << ", photon summary wls loc = " ; 
-            std::vector<PhotonSummary::WLSLocation> this_wls_loc = photon_summary->at((*optical_photon_map)[track_id]).wls_loc;
+            WLSLocationSeries this_wls_loc = photon_summary->at((*optical_photon_map)[track_id]).wls_loc;
             for (size_t i = 0; i < this_wls_loc.size(); i++){
-                std::cout << wlsLocationToProcessName.at(this_wls_loc.at(i)) << ", ";    
+                std::cout << wlsLocationToProcessName.at(this_wls_loc.at(i).wls_loc) << ", ";    
             }
             std::cout << std::endl;
     }
