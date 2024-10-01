@@ -33,6 +33,7 @@ public:
     void DAQ(I3FramePtr frame) override;
 
     void Simulation(I3FramePtr frame) override;
+    void FillSimulationFrame(I3FramePtr frame);
 
     void Finish() override;
 

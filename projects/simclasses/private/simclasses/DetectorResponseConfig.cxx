@@ -3,15 +3,14 @@
 #include "icetray/I3FrameObject.h"
 
 std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
-    oss << "[ DetectorResponseConfig::"
+    oss << "DetectorResponseConfig: "
         << "\n  Rayleigh Scattering Length :" << rayleigh_scattering_length_ 
         << "\n  PMT TPB QE :" << pmt_tpb_qe_ 
         << "\n  Endcap TPB QE :" << endcap_tpb_qe_ 
         << "\n  Side TPB QE :" << side_tpb_qe_ 
         << "\n  PMT TPB Thickness :" << pmt_tpb_thickness_ 
         << "\n  Endcap TPB Thickness :" << endcap_tpb_thickness_ 
-        << "\n  Side TPB Thickness :" << side_tpb_thickness_ 
-        << " ]";
+        << "\n  Side TPB Thickness :" << side_tpb_thickness_;
     return oss;
 }
 

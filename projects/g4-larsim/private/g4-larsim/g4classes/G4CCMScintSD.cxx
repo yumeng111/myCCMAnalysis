@@ -234,22 +234,22 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
         }
     }
     
-    if  (creationProcessName == "OpWLS"){
-        std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
-            << ", creation process = " << creationProcessName
-            //<< ", photon source = " << photonSourceToProcessName.at(photon_summary->at((*optical_photon_map)[track_id]).photon_source)
-            //<< ", temp parent = " << photonSourceToProcessName.at(photon_summary->at((*optical_photon_map)[track_id]).temp_parent)
-            << ", new_process = " << new_process
-            << ", n_wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_wls
-            << ", photons produced per wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_photons_per_wls 
-            << ", pre step vol = " << aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()
-            << ", photon summary wls loc = " ; 
-            WLSLocationSeries this_wls_loc = photon_summary->at((*optical_photon_map)[track_id]).wls_loc;
-            for (size_t i = 0; i < this_wls_loc.size(); i++){
-                std::cout << wlsLocationToProcessName.at(this_wls_loc.at(i).wls_loc) << ", ";    
-            }
-            std::cout << std::endl;
-    }
+    //if  (creationProcessName == "OpWLS"){
+    //    std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
+    //        << ", creation process = " << creationProcessName
+    //        //<< ", photon source = " << photonSourceToProcessName.at(photon_summary->at((*optical_photon_map)[track_id]).photon_source)
+    //        //<< ", temp parent = " << photonSourceToProcessName.at(photon_summary->at((*optical_photon_map)[track_id]).temp_parent)
+    //        << ", new_process = " << new_process
+    //        << ", n_wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_wls
+    //        << ", photons produced per wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_photons_per_wls 
+    //        << ", pre step vol = " << aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()
+    //        << ", photon summary wls loc = " ; 
+    //        WLSLocationSeries this_wls_loc = photon_summary->at((*optical_photon_map)[track_id]).wls_loc;
+    //        for (size_t i = 0; i < this_wls_loc.size(); i++){
+    //            std::cout << wlsLocationToProcessName.at(this_wls_loc.at(i).wls_loc) << ", ";    
+    //        }
+    //        std::cout << std::endl;
+    //}
 
 }
 
