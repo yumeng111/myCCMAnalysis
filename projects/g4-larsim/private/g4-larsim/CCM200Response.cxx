@@ -14,7 +14,9 @@
 #include "icetray/I3Module.h"
 #include "icetray/I3Logging.h"
 #include "icetray/IcetrayFwd.h"
+#include "icetray/I3FrameObject.h"
 #include "icetray/I3ServiceBase.h"
+#include "icetray/I3ConditionalModule.h"
 #include "icetray/I3SingleServiceFactory.h"
 
 #include "phys-services/I3RandomService.h"
@@ -102,6 +104,18 @@ I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     config->side_tpb_thickness_ = SideFoilTPBThickness_;
     return config;
 }
+
+void CCM200Response::FillSimulationFrame(I3FramePtr frame) {
+    I3FrameObjectPtr obj = this->GetSimulationConfiguration();
+    frame->Put("DetectorConfiguration", obj);
+}
+
+void CCM200Response::Simulation(I3FramePtr frame) {
+    seen_s_frame_ = true;
+    FillSimulationFrame(frame);
+    //PushFrame(frame);
+}
+
 
 void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
     g4Interface_->SimulateEvent(primary, tree, mcpeseries);

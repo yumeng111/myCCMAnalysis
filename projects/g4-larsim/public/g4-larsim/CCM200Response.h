@@ -32,6 +32,7 @@ class CCM200Response : public CCMDetectorResponse {
 private:
     CCM200Response operator= (const CCM200Response& rhs);
 
+    bool seen_s_frame_ = false;
     std::string visMacroFile_;
 
     bool PMTSDStatus_; // turn PMT SD on/off
@@ -64,7 +65,9 @@ public:
     virtual ~CCM200Response() override;
 
     virtual void Configure() override;
+    void Simulation(I3FramePtr frame);
     virtual I3FrameObjectPtr GetSimulationConfiguration() override;
+    void FillSimulationFrame(I3FramePtr frame);
 
     // initialize geant4 detector
     virtual void Initialize() override;
