@@ -10,6 +10,7 @@
 #include "dataclasses/Utility.h"
 #include "dataclasses/I3Map.h"
 #include "dataclasses/I3Vector.h"
+#include <simclasses/WLSLocation.h>
 
 #include <string>
 #include <iostream>
@@ -26,43 +27,40 @@ static const unsigned lightweightccmmcpe_version_ = 0;
  */
 
 struct LightweightCCMMCPE {
-    enum class PhotonSource : int8_t {
-        Unknown = 0,
-        Scintillation = 1,
-        Cerenkov = 2,
-        OpWLS = 3
-    };
 
     // things we want to save about a photon hitting our pmts in simulation
+    std::vector<size_t> n_photons_per_wls;
+    WLSLocationSeries wls_loc; 
     float g4_time;
     float wavelength; // wavelength of photon
     float g4_distance_uv; // g4_distances travelled as uv photon
-    PhotonSource photon_source;
 
     SET_LOGGER("LightweightCCMMCPE");
 
     bool operator==(const LightweightCCMMCPE& rhs) const {
-        return g4_time == rhs.g4_time
+        return n_photons_per_wls == rhs.n_photons_per_wls
+            && wls_loc == rhs.wls_loc
+            && g4_time == rhs.g4_time
             && wavelength == rhs.wavelength
-            && g4_distance_uv == rhs.g4_distance_uv
-            && photon_source == rhs.photon_source;
+            && g4_distance_uv == rhs.g4_distance_uv;
     }
 
     LightweightCCMMCPE(const LightweightCCMMCPE&) = default;
 
-    LightweightCCMMCPE(float g4_time_ = 0,
-            float wavelength_ = 0,
-            float g4_distance_uv_ = 0,
-            PhotonSource photon_source_ = LightweightCCMMCPE::PhotonSource::Unknown):
-        g4_time(g4_time_), wavelength(wavelength_),
-        g4_distance_uv(g4_distance_uv_), photon_source(photon_source_) {
+    LightweightCCMMCPE(std::vector<size_t> n_photons_per_wls_ = {0},
+                       WLSLocationSeries wls_loc_ = WLSLocationSeries(),
+                       float g4_time_ = 0,
+                       float wavelength_ = 0,
+                       float g4_distance_uv_ = 0):
+                       n_photons_per_wls(n_photons_per_wls_),
+                       wls_loc(wls_loc_),
+                       g4_time(g4_time_),
+                       wavelength(wavelength_),
+                       g4_distance_uv(g4_distance_uv_){
     }
 
 
     std::ostream& Print(std::ostream&) const;
-
-    private:
-    static const std::unordered_map<LightweightCCMMCPE::PhotonSource, std::string> photonSourceToProcessName;
 
     friend class icecube::serialization::access;
     template<class Archive> void save(Archive& ar, unsigned version) const;
