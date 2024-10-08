@@ -108,7 +108,7 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g
                                            double g4_time, double calculated_time, std::string creationProcessName){
     // map does not have key -- let's add our PhotonSummary then update map
     size_t n_wls = 0;
-    std::vector<size_t> n_photons_per_wls = {0}; 
+    std::vector<size_t> n_photons_per_wls = {0};
     PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, g4_vis_distance,
                                                       calculated_uv_distance, calculated_vis_distance,
                                                       g4_time, calculated_time,
@@ -143,7 +143,7 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
         this_photon_summary.n_wls += 1;
 
         // let's save where this wls occured
-        std::string wls_loc_string = static_cast<std::string>(aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()); 
+        std::string wls_loc_string = static_cast<std::string>(aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName());
 
         WLSLocation::WLSLoc wls_loc = WLSLocation::WLSLoc::Unknown;
 
@@ -174,12 +174,12 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
 
     // let's also update n photons per wls
     if (creationProcessName == "OpWLS" and new_process){
-        
+
         // let's update the parent id and track id map
         // this keeps track of parent id and wls daughter track ids
         std::map<int, std::vector<int>>::iterator wls_it = wls_parent_daughter_map->find(parent_id);
         if (wls_it != wls_parent_daughter_map->end()) {
-            // ok this parent id is in our map! let's update daughter track ids 
+            // ok this parent id is in our map! let's update daughter track ids
             wls_it->second.push_back(track_id);
         } else {
             // this key is NOT in our map!! let's add a value
@@ -197,7 +197,7 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
             // looping over from current to original wls
             int prev_track;
             for (size_t n = this_n_wls; n > 0; n--){
-                // special logic for first iteration 
+                // special logic for first iteration
                 if (n == this_n_wls) {
                     size_t this_n_photons_per_wls = (*wls_parent_daughter_map)[parent_id].size();
 
@@ -210,7 +210,7 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
                             photon_summary->at((*optical_photon_map)[tracks_per_parent[t]]).n_photons_per_wls.push_back(this_n_photons_per_wls);
                         }
                     }
-                
+
                     prev_track = parent_id;
 
                 } else {
@@ -233,7 +233,7 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
             }
         }
     }
-    
+
     //if  (creationProcessName == "OpWLS"){
     //    std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
     //        << ", creation process = " << creationProcessName
@@ -241,12 +241,12 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
     //        //<< ", temp parent = " << photonSourceToProcessName.at(photon_summary->at((*optical_photon_map)[track_id]).temp_parent)
     //        << ", new_process = " << new_process
     //        << ", n_wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_wls
-    //        << ", photons produced per wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_photons_per_wls 
+    //        << ", photons produced per wls = " << photon_summary->at((*optical_photon_map)[track_id]).n_photons_per_wls
     //        << ", pre step vol = " << aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()
-    //        << ", photon summary wls loc = " ; 
+    //        << ", photon summary wls loc = " ;
     //        WLSLocationSeries this_wls_loc = photon_summary->at((*optical_photon_map)[track_id]).wls_loc;
     //        for (size_t i = 0; i < this_wls_loc.size(); i++){
-    //            std::cout << wlsLocationToProcessName.at(this_wls_loc.at(i).wls_loc) << ", ";    
+    //            std::cout << wlsLocationToProcessName.at(this_wls_loc.at(i).wls_loc) << ", ";
     //        }
     //        std::cout << std::endl;
     //}
@@ -391,10 +391,10 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if (creationProcess) {
             creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
         }
-        
-        //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id 
+
+        //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
         //          << ", creation process = " << creationProcessName
-        //          //<< ", distance uv = " << g4_uv_distance 
+        //          //<< ", distance uv = " << g4_uv_distance
         //          //<< ", and time = " << g4_delta_time_step
         //          << std::endl;
 
@@ -411,7 +411,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         } else {
             // check if this parent id is in our map
             std::map<int, size_t>::iterator parent_it = optical_photon_map->find(parent_id);
-            
+
             bool new_process = true;
             if (parent_it != optical_photon_map->end()){
                 // this is a new process! let's update our map
@@ -510,6 +510,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             // we have not added the daugher...let's do it now
             I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
             I3Particle daughter(daughter_type);
+            daughter.SetEnergy(aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV);
 
             I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
 
