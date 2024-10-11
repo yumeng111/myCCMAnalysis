@@ -10,7 +10,9 @@ std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
         << "\n  Side TPB QE :" << side_tpb_qe_ 
         << "\n  PMT TPB Thickness :" << pmt_tpb_thickness_ 
         << "\n  Endcap TPB Thickness :" << endcap_tpb_thickness_ 
-        << "\n  Side TPB Thickness :" << side_tpb_thickness_;
+        << "\n  Side TPB Thickness :" << side_tpb_thickness_
+        << "\n  TPB Absorption Tau :" << tpb_abs_tau_
+        << "\n  TPB Absorption Norm :" << tpb_abs_norm_;
     return oss;
 }
 
@@ -21,7 +23,9 @@ bool DetectorResponseConfig::operator==(const DetectorResponseConfig& rhs) const
             side_tpb_qe_ == rhs.side_tpb_qe_ &&
             pmt_tpb_thickness_ == rhs.pmt_tpb_thickness_ &&
             endcap_tpb_thickness_ == rhs.endcap_tpb_thickness_ &&
-            side_tpb_thickness_ == rhs.side_tpb_thickness_);
+            side_tpb_thickness_ == rhs.side_tpb_thickness_ &&
+            tpb_abs_tau_ == rhs.tpb_abs_tau_ &&
+            tpb_abs_norm_ == rhs.tpb_abs_norm_);
 }
 
 std::ostream& operator<<(std::ostream& oss, DetectorResponseConfig const & bcm) {

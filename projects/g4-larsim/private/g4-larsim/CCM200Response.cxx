@@ -107,6 +107,8 @@ I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     config->pmt_tpb_thickness_ = PMTTPBThickness_;
     config->endcap_tpb_thickness_ = EndCapFoilTPBThickness_;
     config->side_tpb_thickness_ = SideFoilTPBThickness_;
+    config->tpb_abs_tau_ = TPBAbsTau_;
+    config->tpb_abs_norm_ = TPBAbsNorm_;
     return config;
 }
 
