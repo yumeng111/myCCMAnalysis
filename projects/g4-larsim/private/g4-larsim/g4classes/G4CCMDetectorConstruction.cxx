@@ -454,7 +454,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                 372.2397397895239*nm, 375.520222014443*nm, 378.9752009980987*nm, 382.16185569061213*nm, 384.4694332265701*nm, 386.9168639465255*nm, 389.0766639478518*nm, 392.09778871734034*nm,
                 395.5001293094871*nm, 398.45475162631544*nm, 401.0187266662688*nm, 403.0699066982314*nm, 407.19557562615626*nm, 410.34227226609903*nm, 413.13933594604805*nm, 415.8198553059992*nm,
                 418.5222909662401*nm, 421.8801599458889*nm, 425.02685658583164*nm, 427.82392026578066*nm, 430.97061690572343*nm, 433.76768058567245*nm, 436.5647442656216*nm, 439.3618079455706*nm,
-                442.5085045855134*nm, 445.65520122545604*nm, 447.01643225177565*nm};
+                442.5085045855134*nm, 445.65520122545604*nm, 447.01643225177565*nm, 500.0*nm, 550.0*nm, 600.0*nm};
 
     // the absorption spectrum below ~380nm is fixed!!!
     std::vector<G4double> TPB_WLSAbsLength_FixedAbsorption = {104.57106779183636*nm, 104.57106779183636*nm, 101.86164369840671*nm, 95.71852757662245*nm, 80.96895332836402*nm, 60.211922218905926*nm,
@@ -464,7 +464,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // but we allow different exponential behavior the absorption of visible light
     // now loop over the wavelength and grab/calculate correct absorption and then convert wavelength to energy
     std::vector<G4double> TPB_WLSAbsLength_Energy = {1.0*eV}; // padding lower bound
-    std::vector<G4double> TPB_WLSAbsLength = {1e10*nm}; // padding lower bound (doesnt really matter, just need super big absorption length)
+    std::vector<G4double> TPB_WLSAbsLength = {1e35*nm}; // padding lower bound (doesnt really matter, just need super big absorption length)
     // note -- looping over backwards to go from low energy (high wavelength) to high energy (low wavelength)
     for (size_t w = (TPB_WLSAbsLength_Wavelength.size() - 1); w > 0; w --){
         G4double this_wavelength = TPB_WLSAbsLength_Wavelength.at(w) / nm;
