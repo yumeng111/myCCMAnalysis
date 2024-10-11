@@ -50,7 +50,7 @@ class G4Interface {
                              double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength,
                              double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                              double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
-                             bool TimeCut, bool KillCherenkov, long RandomSeed);
+                             double TPBAbsTau, double TPBAbsNorm, bool TimeCut, bool KillCherenkov, long RandomSeed);
 
         void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
         void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);

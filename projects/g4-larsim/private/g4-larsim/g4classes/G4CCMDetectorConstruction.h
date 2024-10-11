@@ -42,7 +42,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength,
                               G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                               G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
-                              G4double Rayleigh128);
+                              G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm);
     ~G4CCMDetectorConstruction() override;
 
     void SetReadout(G4CCMReadout * readout);
@@ -55,22 +55,22 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 
     //Functions to modify the geometry
     void SetDefaults();//Method to set the default values of all geometry modifications
-    
+
     //Construct main volume
     void SetMainVolumeOn(G4bool b);
     G4bool GetMainVolumeOn() const { return fMainVolumeOn; }
-   
+
     // set SD configuration
     void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
     void SetLArSDStatus(bool LArSDStatus) { LArSDStatus_ = LArSDStatus; }
-    
+
     // get SD configuration
     bool GetPMTSDStatus() { return PMTSDStatus_; }
     bool GetLArSDStatus() { return LArSDStatus_; }
- 
+
     // set sodium source calibration run status
     void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun) {
-        SourceRodIn_ = SourceRodIn; 
+        SourceRodIn_ = SourceRodIn;
         SourceRodLocation_ = SourceRodLocation;
         CobaltSourceRun_ = CobaltSourceRun;
         SodiumSourceRun_ = SodiumSourceRun;
@@ -78,14 +78,14 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 
     // set time cut
     void SetTimeCut(bool TimeCut){ TimeCut_ = TimeCut; }
-    
+
     // set cerenkov control
-    void SetKillCherenkov(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }    
+    void SetKillCherenkov(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
 
   private:
 
     G4CCMReadout * readout_ = nullptr;
-    
+
     void DefineMaterials();
     G4CCMDetectorMessenger* fDetectorMessenger = nullptr;
 
@@ -115,7 +115,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4Material* fTPBFoilSides = nullptr;
     G4Material* fTPBFoilTopBottom = nullptr;
     G4Material* fTPBPMT = nullptr;
-    
+
     // Geometry
     G4bool fMainVolumeOn = true;
 
@@ -143,7 +143,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 
     // controls to turn sodium source on/off
     bool SourceRodIn_ = false;
-    G4double SourceRodLocation_ = 0.0 * cm; 
+    G4double SourceRodLocation_ = 0.0 * cm;
     bool CobaltSourceRun_ = false;
     bool SodiumSourceRun_ = false;
 
@@ -153,10 +153,12 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4double UVAbsLength_ = 55.0 * cm;
     G4double WLSNPhotonsEndCapFoil_ = 0.605;
     G4double WLSNPhotonsSideFoil_ = 0.605;
-    G4double WLSNPhotonsPMT_ = 0.605;  
-    G4double EndCapFoilTPBThickness_ = 0.00278035 * mm; 
+    G4double WLSNPhotonsPMT_ = 0.605;
+    G4double EndCapFoilTPBThickness_ = 0.00278035 * mm;
     G4double SideFoilTPBThickness_ = 0.00278035 * mm;
-    G4double PMTTPBThickness_ = 0.00203892 * mm;  
+    G4double PMTTPBThickness_ = 0.00203892 * mm;
+    G4double TPBAbsTau_ = 0.13457;
+    G4double TPBAbsNorm_ = 8.13914e-21;
 
     G4bool TimeCut_ = true;
     G4bool KillCherenkov_ = false;
