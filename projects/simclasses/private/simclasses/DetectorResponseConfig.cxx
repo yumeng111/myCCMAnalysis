@@ -4,15 +4,16 @@
 
 std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
     oss << "DetectorResponseConfig: "
-        << "\n  Rayleigh Scattering Length :" << rayleigh_scattering_length_ 
-        << "\n  PMT TPB QE :" << pmt_tpb_qe_ 
-        << "\n  Endcap TPB QE :" << endcap_tpb_qe_ 
-        << "\n  Side TPB QE :" << side_tpb_qe_ 
-        << "\n  PMT TPB Thickness :" << pmt_tpb_thickness_ 
-        << "\n  Endcap TPB Thickness :" << endcap_tpb_thickness_ 
+        << "\n  Rayleigh Scattering Length :" << rayleigh_scattering_length_
+        << "\n  PMT TPB QE :" << pmt_tpb_qe_
+        << "\n  Endcap TPB QE :" << endcap_tpb_qe_
+        << "\n  Side TPB QE :" << side_tpb_qe_
+        << "\n  PMT TPB Thickness :" << pmt_tpb_thickness_
+        << "\n  Endcap TPB Thickness :" << endcap_tpb_thickness_
         << "\n  Side TPB Thickness :" << side_tpb_thickness_
         << "\n  TPB Absorption Tau :" << tpb_abs_tau_
-        << "\n  TPB Absorption Norm :" << tpb_abs_norm_;
+        << "\n  TPB Absorption Norm :" << tpb_abs_norm_
+        << "\n  TPB Absorption Scale :" << tpb_abs_scale_;
     return oss;
 }
 
@@ -25,7 +26,8 @@ bool DetectorResponseConfig::operator==(const DetectorResponseConfig& rhs) const
             endcap_tpb_thickness_ == rhs.endcap_tpb_thickness_ &&
             side_tpb_thickness_ == rhs.side_tpb_thickness_ &&
             tpb_abs_tau_ == rhs.tpb_abs_tau_ &&
-            tpb_abs_norm_ == rhs.tpb_abs_norm_);
+            tpb_abs_norm_ == rhs.tpb_abs_norm_ &&
+            tpb_abs_scale_ == rhs.tpb_abs_scale_);
 }
 
 std::ostream& operator<<(std::ostream& oss, DetectorResponseConfig const & bcm) {

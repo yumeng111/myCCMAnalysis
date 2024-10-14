@@ -39,7 +39,7 @@
 G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsEndCapFoil,
                                                      G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
-                                                     G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm) {
+                                                     G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength_ = UVAbsLength;
@@ -52,6 +52,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4doub
     Rayleigh128_ = Rayleigh128;
     TPBAbsTau_ = TPBAbsTau;
     TPBAbsNorm_ = TPBAbsNorm;
+    TPBAbsScale_ = TPBAbsScale;
     SetDefaults();
     DefineMaterials();
     fDetectorMessenger = new G4CCMDetectorMessenger(this);
@@ -475,6 +476,9 @@ void G4CCMDetectorConstruction::DefineMaterials() {
             // ok now we need to calculate our absorption length
             this_abs = TPBAbsNorm_ * exp(TPBAbsTau_ * this_wavelength) * nm;
         }
+
+        // multiply our absorption by the overall scaling
+        this_abs *= TPBAbsScale_;
 
         // now convert wavelength to energy and save!
         double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)

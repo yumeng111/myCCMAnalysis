@@ -9,7 +9,7 @@
 #include <iostream>
 #include <sstream>
 
-static const unsigned detectorresponseconfig_version_ = 1;
+static const unsigned detectorresponseconfig_version_ = 2;
 class DetectorResponseConfig : public I3FrameObject {
 public:
     double rayleigh_scattering_length_;
@@ -21,6 +21,7 @@ public:
     double side_tpb_thickness_;
     double tpb_abs_tau_;
     double tpb_abs_norm_;
+    double tpb_abs_scale_;
 
     DetectorResponseConfig() = default;
     virtual ~DetectorResponseConfig() override = default;
@@ -52,6 +53,7 @@ void DetectorResponseConfig::save(Archive& ar, unsigned version) const {
     ar & make_nvp("side_tpb_thickness", side_tpb_thickness_);
     ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
     ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+    ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
 }
 
 template <class Archive>
@@ -69,9 +71,15 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
     if (detectorresponseconfig_version_ == 0){
         tpb_abs_tau_ = 0.0;
         tpb_abs_norm_ = 0.0;
+        tpb_abs_scale_ = 1.0;
+    } else if (detectorresponseconfig_version_ == 1){
+        ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
+        ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+        tpb_abs_scale_ = 1.0;
     } else {
         ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
         ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+        ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
     }
 }
 
