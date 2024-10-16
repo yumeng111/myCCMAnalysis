@@ -500,6 +500,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     double bridle_radius_cm = fiducial_lar_radius / cm;
     double frill_radius_cm =  fiducial_lar_radius / cm;
 
+    std::cout << "pmt_radius_cm = " << pmt_radius_cm << std::endl;
+    std::cout << "pmt_height_cm = " << pmt_height_cm << std::endl;
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
     for (size_t i = 0; i < position_id.size(); i++) {

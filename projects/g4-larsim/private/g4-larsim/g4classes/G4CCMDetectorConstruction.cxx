@@ -498,7 +498,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // let's try adding some mie scattering to our tpb! i have no idea what this is gonna do...we'll see
     std::vector<G4double> TPB_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
-    std::vector<G4double> TPB_Mie_Scattering_Length = {0.0275 * mm, 0.0275 * mm, 1.0 * m, 1.0 * m}; // mie scattering for vis light, no mie scattering for UV
+    std::vector<G4double> TPB_Mie_Scattering_Length = {0.05 * mm, 0.05 * mm, 1.0 * m, 1.0 * m}; // mie scattering for vis light, no mie scattering for UV
 
     // now make our tpb foils!
     // making different ones for sides and top/bottom :)
