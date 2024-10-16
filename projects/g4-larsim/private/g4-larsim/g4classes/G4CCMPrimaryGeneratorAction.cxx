@@ -102,7 +102,7 @@ G4ParticleDefinition * GetParticleDefinition(I3Particle const & particle) {
     G4ParticleTable * particleTable = G4ParticleTable::GetParticleTable();
     G4ParticleDefinition* particleDef = NULL;
 
-    bool sodium_run = false;
+    bool is_nucleus = false;
 
     switch(particle.GetType()) {
     case I3Particle::Gamma:
@@ -209,39 +209,39 @@ G4ParticleDefinition * GetParticleDefinition(I3Particle const & particle) {
     case I3Particle::OmegaPlusBar:
        particleDef = particleTable->FindParticle("anti_omega-");
        break;
-    case I3Particle::H2Nucleus:
-       particleDef = particleTable->FindParticle("deuteron");
-       break;
-    case I3Particle::H3Nucleus:
-       particleDef = particleTable->FindParticle("triton");
-       break;
-    case I3Particle::He3Nucleus:
-       particleDef = particleTable->FindParticle("He3");
-       break;
-    case I3Particle::He4Nucleus:
-       particleDef = particleTable->FindParticle("He4");
-       break;
-    case I3Particle::He5Nucleus:
-       particleDef = particleTable->FindParticle("He5");
-       break;
-    case I3Particle::He6Nucleus:
-       particleDef = particleTable->FindParticle("He6");
-       break;
-    case I3Particle::Na22Nucleus:
-       sodium_run = true;
-       break;
     default:
-      log_warn("Man, check out that strange particle \"%s\" ?!", particle.GetTypeString().c_str());
-      return nullptr;
+       if((static_cast<int>(particle.GetType()) / 100000000) == 10) {
+           is_nucleus = true;
+       } else {
+           log_warn("Man, check out that strange particle \"%s\" ?!", particle.GetTypeString().c_str());
+           return nullptr;
+       }
     }
 
-    // special logic for adding sodium particle
-    if(sodium_run) {
-        G4int Z = 11, A = 22;
+    // special logic for adding nucleus
+    if(is_nucleus) {
+        int pdg_code = static_cast<int>(particle.GetType());
+        // Extract the components from the PDG-code using integer arithmetic
+        int excitation = pdg_code % 10;            // I (last digit)
+        pdg_code /= 10;
+        int nucleon_count = pdg_code % 1000;           // AAA (next 3 digits)
+        pdg_code /= 1000;
+        int proton_count = pdg_code % 1000;            // ZZZ (next 3 digits)
+        pdg_code /= 1000;
+        int strange_count = pdg_code % 10;             // L (next digit)
+        pdg_code /= 10;
+        int prefix = pdg_code;                     // First two digits (should be 10 for nuclei)
+        if (prefix != 10) {
+            throw std::runtime_error("Invalid PDG-code prefix. Expected 10 but got: " + std::to_string(prefix));
+        }
+        // Calculate the neutron count
+        int neutron_count = nucleon_count - proton_count - strange_count;
+
+        G4int Z = proton_count, A = nucleon_count;
         G4double ionCharge   = 0.*eplus;
         G4double excitEnergy = 0.*keV;
 
-        particleDef = G4IonTable::GetIonTable()->GetIon(Z,A,excitEnergy);
+        particleDef = G4IonTable::GetIonTable()->GetIon(Z, A, excitEnergy);
     }
 
     if(!particleDef) {
