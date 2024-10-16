@@ -53,6 +53,8 @@ private:
     double TPBAbsTau_;
     double TPBAbsNorm_;
     double TPBAbsScale_;
+    double MieGG_;
+    double MieRatio_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
     long RandomSeed_; // random seed for geant4

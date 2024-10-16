@@ -13,7 +13,9 @@ std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
         << "\n  Side TPB Thickness :" << side_tpb_thickness_
         << "\n  TPB Absorption Tau :" << tpb_abs_tau_
         << "\n  TPB Absorption Norm :" << tpb_abs_norm_
-        << "\n  TPB Absorption Scale :" << tpb_abs_scale_;
+        << "\n  TPB Absorption Scale :" << tpb_abs_scale_
+        << "\n  Mie GG :" << mie_gg_
+        << "\n  Mie Ratio :" << mie_ratio_;
     return oss;
 }
 
@@ -27,7 +29,9 @@ bool DetectorResponseConfig::operator==(const DetectorResponseConfig& rhs) const
             side_tpb_thickness_ == rhs.side_tpb_thickness_ &&
             tpb_abs_tau_ == rhs.tpb_abs_tau_ &&
             tpb_abs_norm_ == rhs.tpb_abs_norm_ &&
-            tpb_abs_scale_ == rhs.tpb_abs_scale_);
+            tpb_abs_scale_ == rhs.tpb_abs_scale_ &&
+            mie_gg_ == rhs.mie_gg_ &&
+            mie_ratio_ == rhs.mie_ratio_);
 }
 
 std::ostream& operator<<(std::ostream& oss, DetectorResponseConfig const & bcm) {
