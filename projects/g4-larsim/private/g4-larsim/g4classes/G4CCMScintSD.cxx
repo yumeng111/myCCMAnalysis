@@ -109,9 +109,9 @@ void G4CCMScintSD::AddEntryToPhotonSummary(int parent_id, int track_id, double g
     // map does not have key -- let's add our PhotonSummary then update map
     size_t n_wls = 0;
     std::vector<size_t> n_photons_per_wls = {0};
-    PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, g4_vis_distance,
-                                                      calculated_uv_distance, calculated_vis_distance,
-                                                      g4_time, calculated_time,
+    PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, //g4_vis_distance,
+                                                      //calculated_uv_distance, calculated_vis_distance,
+                                                      g4_time, //calculated_time,
                                                       n_wls, n_photons_per_wls, WLSLocationSeries(),
                                                       processNameToPhotonSource.at(creationProcessName),
                                                       processNameToPhotonSource.at(creationProcessName),
@@ -128,11 +128,11 @@ void G4CCMScintSD::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv
     // so we need to grab PhotonSummary and update it -- then update key
     PhotonSummary this_photon_summary = photon_summary->at(it->second);
     this_photon_summary.g4_distance_uv += g4_uv_distance;
-    this_photon_summary.g4_distance_visible += g4_vis_distance;
-    this_photon_summary.calculated_distance_uv += calculated_uv_distance;
-    this_photon_summary.calculated_distance_visible += calculated_vis_distance;
+    //this_photon_summary.g4_distance_visible += g4_vis_distance;
+    //this_photon_summary.calculated_distance_uv += calculated_uv_distance;
+    //this_photon_summary.calculated_distance_visible += calculated_vis_distance;
     this_photon_summary.g4_time += g4_time;
-    this_photon_summary.calculated_time += calculated_time;
+    //this_photon_summary.calculated_time += calculated_time;
     this_photon_summary.current_process = processNameToPhotonSource.at(creationProcessName);
 
     if (new_process){

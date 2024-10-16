@@ -23,11 +23,11 @@ class PhotonSummary : public I3FrameObject {
     };
 
     float g4_distance_uv; // record distance as given by GetStepLength
-    float g4_distance_visible;
-    float calculated_distance_uv; // record distance as calculated using delta G4GlobalTime
-    float calculated_distance_visible;
+    //float g4_distance_visible;
+    //float calculated_distance_uv; // record distance as calculated using delta G4GlobalTime
+    //float calculated_distance_visible;
     float g4_time; // as as reported using g4 global time
-    float calculated_time; // time as calculated using g4 distance
+    //float calculated_time; // time as calculated using g4 distance
     size_t n_wls;
     std::vector<size_t> n_photons_per_wls;
     WLSLocationSeries wls_loc; 
@@ -39,11 +39,11 @@ class PhotonSummary : public I3FrameObject {
 
     bool operator==(const PhotonSummary& rhs) const {
         return g4_distance_uv == rhs.g4_distance_uv 
-            && g4_distance_visible == rhs.g4_distance_visible
-            && calculated_distance_uv == rhs.calculated_distance_uv 
-            && calculated_distance_visible == rhs.calculated_distance_visible
+            //&& g4_distance_visible == rhs.g4_distance_visible
+            //&& calculated_distance_uv == rhs.calculated_distance_uv 
+            //&& calculated_distance_visible == rhs.calculated_distance_visible
             && g4_time == rhs.g4_time
-            && calculated_time == rhs.calculated_time
+            //&& calculated_time == rhs.calculated_time
             && n_wls == rhs.n_wls
             && n_photons_per_wls == rhs.n_photons_per_wls
             && wls_loc == rhs.wls_loc
@@ -54,11 +54,11 @@ class PhotonSummary : public I3FrameObject {
 
 
   PhotonSummary(float g4_distance_uv_ = 0,
-                float g4_distance_visible_ = 0, 
-                float calculated_distance_uv_ = 0,
-                float calculated_distance_visible_ = 0,
+                //float g4_distance_visible_ = 0, 
+                //float calculated_distance_uv_ = 0,
+                //float calculated_distance_visible_ = 0,
                 float g4_time_ = 0,
-                float calculated_time_ = 0,
+                //float calculated_time_ = 0,
                 size_t n_wls_ = 0,
                 std::vector<size_t> n_photons_per_wls_ = {0},
                 WLSLocationSeries wls_loc_ = WLSLocationSeries(),
@@ -66,11 +66,11 @@ class PhotonSummary : public I3FrameObject {
                 PhotonSource temp_parent_ = PhotonSummary::PhotonSource::Unknown,
                 PhotonSource current_process_ = PhotonSummary::PhotonSource::Unknown): 
                 g4_distance_uv(g4_distance_uv_),
-                g4_distance_visible(g4_distance_visible_), 
-                calculated_distance_uv(calculated_distance_uv_),
-                calculated_distance_visible(calculated_distance_visible_),
+                //g4_distance_visible(g4_distance_visible_), 
+                //calculated_distance_uv(calculated_distance_uv_),
+                //calculated_distance_visible(calculated_distance_visible_),
                 g4_time(g4_time_),
-                calculated_time(calculated_time_),
+                //calculated_time(calculated_time_),
                 n_wls(n_wls_),
                 n_photons_per_wls(n_photons_per_wls_),
                 wls_loc(wls_loc_),
