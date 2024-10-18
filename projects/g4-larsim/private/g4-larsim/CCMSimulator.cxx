@@ -186,6 +186,10 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
     // Iterate over all particles in the MCTree
     typename I3MCTree::fast_const_iterator tree_iter(*injection_tree), tree_end=injection_tree->cend_fast();
     for(;tree_iter != tree_end; tree_iter++) {
+        std::vector<I3Particle const *> daughters = I3MCTreeUtils::GetDaughtersPtr(injection_tree, tree_iter->GetID());
+        if(daughters.size() > 0) {
+            continue;
+        }
         I3Particle const & particle = *tree_iter;
         // Simulate the event with the response
         response_->SimulateEvent(particle, edep_tree, mcpeseries_map);
@@ -244,6 +248,10 @@ void CCMSimulator::DAQMultiThreaded() {
 
         typename I3MCTree::fast_const_iterator tree_iter(*injection_tree), tree_end=injection_tree->cend_fast();
         for(;tree_iter != tree_end; ++tree_iter) {
+            std::vector<I3Particle const *> daughters = I3MCTreeUtils::GetDaughtersPtr(injection_tree, tree_iter->GetID());
+            if(daughters.size() > 0) {
+                continue;
+            }
             ++n_particles;
             particles.push_back(*tree_iter);
             edep_trees.push_back(boost::make_shared<I3MCTree>(*injection_tree));
@@ -342,10 +350,21 @@ void CCMSimulator::MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Partic
     I3Particle * source_particle = I3MCTreeUtils::GetParticlePtr(source, primary.GetID());
     I3Particle * dest_particle = I3MCTreeUtils::GetParticlePtr(dest, primary.GetID());
 
-    if(source_particle == NULL) {
+    if(source_particle == nullptr) {
+        // Print particle ids in source tree}
+        std::cout << "Search particle id: " << primary.GetID() << std::endl;
+        std::cout << "Source tree particle ids:" << std::endl;
+        for(I3MCTree::const_iterator it = source->cbegin(); it != source->cend(); ++it) {
+            std::cout << it->GetID() << std::endl;
+        }
         log_fatal("Source particle not found in source tree");
     }
-    if(dest_particle == NULL) {
+    if(dest_particle == nullptr) {
+        std::cout << "Search particle id: " << primary.GetID() << std::endl;
+        std::cout << "Destination tree particle ids:" << std::endl;
+        for(I3MCTree::const_iterator it = dest->cbegin(); it != dest->cend(); ++it) {
+            std::cout << it->GetID() << std::endl;
+        }
         log_fatal("Source particle not found in destination tree");
     }
 
@@ -359,6 +378,24 @@ void CCMSimulator::MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Partic
         I3Particle * source_parent = std::get<0>(source_children.front());
         I3Particle * source_child = std::get<1>(source_children.front());
         source_children.pop_front();
+
+        if(source_parent == nullptr) {
+            log_fatal("Parent particle is nullptr");
+        }
+        if(source_child == nullptr) {
+            log_fatal("Child particle is nullptr");
+        }
+
+        // Check if the parent is in the destination tree
+        I3Particle * dest_parent = I3MCTreeUtils::GetParticlePtr(dest, source_parent->GetID());
+        if(dest_parent == nullptr) {
+            std::cout << "Search particle id: " << source_parent->GetID() << std::endl;
+            std::cout << "Destination tree particle ids:" << std::endl;
+            for(I3MCTree::const_iterator it = dest->cbegin(); it != dest->cend(); ++it) {
+                std::cout << it->GetID() << std::endl;
+            }
+            log_fatal("Parent particle not found in destination tree");
+        }
 
         I3MCTreeUtils::AppendChild(*dest, source_parent->GetID(), *source_child);
         daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_child->GetID());
