@@ -51,7 +51,7 @@ const std::unordered_map<std::string, int> G4CCMScintSD::energyLossToI3ParticleP
                                                                                           {"Rayl", 2000000004}, {"msc", 2000000005}, {"eIoni", 2000000006},
                                                                                           {"eBrem", 2000000007}, {"ePairProd", 2000000008}, {"CoulombScat", 2000000009},
                                                                                           {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012},
-                                                                                          {"Scintillation", 2000000013}, {"OpWLS", 2000000014}};
+                                                                                          {"Scintillation", 2000000013}, {"OpWLS", 2000000014}, {"ionIoni" , 2000000015}};
 
 const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMScintSD::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
                                                                                                               {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
