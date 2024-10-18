@@ -217,6 +217,7 @@ class I3Particle : public I3FrameObject
     Radioactivation = 2000000012,
     Scintillation = 2000000013,
     OpticalWLS = 2000000014,
+    IonIonization = 2000000015,
   };
 
  public:
