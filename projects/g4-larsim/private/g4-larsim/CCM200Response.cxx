@@ -109,6 +109,7 @@ void CCM200Response::Initialize() {
 I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
     config->rayleigh_scattering_length_ = Rayleigh128_;
+    config->uv_absorption_length_ = UVAbsLength_;
     config->pmt_tpb_qe_ = WLSNPhotonsPMT_;
     config->endcap_tpb_qe_ = WLSNPhotonsEndCapFoil_;
     config->side_tpb_qe_ = WLSNPhotonsSideFoil_;

@@ -5,6 +5,7 @@
 std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
     oss << "DetectorResponseConfig: "
         << "\n  Rayleigh Scattering Length :" << rayleigh_scattering_length_
+        << "\n  UV Absorption Length :" << uv_absorption_length_ 
         << "\n  PMT TPB QE :" << pmt_tpb_qe_
         << "\n  Endcap TPB QE :" << endcap_tpb_qe_
         << "\n  Side TPB QE :" << side_tpb_qe_
@@ -21,6 +22,7 @@ std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
 
 bool DetectorResponseConfig::operator==(const DetectorResponseConfig& rhs) const {
     return (rayleigh_scattering_length_ == rhs.rayleigh_scattering_length_ &&
+            uv_absorption_length_ == rhs.uv_absorption_length_ &&
             pmt_tpb_qe_ == rhs.pmt_tpb_qe_ &&
             endcap_tpb_qe_ == rhs.endcap_tpb_qe_ &&
             side_tpb_qe_ == rhs.side_tpb_qe_ &&
