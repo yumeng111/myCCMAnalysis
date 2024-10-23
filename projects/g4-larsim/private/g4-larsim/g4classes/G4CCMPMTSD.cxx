@@ -93,7 +93,7 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
 
 void G4CCMPMTSD::EndOfEvent(G4HCofThisEvent*) {
     int thread_id = G4Threading::G4GetThreadId();
-    readout_->AddEntry(thread_id, event_id, CCMMCPEMap);
+    readout_->AddEntry(thread_id, event_id, CCMMCPEMap, FullPhotonTracking_);
     Reset();
 }
 

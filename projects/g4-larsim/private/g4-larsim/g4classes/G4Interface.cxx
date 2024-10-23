@@ -67,7 +67,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                                   double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                                   double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
-                                  bool TimeCut, bool KillCherenkov, long RandomSeed) {
+                                  bool TimeCut, bool KillCherenkov, bool FullPhotonTracking, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -104,6 +104,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
         // set time cut and cerenkov control
         detector_->SetTimeCut(TimeCut);
         detector_->SetKillCherenkov(KillCherenkov);
+        detector_->SetPhotonTracking(FullPhotonTracking);
         // set sodium rod status
         detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun);
         // Force reinitializatiion

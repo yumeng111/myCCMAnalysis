@@ -57,6 +57,7 @@ private:
     double MieRatio_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
+    bool FullPhotonTracking_; 
     long RandomSeed_; // random seed for geant4
 
     std::shared_ptr<G4Interface> g4Interface_ = nullptr;

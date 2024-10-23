@@ -74,6 +74,8 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool GetKillCherenkovStatus() { return KillCherenkov_; }
         void SetKillCherenkovStatus(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
 
+        void SetPhotonTracking(bool FullPhotonTracking) { FullPhotonTracking_ = FullPhotonTracking; }
+
         void Reset() {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
@@ -104,6 +106,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         bool TimeCut_; // true kills tracks after 200 nsec
         bool KillCherenkov_; // true kills cerenkov light
+        bool FullPhotonTracking_;
 
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = nullptr;

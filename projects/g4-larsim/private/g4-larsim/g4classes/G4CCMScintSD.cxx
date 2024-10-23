@@ -99,7 +99,7 @@ void G4CCMScintSD::Initialize(G4HCofThisEvent* hitsCE) {
 }
 
 void G4CCMScintSD::EndOfEvent(G4HCofThisEvent*) {
-    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, photon_summary, optical_photon_map);
+    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, photon_summary, optical_photon_map, FullPhotonTracking_);
     Reset();
 }
 
@@ -337,7 +337,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // we don't care about optical photons for getting energy deposited in LAr
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
-    if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
+    if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition() and FullPhotonTracking_) {
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;

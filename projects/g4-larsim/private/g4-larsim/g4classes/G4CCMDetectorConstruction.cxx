@@ -248,15 +248,11 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
 
     // now add absorption length
-    std::vector<G4double> flat_abs = {300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_,
-                                      UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
+    std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
+    std::vector<G4double> flat_abs = {3e10*cm, 3e10*cm, UVAbsLength_, UVAbsLength_}; // step function -- only have uv abs length for wavelength less than 325nm
 
-    //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
-    //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, flat_abs);
+    std::cout << "setting uv absorption length = " << flat_abs << std::endl;
+    fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
 
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
@@ -616,6 +612,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
 
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+            pmt_SD->SetPhotonTracking(FullPhotonTracking_);
             pmt_SD->SetReadout(readout_);
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fPMT_SD.Get());
@@ -634,6 +631,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             scint_SD->SetTimeCutStatus(TimeCut_);
             scint_SD->SetKillCherenkovStatus(KillCherenkov_);
+            scint_SD->SetPhotonTracking(FullPhotonTracking_);
             scint_SD->SetReadout(readout_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());

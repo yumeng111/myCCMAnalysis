@@ -82,6 +82,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     // set cerenkov control
     void SetKillCherenkov(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
 
+    void SetPhotonTracking(bool FullPhotonTracking) { FullPhotonTracking_ = FullPhotonTracking; }
+
   private:
 
     G4CCMReadout * readout_ = nullptr;
@@ -165,6 +167,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 
     G4bool TimeCut_ = true;
     G4bool KillCherenkov_ = false;
+    G4bool FullPhotonTracking_ = true;
 };
 
 #endif

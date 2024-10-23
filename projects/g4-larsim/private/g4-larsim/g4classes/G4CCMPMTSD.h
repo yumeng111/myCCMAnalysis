@@ -93,8 +93,11 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         void Reset() {
             CCMMCPEMap = nullptr;
         }
+        
+        void SetPhotonTracking(bool FullPhotonTracking) { FullPhotonTracking_ = FullPhotonTracking; }
 
     private:
+        bool FullPhotonTracking_;
         int event_id = -1;
         G4CCMReadout * readout_ = nullptr;
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;

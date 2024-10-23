@@ -32,16 +32,19 @@ public:
     G4CCMReadout(size_t n_threads);
     ~G4CCMReadout() = default;
 
-    static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map);
+    static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series,
+                                 boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking);
 
     void SetInput(std::vector<I3Particle> primaries, std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> edep_trees);
     void SetNumberOfThreads(size_t n_threads);
 
     SingleThreadReadout & GetReadout(size_t thread_id);
 
-    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map);
-    void AddEntry(size_t thread_id, int event_id, CCMMCPESeriesMapPtr mcpeseries);
-    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map);
+    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, PhotonSummarySeriesPtr photon_summary_series,
+                  boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking);
+    void AddEntry(size_t thread_id, int event_id, CCMMCPESeriesMapPtr mcpeseries, bool full_photon_tracking);
+    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries,
+                  PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking);
     I3Particle GetPrimary(size_t i) const;
     void SetPrimary(size_t i, I3Particle primary);
     I3MCTreePtr GetMCTree(size_t i) const;
