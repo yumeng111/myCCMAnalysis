@@ -668,7 +668,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             // and now put the source pellet at the end of the rod (inset 1/4cm)
             G4double inset = 0.25 * cm;
             G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
-            new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0);
+            new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fSourceRod_log, false, 0);
         }
     }
 
