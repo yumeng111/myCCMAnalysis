@@ -466,6 +466,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> TPB_WLSAbsLength_Energy = {1.0*eV}; // padding lower bound
     std::vector<G4double> TPB_WLSAbsLength = {1e35*nm}; // padding lower bound (doesnt really matter, just need super big absorption length)
     // note -- looping over backwards to go from low energy (high wavelength) to high energy (low wavelength)
+    std::cout << "In detector construction, TPBAbsScale_ = " << TPBAbsScale_ << std::endl;
     for (size_t w = (TPB_WLSAbsLength_Wavelength.size() - 1); w > 0; w --){
         G4double this_wavelength = TPB_WLSAbsLength_Wavelength.at(w) / nm;
         G4double this_abs;

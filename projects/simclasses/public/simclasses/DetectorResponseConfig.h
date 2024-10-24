@@ -68,48 +68,54 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
         log_fatal("Attempting to read version %u from file but running version %u of DetectorResponseConfig class.",version,detectorresponseconfig_version_);
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("rayleigh_scattering_length", rayleigh_scattering_length_);
+    ar & make_nvp("uv_absorption_length", uv_absorption_length_);
     ar & make_nvp("pmt_tpb_qe", pmt_tpb_qe_);
     ar & make_nvp("endcap_tpb_qe", endcap_tpb_qe_);
     ar & make_nvp("side_tpb_qe", side_tpb_qe_);
     ar & make_nvp("pmt_tpb_thickness", pmt_tpb_thickness_);
     ar & make_nvp("endcap_tpb_thickness", endcap_tpb_thickness_);
     ar & make_nvp("side_tpb_thickness", side_tpb_thickness_);
-    if (detectorresponseconfig_version_ == 0){
-        tpb_abs_tau_ = 0.0;
-        tpb_abs_norm_ = 0.0;
-        tpb_abs_scale_ = 0.0;
-        mie_gg_ = 0.0;
-        mie_ratio_ = 0.0;
-        uv_absorption_length_ = 0.0;
-    } else if (detectorresponseconfig_version_ == 1){
-        ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
-        ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
-        tpb_abs_scale_ = 0.0;
-        mie_gg_ = 0.0;
-        mie_ratio_ = 0.0;
-        uv_absorption_length_ = 0.0;
-    } else if (detectorresponseconfig_version_ == 2){
-        ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
-        ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
-        ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
-        mie_gg_ = 0.0;
-        mie_ratio_ = 0.0;
-        uv_absorption_length_ = 0.0;
-    } else if (detectorresponseconfig_version_ == 3){
-        ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
-        ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
-        ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
-        ar & make_nvp("mie_gg", mie_gg_);
-        ar & make_nvp("mie_ratio", mie_ratio_);
-        uv_absorption_length_ = 0.0;
-    } else {
-        ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
-        ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
-        ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
-        ar & make_nvp("mie_gg", mie_gg_);
-        ar & make_nvp("mie_ratio", mie_ratio_);
-        ar & make_nvp("uv_absorption_length", uv_absorption_length_);
-    }
+    ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
+    ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+    ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
+    ar & make_nvp("mie_gg", mie_gg_);
+    ar & make_nvp("mie_ratio", mie_ratio_);
+    //if (detectorresponseconfig_version_ == 0){
+    //    tpb_abs_tau_ = 0.0;
+    //    tpb_abs_norm_ = 0.0;
+    //    tpb_abs_scale_ = 0.0;
+    //    mie_gg_ = 0.0;
+    //    mie_ratio_ = 0.0;
+    //    uv_absorption_length_ = 0.0;
+    //} else if (detectorresponseconfig_version_ == 1){
+    //    ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
+    //    ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+    //    tpb_abs_scale_ = 0.0;
+    //    mie_gg_ = 0.0;
+    //    mie_ratio_ = 0.0;
+    //    uv_absorption_length_ = 0.0;
+    //} else if (detectorresponseconfig_version_ == 2){
+    //    ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
+    //    ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+    //    ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
+    //    mie_gg_ = 0.0;
+    //    mie_ratio_ = 0.0;
+    //    uv_absorption_length_ = 0.0;
+    //} else if (detectorresponseconfig_version_ == 3){
+    //    ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
+    //    ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+    //    ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
+    //    ar & make_nvp("mie_gg", mie_gg_);
+    //    ar & make_nvp("mie_ratio", mie_ratio_);
+    //    uv_absorption_length_ = 0.0;
+    //} else {
+    //    ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
+    //    ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
+    //    ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
+    //    ar & make_nvp("mie_gg", mie_gg_);
+    //    ar & make_nvp("mie_ratio", mie_ratio_);
+    //    ar & make_nvp("uv_absorption_length", uv_absorption_length_);
+    //}
 }
 
 I3_CLASS_VERSION(DetectorResponseConfig, detectorresponseconfig_version_);

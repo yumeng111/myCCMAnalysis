@@ -337,7 +337,7 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // we don't care about optical photons for getting energy deposited in LAr
     // and if we don't care about PMTs, then we can kill any optical photon particle tracks
     // (this will make the simulation faster)
-    if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition() and FullPhotonTracking_) {
+    if(aStep->GetTrack()->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
         if (!PMTSDStatus_){
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;
@@ -356,72 +356,74 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             }
         }
 
-        // ok if we survived all checks, add an entry to our photon summary
-        // we need parent id, track id, distance travelled, and wavelength
-        G4int parent_id = aStep->GetTrack()->GetParentID();
-        G4int track_id = aStep->GetTrack()->GetTrackID();
+        if (FullPhotonTracking_) {
+            // ok if we survived all checks, add an entry to our photon summary
+            // we need parent id, track id, distance travelled, and wavelength
+            G4int parent_id = aStep->GetTrack()->GetParentID();
+            G4int track_id = aStep->GetTrack()->GetTrackID();
 
-        double g4_delta_distance = (aStep->GetStepLength() / mm) * I3Units::mm;
-        double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
-        double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
+            double g4_delta_distance = (aStep->GetStepLength() / mm) * I3Units::mm;
+            double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+            double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
 
-        double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
-        double interpolated_rindx = InterpolateRindex(wavelength);
+            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
+            double interpolated_rindx = InterpolateRindex(wavelength);
 
-        // based on the wavelength, let's classify as uv or vis
-        double g4_vis_distance = 0.0;
-        double g4_uv_distance = 0.0;
-        double calculated_vis_distance = 0.0;
-        double calculated_uv_distance = 0.0;
+            // based on the wavelength, let's classify as uv or vis
+            double g4_vis_distance = 0.0;
+            double g4_uv_distance = 0.0;
+            double calculated_vis_distance = 0.0;
+            double calculated_uv_distance = 0.0;
 
-        if (wavelength <= 325.0){
-            g4_uv_distance = g4_delta_distance;
-            calculated_uv_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
-        } else {
-            g4_vis_distance = g4_delta_distance;
-            calculated_vis_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
-        }
+            if (wavelength <= 325.0){
+                g4_uv_distance = g4_delta_distance;
+                calculated_uv_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
+            } else {
+                g4_vis_distance = g4_delta_distance;
+                calculated_vis_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
+            }
 
-        // let's also calculate the travel time based on the g4 distance
-        double calculated_delta_time_step = (g4_delta_distance * interpolated_rindx) / c_mm_per_nsec;
+            // let's also calculate the travel time based on the g4 distance
+            double calculated_delta_time_step = (g4_delta_distance * interpolated_rindx) / c_mm_per_nsec;
 
-        // let's also check if this photon got wls
-        const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
-        std::string creationProcessName = "Unknown";
-        if (creationProcess) {
-            creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
-        }
+            // let's also check if this photon got wls
+            const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
+            std::string creationProcessName = "Unknown";
+            if (creationProcess) {
+                creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
+            }
 
-        //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
-        //          << ", creation process = " << creationProcessName
-        //          //<< ", distance uv = " << g4_uv_distance
-        //          //<< ", and time = " << g4_delta_time_step
-        //          << std::endl;
+            //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
+            //          << ", creation process = " << creationProcessName
+            //          //<< ", distance uv = " << g4_uv_distance
+            //          //<< ", and time = " << g4_delta_time_step
+            //          << std::endl;
 
-        // ok now let's save
-        // check to see if the track id is in our map
-        bool new_process = false;
-        std::map<int, size_t>::iterator it = optical_photon_map->find(track_id);
+            // ok now let's save
+            // check to see if the track id is in our map
+            bool new_process = false;
+            std::map<int, size_t>::iterator it = optical_photon_map->find(track_id);
 
-        if (it != optical_photon_map->end()) {
-            // ok so this photon is in our map, let's just update
-            UpdatePhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance,
-                                calculated_uv_distance, calculated_vis_distance,
-                                g4_delta_time_step, calculated_delta_time_step, creationProcessName, it, new_process, aStep);
-        } else {
-            // check if this parent id is in our map
-            std::map<int, size_t>::iterator parent_it = optical_photon_map->find(parent_id);
-
-            bool new_process = true;
-            if (parent_it != optical_photon_map->end()){
-                // this is a new process! let's update our map
+            if (it != optical_photon_map->end()) {
+                // ok so this photon is in our map, let's just update
                 UpdatePhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance,
                                     calculated_uv_distance, calculated_vis_distance,
-                                    g4_delta_time_step, calculated_delta_time_step, creationProcessName, parent_it, new_process, aStep);
+                                    g4_delta_time_step, calculated_delta_time_step, creationProcessName, it, new_process, aStep);
             } else {
-                // need to add a new photon to our map
-                AddEntryToPhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance, calculated_uv_distance, calculated_vis_distance,
-                                        primary_.GetTime() + pre_step_global_time + g4_delta_time_step, primary_.GetTime() + pre_step_global_time + calculated_delta_time_step, creationProcessName);
+                // check if this parent id is in our map
+                std::map<int, size_t>::iterator parent_it = optical_photon_map->find(parent_id);
+
+                bool new_process = true;
+                if (parent_it != optical_photon_map->end()){
+                    // this is a new process! let's update our map
+                    UpdatePhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance,
+                                        calculated_uv_distance, calculated_vis_distance,
+                                        g4_delta_time_step, calculated_delta_time_step, creationProcessName, parent_it, new_process, aStep);
+                } else {
+                    // need to add a new photon to our map
+                    AddEntryToPhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance, calculated_uv_distance, calculated_vis_distance,
+                                            primary_.GetTime() + pre_step_global_time + g4_delta_time_step, primary_.GetTime() + pre_step_global_time + calculated_delta_time_step, creationProcessName);
+                }
             }
         }
 
