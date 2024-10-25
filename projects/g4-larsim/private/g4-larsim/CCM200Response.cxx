@@ -31,7 +31,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     CobaltSourceRun_(false), SodiumSourceRun_(false), SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
     Rayleigh128_(95.0 * I3Units::cm), UVAbsLength_(55.0 * I3Units::cm), WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
-    TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), TimeCut_(true), KillCherenkov_(false), FullPhotonTracking_(true), RandomSeed_(0){
+    TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), TimeCut_(true), KillCherenkov_(false), FullPhotonTracking_(true), RandomSeed_(0){
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
     AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", SourceRodIn_);
@@ -53,6 +53,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("TPBAbsorptionScale", "overall scaling for entire tpb absorption curve", TPBAbsScale_);
     AddParameter("MieGG", "used to calculate angular spread of outgoing photons from mie scattering in tpb", MieGG_);
     AddParameter("MieRatio", "ratio of forward : backwards scattering from mie scattering in tpb", MieRatio_);
+    AddParameter("Normalization", "normalization of number of photons produced in liquid argon", Normalization_);
     AddParameter("TimeCut", "only track events up to 200nsec", TimeCut_);
     AddParameter("KillCherenkov", "turn cherenkov light on/off", KillCherenkov_);
     AddParameter("FullPhotonTracking", "true to track all optical photons to get distance travelled", FullPhotonTracking_);
@@ -81,6 +82,7 @@ void CCM200Response::Configure() {
     GetParameter("TPBAbsorptionScale", TPBAbsScale_);
     GetParameter("MieGG", MieGG_);
     GetParameter("MieRatio", MieRatio_);
+    GetParameter("Normalization", Normalization_);
     GetParameter("TimeCut", TimeCut_);
     GetParameter("KillCherenkov", KillCherenkov_);
     GetParameter("FullPhotonTracking", FullPhotonTracking_);
@@ -103,7 +105,7 @@ void CCM200Response::Initialize() {
     g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, 
                                   SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
-                                  MieGG_, MieRatio_, TimeCut_, KillCherenkov_, FullPhotonTracking_, RandomSeed_);
+                                  MieGG_, MieRatio_, Normalization_, TimeCut_, KillCherenkov_, FullPhotonTracking_, RandomSeed_);
 }
 
 I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
@@ -121,6 +123,7 @@ I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     config->tpb_abs_scale_ = TPBAbsScale_;
     config->mie_gg_ = MieGG_;
     config->mie_ratio_ = MieRatio_;
+    config->normalization_ = Normalization_;
     return config;
 }
 

@@ -39,7 +39,8 @@
 G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsEndCapFoil,
                                                      G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
-                                                     G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale, G4double Mie_GG, G4double Mie_Ratio) {
+                                                     G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
+                                                     G4double Mie_GG, G4double Mie_Ratio, G4double Normalization) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength_ = UVAbsLength;
@@ -55,6 +56,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4doub
     TPBAbsScale_ = TPBAbsScale;
     Mie_GG_ = Mie_GG;
     Mie_Ratio_ = Mie_Ratio;
+    Normalization_ = Normalization;
     SetDefaults();
     DefineMaterials();
     fDetectorMessenger = new G4CCMDetectorMessenger(this);
@@ -254,7 +256,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::cout << "setting uv absorption length = " << flat_abs << std::endl;
     fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
 
-    G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
+    std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;
+    G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE",1.0);
     fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", SingletTau_);

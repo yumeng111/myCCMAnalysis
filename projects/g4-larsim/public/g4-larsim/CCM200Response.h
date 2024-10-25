@@ -55,6 +55,7 @@ private:
     double TPBAbsScale_;
     double MieGG_;
     double MieRatio_;
+    double Normalization_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
     bool FullPhotonTracking_; 

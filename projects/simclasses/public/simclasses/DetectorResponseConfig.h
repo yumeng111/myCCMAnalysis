@@ -9,7 +9,7 @@
 #include <iostream>
 #include <sstream>
 
-static const unsigned detectorresponseconfig_version_ = 4;
+static const unsigned detectorresponseconfig_version_ = 5;
 class DetectorResponseConfig : public I3FrameObject {
 public:
     double rayleigh_scattering_length_;
@@ -25,6 +25,7 @@ public:
     double tpb_abs_scale_;
     double mie_gg_;
     double mie_ratio_;
+    double normalization_;
 
     DetectorResponseConfig() = default;
     virtual ~DetectorResponseConfig() override = default;
@@ -60,6 +61,7 @@ void DetectorResponseConfig::save(Archive& ar, unsigned version) const {
     ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
     ar & make_nvp("mie_gg", mie_gg_);
     ar & make_nvp("mie_ratio", mie_ratio_);
+    ar & make_nvp("normalization", normalization_);
 }
 
 template <class Archive>
@@ -80,6 +82,7 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
     ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
     ar & make_nvp("mie_gg", mie_gg_);
     ar & make_nvp("mie_ratio", mie_ratio_);
+    ar & make_nvp("normalization", normalization_);
     //if (detectorresponseconfig_version_ == 0){
     //    tpb_abs_tau_ = 0.0;
     //    tpb_abs_norm_ = 0.0;
