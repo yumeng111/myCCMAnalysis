@@ -48,6 +48,17 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetShinyTop() { return fShinyTop_log; }
     G4LogicalVolume* GetShinyBottom() { return fShinyBottom_log; }
 
+    G4LogicalVolume* GetLogCryoVessel() { return fCryoVessel_log; } //
+    G4LogicalVolume* GetLogVacuum() { return fVacuum_log; } //
+    G4LogicalVolume* GetLogInnerJacket() { return fInnerJacket_log; } //
+    G4LogicalVolume* GetLogArgonOuter() { return fArgonOuter_log; } //
+    G4LogicalVolume* GetLogInnerFrame() { return fInnerFrame_log; } //
+    G4LogicalVolume* GetLogBridleWall() { return fBridleWall_log; } //
+    G4LogicalVolume* GetLogBridleCaps() { return fBridleCaps_log; } //
+    G4LogicalVolume* GetLogFrillWall() { return fFrillWall_log; } //
+    G4LogicalVolume* GetLogFrillCaps() { return fFrillCaps_log; } //
+
+
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:
