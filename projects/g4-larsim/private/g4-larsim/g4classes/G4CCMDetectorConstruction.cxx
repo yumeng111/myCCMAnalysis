@@ -655,13 +655,10 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             SetSensitiveDetector(fMainVolume->GetLogInnerJacket(), fScint_SD.Get()); //
             SetSensitiveDetector(fMainVolume->GetLogArgonOuter(), fScint_SD.Get()); //
             SetSensitiveDetector(fMainVolume->GetLogInnerFrame(), fScint_SD.Get()); //
-            SetSensitiveDetector(fMainVolume->GetLogFiducialAr(), fScint_SD.Get()); //
             SetSensitiveDetector(fMainVolume->GetLogBridleWall(), fScint_SD.Get()); //
             SetSensitiveDetector(fMainVolume->GetLogBridleCaps(), fScint_SD.Get()); //
             SetSensitiveDetector(fMainVolume->GetLogFrillWall(), fScint_SD.Get()); //
             SetSensitiveDetector(fMainVolume->GetLogFrillCaps(), fScint_SD.Get()); //
-            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingWall(), fScint_SD.Get()); //
-            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingCaps(), fScint_SD.Get()); //
 
             // make sure to include source pellet + rod for SD if enabeled
             if (SourceRodIn_){
