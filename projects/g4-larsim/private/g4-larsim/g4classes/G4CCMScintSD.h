@@ -74,10 +74,13 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         bool GetKillCherenkovStatus() { return KillCherenkov_; }
         void SetKillCherenkovStatus(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
 
+        void SetPhotonTracking(bool FullPhotonTracking) { FullPhotonTracking_ = FullPhotonTracking; }
+
         void Reset() {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
             optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
+            wls_parent_daughter_map = boost::make_shared<I3Map<int, std::vector<int>>>();
             mcTree = nullptr;
         }
 
@@ -87,7 +90,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         void UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
                                  double calculated_uv_distance, double calculated_vis_distance,
                                  double g4_time, double calculated_time, std::string creationProcessName,
-                                 std::map<int, size_t>::iterator it, bool new_process);
+                                 std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep);
 
         double InterpolateRindex(double wavelength);
 
@@ -103,6 +106,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         bool TimeCut_; // true kills tracks after 200 nsec
         bool KillCherenkov_; // true kills cerenkov light
+        bool FullPhotonTracking_;
 
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = nullptr;
@@ -112,6 +116,7 @@ class G4CCMScintSD : public G4VSensitiveDetector {
         // note this is in two parts -- map between track id and idx
         // and vector containing photon summaries (idx in vector corresponds to track id)
         boost::shared_ptr<I3Map<int, size_t>> optical_photon_map = boost::make_shared<I3Map<int, size_t>>(); // map between track id and idx in vector
+        boost::shared_ptr<I3Map<int, std::vector<int>>> wls_parent_daughter_map = boost::make_shared<I3Map<int, std::vector<int>>>(); // map between parent id and group of track ids
         PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
 
         // define a few things for converting energy to wavelength
@@ -120,6 +125,8 @@ class G4CCMScintSD : public G4VSensitiveDetector {
 
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
         static const std::unordered_map<std::string, PhotonSummary::PhotonSource> processNameToPhotonSource;
+        static const std::unordered_map<PhotonSummary::PhotonSource, std::string> photonSourceToProcessName;
+        static const std::unordered_map<WLSLocation::WLSLoc, std::string> wlsLocationToProcessName;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
 

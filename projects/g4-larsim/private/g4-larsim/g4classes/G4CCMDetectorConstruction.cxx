@@ -7,6 +7,7 @@
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 
 #include <sstream>
+#include <cmath>
 
 #include <G4Box.hh>
 #include <G4Cons.hh>
@@ -35,13 +36,25 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsFoil, G4double WLSNPhotonsPMT, G4double Rayleigh128) {
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsEndCapFoil,
+                                                     G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
+                                                     G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
+                                                     G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale, G4double Mie_GG, G4double Mie_Ratio) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength_ = UVAbsLength;
-    WLSNPhotonsFoil_ = WLSNPhotonsFoil;
+    WLSNPhotonsEndCapFoil_ = WLSNPhotonsEndCapFoil;
+    WLSNPhotonsSideFoil_ = WLSNPhotonsSideFoil;
     WLSNPhotonsPMT_ = WLSNPhotonsPMT;
+    EndCapFoilTPBThickness_ = EndCapFoilTPBThickness;
+    SideFoilTPBThickness_ = SideFoilTPBThickness;
+    PMTTPBThickness_ = PMTTPBThickness;
     Rayleigh128_ = Rayleigh128;
+    TPBAbsTau_ = TPBAbsTau;
+    TPBAbsNorm_ = TPBAbsNorm;
+    TPBAbsScale_ = TPBAbsScale;
+    Mie_GG_ = Mie_GG;
+    Mie_Ratio_ = Mie_Ratio;
     SetDefaults();
     DefineMaterials();
     fDetectorMessenger = new G4CCMDetectorMessenger(this);
@@ -83,6 +96,7 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
   if(fPTFE_mt != nullptr) delete fPTFE_mt;
   if(fTPBFoilSides_mt != nullptr) delete fTPBFoilSides_mt;
   if(fTPBFoilTopBottom_mt != nullptr) delete fTPBFoilTopBottom_mt;
+  if(fTPBPMT_mt != nullptr) delete fTPBPMT_mt;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -234,15 +248,11 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
 
     // now add absorption length
-    std::vector<G4double> flat_abs = {300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      300000*cm, 300000*cm, 300000*cm, 300000*cm,
-                                      UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_,
-                                      UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
+    std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
+    std::vector<G4double> flat_abs = {3e10*cm, 3e10*cm, UVAbsLength_, UVAbsLength_}; // step function -- only have uv abs length for wavelength less than 325nm
 
-    //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, LAr_ABS);
-    //fLAr_mt->AddProperty("ABSLENGTH", LAr_Energy_Abs, flat_abs);
+    std::cout << "setting uv absorption length = " << flat_abs << std::endl;
+    fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
 
     G4double scint_yeild=1.0/(19.5*eV); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
@@ -437,31 +447,57 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // we control the WLS response as a function of incident energy using WLSABSLENGTH
     // Using Fig 13 best fit for VUV photons and Fig 11 for 250 onwards from https://arxiv.org/pdf/1709.05002
-    std::vector<G4double> TPB_WLSAbsLength_Energy = {1.0331965199370992*eV, 1.5497947799056488*eV, 2.7762497220260878*eV, 2.7875621787203357*eV, 2.8017086319312554*eV, 2.820180762358608*eV,
-                2.8394316919309692*eV, 2.859390696395847*eV, 2.878918640363774*eV, 2.898127963726499*eV, 2.917122828423819*eV, 2.936310020028604*eV, 2.9466766809674496*eV, 2.96551484559134*eV,
-                2.971691329508609*eV, 2.983711394762438*eV, 2.999845732513397*eV, 3.019467387075414*eV, 3.032631087118836*eV, 3.0456037796888635*eV, 3.0627397742099034*eV, 3.079724230541368*eV,
-                3.0930600046021595*eV, 3.1120639907749723*eV, 3.1390881863227924*eV, 3.165441570938464*eV, 3.170859339074369*eV, 3.1855614510225836*eV, 3.2039575153849125*eV, 3.2182531899038254*eV,
-                3.2225605676408287*eV, 3.243867614987933*eV, 3.2586507642702967*eV, 3.2755707229674424*eV, 3.3214274015068077*eV, 3.3459286055866837*eV, 3.3817661197965347*eV, 3.4361647119545338*eV,
-                3.4699110804911135*eV, 3.48851021668889*eV, 3.5290710713006566*eV, 3.5831817960708783*eV, 3.6412533430538785*eV, 3.703191726710966*eV, 3.762862815865301*eV, 3.7652970652514997*eV,
-                3.8025712231071136*eV, 3.8448631783865683*eV, 3.9205742918328146*eV, 3.9225321515018465*eV, 3.9817633828435217*eV, 4.0443177306841145*eV, 4.085069083133975*eV, 4.157961750495743*eV,
-                4.236201285563993*eV, 4.314967417290872*eV, 4.403204903803938*eV, 4.520784914393557*eV, 12.39835823924519*eV};
+    // with some scaling for the absorption in the visible
+    // let's figure out the scaling based on wavelength then convert to energy
+    std::vector<G4double> TPB_WLSAbsLength_Wavelength = {276.7824815485308*nm, 284.47440666839077*nm, 292.1663317882507*nm, 300.1496177081054*nm, 306.1516501879961*nm, 312.44504346788153*nm,
+                320.1369685877414*nm, 327.38390630397316*nm, 330.7036536008824*nm, 338.31788250741045*nm, 346.00980762727033*nm, 354.1679100271218*nm, 360.694391947003*nm, 368.22494800840434*nm,
+                372.2397397895239*nm, 375.520222014443*nm, 378.9752009980987*nm, 382.16185569061213*nm, 384.4694332265701*nm, 386.9168639465255*nm, 389.0766639478518*nm, 392.09778871734034*nm,
+                395.5001293094871*nm, 398.45475162631544*nm, 401.0187266662688*nm, 403.0699066982314*nm, 407.19557562615626*nm, 410.34227226609903*nm, 413.13933594604805*nm, 415.8198553059992*nm,
+                418.5222909662401*nm, 421.8801599458889*nm, 425.02685658583164*nm, 427.82392026578066*nm, 430.97061690572343*nm, 433.76768058567245*nm, 436.5647442656216*nm, 439.3618079455706*nm,
+                442.5085045855134*nm, 445.65520122545604*nm, 447.01643225177565*nm, 500.0*nm, 550.0*nm, 600.0*nm};
 
-    std::vector<G4double> TPB_WLSAbsLength = {4.0740917253503145e+35*nm, 4.0740917253503145e+35*nm, 861003.9340108575*nm, 709624.1774047639*nm, 513931.57477543503*nm, 354962.3984602222*nm,
-                239537.8727919214*nm, 158887.77188864764*nm, 109030.37626309693*nm, 75873.60320297175*nm, 51842.61999393237*nm, 35858.47052646484*nm, 27132.275975142325*nm, 21435.851020054517*nm,
-                18401.537167766*nm, 15220.323839686669*nm, 11224.3487112599*nm, 7701.344462077818*nm, 5931.319058258765*nm, 4938.293668651343*nm, 3531.1084066403014*nm, 2904.7461061188183*nm,
-                2195.402325808518*nm, 1573.3202940562826*nm, 1036.4431202910403*nm, 791.1551509826332*nm, 629.3261989758672*nm, 480.5566616748119*nm, 353.05033779572574*nm, 200.48621550244906*nm,
-                255.85822744954626*nm, 199.85823080844185*nm, 153.5032805631189*nm, 108.02360627084354*nm, 88.9206377946115*nm, 63.289058767089*nm, 53.50121319296904*nm, 37.222095886705205*nm,
-                40.38391252461217*nm, 31.802265335516566*nm, 29.91384462882476*nm, 29.324649474231183*nm, 28.82888338356318*nm, 29.071521590291532*nm, 30.431746756020132*nm, 37.82386620617285*nm,
-                38.80279864198152*nm, 41.70021143667599*nm, 58.14673257532595*nm, 49.85890980317873*nm, 61.95847711489636*nm, 73.72675461199395*nm, 90.58455101512752*nm, 101.05172421787127*nm,
-                101.76697185101447*nm, 106.40677312247695*nm, 107.98073112246271*nm, 103.83329986337642*nm, 100.0*nm};
+    // the absorption spectrum below ~380nm is fixed!!!
+    std::vector<G4double> TPB_WLSAbsLength_FixedAbsorption = {104.57106779183636*nm, 104.57106779183636*nm, 101.86164369840671*nm, 95.71852757662245*nm, 80.96895332836402*nm, 60.211922218905926*nm,
+                46.01246188212347*nm, 35.985035667274715*nm, 29.88492679795619*nm, 29.83741776132185*nm, 29.80183555478305*nm, 31.806087107658087*nm, 42.023350161001645*nm, 55.528067293309526*nm,
+                67.12665530148168*nm, 90.18763865616405*nm, 113.91022322401744*nm, 182.59722816676643*nm};
+
+    // but we allow different exponential behavior the absorption of visible light
+    // now loop over the wavelength and grab/calculate correct absorption and then convert wavelength to energy
+    std::vector<G4double> TPB_WLSAbsLength_Energy = {1.0*eV}; // padding lower bound
+    std::vector<G4double> TPB_WLSAbsLength = {1e35*nm}; // padding lower bound (doesnt really matter, just need super big absorption length)
+    // note -- looping over backwards to go from low energy (high wavelength) to high energy (low wavelength)
+    std::cout << "In detector construction, TPBAbsScale_ = " << TPBAbsScale_ << std::endl;
+    for (size_t w = (TPB_WLSAbsLength_Wavelength.size() - 1); w > 0; w --){
+        G4double this_wavelength = TPB_WLSAbsLength_Wavelength.at(w) / nm;
+        G4double this_abs;
+        if (w < TPB_WLSAbsLength_FixedAbsorption.size()){
+            this_abs = TPB_WLSAbsLength_FixedAbsorption.at(w);
+        } else {
+            // ok now we need to calculate our absorption length
+            this_abs = TPBAbsNorm_ * exp(TPBAbsTau_ * this_wavelength) * nm;
+        }
+
+        // multiply our absorption by the overall scaling
+        this_abs *= TPBAbsScale_;
+
+        // now convert wavelength to energy and save!
+        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        TPB_WLSAbsLength_Energy.push_back(this_energy);
+        TPB_WLSAbsLength.push_back(this_abs);
+        std::cout << "for wavelength = " << this_wavelength << "nm, energy = " << this_energy/eV << "eV, abs = " << this_abs/nm << "nm" << std::endl;
+    }
+
+    // pad our spectrum once more...
+    TPB_WLSAbsLength_Energy.push_back(12.0 * eV);
+    TPB_WLSAbsLength.push_back(TPB_WLSAbsLength_FixedAbsorption.at(0));
 
     // I dont think this makes a difference, but adding index of refraction just in case
     std::vector<G4double> tpb_rin_energy = {1.0*eV, 14.0*eV};
     std::vector<G4double> tpb_rin = {1.62, 1.62};
 
-    // trying something here -- let's add bulk absorption to tpb
-    std::vector<G4double> tpb_bulk_abs_energy = {1.0*eV, 3.0*eV, 3.01*eV, 14.0*eV};
-    std::vector<G4double> tpb_bulk_abs = {0.02*mm, 0.02*mm, 1e6*m, 1e6*m};
+    // let's try adding some mie scattering to our tpb! i have no idea what this is gonna do...we'll see
+    std::vector<G4double> TPB_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
+    std::vector<G4double> TPB_Mie_Scattering_Length = {0.05 * mm, 0.05 * mm, 1.0 * m, 1.0 * m}; // mie scattering for vis light, no mie scattering for UV
 
     // now make our tpb foils!
     // making different ones for sides and top/bottom :)
@@ -470,20 +506,30 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBFoilSides_mt = new G4MaterialPropertiesTable();
     fTPBFoilSides_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for side tpb foils" << std::endl;
-    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsSideFoil_ << " for side tpb foils" << std::endl;
+    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsSideFoil_);
     fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
+    // mie scattering!
+    fTPBFoilSides_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
 
     // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
     G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
     fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << WLSNPhotonsFoil_ << " for top/bottom tpb foils" << std::endl;
-    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsFoil_);
+    std::cout << "setting wls mean number of photons to " << WLSNPhotonsEndCapFoil_ << " for top/bottom tpb foils" << std::endl;
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsEndCapFoil_);
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
+    // mie scattering!
+    fTPBFoilTopBottom_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
 
     // tpb on pmts
@@ -494,6 +540,11 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
+    // mie scattering!
+    fTPBPMT_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
+    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the reflectors.
@@ -535,7 +586,9 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
 
     // Place the main volume
     if(fMainVolumeOn) {
-        fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_);
+        fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this,
+                                          SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_,
+                                          EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_);
     }
 
     return fExperimentalHall_phys;
@@ -560,6 +613,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
 
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
+            pmt_SD->SetPhotonTracking(FullPhotonTracking_);
             pmt_SD->SetReadout(readout_);
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fPMT_SD.Get());
@@ -578,6 +632,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             scint_SD->SetTimeCutStatus(TimeCut_);
             scint_SD->SetKillCherenkovStatus(KillCherenkov_);
+            scint_SD->SetPhotonTracking(FullPhotonTracking_);
             scint_SD->SetReadout(readout_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());

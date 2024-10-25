@@ -22,6 +22,7 @@
 
 #include "simclasses/CCMMCPE.h"
 #include "simclasses/PhotonSummary.h"
+#include "simclasses/DetectorResponseConfig.h"
 
 #include <vector>
 #include <string>
@@ -43,10 +44,20 @@ private:
     double TripletTau_; // set LAr triplet time constant
     double Rayleigh128_; // set rayl scattering length for 128nm light
     double UVAbsLength_; // set uv abs length at 128nm
-    double WLSNPhotonsFoil_;
+    double WLSNPhotonsEndCapFoil_;
+    double WLSNPhotonsSideFoil_;
     double WLSNPhotonsPMT_;
+    double EndCapFoilTPBThickness_;
+    double SideFoilTPBThickness_;
+    double PMTTPBThickness_;
+    double TPBAbsTau_;
+    double TPBAbsNorm_;
+    double TPBAbsScale_;
+    double MieGG_;
+    double MieRatio_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
+    bool FullPhotonTracking_; 
     long RandomSeed_; // random seed for geant4
 
     std::shared_ptr<G4Interface> g4Interface_ = nullptr;
@@ -59,6 +70,7 @@ public:
     virtual ~CCM200Response() override;
 
     virtual void Configure() override;
+    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 
     // initialize geant4 detector
     virtual void Initialize() override;

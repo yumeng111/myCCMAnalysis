@@ -344,7 +344,8 @@ std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double st
 G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                                  G4LogicalVolume* pMotherLogical, G4bool pMany,
                                  G4int pCopyNo, G4CCMDetectorConstruction* c,
-                                 G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun)
+                                 G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun,
+                                 G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness)
   // Pass info to the G4PVPlacement constructor
   : G4PVPlacement(pRot, tlate,
             new G4LogicalVolume(
@@ -382,11 +383,13 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     // Total height of inner frame is 1239.6mm (half height is 619.8mm)
     G4double frame_thickness = 1.0 * mm;
     G4double ptfe_thickness = 0.5 * mm;
-    G4double tpb_thickness = 0.00278035 * mm; // from Vincent Basque's thesis https://pure.manchester.ac.uk/ws/portalfiles/portal/205622566/FULL_TEXT.PDF
+    //G4double tpb_thickness = 0.00278035 * mm; // from Vincent Basque's thesis https://pure.manchester.ac.uk/ws/portalfiles/portal/205622566/FULL_TEXT.PDF
 
-    G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + tpb_thickness) * 2.0;
+    std::cout << "endcap tpb thickness = " << EndCapFoilTPBThickness << ", side foil tpb thickness = " << SideFoilTPBThickness << ", and pmt tpb thickness = " << PMTTPBThickness << std::endl;
+
+    G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + EndCapFoilTPBThickness) * 2.0;
     G4double frame_half_height = frame_height / 2.0;
-    G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + tpb_thickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
+    G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
@@ -411,8 +414,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBFoilSides_log = new G4LogicalVolume(fTPBFoilSides, G4Material::GetMaterial("TPBFoilSides"), "TPBFoilSidesLogical");
 
     // Create the top and bottom disks
-    fTPBFoilTop = new G4Tubs("TPBFoilTop", 0*cm, tpb_radius, tpb_thickness/2.0, 0.*deg, 360.*deg);
-    fTPBFoilBottom = new G4Tubs("TPBFoilBottom", 0*cm, tpb_radius, tpb_thickness/2.0, 0.*deg, 360.*deg);
+    fTPBFoilTop = new G4Tubs("TPBFoilTop", 0*cm, tpb_radius, EndCapFoilTPBThickness/2.0, 0.*deg, 360.*deg);
+    fTPBFoilBottom = new G4Tubs("TPBFoilBottom", 0*cm, tpb_radius, EndCapFoilTPBThickness/2.0, 0.*deg, 360.*deg);
     fTPBFoilTop_log = new G4LogicalVolume(fTPBFoilTop, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilTopLogical");
     fTPBFoilBottom_log = new G4LogicalVolume(fTPBFoilBottom, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilBottomLogical");
 
@@ -420,8 +423,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBFoilSides_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fTPBFoilSides_log, "TPBFoilSides", fReflectorFoil_log, false, 0, true);
 
     // Place the top and bottom disks
-    G4double zTopPosition = tpb_half_height - tpb_thickness/2;
-    G4double zBottomPosition = -tpb_half_height + tpb_thickness/2;
+    G4double zTopPosition = tpb_half_height - EndCapFoilTPBThickness/2;
+    G4double zBottomPosition = -tpb_half_height + EndCapFoilTPBThickness/2;
 
     fTPBFoilTop_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zTopPosition), fTPBFoilTop_log, "TPBFoilTop", fTPBFoilSides_log, false, 0, true);
     fTPBFoilBottom_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zBottomPosition), fTPBFoilBottom_log, "TPBFoilBottom", fTPBFoilSides_log, false, 0, true);
@@ -430,8 +433,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     //fTPBFoil_log = new G4LogicalVolume(fTPBFoil, G4Material::GetMaterial("TPBFoil"), "TPBFoil");
     //fTPBFoil_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fReflectorFoil_log, false, 0, true);
 
-    G4double fiducial_lar_half_height = tpb_half_height - tpb_thickness;
-    G4double fiducial_lar_radius = tpb_radius - tpb_thickness;
+    G4double fiducial_lar_half_height = tpb_half_height - EndCapFoilTPBThickness;
+    G4double fiducial_lar_radius = tpb_radius - SideFoilTPBThickness;
 
     // now fiducial LAr!
     fFiducialAr = new G4Tubs("FiducialArgon", 0*cm, fiducial_lar_radius, fiducial_lar_half_height, 0*deg, 360*deg);
@@ -468,8 +471,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // now get TPB coating
     G4double tpb_protrusion = pmt_protrusion_distance - bridle_width;
-    fTPBCoatingWall = J4PMTSolidMaker::GetTPBCoatingWallSolid(fiducial_lar_radius, pmt_protrusion_distance);
-    fTPBCoatingCaps = J4PMTSolidMaker::GetTPBCoatingCapsSolid(pmt_protrusion_distance);
+    fTPBCoatingWall = J4PMTSolidMaker::GetTPBCoatingWallSolid(fiducial_lar_radius, pmt_protrusion_distance, PMTTPBThickness);
+    fTPBCoatingCaps = J4PMTSolidMaker::GetTPBCoatingCapsSolid(pmt_protrusion_distance, PMTTPBThickness);
     fTPBCoatingWall_log = new G4LogicalVolume(fTPBCoatingWall, G4Material::GetMaterial("TPBPMT"), "TPBCoatingWallLog");
     fTPBCoatingCaps_log = new G4LogicalVolume(fTPBCoatingCaps, G4Material::GetMaterial("TPBPMT"), "TPBCoatingCapsLog");
 
@@ -497,6 +500,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     double bridle_radius_cm = fiducial_lar_radius / cm;
     double frill_radius_cm =  fiducial_lar_radius / cm;
 
+    std::cout << "pmt_radius_cm = " << pmt_radius_cm << std::endl;
+    std::cout << "pmt_height_cm = " << pmt_height_cm << std::endl;
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
     for (size_t i = 0; i < position_id.size(); i++) {
@@ -663,7 +668,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             // and now put the source pellet at the end of the rod (inset 1/4cm)
             G4double inset = 0.25 * cm;
             G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
-            new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0);
+            new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fSourceRod_log, false, 0);
         }
     }
 

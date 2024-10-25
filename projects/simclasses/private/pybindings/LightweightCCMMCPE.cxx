@@ -12,20 +12,13 @@ void register_LightweightCCMMCPE() {
     scope mcpe_scope =
         class_<LightweightCCMMCPE, boost::shared_ptr<LightweightCCMMCPE> >("LightweightCCMMCPE")
         .def(dataclass_suite<LightweightCCMMCPE>())
-        .def(init<float, float, float, LightweightCCMMCPE::PhotonSource >())
+        .def(init<std::vector<size_t>, WLSLocationSeries, float, float, float>())
+        .def_readwrite("n_photons_per_wls",&LightweightCCMMCPE::n_photons_per_wls)
+        .def_readwrite("wls_loc",&LightweightCCMMCPE::wls_loc)
         .def_readwrite("g4_time",&LightweightCCMMCPE::g4_time)
         .def_readwrite("wavelength",&LightweightCCMMCPE::wavelength)
         .def_readwrite("g4_distance_uv",&LightweightCCMMCPE::g4_distance_uv)
-        .def_readwrite("photon_source",&LightweightCCMMCPE::photon_source)
         ;
-    enum_<LightweightCCMMCPE::PhotonSource>("PhotonSource")
-      .value("Unknown", LightweightCCMMCPE::PhotonSource::Unknown)
-      .value("Scintillation", LightweightCCMMCPE::PhotonSource::Scintillation)
-      .value("Cerenkov", LightweightCCMMCPE::PhotonSource::Cerenkov)
-      .value("OpWLS", LightweightCCMMCPE::PhotonSource::OpWLS)
-      .export_values()
-      ;
-        
     }
 
 

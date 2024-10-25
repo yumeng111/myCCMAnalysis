@@ -14,7 +14,9 @@
 #include "icetray/I3Module.h"
 #include "icetray/I3Logging.h"
 #include "icetray/IcetrayFwd.h"
+#include "icetray/I3FrameObject.h"
 #include "icetray/I3ServiceBase.h"
+#include "icetray/I3ConditionalModule.h"
 #include "icetray/I3SingleServiceFactory.h"
 
 #include "phys-services/I3RandomService.h"
@@ -27,7 +29,9 @@
 CCM200Response::CCM200Response(const I3Context& context) :
     CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
-    Rayleigh128_(95.0 * I3Units::cm), UVAbsLength_(55.0 * I3Units::cm), WLSNPhotonsFoil_(0.484), WLSNPhotonsPMT_(0.605), TimeCut_(true), KillCherenkov_(false), RandomSeed_(0){
+    Rayleigh128_(95.0 * I3Units::cm), UVAbsLength_(55.0 * I3Units::cm), WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
+    EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
+    TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), TimeCut_(true), KillCherenkov_(false), FullPhotonTracking_(true), RandomSeed_(0){
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
     AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", SourceRodIn_);
@@ -38,10 +42,20 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
     AddParameter("UVAbsLength", "set UV absorption length at 128nm", UVAbsLength_);
-    AddParameter("WLSNPhotonsFoil", "mean number of photons produced per WLS for TPB foils", WLSNPhotonsFoil_);
+    AddParameter("WLSNPhotonsEndCapFoil", "mean number of photons produced per WLS for TPB foils on the end caps of the detector", WLSNPhotonsEndCapFoil_);
+    AddParameter("WLSNPhotonsSideFoil", "mean number of photons produced per WLS for TPB foils on the sides of the detector", WLSNPhotonsSideFoil_);
     AddParameter("WLSNPhotonsPMT", "mean number of photons produced per WLS for TPB on PMTs", WLSNPhotonsPMT_);
+    AddParameter("EndCapFoilTPBThickness", "thickness of TPB on the endcap foil", EndCapFoilTPBThickness_);
+    AddParameter("SideFoilTPBThickness", "thickness of TPB on the side foil", SideFoilTPBThickness_);
+    AddParameter("PMTTPBThickness", "thickness of TPB on the PMTs", PMTTPBThickness_);
+    AddParameter("TPBAbsorptionTau", "factor in exponential for visible part of tpb absorption spectrum", TPBAbsTau_);
+    AddParameter("TPBAbsorptionNorm", "normalization for exponential for visible part of tpb absorption spectrum", TPBAbsNorm_);
+    AddParameter("TPBAbsorptionScale", "overall scaling for entire tpb absorption curve", TPBAbsScale_);
+    AddParameter("MieGG", "used to calculate angular spread of outgoing photons from mie scattering in tpb", MieGG_);
+    AddParameter("MieRatio", "ratio of forward : backwards scattering from mie scattering in tpb", MieRatio_);
     AddParameter("TimeCut", "only track events up to 200nsec", TimeCut_);
     AddParameter("KillCherenkov", "turn cherenkov light on/off", KillCherenkov_);
+    AddParameter("FullPhotonTracking", "true to track all optical photons to get distance travelled", FullPhotonTracking_);
     AddParameter("RandomSeed", "seed for geant4 random generator", RandomSeed_);
 }
 
@@ -56,10 +70,20 @@ void CCM200Response::Configure() {
     GetParameter("TripletTimeConstant", TripletTau_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
     GetParameter("UVAbsLength", UVAbsLength_);
-    GetParameter("WLSNPhotonsFoil", WLSNPhotonsFoil_);
+    GetParameter("WLSNPhotonsEndCapFoil", WLSNPhotonsEndCapFoil_);
+    GetParameter("WLSNPhotonsSideFoil", WLSNPhotonsSideFoil_);
     GetParameter("WLSNPhotonsPMT", WLSNPhotonsPMT_);
+    GetParameter("EndCapFoilTPBThickness", EndCapFoilTPBThickness_);
+    GetParameter("SideFoilTPBThickness", SideFoilTPBThickness_);
+    GetParameter("PMTTPBThickness", PMTTPBThickness_);
+    GetParameter("TPBAbsorptionTau", TPBAbsTau_);
+    GetParameter("TPBAbsorptionNorm", TPBAbsNorm_);
+    GetParameter("TPBAbsorptionScale", TPBAbsScale_);
+    GetParameter("MieGG", MieGG_);
+    GetParameter("MieRatio", MieRatio_);
     GetParameter("TimeCut", TimeCut_);
     GetParameter("KillCherenkov", KillCherenkov_);
+    GetParameter("FullPhotonTracking", FullPhotonTracking_);
     GetParameter("RandomSeed", RandomSeed_);
 }
 
@@ -77,8 +101,27 @@ void CCM200Response::Initialize() {
 
     // let's let's construct the detector
     g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, 
-                                  SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsFoil_, WLSNPhotonsPMT_,
-                                  TimeCut_, KillCherenkov_, RandomSeed_);
+                                  SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
+                                  EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
+                                  MieGG_, MieRatio_, TimeCut_, KillCherenkov_, FullPhotonTracking_, RandomSeed_);
+}
+
+I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
+    DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
+    config->rayleigh_scattering_length_ = Rayleigh128_;
+    config->uv_absorption_length_ = UVAbsLength_;
+    config->pmt_tpb_qe_ = WLSNPhotonsPMT_;
+    config->endcap_tpb_qe_ = WLSNPhotonsEndCapFoil_;
+    config->side_tpb_qe_ = WLSNPhotonsSideFoil_;
+    config->pmt_tpb_thickness_ = PMTTPBThickness_;
+    config->endcap_tpb_thickness_ = EndCapFoilTPBThickness_;
+    config->side_tpb_thickness_ = SideFoilTPBThickness_;
+    config->tpb_abs_tau_ = TPBAbsTau_;
+    config->tpb_abs_norm_ = TPBAbsNorm_;
+    config->tpb_abs_scale_ = TPBAbsScale_;
+    config->mie_gg_ = MieGG_;
+    config->mie_ratio_ = MieRatio_;
+    return config;
 }
 
 void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {

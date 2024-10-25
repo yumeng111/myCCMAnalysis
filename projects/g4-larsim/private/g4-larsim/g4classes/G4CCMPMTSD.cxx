@@ -93,7 +93,7 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
 
 void G4CCMPMTSD::EndOfEvent(G4HCofThisEvent*) {
     int thread_id = G4Threading::G4GetThreadId();
-    readout_->AddEntry(thread_id, event_id, CCMMCPEMap);
+    readout_->AddEntry(thread_id, event_id, CCMMCPEMap, FullPhotonTracking_);
     Reset();
 }
 
@@ -165,7 +165,9 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         return false;
     }
 
-    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, globalTime, localTime, photonWavelength, 0.0, 0.0, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
+    //CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, 0, {0}, {PhotonSummary::WLSLocation::Unknown},
+    //                             globalTime, localTime, photonWavelength, 0.0, 0.0, 0.0, 0.0, position, direction, processNameToPhotonSource.at(creationProcessName));
+    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, 0, {0}, WLSLocationSeries(), globalTime, photonWavelength, 0.0, processNameToPhotonSource.at(creationProcessName));
 
     // let's add this CCMPMTKey to CCMMCPEMap if it does not exist already
     if (CCMMCPEMap->find(key) == CCMMCPEMap->end()) {

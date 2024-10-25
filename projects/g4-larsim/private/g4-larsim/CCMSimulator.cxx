@@ -77,6 +77,7 @@ void CCMSimulator::Configure() {
     response_->Initialize();
 }
 
+
 void CCMSimulator::Process() {
 
     i3_log("%s", __PRETTY_FUNCTION__);
@@ -146,10 +147,14 @@ void CCMSimulator::ProcessNormally(I3FramePtr frame) {
         OtherStops(frame);
 }
 
+void CCMSimulator::FillSimulationFrame(I3FramePtr frame) {
+    I3FrameObjectPtr obj = response_->GetSimulationConfiguration();
+    frame->Put("DetectorConfiguration", obj);
+}
+
 void CCMSimulator::Simulation(I3FramePtr frame) {
     seen_s_frame_ = true;
-    // Do nothing with the simulation frame so far
-    // Could later be used to load systematic information
+    FillSimulationFrame(frame);
     PushFrame(frame);
 }
 

@@ -27,7 +27,7 @@ G4VSolid * J4PMTSolidMaker::f8inchPMTSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingSolid;
 G4VSolid * J4PMTSolidMaker::fPhotocathodeSolid;
 G4double   J4PMTSolidMaker::f8inchPMTRadius = 131.0 * mm;
-G4double   J4PMTSolidMaker::fTPBThickness = 0.000203892 * cm; // from Richard
+G4double   J4PMTSolidMaker::fTPBThickness; // = 0.000203892 * cm; // from Richard
 G4double   J4PMTSolidMaker::fPhotocathodeDelta = 3.0 * mm; // idk just needs to be greater than the pmt glass thickness
 G4double   J4PMTSolidMaker::fCylinderRadius;
 G4double   J4PMTSolidMaker::fPMTProtrusionDistance;
@@ -116,18 +116,20 @@ G4VSolid * J4PMTSolidMaker::Get8inchPMTWallSolid(G4double cylinder_radius, G4dou
     return f8inchPMTWallSolid;
 }
 
-G4VSolid * J4PMTSolidMaker::GetTPBCoatingCapsSolid(G4double protrusion_distance) {
+G4VSolid * J4PMTSolidMaker::GetTPBCoatingCapsSolid(G4double protrusion_distance, G4double PMTTPBThickness) {
     if (!fTPBCoatingCapsSolid or fPMTProtrusionDistance != protrusion_distance) {
         fPMTProtrusionDistance = protrusion_distance;
+        fTPBThickness = PMTTPBThickness;
         CreateTPBCoatingCapsSolid(protrusion_distance);
     }
     return fTPBCoatingCapsSolid;
 }
 
-G4VSolid * J4PMTSolidMaker::GetTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance) {
+G4VSolid * J4PMTSolidMaker::GetTPBCoatingWallSolid(G4double cylinder_radius, G4double protrusion_distance, G4double PMTTPBThickness) {
     if (!fTPBCoatingWallSolid or fCylinderRadius != cylinder_radius or fPMTProtrusionDistance != protrusion_distance) {
         fCylinderRadius = cylinder_radius;
         fPMTProtrusionDistance = protrusion_distance;
+        fTPBThickness = PMTTPBThickness;
         CreateTPBCoatingWallSolid(cylinder_radius, protrusion_distance);
     }
     return fTPBCoatingWallSolid;
