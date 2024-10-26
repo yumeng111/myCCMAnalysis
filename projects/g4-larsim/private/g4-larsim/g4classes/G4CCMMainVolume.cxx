@@ -670,14 +670,18 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 // so we have special logic for placing the source pellet and making steel housing
                 G4double source_pellet_housing_height = 1.0 * cm;
                 fSourcePelletHousing = new G4Tubs("SourcePelletHousing", rod_inner_radius, rod_outer_radius, source_pellet_housing_height/2, 0, 360*deg);
-                fSourcePelletHousing_log = new G4LogicalVolume(fSourcePelletHousing,  G4Material::GetMaterial("Steel"), "fSourcePelletHousingLog");
+
+                // Subtract the pellet from the housing
+                G4SubtractionSolid* housingWithPelletHole = new G4SubtractionSolid("HousingWithPelletHole", fSourcePelletHousing, fSourcePellet, nullptr, G4ThreeVector(0, 0, 0));
+                fSourcePelletHousing_log = new G4LogicalVolume(housingWithPelletHole, G4Material::GetMaterial("Steel"), "fSourcePelletHousingLog");
 
                 G4ThreeVector pelletPosition(DecayX, DecayY, DecayZ);
 
                 // First, subtract the pellet from the rod
                 G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
-                // Next, subtract the housing from the result of the first subtraction
-                G4SubtractionSolid* rodWithPelletAndHousingHole = new G4SubtractionSolid("RodWithPelletAndHousingHole", rodWithPelletHole, fSourcePelletHousing, nullptr, pelletPosition);
+                
+                // Next, subtract the housing (with pellet hole) from the rod
+                G4SubtractionSolid* rodWithPelletAndHousingHole = new G4SubtractionSolid("RodWithPelletAndHousingHole", rodWithPelletHole, housingWithPelletHole, nullptr, pelletPosition);
 
                 // Create a logical volume for the rod with both subtractions applied
                 fSourceRod_log = new G4LogicalVolume(rodWithPelletAndHousingHole, G4Material::GetMaterial("Steel"), "fSourceRodLogWithHoles");
