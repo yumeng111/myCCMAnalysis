@@ -676,10 +676,11 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 fSourcePelletHousing_log = new G4LogicalVolume(housingWithPelletHole, G4Material::GetMaterial("Steel"), "fSourcePelletHousingLog");
 
                 G4ThreeVector pelletPosition(DecayX, DecayY, DecayZ);
+                std::cout << "placing sodium decay at " << DecayX << ", " << DecayY << ", " << DecayZ << std::endl;
 
                 // First, subtract the pellet from the rod
                 G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
-                
+
                 // Next, subtract the housing (with pellet hole) from the rod
                 G4SubtractionSolid* rodWithPelletAndHousingHole = new G4SubtractionSolid("RodWithPelletAndHousingHole", rodWithPelletHole, housingWithPelletHole, nullptr, pelletPosition);
 

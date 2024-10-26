@@ -81,8 +81,8 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
 
     if (training_){
         // ok we want a sodium position for training purposes!
-        x = decay_x_; 
-        y = decay_y_; 
+        x = decay_x_;
+        y = decay_y_;
         z = decay_z_;
     } else {
         // want realistic sodium position (ie in the sodium pellet)
