@@ -46,7 +46,9 @@ class G4Interface {
         };
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun,
+        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+                             bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
+                             double DecayX, double DecayY, double DecayZ,
                              double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength,
                              double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                              double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 

@@ -26,6 +26,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
                 G4CCMDetectorConstruction* c, G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun,
+                G4bool TrainingSource, G4double DecayX, G4double DecayY, G4double DecayZ,
                 G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness);
 
     G4LogicalVolume* GetLogPMTCoatedWall() { return fPMTCoatedWall_log; }
@@ -34,8 +35,9 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogPMTUncoatedCaps() { return fPMTUncoatedCaps_log; }
 
     G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
-    G4LogicalVolume* GetLogSourcePellet() { return fSourcePellet_log; }
     G4LogicalVolume* GetLogSourceRod() { return fSourceRod_log; }
+    G4LogicalVolume* GetLogSourcePellet() { return fSourcePellet_log; }
+    G4LogicalVolume* GetLogSourcePelletHousing() { return fSourcePelletHousing_log; }
 
     G4LogicalVolume* GetLogTPBCoatingWall() { return fTPBCoatingWall_log; }
     G4LogicalVolume* GetLogTPBCoatingCaps() { return fTPBCoatingCaps_log; }
@@ -77,13 +79,14 @@ class G4CCMMainVolume : public G4PVPlacement
     G4VSolid* fFrillWall = nullptr;
     G4VSolid* fFrillCaps = nullptr;
 
-    G4VSolid* fTPBCoatingWall = nullptr; 
-    G4VSolid* fTPBCoatingCaps = nullptr; 
+    G4VSolid* fTPBCoatingWall = nullptr;
+    G4VSolid* fTPBCoatingCaps = nullptr;
 
-    G4VSolid* fPhotocathCoated = nullptr; 
-    G4VSolid* fPhotocathUncoated = nullptr; 
+    G4VSolid* fPhotocathCoated = nullptr;
+    G4VSolid* fPhotocathUncoated = nullptr;
     G4Tubs* fSourceRod = nullptr;
     G4Tubs* fSourcePellet = nullptr;
+    G4Tubs* fSourcePelletHousing = nullptr;
 
     G4Tubs* fShinyC406R0 = nullptr;
     G4Tubs* fShinyTop = nullptr;
@@ -105,20 +108,21 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fPMTCoatedCaps_log = nullptr;
     G4LogicalVolume* fPMTUncoatedWall_log = nullptr;
     G4LogicalVolume* fPMTUncoatedCaps_log = nullptr;
-    
+
     G4LogicalVolume* fBridleWall_log = nullptr;
     G4LogicalVolume* fBridleCaps_log = nullptr;
     G4LogicalVolume* fFrillWall_log = nullptr;
     G4LogicalVolume* fFrillCaps_log = nullptr;
 
-    G4LogicalVolume* fTPBCoatingWall_log = nullptr; 
-    G4LogicalVolume* fTPBCoatingCaps_log = nullptr; 
+    G4LogicalVolume* fTPBCoatingWall_log = nullptr;
+    G4LogicalVolume* fTPBCoatingCaps_log = nullptr;
 
     G4LogicalVolume* fPhotocathCoated_log = nullptr;
     G4LogicalVolume* fPhotocathUncoated_log = nullptr;
     G4LogicalVolume* fSourceRod_log = nullptr;
     G4LogicalVolume* fSourcePellet_log = nullptr;
-    
+    G4LogicalVolume* fSourcePelletHousing_log = nullptr;
+
     G4LogicalVolume* fShinyC406R0_log = nullptr;
     G4LogicalVolume* fShinyTop_log = nullptr;
     G4LogicalVolume* fShinyBottom_log = nullptr;

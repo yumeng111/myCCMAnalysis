@@ -70,11 +70,16 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     bool GetLArSDStatus() { return LArSDStatus_; }
 
     // set sodium source calibration run status
-    void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun) {
+    void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun,
+                                  bool SodiumSourceRun, bool TrainingSource, G4double DecayX, G4double DecayY, G4double DecayZ) {
         SourceRodIn_ = SourceRodIn;
         SourceRodLocation_ = SourceRodLocation;
         CobaltSourceRun_ = CobaltSourceRun;
         SodiumSourceRun_ = SodiumSourceRun;
+        TrainingSource_ = TrainingSource;
+        DecayX_ = DecayX;
+        DecayY_ = DecayY;
+        DecayZ_ = DecayZ;
     }
 
     // set time cut
@@ -149,6 +154,10 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4double SourceRodLocation_ = 0.0 * cm;
     bool CobaltSourceRun_ = false;
     bool SodiumSourceRun_ = false;
+    bool TrainingSource_ = false;
+    G4double DecayX_ = 0.0 * cm;
+    G4double DecayY_ = 0.0 * cm;
+    G4double DecayZ_ = 0.0 * cm;
 
     G4double SingletTau_ = 8.2 * ns;
     G4double TripletTau_ = 743.0 * ns;

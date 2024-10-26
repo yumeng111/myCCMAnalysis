@@ -20,6 +20,7 @@
 #include <G4LogicalSkinSurface.hh>
 #include <G4LogicalBorderSurface.hh>
 #include <G4MaterialPropertiesTable.hh>
+#include <G4SubtractionSolid.hh>
 
 // let's define some things relevant for getting the geometry of our pmts
 std::vector<std::string> position_id = {"C101R0",
@@ -345,6 +346,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                  G4LogicalVolume* pMotherLogical, G4bool pMany,
                                  G4int pCopyNo, G4CCMDetectorConstruction* c,
                                  G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun,
+                                 G4bool TrainingSource, G4double DecayX, G4double DecayY, G4double DecayZ,
                                  G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness)
   // Pass info to the G4PVPlacement constructor
   : G4PVPlacement(pRot, tlate,
@@ -649,9 +651,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         G4double rod_outer_radius = 6.31 * mm;
         G4double rod_height = fiducial_lar_half_height - SourceRodLocation - (shiny_half_height * 2.0);
         fSourceRod = new G4Tubs("SourceRod", rod_inner_radius, rod_outer_radius, rod_height/2, 0, 360*deg);
-        fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
         G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SourceRodLocation + rod_height/2);
-        new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0);
 
         if (CobaltSourceRun or SodiumSourceRun){
             // now make source pellet -- really guessing on these measurements
@@ -665,10 +665,48 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             }
             fSourcePellet_log  = new G4LogicalVolume(fSourcePellet, fSource, "SourcePelletLog");
 
-            // and now put the source pellet at the end of the rod (inset 1/4cm)
-            G4double inset = 0.25 * cm;
-            G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
-            new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fSourceRod_log, false, 0);
+            if (TrainingSource) {
+                // this is the special case where we are injecting sodium events randomly within the detector to get training data
+                // so we have special logic for placing the source pellet and making steel housing
+                G4double source_pellet_housing_height = 1.0 * cm;
+                fSourcePelletHousing = new G4Tubs("SourcePelletHousing", rod_inner_radius, rod_outer_radius, source_pellet_housing_height/2, 0, 360*deg);
+                fSourcePelletHousing_log = new G4LogicalVolume(fSourcePelletHousing,  G4Material::GetMaterial("Steel"), "fSourcePelletHousingLog");
+
+                G4ThreeVector pelletPosition(DecayX, DecayY, DecayZ);
+
+                // First, subtract the pellet from the rod
+                G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
+                // Next, subtract the housing from the result of the first subtraction
+                G4SubtractionSolid* rodWithPelletAndHousingHole = new G4SubtractionSolid("RodWithPelletAndHousingHole", rodWithPelletHole, fSourcePelletHousing, nullptr, pelletPosition);
+
+                // Create a logical volume for the rod with both subtractions applied
+                fSourceRod_log = new G4LogicalVolume(rodWithPelletAndHousingHole, G4Material::GetMaterial("Steel"), "fSourceRodLogWithHoles");
+
+                // Place the modified rod (with pellet and housing subtracted) in the fiducial argon volume
+                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletAndHousingHole", fFiducialAr_log, false, 0);
+
+                // Place the source pellet and housing within the detector
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0);
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePelletHousing_log, "SourcePelletHousing", fFiducialAr_log, false, 0);
+
+
+            } else {
+                // standard case where the source pellet is inserted 1/4 cm into the end of the source rod
+                G4double inset = 0.25 * cm;
+                G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
+
+                // again let's first subtract the pellet from the rod, make logical vol for rod, and place rod
+                G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
+                fSourceRod_log = new G4LogicalVolume(rodWithPelletHole, G4Material::GetMaterial("Steel"), "fSourceRodLogWithHole");
+                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletHole", fFiducialAr_log, false, 0);
+
+                // now place sodium pellet
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fSourceRod_log, false, 0);
+            }
+        } else {
+            // this is the case where we have the source rod in the detector but no pellet -- so let's place the rod like normal
+            fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
+            new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0);
         }
     }
 
@@ -751,7 +789,7 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     fShinyC406R0_log->SetVisAttributes(red);
     fShinyTop_log->SetVisAttributes(red);
     fShinyBottom_log->SetVisAttributes(red);
-    
+
     // tpb foils!
     fTPBFoilSides_log->SetVisAttributes(salmon);
     fTPBFoilTop_log->SetVisAttributes(teal);

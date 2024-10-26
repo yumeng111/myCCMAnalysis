@@ -62,7 +62,9 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun, 
+void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+                                  bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
+                                  double DecayX, double DecayY, double DecayZ,
                                   double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength,
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                                   double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
@@ -106,7 +108,8 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
         detector_->SetKillCherenkov(KillCherenkov);
         detector_->SetPhotonTracking(FullPhotonTracking);
         // set sodium rod status
-        detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun);
+        detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun,
+                                             TrainingSource, DecayX / I3Units::cm * CLHEP::cm, DecayY / I3Units::cm * CLHEP::cm, DecayZ / I3Units::cm * CLHEP::cm);
         // Force reinitializatiion
         //runManager_->ReinitializeGeometry(true);
     }

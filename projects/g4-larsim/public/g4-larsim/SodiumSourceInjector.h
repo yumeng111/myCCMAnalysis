@@ -38,6 +38,10 @@ private:
     double inset_ = 0.25 * I3Units::cm;
     double pellet_radius_ = 0.4 * I3Units::cm;
     double pellet_height_ = 0.3 * I3Units::cm;
+    bool training_;
+    double decay_x_;
+    double decay_y_;
+    double decay_z_;
 
     std::string randomServiceName_;
     I3RandomServicePtr randomService_;

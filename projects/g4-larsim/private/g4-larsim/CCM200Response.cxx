@@ -28,7 +28,8 @@
 
 CCM200Response::CCM200Response(const I3Context& context) :
     CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
-    CobaltSourceRun_(false), SodiumSourceRun_(false), SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
+    CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
+    SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
     Rayleigh128_(95.0 * I3Units::cm), UVAbsLength_(55.0 * I3Units::cm), WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
     TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), TimeCut_(true), KillCherenkov_(false), FullPhotonTracking_(true), RandomSeed_(0){
@@ -38,6 +39,10 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("SourceRodLocation", "z location of the end of the sodium source rod", SourceRodLocation_);
     AddParameter("CobaltSourceRun", "true if we want to simulate cobalt source pellet", CobaltSourceRun_);
     AddParameter("SodiumSourceRun", "true if we want to simulate sodium source pellet", SodiumSourceRun_);
+    AddParameter("TrainingSource", "true if we want to simulate training source events", TrainingSource_);
+    AddParameter("DecayX", "if generating training source data, provid X position", DecayX_);
+    AddParameter("DecayY", "if generating training source data, provid Y position", DecayY_);
+    AddParameter("DecayZ", "if generating training source data, provid Z position", DecayZ_);
     AddParameter("SingletTimeConstant", "LAr singlet tau", SingletTau_);
     AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
@@ -67,6 +72,10 @@ void CCM200Response::Configure() {
     GetParameter("SourceRodLocation", SourceRodLocation_);
     GetParameter("CobaltSourceRun", CobaltSourceRun_);
     GetParameter("SodiumSourceRun", SodiumSourceRun_);
+    GetParameter("TrainingSource", TrainingSource_);
+    GetParameter("DecayX", DecayX_);
+    GetParameter("DecayY", DecayY_);
+    GetParameter("DecayZ", DecayZ_);
     GetParameter("SingletTimeConstant", SingletTau_);
     GetParameter("TripletTimeConstant", TripletTau_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
@@ -102,8 +111,8 @@ void CCM200Response::Initialize() {
     }
 
     // let's let's construct the detector
-    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, 
-                                  SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
+    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
+                                  DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
                                   MieGG_, MieRatio_, Normalization_, TimeCut_, KillCherenkov_, FullPhotonTracking_, RandomSeed_);
 }

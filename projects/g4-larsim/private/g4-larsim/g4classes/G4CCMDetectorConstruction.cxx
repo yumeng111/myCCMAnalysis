@@ -591,6 +591,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
     if(fMainVolumeOn) {
         fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this,
                                           SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_,
+                                          TrainingSource_, DecayX_, DecayY_, DecayZ_,  
                                           EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_);
     }
 
@@ -659,6 +660,9 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             }
             if (CobaltSourceRun_ or SodiumSourceRun_){
                 SetSensitiveDetector(fMainVolume->GetLogSourcePellet(), fScint_SD.Get());
+            }
+            if (TrainingSource_){
+                SetSensitiveDetector(fMainVolume->GetLogSourcePelletHousing(), fScint_SD.Get());
             }
         }
 
