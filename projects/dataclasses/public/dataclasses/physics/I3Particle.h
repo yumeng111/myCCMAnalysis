@@ -201,7 +201,7 @@ class I3Particle : public I3FrameObject
     STauMinus = -2000009132,
     SMPPlus = -2000009500,
     SMPMinus = -2000009501,
-  
+
     // adding some additonal codes for energy loss in LAr
     PhotoElectricEffect = 2000000001,
     ComptonScattering = 2000000002,
@@ -218,6 +218,7 @@ class I3Particle : public I3FrameObject
     Scintillation = 2000000013,
     OpticalWLS = 2000000014,
     IonIonization = 2000000015,
+    HIonization = 2000000016, //
   };
 
  public:
