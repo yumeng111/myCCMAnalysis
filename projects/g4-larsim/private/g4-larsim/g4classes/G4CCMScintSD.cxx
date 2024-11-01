@@ -513,6 +513,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
             I3Particle daughter(daughter_type);
             daughter.SetEnergy(aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV);
+            daughter.SetPos(position);
+            daughter.SetDir(direction);
 
             I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
 
