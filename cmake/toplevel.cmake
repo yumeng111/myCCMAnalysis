@@ -220,8 +220,12 @@ foreach(subdir ${SUBDIRS})
                    OUTPUT_VARIABLE foo)
   file(APPEND ${DOXYGEN_OUTPUT_PATH}/.tagfiles/${pname}.include.tmp "${foo}")
   file(RENAME "${DOXYGEN_OUTPUT_PATH}/.tagfiles/${pname}.include.tmp" "${DOXYGEN_OUTPUT_PATH}/.tagfiles/${pname}.include")
-  exec_program(test ARGS -h ${CMAKE_BINARY_DIR}/${pname}/resources -a -e ${CMAKE_BINARY_DIR}/${pname}/resources || ln -snf ${I3_SRC}/${pname}/resources ${CMAKE_BINARY_DIR}/${pname}/resources
-    OUTPUT_VARIABLE DEV_NULL)
+  execute_process(
+      COMMAND /bin/sh -c "test -h '${CMAKE_BINARY_DIR}/${pname}/resources' -a -e '${CMAKE_BINARY_DIR}/${pname}/resources' || ln -snf '${I3_SRC}/${pname}/resources' '${CMAKE_BINARY_DIR}/${pname}/resources'"
+      OUTPUT_VARIABLE DEV_NULL
+      ERROR_QUIET
+  )
+
 endforeach(subdir ${SUBDIRS})
 
 ## documentation targets
@@ -252,7 +256,11 @@ configure_file(
   )
 execute_process(COMMAND chmod 755 ${CMAKE_BINARY_DIR}/bin/icetray-config)
 execute_process(COMMAND cp ${CMAKE_BINARY_DIR}/bin/icetray-config ${NOTES_DIR})
-exec_program(${CMAKE_BINARY_DIR}/env-shell.sh ARGS /usr/bin/env > ${NOTES_DIR}/env-post_shell.txt OUTPUT_VARIABLE DEV_NULL)
+execute_process(
+    COMMAND ${CMAKE_BINARY_DIR}/env-shell.sh /usr/bin/env
+    OUTPUT_FILE ${NOTES_DIR}/env-post_shell.txt
+)
+
 
 #
 #  dpkg configuration
