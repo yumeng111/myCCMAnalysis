@@ -232,45 +232,9 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
     double begin_threshold = minimum_nim_pulse_height;
     //double end_threshold = std::min(baseline_stddev, minimum_nim_pulse_height);
     double end_threshold = minimum_nim_pulse_height;
-
-    // this logic is going to be a bit redundant
-    // but if it works, can optimize later
-    // first, let's loop over samples, figure out if we are in the nim pulse,
-    // then get the mode of the nim pulse to calculate our threshold
     std::vector<double> nim_samples_for_mode;
-    std::vector<double> nim_modes; // vector bc sometimes have more than 1 nim pulse
-    for(size_t i=0; i<wf.size(); ++i) {
-        // Invert and subtract baseline
-        double sample = -wf[i] - baseline;
-        if(in_pulse) {
-            // save this sample value to calculate mode
-            nim_samples_for_mode.push_back(sample);
-            // Passing below threshold means we reached the end of the pulse
-            if(sample <= end_threshold) {
-                // We're done with the current pulse
-                in_pulse = false;
-                // let's get the mode and save!
-                std::sort(nim_samples_for_mode.begin(), nim_samples_for_mode.end()); // Must be sorted for Mode function
-                double this_mode = robust_stats::Mode(nim_samples_for_mode.data(), nim_samples_for_mode.size());
-                nim_modes.push_back(this_mode);
-                //std::cout << "from " << nim_samples_for_mode.size() << " samples, mode = " << this_mode << std::endl;
-                // clear out our vector
-                nim_samples_for_mode.clear();
-            }
-        } else {
-            // Check for the beginning of the pulse
-            if(sample >= minimum_nim_pulse_height) {
-                // We're now dealing with a pulse
-                in_pulse = true;
-                nim_samples_for_mode.push_back(sample);
-            }
-        }
-    }
-    //std::cout << "nim mode = " << nim_modes << ", baseline = " << baseline << std::endl;
 
-    // now loop over samples again and use mode to calculate threshold
     // Iterate over samples
-    size_t p_it = 0;
     for(size_t i=0; i<wf.size(); ++i) {
         // Invert and subtract baseline
         double sample = -wf[i] - baseline;
@@ -280,15 +244,20 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                 max_sample = sample;
                 max_sample_pos = i;
             }
+            // Save sample for mode
+            nim_samples_for_mode.push_back(sample);
             // Passing below threshold means we reached the end of the pulse
             if(sample <= end_threshold) {
+                // Let's calculate the mode
+                std::sort(nim_samples_for_mode.begin(), nim_samples_for_mode.end());
+                double this_mode = robust_stats::Mode(nim_samples_for_mode.data(), nim_samples_for_mode.size());
                 size_t start_search_end_idx = max_sample_pos;
                 size_t end_search_begin_idx = max_sample_pos;
                 size_t end_search_end_idx = std::min(i + 5, wf.size());
                 size_t pulse_start_pos = start_search_begin_idx;
                 size_t pulse_end_pos = start_search_begin_idx;
                 //double threshold = max_sample * constant_fraction;
-                double threshold = nim_modes.at(p_it) * constant_fraction;
+                double threshold = this_mode * constant_fraction;
                 double pulse_start_time = 0.0;
                 // Search for the beginning of the pulse
                 for(size_t j=start_search_end_idx-1; j>=start_search_begin_idx; --j) {
@@ -321,7 +290,6 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
 
                 // We're done with the current pulse
                 in_pulse = false;
-                p_it += 1;
             }
         } else {
             // Check for the beginning of the pulse
@@ -340,6 +308,9 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
 
                 // We're now dealing with a pulse
                 in_pulse = true;
+                // Save samples to calculate mode
+                nim_samples_for_mode.clear();
+                nim_samples_for_mode.push_back(sample);
             }
         }
     }
