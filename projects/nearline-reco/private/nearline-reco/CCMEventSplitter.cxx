@@ -33,9 +33,9 @@ private:
     std::string input_prefix_, output_prefix_;
     std::string input_pulses_, output_pulses_;
 
-    I3Vector<CCMOMGeo::OMType> trim_pmt_types_ = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
-    I3Vector<CCMOMGeo::OMType> keep_pmt_types_{{CCMOMGeo::OMType::CCM1in}};
-    I3Vector<CCMOMGeo::OMType> exclude_pmt_types_ = {};
+    I3Vector<CCMOMGeo::OMType> trim_pmt_types_;
+    I3Vector<CCMOMGeo::OMType> keep_pmt_types_;
+    I3Vector<CCMOMGeo::OMType> exclude_pmt_types_;
 
     std::set<CCMPMTKey> pmt_keys_trim;
     std::set<CCMPMTKey> pmt_keys_keep;
@@ -49,7 +49,8 @@ I3_MODULE(CCMEventSplitter);
 
 CCMEventSplitter::CCMEventSplitter(const I3Context& context) :
     I3ConditionalModule(context), CCMSplitter(configuration_),
-    geo_seen(false), geometry_name_("") {
+    geo_seen(false), geometry_name_(""), trim_pmt_types_(I3Vector<CCMOMGeo::OMType>{CCMOMGeo::OMType::CCM8inCoated, CCMOMGeo::OMType::CCM8inUncoated}),
+    keep_pmt_types_(I3Vector<CCMOMGeo::OMType>{CCMOMGeo::OMType::CCM1in}), exclude_pmt_types_({}){
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("PMTTypesToTrim", "List of PMT types to trim the pulse series of", trim_pmt_types_);
     AddParameter("PMTTypesToKeep", "List of PMT types to keep the full pulse series of", keep_pmt_types_);

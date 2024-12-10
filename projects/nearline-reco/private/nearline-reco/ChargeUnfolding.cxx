@@ -246,7 +246,7 @@ class ChargeUnfolding: public I3ConditionalModule {
     std::string raw_pulses_name_;
     std::string pulses_mask_name_;
 
-    I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
+    I3Vector<CCMOMGeo::OMType> pmt_types;
     std::set<CCMPMTKey> pmt_keys;
 
 public:
@@ -259,7 +259,7 @@ public:
 I3_MODULE(ChargeUnfolding);
 
 ChargeUnfolding::ChargeUnfolding(const I3Context& context) : I3ConditionalModule(context),
-    geo_seen(false), geometry_name_("") {
+    geo_seen(false), geometry_name_(""), pmt_types(I3Vector<CCMOMGeo::OMType>{CCMOMGeo::OMType::CCM8inCoated, CCMOMGeo::OMType::CCM8inUncoated}) {
     I3Vector<double> default_time_windows;
     default_time_windows.push_back(90.0);
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
