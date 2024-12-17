@@ -250,7 +250,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
 
     // now add absorption length
-    std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
+    //std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
+    std::vector<G4double> flat_abs_energy = {1.0*eV, 3.0918*eV, 3.0995*eV, 14.0*eV}; // roughly 1200 nm, 401nm, 400nm, 88nm
     std::vector<G4double> flat_abs = {3e10*cm, 3e10*cm, UVAbsLength_, UVAbsLength_}; // step function -- only have uv abs length for wavelength less than 325nm
 
     std::cout << "setting uv absorption length = " << flat_abs << std::endl;
