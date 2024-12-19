@@ -25,7 +25,7 @@ template <typename T>
 struct I3Vector : public std::vector<T>, public I3FrameObject
 {
   typedef std::vector<T> base_t;
-  using base_t::vector;
+  using typename base_t::vector;
 
   I3Vector() { }
 
