@@ -886,18 +886,20 @@ void G4CCMMainVolume::SurfaceProperties()
     PTFEOpticalSurface->SetModel(unified);
     PTFEOpticalSurface->SetType(dielectric_dielectric);
     //PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
-    PTFEOpticalSurface->SetFinish(ground);
-    PTFEOpticalSurface->SetSigmaAlpha(0.4);
+    //PTFEOpticalSurface->SetFinish(ground);
+    //PTFEOpticalSurface->SetFinish(groundbackpainted);
+    //PTFEOpticalSurface->SetSigmaAlpha(0.1);
+    PTFEOpticalSurface->SetFinish(polished);
 
     std::vector<G4double> pp = {2.038*eV, 4.144*eV};
-    std::vector<G4double> specularlobe = {0.1, 0.1};
+    std::vector<G4double> specularlobe = {0.2, 0.2};
     std::vector<G4double> specularspike = {0.05, 0.05};
     std::vector<G4double> backscatter = {0.05, 0.05};
 
     G4MaterialPropertiesTable* PTFE_mpt = new G4MaterialPropertiesTable();
-    PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
-    PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
-    PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
+    //PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
+    //PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
+    //PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
     PTFE_mpt->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
     PTFEOpticalSurface->SetMaterialPropertiesTable(PTFE_mpt);
 
