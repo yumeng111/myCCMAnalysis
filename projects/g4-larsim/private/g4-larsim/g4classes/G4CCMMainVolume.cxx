@@ -885,11 +885,11 @@ void G4CCMMainVolume::SurfaceProperties()
 
     PTFEOpticalSurface->SetModel(unified);
     PTFEOpticalSurface->SetType(dielectric_dielectric);
-    //PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+    PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
     //PTFEOpticalSurface->SetFinish(ground);
     //PTFEOpticalSurface->SetFinish(groundbackpainted);
     //PTFEOpticalSurface->SetSigmaAlpha(0.1);
-    PTFEOpticalSurface->SetFinish(polished);
+    //PTFEOpticalSurface->SetFinish(polished);
 
     std::vector<G4double> pp = {2.038*eV, 4.144*eV};
     std::vector<G4double> specularlobe = {0.2, 0.2};

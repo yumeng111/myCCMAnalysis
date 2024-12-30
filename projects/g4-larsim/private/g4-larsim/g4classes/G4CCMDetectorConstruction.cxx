@@ -303,6 +303,15 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     //fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2", TripletTau_);
     //fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",0.25); // for e/m scintillation
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",1.0); // for e/m scintillation
+    
+    // trying out mie scattering in the lar!!!
+    std::vector<G4double> LAr_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
+    std::vector<G4double> LAr_Mie_Scattering_Length = {60.0 * cm, 60.0 * cm, 5.0 * m, 5.0 * m}; // mie scattering for vis light, no mie scattering for UV
+    fLAr_mt->AddProperty("MIEHG", LAr_Mie_Scattering_Energy, LAr_Mie_Scattering_Length);
+    fLAr_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fLAr_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fLAr_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 
     // Set the Birks Constant for the LAr scintillator
