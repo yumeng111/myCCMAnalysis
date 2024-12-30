@@ -291,7 +291,33 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     std::cout << "lar_rin = " << lar_rin << std::endl;
     //fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
-    fLAr_mt->AddProperty("RINDEX", lar_rin_energy, lar_rin);
+    //fLAr_mt->AddProperty("RINDEX", lar_rin_energy, lar_rin);
+
+    // haha trying one more type of rindex...using grace fit around section 2.3.3 from https://arxiv.org/pdf/2408.00817v1
+    std::vector<G4double> grace_rin_energy = {};
+    std::vector<G4double> grace_rin_vals = {};
+
+    double a0 = 1.26;
+    double aUV = 0.23;
+    double aIR = 0.0023;
+    double lamUV = 106.6;
+    double lamIR = 908.3;
+    double starting_wavelength = 107.0;
+    double ending_wavelength = 850.0;
+    size_t n_entries = 150;
+    for (size_t i = (n_entries + 1); i > 0; i--){
+        double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
+        double this_rindex = std::sqrt(a0 + ((aUV * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamUV, 2.0))) +
+                                       ((aIR * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamIR, 2.0))));
+
+        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        std::cout << "wavelength = " << this_wavelength << ", energy = " << this_energy << ", and rindex = " << this_rindex << std::endl;
+
+        grace_rin_energy.push_back(this_energy);
+        grace_rin_vals.push_back(this_rindex);
+    }
+
+    fLAr_mt->AddProperty("RINDEX", grace_rin_energy, grace_rin_vals);
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
 
     // now add absorption length
