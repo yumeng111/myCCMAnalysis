@@ -285,7 +285,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // let's try scaling the rindex down by ~5%
     for (size_t rin_it = 0; rin_it < lar_rin.size(); rin_it++){
-        lar_rin.at(rin_it) *= 0.95;
+        //lar_rin.at(rin_it) *= 0.95;
+        lar_rin.at(rin_it) *= 1.10;
     }
 
     std::cout << "lar_rin = " << lar_rin << std::endl;
