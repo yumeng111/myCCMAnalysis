@@ -283,6 +283,12 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         1.4901034791423096, 1.498633421647078, 1.506986469474708, 1.5136976384727987, 1.5200268406650175, 1.534418089809555, 1.5256921974212927, 1.540775155067103,
         1.5473670381158737, 1.557635051486215, 1.5663646774729825, 1.5747539433462947, 1.5857449864893816, 1.5960318175998567};
 
+    // let's try scaling the rindex down by ~5%
+    for (size_t rin_it = 0; rin_it < lar_rin.size(); rin_it++){
+        lar_rin.at(rin_it) *= 0.95;
+    }
+
+    std::cout << "lar_rin = " << lar_rin << std::endl;
     //fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
     fLAr_mt->AddProperty("RINDEX", lar_rin_energy, lar_rin);
     fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
@@ -303,15 +309,15 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     //fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2", TripletTau_);
     //fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",0.25); // for e/m scintillation
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",1.0); // for e/m scintillation
-    
+
     // trying out mie scattering in the lar!!!
-    std::vector<G4double> LAr_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
-    std::vector<G4double> LAr_Mie_Scattering_Length = {60.0 * cm, 60.0 * cm, 5.0 * m, 5.0 * m}; // mie scattering for vis light, no mie scattering for UV
-    fLAr_mt->AddProperty("MIEHG", LAr_Mie_Scattering_Energy, LAr_Mie_Scattering_Length);
-    fLAr_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fLAr_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fLAr_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
-    
+    //std::vector<G4double> LAr_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
+    //std::vector<G4double> LAr_Mie_Scattering_Length = {60.0 * cm, 60.0 * cm, 5.0 * m, 5.0 * m}; // mie scattering for vis light, no mie scattering for UV
+    //fLAr_mt->AddProperty("MIEHG", LAr_Mie_Scattering_Energy, LAr_Mie_Scattering_Length);
+    //fLAr_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    //fLAr_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    //fLAr_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 
     // Set the Birks Constant for the LAr scintillator
@@ -639,7 +645,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
     if(fMainVolumeOn) {
         fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this,
                                           SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_,
-                                          TrainingSource_, DecayX_, DecayY_, DecayZ_,  
+                                          TrainingSource_, DecayX_, DecayY_, DecayZ_,
                                           EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_);
     }
 
