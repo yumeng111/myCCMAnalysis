@@ -8,6 +8,17 @@
 
 #include <sstream>
 #include <cmath>
+#include <boost/preprocessor/stringize.hpp>
+#include <boost/preprocessor/seq/for_each.hpp>
+#include <string>
+#include <algorithm>
+#include <sstream>
+#include <fstream>
+#include <iostream>
+#include <filesystem>
+#include <functional>
+#include <numeric>
+#include <vector>
 
 #include <G4Box.hh>
 #include <G4Cons.hh>
@@ -218,8 +229,55 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // Takes the defined values above and uses them to define a materials properties table.
 
     G4MaterialPropertiesTable* fLAr_mt = new G4MaterialPropertiesTable();
-    fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", LAr_Energy_Scint, LAr_SCINT);
-    //fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT2", LAr_Energy_Scint, LAr_SCINT);
+    //fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", LAr_Energy_Scint, LAr_SCINT);
+
+    // let's grab our scintillation profile from txt file
+    // txt file is digitization of liquid argon (black line) in fig 1 from https://arxiv.org/pdf/1511.07718
+    std::vector<G4double> lar_wavelength = {};
+    std::vector<G4double> lar_intensity = {};
+
+    std::string sourceDir = std::filesystem::path(__FILE__).parent_path().string();
+    std::ifstream file(sourceDir + "/LArScintillationProfile.txt");
+
+    // Check if the file is successfully opened
+    if (!file.is_open()) {
+        log_fatal("Cannot open file with LAr scintillation profile!");
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        double wavelength, intensity;
+        char comma;
+
+        ss >> wavelength >> comma >> intensity;
+        lar_wavelength.push_back(wavelength);
+        lar_intensity.push_back(intensity);
+    }
+
+    file.close();
+
+    // before we are done, let's normalizse the intensity so it sums to 1
+    double intensity_total = std::accumulate(lar_intensity.begin(), lar_intensity.end(), 0.0);
+    for (size_t i = 0; i < lar_intensity.size(); i++){
+        lar_intensity.at(i) /= intensity_total;
+    }
+
+    // finally, loop over backward and convert to energy
+    std::vector<G4double> lar_energy = {};
+    std::vector<G4double> lar_sorted_intensity = {};
+
+    for (size_t w = lar_wavelength.size(); w > 0; w --){
+        double this_wavelength = lar_wavelength.at(w-1);
+        double this_intensity = lar_intensity.at(w-1);
+        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+
+        lar_energy.push_back(this_energy);
+        lar_sorted_intensity.push_back(this_intensity);
+        std::cout << "at wavelength = " << this_wavelength << ", energy = " << this_energy << ", intensity = " << this_intensity << std::endl;
+    }
+
+    fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", lar_energy, lar_sorted_intensity);
 
     // let's do index of refraction and rayleigh now
     G4double rindex = 1.358;//LAr rindex @ 128
@@ -289,7 +347,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         lar_rin.at(rin_it) *= 1.10;
     }
 
-    std::cout << "lar_rin = " << lar_rin << std::endl;
     //fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
     //fLAr_mt->AddProperty("RINDEX", lar_rin_energy, lar_rin);
 
