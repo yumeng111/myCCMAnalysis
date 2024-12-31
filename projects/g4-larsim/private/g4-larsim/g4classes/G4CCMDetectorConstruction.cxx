@@ -359,7 +359,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double aIR = 0.0023;
     double lamUV = 106.6;
     double lamIR = 908.3;
-    double starting_wavelength = 107.0;
+    double starting_wavelength = 115.0;
     double ending_wavelength = 850.0;
     size_t n_entries = 150;
     for (size_t i = (n_entries + 1); i > 0; i--){
