@@ -274,7 +274,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
         lar_energy.push_back(this_energy);
         lar_sorted_intensity.push_back(this_intensity);
-        std::cout << "at wavelength = " << this_wavelength << ", energy = " << this_energy << ", intensity = " << this_intensity << std::endl;
+        //std::cout << "at wavelength = " << this_wavelength << ", energy = " << this_energy << ", intensity = " << this_intensity << std::endl;
     }
 
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", lar_energy, lar_sorted_intensity);
@@ -375,7 +375,28 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     }
 
     fLAr_mt->AddProperty("RINDEX", grace_rin_energy, grace_rin_vals);
-    fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
+    //fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
+
+    // let's fix up rayleigh scattering length
+    // we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
+    double rindex_128 = std::sqrt(a0 + ((aUV * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamUV, 2.0))) +
+                                   ((aIR * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamIR, 2.0))));
+    double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
+    
+    std::vector<G4double> rayl_energy = {};
+    std::vector<G4double> rayl_scattering_length = {};
+    for (size_t i = (n_entries + 1); i > 0; i--){
+        double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
+        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        double this_rindex = std::sqrt(a0 + ((aUV * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamUV, 2.0))) +
+                                       ((aIR * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamIR, 2.0))));
+
+        double this_rayl = (rayl_scaling * std::pow(this_wavelength*1e-7, 4.0) / std::pow((std::pow(this_rindex, 2.0) - 1)*(std::pow(this_rindex, 2.0) + 2), 2.0) ) * cm;
+        std::cout << "wavelength = " << this_wavelength << ", energy = " << this_energy << ", and rayl scattering length = " << this_rayl / cm << std::endl;
+        rayl_energy.push_back(this_energy);
+        rayl_scattering_length.push_back(this_rayl);
+    }
+    fLAr_mt->AddProperty("RAYLEIGH", rayl_energy, rayl_scattering_length);
 
     // now add absorption length
     std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
