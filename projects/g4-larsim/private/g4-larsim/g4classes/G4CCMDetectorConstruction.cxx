@@ -382,7 +382,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double rindex_128 = std::sqrt(a0 + ((aUV * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamUV, 2.0))) +
                                    ((aIR * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamIR, 2.0))));
     double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
-    
+
     std::vector<G4double> rayl_energy = {};
     std::vector<G4double> rayl_scattering_length = {};
     for (size_t i = (n_entries + 1); i > 0; i--){
@@ -404,7 +404,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> flat_abs = {3e10*cm, 3e10*cm, UVAbsLength_, UVAbsLength_}; // step function -- only have uv abs length for wavelength less than 325nm
 
     std::cout << "setting uv absorption length = " << flat_abs << std::endl;
-    fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
+    //fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
 
     std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;
     G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)); // scintillation yield: 50 per keV.
@@ -673,10 +673,10 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
-    fTPBFoilSides_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
-    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    //fTPBFoilSides_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
+    //fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    //fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    //fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
 
     // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
@@ -688,10 +688,10 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
-    fTPBFoilTopBottom_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
-    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    //fTPBFoilTopBottom_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
+    //fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    //fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    //fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
 
     // tpb on pmts
@@ -703,10 +703,10 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
-    fTPBPMT_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
-    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    //fTPBPMT_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
+    //fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    //fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    //fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the reflectors.
