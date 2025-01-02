@@ -375,7 +375,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             double calculated_vis_distance = 0.0;
             double calculated_uv_distance = 0.0;
 
-            if (wavelength <= 325.0){
+            //if (wavelength <= 325.0){
+            if (wavelength <= 200.0){
                 g4_uv_distance = g4_delta_distance;
                 calculated_uv_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
             } else {
