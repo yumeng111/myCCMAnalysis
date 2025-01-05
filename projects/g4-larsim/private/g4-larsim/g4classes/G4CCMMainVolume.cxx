@@ -838,6 +838,10 @@ void G4CCMMainVolume::SurfaceProperties()
             96.65116783853793, 95.91151864322745, 95.30515359961677, 91.25574897695003, 81.90244998989932, 41.8931179140657, 24.101847317428096, 12.26957594631375, 12.06518399527252,
             12.58223308670786, 12.888602883272128, 14.106365509586524, 14.817742868938694, 15.529120228290893, 14.721537496610026, 13.103799846600765, 12.245584179933772, 0.0, 0.0};
 
+    //for (size_t ref_it = 0; ref_it < MylarReflection.size(); ref_it++){
+    //    MylarReflection.at(ref_it) *= 0.85;
+    //}
+
     G4MaterialPropertiesTable *ReflectiveFoilMPT = new G4MaterialPropertiesTable();
     ReflectiveFoilMPT->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
     ReflectorOpticalSurface->SetMaterialPropertiesTable(ReflectiveFoilMPT);
