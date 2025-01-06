@@ -399,9 +399,15 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RAYLEIGH", rayl_energy, rayl_scattering_length);
 
     // now add absorption length
-    std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
+    //std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
     //std::vector<G4double> flat_abs_energy = {1.0*eV, 3.0918*eV, 3.0995*eV, 14.0*eV}; // roughly 1200 nm, 401nm, 400nm, 88nm
-    std::vector<G4double> flat_abs = {3e10*cm, 3e10*cm, UVAbsLength_, UVAbsLength_}; // step function -- only have uv abs length for wavelength less than 325nm
+    //std::vector<G4double> flat_abs = {3e10*cm, 3e10*cm, UVAbsLength_, UVAbsLength_}; // step function -- only have uv abs length for wavelength less than 325nm
+
+    std::vector<G4double> flat_abs_energy = {1.03319652*eV,  3.09958956*eV,  3.26272585*eV,  3.4439884*eV,   3.64657595*eV,  3.87448695*eV,
+                                           4.13278608*eV,  4.42798509*eV,  4.76859932*eV,  5.1659826*eV,   5.63561738*eV,  6.8879768*eV, 11.27123476*eV};
+    std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
+                                      UVAbsLength_*32.0, UVAbsLength_*16.0, UVAbsLength_*8.0, UVAbsLength_*4.0, UVAbsLength_, UVAbsLength_};
+
 
     std::cout << "setting uv absorption length = " << flat_abs << std::endl;
     fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
