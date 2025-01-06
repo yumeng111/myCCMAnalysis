@@ -405,8 +405,9 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     std::vector<G4double> flat_abs_energy = {1.03319652*eV,  3.09958956*eV,  3.26272585*eV,  3.4439884*eV,   3.64657595*eV,  3.87448695*eV,
                                            4.13278608*eV,  4.42798509*eV,  4.76859932*eV,  5.1659826*eV,   5.63561738*eV,  6.8879768*eV, 11.27123476*eV};
+    //std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
     std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
-                                      UVAbsLength_*32.0, UVAbsLength_*16.0, UVAbsLength_*8.0, UVAbsLength_*4.0, UVAbsLength_, UVAbsLength_};
+                                      UVAbsLength_*32.0, UVAbsLength_*8.0, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
 
 
     std::cout << "setting uv absorption length = " << flat_abs << std::endl;
