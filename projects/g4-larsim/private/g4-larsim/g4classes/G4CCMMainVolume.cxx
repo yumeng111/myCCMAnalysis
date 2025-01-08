@@ -490,10 +490,10 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double top_shiny_radius = 13.335 * cm;
     fShinyTop = new G4Tubs("ShinyTop", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
     fShinyTop_log= new G4LogicalVolume(fShinyTop, G4Material::GetMaterial("Alum"), "ShinyTop");
-    new G4PVPlacement(0, G4ThreeVector(0, 0, fiducial_lar_half_height - shiny_half_height), fShinyTop_log, "ShinyTop", fFiducialAr_log, false, 0);
+    new G4PVPlacement(0, G4ThreeVector(0, 0, fiducial_lar_half_height - shiny_half_height), fShinyTop_log, "ShinyTop", fFiducialAr_log, false, 0, true);
     fShinyBottom = new G4Tubs("ShinyBottom", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
     fShinyBottom_log= new G4LogicalVolume(fShinyBottom, G4Material::GetMaterial("Alum"), "ShinyBottom");
-    new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialAr_log, false, 0);
+    new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialAr_log, false, 0, true);
 
     double pmt_radius_cm = (fiducial_lar_radius + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
     double pmt_height_cm = (fiducial_lar_half_height + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
@@ -688,11 +688,11 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 fSourceRod_log = new G4LogicalVolume(rodWithPelletAndHousingHole, G4Material::GetMaterial("Steel"), "fSourceRodLogWithHoles");
 
                 // Place the modified rod (with pellet and housing subtracted) in the fiducial argon volume
-                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletAndHousingHole", fFiducialAr_log, false, 0);
+                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletAndHousingHole", fFiducialAr_log, false, 0, true);
 
                 // Place the source pellet and housing within the detector
-                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0);
-                new G4PVPlacement(nullptr, pelletPosition, fSourcePelletHousing_log, "SourcePelletHousing", fFiducialAr_log, false, 0);
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0, true);
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePelletHousing_log, "SourcePelletHousing", fFiducialAr_log, false, 0, true);
 
 
             } else {
@@ -703,15 +703,15 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 // again let's first subtract the pellet from the rod, make logical vol for rod, and place rod
                 G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
                 fSourceRod_log = new G4LogicalVolume(rodWithPelletHole, G4Material::GetMaterial("Steel"), "fSourceRodLogWithHole");
-                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletHole", fFiducialAr_log, false, 0);
+                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletHole", fFiducialAr_log, false, 0, true);
 
                 // now place sodium pellet
-                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fSourceRod_log, false, 0);
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fSourceRod_log, false, 0, true);
             }
         } else {
             // this is the case where we have the source rod in the detector but no pellet -- so let's place the rod like normal
             fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
-            new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0);
+            new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0, true);
         }
     }
 
@@ -838,9 +838,11 @@ void G4CCMMainVolume::SurfaceProperties()
             96.65116783853793, 95.91151864322745, 95.30515359961677, 91.25574897695003, 81.90244998989932, 41.8931179140657, 24.101847317428096, 12.26957594631375, 12.06518399527252,
             12.58223308670786, 12.888602883272128, 14.106365509586524, 14.817742868938694, 15.529120228290893, 14.721537496610026, 13.103799846600765, 12.245584179933772, 0.0, 0.0};
 
-    //for (size_t ref_it = 0; ref_it < MylarReflection.size(); ref_it++){
-    //    MylarReflection.at(ref_it) *= 0.5;
-    //}
+    for (size_t ref_it = 0; ref_it < MylarReflection.size(); ref_it++){
+        MylarReflection.at(ref_it) /= 100;
+        //MylarReflection.at(ref_it) *= 0.75;
+    }
+    std::cout << "MylarReflection = " << MylarReflection << std::endl;
 
     G4MaterialPropertiesTable *ReflectiveFoilMPT = new G4MaterialPropertiesTable();
     ReflectiveFoilMPT->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
@@ -889,6 +891,7 @@ void G4CCMMainVolume::SurfaceProperties()
 
     PTFEOpticalSurface->SetModel(unified);
     PTFEOpticalSurface->SetType(dielectric_dielectric);
+    //PTFEOpticalSurface->SetType(dielectric_metal);
     PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
     //PTFEOpticalSurface->SetFinish(ground);
     //PTFEOpticalSurface->SetFinish(groundbackpainted);
@@ -899,15 +902,20 @@ void G4CCMMainVolume::SurfaceProperties()
     std::vector<G4double> specularlobe = {0.2, 0.2};
     std::vector<G4double> specularspike = {0.05, 0.05};
     std::vector<G4double> backscatter = {0.05, 0.05};
-
+ 
     G4MaterialPropertiesTable* PTFE_mpt = new G4MaterialPropertiesTable();
     //PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
     //PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
     //PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
     PTFE_mpt->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
+    //PTFE_mpt->AddProperty("TRANSMITTANCE", MylarReflectionEnergy, MylarReflection);
+    //PTFE_mpt->AddProperty("EFFICIENCY", {1.038*eV, 7.144*eV}, {0.0, 0.0});
     PTFEOpticalSurface->SetMaterialPropertiesTable(PTFE_mpt);
 
-    new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, PTFEOpticalSurface);
+    //new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, PTFEOpticalSurface);
+    new G4LogicalBorderSurface("TPBFoilSides_Reflector_Surface", fTPBFoilSides_phys, fReflectorFoil_phys, PTFEOpticalSurface);
+    new G4LogicalBorderSurface("TPBFoilTop_Reflector_Surface", fTPBFoilTop_phys, fReflectorFoil_phys, PTFEOpticalSurface);
+    new G4LogicalBorderSurface("TPBFoilBottom_Reflector_Surface", fTPBFoilBottom_phys, fReflectorFoil_phys, PTFEOpticalSurface);
 
     // and surface properties for the frill + bridle
     // Definition of MPT for Plastic frills

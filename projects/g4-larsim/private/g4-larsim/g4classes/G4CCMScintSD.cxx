@@ -396,6 +396,10 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
             //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
             //          << ", creation process = " << creationProcessName
+            //          << ", wavelength = " << wavelength
+            //          << ", pre step vol = " << aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()
+            //          << ", post step vol = " << aStep->GetPostStepPoint()->GetPhysicalVolume()->GetName()
+            //          << ", process name = " << aStep->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName()
             //          //<< ", distance uv = " << g4_uv_distance
             //          //<< ", and time = " << g4_delta_time_step
             //          << std::endl;

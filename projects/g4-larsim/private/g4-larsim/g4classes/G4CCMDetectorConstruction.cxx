@@ -661,8 +661,10 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     TPB_WLSAbsLength.push_back(TPB_WLSAbsLength_FixedAbsorption.at(0));
 
     // I dont think this makes a difference, but adding index of refraction just in case
-    std::vector<G4double> tpb_rin_energy = {1.0*eV, 14.0*eV};
-    std::vector<G4double> tpb_rin = {1.62, 1.62};
+    std::vector<G4double> tpb_rin_energy = {1.0*eV, 2.0*eV, 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 
+                                            8.0*eV, 9.0*eV, 10.0*eV, 11.0*eV, 12.0*eV, 13.0*eV, 14.0*eV};
+    std::vector<G4double> tpb_rin = {1.62, 1.62, 1.62, 1.62, 1.62, 1.62, 1.62,
+                                     1.62, 1.62, 1.62, 1.62, 1.62, 1.62, 1.62};
 
     // let's try adding some mie scattering to our tpb! i have no idea what this is gonna do...we'll see
     std::vector<G4double> TPB_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
@@ -760,7 +762,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
                                           TrainingSource_, DecayX_, DecayY_, DecayZ_,
                                           EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_);
     }
-
+    
     return fExperimentalHall_phys;
 
 }
