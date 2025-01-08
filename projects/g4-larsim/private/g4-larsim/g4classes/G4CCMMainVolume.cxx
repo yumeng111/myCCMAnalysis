@@ -838,10 +838,10 @@ void G4CCMMainVolume::SurfaceProperties()
             96.65116783853793, 95.91151864322745, 95.30515359961677, 91.25574897695003, 81.90244998989932, 41.8931179140657, 24.101847317428096, 12.26957594631375, 12.06518399527252,
             12.58223308670786, 12.888602883272128, 14.106365509586524, 14.817742868938694, 15.529120228290893, 14.721537496610026, 13.103799846600765, 12.245584179933772, 0.0, 0.0};
 
-    //for (size_t ref_it = 0; ref_it < MylarReflection.size(); ref_it++){
-    //    MylarReflection.at(ref_it) /= 100;
-    //    //MylarReflection.at(ref_it) *= 0.75;
-    //}
+    for (size_t ref_it = 0; ref_it < MylarReflection.size(); ref_it++){
+        MylarReflection.at(ref_it) /= 100;
+        MylarReflection.at(ref_it) *= 0.90;
+    }
     std::cout << "MylarReflection = " << MylarReflection << std::endl;
 
     G4MaterialPropertiesTable *ReflectiveFoilMPT = new G4MaterialPropertiesTable();
@@ -892,24 +892,22 @@ void G4CCMMainVolume::SurfaceProperties()
     PTFEOpticalSurface->SetModel(unified);
     PTFEOpticalSurface->SetType(dielectric_dielectric);
     //PTFEOpticalSurface->SetType(dielectric_metal);
-    PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
-    //PTFEOpticalSurface->SetFinish(ground);
+    //PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+    PTFEOpticalSurface->SetFinish(ground);
     //PTFEOpticalSurface->SetFinish(groundbackpainted);
-    //PTFEOpticalSurface->SetSigmaAlpha(0.1);
+    PTFEOpticalSurface->SetSigmaAlpha(0.1);
     //PTFEOpticalSurface->SetFinish(polished);
 
     std::vector<G4double> pp = {2.038*eV, 4.144*eV};
     std::vector<G4double> specularlobe = {0.2, 0.2};
     std::vector<G4double> specularspike = {0.05, 0.05};
     std::vector<G4double> backscatter = {0.05, 0.05};
- 
+
     G4MaterialPropertiesTable* PTFE_mpt = new G4MaterialPropertiesTable();
-    //PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
-    //PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
-    //PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
+    PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
+    PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
+    PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
     PTFE_mpt->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
-    //PTFE_mpt->AddProperty("TRANSMITTANCE", MylarReflectionEnergy, MylarReflection);
-    //PTFE_mpt->AddProperty("EFFICIENCY", {1.038*eV, 7.144*eV}, {0.0, 0.0});
     PTFEOpticalSurface->SetMaterialPropertiesTable(PTFE_mpt);
 
     //new G4LogicalSkinSurface("PTFE_Surface", fReflectorFoil_log, PTFEOpticalSurface);
