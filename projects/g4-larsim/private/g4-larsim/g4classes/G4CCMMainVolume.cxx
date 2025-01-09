@@ -841,7 +841,7 @@ void G4CCMMainVolume::SurfaceProperties()
 
     for (size_t ref_it = 0; ref_it < MylarReflection.size(); ref_it++){
         MylarReflection.at(ref_it) /= 100;
-        MylarReflection.at(ref_it) *= 0.90;
+        //MylarReflection.at(ref_it) *= 0.90;
     }
     std::cout << "MylarReflection = " << MylarReflection << std::endl;
 
@@ -945,9 +945,9 @@ void G4CCMMainVolume::SurfaceProperties()
     // define uncoated pmts --> ground
     UncoatedPMTGlassOpticalSurface->SetModel(unified);
     UncoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
-    UncoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted);
-    //UncoatedPMTGlassOpticalSurface->SetFinish(ground);
-    //UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.1);
+    //UncoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted);
+    UncoatedPMTGlassOpticalSurface->SetFinish(ground);
+    UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.1);
 
     // define coated pmts --> groundfrontpainted (all diffuse since modelling TPB + ground glass reflections at once)
     CoatedPMTGlassOpticalSurface->SetModel(unified);
@@ -969,16 +969,22 @@ void G4CCMMainVolume::SurfaceProperties()
                                                     uvTransmittance, uvTransmittance, uvTransmittance, uvTransmittance};
 
     G4double uvReflection = 0.06;
-    G4double vsReflection = 0.10;
+    G4double visUncoatedReflection = 0.50;
+    G4double visCoatedReflection = 0.10;
 
-    std::vector<G4double> PMTGlassReflection = { vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection,
-                                                    vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection, vsReflection,
-                                                    vsReflection, vsReflection, vsReflection, vsReflection, uvReflection, uvReflection, uvReflection,
+    std::vector<G4double> PMTCoatedGlassReflection = { visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection,
+                                                    visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection,
+                                                    visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, uvReflection, uvReflection, uvReflection,
+                                                    uvReflection, uvReflection, uvReflection, uvReflection};
+    std::vector<G4double> PMTUncoatedGlassReflection = { visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
+                                                    visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
+                                                    visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
+                                                    visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, uvReflection, uvReflection, uvReflection,
                                                     uvReflection, uvReflection, uvReflection, uvReflection};
 
     G4MaterialPropertiesTable *PMTCoatedGlassMPT = new G4MaterialPropertiesTable();
-    PMTCoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTGlassReflection);
-    PMTCoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
+    PMTCoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTCoatedGlassReflection);
+    //PMTCoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
     CoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTCoatedGlassMPT);
 
     //std::vector<G4double> pp = {2.038*eV, 4.144*eV};
@@ -995,8 +1001,8 @@ void G4CCMMainVolume::SurfaceProperties()
     PMTUncoatedGlassMPT->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
     //PMTUncoatedGlassMPT->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
     //PMTUncoatedGlassMPT->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
-    PMTUncoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTGlassReflection);
-    PMTUncoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
+    PMTUncoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTUncoatedGlassReflection);
+    //PMTUncoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
     UncoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTUncoatedGlassMPT);
 
     new G4LogicalSkinSurface("CoatedPMTGlassWall_Surface", fPMTCoatedWall_log, CoatedPMTGlassOpticalSurface);
