@@ -824,6 +824,7 @@ void G4CCMMainVolume::SurfaceProperties()
     ReflectorOpticalSurface->SetModel(unified);
     ReflectorOpticalSurface->SetType(dielectric_metal);
     ReflectorOpticalSurface->SetFinish(polished);
+    //ReflectorOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
 
     // let's add reflection properties as a function of energy
     std::vector<G4double> MylarReflectionEnergy = {1.239835823924519*eV, 2.1758440843642446*eV, 2.2155183016259334*eV, 2.2540941739092317*eV, 2.2965084198409396*eV,
@@ -892,10 +893,10 @@ void G4CCMMainVolume::SurfaceProperties()
     PTFEOpticalSurface->SetModel(unified);
     PTFEOpticalSurface->SetType(dielectric_dielectric);
     //PTFEOpticalSurface->SetType(dielectric_metal);
-    //PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
-    PTFEOpticalSurface->SetFinish(ground);
+    PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+    //PTFEOpticalSurface->SetFinish(ground);
     //PTFEOpticalSurface->SetFinish(groundbackpainted);
-    PTFEOpticalSurface->SetSigmaAlpha(0.1);
+    //PTFEOpticalSurface->SetSigmaAlpha(0.1);
     //PTFEOpticalSurface->SetFinish(polished);
 
     std::vector<G4double> pp = {2.038*eV, 4.144*eV};
@@ -904,9 +905,9 @@ void G4CCMMainVolume::SurfaceProperties()
     std::vector<G4double> backscatter = {0.05, 0.05};
 
     G4MaterialPropertiesTable* PTFE_mpt = new G4MaterialPropertiesTable();
-    PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
-    PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
-    PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
+    //PTFE_mpt->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
+    //PTFE_mpt->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
+    //PTFE_mpt->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
     PTFE_mpt->AddProperty("REFLECTIVITY", MylarReflectionEnergy, MylarReflection);
     PTFEOpticalSurface->SetMaterialPropertiesTable(PTFE_mpt);
 
@@ -944,8 +945,9 @@ void G4CCMMainVolume::SurfaceProperties()
     // define uncoated pmts --> ground
     UncoatedPMTGlassOpticalSurface->SetModel(unified);
     UncoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
-    UncoatedPMTGlassOpticalSurface->SetFinish(ground);
-    UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.1);
+    UncoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted);
+    //UncoatedPMTGlassOpticalSurface->SetFinish(ground);
+    //UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.1);
 
     // define coated pmts --> groundfrontpainted (all diffuse since modelling TPB + ground glass reflections at once)
     CoatedPMTGlassOpticalSurface->SetModel(unified);
