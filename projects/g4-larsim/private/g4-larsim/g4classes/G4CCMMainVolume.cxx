@@ -968,7 +968,7 @@ void G4CCMMainVolume::SurfaceProperties()
                                                     vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, uvTransmittance, uvTransmittance, uvTransmittance,
                                                     uvTransmittance, uvTransmittance, uvTransmittance, uvTransmittance};
 
-    G4double uvReflection = 0.05;
+    G4double uvReflection = 0.07;
     G4double visUncoatedReflection = 0.1;
     G4double visCoatedReflection = 0.1;
 
