@@ -969,8 +969,8 @@ void G4CCMMainVolume::SurfaceProperties()
                                                     uvTransmittance, uvTransmittance, uvTransmittance, uvTransmittance};
 
     G4double uvReflection = 0.05;
-    G4double visUncoatedReflection = 0.20;
-    G4double visCoatedReflection = 0.05;
+    G4double visUncoatedReflection = 0.1;
+    G4double visCoatedReflection = 0.1;
 
     std::vector<G4double> PMTCoatedGlassReflection = { visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection,
                                                     visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection, visCoatedReflection,
