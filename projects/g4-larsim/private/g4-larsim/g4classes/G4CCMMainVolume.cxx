@@ -960,15 +960,15 @@ void G4CCMMainVolume::SurfaceProperties()
                                             3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                             7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
-    G4double uvTransmittance = 0.0;
-    G4double vsTransmittance = 0.90;
+    //G4double uvTransmittance = 0.0;
+    //G4double vsTransmittance = 0.90;
 
-    std::vector<G4double> PMTGlassTransmittance = { vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
-                                                    vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
-                                                    vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, uvTransmittance, uvTransmittance, uvTransmittance,
-                                                    uvTransmittance, uvTransmittance, uvTransmittance, uvTransmittance};
+    //std::vector<G4double> PMTGlassTransmittance = { vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
+    //                                                vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance,
+    //                                                vsTransmittance, vsTransmittance, vsTransmittance, vsTransmittance, uvTransmittance, uvTransmittance, uvTransmittance,
+    //                                                uvTransmittance, uvTransmittance, uvTransmittance, uvTransmittance};
 
-    G4double uvReflection = 0.07;
+    G4double uvReflection = 0.03;
     G4double visUncoatedReflection = 0.1;
     G4double visCoatedReflection = 0.1;
 
@@ -981,10 +981,23 @@ void G4CCMMainVolume::SurfaceProperties()
                                                     visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
                                                     visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, uvReflection, uvReflection, uvReflection,
                                                     uvReflection, uvReflection, uvReflection, uvReflection};
+    G4double uvTrans = 1.0 - uvReflection;
+    G4double visUncoatedTrans = 1.0 - visUncoatedReflection;
+    G4double visCoatedTrans = 1.0 - visCoatedReflection;
+
+    std::vector<G4double> PMTCoatedGlassTrans = { visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans,
+                                                    visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans,
+                                                    visCoatedTrans, visCoatedTrans, visCoatedTrans, visCoatedTrans, uvTrans, uvTrans, uvTrans,
+                                                    uvTrans, uvTrans, uvTrans, uvTrans};
+    std::vector<G4double> PMTUncoatedGlassTrans = { visUncoatedTrans, visUncoatedTrans, visUncoatedTrans, visUncoatedTrans, visUncoatedTrans,
+                                                    visUncoatedTrans, visUncoatedTrans, visUncoatedTrans, visUncoatedTrans, visUncoatedTrans,
+                                                    visUncoatedTrans, visUncoatedTrans, visUncoatedTrans, visUncoatedTrans,
+                                                    visUncoatedTrans, visUncoatedTrans, visUncoatedTrans, visUncoatedTrans, uvTrans, uvTrans, uvTrans,
+                                                    uvTrans, uvTrans, uvTrans, uvTrans};
 
     G4MaterialPropertiesTable *PMTCoatedGlassMPT = new G4MaterialPropertiesTable();
     PMTCoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTCoatedGlassReflection);
-    //PMTCoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
+    PMTCoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTCoatedGlassTrans);
     CoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTCoatedGlassMPT);
 
     //std::vector<G4double> pp = {2.038*eV, 4.144*eV};
@@ -1002,7 +1015,7 @@ void G4CCMMainVolume::SurfaceProperties()
     //PMTUncoatedGlassMPT->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
     //PMTUncoatedGlassMPT->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
     PMTUncoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTUncoatedGlassReflection);
-    //PMTUncoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTGlassTransmittance);
+    PMTUncoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTUncoatedGlassTrans);
     UncoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTUncoatedGlassMPT);
 
     new G4LogicalSkinSurface("CoatedPMTGlassWall_Surface", fPMTCoatedWall_log, CoatedPMTGlassOpticalSurface);
