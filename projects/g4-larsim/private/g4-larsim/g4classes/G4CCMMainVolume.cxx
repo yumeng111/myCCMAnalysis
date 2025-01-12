@@ -520,8 +520,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                             3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                             7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
-    G4double uvReflection = 0.99;
-    G4double visUncoatedReflection = 0.99;
+    G4double uvReflection = 0.05;
+    G4double visUncoatedReflection = 0.10;
 
     std::vector<G4double> PMTUncoatedGlassReflection = { visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
                                                     visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
@@ -550,7 +550,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     PMTUncoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTUncoatedGlassReflection);
     PMTUncoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTUncoatedGlassTrans);
     UncoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTUncoatedGlassMPT);
-    
+
     // and surface properties for the frill + bridle
     // Definition of MPT for Plastic frills
     std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.6*eV };
