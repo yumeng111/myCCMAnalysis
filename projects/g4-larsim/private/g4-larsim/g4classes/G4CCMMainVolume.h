@@ -146,6 +146,10 @@ class G4CCMMainVolume : public G4PVPlacement
     G4VPhysicalVolume* fTPBFoilBottom_phys = nullptr;
     G4VPhysicalVolume* fTPBPMT_phys = nullptr;
     G4VPhysicalVolume* fReflectorFoil_phys = nullptr;
+    G4VPhysicalVolume* fPMTUncoatedWall_phys = nullptr;
+    G4VPhysicalVolume* fPMTUncoatedCaps_phys = nullptr;
+    G4VPhysicalVolume* fPMTCoatedWall_phys = nullptr;
+    G4VPhysicalVolume* fPMTCoatedCaps_phys = nullptr;
 
     // Sensitive Detectors positions
     std::vector<G4ThreeVector> fPMTPositions;
