@@ -511,8 +511,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     // define uncoated pmts --> ground
     UncoatedPMTGlassOpticalSurface->SetModel(unified);
     UncoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
-    UncoatedPMTGlassOpticalSurface->SetFinish(ground);
-    UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.5);
+    UncoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+    //UncoatedPMTGlassOpticalSurface->SetFinish(ground);
+    //UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.5);
 
     // define reflectivity for PMT glass (to be used on both coated and uncoated pmts)
     std::vector<G4double> PMTGlassEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
@@ -521,7 +522,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                             7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
     G4double uvReflection = 0.05;
-    G4double visUncoatedReflection = 0.10;
+    G4double visUncoatedReflection = 0.20;
 
     std::vector<G4double> PMTUncoatedGlassReflection = { visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
                                                     visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
@@ -544,9 +545,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     std::vector<G4double> backscatter = {0.05, 0.05};
 
     G4MaterialPropertiesTable* PMTUncoatedGlassMPT = new G4MaterialPropertiesTable();
-    PMTUncoatedGlassMPT->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
-    PMTUncoatedGlassMPT->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
-    PMTUncoatedGlassMPT->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
+    //PMTUncoatedGlassMPT->AddProperty("SPECULARLOBECONSTANT", pp, specularlobe);
+    //PMTUncoatedGlassMPT->AddProperty("SPECULARSPIKECONSTANT", pp, specularspike);
+    //PMTUncoatedGlassMPT->AddProperty("BACKSCATTERCONSTANT", pp, backscatter);
     PMTUncoatedGlassMPT->AddProperty("REFLECTIVITY", PMTGlassEnergy, PMTUncoatedGlassReflection);
     PMTUncoatedGlassMPT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, PMTUncoatedGlassTrans);
     UncoatedPMTGlassOpticalSurface->SetMaterialPropertiesTable(PMTUncoatedGlassMPT);
