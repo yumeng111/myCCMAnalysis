@@ -521,7 +521,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                             3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                             7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
-    G4double uvReflection = 0.05;
+    G4double uvReflection = 0.20;
     G4double visUncoatedReflection = 0.20;
 
     std::vector<G4double> PMTUncoatedGlassReflection = { visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
@@ -734,6 +734,32 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         fSourceRod = new G4Tubs("SourceRod", rod_inner_radius, rod_outer_radius, rod_height/2, 0, 360*deg);
         G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SourceRodLocation + rod_height/2);
 
+        // let's make a source rod optical surface 
+        G4OpticalSurface *SourceRodOpticalSurface = new G4OpticalSurface("SourceRodOpticalSurface");
+
+        SourceRodOpticalSurface->SetModel(unified);
+        SourceRodOpticalSurface->SetType(dielectric_metal);
+        SourceRodOpticalSurface->SetFinish(polished); 
+
+        // define reflectivity for stainless steel 
+        std::vector<G4double> StainlessSteelEnergy = {0.602*eV, 0.689*eV, 1.03*eV,  1.926*eV, 2.138*eV, 2.25*eV,  2.38*eV,
+                                                2.48*eV,  2.583*eV, 2.845*eV, 2.857*eV, 2.95*eV,  3.124*eV, 3.457*eV,
+                                                3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
+                                                7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
+
+        G4double uvReflection = 0.90;
+        G4double visReflection = 0.90;
+
+        std::vector<G4double> StainlessSteelReflection = { visReflection, visReflection, visReflection, visReflection, visReflection,
+                                                        visReflection, visReflection, visReflection, visReflection, visReflection,
+                                                        visReflection, visReflection, visReflection, visReflection,
+                                                        visReflection, visReflection, visReflection, visReflection, uvReflection, uvReflection, uvReflection,
+                                                        uvReflection, uvReflection, uvReflection, uvReflection};
+
+        G4MaterialPropertiesTable* StainlessSteelMPT = new G4MaterialPropertiesTable();
+        StainlessSteelMPT->AddProperty("REFLECTIVITY", StainlessSteelEnergy, StainlessSteelReflection);
+        SourceRodOpticalSurface->SetMaterialPropertiesTable(StainlessSteelMPT);
+
         if (CobaltSourceRun or SodiumSourceRun){
             // now make source pellet -- really guessing on these measurements
             G4double pellet_radius = 4.0*mm;
@@ -775,7 +801,6 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0, true);
                 new G4PVPlacement(nullptr, pelletPosition, fSourcePelletHousing_log, "SourcePelletHousing", fFiducialAr_log, false, 0, true);
 
-
             } else {
                 // standard case where the source pellet is inserted 1/4 cm into the end of the source rod
                 G4double inset = 0.25 * cm;
@@ -794,6 +819,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
             new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0, true);
         }
+
+        // now add our optical surface to our source rod
+        new G4LogicalSkinSurface("SourceRod_Surface", fSourceRod_log, SourceRodOpticalSurface);
     }
 
     VisAttributes(SourceRodIn);
