@@ -391,7 +391,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + EndCapFoilTPBThickness) * 2.0;
     G4double frame_half_height = frame_height / 2.0;
-    G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
+    //G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets 
+    G4double frame_radius = 997.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets 
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
@@ -462,14 +463,22 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double bridle_radius = 209.55 / 2.0 * mm;
     G4double frill_width = 0.813 * mm;
     G4double frill_radius = 228.6 / 2.0 * mm;
-    fBridleWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance);
-    fBridleCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance);
-    fFrillWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius);
-    fFrillCaps = J4PMTSolidMaker::GetFrillCaps(bridle_radius, frill_radius, frill_width);
-    fBridleWall_log = new G4LogicalVolume(fBridleWall, G4Material::GetMaterial("BlackPlastic"), "BridleWallLog");
-    fBridleCaps_log = new G4LogicalVolume(fBridleCaps, G4Material::GetMaterial("BlackPlastic"), "BridleCapsLog");
-    fFrillWall_log = new G4LogicalVolume(fFrillWall, G4Material::GetMaterial("Plastic"), "FrillWallLog");
-    fFrillCaps_log = new G4LogicalVolume(fFrillCaps, G4Material::GetMaterial("Plastic"), "FrillCapsLog");
+    fBridleCoatedWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance, true);
+    fBridleUncoatedWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance, false);
+    fBridleCoatedCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance, true);
+    fBridleUncoatedCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance, false);
+    fFrillCoatedWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius, true);
+    fFrillUncoatedWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius, false);
+    fFrillCoatedCaps = J4PMTSolidMaker::GetFrillCaps(bridle_radius, frill_radius, frill_width, true);
+    fFrillUncoatedCaps = J4PMTSolidMaker::GetFrillCaps(bridle_radius, frill_radius, frill_width, false);
+    fBridleCoatedWall_log = new G4LogicalVolume(fBridleCoatedWall, G4Material::GetMaterial("BlackPlastic"), "BridleCoatedWallLog");
+    fBridleUncoatedWall_log = new G4LogicalVolume(fBridleUncoatedWall, G4Material::GetMaterial("BlackPlastic"), "BridleUncoatedWallLog");
+    fBridleCoatedCaps_log = new G4LogicalVolume(fBridleCoatedCaps, G4Material::GetMaterial("BlackPlastic"), "BridleCoatedCapsLog");
+    fBridleUncoatedCaps_log = new G4LogicalVolume(fBridleUncoatedCaps, G4Material::GetMaterial("BlackPlastic"), "BridleUncoatedCapsLog");
+    fFrillCoatedWall_log = new G4LogicalVolume(fFrillCoatedWall, G4Material::GetMaterial("Plastic"), "FrillCoatedWallLog");
+    fFrillUncoatedWall_log = new G4LogicalVolume(fFrillUncoatedWall, G4Material::GetMaterial("Plastic"), "FrillUncoatedWallLog");
+    fFrillCoatedCaps_log = new G4LogicalVolume(fFrillCoatedCaps, G4Material::GetMaterial("Plastic"), "FrillCoatedCapsLog");
+    fFrillUncoatedCaps_log = new G4LogicalVolume(fFrillUncoatedCaps, G4Material::GetMaterial("Plastic"), "FrillUncoatedCapsLog");
 
     // now get TPB coating
     G4double tpb_protrusion = pmt_protrusion_distance - bridle_width;
@@ -675,23 +684,23 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             G4String frill_descriptive_name = "Frill_" + pmt_name;
 
             if(row > 0 and row < 6) {
-                fPMTCoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedWall_log, descriptive_name, fFiducialAr_log, false, k, true);
                 fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingWall_log, tpb_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                fPMTCoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedWall_log, descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedWall_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedWall_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
                 // now add our boarder surfaces
                 new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedWall_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleWall_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillWall_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedWall_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedWall_log, PlasticOpticalSurface);
             } else {
-                fPMTCoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedCaps_log, descriptive_name, fFiducialAr_log, false, k, true);
                 fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingCaps_log, tpb_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                fPMTCoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedCaps_log, descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedCaps_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
                 // now add our boarder surfaces
                 new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCaps_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCaps_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedCaps_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedCaps_log, PlasticOpticalSurface);
             }
 
         } else {
@@ -702,20 +711,20 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
             if(row > 0 and row < 6) {
                 fPMTUncoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedWall_log, descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleWall_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillWall_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedWall_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedWall_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
                 // now add our boarder surfaces
                 new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialAr_phys, fPMTUncoatedWall_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleWall_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillWall_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleUncoatedWall_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillUncoatedWall_log, PlasticOpticalSurface);
             } else {
                 fPMTUncoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedCaps_log, descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCaps_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedCaps_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
                 // now add our boarder surfaces
                 new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialAr_phys, fPMTUncoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCaps_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCaps_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleUncoatedCaps_log, PlasticOpticalSurface);
+                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillUncoatedCaps_log, PlasticOpticalSurface);
 
             }
         }
@@ -838,7 +847,7 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     auto salmon = new G4VisAttributes(G4Colour(255/255., 128/255., 128/255.));
     //salmon->SetForceSolid(true);
     auto dark_blue = new G4VisAttributes(G4Colour(0., 0., 128/255.));
-    //dark_blue->SetForceSolid(true);
+    dark_blue->SetForceSolid(true);
     auto green = new G4VisAttributes(G4Colour(51/255., 153/255., 102/255.));
     //green->SetForceSolid(true);
     auto orange = new G4VisAttributes(G4Colour(255/255., 153/255., 0.));
@@ -850,11 +859,11 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
 
     fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fInnerJacket_log->SetVisAttributes(dark_blue);
-    fArgonOuter_log->SetVisAttributes(green);
-    fInnerFrame_log->SetVisAttributes(orange);
+    fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fArgonOuter_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fFiducialAr_log->SetVisAttributes(pink);
+    fFiducialAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     //fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
@@ -874,10 +883,11 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     //fPMTCoatedCaps_log->SetVisAttributes(pmt_va);
     //fPMTUncoatedWall_log->SetVisAttributes(pmt_va);
     //fPMTUncoatedCaps_log->SetVisAttributes(pmt_va);
-    fPMTCoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fPMTCoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fPMTUncoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fPMTUncoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    pink->SetForceSolid(true);
+    fPMTCoatedWall_log->SetVisAttributes(pink);
+    fPMTCoatedCaps_log->SetVisAttributes(pink);
+    fPMTUncoatedWall_log->SetVisAttributes(teal);
+    fPMTUncoatedCaps_log->SetVisAttributes(teal);
 
     auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     tpb_coating_va->SetForceSolid(true);
@@ -888,14 +898,16 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
 
     salmon->SetForceSolid(true);
     teal->SetForceSolid(true);
-    //fBridleWall_log->SetVisAttributes(salmon);
-    //fBridleCaps_log->SetVisAttributes(salmon);
+    fFrillCoatedWall_log->SetVisAttributes(dark_blue);
+    fFrillUncoatedWall_log->SetVisAttributes(dark_blue);
+    fFrillCoatedCaps_log->SetVisAttributes(dark_blue);
+    fFrillUncoatedCaps_log->SetVisAttributes(dark_blue);
     //fFrillWall_log->SetVisAttributes(teal);
     //fFrillCaps_log->SetVisAttributes(teal);
-    fBridleWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fBridleCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fFrillWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fFrillCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fBridleWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fBridleCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fFrillWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fFrillCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     // add shiny guy!
     auto red = new G4VisAttributes(G4Colour(1., 0., 0.));
@@ -905,9 +917,9 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     fShinyBottom_log->SetVisAttributes(red);
 
     // tpb foils!
-    fTPBFoilSides_log->SetVisAttributes(salmon);
-    fTPBFoilTop_log->SetVisAttributes(teal);
-    fTPBFoilBottom_log->SetVisAttributes(pmt_va);
+    fTPBFoilSides_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fTPBFoilTop_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fTPBFoilBottom_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     // make our source rod green
     if (SourceRodIn)

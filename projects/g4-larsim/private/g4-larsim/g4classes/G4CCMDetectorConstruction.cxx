@@ -822,10 +822,14 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             SetSensitiveDetector(fMainVolume->GetShinyC406R0(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetShinyTop(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetShinyBottom(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogBridleWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogBridleCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogFrillWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogFrillCaps(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogBridleCoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogBridleUncoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogBridleCoatedCaps(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogBridleUncoatedCaps(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogFrillCoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogFrillUncoatedWall(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogFrillCoatedCaps(), fScint_SD.Get());
+            SetSensitiveDetector(fMainVolume->GetLogFrillUncoatedCaps(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogInnerFrame(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogArgonOuter(), fScint_SD.Get());
             SetSensitiveDetector(fMainVolume->GetLogInnerJacket(), fScint_SD.Get());

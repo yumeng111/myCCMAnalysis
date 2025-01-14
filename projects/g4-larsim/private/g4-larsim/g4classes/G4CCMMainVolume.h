@@ -50,10 +50,14 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetShinyTop() { return fShinyTop_log; }
     G4LogicalVolume* GetShinyBottom() { return fShinyBottom_log; }
 
-    G4LogicalVolume* GetLogBridleWall() {return fBridleWall_log;}
-    G4LogicalVolume* GetLogBridleCaps() {return fBridleCaps_log;}
-    G4LogicalVolume* GetLogFrillWall() {return fFrillWall_log;}
-    G4LogicalVolume* GetLogFrillCaps() {return fFrillCaps_log;}
+    G4LogicalVolume* GetLogBridleCoatedWall() {return fBridleCoatedWall_log;}
+    G4LogicalVolume* GetLogBridleUncoatedWall() {return fBridleUncoatedWall_log;}
+    G4LogicalVolume* GetLogBridleCoatedCaps() {return fBridleCoatedCaps_log;}
+    G4LogicalVolume* GetLogBridleUncoatedCaps() {return fBridleUncoatedCaps_log;}
+    G4LogicalVolume* GetLogFrillCoatedWall() {return fFrillCoatedWall_log;}
+    G4LogicalVolume* GetLogFrillUncoatedWall() {return fFrillUncoatedWall_log;}
+    G4LogicalVolume* GetLogFrillCoatedCaps() {return fFrillCoatedCaps_log;}
+    G4LogicalVolume* GetLogFrillUncoatedCaps() {return fFrillUncoatedCaps_log;}
 
     G4LogicalVolume* GetLogInnerFrame() {return fInnerFrame_log;}
     G4LogicalVolume* GetLogArgonOuter() {return fArgonOuter_log;}
@@ -86,10 +90,14 @@ class G4CCMMainVolume : public G4PVPlacement
     G4VSolid* fPMTUncoatedWall = nullptr;
     G4VSolid* fPMTUncoatedCaps = nullptr;
 
-    G4VSolid* fBridleWall = nullptr;
-    G4VSolid* fBridleCaps = nullptr;
-    G4VSolid* fFrillWall = nullptr;
-    G4VSolid* fFrillCaps = nullptr;
+    G4VSolid* fBridleCoatedWall = nullptr;
+    G4VSolid* fBridleCoatedCaps = nullptr;
+    G4VSolid* fFrillCoatedWall = nullptr;
+    G4VSolid* fFrillCoatedCaps = nullptr;
+    G4VSolid* fBridleUncoatedWall = nullptr;
+    G4VSolid* fBridleUncoatedCaps = nullptr;
+    G4VSolid* fFrillUncoatedWall = nullptr;
+    G4VSolid* fFrillUncoatedCaps = nullptr;
 
     G4VSolid* fTPBCoatingWall = nullptr;
     G4VSolid* fTPBCoatingCaps = nullptr;
@@ -121,10 +129,14 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fPMTUncoatedWall_log = nullptr;
     G4LogicalVolume* fPMTUncoatedCaps_log = nullptr;
 
-    G4LogicalVolume* fBridleWall_log = nullptr;
-    G4LogicalVolume* fBridleCaps_log = nullptr;
-    G4LogicalVolume* fFrillWall_log = nullptr;
-    G4LogicalVolume* fFrillCaps_log = nullptr;
+    G4LogicalVolume* fBridleCoatedWall_log = nullptr;
+    G4LogicalVolume* fBridleCoatedCaps_log = nullptr;
+    G4LogicalVolume* fFrillCoatedWall_log = nullptr;
+    G4LogicalVolume* fFrillCoatedCaps_log = nullptr;
+    G4LogicalVolume* fBridleUncoatedWall_log = nullptr;
+    G4LogicalVolume* fBridleUncoatedCaps_log = nullptr;
+    G4LogicalVolume* fFrillUncoatedWall_log = nullptr;
+    G4LogicalVolume* fFrillUncoatedCaps_log = nullptr;
 
     G4LogicalVolume* fTPBCoatingWall_log = nullptr;
     G4LogicalVolume* fTPBCoatingCaps_log = nullptr;
