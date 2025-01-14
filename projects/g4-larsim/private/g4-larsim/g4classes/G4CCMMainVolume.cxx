@@ -594,6 +594,14 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                                     vis_tpb_refl, vis_tpb_refl, vis_tpb_refl, vis_tpb_refl,
                                                     vis_tpb_refl, vis_tpb_refl, vis_tpb_refl, vis_tpb_refl, uv_tpb_refl, uv_tpb_refl, uv_tpb_refl,
                                                     uv_tpb_refl, uv_tpb_refl, uv_tpb_refl, uv_tpb_refl};
+    G4double uv_tpb_trans = 1.0 - uv_tpb_refl;
+    G4double vis_tpb_trans = 1.0 - vis_tpb_refl;
+
+    std::vector<G4double> tpb_transmission = { vis_tpb_trans, vis_tpb_trans, vis_tpb_trans, vis_tpb_trans, vis_tpb_trans,
+                                                    vis_tpb_trans, vis_tpb_trans, vis_tpb_trans, vis_tpb_trans, vis_tpb_trans,
+                                                    vis_tpb_trans, vis_tpb_trans, vis_tpb_trans, vis_tpb_trans,
+                                                    vis_tpb_trans, vis_tpb_trans, vis_tpb_trans, vis_tpb_trans, uv_tpb_trans, uv_tpb_trans, uv_tpb_trans,
+                                                    uv_tpb_trans, uv_tpb_trans, uv_tpb_trans, uv_tpb_trans};
 
     G4OpticalSurface *TPBOpticalSurface = new G4OpticalSurface("TPBOpticalSurface");
 
@@ -603,6 +611,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     G4MaterialPropertiesTable *TPB_MT = new G4MaterialPropertiesTable();
     TPB_MT->AddProperty("REFLECTIVITY", PMTGlassEnergy, tpb_reflection);
+    TPB_MT->AddProperty("TRANSMITTANCE", PMTGlassEnergy, tpb_transmission);
     TPBOpticalSurface->SetMaterialPropertiesTable(TPB_MT);
 
     // put tpb surface on our foils
