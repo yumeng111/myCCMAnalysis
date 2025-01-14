@@ -392,8 +392,6 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + EndCapFoilTPBThickness) * 2.0;
     G4double frame_half_height = frame_height / 2.0;
     G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
-    //G4double frame_radius = 1077.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
-    //G4double frame_radius = 997.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
@@ -532,7 +530,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                             7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
     G4double uvReflection = 0.05;
-    G4double visUncoatedReflection = 0.20;
+    G4double visUncoatedReflection = 0.10;
 
     std::vector<G4double> PMTUncoatedGlassReflection = { visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
                                                     visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection, visUncoatedReflection,
@@ -564,17 +562,17 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // and surface properties for the frill + bridle
     // Definition of MPT for Plastic frills
-    std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.6*eV };
-    std::vector<G4double> plastic_reflect = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
+    //std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.6*eV };
+    //std::vector<G4double> plastic_reflect = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
 
-    //G4double uv_plastic_refl = 0.10;
-    //G4double vis_plastic_refl = 0.99;
+    G4double uv_plastic_refl = 0.10;
+    G4double vis_plastic_refl = 0.90;
 
-    //std::vector<G4double> plastic_reflection = { vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
-    //                                                vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
-    //                                                vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
-    //                                                vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, uv_plastic_refl, uv_plastic_refl, uv_plastic_refl,
-    //                                                uv_plastic_refl, uv_plastic_refl, uv_plastic_refl, uv_plastic_refl};
+    std::vector<G4double> plastic_reflection = { vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
+                                                    vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
+                                                    vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
+                                                    vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, uv_plastic_refl, uv_plastic_refl, uv_plastic_refl,
+                                                    uv_plastic_refl, uv_plastic_refl, uv_plastic_refl, uv_plastic_refl};
 
     G4OpticalSurface *PlasticOpticalSurface = new G4OpticalSurface("PlasticOpticalSurface");
 
@@ -583,8 +581,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     PlasticOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
 
     G4MaterialPropertiesTable *Plastic_MT = new G4MaterialPropertiesTable();
-    Plastic_MT->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
-    //Plastic_MT->AddProperty("REFLECTIVITY", PMTGlassEnergy, plastic_reflection);
+    //Plastic_MT->AddProperty("REFLECTIVITY", plastic_Energy, plastic_reflect);
+    Plastic_MT->AddProperty("REFLECTIVITY", PMTGlassEnergy, plastic_reflection);
     PlasticOpticalSurface->SetMaterialPropertiesTable(Plastic_MT);
 
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
@@ -767,8 +765,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                                                 3.643*eV, 3.812*eV, 4.086*eV, 4.511*eV, 4.953*eV, 5.474*eV, 6.262*eV,
                                                 7.000*eV, 8.300*eV, 10.00*eV, 12.60*eV };
 
-        G4double uvReflection = 0.90;
-        G4double visReflection = 0.90;
+        G4double uvReflection = 0.40;
+        G4double visReflection = 0.60;
 
         std::vector<G4double> StainlessSteelReflection = { visReflection, visReflection, visReflection, visReflection, visReflection,
                                                         visReflection, visReflection, visReflection, visReflection, visReflection,
