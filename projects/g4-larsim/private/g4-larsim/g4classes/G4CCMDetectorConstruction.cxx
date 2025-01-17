@@ -668,7 +668,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // let's try adding some mie scattering to our tpb! i have no idea what this is gonna do...we'll see
     std::vector<G4double> TPB_Scattering_Energy = {1.0 * eV, 3.1 * eV, 3.11 * eV, 5.9*eV, 6.0 * eV, 12.0*eV}; // ~1200 nm, ~400nm, ~401nm, ~210nm, ~206nm, ~100nm
-    std::vector<G4double> TPB_Mie_Scattering_Length = {0.005 * mm, 0.005 * mm, 1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m}; // mie scattering for vis light
+    std::vector<G4double> TPB_Mie_Scattering_Length = {0.001 * mm, 0.001 * mm, 1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m}; // mie scattering for vis light
     std::vector<G4double> TPB_Rayl_Scattering_Length = {1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m, 0.005 * mm, 0.005 * mm}; // rayl scattering for uv light
 
     // and a teensy bit of bullk absorption to avoid photons bouncing around forever
