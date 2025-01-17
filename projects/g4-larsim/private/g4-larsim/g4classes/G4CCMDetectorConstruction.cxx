@@ -694,7 +694,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // rayl scattering!
     fTPBFoilSides_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
     // bulk absoprtion
-    fTPBFoilSides_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
+    //fTPBFoilSides_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
 
     // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
@@ -713,7 +713,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // rayl scattering!
     fTPBFoilTopBottom_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
     // bulk absoprtion
-    fTPBFoilTopBottom_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
+    //fTPBFoilTopBottom_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
 
     // tpb on pmts
@@ -732,7 +732,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // rayl scattering!
     fTPBPMT_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
     // bulk absoprtion
-    fTPBPMT_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
+    //fTPBPMT_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the reflectors.
