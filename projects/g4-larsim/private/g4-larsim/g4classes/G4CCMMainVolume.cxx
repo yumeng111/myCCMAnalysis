@@ -576,8 +576,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     //std::vector<G4double> plastic_Energy = { 1.0*eV,1.2*eV,2.5*eV,3.0*eV,3.4*eV,6.5*eV,10.0*eV,12.6*eV };
     //std::vector<G4double> plastic_reflect = {0.10, 0.10, 0.25, 0.30, 0.10, 0.05, 0.01, 0.01};
 
-    G4double uv_plastic_refl = 0.60;
-    G4double vis_plastic_refl = 0.90;
+    G4double uv_plastic_refl = 0.05;
+    G4double vis_plastic_refl = 0.30;
 
     std::vector<G4double> plastic_reflection = { vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
                                                     vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl, vis_plastic_refl,
