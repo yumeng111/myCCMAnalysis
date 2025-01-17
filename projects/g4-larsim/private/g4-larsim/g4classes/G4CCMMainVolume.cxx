@@ -744,7 +744,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedWall_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
                 // now add our boarder surfaces
                 //new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedWall_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedWall_log, CoatedPMTGlassOpticalSurface);
+                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedWall_log, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedWall_log, PlasticOpticalSurface);
                 new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedWall_log, PlasticOpticalSurface);
                 //new G4LogicalSkinSurface(tpb_descriptive_name + "_Surface", fTPBCoatingWall_log, TPBOpticalSurface);
@@ -756,7 +756,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedCaps_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
                 // now add our boarder surfaces
                 //new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedCaps_log, CoatedPMTGlassOpticalSurface);
+                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedCaps_log, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedCaps_log, PlasticOpticalSurface);
                 new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedCaps_log, PlasticOpticalSurface);
                 //new G4LogicalSkinSurface(tpb_descriptive_name + "_Surface", fTPBCoatingCaps_log, TPBOpticalSurface);
@@ -1088,8 +1088,8 @@ void G4CCMMainVolume::SurfaceProperties()
 
     PTFEOpticalSurface->SetModel(unified);
     PTFEOpticalSurface->SetType(dielectric_metal);
-    PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
-    //PTFEOpticalSurface->SetFinish(polished);
+    //PTFEOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
+    PTFEOpticalSurface->SetFinish(polished);
     //PTFEOpticalSurface->SetType(dielectric_metal);
     //PTFEOpticalSurface->SetFinish(ground);
     //PTFEOpticalSurface->SetFinish(groundbackpainted);

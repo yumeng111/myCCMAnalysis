@@ -667,8 +667,13 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                      1.62, 1.62, 1.62, 1.62, 1.62, 1.62, 1.62};
 
     // let's try adding some mie scattering to our tpb! i have no idea what this is gonna do...we'll see
-    std::vector<G4double> TPB_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
-    std::vector<G4double> TPB_Mie_Scattering_Length = {0.05 * mm, 0.05 * mm, 1.0 * m, 1.0 * m}; // mie scattering for vis light, no mie scattering for UV
+    std::vector<G4double> TPB_Scattering_Energy = {1.0 * eV, 3.1 * eV, 3.11 * eV, 5.9*eV, 6.0 * eV, 12.0*eV}; // ~1200 nm, ~400nm, ~401nm, ~210nm, ~206nm, ~100nm
+    std::vector<G4double> TPB_Mie_Scattering_Length = {0.005 * mm, 0.005 * mm, 1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m}; // mie scattering for vis light
+    std::vector<G4double> TPB_Rayl_Scattering_Length = {1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m, 0.005 * mm, 0.005 * mm}; // rayl scattering for uv light
+
+    // and a teensy bit of bullk absorption to avoid photons bouncing around forever
+    // let's set the absorption length to ~10 * thickness
+    std::vector<G4double> TPB_bulk_absoprtion = {0.02 * mm, 0.02 * mm, 0.02 * mm, 0.02 * mm, 0.02 * mm, 0.02 * mm};
 
     // now make our tpb foils!
     // making different ones for sides and top/bottom :)
@@ -682,10 +687,14 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
-    //fTPBFoilSides_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
-    //fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    //fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    //fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    fTPBFoilSides_mt->AddProperty("MIEHG", TPB_Scattering_Energy, TPB_Mie_Scattering_Length);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    // rayl scattering!
+    fTPBFoilSides_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
+    // bulk absoprtion
+    fTPBFoilSides_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
 
     // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
@@ -697,10 +706,14 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
-    //fTPBFoilTopBottom_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
-    //fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    //fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    //fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    fTPBFoilTopBottom_mt->AddProperty("MIEHG", TPB_Scattering_Energy, TPB_Mie_Scattering_Length);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    // rayl scattering!
+    fTPBFoilTopBottom_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
+    // bulk absoprtion
+    fTPBFoilTopBottom_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
 
     // tpb on pmts
@@ -712,10 +725,14 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
-    //fTPBPMT_mt->AddProperty("MIEHG", TPB_Mie_Scattering_Energy, TPB_Mie_Scattering_Length);
-    //fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    //fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    //fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    fTPBPMT_mt->AddProperty("MIEHG", TPB_Scattering_Energy, TPB_Mie_Scattering_Length);
+    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    // rayl scattering!
+    fTPBPMT_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
+    // bulk absoprtion
+    fTPBPMT_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the reflectors.
