@@ -597,7 +597,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     PlasticOpticalSurface->SetMaterialPropertiesTable(Plastic_MT);
 
     // now let's make a surface for TPB
-    G4double uv_tpb_refl = 0.05;
+    G4double uv_tpb_refl = 0.01;
     G4double vis_tpb_refl = 0.05;
 
     std::vector<G4double> tpb_reflection = { vis_tpb_refl, vis_tpb_refl, vis_tpb_refl, vis_tpb_refl, vis_tpb_refl,
