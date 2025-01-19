@@ -692,7 +692,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
     fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     // rayl scattering!
-    fTPBFoilSides_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
+    //fTPBFoilSides_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
     // bulk absoprtion
     //fTPBFoilSides_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
@@ -711,7 +711,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
     fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     // rayl scattering!
-    fTPBFoilTopBottom_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
+    //fTPBFoilTopBottom_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
     // bulk absoprtion
     //fTPBFoilTopBottom_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
@@ -730,7 +730,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
     fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
     // rayl scattering!
-    fTPBPMT_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
+    //fTPBPMT_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
     // bulk absoprtion
     //fTPBPMT_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
