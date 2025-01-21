@@ -188,48 +188,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fBlackPlastic->AddElement(fO,2);
 
     //***Material properties tables
-
-    std::vector<G4double> LAr_Energy_Scint = { 3.87*eV , 4.51*eV , 4.74*eV , 5.03*eV , 5.36*eV , 5.55*eV , 5.82*eV , 6.06*eV , 6.54*eV , 6.79*eV ,
-                                               7.03*eV , 7.36*eV , 7.76*eV , 7.98*eV , 8.33*eV , 8.71*eV , 8.96*eV , 9.33*eV , 9.91*eV , 10.31*eV ,
-                                               10.61*eV , 10.88*eV , 11.27*eV , 11.81*eV , 12.40*eV , 13.05*eV , 13.78*eV , 14.59*eV , 15.50*eV }; // energies for scintillation spectrum
-
-    std::vector<G4double> LAr_Energy_RIn = {1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV ,
-                                            4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV ,
-                                            8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV ,
-                                            10.33206*eV , 11.27134*eV , 12.39847*eV }; // energies for refractive index and Rayleigh scattering lengths
-
-    std::vector<G4double> LAr_SCINT = {0.00006, 0.00007, 0.00008, 0.00011, 0.00020, 0.00030, 0.00048, 0.00082, 0.00126, 0.00084, 0.00043, 0.00030,
-                                       0.00106, 0.00298, 0.00175, 0.00351, 0.01493, 0.12485, 0.49332, 0.20644, 0.07477, 0.04496, 0.01804, 0.00576,
-                                       0.00184, 0.00059, 0.00019, 0.00006, 0.00002 }; // liquid Argon scintillation spectrum. this one is centered at 128 nm (as it should be).
-
-    std::vector<G4double> LAr_RIND = {1.22 , 1.222 , 1.225 , 1.23 ,
-                                      1.24 , 1.255 , 1.263 , 1.28 ,
-                                      1.315, 1.335 , 1.358 , 1.403,
-                                      1.45 , 1.62  , 1.79 }; // index of refraction spectrum.
-
-    std::vector<G4double> LAr_RSL = {327028.6808*cm, 172560.2267*cm, 80456.5339*cm, 31177.44642*cm,
-                                     8854.144327*cm, 1496.876298*cm, 906.5011168*cm, 480.2538294*cm,
-                                     205.3758714*cm, 145.6326111*cm, 100.7813004*cm, 63.2898117*cm,
-                                     40.07450411*cm, 11.43903548*cm, 3.626432195*cm }; // spectrum of rayleigh scattering lengths.
-
-    std::vector<G4double> LAr_Energy_Abs = {1.239847*eV, 1.26515*eV, 1.2915072916666666*eV, 1.3189861702127659*eV, 1.3476597826086956*eV, 1.3776077777777778*eV,
-                                            1.4089170454545454*eV, 1.441682558139535*eV, 1.4760083333333334*eV, 1.512008536585366*eV, 1.54980875*eV, 1.589547435897436*eV,
-                                            1.6313776315789474*eV, 1.675468918918919*eV, 1.7220097222222222*eV, 1.77121*eV, 1.823304411764706*eV, 1.8785560606060605*eV,
-                                            1.9372609375*eV, 1.9997532258064517*eV, 2.0664116666666668*eV, 2.1376672413793103*eV, 2.2140125*eV, 2.296012962962963*eV,
-                                            2.384321153846154*eV, 2.479694*eV, 2.583014583333333*eV, 2.695319565217391*eV, 2.817834090909091*eV, 2.9520166666666667*eV,
-                                            3.0996175*eV, 3.262755263157895*eV, 3.4440194444444443*eV, 3.646608823529412*eV, 3.874521875*eV, 4.1328233333333335*eV, 4.428025*eV,
-                                            4.768642307692308*eV, 5.166029166666666*eV, 5.635668181818182*eV, 6.199235*eV, 6.888038888888889*eV, 7.74904375*eV, 8.85605*eV,
-                                            10.332058333333332*eV, 12.39847*eV, 15.4980875*eV};
-
-    std::vector<G4double> LAr_ABS = {2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
-                                     2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm,
-                                     2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 2800.0*cm, 1310.0*cm, 1310.0*cm, 1310.0*cm, 1310.0*cm, 1310.0*cm, 100.0*cm, 100.0*cm, 100.0*cm,
-                                     100.0*cm, 100.0*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm, 55.9506*cm};
-
-    // Takes the defined values above and uses them to define a materials properties table.
-
     G4MaterialPropertiesTable* fLAr_mt = new G4MaterialPropertiesTable();
-    //fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", LAr_Energy_Scint, LAr_SCINT);
 
     // let's grab our scintillation profile from txt file
     // txt file is digitization of liquid argon (black line) in fig 1 from https://arxiv.org/pdf/1511.07718
@@ -274,86 +233,18 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
         lar_energy.push_back(this_energy);
         lar_sorted_intensity.push_back(this_intensity);
-        //std::cout << "at wavelength = " << this_wavelength << ", energy = " << this_energy << ", intensity = " << this_intensity << std::endl;
     }
 
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", lar_energy, lar_sorted_intensity);
 
-    // let's do index of refraction and rayleigh now
-    G4double rindex = 1.358;//LAr rindex @ 128
-    G4double scaler = 1.0;//scaling slope of rindex
-    G4double scalerray = 1.73;//scaling slope of rayleigh
-    std::vector<G4double> lar_Energy_rin = { 1.771210*eV , 2.066412*eV , 2.479694*eV , 3.099618*eV , 4.132823*eV , 6.199235*eV , 6.888039*eV , 7.749044*eV ,
-                                             8.856050*eV , 9.252590*eV , 9.686305*eV , 9.998766*eV , 10.33206*eV , 11.27134*eV , 12.39847*eV }; //energies for refractive index and Rayleigh scattering lengths
-
-    G4double set = rindex-1.24;
-    G4double scaleRin = 1.0;//scaling slope of rindex
-    std::vector<G4double> scale = { 0.125, 0.196, 0.345, 0.637, 0.8065, 1.38, 1.78, 3.22, 4.66 };
-    for (int i = 0; i < 9; ++i) {
-        scale[i] = std::pow(scale[i],scaler)*set+1.24;
-    }
-    std::vector<G4double> lar_RSL = { 3244.9341, 1712.2246, 798.328,   309.35745, 87.855032, 14.852719, 8.9947353, 4.7653069,
-                                      2.0378371, 1.445036,  1,         0.6279916, 0.3976383, 0.1135036, 0.035983 };
-    for (int i = 0; i < 15; ++i) {
-        lar_RSL[i] = std::pow(lar_RSL[i],scalerray) * Rayleigh128_;
-    }
-
-    std::cout << "using " << Rayleigh128_ / cm<< " for Rayleigh scattering length at 128nm" << std::endl;
-
-    const G4int larrin =  sizeof(lar_Energy_rin)/sizeof(G4double);
-    std::vector<G4double> lar_RIND  = { 1.22 ,     1.222 ,    1.225 ,    1.23 , 1.24 ,     scale[0] , scale[1] , scale[2] , scale[3] ,
-                                        scale[4] , rindex ,   scale[5], scale[6] , scale[7] , scale[8] }; //index of refraction spectrum.
-
-    // digitizing index of refection curve from : https://iopscience.iop.org/article/10.1088/1748-0221/15/09/P09009/pdf
-    std::vector<G4double> lar_rin_energy = {1.7796475872756885*eV, 1.7891457717226782*eV, 1.8054526951265117*eV, 1.822059607162872*eV, 1.838974862746776*eV, 1.8562071299549505*eV,
-                    1.873765404837164*eV, 1.8916590270762021*eV, 1.909897696553779*eV, 1.941378039269073*eV, 1.9597112701449861*eV, 1.9792926044985066*eV, 1.9992691996518226*eV,
-                    2.019653145484678*eV, 2.0404570300147524*eV, 2.061693965320585*eV, 2.083377615100353*eV, 2.1055222239882103*eV, 2.128142648760364*eV, 2.157644975116533*eV,
-                    2.174873635399205*eV, 2.199017281802407*eV, 2.2237029912861686*eV, 2.24894922636821*eV, 2.2790579604662744*eV, 2.3012014129876186*eV, 2.3282487304039234*eV,
-                    2.3559394144072527*eV, 2.3842966966577097*eV, 2.4133449409545937*eV, 2.458269133337688*eV, 2.4849014972734924*eV, 2.516469053500175*eV, 2.548848982302357*eV,
-                    2.582073051339936*eV, 2.625632054479068*eV, 2.6511891842298247*eV, 2.687153632929823*eV, 2.7241072444751575*eV, 2.76209139665533*eV, 2.801149807733753*eV,
-                    2.8348596827115067*eV, 2.8826770037975633*eV, 2.925246513174772*eV, 2.9690921454678754*eV, 3.0142721561072454*eV, 3.0890535318910706*eV, 3.1357303178839953*eV,
-                    3.1861671087469063*eV, 3.238252929013516*eV, 3.292069995168876*eV, 3.347706081542762*eV, 3.4320728286845594*eV, 3.475871169535698*eV, 3.537951749854355*eV,
-                    3.6022902299193373*eV, 3.669012072607369*eV, 3.738252211537535*eV, 3.810155961900535*eV, 3.8848800384660307*eV, 3.962593695776117*eV, 4.04348000798377*eV,
-                    4.127737308705522*eV, 4.2155808147255485*eV, 4.307244461534802*eV, 4.402982983664898*eV, 4.50307427877052*eV, 4.607822101663054*eV, 4.717559143300848*eV,
-                    4.832650560476997*eV, 4.953498035097037*eV, 5.0805444581263925*eV, 5.214279353309575*eV, 5.355245180657049*eV, 5.504044690814808*eV, 5.66134954055525*eV,
-                    5.827910429110884*eV, 6.004569078054936*eV, 6.192272458134932*eV, 6.392089770604918*eV, 6.605232825994017*eV, 6.833080640674447*eV, 7.077209306067997*eV,
-                    7.339428497994577*eV, 7.621826414603955*eV, 7.912433314294229*eV, 8.179758934331812*eV, 8.40050420304067*eV, 8.626170374225552*eV, 8.794164129513433*eV,
-                    8.941724130244088*eV, 9.067169451411463*eV, 9.198403000029087*eV, 9.333491152007818*eV, 9.454990508518085*eV, 9.555688654693979*eV, 9.677740375935919*eV,
-                    9.732509843599956*eV, 9.827616886182714*eV, 9.887073782541318*eV, 9.954828623123579*eV, 10.00707792865313*eV, 10.056930619514546*eV, 10.140132677874476*eV,
-                    10.194350573194631*eV, 10.256042931141742*eV, 10.283702077582664*eV, 10.346483947970743*eV, 10.39584679097731*eV, 10.431395329050503*eV, 10.488781453233136*eV,
-                    10.506844325403087*eV, 10.524969517527206*eV, 10.583392700000351*eV, 10.609157294379017*eV, 10.609157294379017*eV, 10.64543919403335*eV, 10.67673605974556*eV,
-                    10.729308452438863*eV, 10.757559315103023*eV, 10.770219396997772*eV, 10.83140493673637*eV, 10.890178612565393*eV, 10.913207662156509*eV, 10.955885552428656*eV};
-
-    std::vector<G4double> lar_rin = {1.223851851006636, 1.2238861605511049, 1.2242824150943648, 1.224515836338215, 1.2248035353485351, 1.2248469844097407, 1.224998989003886,
-        1.2252866880142061, 1.2257914980904059, 1.2260799555575614, 1.2259800607514975, 1.2261320653456427, 1.226311208823023, 1.2265446300668732, 1.2268051901939585,
-        1.2270657503210436, 1.227109199382249, 1.2270983706769847, 1.2275760418699495, 1.2277902265006047, 1.2276629399923604, 1.227652111287096, 1.2276412825818317,
-        1.227847564942447, 1.228513436348104, 1.2282058518972074, 1.2284935509075274, 1.228618416618438, 1.2287704212125832, 1.2288138702737887, 1.2288552973427664,
-        1.2289239695684295, 1.229021696396105, 1.22928225652319, 1.2295428166502753, 1.2299415456869283, 1.2298739647218009, 1.2298631360165364, 1.2298523073112722,
-        1.2300857285551223, 1.2301834553827977, 1.2307917590196933, 1.2304060479213834, 1.2303952192161192, 1.2306557793432042, 1.2310248950032292, 1.2314310340960466,
-        1.2315401086908917, 1.2315292799856272, 1.2315455901635977, 1.2318332891739179, 1.2322838214836478, 1.2328542705175018, 1.2326672784661405, 1.232819283060286,
-        1.233106982070606, 1.2332318477815165, 1.2334924079086016, 1.2339700791015664, 1.2343391947615914, 1.2344369215892668, 1.2349145927822316, 1.2354465417416662,
-        1.2356799629855164, 1.2360762175287763, 1.236553888721741, 1.2371943932141156, 1.2375635088741406, 1.23839398554916, 1.2388987956253597, 1.2397021334171439,
-        1.240424054559223, 1.2413902256504172, 1.242383535624846, 1.243431123365745, 1.2446686832892886, 1.2460419376290068, 1.2476865808010746, 1.2494397795060823,
-        1.2514915059266745, 1.253950315595791, 1.2570875973457813, 1.2602791568622416, 1.2644477161751602, 1.2696204141677723, 1.2757868875006593, 1.2825769963733344,
-        1.2890755218478542, 1.2957999310085544, 1.302083216921955, 1.3088325520277058, 1.3151068444904355, 1.3227870040844987, 1.330410301256546, 1.3382970090280253,
-        1.3470713331130995, 1.3569512233388579, 1.3654795913304802, 1.3717843223513666, 1.379280951928543, 1.3869527432356434, 1.3957960940664433, 1.4078640805824216,
-        1.4196624676907734, 1.4303976786874004, 1.43909636356304, 1.4478149426687894, 1.4564517896604865, 1.4656151322476627, 1.4747797038069443, 1.4826447840523087,
-        1.4901034791423096, 1.498633421647078, 1.506986469474708, 1.5136976384727987, 1.5200268406650175, 1.534418089809555, 1.5256921974212927, 1.540775155067103,
-        1.5473670381158737, 1.557635051486215, 1.5663646774729825, 1.5747539433462947, 1.5857449864893816, 1.5960318175998567};
-
-    // let's try scaling the rindex down by ~5%
-    for (size_t rin_it = 0; rin_it < lar_rin.size(); rin_it++){
-        //lar_rin.at(rin_it) *= 0.95;
-        lar_rin.at(rin_it) *= 1.10;
-    }
-
-    //fLAr_mt->AddProperty("RINDEX", lar_Energy_rin,  lar_RIND, larrin);
-    //fLAr_mt->AddProperty("RINDEX", lar_rin_energy, lar_rin);
-
-    // haha trying one more type of rindex...using grace fit around section 2.3.3 from https://arxiv.org/pdf/2408.00817v1
+    // for LAr index of refraction, using grace fit around section 2.3.3 from https://arxiv.org/pdf/2408.00817v1
+    // can also calculate rayleigh scattering length at the same time
     std::vector<G4double> grace_rin_energy = {};
     std::vector<G4double> grace_rin_vals = {};
+    std::vector<G4double> rayl_energy = {};
+    std::vector<G4double> rayl_scattering_length = {};
 
+    // constants for index of refraction
     double a0 = 1.26;
     double aUV = 0.23;
     double aIR = 0.0023;
@@ -362,40 +253,27 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double starting_wavelength = 112.0;
     double ending_wavelength = 850.0;
     size_t n_entries = 1000;
-    for (size_t i = (n_entries + 1); i > 0; i--){
-        double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
-        double this_rindex = std::sqrt(a0 + ((aUV * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamUV, 2.0))) +
-                                       ((aIR * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamIR, 2.0))));
 
-        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
-        std::cout << "wavelength = " << this_wavelength << ", energy = " << this_energy << ", and rindex = " << this_rindex << std::endl;
-
-        grace_rin_energy.push_back(this_energy);
-        grace_rin_vals.push_back(this_rindex);
-    }
-
-    fLAr_mt->AddProperty("RINDEX", grace_rin_energy, grace_rin_vals);
-    //fLAr_mt->AddProperty("RAYLEIGH", lar_Energy_rin,  lar_RSL, larrin);
-
-    // let's fix up rayleigh scattering length
-    // we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
+    // for rayl, we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
     double rindex_128 = std::sqrt(a0 + ((aUV * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamUV, 2.0))) +
                                    ((aIR * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamIR, 2.0))));
     double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
 
-    std::vector<G4double> rayl_energy = {};
-    std::vector<G4double> rayl_scattering_length = {};
     for (size_t i = (n_entries + 1); i > 0; i--){
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
         double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
         double this_rindex = std::sqrt(a0 + ((aUV * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamUV, 2.0))) +
                                        ((aIR * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamIR, 2.0))));
-
         double this_rayl = (rayl_scaling * std::pow(this_wavelength*1e-7, 4.0) / std::pow((std::pow(this_rindex, 2.0) - 1)*(std::pow(this_rindex, 2.0) + 2), 2.0) ) * cm;
-        std::cout << "wavelength = " << this_wavelength << ", energy = " << this_energy << ", and rayl scattering length = " << this_rayl / cm << std::endl;
+
+        // save
+        grace_rin_energy.push_back(this_energy);
+        grace_rin_vals.push_back(this_rindex);
         rayl_energy.push_back(this_energy);
         rayl_scattering_length.push_back(this_rayl);
     }
+
+    fLAr_mt->AddProperty("RINDEX", grace_rin_energy, grace_rin_vals);
     fLAr_mt->AddProperty("RAYLEIGH", rayl_energy, rayl_scattering_length);
 
     // now add absorption length
@@ -405,7 +283,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     std::vector<G4double> flat_abs_energy = {1.03319652*eV,  3.09958956*eV,  3.26272585*eV,  3.4439884*eV,   3.64657595*eV,  3.87448695*eV,
                                            4.13278608*eV,  4.42798509*eV,  4.76859932*eV,  5.1659826*eV,   5.63561738*eV,  6.8879768*eV, 11.27123476*eV};
-    //std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
     std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
                                       UVAbsLength_*32.0, UVAbsLength_*8.0, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
 
@@ -418,18 +295,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE",1.0);
     fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", SingletTau_);
-    //fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT2", TripletTau_);
-    //fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",0.25); // for e/m scintillation
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",1.0); // for e/m scintillation
-
-    // trying out mie scattering in the lar!!!
-    //std::vector<G4double> LAr_Mie_Scattering_Energy = {1.0 * eV, 4.0 * eV, 4.1 * eV, 12.0 * eV}; // 1 - 4 eV are vis, 4.1 - 12 eV are UV
-    //std::vector<G4double> LAr_Mie_Scattering_Length = {60.0 * cm, 60.0 * cm, 5.0 * m, 5.0 * m}; // mie scattering for vis light, no mie scattering for UV
-    //fLAr_mt->AddProperty("MIEHG", LAr_Mie_Scattering_Energy, LAr_Mie_Scattering_Length);
-    //fLAr_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    //fLAr_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    //fLAr_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
-
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 
     // Set the Birks Constant for the LAr scintillator
@@ -493,70 +359,11 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> alum_abseneg = { 1.5498*eV, 20.664*eV};
 
     G4MaterialPropertiesTable* fAlum_mt = new G4MaterialPropertiesTable();
-    //fAlum_mt->AddProperty("REFLECTIVITY", alum_energy, alum_reflect); this doesnt do anything...
     fAlum_mt->AddProperty("ABSLENGTH", alum_abseneg, alum_abslen);
     fAlum->SetMaterialPropertiesTable(fAlum_mt);
 
     // now time to define foil + pmt TPB
-    // emession spectrum for TPB + PTFE (https://arxiv.org/pdf/2211.05024)
-    std::vector<G4double> TPB_PTFE_Emission_Energy = {2.0685664749347477*eV, 2.0742413589180417*eV, 2.0805207528485083*eV, 2.0868375149681437*eV, 2.0931932082425835*eV, 2.099587647474017*eV,
-                2.106021274818547*eV, 2.112494131525724*eV, 2.119007045952072*eV, 2.12555991971599*eV, 2.132153329185213*eV, 2.138788039429448*eV, 2.145462998960346*eV, 2.152179994420006*eV,
-                2.1589388770455353*eV, 2.1657412326952583*eV, 2.1725864662565497*eV, 2.179474860522975*eV, 2.1864067314622337*eV, 2.193383621332569*eV, 2.200405401685091*eV, 2.2074731426719727*eV,
-                2.2145859216890855*eV, 2.2217433336672547*eV, 2.228947970252437*eV, 2.236198669829078*eV, 2.243496400573736*eV, 2.250843075164009*eV, 2.258236327514419*eV, 2.265677270871168*eV,
-                2.27316704186735*eV, 2.2807053764506375*eV, 2.288294318910927*eV, 2.2959357211202307*eV, 2.3031132208657867*eV, 2.3064249200502367*eV, 2.3089987782740105*eV, 2.310753056791676*eV,
-                2.3123937390541376*eV, 2.3137607497117663*eV, 2.315207040598785*eV, 2.315908550533234*eV, 2.3174715527811522*eV, 2.319511938132526*eV, 2.320396040998038*eV, 2.3215564607402435*eV,
-                2.3231261582527347*eV, 2.3239333030607687*eV, 2.3252510550513774*eV, 2.326606009528413*eV, 2.3288955123996273*eV, 2.3296218044811994*eV, 2.3315105459000147*eV, 2.3336095670498143*eV,
-                2.3392267743396813*eV, 2.3434320787205567*eV, 2.3448964788261755*eV, 2.34672623048496*eV, 2.347830664304569*eV, 2.34948351875669*eV, 2.350956442682144*eV, 2.352616275497997*eV,
-                2.3542788612441328*eV, 2.355429742544156*eV, 2.3569122356677346*eV, 2.3583965961108655*eV, 2.359863137579771*eV, 2.3618825640867933*eV, 2.3621648981516272*eV, 2.3643916173329202*eV,
-                2.3669920554642006*eV, 2.3715481052664877*eV, 2.37976314520725*eV, 2.3880295328504966*eV, 2.396355234293263*eV, 2.4047384763570903*eV, 2.4131801233476007*eV, 2.4216787608940966*eV,
-                2.4302382790609602*eV, 2.438858674901718*eV, 2.4475401705062194*eV, 2.456284361987954*eV, 2.4650891967604536*eV, 2.4739551874273493*eV, 2.4828854247031*eV, 2.4918785039180884*eV,
-                2.500937455744144*eV, 2.5092286092893503*eV, 2.515479330062037*eV, 2.5209205592845185*eV, 2.5268086088717574*eV, 2.533148080032263*eV, 2.5399467855740334*eV, 2.5463522450031966*eV,
-                2.5540832764731194*eV, 2.5636053856961847*eV, 2.5732054967073124*eV, 2.5828790399538524*eV, 2.592617130429985*eV, 2.6024231434079277*eV, 2.610951434653585*eV, 2.618174289740801*eV,
-                2.6249816924571023*eV, 2.6313664255135407*eV, 2.638599130699968*eV, 2.6446894110191903*eV, 2.649376829706567*eV, 2.6562778089959154*eV, 2.662345774917437*eV, 2.6671572148443854*eV,
-                2.67209571453112*eV, 2.676393339739669*eV, 2.680419665707901*eV, 2.6853475764163504*eV, 2.6897411247096445*eV, 2.6940419882848023*eV, 2.6978756231800833*eV, 2.7002736900568207*eV,
-                2.7075145707266524*eV, 2.7157706136036364*eV, 2.723095384003621*eV, 2.7299663336229294*eV, 2.7368719679359534*eV, 2.743812627384684*eV, 2.751880520718895*eV, 2.7562917843098393*eV,
-                2.7628272350469816*eV, 2.7693929790893814*eV, 2.775554342547651*eV, 2.782618920365959*eV, 2.7914414251133404*eV, 2.797005036527513*eV, 2.80177236298375*eV, 2.806323149863457*eV,
-                2.8104072536417566*eV, 2.814246190862789*eV, 2.818835698864991*eV, 2.823030428106631*eV, 2.8272374453588065*eV, 2.8314564452626763*eV, 2.83568884883466*eV, 2.83993392437019*eV,
-                2.8441149617296557*eV, 2.8473914164715097*eV, 2.851137565797999*eV, 2.855970198617966*eV, 2.86054991169904*eV, 2.867315503133049*eV, 2.876574331652757*eV, 2.8864450385590703*eV,
-                2.896942495109509*eV, 2.909198597614656*eV, 2.92044497894063*eV, 2.9275282613965077*eV, 2.9319253376658416*eV, 2.936941004157542*eV, 2.9401399085894635*eV, 2.9424427536811075*eV,
-                2.944995247603916*eV, 2.947224026420486*eV, 2.950629931104428*eV, 2.9530961862054896*eV, 2.9551739231653156*eV, 2.957171754757947*eV, 2.9595033311512613*eV, 2.9618384297880627*eV,
-                2.9641772949799576*eV, 2.9665198569390037*eV, 2.968866124436694*eV, 2.9712173727466893*eV, 2.9738656346526167*eV, 2.976225923589673*eV, 2.9788203597532155*eV, 2.981323058454508*eV,
-                2.9839269958496897*eV, 2.986008450509771*eV, 2.9880922773480423*eV, 2.990476655383541*eV, 2.992863958299538*eV, 2.9952551562778336*eV, 2.997650017146839*eV, 3.000048468614792*eV,
-                3.0024511653467503*eV, 3.005089915986259*eV, 3.007310787083497*eV, 3.009681671633881*eV, 3.0121001549438677*eV, 3.0145226911680596*eV, 3.0169492088763286*eV, 3.0193797996297134*eV,
-                3.0218142280550877*eV, 3.0242518471992907*eV, 3.02673463613197*eV, 3.02883033610366*eV, 3.031276903173656*eV, 3.0337272608748043*eV, 3.0365176160389673*eV, 3.0402728354689623*eV,
-                3.0426348341018628*eV, 3.0463740356874967*eV, 3.048804342523251*eV, 3.0525584735233675*eV, 3.055677528940057*eV, 3.060893002720675*eV, 3.065252695835357*eV, 3.069623671241484*eV,
-                3.0758832078926326*eV, 3.085943494297697*eV, 3.095434887250183*eV, 3.1075345808794155*eV, 3.121657771067854*eV, 3.1359095373649297*eV, 3.150290025719692*eV, 3.164802163179325*eV,
-                3.17944809538817*eV, 3.1942272194483787*eV, 3.209145791920373*eV, 3.224201524990315*eV, 3.2393993289846046*eV, 3.254738392193289*eV};
-
-    std::vector<G4double> TPB_PTFE_Emission = {0.012512215916579318, 0.013288259609399031, 0.01232653203599243, 0.012821661395969356, 0.012453468128755732, 0.012247147854140541,
-                0.012040827579525168, 0.01242804161110332, 0.012545467321684265, 0.013256427338458736, 0.014183218012030568, 0.0146243897078082, 0.017169910307361626, 0.019283769593320142,
-                0.021937205521272526, 0.023025869187442795, 0.024330363510410607, 0.02606651914697333, 0.028396209089729577, 0.029376957427500704, 0.029980002115876404, 0.029126189870868208,
-                0.029135700253050564, 0.03141143253160715, 0.03233822320517935, 0.03461395548373612, 0.03737530674008709, 0.038248139749459814, 0.041872813633001334, 0.04717017510672393,
-                0.05306107088663986, 0.06073256958513601, 0.0677026186490395, 0.07186686917457506, 0.08342269090982822, 0.09857089576818341, 0.1124891479629985, 0.12805509788700778,
-                0.14111486997705686, 0.15509758142888513, 0.17079504360751582, 0.18266659431158058, 0.1964045883967792, 0.2138909081763603, 0.2305787881427304, 0.24618168171585192,
-                0.26136111625894864, 0.2750981840082206, 0.2898533566968226, 0.30865732757661113, 0.3237457650538275, 0.33657829664840033, 0.3517439699566726, 0.36473359783181697,
-                0.3713539971895155, 0.3559271074424945, 0.3397656255860199, 0.32455847044031233, 0.30761106545597855, 0.2908044489513116, 0.2732227242907315, 0.2525696757406509,
-                0.23130825452672196, 0.21043202540567976, 0.18971940727993006, 0.16900678915418035, 0.1477006131427772, 0.1346452163525201, 0.12633606028338817, 0.11075837848640897,
-                0.09659077295673812, 0.08431395519706662, 0.07898165682350908, 0.08201279640085744, 0.08261584108923295, 0.08424408139739709, 0.08651981367595367, 0.09230279412747083,
-                0.0969526636308008, 0.1013867024773332, 0.1061984449732614, 0.11009290717779996, 0.11679316792070678, 0.12646110019458012, 0.13580528648325715, 0.14763152532510634,
-                0.1588102721965627, 0.17107929836385274, 0.18526465780773635, 0.19926072908215398, 0.211900582803943, 0.22512380429512846, 0.23737236600195252, 0.250839360511753,
-                0.2648375932366665, 0.2705126583597849, 0.26777032786779825, 0.2634632251140293, 0.26956995155074265, 0.28274513199757656, 0.29464426575740227, 0.30748636177041966,
-                0.320020659513345, 0.3327453038503046, 0.34722305608318593, 0.3612757504988503, 0.37625981050235424, 0.39254603121084447, 0.40673712090015407, 0.42163927278389784,
-                0.43661406818054277, 0.45007145109738383, 0.4635549539426627, 0.4775800394306586, 0.4910440652053573, 0.504981173654138, 0.5184133456525551, 0.530780805148745,
-                0.5441418113895824, 0.556341344194323, 0.5692254032248266, 0.5826283724831498, 0.5961161323566437, 0.6096038922301378, 0.6234625906936828, 0.636775959875559,
-                0.6494719083840292, 0.6630016312750092, 0.6753439150192319, 0.689647722808013, 0.7036774061815361, 0.7175114242489115, 0.7304610536249093, 0.7447921068402795,
-                0.7596550587139702, 0.7737994329394016, 0.7901336644381743, 0.8062367408144614, 0.822562392555571, 0.8394815786028738, 0.8555846549791609, 0.871687731355448,
-                0.8881405072635847, 0.9019640330326955, 0.9143570877051752, 0.9286206400223621, 0.9415930390785291, 0.9566699745513206, 0.9710747699389533, 0.9844964264807075,
-                0.9941091042200839, 1.0, 0.9916452078510781, 0.9767380620342111, 0.9636918890701992, 0.9474394384525532, 0.930950072275306, 0.9173005123932566, 0.9034250294712715,
-                0.8894079818344215, 0.8734063006447936, 0.8571354056495819, 0.8415072128130362, 0.8260768029894932, 0.8105724484005896, 0.7952164773882346, 0.7797863145876053,
-                0.764356151786976, 0.7489259889863468, 0.7323087575733308, 0.7148756326343488, 0.6972197161854946, 0.6775113283738716, 0.6562118668320194, 0.6359429188423249,
-                0.6182620556523296, 0.6010758043841623, 0.5820844357463731, 0.5639091767795998, 0.5456597260245524, 0.5275586588460532, 0.5096801670323765, 0.491430716277329,
-                0.4732153237112231, 0.4549848397795798, 0.43735009010665404, 0.41880387219850984, 0.40010927071381736, 0.38134047744085064, 0.3624233005913358, 0.34358031553009494,
-                0.3254050565633217, 0.3090740243543703, 0.2937284051459977, 0.2777047080391751, 0.2618293945089009, 0.24285175108176107, 0.22676602034570434, 0.21168201384200458,
-                0.1961467582304747, 0.18082255282094437, 0.16551744316487726, 0.1504087180486383, 0.13312566261759137, 0.1188591347035548, 0.10560656122926523, 0.0922563622409077,
-                0.07806085084144082, 0.06481880157254234, 0.053941056332199755, 0.046180663069669545, 0.038744015792335655, 0.032980056105183016, 0.027917546052622498, 0.02328669731365707,
-                0.021083943463664306, 0.017748078665484338, 0.016678435763678782, 0.015500877533474266, 0.016427668207046282};
-
+    // emission spectrum digitized from https://arxiv.org/pdf/1709.05002
     std::vector<G4double> TPB_Emission_Energy = {2.067768179441798*eV, 2.0711968936209915*eV, 2.0770256356539587*eV, 2.0828860695279343*eV, 2.0887801678705675*eV, 2.0947076470021497*eV,
                 2.1006678523807305*eV, 2.1066628714606246*eV, 2.1126923525118997*eV, 2.118755810633005*eV, 2.124855895993544*eV, 2.130989524274953*eV, 2.137160160957121*eV,
                 2.143366186498423*eV, 2.149607830530791*eV, 2.1558859330094995*eV, 2.1622011203809492*eV, 2.168553799156252*eV, 2.1749408782209616*eV, 2.1813703262619417*eV,
@@ -611,9 +418,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                 0.0055719112798828544, 0.00549399025741633, 0.00549399025741633, 0.0058835953697500215, 0.006506963549483285, 0.007208252751683876, 0.007208252751683876,
                 0.007208252751683876, 0.006896568661816977, 0.00674072661688366, 0.006351121504550237, 0.008355856254790841};
 
-    // based on best fit from Fig 13 in https://arxiv.org/pdf/1709.05002, using 0.605 as mean number of photons
-    G4double wls_mean_num_photons = 0.605;
-
     // we control the WLS response as a function of incident energy using WLSABSLENGTH
     // Using Fig 13 best fit for VUV photons and Fig 11 for 250 onwards from https://arxiv.org/pdf/1709.05002
     // with some scaling for the absorption in the visible
@@ -635,7 +439,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> TPB_WLSAbsLength_Energy = {1.0*eV}; // padding lower bound
     std::vector<G4double> TPB_WLSAbsLength = {1e35*nm}; // padding lower bound (doesnt really matter, just need super big absorption length)
     // note -- looping over backwards to go from low energy (high wavelength) to high energy (low wavelength)
-    std::cout << "In detector construction, TPBAbsScale_ = " << TPBAbsScale_ << std::endl;
     for (size_t w = (TPB_WLSAbsLength_Wavelength.size() - 1); w > 0; w --){
         G4double this_wavelength = TPB_WLSAbsLength_Wavelength.at(w) / nm;
         G4double this_abs;
@@ -653,7 +456,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
         TPB_WLSAbsLength_Energy.push_back(this_energy);
         TPB_WLSAbsLength.push_back(this_abs);
-        std::cout << "for wavelength = " << this_wavelength << "nm, energy = " << this_energy/eV << "eV, abs = " << this_abs/nm << "nm" << std::endl;
     }
 
     // pad our spectrum once more...
@@ -661,7 +463,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     TPB_WLSAbsLength.push_back(TPB_WLSAbsLength_FixedAbsorption.at(0));
 
     // I dont think this makes a difference, but adding index of refraction just in case
-    std::vector<G4double> tpb_rin_energy = {1.0*eV, 2.0*eV, 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 
+    std::vector<G4double> tpb_rin_energy = {1.0*eV, 2.0*eV, 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV,
                                             8.0*eV, 9.0*eV, 10.0*eV, 11.0*eV, 12.0*eV, 13.0*eV, 14.0*eV};
     std::vector<G4double> tpb_rin = {1.62, 1.62, 1.62, 1.62, 1.62, 1.62, 1.62,
                                      1.62, 1.62, 1.62, 1.62, 1.62, 1.62, 1.62};
@@ -669,11 +471,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // let's try adding some mie scattering to our tpb! i have no idea what this is gonna do...we'll see
     std::vector<G4double> TPB_Scattering_Energy = {1.0 * eV, 3.1 * eV, 3.11 * eV, 5.9*eV, 6.0 * eV, 12.0*eV}; // ~1200 nm, ~400nm, ~401nm, ~210nm, ~206nm, ~100nm
     std::vector<G4double> TPB_Mie_Scattering_Length = {0.001 * mm, 0.001 * mm, 1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m}; // mie scattering for vis light
-    std::vector<G4double> TPB_Rayl_Scattering_Length = {1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m, 0.005 * mm, 0.005 * mm}; // rayl scattering for uv light
-
-    // and a teensy bit of bullk absorption to avoid photons bouncing around forever
-    // let's set the absorption length to ~10 * thickness
-    std::vector<G4double> TPB_bulk_absoprtion = {0.02 * mm, 0.02 * mm, 0.02 * mm, 0.02 * mm, 0.02 * mm, 0.02 * mm};
 
     // now make our tpb foils!
     // making different ones for sides and top/bottom :)
@@ -691,10 +488,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
     fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
     fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
-    // rayl scattering!
-    //fTPBFoilSides_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
-    // bulk absoprtion
-    //fTPBFoilSides_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
 
     // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
@@ -710,10 +503,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
     fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
     fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
-    // rayl scattering!
-    //fTPBFoilTopBottom_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
-    // bulk absoprtion
-    //fTPBFoilTopBottom_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
 
     // tpb on pmts
@@ -729,10 +518,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
     fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
     fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
-    // rayl scattering!
-    //fTPBPMT_mt->AddProperty("RAYLEIGH", TPB_Scattering_Energy, TPB_Rayl_Scattering_Length);
-    // bulk absoprtion
-    //fTPBPMT_mt->AddProperty("ABSLENGTH", TPB_Scattering_Energy, TPB_bulk_absoprtion);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the reflectors.
@@ -779,7 +564,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
                                           TrainingSource_, DecayX_, DecayY_, DecayZ_,
                                           EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_);
     }
-    
+
     return fExperimentalHall_phys;
 
 }
