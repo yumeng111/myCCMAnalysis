@@ -403,7 +403,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // Reflector foils
     fReflectorFoil = new G4Tubs("PTFEFoil", 0*cm, ptfe_radius, ptfe_half_height, 0*deg, 360*deg);
-    fReflectorFoil_log = new G4LogicalVolume(fReflectorFoil, G4Material::GetMaterial("Steel"), "PTFEFoil");
+    fReflectorFoil_log = new G4LogicalVolume(fReflectorFoil, G4Material::GetMaterial("PTFE"), "PTFEFoil");
     fReflectorFoil_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fReflectorFoil_log, "PTFEFoil", fInnerFrame_log, false, 0, true);
 
     G4double tpb_half_height = ptfe_half_height - ptfe_thickness;
@@ -491,16 +491,16 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double shiny_radius = 205.0 / 2.0 * mm; // making the assumption that it is the same radius as the bridle
     G4double shiny_half_height = 0.125 * mm;
     fShinyC406R0 = new G4Tubs("ShinyC406R0", 0*cm, shiny_radius, shiny_half_height, 0*deg, 360*deg);
-    fShinyC406R0_log= new G4LogicalVolume(fShinyC406R0, G4Material::GetMaterial("Steel"), "ShinyC406R0");
+    fShinyC406R0_log= new G4LogicalVolume(fShinyC406R0, G4Material::GetMaterial("PTFE"), "ShinyC406R0");
 
     // speaking of shiny, let's build our shiny reflective circles that go on top and bottom of detector
     // documentation (https://docdb.lns.mit.edu/cgi-bin/captainmills/ShowDocument?docid=567) says it's 5.25in radius
     G4double top_shiny_radius = 13.335 * cm;
     fShinyTop = new G4Tubs("ShinyTop", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
-    fShinyTop_log= new G4LogicalVolume(fShinyTop, G4Material::GetMaterial("Steel"), "ShinyTop");
+    fShinyTop_log= new G4LogicalVolume(fShinyTop, G4Material::GetMaterial("PTFE"), "ShinyTop");
     new G4PVPlacement(0, G4ThreeVector(0, 0, fiducial_lar_half_height - shiny_half_height), fShinyTop_log, "ShinyTop", fFiducialAr_log, false, 0, true);
     fShinyBottom = new G4Tubs("ShinyBottom", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
-    fShinyBottom_log= new G4LogicalVolume(fShinyBottom, G4Material::GetMaterial("Steel"), "ShinyBottom");
+    fShinyBottom_log= new G4LogicalVolume(fShinyBottom, G4Material::GetMaterial("PTFE"), "ShinyBottom");
     new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialAr_log, false, 0, true);
 
     double pmt_radius_cm = (fiducial_lar_radius + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
@@ -523,7 +523,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     //UncoatedPMTGlassOpticalSurface->SetFinish(groundfrontpainted); // 100% Lambertian (diffuse) reflections
     UncoatedPMTGlassOpticalSurface->SetFinish(ground);
     UncoatedPMTGlassOpticalSurface->SetSigmaAlpha(0.5);
-    
+
     // define coated pmts --> groundfrontpainted
     CoatedPMTGlassOpticalSurface->SetModel(unified);
     CoatedPMTGlassOpticalSurface->SetType(dielectric_dielectric);
