@@ -286,9 +286,16 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
                                       UVAbsLength_*32.0, UVAbsLength_*8.0, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
 
+    G4double lam1 = 12.69 * cm;
+    G4double lam2 = 741.4 * cm;
+    std::vector<G4double> two_uv_abs_energy = {1.0*eV, 2.0*eV, 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 8.0*eV, 9.0*eV, 9.375*eV,
+                                               9.446*eV, 10.0*eV, 11.0*eV, 11.1898*eV};
+    std::vector<G4double> two_uv_abs = {lam2*64, lam2*64, lam2*64, lam2*32, lam2*16, lam2, lam2, lam2, lam2, lam2,
+                                        lam1, lam1, lam1, lam1};
 
-    std::cout << "setting uv absorption length = " << flat_abs << std::endl;
-    fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
+    //std::cout << "setting uv absorption length = " << flat_abs << std::endl;
+    //fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
+    fLAr_mt->AddProperty("ABSLENGTH", two_uv_abs_energy, two_uv_abs);
 
     std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;
     G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)); // scintillation yield: 50 per keV.
