@@ -302,9 +302,9 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
 
     // Set PMT glass constants
-    std::vector<G4double> glass_energy = {7.0*eV, 7.07*eV, 7.14*eV};
-    std::vector<G4double> glass_AbsLength = {1e-12*mm, 1e-12*mm, 1e-12*mm};
-    std::vector<G4double> glass_RIND = {1.49,1.49,1.49};
+    std::vector<G4double> glass_energy = {1.0*eV, 5.0*eV, 7.07*eV, 10.14*eV, 12.0*eV};
+    std::vector<G4double> glass_AbsLength = {1e-12*mm, 1e-12*mm, 1e-12*mm, 1e-12*mm, 1e-12*mm};
+    std::vector<G4double> glass_RIND = {1.49,1.49,1.49, 1.49, 1.49};
 
     G4MaterialPropertiesTable* fGlass_mt = new G4MaterialPropertiesTable();
     fGlass_mt->AddProperty("ABSLENGTH", glass_energy, glass_AbsLength);

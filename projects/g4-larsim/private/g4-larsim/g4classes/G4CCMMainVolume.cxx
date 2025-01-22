@@ -874,7 +874,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
             } else {
                 // standard case where the source pellet is inserted 1/4 cm into the end of the source rod
-                G4double inset = 0.25 * cm;
+                G4double inset = 1.0 * mm;
                 G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
 
                 // again let's first subtract the pellet from the rod, make logical vol for rod, and place rod

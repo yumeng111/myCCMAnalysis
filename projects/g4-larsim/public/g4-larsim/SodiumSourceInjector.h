@@ -35,7 +35,7 @@ public:
     virtual I3FrameObjectPtr GetSimulationConfiguration() override;
 private:
     double z_position_;
-    double inset_ = 0.25 * I3Units::cm;
+    double inset_ = 0.1 * I3Units::cm;
     double pellet_radius_ = 0.4 * I3Units::cm;
     double pellet_height_ = 0.3 * I3Units::cm;
     bool training_;
