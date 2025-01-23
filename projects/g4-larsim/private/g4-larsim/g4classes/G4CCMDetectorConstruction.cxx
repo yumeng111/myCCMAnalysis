@@ -309,13 +309,13 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         double this_abs;
         if (this_wavelength <= wavelength_split){
             this_abs = UVAbsLength1_;
-        } else if (this_wavelength > wavelength_split and this_wavelength < 300.0){
+        } else if (this_wavelength > wavelength_split and this_wavelength < 250.0){
             this_abs = UVAbsLength2_;
         } else {
             this_abs = UVAbsLength2_ * 16.0; // idk some scaling
         }
 
-        std::cout << "at wavelength = " << this_wavelength << " uv abs = " << this_abs << std::endl;
+        std::cout << "at wavelength = " << this_wavelength << " uv abs = " << this_abs / cm << "cm" << std::endl;
         uv_abs_energy.push_back(this_energy);
         uv_abs_length.push_back(this_abs);
     }
