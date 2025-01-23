@@ -62,12 +62,15 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun, 
-                                  double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength,
+void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+                                  bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
+                                  double DecayX, double DecayY, double DecayZ,
+                                  double SingletTau, double TripletTau, double Rayleigh128,
+                                  double UVAbsLength1, double UVAbsLength2, double UVAbsScaling, 
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                                   double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                                   double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
-                                  bool TimeCut, bool KillCherenkov, bool FullPhotonTracking, long RandomSeed) {
+                                  double Normalization, bool TimeCut, bool KillCherenkov, bool FullPhotonTracking, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -93,9 +96,10 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
 
     if(detector_ == nullptr) {
         detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns,
-                                                  UVAbsLength / I3Units::cm * CLHEP::cm, WLSNPhotonsEndCapFoil, WLSNPhotonsSideFoil, WLSNPhotonsPMT,
+                                                  UVAbsLength1 / I3Units::cm * CLHEP::cm, UVAbsLength2 / I3Units::cm * CLHEP::cm,UVAbsScaling, 
+                                                  WLSNPhotonsEndCapFoil, WLSNPhotonsSideFoil, WLSNPhotonsPMT,
                                                   EndCapFoilTPBThickness / I3Units::mm * CLHEP::mm, SideFoilTPBThickness / I3Units::mm * CLHEP::mm, PMTTPBThickness / I3Units::mm * CLHEP::mm,
-                                                  Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio);
+                                                  Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio, Normalization);
         // set readout
         detector_->SetReadout(readout_.get());
         // set SD status
@@ -106,7 +110,8 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
         detector_->SetKillCherenkov(KillCherenkov);
         detector_->SetPhotonTracking(FullPhotonTracking);
         // set sodium rod status
-        detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun);
+        detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun,
+                                             TrainingSource, DecayX / I3Units::cm * CLHEP::cm, DecayY / I3Units::cm * CLHEP::cm, DecayZ / I3Units::cm * CLHEP::cm);
         // Force reinitializatiion
         //runManager_->ReinitializeGeometry(true);
     }

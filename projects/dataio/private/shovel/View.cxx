@@ -106,12 +106,8 @@ void resize(int sig)
 #else
 #ifdef TIOCGWINSZ
     if (ioctl(0, TIOCGWINSZ, &win) == 0) {
-        if (win.ws_row != 0) {
-            LINES = win.ws_row;
-        }
-        if (win.ws_col != 0) {
-            COLS = win.ws_col;
-        }
+        if(win.ws_row != 0 and win.ws_col != 0)
+            resize_term(win.ws_row, win.ws_col);
     }
 #endif /* TIOCGWINSZ */
 #endif /* TIOCGSIZE */

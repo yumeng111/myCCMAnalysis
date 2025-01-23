@@ -56,7 +56,7 @@ class EventFinder: public I3ConditionalModule {
     std::string output_prefix_;
     std::string pulses_;
 
-    I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
+    I3Vector<CCMOMGeo::OMType> pmt_types;
     std::set<CCMPMTKey> pmt_keys;
 
     public:
@@ -70,7 +70,7 @@ class EventFinder: public I3ConditionalModule {
 I3_MODULE(EventFinder);
 
 EventFinder::EventFinder(const I3Context& context) : I3ConditionalModule(context),
-    geo_seen(false), geometry_name_("") {
+    geo_seen(false), geometry_name_(""), pmt_types(I3Vector<CCMOMGeo::OMType>{CCMOMGeo::OMType::CCM8inCoated, CCMOMGeo::OMType::CCM8inUncoated}) {
         AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
         AddParameter("TimeWindow", "Size of sliding time window to examine.",
                 2 * I3Units::ns);
