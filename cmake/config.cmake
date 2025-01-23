@@ -516,14 +516,27 @@ string(REPLACE "-Wno-non-virtual-dtor" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING
   "Flags used by the compiler during all build types")
 
+
 ## set RELEASE flags
 set(CMAKE_CXX_FLAGS_RELEASE "-O${RELOPTLEVEL} -DNDEBUG -DI3_COMPILE_OUT_VERBOSE_LOGGING")
+if(DEFINED ENV{CRAYPE_VERSION})
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(STATUS "Using CRAY specific compiler options")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-cray-mallopt")
+    endif()
+endif()
 set(CMAKE_C_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" CACHE STRING
   "Flags used by compiler during release builds")
 
 ## set Release With Debug Info flags
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O${RELOPTLEVEL} -g -DNDEBUG -DI3_COMPILE_OUT_VERBOSE_LOGGING")
+if(DEFINED ENV{CRAYPE_VERSION})
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(STATUS "Using CRAY specific compiler options")
+        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-cray-mallopt")
+    endif()
+endif()
 set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" CACHE STRING
   "Flags used by compiler during release builds")
@@ -531,6 +544,12 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" CACHE STR
 ## RelWithAssert flags
 set(CMAKE_CXX_FLAGS_RELWITHASSERT "-O${RELOPTLEVEL} -DI3_COMPILE_OUT_VERBOSE_LOGGING" CACHE STRING
   "Flags used by compiler during Release+Assert builds")
+if(DEFINED ENV{CRAYPE_VERSION})
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(STATUS "Using CRAY specific compiler options")
+        set(CMAKE_CXX_FLAGS_RELWITHASSERT "${CMAKE_CXX_FLAGS_RELWITHASSERT} -fno-cray-mallopt")
+    endif()
+endif()
 set(CMAKE_C_FLAGS_RELLWITHASSERT "-O${RELOPTLEVEL}" CACHE STRING
   "Flags used by compiler during Release+Assert builds")
 set(CMAKE_EXE_LINKER_FLAGS_RELWITHASSERT "${CMAKE_EXE_LINKER_FLAGS_RELEASE}" CACHE STRING
@@ -545,6 +564,13 @@ mark_as_advanced(
 # Update the documentation string of CMAKE_BUILD_TYPE for GUIs
 set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
   "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel RelWithAssert." FORCE)
+
+if(DEFINED ENV{CRAYPE_VERSION})
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(STATUS "Using CRAY specific compiler options")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-cray-mallopt")
+    endif()
+endif()
 
 ## optimization remarks
 #if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

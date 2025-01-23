@@ -221,7 +221,7 @@ void CCMI3RootReader::OpenNextFile() {
       }
   }
   log_trace("Constructing with filename %s, %zu keys",
-	    current_filename_.c_str(), load_);
+	    current_filename_.c_str(), load_.size());
 
   log_info("Opened file %s", current_filename_.c_str());
 }
