@@ -47,14 +47,16 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength, G4double WLSNPhotonsEndCapFoil,
-                                                     G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength1, G4double UVAbsLength2, G4double UVAbsScaling,
+                                                     G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                                                      G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
                                                      G4double Mie_GG, G4double Mie_Ratio, G4double Normalization) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
-    UVAbsLength_ = UVAbsLength;
+    UVAbsLength1_ = UVAbsLength1;
+    UVAbsLength2_ = UVAbsLength2;
+    UVAbsScaling_ = UVAbsScaling;
     WLSNPhotonsEndCapFoil_ = WLSNPhotonsEndCapFoil;
     WLSNPhotonsSideFoil_ = WLSNPhotonsSideFoil;
     WLSNPhotonsPMT_ = WLSNPhotonsPMT;
@@ -277,24 +279,62 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RAYLEIGH", rayl_energy, rayl_scattering_length);
 
     // now add absorption length
-    //std::vector<G4double> flat_abs_energy = {1.0*eV, 3.80*eV, 3.81*eV, 14.0*eV}; // roughly 1200 nm, 326nm, 325nm, 88nm
-    //std::vector<G4double> flat_abs_energy = {1.0*eV, 3.0918*eV, 3.0995*eV, 14.0*eV}; // roughly 1200 nm, 401nm, 400nm, 88nm
-    //std::vector<G4double> flat_abs = {3e10*cm, 3e10*cm, UVAbsLength_, UVAbsLength_}; // step function -- only have uv abs length for wavelength less than 325nm
+    // we have 2 absorption lenghts and a scaling
+    // need to figure out the wavelength that encapsulates the scaling mass
+    double total_sum = 0.0;
+    double wavelength_lower = 0.0;
+    double wavelength_upper = 0.0;
+    double fraction_below = 0.0;
+    double fraction_above = 0.0;
+    for (size_t wv_it = 0; wv_it < lar_wavelength.size(); wv_it++){
+        total_sum += lar_intensity.at(wv_it);
+        if (total_sum > UVAbsScaling_){
+            wavelength_lower = lar_wavelength.at(wv_it - 1);
+            wavelength_upper = lar_wavelength.at(wv_it);
+            fraction_below = total_sum - lar_intensity.at(wv_it);
+            fraction_above = total_sum;
+            break;
+        }
+    }
+    // now interpolate
+    double wavelength_split = wavelength_lower + ((UVAbsScaling_ - fraction_below) * ((wavelength_upper - wavelength_lower) / (fraction_above - fraction_below)));
+    std::cout << "for uv abs scaling = " << UVAbsScaling_ << ", wavelength splilt = " << wavelength_split << std::endl;
 
-    std::vector<G4double> flat_abs_energy = {1.03319652*eV,  3.09958956*eV,  3.26272585*eV,  3.4439884*eV,   3.64657595*eV,  3.87448695*eV,
-                                           4.13278608*eV,  4.42798509*eV,  4.76859932*eV,  5.1659826*eV,   5.63561738*eV,  6.8879768*eV, 11.27123476*eV};
-    std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
-                                      UVAbsLength_*32.0, UVAbsLength_*8.0, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
+    // now we need to fill in our absorption lengths
+    std::vector<G4double> uv_abs_energy = {};
+    std::vector<G4double> uv_abs_length = {};
+    for (size_t i = (n_entries + 1); i > 0; i--){
+        double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
+        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        double this_abs;
+        if (this_wavelength <= wavelength_split){
+            this_abs = UVAbsLength1_;
+        } else if (this_wavelength > wavelength_split and this_wavelength < 300.0){
+            this_abs = UVAbsLength2_;
+        } else {
+            this_abs = UVAbsLength2_ * 16.0; // idk some scaling
+        }
 
-    G4double lam1 = 12.69 * cm;
-    G4double lam2 = 741.4 * cm;
-    std::vector<G4double> two_uv_abs_energy = {1.0*eV, 2.0*eV, 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 8.0*eV, 9.0*eV, 9.375*eV,
-                                               9.446*eV, 10.0*eV, 11.0*eV, 11.1898*eV};
-    std::vector<G4double> two_uv_abs = {lam2*64, lam2*64, lam2*64, lam2*32, lam2*16, lam2, lam2, lam2, lam2, lam2,
-                                        lam1, lam1, lam1, lam1};
+        std::cout << "at wavelength = " << this_wavelength << " uv abs = " << this_abs << std::endl;
+        uv_abs_energy.push_back(this_energy);
+        uv_abs_length.push_back(this_abs);
+    }
+
+    //std::vector<G4double> flat_abs_energy = {1.03319652*eV,  3.09958956*eV,  3.26272585*eV,  3.4439884*eV,   3.64657595*eV,  3.87448695*eV,
+    //                                       4.13278608*eV,  4.42798509*eV,  4.76859932*eV,  5.1659826*eV,   5.63561738*eV,  6.8879768*eV, 11.27123476*eV};
+    //std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
+    //                                  UVAbsLength_*32.0, UVAbsLength_*8.0, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
+
+    //G4double lam1 = 12.69 * cm;
+    //G4double lam2 = 741.4 * cm;
+    //std::vector<G4double> two_uv_abs_energy = {1.0*eV, 2.0*eV, 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 8.0*eV, 9.0*eV, 9.375*eV,
+    //                                           9.446*eV, 10.0*eV, 11.0*eV, 11.1898*eV};
+    //std::vector<G4double> two_uv_abs = {lam2*64, lam2*64, lam2*64, lam2*32, lam2*16, lam2, lam2, lam2, lam2, lam2,
+    //                                    lam1, lam1, lam1, lam1};
 
     //std::cout << "setting uv absorption length = " << flat_abs << std::endl;
-    fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
+    fLAr_mt->AddProperty("ABSLENGTH", uv_abs_energy, uv_abs_length);
+    //fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
     //fLAr_mt->AddProperty("ABSLENGTH", two_uv_abs_energy, two_uv_abs);
 
     std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;

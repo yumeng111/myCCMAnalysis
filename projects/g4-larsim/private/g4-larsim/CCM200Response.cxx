@@ -30,7 +30,8 @@ CCM200Response::CCM200Response(const I3Context& context) :
     CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
     SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
-    Rayleigh128_(95.0 * I3Units::cm), UVAbsLength_(55.0 * I3Units::cm), WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
+    Rayleigh128_(95.0 * I3Units::cm), UVAbsLength1_(16.0 * I3Units::cm), UVAbsLength2_(750.0 * I3Units::cm), UVAbsScaling_(0.83),
+    WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
     TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), TimeCut_(true), KillCherenkov_(false), FullPhotonTracking_(true), RandomSeed_(0){
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
@@ -46,7 +47,9 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("SingletTimeConstant", "LAr singlet tau", SingletTau_);
     AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
-    AddParameter("UVAbsLength", "set UV absorption length at 128nm", UVAbsLength_);
+    AddParameter("UVAbsLength1", "set UV absorption length at 128nm", UVAbsLength1_);
+    AddParameter("UVAbsLength2", "set UV absorption length at 128nm", UVAbsLength2_);
+    AddParameter("UVAbsScaling", "set UV absorption scaling at 128nm", UVAbsScaling_);
     AddParameter("WLSNPhotonsEndCapFoil", "mean number of photons produced per WLS for TPB foils on the end caps of the detector", WLSNPhotonsEndCapFoil_);
     AddParameter("WLSNPhotonsSideFoil", "mean number of photons produced per WLS for TPB foils on the sides of the detector", WLSNPhotonsSideFoil_);
     AddParameter("WLSNPhotonsPMT", "mean number of photons produced per WLS for TPB on PMTs", WLSNPhotonsPMT_);
@@ -79,7 +82,9 @@ void CCM200Response::Configure() {
     GetParameter("SingletTimeConstant", SingletTau_);
     GetParameter("TripletTimeConstant", TripletTau_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
-    GetParameter("UVAbsLength", UVAbsLength_);
+    GetParameter("UVAbsLength1", UVAbsLength1_);
+    GetParameter("UVAbsLength2", UVAbsLength2_);
+    GetParameter("UVAbsScaling", UVAbsScaling_);
     GetParameter("WLSNPhotonsEndCapFoil", WLSNPhotonsEndCapFoil_);
     GetParameter("WLSNPhotonsSideFoil", WLSNPhotonsSideFoil_);
     GetParameter("WLSNPhotonsPMT", WLSNPhotonsPMT_);
@@ -112,7 +117,8 @@ void CCM200Response::Initialize() {
 
     // let's let's construct the detector
     g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
-                                  DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength_, WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
+                                  DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength1_, UVAbsLength2_, UVAbsScaling_,
+                                  WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
                                   MieGG_, MieRatio_, Normalization_, TimeCut_, KillCherenkov_, FullPhotonTracking_, RandomSeed_);
 }
@@ -120,7 +126,7 @@ void CCM200Response::Initialize() {
 I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
     config->rayleigh_scattering_length_ = Rayleigh128_;
-    config->uv_absorption_length_ = UVAbsLength_;
+    config->uv_absorption_length_ = UVAbsLength1_;
     config->pmt_tpb_qe_ = WLSNPhotonsPMT_;
     config->endcap_tpb_qe_ = WLSNPhotonsEndCapFoil_;
     config->side_tpb_qe_ = WLSNPhotonsSideFoil_;

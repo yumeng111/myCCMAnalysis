@@ -47,7 +47,9 @@ private:
     double SingletTau_; // set LAr singlet time constant
     double TripletTau_; // set LAr triplet time constant
     double Rayleigh128_; // set rayl scattering length for 128nm light
-    double UVAbsLength_; // set uv abs length at 128nm
+    double UVAbsLength1_; // set uv abs length at 128nm
+    double UVAbsLength2_; // set uv abs length at 128nm
+    double UVAbsScaling_; // set uv abs length at 128nm
     double WLSNPhotonsEndCapFoil_;
     double WLSNPhotonsSideFoil_;
     double WLSNPhotonsPMT_;
