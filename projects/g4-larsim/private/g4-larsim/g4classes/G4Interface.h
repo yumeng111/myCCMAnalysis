@@ -46,12 +46,15 @@ class G4Interface {
         };
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation, bool CobaltSourceRun, bool SodiumSourceRun,
-                             double SingletTau, double TripletTau, double Rayleigh128, double UVAbsLength,
+        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+                             bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
+                             double DecayX, double DecayY, double DecayZ,
+                             double SingletTau, double TripletTau, double Rayleigh128,
+                             double UVAbsLength1, double UVAbsLength2, double UVAbsScaling,
                              double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                              double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                              double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
-                             bool TimeCut, bool KillCherenkov, bool FullPhotonTracking, long RandomSeed);
+                             double Normalization, bool TimeCut, bool KillCherenkov, bool FullPhotonTracking, long RandomSeed);
 
         void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
         void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);

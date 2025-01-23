@@ -25,6 +25,7 @@
 
 G4VSolid * J4PMTSolidMaker::f8inchPMTSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingSolid;
+G4VSolid * J4PMTSolidMaker::fPMTAndTPBCoatingSolid;
 G4VSolid * J4PMTSolidMaker::fPhotocathodeSolid;
 G4double   J4PMTSolidMaker::f8inchPMTRadius = 131.0 * mm;
 G4double   J4PMTSolidMaker::fTPBThickness; // = 0.000203892 * cm; // from Richard
@@ -37,10 +38,14 @@ G4VSolid * J4PMTSolidMaker::f8inchPMTCapsSolid;
 G4VSolid * J4PMTSolidMaker::f8inchPMTWallSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingCapsSolid;
 G4VSolid * J4PMTSolidMaker::fTPBCoatingWallSolid;
-G4VSolid * J4PMTSolidMaker::fBridleWall; 
-G4VSolid * J4PMTSolidMaker::fBridleCaps;
-G4VSolid * J4PMTSolidMaker::fFrillWall; 
-G4VSolid * J4PMTSolidMaker::fFrillCaps;
+G4VSolid * J4PMTSolidMaker::fBridleWallCoated; 
+G4VSolid * J4PMTSolidMaker::fBridleWallUncoated; 
+G4VSolid * J4PMTSolidMaker::fBridleCapsCoated;
+G4VSolid * J4PMTSolidMaker::fBridleCapsUncoated;
+G4VSolid * J4PMTSolidMaker::fFrillWallCoated; 
+G4VSolid * J4PMTSolidMaker::fFrillWallUncoated; 
+G4VSolid * J4PMTSolidMaker::fFrillCapsCoated;
+G4VSolid * J4PMTSolidMaker::fFrillCapsUncoated;
 
 //////////////////////////////////////////////////////////////////////////////////////
 G4VSolid* J4PMTSolidMaker::Get8inchPMTSolid()
@@ -70,32 +75,60 @@ G4VSolid* J4PMTSolidMaker::GetPhotocathodeSolid()
    return fPhotocathodeSolid;
 }
 
-G4VSolid * J4PMTSolidMaker::GetBridleWall(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance) {
-    if (!fBridleWall) {
-        CreateBridleWallSolid(bridle_radius, bridle_width, tpb_foil_radius, protrusion_distance);
+G4VSolid * J4PMTSolidMaker::GetBridleWall(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance, G4bool coated) {
+    if (coated){
+        if (!fBridleWallCoated) {
+            CreateBridleWallSolid(bridle_radius, bridle_width, tpb_foil_radius, protrusion_distance, coated);
+        }
+        return fBridleWallCoated;
+    } else {
+        if (!fBridleWallUncoated) {
+            CreateBridleWallSolid(bridle_radius, bridle_width, tpb_foil_radius, protrusion_distance, coated);
+        }
+        return fBridleWallUncoated;
     }
-    return fBridleWall;
 }
 
-G4VSolid * J4PMTSolidMaker::GetBridleCaps(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance) {
-    if (!fBridleCaps) {
-        CreateBridleCapsSolid(bridle_radius, bridle_width, protrusion_distance);
+G4VSolid * J4PMTSolidMaker::GetBridleCaps(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance, G4bool coated) {
+    if (coated){
+        if (!fBridleCapsCoated) {
+            CreateBridleCapsSolid(bridle_radius, bridle_width, protrusion_distance, coated);
+        }
+        return fBridleCapsCoated;
+    } else {
+        if (!fBridleCapsUncoated) {
+            CreateBridleCapsSolid(bridle_radius, bridle_width, protrusion_distance, coated);
+        }
+        return fBridleCapsUncoated;
     }
-    return fBridleCaps;
 }
 
-G4VSolid * J4PMTSolidMaker::GetFrillWall(G4double bridle_radius, G4double frill_radius,  G4double frill_width, G4double tpb_foil_radius) {
-    if (!fFrillWall) {
-        CreateFrillWallSolid(bridle_radius, frill_radius, frill_width, tpb_foil_radius);
+G4VSolid * J4PMTSolidMaker::GetFrillWall(G4double bridle_radius, G4double frill_radius,  G4double frill_width, G4double tpb_foil_radius, G4bool coated) {
+    if (coated){
+        if (!fFrillWallCoated) {
+            CreateFrillWallSolid(bridle_radius, frill_radius, frill_width, tpb_foil_radius, coated);
+        }
+        return fFrillWallCoated;
+    } else {
+        if (!fFrillWallUncoated) {
+            CreateFrillWallSolid(bridle_radius, frill_radius, frill_width, tpb_foil_radius, coated);
+        }
+        return fFrillWallUncoated;
     }
-    return fFrillWall;
 }
 
-G4VSolid * J4PMTSolidMaker::GetFrillCaps(G4double bridle_radius, G4double frill_radius, G4double frill_width) {
-    if (!fFrillCaps) {
-        CreateFrillCapsSolid(bridle_radius, frill_radius, frill_width);
+G4VSolid * J4PMTSolidMaker::GetFrillCaps(G4double bridle_radius, G4double frill_radius, G4double frill_width, G4bool coated) {
+    if (coated){
+        if (!fFrillCapsCoated) {
+            CreateFrillCapsSolid(bridle_radius, frill_radius, frill_width, coated);
+        }
+        return fFrillCapsCoated;
+    } else {
+        if (!fFrillCapsUncoated) {
+            CreateFrillCapsSolid(bridle_radius, frill_radius, frill_width, coated);
+        }
+        return fFrillCapsUncoated;
     }
-    return fFrillCaps;
 }
 
 
@@ -238,87 +271,81 @@ void J4PMTSolidMaker::CreateTPBCoatingSolid()
     G4ThreeVector centerOfCons;
     G4ThreeVector centerOfTubs;
 
+    G4double scaleFactor = ((f8inchPMTRadius/mm) + (fTPBThickness/mm)) / (f8inchPMTRadius/mm);
+
     G4double rmin2, rmax2, dz;
     G4double rmin, rmax, sphi, dphi, stheta, dtheta;
     G4double rSmin, rSmax, sSphi, dSphi, sStheta, dStheta;
-    G4double centerofConslb;
-    centerofConslb = 70.4284 - fTPBThickness / 2.1;
 
-    rSmin   = f8inchPMTRadius;
-    //rSmin   = 0;
-    rSmax   = f8inchPMTRadius + fTPBThickness;
-    dSphi   = 2*M_PI;
-    dStheta = 37.6392 *degree;
+    rSmin   = 0.0;
+    rSmax   = f8inchPMTRadius * scaleFactor;
+    dSphi   = 2 * M_PI;
+    dStheta = 37.6392 * degree;
 
     std::vector<G4double> tempZ, tempInner, tempOuter;
 
     G4int segment = 100;
 
-    G4double sr0 = 57.0894 + fTPBThickness;//radius of spindle torus sphere
-    G4double centerOfsr0 = 43.9106; // distance from center of torus sphere to z-axis
-    G4double rplanet = sr0*2./segment; // z length of each planet
+    G4double sr0 = 57.0894 * scaleFactor; // radius of spindle torus sphere
+    G4double centerOfsr0 = 43.9106 * scaleFactor; // distance from center of torus sphere to z-axis
+    G4double rplanet = sr0 * 2. / segment; // z length of each segment
 
-    //our function is a fixed number+the value of the sphere projection
-    //should spread across 2R
+    G4double rInner[segment + 1], rOuter[segment + 1], zPlane[segment + 1];
 
-    G4double rInner[segment+1], rOuter[segment+1], zPlane[segment+1];
-
-    for (G4int j=0; j<=segment; ++j) {
-      tempZ.push_back((sr0 - j*rplanet)*mm);
-      tempInner.push_back(0.);
-      tempOuter.push_back((centerOfsr0 + sqrt(sr0*sr0-(sr0-j*rplanet)*(sr0-j*rplanet)))*mm);
+    for (G4int j = 0; j <= segment; ++j) {
+        tempZ.push_back((sr0 - j * rplanet) * mm);
+        tempInner.push_back(0.);
+        tempOuter.push_back((centerOfsr0 + sqrt(sr0 * sr0 - (sr0 - j * rplanet) * (sr0 - j * rplanet))) * mm);
     }
 
-    for (G4int i=0; i<=segment; i++) {
-      rInner[i] = tempInner[i];
-      rOuter[i] = tempOuter[i];
-      zPlane[i] = tempZ[i];
+    for (G4int i = 0; i <= segment; i++) {
+        rInner[i] = tempInner[i];
+        rOuter[i] = tempOuter[i];
+        zPlane[i] = tempZ[i];
     }
 
-    G4Polycone* polycone1 = new
-      G4Polycone("polycone1", 0, 2*M_PI, segment+1, zPlane, rInner, rOuter);
+    G4Polycone* polycone1 = new G4Polycone("polycone1", 0, 2 * M_PI, segment + 1, zPlane, rInner, rOuter);
 
-    centerOfPolycone = G4ThreeVector(0, 0, 59.5 *mm);
-    centerOfCons = G4ThreeVector(0, 0, (centerofConslb+33.8363/2-89.) *mm);
-    centerOfTubs = G4ThreeVector(0, 0, -(89.-centerofConslb/2) *mm);
+    centerOfPolycone = G4ThreeVector(0, 0, 59.5 * scaleFactor * mm);
+    centerOfCons = G4ThreeVector(0, 0, (70.4284 + 33.8363 / 2 - 89.) * scaleFactor * mm);
+    centerOfTubs = G4ThreeVector(0, 0, -(89. - 70.4284 / 2) * scaleFactor * mm);
 
     sSphi = 0;
     sStheta = 0;
-    G4Sphere *sphere = new G4Sphere("sphere",rSmin, rSmax,
-				      sSphi, dSphi, sStheta, dStheta);
-
-    //to create two cons
+    G4Sphere *sphere = new G4Sphere("sphere", rSmin, rSmax, sSphi, dSphi, sStheta, dStheta);
 
     rmin   = 0;
     rmin2  = 0;
-    rmax   = 84.5/2*mm + (1.75*fTPBThickness)/2;
-    rmax2  = 160./2 *mm + (1.75*fTPBThickness)/2;
-    dz     = 33.8363/2 *mm;
+    rmax   = (84.5 / 2) * scaleFactor * mm;
+    rmax2  = (160. / 2) * scaleFactor * mm;
+    dz     = (33.8363 / 2) * scaleFactor * mm;
     sphi   = 0;
-    dphi   = 2*M_PI;
+    dphi   = 2 * M_PI;
 
-    G4Cons *cons= new G4Cons("cons",rmin, rmax, rmin2,
-			       rmax2, dz, sphi, dphi);
-
-    // create two tubs....
+    G4Cons *cons = new G4Cons("cons", rmin, rmax, rmin2, rmax2, dz, sphi, dphi);
 
     rmin   = 0;
-    rmax   = 84.5/2 *mm;
-    dz     = centerofConslb/2 *mm;
+    rmax   = (84.5 / 2) * scaleFactor * mm;
+    dz     = (70.4284 / 2) * scaleFactor * mm;
     sphi   = 0;
-    dphi   = 2*M_PI;
+    dphi   = 2 * M_PI;
 
-    G4Tubs *tubs = new G4Tubs("tubs",rmin, rmax, dz,
-				sphi, dphi);
-
-    // to create two PMTs
+    G4Tubs *tubs = new G4Tubs("tubs", rmin, rmax, dz, sphi, dphi);
 
     J4UnionSolid *solid1 = new J4UnionSolid("solid1", sphere, polycone1, 0, centerOfPolycone);
-    fTPBCoatingSolid = solid1;
+    J4UnionSolid *solid2 = new J4UnionSolid("solid2", solid1, tubs, 0, centerOfTubs);
+    fPMTAndTPBCoatingSolid = new J4UnionSolid("solid", solid2, cons, 0, centerOfCons);
+    
+    // grab pmt
+    if (!f8inchPMTSolid) {
+        Create8inchPMTSolid();
+    }
 
+    // subtract
+    fTPBCoatingSolid = new G4SubtractionSolid("TPBCoating", fPMTAndTPBCoatingSolid, f8inchPMTSolid);   
 }
 
-void J4PMTSolidMaker::CreateFrillWallSolid(G4double bridle_radius, G4double frill_radius, G4double frill_width, G4double tpb_foil_radius) {
+void J4PMTSolidMaker::CreateFrillWallSolid(G4double bridle_radius, G4double frill_radius, G4double frill_width, G4double tpb_foil_radius, G4bool coated) {
 
     G4double max_diameter = 250 * mm;
     G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", bridle_radius, frill_radius, max_diameter/2.0, 0*deg, 360*deg);
@@ -331,23 +358,39 @@ void J4PMTSolidMaker::CreateFrillWallSolid(G4double bridle_radius, G4double fril
     G4double z_center = tpb_foil_radius;
     G4ThreeVector centerOfTub(0, 0, z_center);
 
-    fFrillWall = new G4IntersectionSolid("FrillWall", fFrillPunchOut, fFrillSurface, rotationMatrix, centerOfTub);
+    if (coated){
+        fFrillWallCoated = new G4IntersectionSolid("FrillWall", fFrillPunchOut, fFrillSurface, rotationMatrix, centerOfTub); 
+    } else {
+        fFrillWallUncoated = new G4IntersectionSolid("FrillWall", fFrillPunchOut, fFrillSurface, rotationMatrix, centerOfTub); 
+    }
 
 }
 
-void J4PMTSolidMaker::CreateFrillCapsSolid(G4double bridle_radius, G4double frill_radius, G4double frill_width) {
+void J4PMTSolidMaker::CreateFrillCapsSolid(G4double bridle_radius, G4double frill_radius, G4double frill_width, G4bool coated) {
 
-    fFrillCaps = new G4Tubs("FrillCaps", bridle_radius, frill_radius, frill_width/2.0, 0*deg, 360*deg);
-
+    if (coated){
+        fFrillCapsCoated = new G4Tubs("FrillCaps", bridle_radius, frill_radius, frill_width/2.0, 0*deg, 360*deg);
+    } else {
+        fFrillCapsUncoated = new G4Tubs("FrillCaps", bridle_radius, frill_radius, frill_width/2.0, 0*deg, 360*deg);
+    }
 }
 
 
-void J4PMTSolidMaker::CreateBridleWallSolid(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance) {
+void J4PMTSolidMaker::CreateBridleWallSolid(G4double bridle_radius, G4double bridle_width, G4double tpb_foil_radius, G4double protrusion_distance, G4bool coated) {
 
     G4double max_diameter = 250 * mm;
     G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, max_diameter/2.0, 0*deg, 360*deg);
 
-    G4VSolid * pmt = Get8inchPMTSolid();
+    G4VSolid * pmt;
+    G4double radius = f8inchPMTRadius;
+    if (coated){
+        //GetTPBCoatingSolid();
+        //pmt = fPMTAndTPBCoatingSolid; 
+        //radius += fTPBThickness/mm;
+        pmt = Get8inchPMTSolid();
+    } else {
+        pmt = Get8inchPMTSolid();
+    }
 
     G4VSolid * fBridleSurface = new G4Tubs("BridleSurface", tpb_foil_radius - bridle_width, tpb_foil_radius, bridle_radius * 2, 0*deg, 360*deg);
 
@@ -359,21 +402,41 @@ void J4PMTSolidMaker::CreateBridleWallSolid(G4double bridle_radius, G4double bri
 
     G4VSolid * fBridleSurfaceBridlePunchOut = new G4IntersectionSolid("BridlePunchOut", fBridlePunchOut, fBridleSurface, rotationMatrix, centerOfTub);
 
-    G4double z_center_bridle = f8inchPMTRadius - protrusion_distance;
+    //G4double z_center_bridle = f8inchPMTRadius - protrusion_distance;
+    G4double z_center_bridle = radius - protrusion_distance;
     G4ThreeVector centerofPMT(0, 0, z_center_bridle);
 
-    fBridleWall = new G4SubtractionSolid("Bridle", fBridleSurfaceBridlePunchOut, pmt, 0, centerofPMT);
+    if (coated){
+        fBridleWallCoated = new G4SubtractionSolid("Bridle", fBridleSurfaceBridlePunchOut, pmt, 0, centerofPMT);
+    } else {
+        fBridleWallUncoated = new G4SubtractionSolid("Bridle", fBridleSurfaceBridlePunchOut, pmt, 0, centerofPMT);
+    }
 }
 
-void J4PMTSolidMaker::CreateBridleCapsSolid(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance) {
+void J4PMTSolidMaker::CreateBridleCapsSolid(G4double bridle_radius, G4double bridle_width, G4double protrusion_distance, G4bool coated) {
 
-    G4VSolid * pmt = Get8inchPMTSolid();
+    G4VSolid * pmt;
+    G4double radius = f8inchPMTRadius;
+    if (coated){
+        //GetTPBCoatingSolid();
+        //pmt = fPMTAndTPBCoatingSolid; 
+        //radius += fTPBThickness/mm;
+        pmt = Get8inchPMTSolid();
+    } else {
+        pmt = Get8inchPMTSolid();
+    }
 
     G4VSolid * fBridleDisk = new G4Tubs("BridleDisk", 0*cm, bridle_radius, bridle_width/2.0, 0*deg, 360*deg);
 
-    G4double z_offset = -(f8inchPMTRadius - protrusion_distance + bridle_width / 2.0);
+    //G4double z_offset = -(f8inchPMTRadius - protrusion_distance + bridle_width / 2.0);
+    G4double z_offset = -(radius - protrusion_distance + bridle_width / 2.0);
     G4ThreeVector centerofBridlePMT(0, 0, z_offset);
-    fBridleCaps = new G4SubtractionSolid("BridleCaps", fBridleDisk, pmt, 0, centerofBridlePMT);
+    
+    if (coated){
+        fBridleCapsCoated = new G4SubtractionSolid("BridleCaps", fBridleDisk, pmt, 0, centerofBridlePMT);
+    } else {
+        fBridleCapsUncoated = new G4SubtractionSolid("BridleCaps", fBridleDisk, pmt, 0, centerofBridlePMT);
+    }
 
 }
 

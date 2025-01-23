@@ -48,7 +48,7 @@ G4CCMVisPrimaryGeneratorAction::G4CCMVisPrimaryGeneratorAction(){
     G4ParticleTable *particleTable = G4ParticleTable::GetParticleTable();
     G4ParticleDefinition *particle = particleTable->FindParticle("geantino");
 
-    G4double inset = 0.25 * cm;
+    G4double inset = 0.1 * cm;
     G4ThreeVector pos(0.,0.,0. + inset);
     G4ThreeVector mom(0.,0.,-1.);
 

@@ -375,7 +375,9 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             double calculated_vis_distance = 0.0;
             double calculated_uv_distance = 0.0;
 
-            if (wavelength <= 325.0){
+            //if (wavelength <= 325.0){
+            //if (wavelength <= 200.0){
+            if (wavelength <= 150.0){
                 g4_uv_distance = g4_delta_distance;
                 calculated_uv_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
             } else {
@@ -395,6 +397,10 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
             //std::cout << "optical photon parent id = " << parent_id << ", track id = " << track_id
             //          << ", creation process = " << creationProcessName
+            //          << ", wavelength = " << wavelength
+            //          << ", pre step vol = " << aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName()
+            //          << ", post step vol = " << aStep->GetPostStepPoint()->GetPhysicalVolume()->GetName()
+            //          << ", process name = " << aStep->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName()
             //          //<< ", distance uv = " << g4_uv_distance
             //          //<< ", and time = " << g4_delta_time_step
             //          << std::endl;
@@ -513,6 +519,8 @@ G4bool G4CCMScintSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
             I3Particle daughter(daughter_type);
             daughter.SetEnergy(aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV);
+            daughter.SetPos(position);
+            daughter.SetDir(direction);
 
             I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
 

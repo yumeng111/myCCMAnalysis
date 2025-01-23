@@ -57,7 +57,7 @@
 
 G4CCMPhysicsList::G4CCMPhysicsList(G4int ver):  G4VModularPhysicsList()
 {
-    defaultCutValue = 0.1*CLHEP::mm;
+    defaultCutValue = 0.0001*CLHEP::mm;
     SetVerboseLevel(0);
 
 	// EM physics
@@ -77,6 +77,7 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver):  G4VModularPhysicsList()
 #endif
 
     //The Following lines set more specific parameters for scintillation.
+    //params->SetBoundaryVerboseLevel(3);
     params->SetWLSTimeProfile("delta");
 #if G4VERSION_NUMBER >= 1100
 #else

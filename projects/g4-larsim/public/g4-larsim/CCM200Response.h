@@ -40,10 +40,16 @@ private:
     double SourceRodLocation_; // location of end of source rod
     bool CobaltSourceRun_; // true for cobalt57
     bool SodiumSourceRun_; // true for sodium22
+    bool TrainingSource_; // true for training source data
+    double DecayX_; // if training source data, provide X position of decay
+    double DecayY_; // if training source data, provide Y position of decay
+    double DecayZ_; // if training source data, provide Z position of decay
     double SingletTau_; // set LAr singlet time constant
     double TripletTau_; // set LAr triplet time constant
     double Rayleigh128_; // set rayl scattering length for 128nm light
-    double UVAbsLength_; // set uv abs length at 128nm
+    double UVAbsLength1_; // set uv abs length at 128nm
+    double UVAbsLength2_; // set uv abs length at 128nm
+    double UVAbsScaling_; // set uv abs length at 128nm
     double WLSNPhotonsEndCapFoil_;
     double WLSNPhotonsSideFoil_;
     double WLSNPhotonsPMT_;
@@ -55,6 +61,7 @@ private:
     double TPBAbsScale_;
     double MieGG_;
     double MieRatio_;
+    double Normalization_;
     bool TimeCut_; // true ends all events after 200 nsec
     bool KillCherenkov_; // true turns off cherenkov light
     bool FullPhotonTracking_; 
