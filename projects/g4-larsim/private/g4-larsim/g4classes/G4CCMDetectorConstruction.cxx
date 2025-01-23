@@ -294,8 +294,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                         lam1, lam1, lam1, lam1};
 
     //std::cout << "setting uv absorption length = " << flat_abs << std::endl;
-    //fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
-    fLAr_mt->AddProperty("ABSLENGTH", two_uv_abs_energy, two_uv_abs);
+    fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
+    //fLAr_mt->AddProperty("ABSLENGTH", two_uv_abs_energy, two_uv_abs);
 
     std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;
     G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)); // scintillation yield: 50 per keV.
