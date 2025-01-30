@@ -49,7 +49,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetShinyC406R0() { return fShinyC406R0_log; }
     G4LogicalVolume* GetShinyTop() { return fShinyTop_log; }
     G4LogicalVolume* GetShinyBottom() { return fShinyBottom_log; }
-
+    
     G4LogicalVolume* GetLogBridleCoatedWall() {return fBridleCoatedWall_log;}
     G4LogicalVolume* GetLogBridleUncoatedWall() {return fBridleUncoatedWall_log;}
     G4LogicalVolume* GetLogBridleCoatedCaps() {return fBridleCoatedCaps_log;}
