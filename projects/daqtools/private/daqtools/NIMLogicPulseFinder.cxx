@@ -273,11 +273,18 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                         break;
                     }
                 }
+                double pulse_end_time = 0.0;
                 // Search for the end of the pulse
                 for(size_t j=end_search_begin_idx; j<end_search_end_idx; ++j) {
                     sample = -wf[j] - baseline;
                     if(sample <= threshold) {
                         pulse_end_pos = j;
+                        // let's also interpolate to get our end time
+                        double time_below_threshold = j * ns_per_sample;
+                        double sample_below_threshold = -wf[j] - baseline;
+                        double time_above_threshold = (j-1) * ns_per_sample;
+                        double sample_above_threshold = -wf[j-1] - baseline;
+                        pulse_end_time = time_below_threshold + ((threshold - sample_below_threshold) * ((time_above_threshold - time_below_threshold) / (sample_above_threshold - sample_below_threshold)));
                         break;
                     }
                 }
@@ -285,7 +292,7 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                 NIMLogicPulse pulse;
                 //pulse.SetNIMPulseTime(pulse_start_pos * ns_per_sample);
                 pulse.SetNIMPulseTime(pulse_start_time);
-                pulse.SetNIMPulseLength((int(pulse_end_pos) - int(pulse_start_pos)) * ns_per_sample);
+                pulse.SetNIMPulseLength(pulse_end_time - pulse_start_time);
                 pulse_series.push_back(pulse);
 
                 // We're done with the current pulse
