@@ -58,6 +58,7 @@ class EventFinder: public I3ConditionalModule {
 
     I3Vector<CCMOMGeo::OMType> pmt_types;
     std::set<CCMPMTKey> pmt_keys;
+    boost::shared_ptr<const I3Vector<CCMPMTKey>> bad_keys;
 
     public:
     void Geometry(I3FramePtr frame);
@@ -97,6 +98,10 @@ void EventFinder::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
+    // check if frame has list of bad keys to exclude
+    if (frame->Has("BadKeys")){
+        bad_keys = frame->Get<boost::shared_ptr<const I3Vector<CCMPMTKey>>>("BadKeys");
+    }
     geo = frame->Get<CCMGeometryConstPtr>(geometry_name_);
     geo_seen = bool(geo);
     pmt_keys.clear();
@@ -104,6 +109,8 @@ void EventFinder::Geometry(I3FramePtr frame) {
         std::set<CCMOMGeo::OMType> allowed_pmt_types(pmt_types.begin(), pmt_types.end());
         for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
             if(allowed_pmt_types.count(p.second.omtype) == 0)
+                continue;
+            if (std::find(bad_keys->begin(), bad_keys->end(), p.first) != bad_keys->end())
                 continue;
             pmt_keys.insert(p.first);
         }

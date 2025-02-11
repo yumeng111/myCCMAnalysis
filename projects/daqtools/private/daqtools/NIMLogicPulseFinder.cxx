@@ -230,7 +230,9 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
     double max_sample = 0;
     size_t max_sample_pos = 0;
     double begin_threshold = minimum_nim_pulse_height;
-    double end_threshold = std::min(baseline_stddev, minimum_nim_pulse_height);
+    double end_threshold = minimum_nim_pulse_height;
+    std::vector<double> nim_samples_for_mode;
+
     // Iterate over samples
     for(size_t i=0; i<wf.size(); ++i) {
         // Invert and subtract baseline
@@ -241,34 +243,53 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                 max_sample = sample;
                 max_sample_pos = i;
             }
+            // Save sample for mode
+            nim_samples_for_mode.push_back(sample);
             // Passing below threshold means we reached the end of the pulse
             if(sample <= end_threshold) {
+                // Let's calculate the mode
+                std::sort(nim_samples_for_mode.begin(), nim_samples_for_mode.end());
+                double this_mode = robust_stats::Mode(nim_samples_for_mode.data(), nim_samples_for_mode.size());
                 size_t start_search_end_idx = max_sample_pos;
                 size_t end_search_begin_idx = max_sample_pos;
                 size_t end_search_end_idx = std::min(i + 5, wf.size());
                 size_t pulse_start_pos = start_search_begin_idx;
                 size_t pulse_end_pos = start_search_begin_idx;
-                double threshold = max_sample * constant_fraction;
+                double threshold = this_mode * constant_fraction;
+                double pulse_start_time = 0.0;
                 // Search for the beginning of the pulse
-                for(size_t j=start_search_end_idx-1; j>=start_search_begin_idx; --j) {
+                for(size_t j=std::max(int(start_search_begin_idx), int(start_search_end_idx)-2); j>=start_search_begin_idx; --j) {
                     sample = -wf[j] - baseline;
                     if(sample <= threshold) {
                         pulse_start_pos = j;
+                        // let's also interpolate to get our start time
+                        double time_below_threshold = j * ns_per_sample;
+                        double sample_below_threshold = -wf[j] - baseline;
+                        double time_above_threshold = (j+1) * ns_per_sample;
+                        double sample_above_threshold = -wf[j+1] - baseline;
+                        pulse_start_time = time_below_threshold + ((threshold - sample_below_threshold) * ((time_above_threshold - time_below_threshold) / (sample_above_threshold - sample_below_threshold)));
                         break;
                     }
                 }
+                double pulse_end_time = 0.0;
                 // Search for the end of the pulse
                 for(size_t j=end_search_begin_idx; j<end_search_end_idx; ++j) {
                     sample = -wf[j] - baseline;
                     if(sample <= threshold) {
                         pulse_end_pos = j;
+                        // let's also interpolate to get our end time
+                        double time_below_threshold = j * ns_per_sample;
+                        double sample_below_threshold = -wf[j] - baseline;
+                        double time_above_threshold = (j-1) * ns_per_sample;
+                        double sample_above_threshold = -wf[j-1] - baseline;
+                        pulse_end_time = time_below_threshold + ((threshold - sample_below_threshold) * ((time_above_threshold - time_below_threshold) / (sample_above_threshold - sample_below_threshold)));
                         break;
                     }
                 }
                 // Store the pulse
                 NIMLogicPulse pulse;
-                pulse.SetNIMPulseTime(pulse_start_pos * ns_per_sample);
-                pulse.SetNIMPulseLength((int(pulse_end_pos) - int(pulse_start_pos)) * ns_per_sample);
+                pulse.SetNIMPulseTime(pulse_start_time);
+                pulse.SetNIMPulseLength(pulse_end_time - pulse_start_time);
                 pulse_series.push_back(pulse);
 
                 // We're done with the current pulse
@@ -291,6 +312,9 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
 
                 // We're now dealing with a pulse
                 in_pulse = true;
+                // Save samples to calculate mode
+                nim_samples_for_mode.clear();
+                nim_samples_for_mode.push_back(sample);
             }
         }
     }
