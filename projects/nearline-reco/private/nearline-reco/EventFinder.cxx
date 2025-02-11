@@ -58,7 +58,7 @@ class EventFinder: public I3ConditionalModule {
 
     I3Vector<CCMOMGeo::OMType> pmt_types = {CCMOMGeo::OMType::CCM8inUncoated, CCMOMGeo::OMType::CCM8inCoated};
     std::set<CCMPMTKey> pmt_keys;
-    boost::shared_ptr<const I3Vector<CCMPMTKey>>bad_keys;
+    boost::shared_ptr<const I3Vector<CCMPMTKey>> bad_keys;
 
     public:
     void Geometry(I3FramePtr frame);

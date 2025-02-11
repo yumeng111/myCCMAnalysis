@@ -230,7 +230,6 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
     double max_sample = 0;
     size_t max_sample_pos = 0;
     double begin_threshold = minimum_nim_pulse_height;
-    //double end_threshold = std::min(baseline_stddev, minimum_nim_pulse_height);
     double end_threshold = minimum_nim_pulse_height;
     std::vector<double> nim_samples_for_mode;
 
@@ -256,11 +255,10 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                 size_t end_search_end_idx = std::min(i + 5, wf.size());
                 size_t pulse_start_pos = start_search_begin_idx;
                 size_t pulse_end_pos = start_search_begin_idx;
-                //double threshold = max_sample * constant_fraction;
                 double threshold = this_mode * constant_fraction;
                 double pulse_start_time = 0.0;
                 // Search for the beginning of the pulse
-                for(size_t j=start_search_end_idx-1; j>=start_search_begin_idx; --j) {
+                for(size_t j=std::max(int(start_search_begin_idx), int(start_search_end_idx)-2); j>=start_search_begin_idx; --j) {
                     sample = -wf[j] - baseline;
                     if(sample <= threshold) {
                         pulse_start_pos = j;
@@ -290,7 +288,6 @@ NIMLogicPulseSeries NIMLogicPulseFinder::GetNIMPulses(CCMWaveformUInt16 const & 
                 }
                 // Store the pulse
                 NIMLogicPulse pulse;
-                //pulse.SetNIMPulseTime(pulse_start_pos * ns_per_sample);
                 pulse.SetNIMPulseTime(pulse_start_time);
                 pulse.SetNIMPulseLength(pulse_end_time - pulse_start_time);
                 pulse_series.push_back(pulse);
