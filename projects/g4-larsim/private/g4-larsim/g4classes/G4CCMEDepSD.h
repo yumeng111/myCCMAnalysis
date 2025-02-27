@@ -1,5 +1,5 @@
-#ifndef G4CCMVetoSD_H
-#define G4CCMVetoSD_H
+#ifndef G4CCMEDepSD_H
+#define G4CCMEDepSD_H
 
 #include "icetray/I3Units.h"
 #include "dataclasses/physics/I3MCTree.h"
@@ -21,10 +21,10 @@
 class G4Step;
 class G4HCofThisEvent;
 
-class G4CCMVetoSD : public G4VSensitiveDetector {
+class G4CCMEDepSD : public G4VSensitiveDetector {
     public:
-        G4CCMVetoSD(G4String name);
-        ~G4CCMVetoSD() override = default;
+        G4CCMEDepSD(G4String name);
+        ~G4CCMEDepSD() override = default;
 
         void SetReadout(G4CCMReadout * readout) { readout_ = readout; }
 
@@ -67,4 +67,4 @@ class G4CCMVetoSD : public G4VSensitiveDetector {
         PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
 };
 
-#endif // G4CCMVetoSD_H
+#endif // G4CCMEDepSD_H

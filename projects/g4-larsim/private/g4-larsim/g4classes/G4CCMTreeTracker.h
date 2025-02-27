@@ -21,11 +21,11 @@
 
 class G4Step;
 class G4HCofThisEvent;
-class G4CCMVetoSD;
+class G4CCMEDepSD;
 
 class G4CCMTreeTracker : public G4VSensitiveDetector {
     public:
-        friend G4CCMVetoSD;
+        friend G4CCMEDepSD;
         G4CCMTreeTracker(G4String name);
         ~G4CCMTreeTracker() override = default;
 

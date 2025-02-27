@@ -1,5 +1,5 @@
 
-#include "g4-larsim/g4classes/G4CCMVetoSD.h"
+#include "g4-larsim/g4classes/G4CCMEDepSD.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 
 #include <G4ios.hh>
@@ -18,13 +18,13 @@
 #include <G4TrackingManager.hh>
 
 
-G4CCMVetoSD::G4CCMVetoSD(G4String name) : G4VSensitiveDetector(name) {
-    collectionName.insert("vetoScintCollection");
+G4CCMEDepSD::G4CCMEDepSD(G4String name) : G4VSensitiveDetector(name) {
+    collectionName.insert(name + "ScintCollection");
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void G4CCMVetoSD::Initialize(G4HCofThisEvent* hitsCE) {
+void G4CCMEDepSD::Initialize(G4HCofThisEvent* hitsCE) {
     fScintCollection = new G4CCMScintHitsCollection(SensitiveDetectorName, collectionName[0]);
 
     if(fHitsCID < 0) {
@@ -35,7 +35,7 @@ void G4CCMVetoSD::Initialize(G4HCofThisEvent* hitsCE) {
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
 }
 
-void G4CCMVetoSD::EndOfEvent(G4HCofThisEvent*) {
+void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
     if(SaveEnergyLossesTree_) {
         std::map<I3ParticleID, std::tuple<bool, bool, std::vector<I3ParticleID>>> energy_loss_map;
         std::vector<I3ParticleID> queue;
@@ -140,7 +140,7 @@ void G4CCMVetoSD::EndOfEvent(G4HCofThisEvent*) {
     Reset();
 }
 
-G4bool G4CCMVetoSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
+G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // note -- this chunk of code resets global time to 0 in the case of radioactive decays
     // very important for retaining time structure of scintillation photons!!!
     G4Track* track = aStep->GetTrack();
