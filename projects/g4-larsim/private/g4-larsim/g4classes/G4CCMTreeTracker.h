@@ -13,15 +13,19 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <G4SystemOfUnits.hh>
 #include <G4VSensitiveDetector.hh>
 
 class G4Step;
 class G4HCofThisEvent;
+class G4CCMVetoSD;
 
 class G4CCMTreeTracker : public G4VSensitiveDetector {
     public:
+        friend G4CCMVetoSD;
         G4CCMTreeTracker(G4String name);
         ~G4CCMTreeTracker() override = default;
 
@@ -109,6 +113,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         static const std::unordered_map<std::string, PhotonSummary::PhotonSource> processNameToPhotonSource;
         static const std::unordered_map<PhotonSummary::PhotonSource, std::string> photonSourceToProcessName;
         static const std::unordered_map<WLSLocation::WLSLoc, std::string> wlsLocationToProcessName;
+        static const std::unordered_set<int> energyLossPDGCodes;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
 

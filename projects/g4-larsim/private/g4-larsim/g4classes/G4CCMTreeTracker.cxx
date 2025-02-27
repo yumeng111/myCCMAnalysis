@@ -18,12 +18,15 @@
 #include <G4TrackingManager.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+const std::unordered_set<int> G4CCMTreeTracker::energyLossPDGCodes = {0, 2000000001, 2000000002, 2000000003, 2000000004, 2000000005, 2000000006, 2000000007, 2000000008, 2000000009, 2000000010, 2000000011, 2000000012, 2000000013, 2000000014, 2000000015, 2000000016};
+
 const std::unordered_map<std::string, int> G4CCMTreeTracker::energyLossToI3ParticlePDGCode = {{"phot", 2000000001}, {"compt", 2000000002}, {"conv", 2000000003},
                                                                                           {"Rayl", 2000000004}, {"msc", 2000000005}, {"eIoni", 2000000006},
                                                                                           {"eBrem", 2000000007}, {"ePairProd", 2000000008}, {"CoulombScat", 2000000009},
                                                                                           {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012},
                                                                                           {"Scintillation", 2000000013}, {"OpWLS", 2000000014}, {"ionIoni" , 2000000015},
-                                                                                          {"hIoni", 2000000016}};
+                                                                                          {"hIoni", 2000000016}, {"Unknown", 0}};
 
 const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMTreeTracker::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
                                                                                                               {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
@@ -287,8 +290,8 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if(KillNeutrinos_) {
         unsigned int abs_pdg = std::abs(int(pdg));
         bool pdg_even = abs_pdg % 2 == 0;
-        bool is_nu = pdg_event and (abs_pdg >= 12 and abs_pdg <= 16);
-        if(is_nu_) {
+        bool is_nu = pdg_even and (abs_pdg >= 12 and abs_pdg <= 16);
+        if(is_nu) {
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;
         }
@@ -381,9 +384,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 }
             }
         }
-
         return false;
-
     }
 
     if(not (TrackParticles_ or DetailedPhotonTracking_ or TrackEnergyLosses_))
@@ -405,18 +406,15 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4int parent_id = aStep->GetTrack()->GetParentID();
     G4int track_id = aStep->GetTrack()->GetTrackID();
 
+    G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
+    std::string processName = (process) ? process->GetProcessName() : "Unknown";
+
     // now save to our MCTree!
     if(parent_id == 0) {
         // let's create and fill our I3Particle
         // since parent id = 0, we need to add daughter energy loss (aka processName)
 
         // process name -- use for parent id == 0!
-        std::string processName = "Unknown";
-        const G4VProcess* currentProcess = aStep->GetPostStepPoint()->GetProcessDefinedStep();
-        if (currentProcess) {
-            processName = static_cast<std::string>(currentProcess->GetProcessName());
-        }
-
         if(energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()) {
             if(TrackEnergyLosses_) {
                 I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
@@ -457,17 +455,10 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
 
         if(TrackEnergyLosses_) {
-            // creation process -- use for parent id > 0
-            const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
-            std::string creationProcessName = "Unknown";
-            if(creationProcess) {
-                creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
-            }
-
             // Check if an energy loss has occurred
-            if(energyLossToI3ParticlePDGCode.find(creationProcessName) != energyLossToI3ParticlePDGCode.end()) {
+            if(energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()) {
                 // now add energy loss
-                I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(creationProcessName));
+                I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
                 I3Particle daughter(daughter_type);
 
                 double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
@@ -480,7 +471,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                     I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
                 }
             } else {
-                G4cout << "oops! no conversion for " << creationProcessName << std::endl;
+                G4cout << "oops! no conversion for " << processName << std::endl;
             }
         }
     }

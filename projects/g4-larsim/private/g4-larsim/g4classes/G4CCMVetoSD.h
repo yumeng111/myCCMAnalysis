@@ -6,6 +6,7 @@
 #include "dataclasses/physics/I3Particle.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 #include "g4-larsim/g4classes/G4CCMReadout.h"
+#include "g4-larsim/g4classes/G4CCMTreeTracker.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "dataclasses/I3Map.h"
 #include "simclasses/PhotonSummary.h"
@@ -33,17 +34,25 @@ class G4CCMVetoSD : public G4VSensitiveDetector {
 
         void Reset() {}
 
+        void SetSaveEnergyLossesVector(bool save) { SaveEnergyLossesVector_ = save; }
+        void SetSaveEnergyLossesTree(bool save) { SaveEnergyLossesTree_ = save; }
+        void SetPruneTree(bool prune) { PruneTree_ = prune; }
+        bool GetSaveEnergyLossesVector() { return SaveEnergyLossesVector_; }
+        bool GetSaveEnergyLossesTree() { return SaveEnergyLossesTree_; }
+        bool GetPruneTree() { return PruneTree_; }
+
     private:
 
         G4CCMTreeTracker * tree_tracker;
 
-        bool SaveEnergyLosses_ = false;
+        bool SaveEnergyLossesVector_ = false;
         bool SaveEnergyLossesTree_ = false;
+        bool PruneTree_ = false;
 
-        I3VectorI3ParticlePtr energy_losses = nullptr;
+        I3VectorI3ParticlePtr output_energy_losses_vector = nullptr;
+        I3MCTreePtr output_energy_losses_tree = nullptr;
 
-        std::vector<I3ParticleID> energy_loss_ids;
-        I3MCTreePtr edep_tree_ = nullptr;
+        std::set<I3ParticleID> energy_loss_ids;
 
         int event_id = -1;
         G4CCMReadout * readout_ = nullptr;
