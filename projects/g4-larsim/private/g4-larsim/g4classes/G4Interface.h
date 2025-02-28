@@ -46,7 +46,12 @@ class G4Interface {
         };
 
         /// Add the detector to the geometry. Should not be called after initialized.
-        void InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+        void InstallDetector(
+                             bool VetoSDSaveEnergyLossesVector, bool VetoSDSaveEnergyLossesTree, bool VetoSDPruneTree,
+                             bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
+                             bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
+                             bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
+                             bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
                              bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
                              double DecayX, double DecayY, double DecayZ,
                              double SingletTau, double TripletTau, double Rayleigh128,
@@ -54,7 +59,7 @@ class G4Interface {
                              double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                              double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                              double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
-                             double Normalization, bool TimeCut, bool KillCherenkov, bool FullPhotonTracking, long RandomSeed);
+                             double Normalization, long RandomSeed);
 
         void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
         void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);

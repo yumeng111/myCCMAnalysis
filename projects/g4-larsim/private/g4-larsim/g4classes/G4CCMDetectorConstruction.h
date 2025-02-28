@@ -61,9 +61,45 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     void SetMainVolumeOn(G4bool b);
     G4bool GetMainVolumeOn() const { return fMainVolumeOn; }
 
+    void SetVetoSDSaveEnergyLossesVector(G4bool b) { VetoSDSaveEnergyLossesVector_ = b; }
+    void SetVetoSDSaveEnergyLossesTree(G4bool b) { VetoSDSaveEnergyLossesTree_ = b; }
+    void SetVetoSDPruneTree(G4bool b) { VetoSDPruneTree_ = b; }
+
+    void SetInteriorSDSaveEnergyLossesVector(G4bool b) { InteriorSDSaveEnergyLossesVector_ = b; }
+    void SetInteriorSDSaveEnergyLossesTree(G4bool b) { InteriorSDSaveEnergyLossesTree_ = b; }
+    void SetInteriorSDPruneTree(G4bool b) { InteriorSDPruneTree_ = b; }
+
+    void SetKillNeutrinos(G4bool b) { KillNeutrinos_ = b; }
+    void SetKillPhotons(G4bool b) { KillPhotons_ = b; }
+    void SetKillScintillation(G4bool b) { KillScintillation_ = b; }
+    void SetKillCherenkov(G4bool b) { KillCherenkov_ = b; }
+
+    void SetTimeCut(G4bool b) { TimeCut_ = b; }
+    void SetDetailedPhotonTracking(G4bool b) { FullPhotonTracking_ = b; }
+    void SetTrackParticles(G4bool b) { FullPhotonTracking_ = b; }
+    void SetTrackEnergyLosses(G4bool b) { FullPhotonTracking_ = b; }
+
     // set SD configuration
     void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
     void SetLArSDStatus(bool LArSDStatus) { LArSDStatus_ = LArSDStatus; }
+
+    bool GetVetoSDSaveEnergyLossesVector() { return VetoSDSaveEnergyLossesVector_; }
+    bool GetVetoSDSaveEnergyLossesTree() { return VetoSDSaveEnergyLossesTree_; }
+    bool GetVetoSDPruneTree() { return VetoSDPruneTree_; }
+
+    bool GetInteriorSDSaveEnergyLossesVector() { return InteriorSDSaveEnergyLossesVector_; }
+    bool GetInteriorSDSaveEnergyLossesTree() { return InteriorSDSaveEnergyLossesTree_; }
+    bool GetInteriorSDPruneTree() { return InteriorSDPruneTree_; }
+
+    bool GetKillNeutrinos() { return KillNeutrinos_; }
+    bool GetKillPhotons() { return KillPhotons_; }
+    bool GetKillScintillation() { return KillScintillation_; }
+    bool GetKillCherenkov() { return KillCherenkov_; }
+
+    bool GetTimeCut() { return TimeCut_; }
+    bool GetDetailedPhotonTracking() { return FullPhotonTracking_; }
+    bool GetTrackParticles() { return FullPhotonTracking_; }
+    bool GetTrackEnergyLosses() { return FullPhotonTracking_; }
 
     // get SD configuration
     bool GetPMTSDStatus() { return PMTSDStatus_; }
@@ -81,14 +117,6 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
         DecayY_ = DecayY;
         DecayZ_ = DecayZ;
     }
-
-    // set time cut
-    void SetTimeCut(bool TimeCut){ TimeCut_ = TimeCut; }
-
-    // set cerenkov control
-    void SetKillCherenkov(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
-
-    void SetPhotonTracking(bool FullPhotonTracking) { FullPhotonTracking_ = FullPhotonTracking; }
 
   private:
 
@@ -144,6 +172,28 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     // Sensitive Detector
     G4Cache<G4CCMPMTSD*> fPMT_SD;
     G4Cache<G4CCMScintSD*> fScint_SD;
+    G4Cache<G4CCMTreeTrackerSD*> fTreeTracker_SD;
+    G4Cache<G4CCMEDepSD*> fVetoSD;
+    G4Cache<G4CCMEDepSD*> fInteriorSD;
+
+    bool VetoSDSaveEnergyLossesVector_ = false;
+    bool VetoSDSaveEnergyLossesTree_ = false;
+    bool VetoSDPruneTree_ = false;
+    bool InteriorSDSaveEnergyLossesVector_ = false;
+    bool InteriorSDSaveEnergyLossesTree_ = false;
+    bool InteriorSDPruneTree_ = false;
+
+    bool KillNeutrinos_ = false;
+    bool KillPhotons_ = false;
+    bool KillScintillation_ = false;
+    bool KillCherenkov_ = false;
+
+    bool TimeCut_ = false;
+    bool DetailedPhotonTracking_ = false;
+    bool TrackParticles_ = false;
+    bool TrackEnergyLosses_ = false;
+
+
 
     // controls to turn SD on/off (set via G4Interface)
     bool PMTSDStatus_ = true; // turn PMT SD on/off
@@ -177,10 +227,6 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4double Mie_GG_ = 0.99;
     G4double Mie_Ratio_ = 1.0;
     G4double Normalization_ = 1.0;
-
-    G4bool TimeCut_ = true;
-    G4bool KillCherenkov_ = false;
-    G4bool FullPhotonTracking_ = true;
 };
 
 #endif

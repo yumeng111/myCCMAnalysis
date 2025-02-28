@@ -26,14 +26,46 @@
 #include <string>
 #include <algorithm>
 
+    bool KillNeutrinos_ = false;
+    bool KillPhotons_ = false;
+    bool KillScintillation_ = false;
+    bool KillCherenkov_ = false;
+
+    bool TimeCut_ = false;
+    bool DetailedPhotonTracking_ = false;
+    bool TrackParticles_ = false;
+    bool TrackEnergyLosses_ = false;
+
 CCM200Response::CCM200Response(const I3Context& context) :
-    CCMDetectorResponse(context), PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
+    CCMDetectorResponse(context),
+    VetoSDSaveEnergyLossesVector_(false), VetoSDSaveEnergyLossesTree_(false), VetoSDPruneTree_(false),
+    InteriorSDSaveEnergyLossesVector_(false), InteriorSDSaveEnergyLossesTree_(false), InteriorSDPruneTree_(false),
+    KillNeutrinos_(false), KillPhotons_(false), KillScintillation_(false), KillCherenkov_(false),
+    TimeCut_(false), DetailedPhotonTracking_(false), TrackParticles_(false), TrackEnergyLosses_(false),
+    PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
     SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
     Rayleigh128_(95.0 * I3Units::cm), UVAbsLength1_(16.0 * I3Units::cm), UVAbsLength2_(750.0 * I3Units::cm), UVAbsScaling_(0.83),
     WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
-    TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), TimeCut_(true), KillCherenkov_(false), FullPhotonTracking_(true), RandomSeed_(0){
+    TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), RandomSeed_(0) {
+
+    AddParameter("VetoSDSaveEnergyLossesVector", "save energy losses in veto sensitive detector to vector", VetoSDSaveEnergyLossesVector_);
+    AddParameter("VetoSDSaveEnergyLossesTree", "save energy losses in veto sensitive detector to tree", VetoSDSaveEnergyLossesTree_);
+    AddParameter("VetoSDPruneTree", "prune tree in veto sensitive detector", VetoSDPruneTree_);
+    AddParameter("InteriorSDSaveEnergyLossesVector", "save energy losses in interior sensitive detector to vector", InteriorSDSaveEnergyLossesVector_);
+    AddParameter("InteriorSDSaveEnergyLossesTree", "save energy losses in interior sensitive detector to tree", InteriorSDSaveEnergyLossesTree_);
+    AddParameter("InteriorSDPruneTree", "prune tree in interior sensitive detector", InteriorSDPruneTree_);
+
+    AddParameter("KillNeutrinos", "kill neutrinos", KillNeutrinos_);
+    AddParameter("KillPhotons", "kill photons", KillPhotons_);
+    AddParameter("KillScintillation", "kill scintillation", KillScintillation_);
+    AddParameter("KillCherenkov", "kill cherenkov", KillCherenkov_);
+    AddParameter("TimeCut", "only track events up to 200nsec", TimeCut_);
+    AddParameter("DetailedPhotonTracking", "track all optical photons to get distance travelled", DetailedPhotonTracking_);
+    AddParameter("TrackParticles", "track particles", TrackParticles_);
+    AddParameter("TrackEnergyLosses", "track energy losses", TrackEnergyLosses_);
+
     AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
     AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
     AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", SourceRodIn_);
@@ -62,13 +94,26 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("MieGG", "used to calculate angular spread of outgoing photons from mie scattering in tpb", MieGG_);
     AddParameter("MieRatio", "ratio of forward : backwards scattering from mie scattering in tpb", MieRatio_);
     AddParameter("Normalization", "normalization of number of photons produced in liquid argon", Normalization_);
-    AddParameter("TimeCut", "only track events up to 200nsec", TimeCut_);
-    AddParameter("KillCherenkov", "turn cherenkov light on/off", KillCherenkov_);
-    AddParameter("FullPhotonTracking", "true to track all optical photons to get distance travelled", FullPhotonTracking_);
     AddParameter("RandomSeed", "seed for geant4 random generator", RandomSeed_);
 }
 
 void CCM200Response::Configure() {
+    GetParameter("VetoSDSaveEnergyLossesVector", VetoSDSaveEnergyLossesVector_);
+    GetParameter("VetoSDSaveEnergyLossesTree", VetoSDSaveEnergyLossesTree_);
+    GetParameter("VetoSDPruneTree", VetoSDPruneTree_);
+    GetParameter("InteriorSDSaveEnergyLossesVector", InteriorSDSaveEnergyLossesVector_);
+    GetParameter("InteriorSDSaveEnergyLossesTree", InteriorSDSaveEnergyLossesTree_);
+    GetParameter("InteriorSDPruneTree", InteriorSDPruneTree_);
+
+    GetParameter("KillNeutrinos", KillNeutrinos_);
+    GetParameter("KillPhotons", KillPhotons_);
+    GetParameter("KillScintillation", KillScintillation_);
+    GetParameter("KillCherenkov", KillCherenkov_);
+    GetParameter("TimeCut", TimeCut_);
+    GetParameter("DetailedPhotonTracking", DetailedPhotonTracking_);
+    GetParameter("TrackParticles", TrackParticles_);
+    GetParameter("TrackEnergyLosses", TrackEnergyLosses_);
+
     GetParameter("PMTSDStatus", PMTSDStatus_);
     GetParameter("LArSDStatus", LArSDStatus_);
     GetParameter("SourceRodIn", SourceRodIn_);
@@ -97,9 +142,6 @@ void CCM200Response::Configure() {
     GetParameter("MieGG", MieGG_);
     GetParameter("MieRatio", MieRatio_);
     GetParameter("Normalization", Normalization_);
-    GetParameter("TimeCut", TimeCut_);
-    GetParameter("KillCherenkov", KillCherenkov_);
-    GetParameter("FullPhotonTracking", FullPhotonTracking_);
     GetParameter("RandomSeed", RandomSeed_);
 }
 
@@ -107,20 +149,25 @@ CCM200Response::~CCM200Response() {}
 
 void CCM200Response::Initialize() {
 
-    if (g4Interface_ == nullptr){
+    if(g4Interface_ == nullptr) {
         g4Interface_ = G4Interface::GetInstance();
     }
 
-    if (!PMTSDStatus_ and !LArSDStatus_){
+    if(!PMTSDStatus_ and !LArSDStatus_) {
         log_warn("Oops! Both sensitive detectors are turned off!");
     }
 
     // let's let's construct the detector
-    g4Interface_->InstallDetector(PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
+    g4Interface_->InstallDetector(
+                                  VetoSDSaveEnergyLossesVector_, VetoSDSaveEnergyLossesTree_, VetoSDPruneTree_,
+                                  InteriorSDSaveEnergyLossesVector_, InteriorSDSaveEnergyLossesTree_, InteriorSDPruneTree_,
+                                  KillNeutrinos_, KillPhotons_, KillScintillation_, KillCherenkov_,
+                                  TimeCut_, DetailedPhotonTracking_, TrackParticles_, TrackEnergyLosses_,
+                                  PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
                                   DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength1_, UVAbsLength2_, UVAbsScaling_,
                                   WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
-                                  MieGG_, MieRatio_, Normalization_, TimeCut_, KillCherenkov_, FullPhotonTracking_, RandomSeed_);
+                                  MieGG_, MieRatio_, Normalization_, RandomSeed_);
 }
 
 I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {

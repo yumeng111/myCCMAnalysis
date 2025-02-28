@@ -34,6 +34,24 @@ private:
 
     std::string visMacroFile_;
 
+    bool VetoSDSaveEnergyLossesVector_;
+    bool VetoSDSaveEnergyLossesTree_;
+    bool VetoSDPruneTree_;
+
+    bool InteriorSDSaveEnergyLossesVector_;
+    bool InteriorSDSaveEnergyLossesTree_;
+    bool InteriorSDPruneTree_;
+
+    bool KillNeutrinos_ = false;
+    bool KillPhotons_ = false;
+    bool KillScintillation_ = false;
+    bool KillCherenkov_ = false;
+
+    bool TimeCut_ = false;
+    bool DetailedPhotonTracking_ = false;
+    bool TrackParticles_ = false;
+    bool TrackEnergyLosses_ = false;
+
     bool PMTSDStatus_; // turn PMT SD on/off
     bool LArSDStatus_; // turn fiducial LAr SD on/off
     bool SourceRodIn_; // place source rod into detector geometry
@@ -62,9 +80,6 @@ private:
     double MieGG_;
     double MieRatio_;
     double Normalization_;
-    bool TimeCut_; // true ends all events after 200 nsec
-    bool KillCherenkov_; // true turns off cherenkov light
-    bool FullPhotonTracking_; 
     long RandomSeed_; // random seed for geant4
 
     std::shared_ptr<G4Interface> g4Interface_ = nullptr;

@@ -62,7 +62,12 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+void G4Interface::InstallDetector(
+                                  bool VetoSDSaveEnergyLossesVector, bool VetoSDSaveEnergyLossesTree, bool VetoSDPruneTree,
+                                  bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
+                                  bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
+                                  bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
+                                  bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
                                   bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
                                   double DecayX, double DecayY, double DecayZ,
                                   double SingletTau, double TripletTau, double Rayleigh128,
@@ -70,7 +75,7 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                                   double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                                   double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
-                                  double Normalization, bool TimeCut, bool KillCherenkov, bool FullPhotonTracking, long RandomSeed) {
+                                  double Normalization, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -102,6 +107,15 @@ void G4Interface::InstallDetector(bool PMTSDStatus, bool LArSDStatus, bool Sourc
                                                   Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio, Normalization);
         // set readout
         detector_->SetReadout(readout_.get());
+
+        detector_->SetVetoSDSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector);
+        detector_->SetVetoSDSaveEnergyLossesTree(VetoSDSaveEnergyLossesTree);
+        detector_->SetVetoSDPruneTree(VetoSDPruneTree);
+
+        detector_->SetInteriorSDSaveEnergyLossesVector(InteriorSDSaveEnergyLossesVector);
+        detector_->SetInteriorSDSaveEnergyLossesTree(InteriorSDSaveEnergyLossesTree);
+        detector_->SetInteriorSDPruneTree(InteriorSDPruneTree);
+
         // set SD status
         detector_->SetPMTSDStatus(PMTSDStatus_);
         detector_->SetLArSDStatus(LArSDStatus_);

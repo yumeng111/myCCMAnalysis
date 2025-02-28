@@ -647,7 +647,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
     if(!fMainVolume)
         return;
 
-    if (PMTSDStatus_){
+    if(PMTSDStatus_) {
         // PMT SD
         G4CCMPMTSD* pmt = fPMT_SD.Get();
         if(!pmt) {
@@ -658,18 +658,18 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
 
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
-            pmt_SD->SetPhotonTracking(FullPhotonTracking_);
+            pmt_SD->SetPhotonTracking(DetailedPhotonTracking_);
             pmt_SD->SetReadout(readout_);
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedCaps(), fPMT_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fPMT_SD.Get());
+            for(G4LogicalVolume * log : fMainVolume->GetPMTLogicalVolumes()) {
+                if(log == nullptr)
+                    continue;
+                SetSensitiveDetector(log, fScint_SD.Get());
+            }
         }
-
     }
 
-    if (LArSDStatus_){
+    if(LArSDStatus_) {
         // Scint SD
         if(!fScint_SD.Get()) {
             G4cout << "Construction /LAr/scintSD" << G4endl;
@@ -677,49 +677,82 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             scint_SD->SetPMTSDStatus(PMTSDStatus_);
             scint_SD->SetTimeCutStatus(TimeCut_);
             scint_SD->SetKillCherenkovStatus(KillCherenkov_);
-            scint_SD->SetPhotonTracking(FullPhotonTracking_);
+            scint_SD->SetPhotonTracking(DetailedPhotonTracking_);
             scint_SD->SetReadout(readout_);
             fScint_SD.Put(scint_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogScint(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBCoatingCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBFoilSides(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBFoilTop(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogTPBFoilBottom(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTCoatedCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogPMTUncoatedCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogReflectorFoil(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetShinyC406R0(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetShinyTop(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetShinyBottom(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogBridleCoatedWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogBridleUncoatedWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogBridleCoatedCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogBridleUncoatedCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogFrillCoatedWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogFrillUncoatedWall(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogFrillCoatedCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogFrillUncoatedCaps(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogInnerFrame(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogArgonOuter(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogInnerJacket(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogVacuum(), fScint_SD.Get());
-            SetSensitiveDetector(fMainVolume->GetLogCryoVessel(), fScint_SD.Get());
-            // make sure to include source pellet + rod for SD if enabeled
-            if (SourceRodIn_){
-                SetSensitiveDetector(fMainVolume->GetLogSourceRod(), fScint_SD.Get());
-            }
-            if (CobaltSourceRun_ or SodiumSourceRun_){
-                SetSensitiveDetector(fMainVolume->GetLogSourcePellet(), fScint_SD.Get());
-            }
-            if (TrainingSource_){
-                SetSensitiveDetector(fMainVolume->GetLogSourcePelletHousing(), fScint_SD.Get());
+            for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {
+                if(log == nullptr)
+                    continue;
+                SetSensitiveDetector(log, fScint_SD.Get());
             }
         }
+    }
+    
+    bool tree_tracker = TrackParticles_ or TrackEnergyLosses_
+                     or DetailedPhotonTracking_ or TimeCut_
+                     or KillNeutrinos_ or KillCherenkov_ or KillScintillation_ or KillPhotons_
+                     or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_;
 
+    if(tree_tracker) {
+        // Tree tracker
+        if(!fTreeTracker.Get()) {
+            G4cout << "Construction /LAr/treeTracker" << G4endl;
+            auto tree_tracker = new G4CCMTreeTracker("/LAr/treeTracker");
+            tree_tracker->SetTrackParticles(TrackParticles_);
+            tree_tracker->SetTrackEnergyLosses(TrackEnergyLosses_);
+            tree_tracker->SetDetailedPhotonTracking(DetailedPhotonTracking_);
+            tree_tracker->SetTimeCut(TimeCut_);
+            tree_tracker->SetKillNeutrinos(KillNeutrinos_);
+            tree_tracker->SetKillCherenkov(KillCherenkov_);
+            tree_tracker->SetKillScintillation(KillScintillation_);
+            tree_tracker->SetKillPhotons(KillPhotons_);
+            fTreeTracker.Put(tree_tracker);
+            G4SDManager::GetSDMpointer()->AddNewDetector(fTreeTracker.Get());
+            for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {
+                if(log == nullptr)
+                    continue;
+                SetSensitiveDetector(log, fTreeTracker.Get());
+            }
+        }
+    }
+    if(VetoSDSaveEnergyLossesTree_ or VetoSDSaveEnergyLossesVector_) {
+        // Veto SD
+        if(!fVeto_SD.Get()) {
+            G4cout << "Construction /LAr/vetoSD" << G4endl;
+            auto veto_SD = new G4CCMVetoSD("/LAr/vetoSD");
+            veto_SD->SetSaveEnergyLossesTree(VetoSDSaveEnergyLossesTree_);
+            veto_SD->SetSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector_);
+            veto_SD->SetPruneTree(VetoSDPruneTree_);
+            if(fTreeTracker.Get())
+                veto_SD->SetTreeTracker(fTreeTracker.Get());
+            fVeto_SD.Put(veto_SD);
+            G4SDManager::GetSDMpointer()->AddNewDetector(fVeto_SD.Get());
+            for(G4LogicalVolume * log : fMainVolume->GetVetoLArLogicalVolumes()) {
+                if(log == nullptr)
+                    continue;
+                SetSensitiveDetector(log, fVeto_SD.Get());
+            }
+        }
+    }
+    if(InteriorSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesVector_) {
+        // Interior SD
+        if(!fInterior_SD.Get()) {
+            G4cout << "Construction /LAr/interiorSD" << G4endl;
+            auto interior_SD = new G4CCMInteriorSD("/LAr/interiorSD");
+            interior_SD->SetSaveEnergyLossesTree(InteriorSDSaveEnergyLossesTree_);
+            interior_SD->SetSaveEnergyLossesVector(InteriorSDSaveEnergyLossesVector_);
+            interior_SD->SetPruneTree(InteriorSDPruneTree_);
+            interior_SD->SetTreeTracker(fTreeTracker.Get());
+            if(fTreeTracker.Get())
+                interior_SD->SetTreeTracker(fTreeTracker.Get());
+            G4SDManager::GetSDMpointer()->AddNewDetector(fInterior_SD.Get());
+            for(G4LogicalVolume * log : fMainVolume->GetInteriorLArLogicalVolumes()) {
+                if(log == nullptr)
+                    continue;
+                SetSensitiveDetector(log, fInterior_SD.Get());
+            }
+        }
     }
 }
 

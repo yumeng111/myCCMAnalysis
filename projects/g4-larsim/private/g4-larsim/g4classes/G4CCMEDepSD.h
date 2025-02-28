@@ -41,6 +41,9 @@ class G4CCMEDepSD : public G4VSensitiveDetector {
         bool GetSaveEnergyLossesTree() { return SaveEnergyLossesTree_; }
         bool GetPruneTree() { return PruneTree_; }
 
+        void SetTreeTracker(G4CCMTreeTracker * tracker) { tree_tracker = tracker; }
+        G4CCMTreeTracker * GetTreeTracker() { return tree_tracker; }
+
     private:
 
         G4CCMTreeTracker * tree_tracker;

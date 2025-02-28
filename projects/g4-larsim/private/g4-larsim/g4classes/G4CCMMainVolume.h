@@ -66,6 +66,59 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogVacuum() {return fVacuum_log;}
     G4LogicalVolume* GetLogCryoVessel() {return fCryoVessel_log;}
 
+    std::vector<G4LogicalVolume*> GetPMTLogicalVolumes() {
+        return {fPMTCoatedWall_log, fPMTCoatedCaps_log, fPMTUncoatedWall_log, fPMTUncoatedCaps_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetScintLogicalVolumes() {
+        return {fFiducialAr_log, fArgonOuter_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetSourceLogicalVolumes() {
+        return {fSourceRod_log, fSourcePellet_log, fSourcePelletHousing_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetTPBLogicalVolumes() {
+        return {fTPBCoatingWall_log, fTPBCoatingCaps_log, fTPBFoilSides_log, fTPBFoilTop_log, fTPBFoilBottom_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetReflectorLogicalVolumes() {
+        return {fReflectorFoil_log, fShinyC406R0_log, fShinyTop_log, fShinyBottom_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetBridleLogicalVolumes() {
+        return {fBridleCoatedWall_log, fBridleUncoatedWall_log, fBridleCoatedCaps_log, fBridleUncoatedCaps_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetFrillLogicalVolumes() {
+        return {fFrillCoatedWall_log, fFrillUncoatedWall_log, fFrillCoatedCaps_log, fFrillUncoatedCaps_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetFrameLogicalVolumes() {
+        return {fInnerFrame_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetCryoLogicalVolumes() {
+        return {fInnerJacket_log, fVacuum_log, fCryoVessel_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetAllLogicalVolumes() {
+        std::vector<G4LogicalVolume*> allLogicalVolumes;
+        std::vector<std::vector<G4LogicalVolume*>> logicalVolumes = {GetPMTLogicalVolumes(), GetSourceLogicalVolumes(), GetTPBLogicalVolumes(), GetReflectorLogicalVolumes(), GetBridleLogicalVolumes(), GetFrillLogicalVolumes(), GetFrameLogicalVolumes(), GetCryoLogicalVolumes()};
+        for(auto logicalVolume : logicalVolumes) {
+            allLogicalVolumes.insert(allLogicalVolumes.end(), logicalVolume.begin(), logicalVolume.end());
+        }
+        return allLogicalVolumes;
+    }
+
+    std::vector<G4LogicalVolume*> GetInteriorLArLogicalVolumes() {
+        return {fFiducialAr_log};
+    }
+
+    std::vector<G4LogicalVolume*> GetVetoLArLogicalVolumes() {
+        return {fOuterLAr_log};
+    }
+
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:
