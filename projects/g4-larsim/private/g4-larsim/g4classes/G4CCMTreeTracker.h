@@ -37,6 +37,9 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
         void SetTracking(bool do_tracking);
 
+        bool GetKillNeutrinos() { return KillNeutrinos_; }
+        void SetKillNeutrinos(bool KillNeutrinos) { KillNeutrinos_ = KillNeutrinos; }
+
         bool GetKillPhotons() { return KillPhotons_; }
         void SetKillPhotons(bool KillPhotons) { KillPhotons_ = KillPhotons; }
 

@@ -34,7 +34,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogPMTUncoatedWall() { return fPMTUncoatedWall_log; }
     G4LogicalVolume* GetLogPMTUncoatedCaps() { return fPMTUncoatedCaps_log; }
 
-    G4LogicalVolume* GetLogScint() { return fFiducialAr_log; }
+    G4LogicalVolume* GetLogScint() { return fFiducialLAr_log; }
     G4LogicalVolume* GetLogSourceRod() { return fSourceRod_log; }
     G4LogicalVolume* GetLogSourcePellet() { return fSourcePellet_log; }
     G4LogicalVolume* GetLogSourcePelletHousing() { return fSourcePelletHousing_log; }
@@ -60,7 +60,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetLogFrillUncoatedCaps() {return fFrillUncoatedCaps_log;}
 
     G4LogicalVolume* GetLogInnerFrame() {return fInnerFrame_log;}
-    G4LogicalVolume* GetLogArgonOuter() {return fArgonOuter_log;}
+    G4LogicalVolume* GetLogArgonOuter() {return fOuterLAr_log;}
 
     G4LogicalVolume* GetLogInnerJacket() {return fInnerJacket_log;}
     G4LogicalVolume* GetLogVacuum() {return fVacuum_log;}
@@ -71,7 +71,7 @@ class G4CCMMainVolume : public G4PVPlacement
     }
 
     std::vector<G4LogicalVolume*> GetScintLogicalVolumes() {
-        return {fFiducialAr_log, fArgonOuter_log};
+        return {fFiducialLAr_log, fOuterLAr_log};
     }
 
     std::vector<G4LogicalVolume*> GetSourceLogicalVolumes() {
@@ -112,7 +112,7 @@ class G4CCMMainVolume : public G4PVPlacement
     }
 
     std::vector<G4LogicalVolume*> GetInteriorLArLogicalVolumes() {
-        return {fFiducialAr_log};
+        return {fFiducialLAr_log};
     }
 
     std::vector<G4LogicalVolume*> GetVetoLArLogicalVolumes() {
@@ -130,13 +130,13 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fCryoVessel = nullptr;
     G4Tubs* fVacuum = nullptr;
     G4Tubs* fInnerJacket = nullptr;
-    G4Tubs* fArgonOuter = nullptr;
+    G4Tubs* fOuterLAr = nullptr;
     G4Tubs* fInnerFrame = nullptr;
     G4Tubs* fReflectorFoil = nullptr;
     G4Tubs* fTPBFoilSides = nullptr;
     G4Tubs* fTPBFoilTop = nullptr;
     G4Tubs* fTPBFoilBottom = nullptr;
-    G4Tubs* fFiducialAr = nullptr;
+    G4Tubs* fFiducialLAr = nullptr;
 
     G4VSolid* fPMTCoatedWall = nullptr;
     G4VSolid* fPMTCoatedCaps = nullptr;
@@ -169,13 +169,13 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fCryoVessel_log = nullptr;
     G4LogicalVolume* fVacuum_log = nullptr;
     G4LogicalVolume* fInnerJacket_log = nullptr;
-    G4LogicalVolume* fArgonOuter_log = nullptr;
+    G4LogicalVolume* fOuterLAr_log = nullptr;
     G4LogicalVolume* fInnerFrame_log = nullptr;
     G4LogicalVolume* fReflectorFoil_log = nullptr;
     G4LogicalVolume* fTPBFoilSides_log = nullptr;
     G4LogicalVolume* fTPBFoilTop_log = nullptr;
     G4LogicalVolume* fTPBFoilBottom_log = nullptr;
-    G4LogicalVolume* fFiducialAr_log = nullptr;
+    G4LogicalVolume* fFiducialLAr_log = nullptr;
 
     G4LogicalVolume* fPMTCoatedWall_log = nullptr;
     G4LogicalVolume* fPMTCoatedCaps_log = nullptr;
@@ -205,7 +205,7 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fShinyBottom_log = nullptr;
 
     // Physical volumes (necessary for borders)
-    G4VPhysicalVolume* fFiducialAr_phys = nullptr;
+    G4VPhysicalVolume* fFiducialLAr_phys = nullptr;
     G4VPhysicalVolume* fTPBFoilSides_phys = nullptr;
     G4VPhysicalVolume* fTPBFoilTop_phys = nullptr;
     G4VPhysicalVolume* fTPBFoilBottom_phys = nullptr;

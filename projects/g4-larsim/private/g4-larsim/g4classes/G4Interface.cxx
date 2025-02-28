@@ -121,8 +121,11 @@ void G4Interface::InstallDetector(
         detector_->SetLArSDStatus(LArSDStatus_);
         // set time cut and cerenkov control
         detector_->SetTimeCut(TimeCut);
+        detector_->SetKillNeutrinos(KillNeutrinos);
+        detector_->SetKillPhotons(KillPhotons);
         detector_->SetKillCherenkov(KillCherenkov);
-        detector_->SetPhotonTracking(FullPhotonTracking);
+        detector_->SetKillScintillation(KillScintillation);
+        detector_->SetDetailedPhotonTracking(DetailedPhotonTracking);
         // set sodium rod status
         detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun,
                                              TrainingSource, DecayX / I3Units::cm * CLHEP::cm, DecayY / I3Units::cm * CLHEP::cm, DecayZ / I3Units::cm * CLHEP::cm);

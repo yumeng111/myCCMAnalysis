@@ -12,6 +12,8 @@ Global variables include most of the important volumes and materials.
 #include "dataclasses/I3Map.h"
 #include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
 #include "g4-larsim/g4classes/G4CCMReadout.h"
+#include "g4-larsim/g4classes/G4CCMTreeTracker.h"
+#include "g4-larsim/g4classes/G4CCMEDepSD.h"
 
 #include <G4Cache.hh>
 #include <G4Material.hh>
@@ -75,9 +77,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     void SetKillCherenkov(G4bool b) { KillCherenkov_ = b; }
 
     void SetTimeCut(G4bool b) { TimeCut_ = b; }
-    void SetDetailedPhotonTracking(G4bool b) { FullPhotonTracking_ = b; }
-    void SetTrackParticles(G4bool b) { FullPhotonTracking_ = b; }
-    void SetTrackEnergyLosses(G4bool b) { FullPhotonTracking_ = b; }
+    void SetDetailedPhotonTracking(G4bool b) { DetailedPhotonTracking_ = b; }
+    void SetTrackParticles(G4bool b) { TrackParticles_ = b; }
+    void SetTrackEnergyLosses(G4bool b) { TrackEnergyLosses_ = b; }
 
     // set SD configuration
     void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
@@ -97,9 +99,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     bool GetKillCherenkov() { return KillCherenkov_; }
 
     bool GetTimeCut() { return TimeCut_; }
-    bool GetDetailedPhotonTracking() { return FullPhotonTracking_; }
-    bool GetTrackParticles() { return FullPhotonTracking_; }
-    bool GetTrackEnergyLosses() { return FullPhotonTracking_; }
+    bool GetDetailedPhotonTracking() { return DetailedPhotonTracking_; }
+    bool GetTrackParticles() { return TrackParticles_; }
+    bool GetTrackEnergyLosses() { return TrackEnergyLosses_; }
 
     // get SD configuration
     bool GetPMTSDStatus() { return PMTSDStatus_; }
@@ -172,9 +174,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     // Sensitive Detector
     G4Cache<G4CCMPMTSD*> fPMT_SD;
     G4Cache<G4CCMScintSD*> fScint_SD;
-    G4Cache<G4CCMTreeTrackerSD*> fTreeTracker_SD;
-    G4Cache<G4CCMEDepSD*> fVetoSD;
-    G4Cache<G4CCMEDepSD*> fInteriorSD;
+    G4Cache<G4CCMTreeTracker*> fTreeTracker_SD;
+    G4Cache<G4CCMEDepSD*> fVeto_SD;
+    G4Cache<G4CCMEDepSD*> fInterior_SD;
 
     bool VetoSDSaveEnergyLossesVector_ = false;
     bool VetoSDSaveEnergyLossesTree_ = false;

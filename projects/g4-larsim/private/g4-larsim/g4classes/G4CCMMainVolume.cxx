@@ -377,9 +377,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     // 5cm of steel until we get to liquid argon
 
     // Argon outside the fiducial volume
-    fArgonOuter = new G4Tubs("OuterLiquidArgon", 0*cm, 120*cm, 115*cm, 0*deg, 360*deg);
-    fArgonOuter_log = new G4LogicalVolume(fArgonOuter, G4Material::GetMaterial("LAr"), "OuterLiquidArgon");
-    new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fArgonOuter_log, "OuterLiquidArgon", fInnerJacket_log, false, 0, true);
+    fOuterLAr = new G4Tubs("OuterLiquidArgon", 0*cm, 120*cm, 115*cm, 0*deg, 360*deg);
+    fOuterLAr_log = new G4LogicalVolume(fOuterLAr, G4Material::GetMaterial("LAr"), "OuterLiquidArgon");
+    new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fOuterLAr_log, "OuterLiquidArgon", fInnerJacket_log, false, 0, true);
 
     // Radius of inner frame is 1037mm, inner radius is 1036mm
     // Total height of inner frame is 1239.6mm (half height is 619.8mm)
@@ -396,7 +396,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
     fInnerFrame_log= new G4LogicalVolume(fInnerFrame, G4Material::GetMaterial("Alum"), "InnerFrame");
-    new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fArgonOuter_log, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0,0,0), fInnerFrame_log, "InnerFrame", fOuterLAr_log, false, 0, true);
 
     G4double ptfe_half_height = frame_half_height - frame_thickness;
     G4double ptfe_radius = frame_radius - frame_thickness;
@@ -439,10 +439,10 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double fiducial_lar_radius = tpb_radius - SideFoilTPBThickness;
 
     // now fiducial LAr!
-    fFiducialAr = new G4Tubs("FiducialArgon", 0*cm, fiducial_lar_radius, fiducial_lar_half_height, 0*deg, 360*deg);
-    fFiducialAr_log = new G4LogicalVolume(fFiducialAr, G4Material::GetMaterial("LAr"), "FiducialArgon");
-    //fFiducialAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
-    fFiducialAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialAr_log, "FiducialArgon", fTPBFoilSides_log, false, 0, true);
+    fFiducialLAr = new G4Tubs("FiducialArgon", 0*cm, fiducial_lar_radius, fiducial_lar_half_height, 0*deg, 360*deg);
+    fFiducialLAr_log = new G4LogicalVolume(fFiducialLAr, G4Material::GetMaterial("LAr"), "FiducialArgon");
+    //fFiducialLAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialLAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
+    fFiducialLAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialLAr_log, "FiducialArgon", fTPBFoilSides_log, false, 0, true);
 
     G4double pmt_protrusion_distance = 61.89 * mm;
 
@@ -498,10 +498,10 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double top_shiny_radius = 13.335 * cm;
     fShinyTop = new G4Tubs("ShinyTop", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
     fShinyTop_log= new G4LogicalVolume(fShinyTop, G4Material::GetMaterial("PTFE"), "ShinyTop");
-    new G4PVPlacement(0, G4ThreeVector(0, 0, fiducial_lar_half_height - shiny_half_height), fShinyTop_log, "ShinyTop", fFiducialAr_log, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, 0, fiducial_lar_half_height - shiny_half_height), fShinyTop_log, "ShinyTop", fFiducialLAr_log, false, 0, true);
     fShinyBottom = new G4Tubs("ShinyBottom", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
     fShinyBottom_log= new G4LogicalVolume(fShinyBottom, G4Material::GetMaterial("PTFE"), "ShinyBottom");
-    new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialAr_log, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialLAr_log, false, 0, true);
 
     double pmt_radius_cm = (fiducial_lar_radius + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
     double pmt_height_cm = (fiducial_lar_half_height + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
@@ -626,9 +626,9 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     TPBOpticalSurface->SetMaterialPropertiesTable(TPB_MT);
 
     // put tpb surface on our foils
-    new G4LogicalBorderSurface("TPBFoilSides_Surface", fFiducialAr_phys, fTPBFoilSides_phys, TPBOpticalSurface);
-    new G4LogicalBorderSurface("TPBFoilTop_Surface", fFiducialAr_phys, fTPBFoilTop_phys, TPBOpticalSurface);
-    new G4LogicalBorderSurface("TPBFoilBottom_Surface", fFiducialAr_phys, fTPBFoilBottom_phys, TPBOpticalSurface);
+    new G4LogicalBorderSurface("TPBFoilSides_Surface", fFiducialLAr_phys, fTPBFoilSides_phys, TPBOpticalSurface);
+    new G4LogicalBorderSurface("TPBFoilTop_Surface", fFiducialLAr_phys, fTPBFoilTop_phys, TPBOpticalSurface);
+    new G4LogicalBorderSurface("TPBFoilBottom_Surface", fFiducialLAr_phys, fTPBFoilBottom_phys, TPBOpticalSurface);
 
     // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
     G4int k = 0;
@@ -681,7 +681,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         }
         if (position_string == "C406R0"){
             // now place our shiny circle!
-            new G4PVPlacement(0, G4ThreeVector(position[0]*cm, position[1]*cm, fiducial_lar_half_height - shiny_half_height), fShinyC406R0_log, "ShinyC406R0", fFiducialAr_log, false, 0, true);
+            new G4PVPlacement(0, G4ThreeVector(position[0]*cm, position[1]*cm, fiducial_lar_half_height - shiny_half_height), fShinyC406R0_log, "ShinyC406R0", fFiducialLAr_log, false, 0, true);
             continue;
         }
         // so we have our pmt info
@@ -738,29 +738,29 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             G4String frill_descriptive_name = "Frill_" + pmt_name;
 
             if(row > 0 and row < 6) {
-                fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingWall_log, tpb_descriptive_name, fFiducialAr_log, false, k, true);
-                fPMTCoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedWall_log, descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedWall_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedWall_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingWall_log, tpb_descriptive_name, fFiducialLAr_log, false, k, true);
+                fPMTCoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedWall_log, descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedWall_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedWall_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
                 // now add our boarder surfaces
                 //new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedWall_phys, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedWall_log, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedWall_log, PlasticOpticalSurface);
                 new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedWall_log, PlasticOpticalSurface);
                 //new G4LogicalSkinSurface(tpb_descriptive_name + "_Surface", fTPBCoatingWall_log, TPBOpticalSurface);
-                new G4LogicalBorderSurface(tpb_descriptive_name + "_Surface", fFiducialAr_phys, fTPBPMT_phys, TPBOpticalSurface);
+                new G4LogicalBorderSurface(tpb_descriptive_name + "_Surface", fFiducialLAr_phys, fTPBPMT_phys, TPBOpticalSurface);
             } else {
-                fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingCaps_log, tpb_descriptive_name, fFiducialAr_log, false, k, true);
-                fPMTCoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedCaps_log, descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedCaps_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingCaps_log, tpb_descriptive_name, fFiducialLAr_log, false, k, true);
+                fPMTCoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedCaps_log, descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedCaps_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedCaps_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
                 // now add our boarder surfaces
                 //new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedCaps_log, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedCaps_log, PlasticOpticalSurface);
                 new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedCaps_log, PlasticOpticalSurface);
                 //new G4LogicalSkinSurface(tpb_descriptive_name + "_Surface", fTPBCoatingCaps_log, TPBOpticalSurface);
-                new G4LogicalBorderSurface(tpb_descriptive_name + "_Surface", fFiducialAr_phys, fTPBPMT_phys, TPBOpticalSurface);
+                new G4LogicalBorderSurface(tpb_descriptive_name + "_Surface", fFiducialLAr_phys, fTPBPMT_phys, TPBOpticalSurface);
             }
 
         } else {
@@ -770,20 +770,20 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             G4String frill_descriptive_name = "Frill_" + pmt_name;
 
             if(row > 0 and row < 6) {
-                fPMTUncoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedWall_log, descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedWall_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedWall_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                fPMTUncoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedWall_log, descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedWall_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedWall_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
                 // now add our boarder surfaces
-                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialAr_phys, fPMTUncoatedWall_phys, UncoatedPMTGlassOpticalSurface);
+                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialLAr_phys, fPMTUncoatedWall_phys, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTUncoatedWall_log, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleUncoatedWall_log, PlasticOpticalSurface);
                 new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillUncoatedWall_log, PlasticOpticalSurface);
             } else {
-                fPMTUncoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedCaps_log, descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedCaps_log, bridle_descriptive_name, fFiducialAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedCaps_log, frill_descriptive_name, fFiducialAr_log, false, k, true);
+                fPMTUncoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedCaps_log, descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedCaps_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
+                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedCaps_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
                 // now add our boarder surfaces
-                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialAr_phys, fPMTUncoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
+                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialLAr_phys, fPMTUncoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTUncoatedCaps_log, UncoatedPMTGlassOpticalSurface);
                 new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleUncoatedCaps_log, PlasticOpticalSurface);
                 new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillUncoatedCaps_log, PlasticOpticalSurface);
@@ -866,11 +866,11 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 fSourceRod_log = new G4LogicalVolume(rodWithPelletAndHousingHole, G4Material::GetMaterial("Steel"), "fSourceRodLogWithHoles");
 
                 // Place the modified rod (with pellet and housing subtracted) in the fiducial argon volume
-                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletAndHousingHole", fFiducialAr_log, false, 0, true);
+                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletAndHousingHole", fFiducialLAr_log, false, 0, true);
 
                 // Place the source pellet and housing within the detector
-                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialAr_log, false, 0, true);
-                new G4PVPlacement(nullptr, pelletPosition, fSourcePelletHousing_log, "SourcePelletHousing", fFiducialAr_log, false, 0, true);
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fFiducialLAr_log, false, 0, true);
+                new G4PVPlacement(nullptr, pelletPosition, fSourcePelletHousing_log, "SourcePelletHousing", fFiducialLAr_log, false, 0, true);
 
             } else {
                 // standard case where the source pellet is inserted 1/4 cm into the end of the source rod
@@ -880,7 +880,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 // again let's first subtract the pellet from the rod, make logical vol for rod, and place rod
                 G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
                 fSourceRod_log = new G4LogicalVolume(rodWithPelletHole, G4Material::GetMaterial("Steel"), "fSourceRodLogWithHole");
-                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletHole", fFiducialAr_log, false, 0, true);
+                new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "RodWithPelletHole", fFiducialLAr_log, false, 0, true);
 
                 // now place sodium pellet
                 new G4PVPlacement(nullptr, pelletPosition, fSourcePellet_log, "SourcePellet", fSourceRod_log, false, 0, true);
@@ -888,7 +888,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         } else {
             // this is the case where we have the source rod in the detector but no pellet -- so let's place the rod like normal
             fSourceRod_log = new G4LogicalVolume(fSourceRod,  G4Material::GetMaterial("Steel"), "fSourceRodLog");
-            new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialAr_log, false, 0, true);
+            new G4PVPlacement(nullptr, rodPosition, fSourceRod_log, "SourceRod", fFiducialLAr_log, false, 0, true);
         }
 
         // now add our optical surface to our source rod
@@ -922,15 +922,15 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fArgonOuter_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fOuterLAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fFiducialAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    fFiducialLAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     //fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fArgonOuter_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fOuterLAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPMTCoated_log->SetVisAttributes(G4VisAttributes::GetInvisible());
