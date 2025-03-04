@@ -1,7 +1,6 @@
 
 
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
-#include "g4-larsim/g4classes/G4CCMScintSD.h"
 #include "g4-larsim/g4classes/G4CCMMainVolume.h"
 #include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
@@ -647,7 +646,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
     if(!fMainVolume)
         return;
 
-    if(PMTSDStatus_) {
+    if(RecordHits_) {
         // PMT SD
         G4CCMPMTSD* pmt = fPMT_SD.Get();
         if(!pmt) {
@@ -664,31 +663,11 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             for(G4LogicalVolume * log : fMainVolume->GetPMTLogicalVolumes()) {
                 if(log == nullptr)
                     continue;
-                SetSensitiveDetector(log, fScint_SD.Get());
+                SetSensitiveDetector(log, fPMT_SD.Get());
             }
         }
     }
 
-    if(LArSDStatus_) {
-        // Scint SD
-        if(!fScint_SD.Get()) {
-            G4cout << "Construction /LAr/scintSD" << G4endl;
-            auto scint_SD = new G4CCMScintSD("/LAr/scintSD");
-            scint_SD->SetPMTSDStatus(PMTSDStatus_);
-            scint_SD->SetTimeCutStatus(TimeCut_);
-            scint_SD->SetKillCherenkovStatus(KillCherenkov_);
-            scint_SD->SetPhotonTracking(DetailedPhotonTracking_);
-            scint_SD->SetReadout(readout_);
-            fScint_SD.Put(scint_SD);
-            G4SDManager::GetSDMpointer()->AddNewDetector(fScint_SD.Get());
-            for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {
-                if(log == nullptr)
-                    continue;
-                SetSensitiveDetector(log, fScint_SD.Get());
-            }
-        }
-    }
-    
     bool tree_tracker = TrackParticles_ or TrackEnergyLosses_
                      or DetailedPhotonTracking_ or TimeCut_
                      or KillNeutrinos_ or KillCherenkov_ or KillScintillation_ or KillPhotons_
@@ -778,9 +757,5 @@ void G4CCMDetectorConstruction::SetReadout(G4CCMReadout * readout) {
     G4CCMPMTSD* pmt = fPMT_SD.Get();
     if(pmt) {
         pmt->SetReadout(readout_);
-    }
-    G4CCMScintSD * scint = fScint_SD.Get();
-    if(scint) {
-        scint->SetReadout(readout_);
     }
 }

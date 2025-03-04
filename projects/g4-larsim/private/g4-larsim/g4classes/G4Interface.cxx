@@ -5,7 +5,6 @@
 #include "dataclasses/physics/I3Particle.h"
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
 #include "g4-larsim/g4classes/G4Interface.h"
-#include "g4-larsim/g4classes/G4CCMScintSD.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
@@ -68,7 +67,7 @@ void G4Interface::InstallDetector(
                                   bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
                                   bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
                                   bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
-                                  bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+                                  bool RecordHits, bool SourceRodIn, double SourceRodLocation,
                                   bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
                                   double DecayX, double DecayY, double DecayZ,
                                   double SingletTau, double TripletTau, double Rayleigh128,
@@ -82,8 +81,7 @@ void G4Interface::InstallDetector(
         return;
     }
 
-    PMTSDStatus_ = PMTSDStatus;
-    LArSDStatus_ = LArSDStatus;
+    RecordHits_ = RecordHits;
 
     // add random seed for geant4
     G4Random::setTheSeed(RandomSeed);
@@ -120,8 +118,8 @@ void G4Interface::InstallDetector(
         detector_->SetInteriorSDPruneTree(InteriorSDPruneTree);
 
         // set SD status
-        detector_->SetPMTSDStatus(PMTSDStatus_);
-        detector_->SetLArSDStatus(LArSDStatus_);
+        detector_->SetRecordHits(RecordHits_);
+
         // set time cut and cerenkov control
         detector_->SetTimeCut(TimeCut);
         detector_->SetKillNeutrinos(KillNeutrinos);

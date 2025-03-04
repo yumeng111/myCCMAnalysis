@@ -26,7 +26,6 @@ Global variables include most of the important volumes and materials.
 
 class G4CCMMainVolume;
 class G4CCMPMTSD;
-class G4CCMScintSD;
 
 class G4Box;
 class G4Element;
@@ -85,8 +84,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     void SetTrackEnergyLosses(G4bool b) { TrackEnergyLosses_ = b; }
 
     // set SD configuration
-    void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
-    void SetLArSDStatus(bool LArSDStatus) { LArSDStatus_ = LArSDStatus; }
+    void SetRecordHits(bool RecordHits) { RecordHits_ = RecordHits; }
 
     bool GetSaveAllEnergyLossesVector() { return SaveAllEnergyLossesVector_; }
     bool GetSaveAllEnergyLossesTree() { return SaveAllEnergyLossesTree_; }
@@ -110,8 +108,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     bool GetTrackEnergyLosses() { return TrackEnergyLosses_; }
 
     // get SD configuration
-    bool GetPMTSDStatus() { return PMTSDStatus_; }
-    bool GetLArSDStatus() { return LArSDStatus_; }
+    bool GetRecordHits() { return RecordHits_; }
 
     // set sodium source calibration run status
     void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun,
@@ -179,7 +176,6 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 
     // Sensitive Detector
     G4Cache<G4CCMPMTSD*> fPMT_SD;
-    G4Cache<G4CCMScintSD*> fScint_SD;
     G4Cache<G4CCMTreeTracker*> fTreeTracker_SD;
     G4Cache<G4CCMEDepSD*> fVeto_SD;
     G4Cache<G4CCMEDepSD*> fInterior_SD;
@@ -206,8 +202,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 
 
     // controls to turn SD on/off (set via G4Interface)
-    bool PMTSDStatus_ = true; // turn PMT SD on/off
-    bool LArSDStatus_ = true; // turn fiducial LAr SD on/off
+    bool RecordHits_ = true; // turn hit recording on/off
 
     // controls to turn sodium source on/off
     bool SourceRodIn_ = false;

@@ -2,7 +2,6 @@
 // loaded *before* globals.hh...
 
 #include "g4-larsim/g4classes/G4CCMPMTSD.h"
-#include "g4-larsim/g4classes/G4CCMScintSD.h"
 #include "g4-larsim/g4classes/G4CCMRunManager.h"
 
 #include <G4Run.hh>

@@ -52,7 +52,7 @@ class G4Interface {
                              bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
                              bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
                              bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
-                             bool PMTSDStatus, bool LArSDStatus, bool SourceRodIn, double SourceRodLocation,
+                             bool RecordHits, bool SourceRodIn, double SourceRodLocation,
                              bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
                              double DecayX, double DecayY, double DecayZ,
                              double SingletTau, double TripletTau, double Rayleigh128,
@@ -85,8 +85,7 @@ class G4Interface {
         std::string visMacro_;
 
         // controls to turn SD on/off (set by our response service)
-        bool PMTSDStatus_; // turn PMT SD on/off
-        bool LArSDStatus_; // turn fiducial LAr SD on/off
+        bool RecordHits_; // turn hit recording on/off
 
         SET_LOGGER("G4Interface");
 };

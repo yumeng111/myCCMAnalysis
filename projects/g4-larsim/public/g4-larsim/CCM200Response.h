@@ -54,8 +54,7 @@ private:
     bool TrackParticles_ = false;
     bool TrackEnergyLosses_ = false;
 
-    bool PMTSDStatus_; // turn PMT SD on/off
-    bool LArSDStatus_; // turn fiducial LAr SD on/off
+    bool RecordHits_;
     bool SourceRodIn_; // place source rod into detector geometry
     double SourceRodLocation_; // location of end of source rod
     bool CobaltSourceRun_; // true for cobalt57

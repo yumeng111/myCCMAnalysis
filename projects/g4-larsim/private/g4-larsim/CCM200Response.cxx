@@ -43,7 +43,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     InteriorSDSaveEnergyLossesVector_(false), InteriorSDSaveEnergyLossesTree_(false), InteriorSDPruneTree_(false),
     KillNeutrinos_(false), KillPhotons_(false), KillScintillation_(false), KillCherenkov_(false),
     TimeCut_(false), DetailedPhotonTracking_(false), TrackParticles_(false), TrackEnergyLosses_(false),
-    PMTSDStatus_(true), LArSDStatus_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
+    RecordHits_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
     SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
     Rayleigh128_(95.0 * I3Units::cm), UVAbsLength1_(16.0 * I3Units::cm), UVAbsLength2_(750.0 * I3Units::cm), UVAbsScaling_(0.83),
@@ -68,8 +68,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("TrackParticles", "track particles", TrackParticles_);
     AddParameter("TrackEnergyLosses", "track energy losses", TrackEnergyLosses_);
 
-    AddParameter("PMTSDStatus", "true if tracking photon hits on PMTs", PMTSDStatus_);
-    AddParameter("LArSDStatus", "true if tracking scintillation depositions in fiducial LAr", LArSDStatus_);
+    AddParameter("RecordHits", "record hits", RecordHits_);
     AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", SourceRodIn_);
     AddParameter("SourceRodLocation", "z location of the end of the sodium source rod", SourceRodLocation_);
     AddParameter("CobaltSourceRun", "true if we want to simulate cobalt source pellet", CobaltSourceRun_);
@@ -117,8 +116,7 @@ void CCM200Response::Configure() {
     GetParameter("TrackParticles", TrackParticles_);
     GetParameter("TrackEnergyLosses", TrackEnergyLosses_);
 
-    GetParameter("PMTSDStatus", PMTSDStatus_);
-    GetParameter("LArSDStatus", LArSDStatus_);
+    GetParameter("RecordHits", RecordHits_);
     GetParameter("SourceRodIn", SourceRodIn_);
     GetParameter("SourceRodLocation", SourceRodLocation_);
     GetParameter("CobaltSourceRun", CobaltSourceRun_);
@@ -156,10 +154,6 @@ void CCM200Response::Initialize() {
         g4Interface_ = G4Interface::GetInstance();
     }
 
-    if(!PMTSDStatus_ and !LArSDStatus_) {
-        log_warn("Oops! Both sensitive detectors are turned off!");
-    }
-
     // let's let's construct the detector
     g4Interface_->InstallDetector(
                                   SaveAllEnergyLossesTree_,
@@ -167,7 +161,7 @@ void CCM200Response::Initialize() {
                                   InteriorSDSaveEnergyLossesVector_, InteriorSDSaveEnergyLossesTree_, InteriorSDPruneTree_,
                                   KillNeutrinos_, KillPhotons_, KillScintillation_, KillCherenkov_,
                                   TimeCut_, DetailedPhotonTracking_, TrackParticles_, TrackEnergyLosses_,
-                                  PMTSDStatus_, LArSDStatus_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
+                                  RecordHits_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
                                   DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength1_, UVAbsLength2_, UVAbsScaling_,
                                   WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
