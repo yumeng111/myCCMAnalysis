@@ -63,6 +63,7 @@ G4Interface::~G4Interface() {
 
 
 void G4Interface::InstallDetector(
+                                  bool SaveAllEnergyLossesTree,
                                   bool VetoSDSaveEnergyLossesVector, bool VetoSDSaveEnergyLossesTree, bool VetoSDPruneTree,
                                   bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
                                   bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
@@ -108,6 +109,8 @@ void G4Interface::InstallDetector(
         // set readout
         detector_->SetReadout(readout_.get());
 
+        detector_->SetSaveAllEnergyLossesTree(SaveAllEnergyLossesTree);
+
         detector_->SetVetoSDSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector);
         detector_->SetVetoSDSaveEnergyLossesTree(VetoSDSaveEnergyLossesTree);
         detector_->SetVetoSDPruneTree(VetoSDPruneTree);
@@ -142,18 +145,26 @@ void G4Interface::InitializeRun() {
     readout_->Reset();
 }
 
-void G4Interface::SimulateEvent(const I3Particle& particle, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
+//void SetOutputs(std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> edep_trees, std::vector<I3MCTreePtr> veto_edep_trees, std::vector<I3MCTreePtr> inner_edep_trees, std::vector<I3VectorI3ParticlePtr> veto_edep_vector, std::vector<I3VectorI3ParticlePtr> inner_edep_vector);
+
+void G4Interface::SimulateEvent(const I3Particle& particle, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries, I3MCTreePtr veto_tree, I3MCTreePtr inner_tree, I3VectorI3ParticlePtr veto_vector, I3VectorI3ParticlePtr inner_vector) {
     InitializeRun();
 
     std::vector<I3Particle> particles = {particle};
-    std::vector<I3MCTreePtr> trees = {tree};
+
     std::vector<CCMMCPESeriesMapPtr> mcpeseries_list = {mcpeseries};
+    std::vector<I3MCTreePtr> trees = {tree};
+    std::vector<I3MCTreePtr> veto_trees = {veto_tree};
+    std::vector<I3MCTreePtr> inner_trees = {inner_tree};
+    std::vector<I3VectorI3ParticlePtr> veto_vectors = {veto_vector};
+    std::vector<I3VectorI3ParticlePtr> inner_vectors = {inner_vector};
 
     // Set the particle list used for the primary generator user action
     particle_list_->SetParticles(particles);
 
     // Set readout information for sensitive detectors
-    readout_->SetInput(particles, mcpeseries_list, trees);
+    readout_->SetInput(particles);
+    readout_->SetOutputs(mcpeseries_list, trees, veto_trees, inner_trees, veto_vectors, inner_vectors);
 
     // Run the event
     runManager_->BeamOn(1);
@@ -162,14 +173,15 @@ void G4Interface::SimulateEvent(const I3Particle& particle, I3MCTreePtr tree, CC
     // and so have already been updated
 }
 
-void G4Interface::SimulateEvents(std::vector<I3Particle> const & particles, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
+void G4Interface::SimulateEvents(std::vector<I3Particle> const & particles, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> veto_trees, std::vector<I3MCTreePtr> inner_trees, std::vector<I3VectorI3ParticlePtr> veto_vectors, std::vector<I3VectorI3ParticlePtr> inner_vectors) {
     InitializeRun();
 
     // Set the particle list used for the primary generator user action
     particle_list_->SetParticles(particles);
 
     // Set readout information for sensitive detectors
-    readout_->SetInput(particles, mcpeseries, trees);
+    readout_->SetInput(particles);
+    readout_->SetOutputs(mcpeseries, trees, veto_trees, inner_trees, veto_vectors, inner_vectors);
 
     // Run the event
     runManager_->BeamOn(particles.size());

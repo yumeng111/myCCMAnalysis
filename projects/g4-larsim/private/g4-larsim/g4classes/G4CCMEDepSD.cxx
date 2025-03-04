@@ -18,7 +18,7 @@
 #include <G4TrackingManager.hh>
 
 
-G4CCMEDepSD::G4CCMEDepSD(G4String name) : G4VSensitiveDetector(name) {
+G4CCMEDepSD::G4CCMEDepSD(G4String name, G4CCMReadout::VolumeType volume) : G4VSensitiveDetector(name), volume_(volume) {
     collectionName.insert(name + "ScintCollection");
 }
 
@@ -33,6 +33,13 @@ void G4CCMEDepSD::Initialize(G4HCofThisEvent* hitsCE) {
     hitsCE->AddHitsCollection(fHitsCID, fScintCollection);
 
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+
+    if(SaveEnergyLossesVector_) {
+        output_energy_losses_vector = readout_->GetVolumeEDepVector(event_id, volume_);
+    }
+    if(SaveEnergyLossesTree_) {
+        output_energy_losses_tree = readout_->GetVolumeEDepMCTree(event_id, volume_);
+    }
 }
 
 void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
@@ -133,10 +140,6 @@ void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
         // Otherwise vector will already be filled
     }
 
-    // Don't need the output objects anymore
-    output_energy_losses_tree = nullptr;
-    output_energy_losses_vector = nullptr;
-
     Reset();
 }
 
@@ -235,6 +238,13 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     fScintCollection->insert(scintHit);
 
     return true;
+}
+
+void G4CCMEDepSD::Reset() {
+    energy_loss_ids.clear();
+    // Don't need the output objects anymore
+    output_energy_losses_tree = nullptr;
+    output_energy_losses_vector = nullptr;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

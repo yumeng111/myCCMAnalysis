@@ -692,7 +692,8 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
     bool tree_tracker = TrackParticles_ or TrackEnergyLosses_
                      or DetailedPhotonTracking_ or TimeCut_
                      or KillNeutrinos_ or KillCherenkov_ or KillScintillation_ or KillPhotons_
-                     or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_;
+                     or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_
+                     or SaveAllEnergyLossesTree_;
 
     if(tree_tracker) {
         // Tree tracker
@@ -700,7 +701,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             G4cout << "Construction /LAr/treeTracker" << G4endl;
             auto tree_tracker = new G4CCMTreeTracker("/LAr/treeTracker");
             tree_tracker->SetTrackParticles(TrackParticles_);
-            tree_tracker->SetTrackEnergyLosses(TrackEnergyLosses_);
+            tree_tracker->SetTrackEnergyLosses(TrackEnergyLosses_ or SaveAllEnergyLossesTree_);
             tree_tracker->SetDetailedPhotonTracking(DetailedPhotonTracking_);
             tree_tracker->SetTimeCut(TimeCut_);
             tree_tracker->SetKillNeutrinos(KillNeutrinos_);
@@ -720,7 +721,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
         // Veto SD
         if(!fVeto_SD.Get()) {
             G4cout << "Construction /LAr/vetoSD" << G4endl;
-            auto veto_SD = new G4CCMEDepSD("/LAr/vetoSD");
+            auto veto_SD = new G4CCMEDepSD("/LAr/vetoSD", G4CCMReadout::VolumeType::Veto);
             veto_SD->SetSaveEnergyLossesTree(VetoSDSaveEnergyLossesTree_);
             veto_SD->SetSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector_);
             veto_SD->SetPruneTree(VetoSDPruneTree_);
@@ -739,7 +740,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
         // Interior SD
         if(!fInterior_SD.Get()) {
             G4cout << "Construction /LAr/interiorSD" << G4endl;
-            auto interior_SD = new G4CCMEDepSD("/LAr/interiorSD");
+            auto interior_SD = new G4CCMEDepSD("/LAr/interiorSD", G4CCMReadout::VolumeType::Inner);
             interior_SD->SetSaveEnergyLossesTree(InteriorSDSaveEnergyLossesTree_);
             interior_SD->SetSaveEnergyLossesVector(InteriorSDSaveEnergyLossesVector_);
             interior_SD->SetPruneTree(InteriorSDPruneTree_);

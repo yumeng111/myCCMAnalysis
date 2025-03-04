@@ -63,6 +63,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     void SetMainVolumeOn(G4bool b);
     G4bool GetMainVolumeOn() const { return fMainVolumeOn; }
 
+    void SetSaveAllEnergyLossesVector(G4bool b) { SaveAllEnergyLossesVector_ = b; }
+    void SetSaveAllEnergyLossesTree(G4bool b) { SaveAllEnergyLossesTree_ = b; }
+
     void SetVetoSDSaveEnergyLossesVector(G4bool b) { VetoSDSaveEnergyLossesVector_ = b; }
     void SetVetoSDSaveEnergyLossesTree(G4bool b) { VetoSDSaveEnergyLossesTree_ = b; }
     void SetVetoSDPruneTree(G4bool b) { VetoSDPruneTree_ = b; }
@@ -84,6 +87,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     // set SD configuration
     void SetPMTSDStatus(bool PMTSDStatus) { PMTSDStatus_ = PMTSDStatus; }
     void SetLArSDStatus(bool LArSDStatus) { LArSDStatus_ = LArSDStatus; }
+
+    bool GetSaveAllEnergyLossesVector() { return SaveAllEnergyLossesVector_; }
+    bool GetSaveAllEnergyLossesTree() { return SaveAllEnergyLossesTree_; }
 
     bool GetVetoSDSaveEnergyLossesVector() { return VetoSDSaveEnergyLossesVector_; }
     bool GetVetoSDSaveEnergyLossesTree() { return VetoSDSaveEnergyLossesTree_; }
@@ -178,6 +184,8 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4Cache<G4CCMEDepSD*> fVeto_SD;
     G4Cache<G4CCMEDepSD*> fInterior_SD;
 
+    bool SaveAllEnergyLossesVector_ = false;
+    bool SaveAllEnergyLossesTree_ = false;
     bool VetoSDSaveEnergyLossesVector_ = false;
     bool VetoSDSaveEnergyLossesTree_ = false;
     bool VetoSDPruneTree_ = false;

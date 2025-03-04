@@ -18,15 +18,11 @@
 
 class G4CCMReadout {
 public:
-    struct SingleEventReadout {
-        I3MCTreePtr edep_tree = nullptr;
-        CCMMCPESeriesMapPtr mcpeseries = nullptr;
-        PhotonSummarySeriesPtr photon_summary_series = nullptr;
-        boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map = nullptr;
+    enum class VolumeType {
+        Detector,
+        Veto,
+        Inner
     };
-
-    using SingleThreadReadout = std::map<int, SingleEventReadout>;
-    using Readout = std::vector<SingleThreadReadout>;
 
     G4CCMReadout() = default;
     G4CCMReadout(size_t n_threads);
@@ -35,31 +31,44 @@ public:
     static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series,
                                  boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking);
 
-    void SetInput(std::vector<I3Particle> primaries, std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> edep_trees);
+    void SetInput(std::vector<I3Particle> primaries);
+    void SetOutputs(std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> edep_trees, std::vector<I3MCTreePtr> veto_edep_trees, std::vector<I3MCTreePtr> inner_edep_trees, std::vector<I3VectorI3ParticlePtr> veto_edep_vector, std::vector<I3VectorI3ParticlePtr> inner_edep_vector);
     void SetNumberOfThreads(size_t n_threads);
 
-    SingleThreadReadout & GetReadout(size_t thread_id);
-
-    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, PhotonSummarySeriesPtr photon_summary_series,
-                  boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking);
-    void AddEntry(size_t thread_id, int event_id, CCMMCPESeriesMapPtr mcpeseries, bool full_photon_tracking);
-    void AddEntry(size_t thread_id, int event_id, I3MCTreePtr edep_tree, CCMMCPESeriesMapPtr mcpeseries,
-                  PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking);
     I3Particle GetPrimary(size_t i) const;
-    void SetPrimary(size_t i, I3Particle primary);
-    I3MCTreePtr GetMCTree(size_t i) const;
     CCMMCPESeriesMapPtr GetMCPESeries(size_t i) const;
-    void SetMCTree(size_t i, I3MCTreePtr edep_tree);
-    void SetMCPESeries(size_t i, CCMMCPESeriesMapPtr mcpeseries);
+    I3MCTreePtr GetEDepMCTree(size_t i) const;
+    I3MCTreePtr GetVetoEDepMCTree(size_t i) const;
+    I3MCTreePtr GetInnerEDepMCTree(size_t i) const;
+    I3VectorI3ParticlePtr GetVetoEDepVector(size_t i) const;
+    I3VectorI3ParticlePtr GetInnerEDepVector(size_t i) const;
+
+    I3MCTreePtr GetVolumeEDepMCTree(size_t i, VolumeType volume) const;
+    I3VectorI3ParticlePtr GetVolumeEDepVector(size_t i, VolumeType volume) const;
+
     void Reset();
+
+    void LogTrackingResult(int event_id, PhotonSummarySeriesPtr photon_summary_series, boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking);
+    void LogPMTResult(int event_id, CCMMCPESeriesMapPtr mcpeseries, bool full_photon_tracking);
 
 private:
     size_t n_threads_ = 0;
 
-    Readout readout;
     std::vector<I3Particle> primaries;
+
     std::vector<CCMMCPESeriesMapPtr> mcpeseries;
+
     std::vector<I3MCTreePtr> edep_trees;
+    std::vector<I3MCTreePtr> veto_edep_trees;
+    std::vector<I3MCTreePtr> inner_edep_trees;
+    std::vector<I3VectorI3ParticlePtr> veto_edep_vector;
+    std::vector<I3VectorI3ParticlePtr> inner_edep_vector;
+
+    std::vector<PhotonSummarySeriesPtr> photon_summary_series;
+    std::vector<boost::shared_ptr<I3Map<int, size_t>>> photon_summary_series_map;
+
+    std::vector<bool> tracking_logged;
+    std::vector<bool> pmts_logged;
 
     static const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> PhotonSummarytoCCMMCPEPhotonSource;
 };

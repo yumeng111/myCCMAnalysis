@@ -38,6 +38,7 @@
 
 CCM200Response::CCM200Response(const I3Context& context) :
     CCMDetectorResponse(context),
+    SaveAllEnergyLossesTree_(false),
     VetoSDSaveEnergyLossesVector_(false), VetoSDSaveEnergyLossesTree_(false), VetoSDPruneTree_(false),
     InteriorSDSaveEnergyLossesVector_(false), InteriorSDSaveEnergyLossesTree_(false), InteriorSDPruneTree_(false),
     KillNeutrinos_(false), KillPhotons_(false), KillScintillation_(false), KillCherenkov_(false),
@@ -50,6 +51,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
     TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), RandomSeed_(0) {
 
+    AddParameter("SaveAllEnergyLossesTree", "save all energy losses to tree", SaveAllEnergyLossesTree_);
     AddParameter("VetoSDSaveEnergyLossesVector", "save energy losses in veto sensitive detector to vector", VetoSDSaveEnergyLossesVector_);
     AddParameter("VetoSDSaveEnergyLossesTree", "save energy losses in veto sensitive detector to tree", VetoSDSaveEnergyLossesTree_);
     AddParameter("VetoSDPruneTree", "prune tree in veto sensitive detector", VetoSDPruneTree_);
@@ -98,6 +100,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
 }
 
 void CCM200Response::Configure() {
+    GetParameter("SaveAllEnergyLossesTree", SaveAllEnergyLossesTree_);
     GetParameter("VetoSDSaveEnergyLossesVector", VetoSDSaveEnergyLossesVector_);
     GetParameter("VetoSDSaveEnergyLossesTree", VetoSDSaveEnergyLossesTree_);
     GetParameter("VetoSDPruneTree", VetoSDPruneTree_);
@@ -159,6 +162,7 @@ void CCM200Response::Initialize() {
 
     // let's let's construct the detector
     g4Interface_->InstallDetector(
+                                  SaveAllEnergyLossesTree_,
                                   VetoSDSaveEnergyLossesVector_, VetoSDSaveEnergyLossesTree_, VetoSDPruneTree_,
                                   InteriorSDSaveEnergyLossesVector_, InteriorSDSaveEnergyLossesTree_, InteriorSDPruneTree_,
                                   KillNeutrinos_, KillPhotons_, KillScintillation_, KillCherenkov_,
@@ -189,12 +193,12 @@ I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     return config;
 }
 
-void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
-    g4Interface_->SimulateEvent(primary, tree, mcpeseries);
+void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries, I3MCTreePtr veto_tree, I3MCTreePtr inner_tree, I3VectorI3ParticlePtr veto_vector, I3VectorI3ParticlePtr inner_vector) {
+    g4Interface_->SimulateEvent(primary, tree, mcpeseries, veto_tree, inner_tree, veto_vector, inner_vector);
 }
 
-void CCM200Response::SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) {
-    g4Interface_->SimulateEvents(primaries, trees, mcpeseries);
+void CCM200Response::SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> veto_trees, std::vector<I3MCTreePtr> inner_trees, std::vector<I3VectorI3ParticlePtr> veto_vectors, std::vector<I3VectorI3ParticlePtr> inner_vectors) {
+    g4Interface_->SimulateEvents(primaries, trees, mcpeseries, veto_trees, inner_trees, veto_vectors, inner_vectors);
 }
 
 void CCM200Response::DestroyInterface() {

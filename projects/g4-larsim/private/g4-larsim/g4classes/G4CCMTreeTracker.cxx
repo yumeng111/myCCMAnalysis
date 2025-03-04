@@ -53,11 +53,7 @@ void G4CCMTreeTracker::Initialize(G4HCofThisEvent* hitsCE) {
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
 
     primary_ = readout_->GetPrimary(event_id);
-    mcTree = readout_->GetMCTree(event_id);
-
-    if (mcTree == nullptr) {
-        mcTree = I3MCTreePtr(new I3MCTree());
-    }
+    mcTree = readout_->GetEDepMCTree(event_id);
 
     DaughterParticleMap[1] = primary_.GetID();
     if(not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) {
@@ -66,7 +62,7 @@ void G4CCMTreeTracker::Initialize(G4HCofThisEvent* hitsCE) {
 }
 
 void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
-    readout_->AddEntry(G4Threading::G4GetThreadId(), event_id, mcTree, photon_summary, optical_photon_map, DetailedPhotonTracking_);
+    readout_->LogTrackingResult(event_id, photon_summary, optical_photon_map, DetailedPhotonTracking_);
     Reset();
 }
 

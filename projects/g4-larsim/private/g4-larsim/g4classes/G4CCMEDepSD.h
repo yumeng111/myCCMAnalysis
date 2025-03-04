@@ -23,7 +23,7 @@ class G4HCofThisEvent;
 
 class G4CCMEDepSD : public G4VSensitiveDetector {
     public:
-        G4CCMEDepSD(G4String name);
+        G4CCMEDepSD(G4String name, G4CCMReadout::VolumeType volume);
         ~G4CCMEDepSD() override = default;
 
         void SetReadout(G4CCMReadout * readout) { readout_ = readout; }
@@ -32,7 +32,7 @@ class G4CCMEDepSD : public G4VSensitiveDetector {
         void EndOfEvent(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
 
-        void Reset() {}
+        void Reset();
 
         void SetSaveEnergyLossesVector(bool save) { SaveEnergyLossesVector_ = save; }
         void SetSaveEnergyLossesTree(bool save) { SaveEnergyLossesTree_ = save; }
@@ -45,6 +45,8 @@ class G4CCMEDepSD : public G4VSensitiveDetector {
         G4CCMTreeTracker * GetTreeTracker() { return tree_tracker; }
 
     private:
+
+        G4CCMReadout::VolumeType volume_;
 
         G4CCMTreeTracker * tree_tracker;
 

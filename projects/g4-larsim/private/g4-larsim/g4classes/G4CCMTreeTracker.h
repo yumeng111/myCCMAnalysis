@@ -99,6 +99,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = nullptr;
+        I3VectorI3ParticlePtr mcVector = nullptr;
         I3Particle primary_;
 
         // and photon summary that keeps track of optical photons

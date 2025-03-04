@@ -31,8 +31,8 @@ class CCMDetectorResponse : public I3ServiceBase {
         // initialize geant4 detector
         virtual void Initialize() = 0;
 
-        virtual void SimulateEvent(I3Particle const & primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) = 0;
-        virtual void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries) = 0;
+        virtual void SimulateEvent(I3Particle const & primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries, I3MCTreePtr veto_tree, I3MCTreePtr inner_tree, I3VectorI3ParticlePtr veto_vector, I3VectorI3ParticlePtr inner_vector) = 0;
+        virtual void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> veto_trees, std::vector<I3MCTreePtr> inner_trees, std::vector<I3VectorI3ParticlePtr> veto_vectors, std::vector<I3VectorI3ParticlePtr> inner_vectors) = 0;
 
         virtual void DestroyInterface() = 0;
 

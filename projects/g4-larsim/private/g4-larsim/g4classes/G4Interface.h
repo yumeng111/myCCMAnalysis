@@ -47,6 +47,7 @@ class G4Interface {
 
         /// Add the detector to the geometry. Should not be called after initialized.
         void InstallDetector(
+                             bool SaveAllEnergyLossesTree,
                              bool VetoSDSaveEnergyLossesVector, bool VetoSDSaveEnergyLossesTree, bool VetoSDPruneTree,
                              bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
                              bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
@@ -61,8 +62,8 @@ class G4Interface {
                              double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
                              double Normalization, long RandomSeed);
 
-        void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries);
-        void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries);
+        void SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries, I3MCTreePtr veto_tree, I3MCTreePtr inner_tree, I3VectorI3ParticlePtr veto_vector, I3VectorI3ParticlePtr inner_vector);
+        void SimulateEvents(std::vector<I3Particle> const & primaries, std::vector<I3MCTreePtr> trees, std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> veto_trees, std::vector<I3MCTreePtr> inner_trees, std::vector<I3VectorI3ParticlePtr> veto_vectors, std::vector<I3VectorI3ParticlePtr> inner_vectors);
 
     private:
         void Initialize();
