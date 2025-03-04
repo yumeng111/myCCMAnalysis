@@ -71,7 +71,7 @@ NIMLogicPulseFinder::NIMLogicPulseFinder(const I3Context& context) : I3Module(co
     AddParameter("CCMWaveformsName", "Key to output vector of CCMWaveforms", std::string("CCMWaveforms"));
     AddParameter("SampleStep", "The number of steps between samples used for the initial baseline estimate.", size_t(50));
     AddParameter("NFramesForBaseline", "The number of frames to use for a baseline estimate", size_t(10));
-    AddParameter("ConstantFraction", "The fraction of the pulse height to use for its start time", double(0.01));
+    AddParameter("ConstantFraction", "The fraction of the pulse height to use for its start time", double(0.5));
     AddParameter("MinimumPulseHeight", "The minimum pulse height to consider a NIM pulse to be present.", double(1000));
     AddParameter("NIMLogicPulseSeriesMapName", "Name for the output nim pulses map", std::string("NIMPulses"));
 }
