@@ -49,7 +49,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     Rayleigh128_(95.0 * I3Units::cm), UVAbsLength1_(16.0 * I3Units::cm), UVAbsLength2_(750.0 * I3Units::cm), UVAbsScaling_(0.83),
     WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
-    TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), RandomSeed_(0) {
+    TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), PhotonSampling_(0.5), RandomSeed_(0) {
 
     AddParameter("SaveAllEnergyLossesTree", "save all energy losses to tree", SaveAllEnergyLossesTree_);
     AddParameter("VetoSDSaveEnergyLossesVector", "save energy losses in veto sensitive detector to vector", VetoSDSaveEnergyLossesVector_);
@@ -95,6 +95,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("MieGG", "used to calculate angular spread of outgoing photons from mie scattering in tpb", MieGG_);
     AddParameter("MieRatio", "ratio of forward : backwards scattering from mie scattering in tpb", MieRatio_);
     AddParameter("Normalization", "normalization of number of photons produced in liquid argon", Normalization_);
+    AddParameter("PhotonSampling", "scaling of number of photons produced in liquid argon", PhotonSampling_);
     AddParameter("RandomSeed", "seed for geant4 random generator", RandomSeed_);
 }
 
@@ -143,6 +144,7 @@ void CCM200Response::Configure() {
     GetParameter("MieGG", MieGG_);
     GetParameter("MieRatio", MieRatio_);
     GetParameter("Normalization", Normalization_);
+    GetParameter("PhotonSampling", PhotonSampling_);
     GetParameter("RandomSeed", RandomSeed_);
 }
 
@@ -165,7 +167,7 @@ void CCM200Response::Initialize() {
                                   DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength1_, UVAbsLength2_, UVAbsScaling_,
                                   WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
-                                  MieGG_, MieRatio_, Normalization_, RandomSeed_);
+                                  MieGG_, MieRatio_, Normalization_, PhotonSampling_, RandomSeed_);
 }
 
 I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
@@ -184,6 +186,7 @@ I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     config->mie_gg_ = MieGG_;
     config->mie_ratio_ = MieRatio_;
     config->normalization_ = Normalization_;
+    config->photon_sampling_factor_ = PhotonSampling_;
     return config;
 }
 

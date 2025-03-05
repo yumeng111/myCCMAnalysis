@@ -75,7 +75,7 @@ void G4Interface::InstallDetector(
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                                   double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                                   double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
-                                  double Normalization, long RandomSeed) {
+                                  double Normalization, double PhotonSampling, long RandomSeed) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
@@ -103,7 +103,7 @@ void G4Interface::InstallDetector(
                                                   UVAbsLength1 / I3Units::cm * CLHEP::cm, UVAbsLength2 / I3Units::cm * CLHEP::cm,UVAbsScaling, 
                                                   WLSNPhotonsEndCapFoil, WLSNPhotonsSideFoil, WLSNPhotonsPMT,
                                                   EndCapFoilTPBThickness / I3Units::mm * CLHEP::mm, SideFoilTPBThickness / I3Units::mm * CLHEP::mm, PMTTPBThickness / I3Units::mm * CLHEP::mm,
-                                                  Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio, Normalization);
+                                                  Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio, Normalization, PhotonSampling);
         // set readout
         detector_->SetReadout(readout_.get());
 

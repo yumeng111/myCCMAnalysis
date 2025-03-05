@@ -50,7 +50,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4doub
                                                      G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                                                      G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
-                                                     G4double Mie_GG, G4double Mie_Ratio, G4double Normalization) {
+                                                     G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
     UVAbsLength1_ = UVAbsLength1;
@@ -69,6 +69,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4doub
     Mie_GG_ = Mie_GG;
     Mie_Ratio_ = Mie_Ratio;
     Normalization_ = Normalization;
+    PhotonSamplingFactor_ = PhotonSamplingFactor;
     SetDefaults();
     DefineMaterials();
     fDetectorMessenger = new G4CCMDetectorMessenger(this);

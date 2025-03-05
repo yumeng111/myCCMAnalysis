@@ -81,6 +81,7 @@ private:
     double MieGG_;
     double MieRatio_;
     double Normalization_;
+    double PhotonSampling_;
     long RandomSeed_; // random seed for geant4
 
     std::shared_ptr<G4Interface> g4Interface_ = nullptr;

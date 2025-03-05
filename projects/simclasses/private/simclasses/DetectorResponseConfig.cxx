@@ -47,3 +47,4 @@ std::ostream& operator<<(std::ostream& oss, DetectorResponseConfig & bcm) {
 }
 
 I3_SERIALIZABLE(DetectorResponseConfig);
+I3_EXPORT_EXTRA_KEY(DetectorResponseConfig, DetectorResponseConfig)
