@@ -72,7 +72,9 @@ void G4CCMTreeTracker::AddEntryToPhotonSummary(int parent_id, int track_id, doub
     // map does not have key -- let's add our PhotonSummary then update map
     size_t n_wls = 0;
     std::vector<size_t> n_photons_per_wls = {0};
-    PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance, //g4_vis_distance,
+    PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance,
+                                                      0.0,
+                                                      g4_vis_distance,
                                                       //calculated_uv_distance, calculated_vis_distance,
                                                       g4_time, //calculated_time,
                                                       n_wls, n_photons_per_wls, WLSLocationSeries(),

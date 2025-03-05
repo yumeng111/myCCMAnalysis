@@ -13,9 +13,10 @@ void register_PhotonSummary() {
     scope mcpe_scope =
         class_<PhotonSummary, boost::shared_ptr<PhotonSummary> >("PhotonSummary")
         .def(dataclass_suite<PhotonSummary>())
-        .def(init<float, float, size_t, std::vector<size_t>, WLSLocationSeries, PhotonSummary::PhotonSource, PhotonSummary::PhotonSource, PhotonSummary::PhotonSource >())
+        .def(init<float, float, float, float, size_t, std::vector<size_t>, WLSLocationSeries, PhotonSummary::PhotonSource, PhotonSummary::PhotonSource, PhotonSummary::PhotonSource >())
         .def_readwrite("g4_distance_uv",&PhotonSummary::g4_distance_uv)
-        //.def_readwrite("g4_distance_visible",&PhotonSummary::g4_distance_visible)
+        .def_readwrite("original_wavelength",&PhotonSummary::original_wavelength)
+        .def_readwrite("g4_distance_visible",&PhotonSummary::g4_distance_visible)
         //.def_readwrite("calculated_distance_uv",&PhotonSummary::calculated_distance_uv)
         //.def_readwrite("calculated_distance_visible",&PhotonSummary::calculated_distance_visible)
         .def_readwrite("g4_time",&PhotonSummary::g4_time)

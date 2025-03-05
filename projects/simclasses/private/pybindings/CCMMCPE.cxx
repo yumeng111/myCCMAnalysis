@@ -13,7 +13,7 @@ void register_CCMMCPE() {
         class_<CCMMCPE, boost::shared_ptr<CCMMCPE> >("CCMMCPE")
         .def(dataclass_suite<CCMMCPE>())
         //.def(init<size_t, size_t, size_t, std::vector<size_t>, WLSLocationSeries, float, float, float, float, float, float, float, I3Position, I3Direction, CCMMCPE::PhotonSource >())
-        .def(init<size_t, size_t, size_t, std::vector<size_t>, WLSLocationSeries, float, float, float, CCMMCPE::PhotonSource >())
+        .def(init<size_t, size_t, size_t, std::vector<size_t>, WLSLocationSeries, float, float, float, float, float, CCMMCPE::PhotonSource >())
         .def_readwrite("parent_id",&CCMMCPE::parent_id)
         .def_readwrite("track_id",&CCMMCPE::track_id)
         .def_readwrite("n_wls",&CCMMCPE::n_wls)
@@ -23,7 +23,8 @@ void register_CCMMCPE() {
         //.def_readwrite("calculated_time",&CCMMCPE::calculated_time)
         .def_readwrite("wavelength",&CCMMCPE::wavelength)
         .def_readwrite("g4_distance_uv",&CCMMCPE::g4_distance_uv)
-        //.def_readwrite("g4_distance_visible",&CCMMCPE::g4_distance_visible)
+        .def_readwrite("original_wavelength",&CCMMCPE::original_wavelength)
+        .def_readwrite("g4_distance_visible",&CCMMCPE::g4_distance_visible)
         //.def_readwrite("calculated_distance_uv",&CCMMCPE::calculated_distance_uv)
         //.def_readwrite("calculated_distance_visible",&CCMMCPE::calculated_distance_visible)
         //.def_readwrite("position",&CCMMCPE::position)
@@ -37,7 +38,7 @@ void register_CCMMCPE() {
       .value("OpWLS", CCMMCPE::PhotonSource::OpWLS)
       .export_values()
       ;
-        
+
     }
 
 

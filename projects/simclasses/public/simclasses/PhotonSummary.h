@@ -14,7 +14,7 @@
 static const unsigned photonsummary_version_ = 2;
 
 class PhotonSummary : public I3FrameObject {
-    public:
+public:
     enum class PhotonSource : int8_t {
         Unknown = 0,
         Scintillation = 1,
@@ -23,24 +23,26 @@ class PhotonSummary : public I3FrameObject {
     };
 
     float g4_distance_uv; // record distance as given by GetStepLength
-    //float g4_distance_visible;
+    float original_wavelength;
+    float g4_distance_visible;
     //float calculated_distance_uv; // record distance as calculated using delta G4GlobalTime
     //float calculated_distance_visible;
     float g4_time; // as as reported using g4 global time
     //float calculated_time; // time as calculated using g4 distance
     size_t n_wls;
     std::vector<size_t> n_photons_per_wls;
-    WLSLocationSeries wls_loc; 
-    PhotonSource photon_source; 
-    PhotonSource temp_parent; 
-    PhotonSource current_process; 
+    WLSLocationSeries wls_loc;
+    PhotonSource photon_source;
+    PhotonSource temp_parent;
+    PhotonSource current_process;
 
     SET_LOGGER("PhotonSummary");
 
     bool operator==(const PhotonSummary& rhs) const {
-        return g4_distance_uv == rhs.g4_distance_uv 
-            //&& g4_distance_visible == rhs.g4_distance_visible
-            //&& calculated_distance_uv == rhs.calculated_distance_uv 
+        return g4_distance_uv == rhs.g4_distance_uv
+            && original_wavelength == rhs.original_wavelength
+            && g4_distance_visible == rhs.g4_distance_visible
+            //&& calculated_distance_uv == rhs.calculated_distance_uv
             //&& calculated_distance_visible == rhs.calculated_distance_visible
             && g4_time == rhs.g4_time
             //&& calculated_time == rhs.calculated_time
@@ -54,7 +56,8 @@ class PhotonSummary : public I3FrameObject {
 
 
   PhotonSummary(float g4_distance_uv_ = 0,
-                //float g4_distance_visible_ = 0, 
+                float original_wavelength_ = 0,
+                float g4_distance_visible_ = 0,
                 //float calculated_distance_uv_ = 0,
                 //float calculated_distance_visible_ = 0,
                 float g4_time_ = 0,
@@ -64,9 +67,10 @@ class PhotonSummary : public I3FrameObject {
                 WLSLocationSeries wls_loc_ = WLSLocationSeries(),
                 PhotonSource photon_source_ = PhotonSummary::PhotonSource::Unknown,
                 PhotonSource temp_parent_ = PhotonSummary::PhotonSource::Unknown,
-                PhotonSource current_process_ = PhotonSummary::PhotonSource::Unknown): 
+                PhotonSource current_process_ = PhotonSummary::PhotonSource::Unknown):
                 g4_distance_uv(g4_distance_uv_),
-                //g4_distance_visible(g4_distance_visible_), 
+                original_wavelength(original_wavelength_),
+                g4_distance_visible(g4_distance_visible_),
                 //calculated_distance_uv(calculated_distance_uv_),
                 //calculated_distance_visible(calculated_distance_visible_),
                 g4_time(g4_time_),
@@ -81,8 +85,8 @@ class PhotonSummary : public I3FrameObject {
 
 
     std::ostream& Print(std::ostream&) const;
-    
-    private:
+
+private:
     static const std::unordered_map<PhotonSummary::PhotonSource, std::string> photonSourceToProcessName;
 
     friend class icecube::serialization::access;

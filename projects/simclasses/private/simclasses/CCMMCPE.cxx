@@ -23,7 +23,8 @@ void CCMMCPE::save(Archive& ar, unsigned version) const {
     //ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
     ar & make_nvp("g4_distance_uv",g4_distance_uv);
-    //ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("original_wavelength",original_wavelength);
+    ar & make_nvp("g4_distance_visible",g4_distance_visible);
     //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
     //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     //ar & make_nvp("position",position);
@@ -35,7 +36,7 @@ template <class Archive>
 void CCMMCPE::load(Archive& ar, unsigned version) {
     if (version > ccmmcpe_version_)
         log_fatal("Attempting to read version %u from file but running version %u of CCMMCPE class.", version, ccmmcpe_version_);
-    
+
     ar & make_nvp("parent_id",parent_id);
     ar & make_nvp("track_id",track_id);
     if (ccmmcpe_version_ == 0){
@@ -51,7 +52,8 @@ void CCMMCPE::load(Archive& ar, unsigned version) {
     //ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
     ar & make_nvp("g4_distance_uv",g4_distance_uv);
-    //ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("original_wavelength",original_wavelength);
+    ar & make_nvp("g4_distance_visible",g4_distance_visible);
     //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
     //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     //ar & make_nvp("position",position);
@@ -71,21 +73,22 @@ std::ostream& CCMMCPE::Print(std::ostream& os) const{
     //    wls_loc_string.push_back(WLSLocation::wlsLocationToProcessName.at(wls_loc.at(w)));
     //}
     os << "[ CCMMCPE::"
-        << "\n  ParentID :" << parent_id 
+        << "\n  ParentID :" << parent_id
         << "\n  TrackID :" << track_id
-        << "\n  NWLS :" << n_wls 
-        << "\n  NPhotons Per WLS :" << n_photons_per_wls 
-        << "\n  WLS Location :" << wls_loc 
+        << "\n  NWLS :" << n_wls
+        << "\n  NPhotons Per WLS :" << n_photons_per_wls
+        << "\n  WLS Location :" << wls_loc
         << "\n  G4 Time :" << g4_time
         //<< "\n  Calculated Time :" << calculated_time
         << "\n  Wavelength :" << wavelength
         << "\n  G4 Distance UV :" << g4_distance_uv
-        //<< "\n  G4 Distance Visible :" << g4_distance_visible
+        << "\n  Original Wavelength :" << original_wavelength
+        << "\n  G4 Distance Visible :" << g4_distance_visible
         //<< "\n  Calculated Distance UV :" << calculated_distance_uv
         //<< "\n  Calculated Distance Visible :" << calculated_distance_visible
-        //<< "\n  Position :" << position 
-        //<< "\n  Direction :" << direction 
-        << "\n PhotonSource :" << photonSourceToProcessName.at(photon_source) 
+        //<< "\n  Position :" << position
+        //<< "\n  Direction :" << direction
+        << "\n PhotonSource :" << photonSourceToProcessName.at(photon_source)
         << " ]";
     return os;
 }

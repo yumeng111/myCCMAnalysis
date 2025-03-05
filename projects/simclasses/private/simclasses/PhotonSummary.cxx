@@ -14,7 +14,8 @@ void PhotonSummary::save(Archive& ar, unsigned version) const {
 
 
     ar & make_nvp("g4_distance_uv",g4_distance_uv);
-    //ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("original_wavelength",original_wavelength);
+    ar & make_nvp("g4_distance_visible",g4_distance_visible);
     //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
     //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     ar & make_nvp("g4_time",g4_time);
@@ -33,7 +34,8 @@ void PhotonSummary::load(Archive& ar, unsigned version) {
         log_fatal("Attempting to read version %u from file but running version %u of PhotonSummary class.", version, photonsummary_version_);
 
     ar & make_nvp("g4_distance_uv",g4_distance_uv);
-    //ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("original_wavelength",original_wavelength);
+    ar & make_nvp("g4_distance_visible",g4_distance_visible);
     //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
     //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     ar & make_nvp("g4_time",g4_time);
@@ -56,7 +58,8 @@ std::ostream& PhotonSummary::Print(std::ostream& os) const{
 
     os << "[ PhotonSummary::"
         << "\n  G4 Distance UV  :" << g4_distance_uv
-        //<< "\n  G4 Distance Visible :" << g4_distance_visible
+        << "\n  Original Wavelength :" << original_wavelength
+        << "\n  G4 Distance Visible :" << g4_distance_visible
         //<< "\n  Calculated Distance UV  :" << calculated_distance_uv
         //<< "\n  Calculated Distance Visible :" << calculated_distance_visible
         << "\n  G4 Global Time :" << g4_time
