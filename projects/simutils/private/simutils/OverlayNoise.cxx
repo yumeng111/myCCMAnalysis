@@ -24,11 +24,14 @@
 #include <icetray/I3Module.h>
 #include <icetray/I3Logging.h>
 #include <icetray/CCMPMTKey.h>
+#include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusBeamTime.h>
 #include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime.h>
+#include <dataclasses/I3MapCCMPMTKeyMask.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
 #include <phys-services/I3GSLRandomService.h>
 #include <dataio/I3FrameSequence.h>
+#include <CCMAnalysis/CCMBinary/BinaryFormat.h>
 
 class OverlayNoise: public I3Module {
     std::string input_reco_pulse_name_;
@@ -39,26 +42,30 @@ class OverlayNoise: public I3Module {
     double min_noise_time_ = -10000;
     double max_noise_time_ = 0;
     bool allow_stitching_ = true;
-    double padding_time_ = 500;
+    double min_padding_time_ = 0;
+    double max_padding_time_ = 500;
 
     std::string randomServiceName_;
     I3RandomServicePtr randomService_;
     dataio::I3FrameSequencePtr frame_sequences;
     std::deque<I3FramePtr> frame_cache;
     std::vector<std::string> file_lists;
+
+    boost::shared_ptr<CCMRecoPulseSeriesMap const> current_noise_pulses = nullptr;
+    double current_start_time;
+    double current_end_time;
 public:
     OverlayNoise(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
-    bool PopFrame();
-    void AddViews(I3FramePtr frame);
-    void Finish();
+    bool NextFrame();
+    boost::shared_ptr<CCMRecoPulseSeriesMap> GetNoisePulses(double duration, double zero_time, bool zero_out_width = false);
 };
 
 I3_MODULE(OverlayNoise);
 
 OverlayNoise::OverlayNoise(const I3Context& context) : I3Module(context),
-    input_reco_pulse_name_("MCRecoPulses"), output_reco_pulse_name_("MCRecoPulsesPlusNoise"), noise_pulse_name_("TriggerTimePulses"),
+    input_reco_pulse_name_("MCRecoPulses"), output_reco_pulse_name_("MCRecoPulsesPlusNoise"), noise_pulse_name_("TriggerTimePulses") {
     AddParameter("InputRecoPulseName", "", input_reco_pulse_name_);
     AddParameter("OutputRecoPulseName", "", output_reco_pulse_name_);
     AddParameter("NoisePulseName", "", noise_pulse_name_);
@@ -67,7 +74,8 @@ OverlayNoise::OverlayNoise(const I3Context& context) : I3Module(context),
     AddParameter("MinNoiseTime", "Minimum time for noise pulses", min_noise_time_);
     AddParameter("MaxNoiseTime", "Maximum time for noise pulses", max_noise_time_);
     AddParameter("AllowStitching", "Allow noise pulses to be stitched together", allow_stitching_);
-    AddParameter("PaddingTime", "Padding time for stitching noise pulses", padding_time_);
+    AddParameter("MinPaddingTime", "Minimum padding time for stitching noise pulses", min_padding_time_);
+    AddParameter("MaxPaddingTime", "Maximum padding time for stitching noise pulses", max_padding_time_);
     randomService_ = I3RandomServicePtr();
     AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
     AddParameter("FileLists", "Files to use for noise", file_lists);
@@ -82,6 +90,8 @@ void OverlayNoise::Configure() {
     GetParameter("MinNoiseTime", min_noise_time_);
     GetParameter("MaxNoiseTime", max_noise_time_);
     GetParameter("AllowStitching", allow_stitching_);
+    GetParameter("MinPaddingTime", min_padding_time_);
+    GetParameter("MaxPaddingTime", max_padding_time_);
 
     GetParameter("RandomServiceName", randomServiceName_);
     if(randomServiceName_.empty()) {
@@ -132,13 +142,13 @@ std::tuple<bool, std::string> AddDummyPulseSeries(I3FramePtr frame, std::string 
     ss << "DummyPulses" << dummy_number;
     std::string dest_name = ss.str();
     if(mask != nullptr) {
-        return {false, mask->GetPulsesSource()};
+        return {false, mask->GetSource()};
     } else if(trigger_pulses != nullptr) {
-        CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(source_name, trigger_pulses->GetCalibrationName(), trigger_pulses->GetNIMPulsesName(), trigger_pulses->GetGeometryName());
+        CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(source_name, trigger_pulses->GetCalibrationSource(), trigger_pulses->GetNIMPulsesSource(), trigger_pulses->GetGeometrySource());
         frame->Put(dest_name, pulses_view);
         return {true, trigger_pulses->GetPulsesSource()};
     } else if(beam_pulses != nullptr) {
-        CCMRecoPulseSeriesMapApplySPECalPlusBeamTimeConstPtr pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(source_name, beam_pulses->GetCalibrationName(), beam_pulses->GetNIMPulsesName(), beam_pulses->GetGeometryName());
+        CCMRecoPulseSeriesMapApplySPECalPlusBeamTimeConstPtr pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(source_name, beam_pulses->GetCalibrationSource(), beam_pulses->GetNIMPulsesSource(), beam_pulses->GetGeometrySource(), beam_pulses->GetBCMSummarySource());
         frame->Put(dest_name, pulses_view);
         return {true, beam_pulses->GetPulsesSource()};
     } else {
@@ -146,9 +156,50 @@ std::tuple<bool, std::string> AddDummyPulseSeries(I3FramePtr frame, std::string 
     }
 }
 
-std::tuple<double, double> GetTimeRange(I3FramePtr frame, std::string pulse_series_name, bool expansive = false) {
-    if(not frame->Has(pulse_name)) {
-        log_fatal("Frame does not have %s", pulse_name.c_str());
+std::tuple<double, double> GetPulsesTimeRange(CCMRecoPulseSeriesMapConstPtr pulses, bool expansive = false) {
+    double min_time;
+    double max_time;
+
+    if(expansive) {
+        min_time = std::numeric_limits<double>::max();
+        max_time = std::numeric_limits<double>::min();
+
+        for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
+            if(it->second.empty()) {
+                continue;
+            }
+            double const & start_time = it->second.front().GetTime();
+            double const & end_time = it->second.back().GetTime();
+            if(start_time < min_time) {
+                min_time = start_time;
+            }
+            if(end_time > max_time) {
+                max_time = end_time;
+            }
+        }
+    } else {
+        min_time = std::numeric_limits<double>::min();
+        max_time = std::numeric_limits<double>::max();
+        for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
+            if(it->second.empty()) {
+                continue;
+            }
+            double const & start_time = it->second.front().GetTime();
+            double const & end_time = it->second.back().GetTime();
+            if(start_time > min_time) {
+                min_time = start_time;
+            }
+            if(end_time < max_time) {
+                max_time = end_time;
+            }
+        }
+    }
+    return {min_time, max_time};
+}
+
+std::tuple<double, double> GetTriggerExtent(I3FramePtr frame, std::string pulse_series_name, bool expansive = false) {
+    if(not frame->Has(pulse_series_name)) {
+        log_fatal("Frame does not have %s", pulse_series_name.c_str());
     }
     if(not frame->Has("CCMDAQConfig")) {
         log_fatal("Frame does not have CCMDAQConfig");
@@ -160,7 +211,7 @@ std::tuple<double, double> GetTimeRange(I3FramePtr frame, std::string pulse_seri
 
     // For each layer of pulse series correction we need to put a corresponding correction in place for our dummy pulse series
     // The final result will be read out from DummyPulses0
-    while(not IsBasicPulseSeries(next_pulse_series_name)) {
+    while(not IsBasicPulseSeries(frame, next_pulse_series_name)) {
         std::tuple<bool, std::string> x = AddDummyPulseSeries(dummy_frame, next_pulse_series_name, dummy_number);
         bool deeper = std::get<0>(x);
         next_pulse_series_name = std::get<1>(x);
@@ -170,17 +221,17 @@ std::tuple<double, double> GetTimeRange(I3FramePtr frame, std::string pulse_seri
     }
     std::string const & source_pulse_series_name = next_pulse_series_name;
 
-    CCMDAQConfigConstPtr daq_config = frame->Get<CCMDAQConfigConstPtr>("CCMDAQConfig");
+    CCMAnalysis::Binary::CCMDAQConfigConstPtr daq_config = frame->Get<CCMAnalysis::Binary::CCMDAQConfigConstPtr>("CCMDAQConfig");
 
     // Prepare the dummy input pulse series
     CCMRecoPulseSeriesMapPtr dummy_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
     CCMRecoPulse first_pulse;
     CCMRecoPulse last_pulse;
-    first_pulse.time = 0
-    last_pulse.time = daq_config->machine_configurations[0].num_samples * 2
+    first_pulse.SetTime(0);
+    last_pulse.SetTime(daq_config->machine_configurations[0].num_samples * 2);
     CCMRecoPulseSeries dummy_series{first_pulse, last_pulse};
 
-    CCMRecopulseSeriesMapConstPtr pulses = dummy_frame->Get<CCMRecoPulseSeriesMapConstPtr>(source_pulse_series_name);
+    CCMRecoPulseSeriesMapConstPtr pulses = dummy_frame->Get<CCMRecoPulseSeriesMapConstPtr>(source_pulse_series_name);
     for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
         dummy_pulses->insert(std::make_pair(it->first, dummy_series));
     }
@@ -192,50 +243,24 @@ std::tuple<double, double> GetTimeRange(I3FramePtr frame, std::string pulse_seri
     // Put the dummy pulse series in the frame
     dummy_frame->Put(dummy_pulse_series_name, dummy_pulses);
 
-    CCMRecopulseSeriesMapConstPtr corrected_pulses = dummy_frame->Get<CCMRecoPulseSeriesMapConstPtr>("DummyPulses0");
+    CCMRecoPulseSeriesMapConstPtr corrected_pulses = dummy_frame->Get<CCMRecoPulseSeriesMapConstPtr>("DummyPulses0");
 
-    double min_time;
-    double max_time;
-
-    if(expansive) {
-        min_time = std::numeric_limits<double>::max();
-        max_time = std::numeric_limits<double>::min();
-
-        for(CCMRecoPulseSeriesMap::const_iterator it = corrected_pulses->begin(); it != corrected_pulses->end(); ++it) {
-            double const & start_time = it->second[0].time;
-            double const & end_time = it->second[1].time;
-            if(start_time < min_time) {
-                min_time = start_time;
-            }
-            if(end_time > max_time) {
-                max_time = end_time;
-            }
-        }
-    } else {
-        min_time = std::numeric_limits<double>::min();
-        max_time = std::numeric_limits<double>::max();
-        for(CCMRecoPulseSeriesMap::const_iterator it = corrected_pulses->begin(); it != corrected_pulses->end(); ++it) {
-            double const & start_time = it->second[0].time;
-            double const & end_time = it->second[1].time;
-            if(start_time > min_time) {
-                min_time = start_time;
-            }
-            if(end_time < max_time) {
-                max_time = end_time;
-            }
-        }
-    }
-
-    return {min_time, max_time};
+    return GetPulsesTimeRange(corrected_pulses, expansive);
 }
 
-bool OverlayNoise::PopFrame(){
+bool OverlayNoise::NextFrame() {
+    bool failed = false;
     I3FramePtr frame;
     // Grab frames until we get a DAQ frame
     while(true) {
         // Fail if we do not have any more frames
-        if(not frame_sequences->more())
-            return false;
+        if(not frame_sequences->more()) {
+            if(failed) {
+                log_fatal("No DAQ frames found in the input files");
+            }
+            frame_sequences->rewind();
+            failed = true;
+        }
         frame = frame_sequences->pop_frame();
         if(frame->GetStop() != I3Frame::DAQ) {
             // Skip non-DAQ frames
@@ -243,109 +268,129 @@ bool OverlayNoise::PopFrame(){
         }
         break;
     }
+    current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+    std::tuple<double, double> noise_extent = GetTriggerExtent(frame, noise_pulse_name_, false);
+    current_start_time = std::get<0>(noise_extent);
+    current_end_time = std::get<1>(noise_extent);
 
-    // Store the frame
-    frame_cache.push_back(frame);
-    return true;
+    if(restrict_range_) {
+        current_start_time = std::max(current_start_time, min_noise_time_);
+        current_end_time = std::min(current_end_time, max_noise_time_);
+    }
+    return failed;
 }
 
-void OverlayNoise::AddViews(I3FramePtr frame){
-    // Keys should be an argument
-    // Also should have an option for the BeamTimePulses
-    CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime corrected_pulses("WavedeformPulses", "CCMCalibration", "NIMPulsesMode", "CCMGeometry");
-    frame->Put(noise_pulse_name_, boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(corrected_pulses));
+boost::shared_ptr<CCMRecoPulseSeriesMap> OverlayNoise::GetNoisePulses(double duration, double zero_time, bool zero_out_width) {
+    zero_out_width = not zero_out_width;
+
+    if(not allow_stitching_) {
+        double remaining_time = current_end_time - current_start_time;
+        bool already_looped = false;
+        while(remaining_time < duration) {
+            bool looped = NextFrame();
+            if(already_looped and looped) {
+                log_fatal("Not enough noise pulses to cover the duration");
+            }
+            already_looped |= looped;
+            remaining_time = current_end_time - current_start_time;
+        }
+        boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
+        double random_start_time = randomService_->Uniform(current_start_time, current_end_time - duration);
+        double random_end_time = random_start_time + duration;
+        for(CCMRecoPulseSeriesMap::const_iterator it = current_noise_pulses->begin(); it != current_noise_pulses->end(); ++it) {
+            CCMRecoPulseSeries noise_series;
+            for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                double time = it2->GetTime();
+                if(time >= random_start_time and time < random_end_time + duration) {
+                    noise_series.push_back(*it2);
+                    CCMRecoPulse & noise = noise_series.back();
+                    noise.SetTime(time - random_start_time - zero_time);
+                    noise.SetWidth(noise.GetWidth() * zero_out_width);
+                }
+            }
+            noise_pulses->insert(std::make_pair(it->first, noise_series));
+        }
+        current_start_time = random_start_time;
+        return noise_pulses;
+    }
+
+    double accumulated_time = 0.0;
+    boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
+    while(accumulated_time < duration) {
+        double remaining_time = current_end_time - current_start_time;
+        double random_start_time = randomService_->Uniform(
+                current_start_time,
+                std::max(current_start_time, current_end_time - (duration - accumulated_time))
+        );
+        double random_end_time = random_start_time + std::min(remaining_time, duration - accumulated_time);
+        for(CCMRecoPulseSeriesMap::const_iterator it = current_noise_pulses->begin(); it != current_noise_pulses->end(); ++it) {
+            if(not noise_pulses->count(it->first)) {
+                noise_pulses->insert(std::make_pair(it->first, CCMRecoPulseSeries()));
+            }
+            CCMRecoPulseSeries & noise_series = noise_pulses->at(it->first);
+            for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                double time = it2->GetTime();
+                if(time >= random_start_time and time < random_end_time) {
+                    noise_series.push_back(*it2);
+                    noise_series.back().SetTime(time - random_start_time + accumulated_time - zero_time);
+                }
+            }
+            noise_pulses->insert(std::make_pair(it->first, noise_series));
+        }
+        accumulated_time += random_end_time - random_start_time;
+        current_start_time = random_end_time;
+        if(random_end_time >= current_end_time) {
+            NextFrame();
+        }
+    }
+    return noise_pulses;
 }
 
-void OverlayNoise::DAQ(I3FramePtr frame){
+void OverlayNoise::DAQ(I3FramePtr frame) {
 
     // read in our reco pulse series
     boost::shared_ptr<CCMRecoPulseSeriesMap const> input_reco_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_reco_pulse_name_);
 
-    // set up reco pulses series to hold MC merged with noise
-    CCMRecoPulseSeriesMapPtr mc_reco_overlay_noise_dest = boost::make_shared<CCMRecoPulseSeriesMap>();
+    std::tuple<double, double> event_time_range = GetPulsesTimeRange(input_reco_pulses, true);
 
-    // grab a noise frame
-    bool pop_frame_success = PopFrame();
-    while (not pop_frame_success){
-        // oops weve run out of frames! let's reset frame sequences and run over files again
-        frame_sequences = boost::make_shared<dataio::I3FrameSequence>(file_lists);
-        pop_frame_success = PopFrame();
-    }
-    I3FramePtr noise_frame = frame_cache[0];
+    double event_start_time = std::get<0>(event_time_range);
+    double event_end_time = std::get<1>(event_time_range);
+    double event_duration = event_end_time - event_start_time;
 
-    // check for our noise pulses in the frame
-    if (!noise_frame->Has(noise_pulse_name_)){
-        // Make this optional or add some logic to do this conditionally
-        AddViews(noise_frame);
-    }
-    boost::shared_ptr<CCMRecoPulseSeriesMap const> noise_reco_pulses = noise_frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+    double noise_pre_padding = randomService_->Uniform(min_padding_time_, max_padding_time_);
+    double noise_post_padding = randomService_->Uniform(min_padding_time_, max_padding_time_);
+    double noise_duration = event_duration + noise_pre_padding + noise_post_padding;
 
-    // great, now let's overlay MC and noise
-    // need random number to get the start time
-    double noise_start_time = randomService_->Uniform(noise_region_start_time_, noise_region_end_time_);
-    double noise_end_time = noise_start_time + noise_duration_;
+    // Get noise pulses with the correct time offset
+    CCMRecoPulseSeriesMapPtr combined_pulses = GetNoisePulses(noise_duration, event_start_time, true);
 
-    // now let's merge pulse series
-    for (CCMRecoPulseSeriesMap::const_iterator it = input_reco_pulses->begin(); it != input_reco_pulses->end(); ++it) {
+    // Copy the event pulses into the destination map
+    for(CCMRecoPulseSeriesMap::const_iterator it = input_reco_pulses->begin(); it != input_reco_pulses->end(); ++it) {
 
         // Find the corresponding PMT in the destination map
-        CCMRecoPulseSeriesMap::iterator it_dest = mc_reco_overlay_noise_dest->find(it->first);
+        CCMRecoPulseSeriesMap::iterator it_dest = combined_pulses->find(it->first);
 
         // If the PMT is not in the destination, then insert an empty vector
-        if(it_dest == mc_reco_overlay_noise_dest->end()) {
-            mc_reco_overlay_noise_dest->insert(std::make_pair(it->first, CCMRecoPulseSeries()));
+        if(it_dest == combined_pulses->end()) {
+            combined_pulses->insert(std::make_pair(it->first, CCMRecoPulseSeries()));
             // Update the iterator so it points to our new entry
-            it_dest = mc_reco_overlay_noise_dest->find(it->first);
+            it_dest = combined_pulses->find(it->first);
         }
 
         // Reference to the destination
         CCMRecoPulseSeries & dest_series = it_dest->second;
 
         // Iterate over the vector of CCMRecoPulse in the source map for this PMT
-        for (CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-            // save to dest series
-            double new_time = it2->GetTime();
-            double new_charge = it2->GetCharge();
-            double new_width = it2->GetWidth();
-            CCMRecoPulse new_pulse;
-            new_pulse.SetCharge(new_charge);
-            new_pulse.SetTime(new_time);
-            new_pulse.SetWidth(new_width);
-            dest_series.push_back(new_pulse);
-        }
-
-        // Check if the same PMT key exists in noise pulses
-        CCMRecoPulseSeriesMap::const_iterator it_noise = noise_reco_pulses->find(it->first);
-        if (it_noise != noise_reco_pulses->end()) {
-            // Copy noise pulses
-            for (CCMRecoPulseSeries::const_iterator it3 = it_noise->second.begin(); it3 != it_noise->second.end(); ++it3) {
-                // check time time of this pulse
-                if (it3->GetTime() >= noise_start_time and it3->GetTime() < noise_end_time){
-                    // great we want to save this noise pulse!
-                    double noise_time = it3->GetTime();
-                    double noise_charge = it3->GetCharge();
-                    noise_time -= noise_start_time;
-                    CCMRecoPulse noise_pulse;
-                    noise_pulse.SetCharge(noise_charge);
-                    noise_pulse.SetTime(noise_time);
-                    noise_pulse.SetWidth(0.0); // using width to track cherenkov light
-                    dest_series.push_back(noise_pulse);
-                }
-            }
-        }
+        for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
+            dest_series.push_back(*it2);
 
         // Done combining pulse series! Let's sort according to time
         std::sort(dest_series.begin(), dest_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
     }
 
-    // remove frame from cache
-    frame_cache.pop_front();
-
     // Save
-    frame->Put(output_reco_pulse_name_, mc_reco_overlay_noise_dest);
+    frame->Put(output_reco_pulse_name_, combined_pulses);
     PushFrame(frame);
 
 }
-
-void OverlayNoise::Finish() {}
 
