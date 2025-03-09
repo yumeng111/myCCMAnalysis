@@ -81,6 +81,34 @@ double CCMSimulationCalibration::GetTauOther() const {
     return tau_other;
 }
 
+void CCMSimulationCalibration::SetUVAbsorptionA(double x){
+    uv_absorption_a = x;
+}
+double CCMSimulationCalibration::GetUVAbsorptionA() const {
+    return uv_absorption_a;
+}
+
+void CCMSimulationCalibration::SetUVAbsorptionB(double x){
+    uv_absorption_b = x;
+}
+double CCMSimulationCalibration::GetUVAbsorptionB() const {
+    return uv_absorption_b;
+}
+
+void CCMSimulationCalibration::SetUVAbsorptionD(double x){
+    uv_absorption_d = x;
+}
+double CCMSimulationCalibration::GetUVAbsorptionD() const {
+    return uv_absorption_d;
+}
+
+void CCMSimulationCalibration::SetUVAbsorptionScaling(double x){
+    uv_absorption_scaling = x;
+}
+double CCMSimulationCalibration::GetUVAbsorptionScaling() const {
+    return uv_absorption_scaling;
+}
+
 template <class Archive>
 void CCMSimulationCalibration::save(Archive& ar, unsigned version) const {
     if (version > ccmsimulationcalibration_version_)
@@ -98,6 +126,10 @@ void CCMSimulationCalibration::save(Archive& ar, unsigned version) const {
     ar & make_nvp("tau_s",tau_s);
     ar & make_nvp("tau_t",tau_t);
     ar & make_nvp("tau_other",tau_other);
+    ar & make_nvp("uv_absorption_a",uv_absorption_a);
+    ar & make_nvp("uv_absorption_b",uv_absorption_b);
+    ar & make_nvp("uv_absorption_d",uv_absorption_d);
+    ar & make_nvp("uv_absorption_scaling",uv_absorption_scaling);
 }
 
 template <class Archive>
@@ -113,7 +145,7 @@ void CCMSimulationCalibration::load(Archive& ar, unsigned version) {
     ar & make_nvp("PMTSPEMu",PMTSPEMu);
     ar & make_nvp("PMTSPESigma",PMTSPESigma);
     ar & make_nvp("Rs",Rs);
-    if (version == 0){
+    if(version == 0) {
         Rt = 1.0 - Rs;
     } else {
         ar & make_nvp("Rt",Rt);
@@ -121,6 +153,17 @@ void CCMSimulationCalibration::load(Archive& ar, unsigned version) {
     ar & make_nvp("tau_s",tau_s);
     ar & make_nvp("tau_t",tau_t);
     ar & make_nvp("tau_other",tau_other);
+    if(version >= 2) {
+        ar & make_nvp("uv_absorption_a",uv_absorption_a);
+        ar & make_nvp("uv_absorption_b",uv_absorption_b);
+        ar & make_nvp("uv_absorption_d",uv_absorption_d);
+        ar & make_nvp("uv_absorption_scaling",uv_absorption_scaling);
+    } else {
+        uv_absorption_a = 0.245319;
+        uv_absorption_b = 111.817;
+        uv_absorption_d = 5.8;
+        uv_absorption_scaling = 0.0418985;
+    }
 }
 
 

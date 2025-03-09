@@ -20,7 +20,7 @@
 
 #include <icetray/CCMPMTKey.h>
 
-static const unsigned ccmsimulationcalibration_version_ = 1;
+static const unsigned ccmsimulationcalibration_version_ = 2;
 
 class CCMSimulationCalibration: public I3FrameObject {
 public:
@@ -37,6 +37,11 @@ public:
     double tau_t;
     double tau_other;
 
+    double uv_absorption_a;
+    double uv_absorption_b;
+    double uv_absorption_d;
+    double uv_absorption_scaling;
+
     SET_LOGGER("CCMSimulationCalibration");
 
     bool operator==(const CCMSimulationCalibration& rhs) const {
@@ -50,7 +55,11 @@ public:
             && Rt == rhs.Rt
             && tau_s == rhs.tau_s
             && tau_t == rhs.tau_t
-            && tau_other == rhs.tau_other;
+            && tau_other == rhs.tau_other
+            && uv_absorption_a == rhs.uv_absorption_a
+            && uv_absorption_b == rhs.uv_absorption_b
+            && uv_absorption_d == rhs.uv_absorption_d
+            && uv_absorption_scaling == rhs.uv_absorption_scaling;
     }
 
     CCMSimulationCalibration();
@@ -89,6 +98,18 @@ public:
 
     void SetTauOther(double x);
     double GetTauOther() const;
+
+    void SetUVAbsorptionA(double x);
+    double GetUVAbsorptionA() const;
+
+    void SetUVAbsorptionB(double x);
+    double GetUVAbsorptionB() const;
+
+    void SetUVAbsorptionD(double x);
+    double GetUVAbsorptionD() const;
+
+    void SetUVAbsorptionScaling(double x);
+    double GetUVAbsorptionScaling() const;
 
 friend class icecube::serialization::access;
     template<class Archive> void save(Archive& ar, unsigned version) const;
