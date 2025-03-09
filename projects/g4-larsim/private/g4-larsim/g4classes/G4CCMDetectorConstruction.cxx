@@ -239,13 +239,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", lar_energy, lar_sorted_intensity);
 
-    // for LAr index of refraction, using grace fit around section 2.3.3 from https://arxiv.org/pdf/2408.00817v1
-    // can also calculate rayleigh scattering length at the same time
-    std::vector<G4double> grace_rin_energy = {};
-    std::vector<G4double> grace_rin_vals = {};
-    std::vector<G4double> rayl_energy = {};
-    std::vector<G4double> rayl_scattering_length = {};
-
     // constants for index of refraction
     double a0 = 1.26;
     double aUV = 0.23;
@@ -256,63 +249,84 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double ending_wavelength = 850.0;
     size_t n_entries = 1000;
 
+    // for LAr index of refraction, using grace fit around section 2.3.3 from https://arxiv.org/pdf/2408.00817v1
+    // can also calculate rayleigh scattering length at the same time
+    std::vector<G4double> lar_light_properties_energy; lar_light_properties_energy.reserve(n_entries+1);
+    std::vector<G4double> grace_rin_vals; grace_rin_vals.reserve(n_entries+1);
+    std::vector<G4double> group_velocity_vals; group_velocity_vals.reserve(n_entries+1);
+    std::vector<G4double> rayl_scattering_length; rayl_scattering_length.reserve(n_entries+1);
+
     // for rayl, we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
     double rindex_128 = std::sqrt(a0 + ((aUV * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamUV, 2.0))) +
                                    ((aIR * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamIR, 2.0))));
     double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
 
-    for (size_t i = (n_entries + 1); i > 0; i--){
+    for(int i = (n_entries + 1); i >= 0; --i) {
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
         double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
         double this_rindex = std::sqrt(a0 + ((aUV * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamUV, 2.0))) +
                                        ((aIR * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamIR, 2.0))));
         double this_rayl = (rayl_scaling * std::pow(this_wavelength*1e-7, 4.0) / std::pow((std::pow(this_rindex, 2.0) - 1)*(std::pow(this_rindex, 2.0) + 2), 2.0) ) * cm;
 
+        // now let's calculate dn/dlambda to get group velocity
+        double term1 = aUV * lamUV * lamUV * (this_wavelength * this_wavelength - lamIR * lamIR) * (this_wavelength * this_wavelength - lamIR * lamIR);
+        double term2 = aIR * lamIR * lamIR * (this_wavelength * this_wavelength - lamUV * lamUV) * (this_wavelength * this_wavelength - lamUV * lamUV);
+        double denominator = ((this_wavelength * this_wavelength - lamIR * lamIR) * (this_wavelength * this_wavelength - lamIR * lamIR) *
+                              (this_wavelength * this_wavelength - lamUV * lamUV) * (this_wavelength * this_wavelength - lamUV * lamUV));
+        double sqrt_term = std::sqrt(a0 + this_wavelength * this_wavelength * (aIR / (this_wavelength * this_wavelength - lamIR * lamIR) +
+                                                             aUV / (this_wavelength * this_wavelength - lamUV * lamUV)));
+
+        double dn_dlambda = -((this_wavelength * (term1 + term2)) / (denominator * sqrt_term));
+
+        // now we can calculate group velocity!
+        double this_group_velocity = c_light / (this_rindex - (this_wavelength * dn_dlambda));
+
         // save
-        grace_rin_energy.push_back(this_energy);
+        lar_light_properties_energy.push_back(this_energy);
         grace_rin_vals.push_back(this_rindex);
-        rayl_energy.push_back(this_energy);
+        group_velocity_vals.push_back(this_group_velocity);
         rayl_scattering_length.push_back(this_rayl);
     }
 
-    fLAr_mt->AddProperty("RINDEX", grace_rin_energy, grace_rin_vals);
-    fLAr_mt->AddProperty("RAYLEIGH", rayl_energy, rayl_scattering_length);
+    fLAr_mt->AddProperty("RINDEX", lar_light_properties_energy, grace_rin_vals);
+    fLAr_mt->AddProperty("GROUPVEL", lar_light_properties_energy, group_velocity_vals);
+    fLAr_mt->AddProperty("RAYLEIGH", lar_light_properties_energy, rayl_scattering_length);
 
-    // now add absorption length
-    // we have 2 absorption lenghts and a scaling
-    // need to figure out the wavelength that encapsulates the scaling mass
-    double total_sum = 0.0;
-    double wavelength_lower = 0.0;
-    double wavelength_upper = 0.0;
-    double fraction_below = 0.0;
-    double fraction_above = 0.0;
-    for (size_t wv_it = 0; wv_it < lar_wavelength.size(); wv_it++){
-        total_sum += lar_intensity.at(wv_it);
-        if (total_sum > UVAbsScaling_){
-            wavelength_lower = lar_wavelength.at(wv_it - 1);
-            wavelength_upper = lar_wavelength.at(wv_it);
-            fraction_below = total_sum - lar_intensity.at(wv_it);
-            fraction_above = total_sum;
-            break;
-        }
-    }
-    // now interpolate
-    double wavelength_split = wavelength_lower + ((UVAbsScaling_ - fraction_below) * ((wavelength_upper - wavelength_lower) / (fraction_above - fraction_below)));
-    std::cout << "for uv abs scaling = " << UVAbsScaling_ << ", wavelength splilt = " << wavelength_split << std::endl;
+    // using this paper: https://link.springer.com/article/10.1140/epjc/s10052-012-2190-z#Bib1
+    // set parameter for uv abs scaling function
+    double d = 5.8;
+    double a_param = UVAbsLength1_;
+    double b = UVAbsLength2_;
+    double scaling = UVAbsScaling_;
+
+    // now let's get some min and max bounds
+    double min_wavelength = b + 0.1;
+    double max_wavelength = 200.0;
+
+    double min_wavelength_function_T = 1.0 - std::exp( - a_param * (min_wavelength - b));
+    double min_abs_length = (d / std::log(1.0 / min_wavelength_function_T)) * cm;
+    min_abs_length *= scaling;
+
+    double max_wavelength_function_T = 1.0 - std::exp( - a_param * (max_wavelength - b));
+    double max_abs_length = (d / std::log(1.0 / max_wavelength_function_T)) * cm;
+    max_abs_length *= scaling;
 
     // now we need to fill in our absorption lengths
-    std::vector<G4double> uv_abs_energy = {};
-    std::vector<G4double> uv_abs_length = {};
-    for (size_t i = (n_entries + 1); i > 0; i--){
+    std::vector<G4double> uv_abs_energy; uv_abs_energy.reserve(n_entries+1);
+    std::vector<G4double> uv_abs_length; uv_abs_length.reserve(n_entries+1);
+    for(int i = (n_entries + 1); i >= 0; --i) {
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
         double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
         double this_abs;
-        if (this_wavelength <= wavelength_split){
-            this_abs = UVAbsLength1_;
-        } else if (this_wavelength > wavelength_split and this_wavelength < 250.0){
-            this_abs = UVAbsLength2_;
+
+        if(this_wavelength <= b) {
+            this_abs = min_abs_length;
+        } else if (this_wavelength > b and this_wavelength < max_wavelength){
+            double function_T = 1.0 - std::exp( - a_param * (this_wavelength - b));
+            double abs_length = (d / std::log(1.0 / function_T)) * cm;
+            this_abs = scaling * abs_length;
         } else {
-            this_abs = UVAbsLength2_ * 16.0; // idk some scaling
+            this_abs = max_abs_length;
         }
 
         std::cout << "at wavelength = " << this_wavelength << " uv abs = " << this_abs / cm << "cm" << std::endl;
@@ -320,22 +334,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         uv_abs_length.push_back(this_abs);
     }
 
-    //std::vector<G4double> flat_abs_energy = {1.03319652*eV,  3.09958956*eV,  3.26272585*eV,  3.4439884*eV,   3.64657595*eV,  3.87448695*eV,
-    //                                       4.13278608*eV,  4.42798509*eV,  4.76859932*eV,  5.1659826*eV,   5.63561738*eV,  6.8879768*eV, 11.27123476*eV};
-    //std::vector<G4double> flat_abs = {UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64, UVAbsLength_*64,
-    //                                  UVAbsLength_*32.0, UVAbsLength_*8.0, UVAbsLength_, UVAbsLength_, UVAbsLength_, UVAbsLength_};
-
-    //G4double lam1 = 12.69 * cm;
-    //G4double lam2 = 741.4 * cm;
-    //std::vector<G4double> two_uv_abs_energy = {1.0*eV, 2.0*eV, 3.0*eV, 4.0*eV, 5.0*eV, 6.0*eV, 7.0*eV, 8.0*eV, 9.0*eV, 9.375*eV,
-    //                                           9.446*eV, 10.0*eV, 11.0*eV, 11.1898*eV};
-    //std::vector<G4double> two_uv_abs = {lam2*64, lam2*64, lam2*64, lam2*32, lam2*16, lam2, lam2, lam2, lam2, lam2,
-    //                                    lam1, lam1, lam1, lam1};
-
-    //std::cout << "setting uv absorption length = " << flat_abs << std::endl;
     fLAr_mt->AddProperty("ABSLENGTH", uv_abs_energy, uv_abs_length);
-    //fLAr_mt->AddProperty("ABSLENGTH", flat_abs_energy, flat_abs);
-    //fLAr_mt->AddProperty("ABSLENGTH", two_uv_abs_energy, two_uv_abs);
 
     std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;
     G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)); // scintillation yield: 50 per keV.

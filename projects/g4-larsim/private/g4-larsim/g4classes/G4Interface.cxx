@@ -100,7 +100,7 @@ void G4Interface::InstallDetector(
 
     if(detector_ == nullptr) {
         detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns,
-                                                  UVAbsLength1 / I3Units::cm * CLHEP::cm, UVAbsLength2 / I3Units::cm * CLHEP::cm,UVAbsScaling, 
+                                                  UVAbsLength1 / I3Units::cm * CLHEP::cm, UVAbsLength2 / I3Units::cm * CLHEP::cm, UVAbsScaling,
                                                   WLSNPhotonsEndCapFoil, WLSNPhotonsSideFoil, WLSNPhotonsPMT,
                                                   EndCapFoilTPBThickness / I3Units::mm * CLHEP::mm, SideFoilTPBThickness / I3Units::mm * CLHEP::mm, PMTTPBThickness / I3Units::mm * CLHEP::mm,
                                                   Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio, Normalization, PhotonSampling);
