@@ -24,11 +24,16 @@
 #include <icetray/I3Module.h>
 #include <icetray/I3Logging.h>
 #include <icetray/CCMPMTKey.h>
+#include <icetray/I3DefaultName.h>
+
 #include <dataclasses/geometry/CCMGeometry.h>
-#include <simclasses/CCMMCPE.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
-#include <phys-services/I3GSLRandomService.h>
 #include <dataclasses/calibration/CCMSimulationCalibration.h>
+
+#include <simclasses/CCMMCPE.h>
+#include <simclasses/DetectorResponseConfig.h>
+
+#include <phys-services/I3GSLRandomService.h>
 
 class PMTResponse: public I3Module {
     double ratio_singlet_;
@@ -36,6 +41,11 @@ class PMTResponse: public I3Module {
     double singlet_time_constant_;
     double triplet_time_constant_;
     double intermediate_time_constant_;
+    double uv_absorption_a_;
+    double uv_absorption_b_;
+    double uv_absorption_d_;
+    double uv_absorption_scaling_;
+
     I3MapPMTKeyDouble late_pulse_mu_;
     I3MapPMTKeyDouble late_pulse_sigma_;
     I3MapPMTKeyDouble late_pulse_scale_;
@@ -47,10 +57,16 @@ class PMTResponse: public I3Module {
     boost::shared_ptr<const I3MapPMTKeyDouble> spe_lower_threshold_;
     boost::shared_ptr<const I3MapPMTKeyDouble> pmt_transit_times_;
     I3Map<CCMPMTKey, CCMTriggerKey> trigger_copy_map_;
+
     std::string input_hits_map_name_;
     std::string output_reco_pulse_name_;
+    std::string detector_configuration_name_;
     std::string randomServiceName_;
+
     I3RandomServicePtr randomService_;
+
+    double photon_sampling_factor_;
+
     double average_pmt_eff_;
     bool flat_eff_;
     bool remove_cherenkov_;
@@ -71,7 +87,6 @@ public:
     double NormalDistributionInverseCDF(double p, double mu, double sigma);
     double ExponentialInverseCDF(double p, double tau);
     double IntermediateInverseCDF(double p, double tau);
-    void GrabWavelengthQuantumEffiency();
     void DAQ(I3FramePtr frame);
     void Geometry(I3FramePtr frame);
     void Finish();
@@ -115,9 +130,10 @@ PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     remove_cherenkov_(false), flat_eff_(false), weight_uv_abs_(false) {
         AddParameter("InputHitsMapName", "", input_hits_map_name_);
         AddParameter("OutputRecoPulseName", "", output_reco_pulse_name_);
+        AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", I3DefaultName<DetectorResponseConfig>::value());
+        AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
         AddParameter("QEWavelengths", "Wavelengths for quantum efficiency", wavelength_qe_wavelength);
         AddParameter("QEValues", "Values for quantum efficiency", wavelength_qe_efficiency);
-        AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
         AddParameter("RemoveCherenkov", "true removes cherenkov photons, false keeps them all", remove_cherenkov_);
         AddParameter("FlatEfficiency", "true to use flat efficiency", flat_eff_);
         AddParameter("WeightUVAbsorption", "true to throw away photons based on uv absorption", weight_uv_abs_);
@@ -127,8 +143,7 @@ PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
 void PMTResponse::Configure() {
     GetParameter("InputHitsMapName", input_hits_map_name_);
     GetParameter("OutputRecoPulseName", output_reco_pulse_name_);
-    GetParameter("QEWavelengths", wavelength_qe_wavelength);
-    GetParameter("QEValues", wavelength_qe_efficiency);
+    GetParameter("DetectorConfigurationName", detector_configuration_name_);
     if(wavelength_qe_wavelength.size() != wavelength_qe_efficiency.size()) {
         log_fatal("Wavelengths and QE values must have the same size!");
     }
@@ -141,12 +156,13 @@ void PMTResponse::Configure() {
     if(randomServiceName_.empty()) {
         randomService_ = I3RandomServicePtr(new I3GSLRandomService(0));
         log_info("+ Random service: I3GSLRandomService  (default)");
-    }
-    else {
+    } else {
         randomService_ = GetContext().Get<I3RandomServicePtr>(randomServiceName_);
         if(randomService_) log_info("+ Random service: %s  (EXTERNAL)",  randomServiceName_.c_str());
         else log_fatal("No random service \"%s\" in context!", randomServiceName_.c_str());
     }
+    GetParameter("QEWavelengths", wavelength_qe_wavelength);
+    GetParameter("QEValues", wavelength_qe_efficiency);
     GetParameter("RemoveCherenkov", remove_cherenkov_);
     GetParameter("FlatEfficiency", flat_eff_);
     GetParameter("WeightUVAbsorption", weight_uv_abs_);
@@ -155,6 +171,13 @@ void PMTResponse::Configure() {
 }
 
 void PMTResponse::Simulation(I3FramePtr frame) {
+    if(not frame->Has(detector_configuration_name_)) {
+        log_fatal("No detector configuration found in frame");
+    }
+
+    DetectorResponseConfig const & detector_config = frame->Get<DetectorResponseConfig>(detector_configuration_name_);
+    photon_sampling_factor_ = detector_config.photon_sampling_factor_;
+
     PushFrame(frame);
 }
 
@@ -174,6 +197,10 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     pmt_efficencies_ = sim_calibration->PMTEfficiencies;
     spe_mu_ = sim_calibration->PMTSPEMu;
     spe_sigma_ = sim_calibration->PMTSPESigma;
+    uv_absorption_a_ = sim_calibration->uv_absorption_a;
+    uv_absorption_b_ = sim_calibration->uv_absorption_b;
+    uv_absorption_d_ = sim_calibration->uv_absorption_d;
+    uv_absorption_scaling_ = sim_calibration->uv_absorption_scaling;
 
     spe_lower_threshold_ = frame->Get<boost::shared_ptr<I3MapPMTKeyDouble const>>("SPELowerThreshold");
 
@@ -350,14 +377,14 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
         // Iterate over the vector of CCMMCPE in the source map for this PMT
         for (CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-            // first, grab random number 0 - 1 to determine if this photon survives
-            double survival = randomService_->Uniform(0.0, 1.0);
-
             CCMMCPE const & pe = *it2;
 
             // If we want to remove cherenkov photons, do so now
             if(remove_cherenkov_ and pe.photon_source == CCMMCPE::PhotonSource::Cerenkov)
                 continue;
+
+            // first, grab random number 0 - 1 to determine if this photon survives
+            double survival = randomService_->Uniform(0.0, 1.0);
 
             // Check if we surive wavelength response of the tube
             double wavelength = pe.wavelength / I3Units::nanometer;
@@ -385,7 +412,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             // Check if survive uv absorption cuts
             double uv_abs_probability = 1.0;
             if(weight_uv_abs_) {
-                // ok we are re-weighting for uv absorption! we need to grab original wavelenght, calculate abs length, then see if we surviv
+                // ok we are re-weighting for uv absorption! we need to grab original wavelength, calculate abs length, then see if we survive
                 double original_wavelength = pe.original_wavelength / I3Units::nanometer;
                 double distance_travelled_before_wls = pe.g4_distance_uv / I3Units::cm;
 
@@ -402,7 +429,6 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
                 // now calculate probability
                 uv_abs_probability = std::exp(- distance_travelled_before_wls / abs_length);
-                //std::cout << "for photon with original wl = " << original_wavelength << " and dist travelled = " << distance_travelled_before_wls << ", uv_abs_probability = " << uv_abs_probability << std::endl;
             }
 
 
