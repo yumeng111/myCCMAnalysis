@@ -104,11 +104,17 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if(aStep->GetTrack()->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
         return false;
 
+    G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
+    std::string processName = (process) ? process->GetProcessName() : "Unknown";
+
+    // We only want to save photons that are in the PMT
+    // These processes can be registered with the SD even if they are not in the PMT
+    if(processName == "Transportation" || processName == "OpBoundary" || processName == "SurfaceRefl")
+        return false;
+
     // User replica number 1 since photocathode is a daughter volume to the pmt which was replicated
     G4int pmtNumber = aStep->GetPostStepPoint()->GetTouchable()->GetReplicaNumber(1);
-    //G4VPhysicalVolume* physVol = aStep->GetPostStepPoint()->GetTouchable()->GetVolume(1);
     G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(0);
-    //G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(1);
     std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
@@ -133,14 +139,14 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // we will be saving time, wavelength, positions, direction, and source
 
     // let's grab everything from our step
-    G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
+    //G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
+    //I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
 
-    G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
-    I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
+    //G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
+    //I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
     G4double globalTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
-    G4double localTime = aStep->GetPostStepPoint()->GetLocalTime() / nanosecond * I3Units::nanosecond;
+    //G4double localTime = aStep->GetPostStepPoint()->GetLocalTime() / nanosecond * I3Units::nanosecond;
 
     G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() / electronvolt;
 
@@ -154,33 +160,29 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4int parent_id = aStep->GetTrack()->GetParentID();
     G4int track_id = aStep->GetTrack()->GetTrackID();
 
-    //std::cout << "photon from " << creationProcessName << " with parent id = " << parent_id << " at " << key << std::endl;
-
-    //std::cout << "photon on " << key << " at post step global time = " << aStep->GetPostStepPoint()->GetGlobalTime()
-    //    << " and pre step global time = " << aStep->GetPreStepPoint()->GetGlobalTime()  << std::endl;
-    //std::cout << "saw " << creationProcessName << " photon on " << key << std::endl;
     // now save to CCMMCPE
     if (processNameToPhotonSource.find(creationProcessName) == processNameToPhotonSource.end()){
         std::cout << "oops!!! no photon process for " << creationProcessName << std::endl;
         return false;
     }
 
-    CCMMCPE this_mc_pe = CCMMCPE(parent_id, track_id, 0, {0}, WLSLocationSeries(), globalTime, photonWavelength, 0.0, 0.0, 0.0, processNameToPhotonSource.at(creationProcessName));
-
     // let's add this CCMPMTKey to CCMMCPEMap if it does not exist already
     if (CCMMCPEMap->find(key) == CCMMCPEMap->end()) {
-        (*CCMMCPEMap)[key] = CCMMCPESeries ();
+        (*CCMMCPEMap)[key] = CCMMCPESeries();
     }
 
     // so we have the CCMPMTKey and we have the CCMMCPE, let's save!
-    CCMMCPEMap->at(key).push_back(this_mc_pe);
-
-    //for (auto it = CCMMCPEMap->begin(); it != CCMMCPEMap->end(); ++it) {
-    //    CCMPMTKey mc_pe_map_key = it->first;
-    //    if (mc_pe_map_key == key){
-    //        CCMMCPEMap->at(mc_pe_map_key).push_back(this_mc_pe);
-    //    }
-    //}
+    CCMMCPEMap->at(key).emplace_back(
+        parent_id, track_id,
+        0, // Number of WLS photons
+        std::vector<size_t>{0}, // Number of photons per WLS
+        WLSLocationSeries(), // WLS locations
+        globalTime, photonWavelength,
+        0.0, // Distance in UV
+        0.0, // Original wavelength
+        0.0, // Distance in visible
+        processNameToPhotonSource.at(creationProcessName) // Source
+    );
 
     // now kill photon after registering hit
     aStep->GetTrack()->SetTrackStatus(fStopAndKill);
