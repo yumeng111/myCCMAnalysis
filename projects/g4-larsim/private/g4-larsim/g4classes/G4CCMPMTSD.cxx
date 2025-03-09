@@ -174,13 +174,13 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // so we have the CCMPMTKey and we have the CCMMCPE, let's save!
     CCMMCPEMap->at(key).emplace_back(
         parent_id, track_id,
-        0, // Number of WLS photons
-        std::vector<size_t>{0}, // Number of photons per WLS
-        WLSLocationSeries(), // WLS locations
+        0, // Number of WLS photons, updated later in G4CCMReadout
+        std::vector<size_t>{0}, // Number of photons per WLS, updated later
+        WLSLocationSeries(), // WLS locations, updated later
         globalTime, photonWavelength,
-        0.0, // Distance in UV
-        0.0, // Original wavelength
-        0.0, // Distance in visible
+        0.0, // Distance in UV, updated later
+        0.0, // Original wavelength, updated later
+        0.0, // Distance in visible, updated later
         processNameToPhotonSource.at(creationProcessName) // Source
     );
 
