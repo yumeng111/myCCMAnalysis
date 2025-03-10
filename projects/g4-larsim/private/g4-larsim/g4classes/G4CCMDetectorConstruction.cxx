@@ -687,6 +687,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             tree_tracker->SetKillCherenkov(KillCherenkov_);
             tree_tracker->SetKillScintillation(KillScintillation_);
             tree_tracker->SetKillPhotons(KillPhotons_);
+            tree_tracker->SetReadout(readout_);
             fTreeTracker_SD.Put(tree_tracker);
             G4SDManager::GetSDMpointer()->AddNewDetector(fTreeTracker_SD.Get());
             for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {
