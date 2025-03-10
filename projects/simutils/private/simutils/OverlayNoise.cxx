@@ -389,6 +389,8 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
     }
 
     // Save
+    //TODO save the noise series
+    //TODO Add a charge cut on stitched frames
     frame->Put(output_reco_pulse_name_, combined_pulses);
     PushFrame(frame);
 
