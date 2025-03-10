@@ -66,17 +66,15 @@ void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
     Reset();
 }
 
-void G4CCMTreeTracker::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double original_wavelength, double g4_vis_distance,
-                                           double calculated_uv_distance, double calculated_vis_distance,
-                                           double g4_time, double calculated_time, std::string creationProcessName) {
+void G4CCMTreeTracker::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_delta_distance, double original_wavelength,
+                                               double g4_time, std::string creationProcessName) {
     // map does not have key -- let's add our PhotonSummary then update map
     size_t n_wls = 0;
     std::vector<size_t> n_photons_per_wls = {0};
-    PhotonSummary this_photon_summary = PhotonSummary(g4_uv_distance,
+    PhotonSummary this_photon_summary = PhotonSummary(g4_delta_distance, // distance travelled before wls
                                                       original_wavelength,
-                                                      g4_vis_distance,
-                                                      //calculated_uv_distance, calculated_vis_distance,
-                                                      g4_time, //calculated_time,
+                                                      0.0, // distance travelled after wls
+                                                      g4_time,
                                                       n_wls, n_photons_per_wls, WLSLocationSeries(),
                                                       processNameToPhotonSource.at(creationProcessName),
                                                       processNameToPhotonSource.at(creationProcessName),
@@ -85,15 +83,12 @@ void G4CCMTreeTracker::AddEntryToPhotonSummary(int parent_id, int track_id, doub
     optical_photon_map->insert(std::make_pair(track_id, photon_summary->size() - 1));
 }
 
-void G4CCMTreeTracker::UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
-                                       double calculated_uv_distance, double calculated_vis_distance,
-                                       double g4_time, double calculated_time, std::string creationProcessName,
-                                       std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep, double g4_delta_distance) {
+void G4CCMTreeTracker::UpdatePhotonSummary(int parent_id, int track_id, double g4_time, std::string creationProcessName,
+                                           std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep, double g4_delta_distance) {
     // map contains this photon
     // so we need to grab PhotonSummary and update it -- then update key
     PhotonSummary this_photon_summary = photon_summary->at(it->second);
     this_photon_summary.g4_time += g4_time;
-    //this_photon_summary.calculated_time += calculated_time;
     this_photon_summary.current_process = processNameToPhotonSource.at(creationProcessName);
 
     if (new_process){
@@ -207,49 +202,6 @@ void G4CCMTreeTracker::UpdatePhotonSummary(int parent_id, int track_id, double g
     }
 }
 
-double G4CCMTreeTracker::InterpolateRindex(double wavelength){
-    // this function takes a wavelength
-    // and interpolates to find closed rindex
-
-    auto it = std::min_element(rindex_wavelength.begin(), rindex_wavelength.end(), [wavelength](double a, double b) {
-                                   return std::abs(a - wavelength) < std::abs(b - wavelength); });
-
-    size_t closest_idx = std::distance(rindex_wavelength.begin(), it);
-
-    size_t upper_idx;
-    size_t lower_idx;
-
-    if (rindex_wavelength.at(closest_idx) >= wavelength){
-        upper_idx = closest_idx;
-        if (upper_idx > 0){
-            lower_idx = upper_idx - 1;
-        } else {
-            lower_idx = upper_idx;
-        }
-
-    } else {
-        lower_idx = closest_idx;
-        if (lower_idx < (rindex_wavelength.size() - 1)){
-            upper_idx = lower_idx + 1;
-        } else {
-            upper_idx = lower_idx;
-        }
-    }
-
-    double wavelength_above = rindex_wavelength.at(upper_idx);
-    double rindex_above = rindex.at(upper_idx);
-
-    double wavelength_below = rindex_wavelength.at(lower_idx);
-    double rindex_below = rindex.at(lower_idx);
-
-
-    // now interpolate!
-    double interpolated_rindex = rindex_below + (wavelength - wavelength_below) * ((rindex_above - rindex_below) / (wavelength_above - wavelength_below));
-
-    return interpolated_rindex;
-
-}
-
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
@@ -336,25 +288,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
 
             double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
-            double interpolated_rindx = InterpolateRindex(wavelength);
-
-            // based on the wavelength, let's classify as uv or vis
             double original_wavelength = wavelength * I3Units::nanometer;
-            double g4_vis_distance = 0.0;
-            double g4_uv_distance = 0.0;
-            double calculated_vis_distance = 0.0;
-            double calculated_uv_distance = 0.0;
-
-            if(wavelength <= 150.0) {
-                g4_uv_distance = g4_delta_distance;
-                calculated_uv_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
-            } else {
-                g4_vis_distance = g4_delta_distance;
-                calculated_vis_distance = (c_mm_per_nsec * g4_delta_time_step) / interpolated_rindx;
-            }
-
-            // let's also calculate the travel time based on the g4 distance
-            double calculated_delta_time_step = (g4_delta_distance * interpolated_rindx) / c_mm_per_nsec;
 
             // let's also check if this photon got wls
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
@@ -370,9 +304,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
             if (it != optical_photon_map->end()) {
                 // ok so this photon is in our map, let's just update
-                UpdatePhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance,
-                                    calculated_uv_distance, calculated_vis_distance,
-                                    g4_delta_time_step, calculated_delta_time_step, creationProcessName, it, new_process, aStep, g4_delta_distance);
+                UpdatePhotonSummary(parent_id, track_id, g4_delta_time_step, creationProcessName, it, new_process, aStep, g4_delta_distance);
             } else {
                 // check if this parent id is in our map
                 std::map<int, size_t>::iterator parent_it = optical_photon_map->find(parent_id);
@@ -380,13 +312,11 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 bool new_process = true;
                 if (parent_it != optical_photon_map->end()){
                     // this is a new process! let's update our map
-                    UpdatePhotonSummary(parent_id, track_id, g4_uv_distance, g4_vis_distance,
-                                        calculated_uv_distance, calculated_vis_distance,
-                                        g4_delta_time_step, calculated_delta_time_step, creationProcessName, parent_it, new_process, aStep, g4_delta_distance);
+                    UpdatePhotonSummary(parent_id, track_id, g4_delta_time_step, creationProcessName, parent_it, new_process, aStep, g4_delta_distance);
+
                 } else {
                     // need to add a new photon to our map
-                    AddEntryToPhotonSummary(parent_id, track_id, g4_uv_distance, original_wavelength, g4_vis_distance, calculated_uv_distance, calculated_vis_distance,
-                                            primary_.GetTime() + pre_step_global_time + g4_delta_time_step, primary_.GetTime() + pre_step_global_time + calculated_delta_time_step, creationProcessName);
+                    AddEntryToPhotonSummary(parent_id, track_id, g4_delta_distance, original_wavelength, primary_.GetTime() + pre_step_global_time + g4_delta_time_step, creationProcessName);
                 }
             }
         }
@@ -405,7 +335,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     I3Direction direction(g4Direction.x(), g4Direction.y(), g4Direction.z());
 
     // time
-    double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+    double time = primary_.GetTime() + aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
 
     // let's also grab parent id
     // if parent id == 0, that's our primary injected particle

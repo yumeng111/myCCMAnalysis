@@ -72,15 +72,11 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
             mcTree = nullptr;
         }
 
-        void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
-                                     double calculated_uv_distance, double calculated_vis_distance,
-                                     double g4_time, double calculated_time, std::string creationProcessName);
-        void UpdatePhotonSummary(int parent_id, int track_id, double g4_uv_distance, double g4_vis_distance,
-                                 double calculated_uv_distance, double calculated_vis_distance,
-                                 double g4_time, double calculated_time, std::string creationProcessName,
-                                 std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep);
+        void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_delta_distance, double original_wavelength,
+                                     double g4_time, std::string creationProcessName);
+        void UpdatePhotonSummary(int parent_id, int track_id, double g4_time, std::string creationProcessName,
+                                 std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep, double g4_delta_distance);
 
-        double InterpolateRindex(double wavelength);
 
     private:
         int event_id = -1;
