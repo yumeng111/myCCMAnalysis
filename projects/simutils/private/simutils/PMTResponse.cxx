@@ -35,6 +35,28 @@
 
 #include <phys-services/I3GSLRandomService.h>
 
+struct PulseTimeDistribution {
+    double mu;
+    double sigma;
+    double scale;
+};
+
+struct DiscreteDistribution {
+    DiscreteDistribution() = default;
+    std::vector<double> probs_;
+    DiscreteDistribution(std::vector<double> const & probs) : probs_(probs) {
+        double sum = 0.0;
+        for (double const & p : probs_)
+            sum += p;
+        std::transform(probs_.begin(), probs_.end(), probs_.begin(), [=](double p) { return p / sum; });
+    }
+    size_t operator()(I3RandomServicePtr rng) {
+        double r = rng->Uniform(0.0, 1.0);
+        size_t i = std::lower_bound(probs_.begin(), probs_.end(), r) - probs_.begin();
+        return i;
+    }
+};
+
 class PMTResponse: public I3Module {
     double ratio_singlet_;
     double ratio_triplet_;
@@ -45,6 +67,11 @@ class PMTResponse: public I3Module {
     double uv_absorption_b_;
     double uv_absorption_d_;
     double uv_absorption_scaling_;
+
+    double uv_absorption_min_wavelength_;
+    double uv_absorption_max_wavelength_ = 200.0; // nm
+    double uv_absorption_min_abs_length_;
+    double uv_absorption_max_abs_length_;
 
     I3MapPMTKeyDouble late_pulse_mu_;
     I3MapPMTKeyDouble late_pulse_sigma_;
@@ -66,6 +93,14 @@ class PMTResponse: public I3Module {
     I3RandomServicePtr randomService_;
 
     double photon_sampling_factor_;
+    double simulated_uv_absorption_a_;
+    double simulated_uv_absorption_b_;
+    double simulated_uv_absorption_d_;
+    double simulated_uv_absorption_scaling_;
+    double simulated_uv_absorption_min_wavelength_;
+    double simulated_uv_absorption_max_wavelength_ = 200.0; // nm
+    double simulated_uv_absorption_min_abs_length_;
+    double simulated_uv_absorption_max_abs_length_;
 
     double average_pmt_eff_;
     bool flat_eff_;
@@ -76,14 +111,28 @@ class PMTResponse: public I3Module {
     bool grabbed_lp_integral_= false;
     std::vector<double> wavelength_qe_wavelength;
     std::vector<double> wavelength_qe_efficiency;
-    double tts = 3.0;
-    double tts_sigma = tts / (2.0 * sqrt(2.0 * std::log(2.0))); // sqrt(variance) for normal distribution
+
+    PulseTimeDistribution main_pulse_ = {-0.45, 0.9, 1.98e5};
+    double late_per_main_ = 0.0628;
+    std::vector<PulseTimeDistribution> late_pulses_ = {
+        {32, -2.5, 1000},
+        {40, -5.2, 4900},
+        {45, 1.5, 4100},
+        {75, 15, 700},
+        {61, 1, 300}
+    };
+    bool generate_late_pulses_ = false;
+
+    std::vector<PulseTimeDistribution> pulse_types_;
+    DiscreteDistribution pulse_selector_;
+
 public:
     PMTResponse(const I3Context&);
     void Configure();
     void Simulation(I3FramePtr frame);
     void Calibration(I3FramePtr frame);
     void IntegrateLatePulse();
+    double NormalDistributionCDF(double mu, double sigma, double x);
     double NormalDistributionInverseCDF(double p, double mu, double sigma);
     double ExponentialInverseCDF(double p, double tau);
     double IntermediateInverseCDF(double p, double tau);
@@ -93,7 +142,40 @@ public:
 
     static const std::vector<double> default_wavelength_qe_wavelength;
     static const std::vector<double> default_wavelength_qe_efficiency;
+
+    static const double UVAbsorptionLengthCM(const double wavelength, const double a, const double b, const double d, const double scaling, const double min_wavelength, const double max_wavelength, const double min_abs_length, const double max_abs_length);
+    double SimulatedUVAbsorptionCM(const double wavelength) const;
+    double ResponseUVAbsorptionCM(const double wavelength) const;
+
+    double SampleGEV(double mu, double sigma);
+    double SampleGEV(PulseTimeDistribution const & pulse) {
+        return SampleGEV(pulse.mu, pulse.sigma);
+    }
 };
+
+const double PMTResponse::UVAbsorptionLengthCM(const double wavelength, const double a, const double b, const double d, const double scaling, const double min_wavelength, const double max_wavelength, const double min_abs_length, const double max_abs_length) {
+    if(wavelength < min_wavelength) {
+        return min_abs_length;
+    } else if(wavelength > max_wavelength) {
+        return max_abs_length;
+    } else {
+        double function_T = 1.0 - std::exp( - a * (wavelength - b));
+        return (d / std::log(1.0 / function_T)) * scaling;
+    }
+}
+
+double PMTResponse::SimulatedUVAbsorptionCM(const double wavelength) const {
+    return UVAbsorptionLengthCM(wavelength, simulated_uv_absorption_a_, simulated_uv_absorption_b_, simulated_uv_absorption_d_, simulated_uv_absorption_scaling_, simulated_uv_absorption_min_wavelength_, simulated_uv_absorption_max_wavelength_, simulated_uv_absorption_min_abs_length_, simulated_uv_absorption_max_abs_length_);
+}
+
+double PMTResponse::ResponseUVAbsorptionCM(const double wavelength) const {
+    return UVAbsorptionLengthCM(wavelength, uv_absorption_a_, uv_absorption_b_, uv_absorption_d_, uv_absorption_scaling_, uv_absorption_min_wavelength_, uv_absorption_max_wavelength_, uv_absorption_min_abs_length_, uv_absorption_max_abs_length_);
+}
+
+double PMTResponse::SampleGEV(double mu, double sigma) {
+    double u = randomService_->Uniform(0.0, 1.0);
+    return mu - sigma * std::log(-std::log(u));
+}
 
 const std::vector<double> PMTResponse::default_wavelength_qe_wavelength = {
     271.7297065293589, 272.5905302357397, 274.7689165854319, 275.774504708572, 277.42549012103206,
@@ -110,16 +192,16 @@ const std::vector<double> PMTResponse::default_wavelength_qe_wavelength = {
 };
 
 const std::vector<double> PMTResponse::default_wavelength_qe_efficiency = {
-    0.002398740835564059, 0.003121371056039485, 0.00425850887297264, 0.006001329657904212, 0.008024056054700794, 
-    0.011056341101904597, 0.015094429573531078, 0.020696143741601142, 0.02849836945068553, 0.03826555230720272, 
-    0.052991415285607905, 0.07240331867023701, 0.09610228291102357, 0.13207165321064374, 0.1815343556927802, 
-    0.23776843161775388, 0.30248367358133543, 0.3364736243973209, 0.34354861678310683, 0.3402008658768985, 
-    0.32653283426099217, 0.30174406822319666, 0.27076483199514884, 0.23694524445692558, 0.20457669204936288, 
-    0.17836806326025914, 0.15073783540716676, 0.11699878242414168, 0.08951160789158077, 0.06952998759784439, 
-    0.0555286953033716, 0.04381269414550079, 0.0343829721767211, 0.026621914607480143, 0.020384246137586923, 
-    0.015317782194202512, 0.011382145604947418, 0.00849320551185922, 0.006394900074833947, 0.0047434076893910345, 
-    0.0035095442415119683, 0.002591832591784181, 0.0019241990489623855, 0.001431051684337872, 0.001046402936813468, 
-    0.0007715369207947706, 0.0005675436529287897, 0.0004215655226197218, 0.0003103859991646788, 0.0002290412779971303, 
+    0.002398740835564059, 0.003121371056039485, 0.00425850887297264, 0.006001329657904212, 0.008024056054700794,
+    0.011056341101904597, 0.015094429573531078, 0.020696143741601142, 0.02849836945068553, 0.03826555230720272,
+    0.052991415285607905, 0.07240331867023701, 0.09610228291102357, 0.13207165321064374, 0.1815343556927802,
+    0.23776843161775388, 0.30248367358133543, 0.3364736243973209, 0.34354861678310683, 0.3402008658768985,
+    0.32653283426099217, 0.30174406822319666, 0.27076483199514884, 0.23694524445692558, 0.20457669204936288,
+    0.17836806326025914, 0.15073783540716676, 0.11699878242414168, 0.08951160789158077, 0.06952998759784439,
+    0.0555286953033716, 0.04381269414550079, 0.0343829721767211, 0.026621914607480143, 0.020384246137586923,
+    0.015317782194202512, 0.011382145604947418, 0.00849320551185922, 0.006394900074833947, 0.0047434076893910345,
+    0.0035095442415119683, 0.002591832591784181, 0.0019241990489623855, 0.001431051684337872, 0.001046402936813468,
+    0.0007715369207947706, 0.0005675436529287897, 0.0004215655226197218, 0.0003103859991646788, 0.0002290412779971303,
     0.00016780030982719966, 0.00012576417985507728
 };
 
@@ -128,16 +210,16 @@ I3_MODULE(PMTResponse);
 PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     input_hits_map_name_("PMTMCHitsMap"), output_reco_pulse_name_("MCRecoPulses"),
     remove_cherenkov_(false), flat_eff_(false), weight_uv_abs_(false) {
-        AddParameter("InputHitsMapName", "", input_hits_map_name_);
-        AddParameter("OutputRecoPulseName", "", output_reco_pulse_name_);
-        AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", I3DefaultName<DetectorResponseConfig>::value());
-        AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
-        AddParameter("QEWavelengths", "Wavelengths for quantum efficiency", wavelength_qe_wavelength);
-        AddParameter("QEValues", "Values for quantum efficiency", wavelength_qe_efficiency);
-        AddParameter("RemoveCherenkov", "true removes cherenkov photons, false keeps them all", remove_cherenkov_);
-        AddParameter("FlatEfficiency", "true to use flat efficiency", flat_eff_);
-        AddParameter("WeightUVAbsorption", "true to throw away photons based on uv absorption", weight_uv_abs_);
-    }
+    AddParameter("InputHitsMapName", "", input_hits_map_name_);
+    AddParameter("OutputRecoPulseName", "", output_reco_pulse_name_);
+    AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", I3DefaultName<DetectorResponseConfig>::value());
+    AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
+    AddParameter("QEWavelengths", "Wavelengths for quantum efficiency", wavelength_qe_wavelength);
+    AddParameter("QEValues", "Values for quantum efficiency", wavelength_qe_efficiency);
+    AddParameter("RemoveCherenkov", "true removes cherenkov photons, false keeps them all", remove_cherenkov_);
+    AddParameter("FlatEfficiency", "true to use flat efficiency", flat_eff_);
+    AddParameter("WeightUVAbsorption", "true to throw away photons based on uv absorption", weight_uv_abs_);
+}
 
 
 void PMTResponse::Configure() {
@@ -177,6 +259,19 @@ void PMTResponse::Simulation(I3FramePtr frame) {
 
     DetectorResponseConfig const & detector_config = frame->Get<DetectorResponseConfig>(detector_configuration_name_);
     photon_sampling_factor_ = detector_config.photon_sampling_factor_;
+    simulated_uv_absorption_a_ = detector_config.uv_absorption_a_ / (1.0 / I3Units::nanometer);
+    simulated_uv_absorption_b_ = detector_config.uv_absorption_b_ / I3Units::nanometer;
+    simulated_uv_absorption_d_ = detector_config.uv_absorption_d_ / I3Units::m;
+    simulated_uv_absorption_scaling_ = detector_config.uv_absorption_scaling_;
+
+    simulated_uv_absorption_min_wavelength_ = simulated_uv_absorption_b_ + 0.1;
+    simulated_uv_absorption_max_wavelength_ = 200.0;
+    double min_wavelength_function_T = 1.0 - std::exp( - simulated_uv_absorption_a_ * (simulated_uv_absorption_min_wavelength_ - simulated_uv_absorption_b_));
+    simulated_uv_absorption_min_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / min_wavelength_function_T)); // units of m!
+    simulated_uv_absorption_min_abs_length_ *= simulated_uv_absorption_scaling_;
+    double max_wavelength_function_T = 1.0 - std::exp( - simulated_uv_absorption_a_ * (simulated_uv_absorption_max_wavelength_ - simulated_uv_absorption_b_));
+    simulated_uv_absorption_max_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / max_wavelength_function_T)); // units of m!
+    simulated_uv_absorption_max_abs_length_ *= simulated_uv_absorption_scaling_;
 
     PushFrame(frame);
 }
@@ -197,10 +292,19 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     pmt_efficencies_ = sim_calibration->PMTEfficiencies;
     spe_mu_ = sim_calibration->PMTSPEMu;
     spe_sigma_ = sim_calibration->PMTSPESigma;
-    uv_absorption_a_ = sim_calibration->uv_absorption_a;
-    uv_absorption_b_ = sim_calibration->uv_absorption_b;
-    uv_absorption_d_ = sim_calibration->uv_absorption_d;
+    uv_absorption_a_ = sim_calibration->uv_absorption_a / (1.0 / I3Units::nanometer);
+    uv_absorption_b_ = sim_calibration->uv_absorption_b / I3Units::nanometer;
+    uv_absorption_d_ = sim_calibration->uv_absorption_d / I3Units::m;
     uv_absorption_scaling_ = sim_calibration->uv_absorption_scaling;
+
+    uv_absorption_min_wavelength_ = uv_absorption_b_ + 0.1;
+    uv_absorption_max_wavelength_ = 200.0;
+    double min_wavelength_function_T = 1.0 - std::exp( - uv_absorption_a_ * (uv_absorption_min_wavelength_ - uv_absorption_b_));
+    uv_absorption_min_abs_length_ = (uv_absorption_d_ / std::log(1.0 / min_wavelength_function_T));
+    uv_absorption_min_abs_length_ *= uv_absorption_scaling_;
+    double max_wavelength_function_T = 1.0 - std::exp( - uv_absorption_a_ * (uv_absorption_max_wavelength_ - uv_absorption_b_));
+    uv_absorption_max_abs_length_ = (uv_absorption_d_ / std::log(1.0 / max_wavelength_function_T));
+    uv_absorption_max_abs_length_ *= uv_absorption_scaling_;
 
     spe_lower_threshold_ = frame->Get<boost::shared_ptr<I3MapPMTKeyDouble const>>("SPELowerThreshold");
 
@@ -216,6 +320,21 @@ void PMTResponse::Calibration(I3FramePtr frame) {
 
     average_pmt_eff_ /= (static_cast<double>(total_keys));
     std::cout << "average pmt eff = " << average_pmt_eff_ << std::endl;
+
+    pulse_types_.clear();
+    pulse_types_.push_back(main_pulse_);
+
+    std::vector<double> probs;
+    probs.push_back(1.0 - late_per_main_ * generate_late_pulses_);
+    if(generate_late_pulses_) {
+        double total = 0.0;
+        for(PulseTimeDistribution const & pulse : late_pulses_)
+            total += pulse.scale;
+        for(PulseTimeDistribution const & pulse : late_pulses_) {
+            pulse_types_.push_back(pulse);
+            probs.push_back(late_per_main_ * pulse.scale / total);
+        }
+    }
 
     PushFrame(frame);
 }
@@ -271,6 +390,10 @@ void PMTResponse::IntegrateLatePulse() {
     //}
 }
 
+double PMTResponse::NormalDistributionCDF(double mu, double sigma, double x) {
+    return 0.5 * (1.0 + std::erf((x - mu) / (sigma * std::sqrt(2.0))));
+}
+
 double PMTResponse::NormalDistributionInverseCDF(double p, double mu, double sigma) {
     if(p <= 0.0 or p >= 1.0) {
         return std::numeric_limits<double>::infinity();
@@ -310,19 +433,24 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
     // ok so this frame should contain a PMTMCHitsMap
     // we want to read that in, apply various efficiencies
-    I3MapPMTKeyDouble this_event_board_time_smearing;
+    I3MapPMTKeyDouble this_event_board_time_offset;
+    I3MapPMTKeyDouble this_event_board_time_error;
     I3Map<CCMTriggerKey, double> board_offsets;
+    I3Map<CCMTriggerKey, double> board_errors;
 
     for(std::pair<CCMPMTKey, CCMTriggerKey> const & key : trigger_copy_map_) {
         if(board_offsets.find(key.second) != board_offsets.end()) {
             // ok we already have an offset time for this board, let's just save
-            this_event_board_time_smearing.insert(std::make_pair(key.first, board_offsets[key.second]));
+            this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
+            this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
         } else {
             // first time seeing this board! let's make an offset
-            double b_offset = randomService_->Gaus(0, 0.5); // mu = 0, sigma = 0.5 ns
-                                                            // now save
+            double b_offset = randomService_->Uniform(-1.0, 1.0);
+            double b_error = randomService_->Uniform(-0.1, 0.1);
             board_offsets.insert(std::make_pair(key.second, b_offset));
-            this_event_board_time_smearing.insert(std::make_pair(key.first, board_offsets[key.second]));
+            this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
+            board_errors.insert(std::make_pair(key.second, b_error));
+            this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
         }
     }
 
@@ -363,6 +491,9 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
         //double late_pulse_probability = integrated_late_pulse_.at(it->first) / (0.5 + integrated_late_pulse_.at(it->first));
 
+        double this_tube_board_time_offset = this_event_board_time_offset.at(it->first);
+        double this_tube_board_time_error = this_event_board_time_error.at(it->first);
+
         double this_tube_transit_time = 0.0;
         I3MapPMTKeyDouble::const_iterator pmt_tt_it = pmt_transit_times_->find(it->first);
         if(pmt_tt_it != pmt_transit_times_->end()) {
@@ -375,8 +506,11 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             this_tube_spe_threshold = spe_threshold_it->second;
         }
 
+        double this_tube_spe_threshold_efficiency = 1.0 - NormalDistributionCDF(spe_mu_.at(it->first), spe_sigma_.at(it->first), this_tube_spe_threshold);
+
         // Iterate over the vector of CCMMCPE in the source map for this PMT
-        for (CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+        std::vector<CCMRecoPulse> temp_series; temp_series.reserve(size_t(it->second.size() * 0.5));
+        for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
             CCMMCPE const & pe = *it2;
 
             // If we want to remove cherenkov photons, do so now
@@ -405,35 +539,32 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 }
                 double wl_above =  wavelength_qe_wavelength.at(lower_index + 1);
                 double wlqe_above =  wavelength_qe_efficiency.at(lower_index + 1);
-                //std::cout << "wavelength below = " << wl_below << ", wavelength = " << wavelength << ", and wavelength above = " << wl_above << std::endl;
                 wavelength_qe_weighting = wlqe_below + (wavelength - wl_below) * ((wlqe_above - wlqe_below) / (wl_above - wl_below));
             }
 
             // Check if survive uv absorption cuts
             double uv_abs_probability = 1.0;
             if(weight_uv_abs_) {
-                // ok we are re-weighting for uv absorption! we need to grab original wavelength, calculate abs length, then see if we survive
-                double original_wavelength = pe.original_wavelength / I3Units::nanometer;
-                double distance_travelled_before_wls = pe.g4_distance_uv / I3Units::cm;
+                double original_wavelength = pe.wavelength / I3Units::nanometer;
+                double distance_travelled_before_wls = pe.g4_distance_uv / I3Units::m;
 
-                // hardcoding abs params atm, should add to parameters
-                double d = 5.8;
-                double a_param = 0.245319;
-                double scaling = 0.0418985;
-                double b = 111.817;
+                double uv_abs_length = ResponseUVAbsorptionCM(original_wavelength);
+                double simulated_uv_abs_length = SimulatedUVAbsorptionCM(original_wavelength);
 
-                // calculate transmission + absoroption length
-                double function_T = 1.0 - std::exp( - a_param * (original_wavelength - b));
-                double abs_length = (d / std::log(1.0 / function_T)); // units of cm!
-                abs_length *= scaling;
+                double absorption_probability = exp(-distance_travelled_before_wls / uv_abs_length);
+                double simulated_absorption_probability = exp(-distance_travelled_before_wls / simulated_uv_abs_length);
 
-                // now calculate probability
-                uv_abs_probability = std::exp(- distance_travelled_before_wls / abs_length);
+                uv_abs_probability = absorption_probability / simulated_absorption_probability;
             }
 
+            double survival_probability = this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
 
-            if(survival > (pmt_efficiency * wavelength_qe_weighting * uv_abs_probability))
+            double charge_scale_factor = 1.0;
+            if(survival_probability > 1.0) {
+                charge_scale_factor = survival_probability;
+            } else if(survival > survival_probability) {
                 continue;
+            }
 
             // ok our photon has survived! yay! let's apply our various time offsets
             // 1 -- overall event time offset
@@ -441,9 +572,11 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             // 3 -- physical time offset (either due to scintillation + tpb or to late pulse)
 
             double total_time_offset = event_time_offset + (pe.g4_time / I3Units::nanosecond);
-            double transit_time_jitter_random_number = randomService_->Uniform(0.0, 1.0);
 
-            total_time_offset += NormalDistributionInverseCDF(transit_time_jitter_random_number, 0.0, tts_sigma);
+            PulseTimeDistribution const & pmt_pulse_type = pulse_types_.at(pulse_selector_(randomService_));
+            double pulse_time_offset = SampleGEV(pmt_pulse_type);
+
+            total_time_offset += pulse_time_offset;
 
             if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
                 // now let's get a random number to see if we're in singlet, triplet, or intermediate times
@@ -467,15 +600,17 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 }
             }
 
-
             // now, finally, sample our spe shape for this tube to assign the appropiate magnitude to our pulse
-            double pulse_amplitude_rand = randomService_->Uniform(0.0, 1.0);
+            double pulse_amplitude_rand = randomService_->Uniform(1.0 - this_tube_spe_threshold_efficiency, 1.0);
             double pulse_amplitude = NormalDistributionInverseCDF(pulse_amplitude_rand, spe_mu_.at(it->first), spe_sigma_.at(it->first));
 
             // check to make sure we dont have any infinities and our pulse amplitude is appropriate
-            if(std::isinf(pulse_amplitude) or std::isinf(total_time_offset) or pulse_amplitude < this_tube_spe_threshold) {
+            if(std::isinf(pulse_amplitude) or std::isinf(total_time_offset)) {
                 continue;
             }
+
+            // If we undersimulated the number of photons, then the next best thing we can do is scale up the charge
+            pulse_amplitude *= charge_scale_factor;
 
             // note -- we are hacking the pmt width to be cherenkov spe
             double width = 0.0;
@@ -485,38 +620,36 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
             // ok time to save as a reco pulse!
             // add transit time for this tube
-            total_time_offset += this_tube_transit_time;
+            total_time_offset += this_tube_transit_time + this_tube_board_time_offset;
 
             // bin
             double binned_reco_time = static_cast<int>(total_time_offset / 2.0) * 2.0;
 
-            // and now subtract off our transit time
-            binned_reco_time -= this_tube_transit_time;
+            // and now subtract off our transit time with error
+            binned_reco_time -= this_tube_transit_time + this_tube_board_time_offset + this_tube_board_time_error;
 
-            // finally add time smearing from our board offsets
-            binned_reco_time += this_event_board_time_smearing.at(it->first);
+            temp_series.emplace_back();
+            CCMRecoPulse & pulse = temp_series.back();
+            pulse.SetCharge(pulse_amplitude);
+            pulse.SetTime(binned_reco_time);
+            pulse.SetWidth(width);
+        }
 
-            // check if we already have a reco pulse at this time in our dest_series
-            std::vector<CCMRecoPulse>::iterator pulse_lower_it = std::lower_bound(dest_series.begin(), dest_series.end(), binned_reco_time,
-                    [](const auto& pulse, double time) { return pulse.GetTime() < time; });
-            //std::cout << "pulse lower it idx = " << std::distance(dest_series.begin(), pulse_lower_it) << ", and size of dest series = " << dest_series.size() << std::endl;
-            if(pulse_lower_it != dest_series.end() and binned_reco_time == pulse_lower_it->GetTime()) {
-                // we already have a pulse at this time! let's just update
-                double prev_charge = pulse_lower_it->GetCharge();
-                double prev_width = pulse_lower_it->GetWidth();
-                pulse_lower_it->SetCharge(prev_charge + pulse_amplitude);
-                pulse_lower_it->SetWidth(prev_width + width);
+        if(temp_series.empty())
+            continue;
+
+        // Sort and merge the pulses
+        std::sort(temp_series.begin(), temp_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
+        dest_series.push_back(temp_series.front());
+        for(CCMRecoPulseSeries::const_iterator it = temp_series.begin() + 1; it != temp_series.end(); ++it) {
+            CCMRecoPulse & dest_pulse = dest_series.back();
+            if(it->GetTime() == dest_pulse.GetTime()) {
+                dest_pulse.SetCharge(dest_pulse.GetCharge() + it->GetCharge());
+                dest_pulse.SetWidth(dest_pulse.GetWidth() + it->GetWidth());
             } else {
-                // ok we do not have a reco pulse at this time...let's make a new one!
-                CCMRecoPulse pulse;
-                pulse.SetCharge(pulse_amplitude);
-                pulse.SetTime(binned_reco_time);
-                pulse.SetWidth(width);
-                dest_series.insert(pulse_lower_it, pulse);
+                dest_series.push_back(*it);
             }
         }
-        // done saving our ccmreco pulses for this tube!! let's sort according to time
-        std::sort(dest_series.begin(), dest_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
     }
 
     frame->Put(output_reco_pulse_name_, mcpeseries_dest);
