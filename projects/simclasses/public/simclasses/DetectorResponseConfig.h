@@ -13,7 +13,10 @@ static const unsigned g4ccmconfig_version_ = 6;
 class DetectorResponseConfig : public I3FrameObject {
 public:
     double rayleigh_scattering_length_;
-    double uv_absorption_length_;
+    double uv_absorption_a_;
+    double uv_absorption_b_;
+    double uv_absorption_d_;
+    double uv_absorption_scaling_;
     double pmt_tpb_qe_;
     double endcap_tpb_qe_;
     double side_tpb_qe_;
@@ -50,7 +53,10 @@ void DetectorResponseConfig::save(Archive& ar, unsigned version) const {
         log_fatal("Attempting to read version %u from file but running version %u of DetectorResponseConfig class.",version,g4ccmconfig_version_);
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("rayleigh_scattering_length", rayleigh_scattering_length_);
-    ar & make_nvp("uv_absorption_length", uv_absorption_length_);
+    ar & make_nvp("uv_absorption_a", uv_absorption_a_);
+    ar & make_nvp("uv_absorption_b", uv_absorption_b_);
+    ar & make_nvp("uv_absorption_d", uv_absorption_d_);
+    ar & make_nvp("uv_absorption_scaling", uv_absorption_scaling_);
     ar & make_nvp("pmt_tpb_qe", pmt_tpb_qe_);
     ar & make_nvp("endcap_tpb_qe", endcap_tpb_qe_);
     ar & make_nvp("side_tpb_qe", side_tpb_qe_);
@@ -72,8 +78,16 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
         log_fatal("Attempting to read version %u from file but running version %u of DetectorResponseConfig class.",version,g4ccmconfig_version_);
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("rayleigh_scattering_length", rayleigh_scattering_length_);
-    if(version >= 5)
+
+    double uv_absorption_length_;
+    if(version == 5)
         ar & make_nvp("uv_absorption_length", uv_absorption_length_);
+    if(version >= 6) {
+        ar & make_nvp("uv_absorption_a", uv_absorption_a_);
+        ar & make_nvp("uv_absorption_b", uv_absorption_b_);
+        ar & make_nvp("uv_absorption_d", uv_absorption_d_);
+        ar & make_nvp("uv_absorption_scaling", uv_absorption_scaling_);
+    }
     ar & make_nvp("pmt_tpb_qe", pmt_tpb_qe_);
     ar & make_nvp("endcap_tpb_qe", endcap_tpb_qe_);
     ar & make_nvp("side_tpb_qe", side_tpb_qe_);
@@ -81,21 +95,21 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
     ar & make_nvp("endcap_tpb_thickness", endcap_tpb_thickness_);
     ar & make_nvp("side_tpb_thickness", side_tpb_thickness_);
 
-    if(g4ccmconfig_version_ == 0) {
+    if(version == 0) {
         tpb_abs_tau_ = 0.0;
         tpb_abs_norm_ = 0.0;
         tpb_abs_scale_ = 0.0;
         mie_gg_ = 0.0;
         mie_ratio_ = 0.0;
         uv_absorption_length_ = 0.0;
-    } else if(g4ccmconfig_version_ == 1) {
+    } else if(version == 1) {
         ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
         ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
         tpb_abs_scale_ = 0.0;
         mie_gg_ = 0.0;
         mie_ratio_ = 0.0;
         uv_absorption_length_ = 0.0;
-    } else if(g4ccmconfig_version_ == 2) {
+    } else if(version == 2) {
         ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
         ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
         ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
@@ -104,7 +118,7 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
         uv_absorption_length_ = 0.0;
     }
 
-    if(g4ccmconfig_version_ >= 3) {
+    if(version >= 3) {
         ar & make_nvp("tpb_abs_tau", tpb_abs_tau_);
         ar & make_nvp("tpb_abs_norm", tpb_abs_norm_);
         ar & make_nvp("tpb_abs_scale", tpb_abs_scale_);
@@ -112,15 +126,23 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
         ar & make_nvp("mie_ratio", mie_ratio_);
     }
 
-    if(g4ccmconfig_version_ == 3) {
+    if(version == 3) {
         uv_absorption_length_ = 0.0;
-    } else if(g4ccmconfig_version_ == 4) {
+    } else if(version == 4) {
         ar & make_nvp("uv_absorption_length", uv_absorption_length_);
-    } else if(g4ccmconfig_version_ == 5) {
+    } else if(version == 5) {
         ar & make_nvp("normalization", normalization_);
     } else {
         ar & make_nvp("normalization", normalization_);
         ar & make_nvp("photon_sampling_factor", photon_sampling_factor_);
+    }
+
+    if(version < 6) {
+        // Attempt to make something close to a flat absorption length
+        uv_absorption_a_ = 1e-8;
+        uv_absorption_b_ = 1e8 * log(1.0 - exp(-1.0));
+        uv_absorption_d_ = uv_absorption_length_;
+        uv_absorption_scaling_ = 1.0;
     }
 }
 
