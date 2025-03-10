@@ -40,7 +40,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
   public:
 
     // constructor and destructor
-    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength1, G4double UVAbsLength2, G4double UVAbsScaling,
+    G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
                               G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                               G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                               G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
@@ -217,9 +217,10 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4double SingletTau_ = 8.2 * ns;
     G4double TripletTau_ = 743.0 * ns;
     G4double Rayleigh128_ = 95.0 * cm;
-    G4double UVAbsLength1_ = 12.0 * cm;
-    G4double UVAbsLength2_ = 750.0 * cm;
-    G4double UVAbsScaling_ = 0.83;
+    G4double UVAbsA_ = 0.234 * (1.0/nm);
+    G4double UVAbsB_ = 113.02 * nm;
+    G4double UVAbsD_ = 5.8 * cm;
+    G4double UVAbsScaling_ = 1.0;
     G4double WLSNPhotonsEndCapFoil_ = 0.605;
     G4double WLSNPhotonsSideFoil_ = 0.605;
     G4double WLSNPhotonsPMT_ = 0.605;

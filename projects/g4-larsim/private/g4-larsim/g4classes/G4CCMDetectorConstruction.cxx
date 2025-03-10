@@ -46,15 +46,16 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsLength1, G4double UVAbsLength2, G4double UVAbsScaling,
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
                                                      G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                                                      G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
                                                      G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor) {
     SingletTau_ = SingletTau;
     TripletTau_ = TripletTau;
-    UVAbsLength1_ = UVAbsLength1;
-    UVAbsLength2_ = UVAbsLength2;
+    UVAbsA_ = UVAbsA;
+    UVAbsB_ = UVAbsB;
+    UVAbsD_ = UVAbsD;
     UVAbsScaling_ = UVAbsScaling;
     WLSNPhotonsEndCapFoil_ = WLSNPhotonsEndCapFoil;
     WLSNPhotonsSideFoil_ = WLSNPhotonsSideFoil;
@@ -294,42 +295,41 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // using this paper: https://link.springer.com/article/10.1140/epjc/s10052-012-2190-z#Bib1
     // set parameter for uv abs scaling function
-    double d = 5.8;
-    double a_param = UVAbsLength1_;
-    double b = UVAbsLength2_;
-    double scaling = UVAbsScaling_;
+    double a_param = UVAbsA_ / (1.0/nm); // per nm
+    double b_param = UVAbsB_ / nm; // nm
+    double d_param = UVAbsD_ / cm; // cm
+    double scaling_param = UVAbsScaling_; // dimensionless
 
     // now let's get some min and max bounds
-    double min_wavelength = b + 0.1;
-    double max_wavelength = 200.0;
+    double min_wavelength = b_param + 0.1;
+    double max_wavelength = 200.0; // nm
 
-    double min_wavelength_function_T = 1.0 - std::exp( - a_param * (min_wavelength - b));
-    double min_abs_length = (d / std::log(1.0 / min_wavelength_function_T)) * cm;
-    min_abs_length *= scaling;
+    double min_wavelength_function_T = 1.0 - std::exp( - a_param * (min_wavelength - b_param));
+    double min_abs_length = (d_param / std::log(1.0 / min_wavelength_function_T));
+    min_abs_length *= scaling_param;
 
-    double max_wavelength_function_T = 1.0 - std::exp( - a_param * (max_wavelength - b));
-    double max_abs_length = (d / std::log(1.0 / max_wavelength_function_T)) * cm;
-    max_abs_length *= scaling;
+    double max_wavelength_function_T = 1.0 - std::exp( - a_param * (max_wavelength - b_param));
+    double max_abs_length = std::max((d_param / std::log(1.0 / max_wavelength_function_T)), 10000.0);
+    max_abs_length *= scaling_param;
 
     // now we need to fill in our absorption lengths
     std::vector<G4double> uv_abs_energy; uv_abs_energy.reserve(n_entries+1);
     std::vector<G4double> uv_abs_length; uv_abs_length.reserve(n_entries+1);
     for(int i = (n_entries + 1); i >= 0; --i) {
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
-        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
-        double this_abs;
+        G4double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        G4double this_abs;
 
-        if(this_wavelength <= b) {
-            this_abs = min_abs_length;
-        } else if (this_wavelength > b and this_wavelength < max_wavelength){
-            double function_T = 1.0 - std::exp( - a_param * (this_wavelength - b));
-            double abs_length = (d / std::log(1.0 / function_T)) * cm;
-            this_abs = scaling * abs_length;
+        if(this_wavelength <= b_param) {
+            this_abs = min_abs_length * cm;
+        } else if (this_wavelength > b_param and this_wavelength < max_wavelength){
+            double function_T = 1.0 - std::exp( - a_param * (this_wavelength - b_param));
+            double abs_length = (d_param / std::log(1.0 / function_T));
+            this_abs = scaling_param * abs_length * cm;
         } else {
-            this_abs = max_abs_length;
+            this_abs = max_abs_length * cm;
         }
 
-        std::cout << "at wavelength = " << this_wavelength << " uv abs = " << this_abs / cm << "cm" << std::endl;
         uv_abs_energy.push_back(this_energy);
         uv_abs_length.push_back(this_abs);
     }

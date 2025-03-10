@@ -46,7 +46,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     RecordHits_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
     SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
-    Rayleigh128_(95.0 * I3Units::cm), UVAbsLength1_(16.0 * I3Units::cm), UVAbsLength2_(750.0 * I3Units::cm), UVAbsScaling_(0.83),
+    Rayleigh128_(95.0 * I3Units::cm), UVAbsA_(0.234 * (1.0/I3Units::nanometer)), UVAbsB_(113.02 * I3Units::nanometer), UVAbsD_(5.8 * I3Units::cm), UVAbsScaling_(1.0),
     WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
     TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.99), MieRatio_(0.8), Normalization_(1.0), PhotonSampling_(0.5), RandomSeed_(0) {
@@ -80,9 +80,10 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("SingletTimeConstant", "LAr singlet tau", SingletTau_);
     AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
-    AddParameter("UVAbsLength1", "set UV absorption length at 128nm", UVAbsLength1_);
-    AddParameter("UVAbsLength2", "set UV absorption length at 128nm", UVAbsLength2_);
-    AddParameter("UVAbsScaling", "set UV absorption scaling at 128nm", UVAbsScaling_);
+    AddParameter("UVAbsA", "Set UV absorption slope [1/nm]", UVAbsA_ / (1.0/I3Units::nanometer));
+    AddParameter("UVAbsB", "Set UV absorption offset [nm]", UVAbsB_ / I3Units::nanometer);
+    AddParameter("UVAbsD", "Set UV absorption reference distance [m]", UVAbsD_ / I3Units::meter);
+    AddParameter("UVAbsScaling", "Set UV absorption scale [dimensionless]", UVAbsScaling_);
     AddParameter("WLSNPhotonsEndCapFoil", "mean number of photons produced per WLS for TPB foils on the end caps of the detector", WLSNPhotonsEndCapFoil_);
     AddParameter("WLSNPhotonsSideFoil", "mean number of photons produced per WLS for TPB foils on the sides of the detector", WLSNPhotonsSideFoil_);
     AddParameter("WLSNPhotonsPMT", "mean number of photons produced per WLS for TPB on PMTs", WLSNPhotonsPMT_);
@@ -129,8 +130,9 @@ void CCM200Response::Configure() {
     GetParameter("SingletTimeConstant", SingletTau_);
     GetParameter("TripletTimeConstant", TripletTau_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
-    GetParameter("UVAbsLength1", UVAbsLength1_);
-    GetParameter("UVAbsLength2", UVAbsLength2_);
+    GetParameter("UVAbsA", UVAbsA_);
+    GetParameter("UVAbsB", UVAbsB_);
+    GetParameter("UVAbsD", UVAbsD_);
     GetParameter("UVAbsScaling", UVAbsScaling_);
     GetParameter("WLSNPhotonsEndCapFoil", WLSNPhotonsEndCapFoil_);
     GetParameter("WLSNPhotonsSideFoil", WLSNPhotonsSideFoil_);
@@ -146,6 +148,10 @@ void CCM200Response::Configure() {
     GetParameter("Normalization", Normalization_);
     GetParameter("PhotonSampling", PhotonSampling_);
     GetParameter("RandomSeed", RandomSeed_);
+
+    UVAbsA_ *= (1.0/I3Units::nanometer);
+    UVAbsB_ *= I3Units::nanometer;
+    UVAbsD_ *= I3Units::meter;
 }
 
 CCM200Response::~CCM200Response() {}
@@ -164,7 +170,7 @@ void CCM200Response::Initialize() {
                                   KillNeutrinos_, KillPhotons_, KillScintillation_, KillCherenkov_,
                                   TimeCut_, DetailedPhotonTracking_, TrackParticles_, TrackEnergyLosses_,
                                   RecordHits_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
-                                  DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsLength1_, UVAbsLength2_, UVAbsScaling_,
+                                  DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsA_, UVAbsB_, UVAbsD_, UVAbsScaling_,
                                   WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
                                   MieGG_, MieRatio_, Normalization_, PhotonSampling_, RandomSeed_);
@@ -173,7 +179,10 @@ void CCM200Response::Initialize() {
 I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
     config->rayleigh_scattering_length_ = Rayleigh128_;
-    config->uv_absorption_length_ = UVAbsLength1_;
+    config->uv_absorption_a_ = UVAbsA_;
+    config->uv_absorption_b_ = UVAbsB_;
+    config->uv_absorption_d_ = UVAbsD_;
+    config->uv_absorption_scaling_ = UVAbsScaling_;
     config->pmt_tpb_qe_ = WLSNPhotonsPMT_;
     config->endcap_tpb_qe_ = WLSNPhotonsEndCapFoil_;
     config->side_tpb_qe_ = WLSNPhotonsSideFoil_;

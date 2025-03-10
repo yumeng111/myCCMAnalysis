@@ -71,7 +71,7 @@ void G4Interface::InstallDetector(
                                   bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
                                   double DecayX, double DecayY, double DecayZ,
                                   double SingletTau, double TripletTau, double Rayleigh128,
-                                  double UVAbsLength1, double UVAbsLength2, double UVAbsScaling, 
+                                  double UVAbsA, double UVAbsB, double UVAbsD, double UVAbsScaling, 
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                                   double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                                   double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
@@ -100,7 +100,9 @@ void G4Interface::InstallDetector(
 
     if(detector_ == nullptr) {
         detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns,
-                                                  UVAbsLength1 / I3Units::cm * CLHEP::cm, UVAbsLength2 / I3Units::cm * CLHEP::cm, UVAbsScaling,
+                                                  UVAbsA / (1.0/I3Units::nanometer) * (1.0/CLHEP::nm),
+                                                  UVAbsB / I3Units::nanometer * CLHEP::nm,
+                                                  UVAbsD / I3Units::m * CLHEP::m, UVAbsScaling,
                                                   WLSNPhotonsEndCapFoil, WLSNPhotonsSideFoil, WLSNPhotonsPMT,
                                                   EndCapFoilTPBThickness / I3Units::mm * CLHEP::mm, SideFoilTPBThickness / I3Units::mm * CLHEP::mm, PMTTPBThickness / I3Units::mm * CLHEP::mm,
                                                   Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio, Normalization, PhotonSampling);
