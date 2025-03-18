@@ -317,6 +317,9 @@ boost::shared_ptr<CCMRecoPulseSeriesMap> OverlayNoise::GetNoisePulses(double dur
     double accumulated_time = 0.0;
     boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
     while(accumulated_time < duration) {
+        if(current_noise_pulses == nullptr) {
+            NextFrame();
+        }
         double remaining_time = current_end_time - current_start_time;
         double random_start_time = randomService_->Uniform(
                 current_start_time,
