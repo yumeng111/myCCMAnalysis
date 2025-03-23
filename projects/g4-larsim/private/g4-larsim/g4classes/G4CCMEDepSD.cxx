@@ -34,11 +34,16 @@ void G4CCMEDepSD::Initialize(G4HCofThisEvent* hitsCE) {
 
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
 
+    primary_ = readout_->GetPrimary(event_id);
+
     if(SaveEnergyLossesVector_) {
         output_energy_losses_vector = readout_->GetVolumeEDepVector(event_id, volume_);
     }
     if(SaveEnergyLossesTree_) {
         output_energy_losses_tree = readout_->GetVolumeEDepMCTree(event_id, volume_);
+        if(not I3MCTreeUtils::Has(*output_energy_losses_tree, primary_.GetID())) {
+            I3MCTreeUtils::AddPrimary(*output_energy_losses_tree, primary_);
+        }
     }
 }
 
@@ -46,7 +51,9 @@ void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
     if(SaveEnergyLossesTree_) {
         std::map<I3ParticleID, std::tuple<bool, bool, std::vector<I3ParticleID>>> energy_loss_map;
         std::vector<I3ParticleID> queue;
-        std::vector<I3Particle*> const primaries = I3MCTreeUtils::GetPrimariesPtr(tree_tracker->mcTree);
+        std::vector<I3Particle*> primaries;
+        if(tree_tracker->mcTree->size() > 0)
+            primaries = I3MCTreeUtils::GetPrimariesPtr(tree_tracker->mcTree);
 
         // Add primaries to the queue
         for(const I3Particle* primary : primaries) {
@@ -173,6 +180,10 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         auto it = tree_tracker->DaughterParticleMap.find(track_id);
         if(it != tree_tracker->DaughterParticleMap.cend()) {
             std::vector<I3Particle> daughters = I3MCTreeUtils::GetDaughters(*(tree_tracker->mcTree), it->second);
+            if(daughters.empty()) {
+                std::cout << "Warning: no daughters found for track_id " << track_id << std::endl;
+                return false;
+            }
             I3Particle energy_loss = *std::max_element(daughters.begin(), daughters.end(), [](I3Particle const & p0, I3Particle const & p1) -> bool {return p0.GetID() < p1.GetID();});
             if(SaveEnergyLossesTree_) {
                 energy_loss_ids.insert(energy_loss.GetID());

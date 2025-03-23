@@ -56,6 +56,7 @@ class G4CCMEDepSD : public G4VSensitiveDetector {
 
         I3VectorI3ParticlePtr output_energy_losses_vector = nullptr;
         I3MCTreePtr output_energy_losses_tree = nullptr;
+        I3Particle primary_;
 
         std::set<I3ParticleID> energy_loss_ids;
 
