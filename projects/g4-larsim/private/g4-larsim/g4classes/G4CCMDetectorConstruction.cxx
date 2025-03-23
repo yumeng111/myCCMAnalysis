@@ -674,13 +674,20 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
                      or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_
                      or SaveAllEnergyLossesTree_;
 
+    bool track_particles = TrackParticles_ or TrackEnergyLosses_
+                     or SaveAllEnergyLossesTree_ or VetoSDSaveEnergyLossesTree_
+                     or InteriorSDSaveEnergyLossesTree_;
+
+    bool track_energy_losses = TrackEnergyLosses_ or SaveAllEnergyLossesTree_
+                     or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_;
+
     if(tree_tracker) {
         // Tree tracker
         if(!fTreeTracker_SD.Get()) {
             G4cout << "Construction /LAr/treeTracker" << G4endl;
             auto tree_tracker = new G4CCMTreeTracker("/LAr/treeTracker");
-            tree_tracker->SetTrackParticles(TrackParticles_);
-            tree_tracker->SetTrackEnergyLosses(TrackEnergyLosses_ or SaveAllEnergyLossesTree_);
+            tree_tracker->SetTrackParticles(track_particles);
+            tree_tracker->SetTrackEnergyLosses(track_energy_losses);
             tree_tracker->SetDetailedPhotonTracking(DetailedPhotonTracking_);
             tree_tracker->SetTimeCut(TimeCut_);
             tree_tracker->SetKillNeutrinos(KillNeutrinos_);
@@ -705,6 +712,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             veto_SD->SetSaveEnergyLossesTree(VetoSDSaveEnergyLossesTree_);
             veto_SD->SetSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector_);
             veto_SD->SetPruneTree(VetoSDPruneTree_);
+            veto_SD->SetReadout(readout_);
             if(fTreeTracker_SD.Get())
                 veto_SD->SetTreeTracker(fTreeTracker_SD.Get());
             fVeto_SD.Put(veto_SD);
@@ -725,8 +733,10 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             interior_SD->SetSaveEnergyLossesVector(InteriorSDSaveEnergyLossesVector_);
             interior_SD->SetPruneTree(InteriorSDPruneTree_);
             interior_SD->SetTreeTracker(fTreeTracker_SD.Get());
+            interior_SD->SetReadout(readout_);
             if(fTreeTracker_SD.Get())
                 interior_SD->SetTreeTracker(fTreeTracker_SD.Get());
+            fInterior_SD.Put(interior_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fInterior_SD.Get());
             for(G4LogicalVolume * log : fMainVolume->GetInteriorLArLogicalVolumes()) {
                 if(log == nullptr)
