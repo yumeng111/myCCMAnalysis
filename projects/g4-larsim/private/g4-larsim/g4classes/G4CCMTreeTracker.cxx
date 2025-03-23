@@ -50,6 +50,7 @@ G4CCMTreeTracker::G4CCMTreeTracker(G4String name) : G4VSensitiveDetector(name) {
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void G4CCMTreeTracker::Initialize(G4HCofThisEvent* hitsCE) {
+    Reset();
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
 
     primary_ = readout_->GetPrimary(event_id);
@@ -63,7 +64,6 @@ void G4CCMTreeTracker::Initialize(G4HCofThisEvent* hitsCE) {
 
 void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
     readout_->LogTrackingResult(event_id, photon_summary, optical_photon_map, DetailedPhotonTracking_);
-    Reset();
 }
 
 void G4CCMTreeTracker::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_delta_distance, double original_wavelength,
