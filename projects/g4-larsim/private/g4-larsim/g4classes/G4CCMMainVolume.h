@@ -14,14 +14,16 @@
 #include <map>
 
 #include <G4PVPlacement.hh>
+#include <G4LogicalSkinSurface.hh>
+#include <G4LogicalBorderSurface.hh>
 
 class G4Box;
 class G4LogicalVolume;
 class G4Sphere;
 class G4Tubs;
 
-class G4CCMMainVolume : public G4PVPlacement
-{
+class G4CCMMainVolume : public G4PVPlacement {
+    std::vector<std::shared_ptr<G4RotationMatrix>> placement_rotations;
   public:
     G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
@@ -49,15 +51,6 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* GetShinyC406R0() { return fShinyC406R0_log; }
     G4LogicalVolume* GetShinyTop() { return fShinyTop_log; }
     G4LogicalVolume* GetShinyBottom() { return fShinyBottom_log; }
-    
-    G4LogicalVolume* GetLogBridleCoatedWall() {return fBridleCoatedWall_log;}
-    G4LogicalVolume* GetLogBridleUncoatedWall() {return fBridleUncoatedWall_log;}
-    G4LogicalVolume* GetLogBridleCoatedCaps() {return fBridleCoatedCaps_log;}
-    G4LogicalVolume* GetLogBridleUncoatedCaps() {return fBridleUncoatedCaps_log;}
-    G4LogicalVolume* GetLogFrillCoatedWall() {return fFrillCoatedWall_log;}
-    G4LogicalVolume* GetLogFrillUncoatedWall() {return fFrillUncoatedWall_log;}
-    G4LogicalVolume* GetLogFrillCoatedCaps() {return fFrillCoatedCaps_log;}
-    G4LogicalVolume* GetLogFrillUncoatedCaps() {return fFrillUncoatedCaps_log;}
 
     G4LogicalVolume* GetLogInnerFrame() {return fInnerFrame_log;}
     G4LogicalVolume* GetLogArgonOuter() {return fOuterLAr_log;}
@@ -87,11 +80,19 @@ class G4CCMMainVolume : public G4PVPlacement
     }
 
     std::vector<G4LogicalVolume*> GetBridleLogicalVolumes() {
-        return {fBridleCoatedWall_log, fBridleUncoatedWall_log, fBridleCoatedCaps_log, fBridleUncoatedCaps_log};
+        std::vector<G4LogicalVolume * > logicalVolumes;
+        for(auto logicalVolume : fBridleLogicalVolumes) {
+            logicalVolumes.push_back(std::get<1>(logicalVolume.second).get());
+        }
+        return logicalVolumes;
     }
 
     std::vector<G4LogicalVolume*> GetFrillLogicalVolumes() {
-        return {fFrillCoatedWall_log, fFrillUncoatedWall_log, fFrillCoatedCaps_log, fFrillUncoatedCaps_log};
+        std::vector<G4LogicalVolume * > logicalVolumes;
+        for(auto logicalVolume : fFrillLogicalVolumes) {
+            logicalVolumes.push_back(std::get<1>(logicalVolume.second).get());
+        }
+        return logicalVolumes;
     }
 
     std::vector<G4LogicalVolume*> GetFrameLogicalVolumes() {
@@ -122,6 +123,9 @@ class G4CCMMainVolume : public G4PVPlacement
     std::vector<G4ThreeVector> GetPMTPositions() { return fPMTPositions; }
 
   private:
+
+    J4PMTSolidMaker pmt_solid_maker;
+
     void VisAttributes(G4bool SourceRodIn);
     void SurfaceProperties();
     G4CCMDetectorConstruction* fConstructor = nullptr;
@@ -138,19 +142,13 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fTPBFoilBottom = nullptr;
     G4Tubs* fFiducialLAr = nullptr;
 
+    G4VSolid* fPMTVacuumWall = nullptr;
+    G4VSolid* fPMTVacuumCaps = nullptr;
+
     G4VSolid* fPMTCoatedWall = nullptr;
     G4VSolid* fPMTCoatedCaps = nullptr;
     G4VSolid* fPMTUncoatedWall = nullptr;
     G4VSolid* fPMTUncoatedCaps = nullptr;
-
-    G4VSolid* fBridleCoatedWall = nullptr;
-    G4VSolid* fBridleCoatedCaps = nullptr;
-    G4VSolid* fFrillCoatedWall = nullptr;
-    G4VSolid* fFrillCoatedCaps = nullptr;
-    G4VSolid* fBridleUncoatedWall = nullptr;
-    G4VSolid* fBridleUncoatedCaps = nullptr;
-    G4VSolid* fFrillUncoatedWall = nullptr;
-    G4VSolid* fFrillUncoatedCaps = nullptr;
 
     G4VSolid* fTPBCoatingWall = nullptr;
     G4VSolid* fTPBCoatingCaps = nullptr;
@@ -165,6 +163,15 @@ class G4CCMMainVolume : public G4PVPlacement
     G4Tubs* fShinyTop = nullptr;
     G4Tubs* fShinyBottom = nullptr;
 
+    std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fBridleLogicalVolumes;
+    std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fFrillLogicalVolumes;
+    std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fTPBLogicalVolumes;
+    std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fVacuumLogicalVolumes;
+    std::map<std::tuple<bool, std::shared_ptr<G4VSolid>>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fPMTLogicalVolumes;
+    std::map<std::tuple<bool, std::shared_ptr<G4VSolid>>, std::shared_ptr<G4LogicalSkinSurface>> fLogicalSkinSurfaces;
+    std::vector<std::shared_ptr<G4LogicalBorderSurface>> fLogicalBorderSurfaces;
+    std::vector<std::shared_ptr<G4PVPlacement>> fPlacements;
+
     // Logical volumes
     G4LogicalVolume* fCryoVessel_log = nullptr;
     G4LogicalVolume* fVacuum_log = nullptr;
@@ -177,19 +184,13 @@ class G4CCMMainVolume : public G4PVPlacement
     G4LogicalVolume* fTPBFoilBottom_log = nullptr;
     G4LogicalVolume* fFiducialLAr_log = nullptr;
 
+    G4LogicalVolume* fPMTVacuumWall_log = nullptr;
+    G4LogicalVolume* fPMTVacuumCaps_log = nullptr;
+
     G4LogicalVolume* fPMTCoatedWall_log = nullptr;
     G4LogicalVolume* fPMTCoatedCaps_log = nullptr;
     G4LogicalVolume* fPMTUncoatedWall_log = nullptr;
     G4LogicalVolume* fPMTUncoatedCaps_log = nullptr;
-
-    G4LogicalVolume* fBridleCoatedWall_log = nullptr;
-    G4LogicalVolume* fBridleCoatedCaps_log = nullptr;
-    G4LogicalVolume* fFrillCoatedWall_log = nullptr;
-    G4LogicalVolume* fFrillCoatedCaps_log = nullptr;
-    G4LogicalVolume* fBridleUncoatedWall_log = nullptr;
-    G4LogicalVolume* fBridleUncoatedCaps_log = nullptr;
-    G4LogicalVolume* fFrillUncoatedWall_log = nullptr;
-    G4LogicalVolume* fFrillUncoatedCaps_log = nullptr;
 
     G4LogicalVolume* fTPBCoatingWall_log = nullptr;
     G4LogicalVolume* fTPBCoatingCaps_log = nullptr;
@@ -218,7 +219,6 @@ class G4CCMMainVolume : public G4PVPlacement
 
     // Sensitive Detectors positions
     std::vector<G4ThreeVector> fPMTPositions;
-
 };
 
 #endif

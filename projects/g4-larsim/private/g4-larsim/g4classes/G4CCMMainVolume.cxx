@@ -22,324 +22,6 @@
 #include <G4MaterialPropertiesTable.hh>
 #include <G4SubtractionSolid.hh>
 
-// let's define some things relevant for getting the geometry of our pmts
-std::vector<std::string> position_id = {"C101R0",
-                                        "C401R0",
-                                        "C105R0",
-                                        "C210R0",
-                                        "C201R0",
-                                        "C103R0",
-                                        "C315R0",
-                                        "C301R0",
-                                        "C102R0",
-                                        "C314R0",
-                                        "C419R0",
-                                        "C313R0",
-                                        "C209R0",
-                                        "C417R0",
-                                        "C104R0",
-                                        "C312R0",
-                                        "C207R0",
-                                        "C208R0",
-                                        "C415R0",
-                                        "C311R0",
-                                        "C302R0",
-                                        "C305R0",
-                                        "C303R0",
-                                        "C204R0",
-                                        "C306R0",
-                                        "C405R0",
-                                        "C304R0",
-                                        "C403R0",
-                                        "C202R0",
-                                        "C203R0",
-                                        "C407R0",
-                                        "C307R0",
-                                        "C205R0",
-                                        "C409R0",
-                                        "C308R0",
-                                        "C309R0",
-                                        "C411R0",
-                                        "C206R0",
-                                        "C310R0",
-                                        "C413R0",
-                                        "C2R3",
-                                        "C2R4",
-                                        "C2R2",
-                                        "C2R5",
-                                        "C2R1",
-                                        "C1R3",
-                                        "C1R4",
-                                        "C1R5",
-                                        "C1R1",
-                                        "C1R2",
-                                        "C3R3",
-                                        "C3R5",
-                                        "C3R1",
-                                        "C3R4",
-                                        "C3R2",
-                                        "C5R2",
-                                        "C5R5",
-                                        "C5R1",
-                                        "C5R4",
-                                        "C5R3",
-                                        "C24R5",
-                                        "C24R2",
-                                        "C24R4",
-                                        "C24R1",
-                                        "C24R3",
-                                        "C23R4",
-                                        "C23R3",
-                                        "C23R1",
-                                        "C23R2",
-                                        "C23R5",
-                                        "C4R5",
-                                        "C4R3",
-                                        "C4R4",
-                                        "C4R2",
-                                        "C4R1",
-                                        "C8R1",
-                                        "C8R5",
-                                        "C8R4",
-                                        "C8R3",
-                                        "C8R2",
-                                        "C10R1",
-                                        "C9R4",
-                                        "C9R5",
-                                        "C9R2",
-                                        "C10R3",
-                                        "C10R2",
-                                        "C10R5",
-                                        "C9R3",
-                                        "C9R1",
-                                        "C10R4",
-                                        "C11R1",
-                                        "C11R3",
-                                        "C11R2",
-                                        "C11R4",
-                                        "C11R5",
-                                        "C13R5",
-                                        "C12R1",
-                                        "C12R3",
-                                        "C12R2",
-                                        "C13R1",
-                                        "C13R2",
-                                        "C13R4",
-                                        "C12R5",
-                                        "C12R4",
-                                        "C13R3",
-                                        "C14R1",
-                                        "C14R2",
-                                        "C14R5",
-                                        "C14R4",
-                                        "C14R3",
-                                        "C15R3",
-                                        "C15R2",
-                                        "C15R1",
-                                        "C15R4",
-                                        "C15R5",
-                                        "C16R3",
-                                        "C16R2",
-                                        "C16R5",
-                                        "C16R4",
-                                        "C16R1",
-                                        "C19R1",
-                                        "C19R5",
-                                        "C19R4",
-                                        "C19R2",
-                                        "C19R3",
-                                        "C20R1",
-                                        "C20R2",
-                                        "C20R5",
-                                        "C20R4",
-                                        "C20R3",
-                                        "C21R3",
-                                        "C21R4",
-                                        "C21R5",
-                                        "C21R2",
-                                        "C21R1",
-                                        "C22R2",
-                                        "C22R4",
-                                        "C22R1",
-                                        "C22R3",
-                                        "C22R5",
-                                        "C18R2",
-                                        "C18R1",
-                                        "C18R4",
-                                        "C17R3",
-                                        "C18R3",
-                                        "C17R2",
-                                        "C17R5",
-                                        "C18R5",
-                                        "C17R4",
-                                        "C17R1",
-                                        "C6R4",
-                                        "C6R5",
-                                        "C6R2",
-                                        "C7R2",
-                                        "C7R3",
-                                        "C6R3",
-                                        "C7R4",
-                                        "C6R1",
-                                        "C7R5",
-                                        "C7R1",
-                                        "C410R6",
-                                        "C308R6",
-                                        "C206R6",
-                                        "C309R6",
-                                        "C412R6",
-                                        "C310R6",
-                                        "C207R6",
-                                        "C416R6",
-                                        "C313R6",
-                                        "C209R6",
-                                        "C208R6",
-                                        "C312R6",
-                                        "C311R6",
-                                        "C105R6",
-                                        "C104R6",
-                                        "C101R6",
-                                        "C314R6",
-                                        "C418R6",
-                                        "C414R6",
-                                        "C315R6",
-                                        "C210R6",
-                                        "C420R6",
-                                        "C201R6",
-                                        "C301R6",
-                                        "C202R6",
-                                        "C404R6",
-                                        "C303R6",
-                                        "C302R6",
-                                        "C402R6",
-                                        "C203R6",
-                                        "C304R6",
-                                        "C102R6",
-                                        "C103R6",
-                                        "C307R6",
-                                        "C204R6",
-                                        "C406R6",
-                                        "C406R0",
-                                        "C205R6",
-                                        "C408R6",
-                                        "C306R6",
-                                        "C305R6"};
-
-// Z positions of the rows of pmts
-std::map<size_t, double> pmt_region_z_positions = {
-    {-2, 75.00},
-    {-1, 65.00},
-    {0,  58.00},
-    {1,  46.00},
-    {2,  23.00},
-    {3,   0.00},
-    {4, -23.00},
-    {5, -46.00},
-    {6, -58.00},
-    {7, -65.00},
-    {8, -75.00},
-};
-
-// The radii of rings of pmts
-std::map<size_t, double> ring_radii = {
-    {0,  96.0}, // Outer wall
-    {1,  24.0}, // Inner ring on top/bottom
-    {2,  45.0}, //
-    {3,  66.0}, //
-    {4,  87.0}, // Outer ring on top/bottom
-    {5, 101.6},  // Veto VT and VB rings
-    {6, 111.6}  // Veto VCT and VCB rings
-};
-
-// The number of possible pmt positions in each ring (not all positions will be filled)
-std::map<size_t, size_t> ring_pmt_pos_count = {
-    {0, 24}, // Outer wall
-    {1,  5}, // Inner ring on top/bottom
-    {2, 10}, //
-    {3, 15}, //
-    {4, 20}, // Outer ring on top/bottom
-    {5, 24},  // Veto VT and VB rings
-    {6, 24}  // Veto VCT and VCB rings
-};
-
-std::set<std::tuple<size_t, size_t, size_t>> cap_uncoated_pmts = {
-    // Ring, col, row
-    {1,  1, 0},
-    {1,  3, 0},
-    {2,  3, 0},
-    {2,  8, 0},
-    {3,  1, 0},
-    {3,  8, 0},
-    {4,  5, 0},
-    {4, 15, 0},
-    {1,  2, 6},
-    {1,  4, 6},
-    {2,  5, 6},
-    {2, 10, 6},
-    {3,  3, 6},
-    {3, 10, 6},
-    {4,  8, 6},
-    {4, 18, 6}
-};
-
-double default_start_pmt_number = 1;
-int default_num_pmts = 24;
-int default_middle_pmt_row = 3;
-
-double angle_from_cylinder_pmt_number(
-        int pmt_number,
-        double start_pmt_number = default_start_pmt_number,
-        int num_pmts = default_num_pmts) {
-    return double(pmt_number - start_pmt_number) / double(num_pmts) * 2.0 * M_PI;
-}
-
-std::pair<double, double> xy_position_from_cylinder_pmt_number(
-        int pmt_number,
-        double radius,
-        double start_pmt_number = default_start_pmt_number,
-        int num_pmts = default_num_pmts,
-        double angular_offset = 0.0) {
-    double angle = angle_from_cylinder_pmt_number(pmt_number, start_pmt_number, num_pmts);
-    angle += angular_offset;
-    return {radius * cos(angle), radius * sin(angle)};
-}
-
-std::vector<double> get_pmt_cap_position(int pmt_row, int ring_number, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0, double z=0.0) {
-    if(z == 0.0) {
-        z = pmt_region_z_positions[pmt_row];
-    }
-    std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
-            pmt_number,
-            ring_radii[ring_number],
-            starting_pmt_number,
-            ring_pmt_pos_count[ring_number],
-            angular_offset);
-    std::vector<double> pos;
-    pos.push_back(xy.first);
-    pos.push_back(xy.second);
-    pos.push_back(z);
-    return pos;
-}
-
-std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double starting_pmt_number = 1, double angular_offset = 0.0, double radius=0.0) {
-    int ring_number = 0;
-    double z = pmt_region_z_positions[pmt_row];
-    if(radius <= 0.0) {
-        radius = ring_radii[ring_number];
-    }
-    std::pair<double, double> xy = xy_position_from_cylinder_pmt_number(
-            pmt_number,
-            radius,
-            starting_pmt_number,
-            ring_pmt_pos_count[ring_number],
-            angular_offset);
-    std::vector<double> pos;
-    pos.push_back(xy.first);
-    pos.push_back(xy.second);
-    pos.push_back(z);
-    return pos;
-}
-
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
@@ -445,44 +127,47 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fFiducialLAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialLAr_log, "FiducialArgon", fTPBFoilSides_log, false, 0, true);
 
     G4double pmt_protrusion_distance = 61.89 * mm;
-
-    // now let's build PMTs using J4SolidMaker
-    fPMTCoatedWall = J4PMTSolidMaker::Get8inchPMTWallSolid(fiducial_lar_radius, pmt_protrusion_distance);
-    fPMTCoatedCaps = J4PMTSolidMaker::Get8inchPMTCapsSolid(pmt_protrusion_distance);
-    fPMTCoatedWall_log = new G4LogicalVolume(fPMTCoatedWall, G4Material::GetMaterial("Glass"), "PMTCoatedWallLog");
-    fPMTCoatedCaps_log = new G4LogicalVolume(fPMTCoatedCaps, G4Material::GetMaterial("Glass"), "PMTCoatedCapsLog");
-
-    fPMTUncoatedWall = J4PMTSolidMaker::Get8inchPMTWallSolid(fiducial_lar_radius, pmt_protrusion_distance);
-    fPMTUncoatedCaps = J4PMTSolidMaker::Get8inchPMTCapsSolid(pmt_protrusion_distance);
-    fPMTUncoatedWall_log = new G4LogicalVolume(fPMTUncoatedWall, G4Material::GetMaterial("Glass"), "PMTUncoatedWallLog");
-    fPMTUncoatedCaps_log = new G4LogicalVolume(fPMTUncoatedCaps, G4Material::GetMaterial("Glass"), "PMTUncoatedCapsLog");
-
-    // now let's build our bridle + frills that go around the PMTs
     G4double bridle_width = 12.0 * mm;
     G4double bridle_radius = 209.55 / 2.0 * mm;
     G4double frill_width = 0.813 * mm;
     G4double frill_radius = 228.6 / 2.0 * mm;
-    fBridleCoatedWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance, true);
-    fBridleUncoatedWall = J4PMTSolidMaker::GetBridleWall(bridle_radius, bridle_width, tpb_radius, pmt_protrusion_distance, false);
-    fBridleCoatedCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance, true);
-    fBridleUncoatedCaps = J4PMTSolidMaker::GetBridleCaps(bridle_radius, bridle_width, pmt_protrusion_distance, false);
-    fFrillCoatedWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius, true);
-    fFrillUncoatedWall = J4PMTSolidMaker::GetFrillWall(bridle_radius, frill_radius,  frill_width, tpb_radius, false);
-    fFrillCoatedCaps = J4PMTSolidMaker::GetFrillCaps(bridle_radius, frill_radius, frill_width, true);
-    fFrillUncoatedCaps = J4PMTSolidMaker::GetFrillCaps(bridle_radius, frill_radius, frill_width, false);
-    fBridleCoatedWall_log = new G4LogicalVolume(fBridleCoatedWall, G4Material::GetMaterial("BlackPlastic"), "BridleCoatedWallLog");
-    fBridleUncoatedWall_log = new G4LogicalVolume(fBridleUncoatedWall, G4Material::GetMaterial("BlackPlastic"), "BridleUncoatedWallLog");
-    fBridleCoatedCaps_log = new G4LogicalVolume(fBridleCoatedCaps, G4Material::GetMaterial("BlackPlastic"), "BridleCoatedCapsLog");
-    fBridleUncoatedCaps_log = new G4LogicalVolume(fBridleUncoatedCaps, G4Material::GetMaterial("BlackPlastic"), "BridleUncoatedCapsLog");
-    fFrillCoatedWall_log = new G4LogicalVolume(fFrillCoatedWall, G4Material::GetMaterial("Plastic"), "FrillCoatedWallLog");
-    fFrillUncoatedWall_log = new G4LogicalVolume(fFrillUncoatedWall, G4Material::GetMaterial("Plastic"), "FrillUncoatedWallLog");
-    fFrillCoatedCaps_log = new G4LogicalVolume(fFrillCoatedCaps, G4Material::GetMaterial("Plastic"), "FrillCoatedCapsLog");
-    fFrillUncoatedCaps_log = new G4LogicalVolume(fFrillUncoatedCaps, G4Material::GetMaterial("Plastic"), "FrillUncoatedCapsLog");
+
+    pmt_solid_maker.bridle_width = bridle_width;
+    pmt_solid_maker.bridle_radius = bridle_radius;
+    pmt_solid_maker.frill_width = frill_width;
+    pmt_solid_maker.frill_radius = frill_radius;
+
+    pmt_solid_maker.pmt_tpb_thickness = PMTTPBThickness;
+    pmt_solid_maker.cylinder_half_height = fiducial_lar_half_height;
+    pmt_solid_maker.cylinder_radius = fiducial_lar_radius;
+    pmt_solid_maker.pmt_protrusion_distance = pmt_protrusion_distance;
+    pmt_solid_maker.CreateBaseSolids();
+
+    fPMTPositions.clear();
+    for(std::pair<std::string const, G4ThreeVector> const &pmt_position : pmt_solid_maker.pmt_positions) {
+        fPMTPositions.push_back(pmt_position.second);
+    }
+
+    // now let's build PMTs using J4SolidMaker
+
+    fPMTVacuumWall = pmt_solid_maker.pmt_wall_vacuum_solid.get();
+    fPMTVacuumCaps = pmt_solid_maker.pmt_cap_vacuum_solid.get();
+    fPMTVacuumWall_log = new G4LogicalVolume(fPMTVacuumWall, G4Material::GetMaterial("Vacuum"), "PMTVacuumWallLog");
+    fPMTVacuumCaps_log = new G4LogicalVolume(fPMTVacuumCaps, G4Material::GetMaterial("Vacuum"), "PMTVacuumCapsLog");
+
+    fPMTCoatedWall = pmt_solid_maker.pmt_wall_glass_solid.get();
+    fPMTCoatedCaps = pmt_solid_maker.pmt_cap_glass_solid.get();
+    fPMTCoatedWall_log = new G4LogicalVolume(fPMTCoatedWall, G4Material::GetMaterial("Glass"), "PMTCoatedWallLog");
+    fPMTCoatedCaps_log = new G4LogicalVolume(fPMTCoatedCaps, G4Material::GetMaterial("Glass"), "PMTCoatedCapsLog");
+
+    fPMTUncoatedWall = pmt_solid_maker.pmt_wall_glass_solid.get();
+    fPMTUncoatedCaps = pmt_solid_maker.pmt_cap_glass_solid.get();
+    fPMTUncoatedWall_log = new G4LogicalVolume(fPMTUncoatedWall, G4Material::GetMaterial("Glass"), "PMTUncoatedWallLog");
+    fPMTUncoatedCaps_log = new G4LogicalVolume(fPMTUncoatedCaps, G4Material::GetMaterial("Glass"), "PMTUncoatedCapsLog");
 
     // now get TPB coating
-    G4double tpb_protrusion = pmt_protrusion_distance - bridle_width;
-    fTPBCoatingWall = J4PMTSolidMaker::GetTPBCoatingWallSolid(fiducial_lar_radius, pmt_protrusion_distance, PMTTPBThickness);
-    fTPBCoatingCaps = J4PMTSolidMaker::GetTPBCoatingCapsSolid(pmt_protrusion_distance, PMTTPBThickness);
+    fTPBCoatingWall = pmt_solid_maker.pmt_wall_tpb_solid.get();
+    fTPBCoatingCaps = pmt_solid_maker.pmt_cap_tpb_solid.get();
     fTPBCoatingWall_log = new G4LogicalVolume(fTPBCoatingWall, G4Material::GetMaterial("TPBPMT"), "TPBCoatingWallLog");
     fTPBCoatingCaps_log = new G4LogicalVolume(fTPBCoatingCaps, G4Material::GetMaterial("TPBPMT"), "TPBCoatingCapsLog");
 
@@ -503,8 +188,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fShinyBottom_log= new G4LogicalVolume(fShinyBottom, G4Material::GetMaterial("PTFE"), "ShinyBottom");
     new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialLAr_log, false, 0, true);
 
-    double pmt_radius_cm = (fiducial_lar_radius + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
-    double pmt_height_cm = (fiducial_lar_half_height + (J4PMTSolidMaker::Get8inchPMTRadius() - pmt_protrusion_distance)) / cm;
+    double pmt_radius_cm = (fiducial_lar_radius + (pmt_solid_maker.pmt_radius - pmt_protrusion_distance)) / cm;
+    double pmt_height_cm = (fiducial_lar_half_height + (pmt_solid_maker.pmt_radius - pmt_protrusion_distance)) / cm;
     double bridle_height_cm = (fiducial_lar_half_height - (bridle_width / 2.0)) / cm;
     double frill_height_cm = (fiducial_lar_half_height - (frill_width / 2.0)) / cm;
     double bridle_radius_cm = fiducial_lar_radius / cm;
@@ -630,171 +315,174 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     new G4LogicalBorderSurface("TPBFoilTop_Surface", fFiducialLAr_phys, fTPBFoilTop_phys, TPBOpticalSurface);
     new G4LogicalBorderSurface("TPBFoilBottom_Surface", fFiducialLAr_phys, fTPBFoilBottom_phys, TPBOpticalSurface);
 
-    // now that we've defined the pmt logical volume, we can get pmt locations using CCMGeometryGenerator logic
-    G4int k = 0;
-    for (size_t i = 0; i < position_id.size(); i++) {
-        std::string position_string = position_id[i];
-        size_t r_pos = position_string.find("R");
-        size_t n_row_chars = r_pos - 1;
-        bool on_caps = n_row_chars > 2;
-        int row;
-        std::vector<double> position;
-        std::vector<double> bridle_position;
-        std::vector<double> frill_position;
-        int pmt_number = 0;
-        bool coated = true;
-        if(on_caps) {
-            int col = std::atoi(position_string.substr(2, n_row_chars - 1).c_str());
-            int ring = std::atoi(position_string.substr(1, 1).c_str());
-            row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
-            if(row == 0) {
-                position = get_pmt_cap_position(row, ring, col, 1, 0.0, pmt_height_cm);
-                bridle_position = get_pmt_cap_position(row, ring, col, 1, 0.0, bridle_height_cm);
-                frill_position = get_pmt_cap_position(row, ring, col, 1, 0.0, frill_height_cm);
-            } else if(row == 6) {
-                position = get_pmt_cap_position(row, ring, col, 1, 0.0, -pmt_height_cm);
-                bridle_position = get_pmt_cap_position(row, ring, col, 1, 0.0, -bridle_height_cm);
-                frill_position = get_pmt_cap_position(row, ring, col, 1, 0.0, -frill_height_cm);
-            } else {
-                throw std::runtime_error("Bad cap row");
-            }
-            for(std::pair<int, int> const & p : ring_pmt_pos_count)
-                if(p.first < ring and p.first > 0)
-                    pmt_number += p.second;
-            pmt_number += col;
-            std::tuple<int, int, int> cap_coated_key = {ring, col, row};
-            if(cap_uncoated_pmts.count(cap_coated_key) > 0)
-                coated = false;
+    // Place the frills
+    for(std::pair<std::string const, std::shared_ptr<G4VSolid>> & p : pmt_solid_maker.frill_solids) {
+        std::string name = p.first;
+        std::shared_ptr<G4VSolid> frill_solid = p.second;
+        G4ThreeVector & frill_position = pmt_solid_maker.frill_positions[name];
+        std::shared_ptr<G4RotationMatrix> & frill_rotation = pmt_solid_maker.frill_rotations[name];
+        G4LogicalVolume * frill_log;
+        std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator it = fFrillLogicalVolumes.find(frill_solid);
+        unsigned int copy_number_k;
+        if(it == fFrillLogicalVolumes.end()) {
+            copy_number_k = 0;
+            frill_log = new G4LogicalVolume(frill_solid.get(), G4Material::GetMaterial("Plastic"), name);
+            fFrillLogicalVolumes[frill_solid] = {1, std::shared_ptr<G4LogicalVolume>(frill_log)};
+
+            G4LogicalSkinSurface * frill_skin = new G4LogicalSkinSurface(name + "_Surface", frill_log, PlasticOpticalSurface);
+            fLogicalSkinSurfaces.insert({{false, frill_solid}, std::shared_ptr<G4LogicalSkinSurface>(frill_skin)});
         } else {
-            int col = std::atoi(position_string.substr(1, r_pos - 1).c_str());
-            row = std::atoi(position_string.substr(r_pos + 1, std::string::npos).c_str());
-            position = get_pmt_wall_position(row, col, 1, 0.0, pmt_radius_cm);
-            bridle_position = get_pmt_wall_position(row, col, 1, 0.0, bridle_radius_cm);
-            frill_position = get_pmt_wall_position(row, col, 1, 0.0, frill_radius_cm);
-            pmt_number = col;
-            if( (row ==  1 and col % 4 == 1) or
-                (row ==  2 and col % 4 == 3) or
-                (row ==  4 and col % 4 == 0) or
-                (row ==  5 and col % 4 == 2)) {
-                coated = false;
-            }
+            frill_log = std::get<1>(it->second).get();
+            std::get<0>(it->second) += 1;
+            copy_number_k = std::get<0>(it->second);
         }
-        if (position_string == "C406R0"){
-            // now place our shiny circle!
-            new G4PVPlacement(0, G4ThreeVector(position[0]*cm, position[1]*cm, fiducial_lar_half_height - shiny_half_height), fShinyC406R0_log, "ShinyC406R0", fFiducialLAr_log, false, 0, true);
-            continue;
-        }
-        // so we have our pmt info
-        // let's make the string key to save it to
-        G4String pmt_name = std::to_string(row) + "_" + std::to_string(pmt_number);
-        G4ThreeVector pmt_pos;
-        pmt_pos.setX(position[0]*cm);
-        pmt_pos.setY(position[1]*cm);
-        pmt_pos.setZ(position[2]*cm);
-
-        G4ThreeVector bridle_pos;
-        bridle_pos.setX(bridle_position[0]*cm);
-        bridle_pos.setY(bridle_position[1]*cm);
-        bridle_pos.setZ(bridle_position[2]*cm);
-
-        G4ThreeVector frill_pos;
-        frill_pos.setX(frill_position[0]*cm);
-        frill_pos.setY(frill_position[1]*cm);
-        frill_pos.setZ(frill_position[2]*cm);
-
-        // let's make appropriate rotation matrix
-        G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
-
-        if (row == 0) {
-            // top face pmts
-            // rotate so they are pointing downwards
-            G4double rotationAngle = M_PI;
-            rotationMatrix->rotateX(rotationAngle); // Rotate around the x axis
-
-        }
-        // note -- don't actually need to do a rotation for bottom face pmts -- skipping for now
-        if (row > 0 and row < 6){
-            // side pmts
-            // we want to calculate facing direction essentially
-            G4double facing_radius = std::pow(position[0], 2) + std::pow(position[1], 2);
-            G4double facing_r_x = position[0] / facing_radius;
-            G4double facing_r_y = position[1] / facing_radius;
-            G4double facing_dir_norm_factor = std::sqrt(std::pow(facing_r_x, 2) + std::pow(facing_r_y, 2));
-            G4double facing_dir_x = facing_r_x / facing_dir_norm_factor;
-            G4double facing_dir_y = facing_r_y / facing_dir_norm_factor;
-            G4double facing_dir_z = 0.0;
-
-            G4double phi = std::atan2(facing_dir_y, facing_dir_x);
-            G4double theta = std::acos(facing_dir_z);
-
-            rotationMatrix->rotateZ(-phi); // rotate rotate
-            rotationMatrix->rotateY(theta); // rotate rotate
-        }
-        if(coated) {
-            // place coated pmts
-            G4String descriptive_name = "CoatedPMT_" + pmt_name;
-            G4String tpb_descriptive_name = "TPBCoating_" + pmt_name;
-            G4String bridle_descriptive_name = "Bridle_" + pmt_name;
-            G4String frill_descriptive_name = "Frill_" + pmt_name;
-
-            if(row > 0 and row < 6) {
-                fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingWall_log, tpb_descriptive_name, fFiducialLAr_log, false, k, true);
-                fPMTCoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedWall_log, descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedWall_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedWall_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
-                // now add our boarder surfaces
-                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedWall_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedWall_log, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedWall_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedWall_log, PlasticOpticalSurface);
-                //new G4LogicalSkinSurface(tpb_descriptive_name + "_Surface", fTPBCoatingWall_log, TPBOpticalSurface);
-                new G4LogicalBorderSurface(tpb_descriptive_name + "_Surface", fFiducialLAr_phys, fTPBPMT_phys, TPBOpticalSurface);
-            } else {
-                fTPBPMT_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fTPBCoatingCaps_log, tpb_descriptive_name, fFiducialLAr_log, false, k, true);
-                fPMTCoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTCoatedCaps_log, descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleCoatedCaps_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillCoatedCaps_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
-                // now add our boarder surfaces
-                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fTPBPMT_phys, fPMTCoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTCoatedCaps_log, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleCoatedCaps_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillCoatedCaps_log, PlasticOpticalSurface);
-                //new G4LogicalSkinSurface(tpb_descriptive_name + "_Surface", fTPBCoatingCaps_log, TPBOpticalSurface);
-                new G4LogicalBorderSurface(tpb_descriptive_name + "_Surface", fFiducialLAr_phys, fTPBPMT_phys, TPBOpticalSurface);
-            }
-
-        } else {
-            // place uncoated pmts
-            G4String descriptive_name = "UncoatedPMT_" + pmt_name;
-            G4String bridle_descriptive_name = "Bridle_" + pmt_name;
-            G4String frill_descriptive_name = "Frill_" + pmt_name;
-
-            if(row > 0 and row < 6) {
-                fPMTUncoatedWall_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedWall_log, descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedWall_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedWall_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
-                // now add our boarder surfaces
-                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialLAr_phys, fPMTUncoatedWall_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTUncoatedWall_log, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleUncoatedWall_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillUncoatedWall_log, PlasticOpticalSurface);
-            } else {
-                fPMTUncoatedCaps_phys = new G4PVPlacement(rotationMatrix, pmt_pos, fPMTUncoatedCaps_log, descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, bridle_pos, fBridleUncoatedCaps_log, bridle_descriptive_name, fFiducialLAr_log, false, k, true);
-                new G4PVPlacement(rotationMatrix, frill_pos, fFrillUncoatedCaps_log, frill_descriptive_name, fFiducialLAr_log, false, k, true);
-                // now add our boarder surfaces
-                //new G4LogicalBorderSurface(descriptive_name + "_Surface", fFiducialLAr_phys, fPMTUncoatedCaps_phys, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(descriptive_name + "_Surface", fPMTUncoatedCaps_log, UncoatedPMTGlassOpticalSurface);
-                new G4LogicalSkinSurface(bridle_descriptive_name + "_Surface", fBridleUncoatedCaps_log, PlasticOpticalSurface);
-                new G4LogicalSkinSurface(frill_descriptive_name + "_Surface", fFrillUncoatedCaps_log, PlasticOpticalSurface);
-
-            }
-        }
-
-        // now save positions and increment counter
-        fPMTPositions.push_back(G4ThreeVector(position[0], position[1], position[2]));
-        ++k;
+        fPlacements.emplace_back(new G4PVPlacement(frill_rotation.get(), frill_position, frill_log, name, fFiducialLAr_log, false, copy_number_k, true));
     }
+
+    // Place the bridles
+    for(std::pair<std::string const, std::shared_ptr<G4VSolid>> & p : pmt_solid_maker.bridle_solids) {
+        std::string name = p.first;
+        std::shared_ptr<G4VSolid> bridle_solid = p.second;
+        G4ThreeVector & bridle_position = pmt_solid_maker.bridle_positions[name];
+        std::shared_ptr<G4RotationMatrix> & bridle_rotation = pmt_solid_maker.bridle_rotations[name];
+        G4LogicalVolume * bridle_log;
+        std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator it = fBridleLogicalVolumes.find(bridle_solid);
+        unsigned int copy_number_k;
+        if(it == fBridleLogicalVolumes.end()) {
+            copy_number_k = 0;
+            bridle_log = new G4LogicalVolume(bridle_solid.get(), G4Material::GetMaterial("BlackPlastic"), "Bridle_" + name);
+            fBridleLogicalVolumes[bridle_solid] = {1, std::shared_ptr<G4LogicalVolume>(bridle_log)};
+
+            G4LogicalSkinSurface * bridle_skin = new G4LogicalSkinSurface("Bridle_" + name + "_Surface", bridle_log, PlasticOpticalSurface);
+            fLogicalSkinSurfaces.insert({{false, bridle_solid}, std::shared_ptr<G4LogicalSkinSurface>(bridle_skin)});
+        } else {
+            bridle_log = std::get<1>(it->second).get();
+            std::get<0>(it->second) += 1;
+            copy_number_k = std::get<0>(it->second);
+        }
+        fPlacements.emplace_back(new G4PVPlacement(bridle_rotation.get(), bridle_position, bridle_log, name, fFiducialLAr_log, false, copy_number_k, true));
+    }
+
+    // Place the pmts
+    for(std::pair<std::string const, std::shared_ptr<G4VSolid>> & p : pmt_solid_maker.pmt_solids) {
+        std::string name = p.first;
+        std::shared_ptr<G4VSolid> pmt_solid = p.second;
+        G4ThreeVector pmt_position = pmt_solid_maker.pmt_positions[name];
+        std::shared_ptr<G4RotationMatrix> pmt_rotation = pmt_solid_maker.pmt_rotations[name];
+        G4LogicalVolume * pmt_log;
+
+        std::shared_ptr<G4VSolid> tpb_solid = (pmt_solid_maker.tpb_solids.count(name) > 0) ? pmt_solid_maker.tpb_solids[name] : nullptr;
+        G4ThreeVector tpb_position = (tpb_solid != nullptr) ? pmt_solid_maker.tpb_positions[name] : G4ThreeVector(0, 0, 0);
+        std::shared_ptr<G4RotationMatrix> tpb_rotation = (tpb_solid != nullptr) ? pmt_solid_maker.tpb_rotations[name] : nullptr;
+        G4LogicalVolume * tpb_log;
+
+        bool pmt_on_cap, coated;
+        int pmt_row, pmt_col, pmt_ring, pmt_number;
+        pmt_solid_maker.ParsePMTID(name, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
+        std::string pmt_name = (coated) ? "Coated" : "Uncoated";
+        pmt_name += (pmt_on_cap) ? "Cap" : "Wall";
+
+        G4OpticalSurface * pmt_optical_surface;
+        unsigned int copy_number_k;
+        std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator tpb_it;
+
+        if(tpb_solid != nullptr) {
+            tpb_it = fTPBLogicalVolumes.find(tpb_solid);
+            if(tpb_it == fTPBLogicalVolumes.end()) {
+                copy_number_k = 0;
+                if(pmt_on_cap)
+                    tpb_log = fTPBCoatingCaps_log;
+                else
+                    tpb_log = fTPBCoatingWall_log;
+                fTPBLogicalVolumes[tpb_solid] = {1, std::shared_ptr<G4LogicalVolume>(tpb_log)};
+
+                std::map<std::tuple<bool, std::shared_ptr<G4VSolid>>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator pmt_it;
+                pmt_it = fPMTLogicalVolumes.find({coated, pmt_solid});
+                if(pmt_it == fPMTLogicalVolumes.end()) {
+                    copy_number_k = 0;
+                    pmt_optical_surface = CoatedPMTGlassOpticalSurface;
+                    if(pmt_on_cap)
+                        pmt_log = fPMTCoatedCaps_log;
+                    else
+                        pmt_log = fPMTCoatedWall_log;
+                    fPMTLogicalVolumes[{coated, pmt_solid}] = {1, std::shared_ptr<G4LogicalVolume>(pmt_log)};
+
+                    G4LogicalSkinSurface * pmt_skin = new G4LogicalSkinSurface("PMTGlass_" + pmt_name + "_Surface", pmt_log, pmt_optical_surface);
+                    fLogicalSkinSurfaces.insert({{coated, pmt_solid}, std::shared_ptr<G4LogicalSkinSurface>(pmt_skin)});
+
+                    std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator vac_it;
+                    std::shared_ptr<G4VSolid> vacuum_solid = pmt_solid_maker.vacuum_solids[name];
+                    G4LogicalVolume * vacuum_log;
+
+                    vac_it = fVacuumLogicalVolumes.find(vacuum_solid);
+                    if(vac_it == fVacuumLogicalVolumes.end()) {
+                        copy_number_k = 0;
+                        vacuum_log = new G4LogicalVolume(vacuum_solid.get(), G4Material::GetMaterial("Vacuum"), std::string("PMTVacuum_") + ((pmt_on_cap) ? "Cap" : "Wall") + "Log");
+                        fVacuumLogicalVolumes[vacuum_solid] = {1, std::shared_ptr<G4LogicalVolume>(vacuum_log)};
+                    } else {
+                        vacuum_log = std::get<1>(vac_it->second).get();
+                        std::get<0>(vac_it->second) += 1;
+                        copy_number_k = std::get<0>(vac_it->second);
+                    }
+                    fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, copy_number_k, true));
+                } else {
+                    pmt_log = std::get<1>(pmt_it->second).get();
+                    std::get<0>(pmt_it->second) += 1;
+                    copy_number_k = std::get<0>(pmt_it->second);
+                }
+                fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), pmt_log, "PMTGlass_" + name, tpb_log, false, copy_number_k, true));
+            } else {
+                tpb_log = std::get<1>(tpb_it->second).get();
+                std::get<0>(tpb_it->second) += 1;
+                copy_number_k = std::get<0>(tpb_it->second);
+            }
+            fPlacements.emplace_back(new G4PVPlacement(tpb_rotation.get(), tpb_position, tpb_log, "PMTTPB_" + name, fFiducialLAr_log, false, copy_number_k, true));
+            fLogicalBorderSurfaces.emplace_back(new G4LogicalBorderSurface("PMTTPB_" + name + "_Surface", fFiducialLAr_phys, fPlacements.back().get(), TPBOpticalSurface));
+        } else {
+            std::map<std::tuple<bool, std::shared_ptr<G4VSolid>>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator pmt_it;
+
+            pmt_it = fPMTLogicalVolumes.find({coated, pmt_solid});
+            if(pmt_it == fPMTLogicalVolumes.end()) {
+                copy_number_k = 0;
+                pmt_optical_surface = UncoatedPMTGlassOpticalSurface;
+                if(pmt_on_cap)
+                    pmt_log = fPMTUncoatedCaps_log;
+                else
+                    pmt_log = fPMTUncoatedWall_log;
+                fPMTLogicalVolumes[{coated, pmt_solid}] = {1, std::shared_ptr<G4LogicalVolume>(pmt_log)};
+
+                G4LogicalSkinSurface * pmt_skin = new G4LogicalSkinSurface("PMTGlass_" + pmt_name + "_Surface", pmt_log, pmt_optical_surface);
+                fLogicalSkinSurfaces.insert({{coated, pmt_solid}, std::shared_ptr<G4LogicalSkinSurface>(pmt_skin)});
+
+                std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator vac_it;
+                std::shared_ptr<G4VSolid> vacuum_solid = pmt_solid_maker.vacuum_solids[name];
+                G4LogicalVolume * vacuum_log;
+
+                vac_it = fVacuumLogicalVolumes.find(vacuum_solid);
+                if(vac_it == fVacuumLogicalVolumes.end()) {
+                    copy_number_k = 0;
+                    vacuum_log = new G4LogicalVolume(vacuum_solid.get(), G4Material::GetMaterial("Vacuum"), std::string("PMTVacuum_") + ((pmt_on_cap) ? "Cap" : "Wall") + "Log");
+                    fVacuumLogicalVolumes[vacuum_solid] = {1, std::shared_ptr<G4LogicalVolume>(vacuum_log)};
+                } else {
+                    vacuum_log = std::get<1>(vac_it->second).get();
+                    std::get<0>(vac_it->second) += 1;
+                    copy_number_k = std::get<0>(vac_it->second);
+                }
+                fPlacements.emplace_back(new G4PVPlacement(0, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, copy_number_k, true));
+            } else {
+                pmt_log = std::get<1>(pmt_it->second).get();
+                std::get<0>(pmt_it->second) += 1;
+                copy_number_k = std::get<0>(pmt_it->second);
+            }
+            fPlacements.emplace_back(new G4PVPlacement(pmt_rotation.get(), pmt_position, pmt_log, "PMTGlass_" + name, fFiducialLAr_log, false, copy_number_k, true));
+        }
+    }
+
+    std::string shiny_position_id = "C406R0";
+    G4ThreeVector shiny_position = pmt_solid_maker.GetPMTPosition(shiny_position_id);
+    shiny_position.setZ(fiducial_lar_half_height - shiny_half_height);
+    // now place our shiny circle!
+    fPlacements.emplace_back(new G4PVPlacement(0, shiny_position, fShinyC406R0_log, "ShinyC406R0", fFiducialLAr_log, false, 0, true));
 
     if (SourceRodIn){
         // now let's make our source rod
@@ -960,10 +648,12 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
 
     salmon->SetForceSolid(true);
     teal->SetForceSolid(true);
-    fFrillCoatedWall_log->SetVisAttributes(dark_blue);
-    fFrillUncoatedWall_log->SetVisAttributes(dark_blue);
-    fFrillCoatedCaps_log->SetVisAttributes(dark_blue);
-    fFrillUncoatedCaps_log->SetVisAttributes(dark_blue);
+    for(G4LogicalVolume * log : GetFrillLogicalVolumes()) {
+        log->SetVisAttributes(dark_blue);
+    }
+    for(G4LogicalVolume * log : GetBridleLogicalVolumes()) {
+        log->SetVisAttributes(salmon);
+    }
     //fFrillWall_log->SetVisAttributes(teal);
     //fFrillCaps_log->SetVisAttributes(teal);
     //fBridleWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
