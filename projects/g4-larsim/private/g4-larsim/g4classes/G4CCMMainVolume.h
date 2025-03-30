@@ -105,7 +105,7 @@ class G4CCMMainVolume : public G4PVPlacement {
 
     std::vector<G4LogicalVolume*> GetAllLogicalVolumes() {
         std::vector<G4LogicalVolume*> allLogicalVolumes;
-        std::vector<std::vector<G4LogicalVolume*>> logicalVolumes = {GetPMTLogicalVolumes(), GetSourceLogicalVolumes(), GetTPBLogicalVolumes(), GetReflectorLogicalVolumes(), GetBridleLogicalVolumes(), GetFrillLogicalVolumes(), GetFrameLogicalVolumes(), GetCryoLogicalVolumes()};
+        std::vector<std::vector<G4LogicalVolume*>> logicalVolumes = {GetPMTLogicalVolumes(), GetScintLogicalVolumes(), GetSourceLogicalVolumes(), GetTPBLogicalVolumes(), GetReflectorLogicalVolumes(), GetBridleLogicalVolumes(), GetFrillLogicalVolumes(), GetFrameLogicalVolumes(), GetCryoLogicalVolumes()};
         for(auto logicalVolume : logicalVolumes) {
             allLogicalVolumes.insert(allLogicalVolumes.end(), logicalVolume.begin(), logicalVolume.end());
         }
