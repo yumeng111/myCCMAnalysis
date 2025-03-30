@@ -323,8 +323,9 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         return false;
     }
 
-    if(not (TrackParticles_ or DetailedPhotonTracking_ or TrackEnergyLosses_))
+    if(not (TrackParticles_ or DetailedPhotonTracking_ or TrackEnergyLosses_)) {
         return false;
+    }
 
     // position
     G4ThreeVector g4Position = aStep->GetPostStepPoint()->GetPosition();
@@ -341,6 +342,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // if parent id == 0, that's our primary injected particle
     G4int parent_id = aStep->GetTrack()->GetParentID();
     G4int track_id = aStep->GetTrack()->GetTrackID();
+
 
     G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
     std::string processName = (process) ? process->GetProcessName() : "Unknown";
@@ -383,6 +385,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             daughter.SetEnergy(aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV);
             daughter.SetPos(position);
             daughter.SetDir(direction);
+            daughter.SetTime(time);
 
             I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
 
@@ -401,6 +404,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 daughter.SetEnergy(edep);
                 daughter.SetPos(position);
                 daughter.SetDir(direction);
+                daughter.SetTime(time);
                 if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
                     G4cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
                 } else {
