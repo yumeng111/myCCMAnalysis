@@ -79,7 +79,7 @@ void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
 
                 // if we have an energy loss then we need to mark all parents as having an energy loss
                 if(our_loss) {
-                    I3ParticleID parent_id = std::get<2>(energy_loss_map[particle_id]).back();
+                    I3ParticleID parent_id = std::get<2>(energy_loss_map[daughter_id]).back();
                     while(true) {
                         std::tuple<bool, bool, std::vector<I3ParticleID>> & parent = energy_loss_map[parent_id];
                         // if we've already marked this parent as having an energy loss then we can break
@@ -107,9 +107,8 @@ void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
             // Or keep the particle if it is not an energy loss but we are not pruning the tree
             // When pruning the tree we discard all particles not related to the relevant energy losses
             if(std::get<1>(primary_energy_loss) or ((not PruneTree_) and (not std::get<0>(primary_energy_loss)))) {
-                if(I3MCTreeUtils::Has(*output_energy_losses_tree, primary_id))
-                    continue;
-                I3MCTreeUtils::AddPrimary(*output_energy_losses_tree, *primary);
+                if(not I3MCTreeUtils::Has(*output_energy_losses_tree, primary_id))
+                    I3MCTreeUtils::AddPrimary(*output_energy_losses_tree, *primary);
                 queue.push_back(primary_id);
             }
         }
@@ -119,7 +118,7 @@ void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
             I3ParticleID particle_id = queue.back();
             const I3Particle* particle = I3MCTreeUtils::GetParticlePtr(tree_tracker->mcTree, particle_id);
             queue.pop_back();
-            std::vector<I3Particle*> daughters = I3MCTreeUtils::GetDaughtersPtr(output_energy_losses_tree, particle_id);
+            std::vector<I3Particle*> daughters = I3MCTreeUtils::GetDaughtersPtr(tree_tracker->mcTree, particle_id);
             for(const I3Particle* daughter : daughters) {
                 I3ParticleID daughter_id = daughter->GetID();
                 std::tuple<bool, bool, std::vector<I3ParticleID>> & daughter_energy_loss = energy_loss_map[daughter_id];
@@ -127,9 +126,8 @@ void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
                 // Or keep the particle if it is not an energy loss but we are not pruning the tree
                 // When pruning the tree we discard all particles not related to the relevant energy losses
                 if(std::get<1>(daughter_energy_loss) or ((not PruneTree_) and (not std::get<0>(daughter_energy_loss)))) {
-                    if(I3MCTreeUtils::Has(*output_energy_losses_tree, daughter_id))
-                        continue;
-                    I3MCTreeUtils::AppendChild(*output_energy_losses_tree, particle_id, *daughter);
+                    if(not I3MCTreeUtils::Has(*output_energy_losses_tree, daughter_id))
+                        I3MCTreeUtils::AppendChild(*output_energy_losses_tree, particle_id, *daughter);
                     queue.push_back(daughter_id);
                 }
             }
