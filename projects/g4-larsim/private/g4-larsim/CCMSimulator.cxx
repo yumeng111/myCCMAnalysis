@@ -271,6 +271,7 @@ void CCMSimulator::DAQMultiThreaded() {
             veto_trees.push_back(boost::make_shared<I3MCTree>());
             inner_trees.push_back(boost::make_shared<I3MCTree>());
             veto_vectors.push_back(boost::make_shared<I3Vector<I3Particle>>());
+            inner_vectors.push_back(boost::make_shared<I3Vector<I3Particle>>());
         }
         particles_per_event.push_back(n_particles);
     }
