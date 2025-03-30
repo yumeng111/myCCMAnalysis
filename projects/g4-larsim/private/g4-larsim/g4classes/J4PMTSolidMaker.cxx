@@ -583,6 +583,33 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapVacuumFilledSolid() {
     return pmt_cap_vacuum_filled_solid;
 }
 
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleFilledSolid() {
+    if(bridle_filled_solid)
+        throw std::runtime_error("Frill center solid already exists");
+    G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, bridle_width*4, 0*deg, 360*deg);
+    bridle_filled_solid = std::shared_ptr<G4VSolid>(fBridlePunchOut);
+    return bridle_filled_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCylinderSolid() {
+    G4VSolid * fBridleSurface = new G4Tubs("BridleSurface", cylinder_radius - bridle_width, cylinder_radius, bridle_radius * 2, 0*deg, 360*deg);
+    bridle_cylinder_solid = std::shared_ptr<G4VSolid>(fBridleSurface);
+    return bridle_cylinder_solid;
+}
+
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillFilledSolid() {
+    G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, frill_width*4, 0*deg, 360*deg);
+    frill_filled_solid = std::shared_ptr<G4VSolid>(fFrillPunchOut);
+    return frill_filled_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillCylinderSolid() {
+    G4VSolid * fFrillSurface = new G4Tubs("FrillSurface", cylinder_radius - frill_width, cylinder_radius, frill_radius * 2, 0*deg, 360*deg);
+    frill_cylinder_solid = std::shared_ptr<G4VSolid>(fFrillSurface);
+    return frill_cylinder_solid;
+}
+
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallFilledSolid() {
     // Creates a thin disk of material that has a circular shape in its X/Y projection and curvature in the Y/Z plane
     // Curvature bends into the positive Z direction
@@ -599,11 +626,12 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallFilledSolid() {
 
     //G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, max_disk_height*4, 0*deg, 360*deg);
     //temp_solids.emplace_back(fBridlePunchOut);
-    G4VSolid * fBridlePunchOut = frill_center_solid.get();
+    G4VSolid * fBridlePunchOut = bridle_filled_solid.get();
 
     // Create the surface that we are punching the disk out of
-    G4VSolid * fBridleSurface = new G4Tubs("BridleSurface", cylinder_radius - bridle_width, cylinder_radius, bridle_radius * 2, 0*deg, 360*deg);
-    temp_solids.emplace_back(fBridleSurface);
+    G4VSolid * fBridleSurface = bridle_cylinder_solid.get();
+    //G4VSolid * fBridleSurface = new G4Tubs("BridleSurface", cylinder_radius - bridle_width, cylinder_radius, bridle_radius * 2, 0*deg, 360*deg);
+    //temp_solids.emplace_back(fBridleSurface);
 
     // Need to have the surface curvature in the Y/Z plane
     G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
@@ -642,11 +670,13 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCapFilledSolid() {
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillWallFilledSolid() {
     G4double max_disk_height = ComputeDiskHeight(cylinder_radius, frill_radius, frill_width);
 
-    G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, max_disk_height*4, 0*deg, 360*deg);
-    temp_solids.emplace_back(fFrillPunchOut);
+    //G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, max_disk_height*4, 0*deg, 360*deg);
+    //temp_solids.emplace_back(fFrillPunchOut);
+    G4VSolid * fFrillPunchOut = frill_filled_solid.get();
     //G4VSolid * fFrillPunchOut = frill_center_solid.get(); // Use the same solid as the center of the frill
-    G4VSolid * fFrillSurface = new G4Tubs("FrillSurface", cylinder_radius - frill_width, cylinder_radius, frill_radius * 2, 0*deg, 360*deg);
-    temp_solids.emplace_back(fFrillSurface);
+    //G4VSolid * fFrillSurface = new G4Tubs("FrillSurface", cylinder_radius - frill_width, cylinder_radius, frill_radius * 2, 0*deg, 360*deg);
+    //temp_solids.emplace_back(fFrillSurface);
+    G4VSolid * fFrillSurface = frill_cylinder_solid.get();
 
     G4RotationMatrix* rotationMatrix = new G4RotationMatrix();
     rotationMatrix->rotateY(M_PI / 2.0); // Rotate 90degrees around the Y axis
@@ -781,19 +811,7 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCapUncoatedSolid() {
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillCenterSolid() {
-    if(frill_center_solid)
-        throw std::runtime_error("Frill center solid already exists");
-    G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, bridle_width*4, 0*deg, 360*deg);
-    //temp_solids.emplace_back(fBridlePunchOut);
-
-    //G4double displacement = pmt_radius - pmt_protrusion_distance + frill_width;
-    //G4ThreeVector disk_offset(0, 0, displacement);
-    //frill_center_solid = std::shared_ptr<G4VSolid>(new G4DisplacedSolid("FrillCenter",
-    //    fBridlePunchOut, // we want to punch out the frill wall filled solid
-    //    0, // no rotation
-    //    disk_offset // offset to center of PMT
-    //));
-    frill_center_solid = std::shared_ptr<G4VSolid>(fBridlePunchOut);
+    frill_center_solid = bridle_filled_solid;
     return frill_center_solid;
 }
 
@@ -930,6 +948,10 @@ G4ThreeVector J4PMTSolidMaker::GetPMTPosition(std::string pmt_id) {
 void J4PMTSolidMaker::CreateBaseSolids() {
     CreateCylinderFaceSolid();
     CreateCylinderCurvatureSolid();
+    CreateBridleFilledSolid();
+    CreateBridleCylinderSolid();
+    CreateFrillFilledSolid();
+    CreateFrillCylinderSolid();
     std::shared_ptr<G4VSolid> pmt_vacuum_filled_solid = CreatePMTVacuumFilledSolid();
     std::shared_ptr<G4VSolid> pmt_glass_filled_solid = CreatePMTGlassFilledSolid();
     std::shared_ptr<G4VSolid> pmt_tpb_filled_solid = CreatePMTTPBFilledSolid();

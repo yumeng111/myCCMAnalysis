@@ -41,6 +41,11 @@ public:
 
     std::shared_ptr<G4VSolid> frill_center_solid;
 
+    std::shared_ptr<G4VSolid> bridle_filled_solid;
+    std::shared_ptr<G4VSolid> bridle_cylinder_solid;
+    std::shared_ptr<G4VSolid> frill_filled_solid;
+    std::shared_ptr<G4VSolid> frill_cylinder_solid;
+
     std::shared_ptr<G4VSolid> bridle_wall_filled_solid;
     std::shared_ptr<G4VSolid> bridle_cap_filled_solid;
     std::shared_ptr<G4VSolid> frill_wall_filled_solid;
@@ -142,6 +147,11 @@ public:
     std::shared_ptr<G4VSolid> CreatePMTCapVacuumFilledSolid();
 
     std::shared_ptr<G4VSolid> CreateFrillCenterSolid();
+
+    std::shared_ptr<G4VSolid> CreateBridleFilledSolid();
+    std::shared_ptr<G4VSolid> CreateBridleCylinderSolid();
+    std::shared_ptr<G4VSolid> CreateFrillFilledSolid();
+    std::shared_ptr<G4VSolid> CreateFrillCylinderSolid();
 
     std::shared_ptr<G4VSolid> CreateBridleWallFilledSolid();
     std::shared_ptr<G4VSolid> CreateBridleCapFilledSolid();
