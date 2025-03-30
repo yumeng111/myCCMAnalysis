@@ -229,7 +229,6 @@ std::vector<std::string> pmt_ids = {"C101R0",
                                     "C307R6",
                                     "C204R6",
                                     "C406R6",
-                                    "C406R0",
                                     "C205R6",
                                     "C408R6",
                                     "C306R6",
@@ -350,26 +349,31 @@ std::vector<double> get_pmt_wall_position(int pmt_row, int pmt_number, double st
     return pos;
 }
 
-G4double ComputeDiskHeight(G4double cylinder_radius, G4double disk_radius) {
+G4double ComputeDiskHeight(G4double cylinder_radius, G4double disk_radius, G4double disk_width) {
+    G4double r0 = cylinder_radius - disk_width;
     G4double r1 = cylinder_radius;
-    G4double r2 = disk_radius;
-    G4double max_disk_height = sqrt(-r2*r2 + 2*r1*(r1 - sqrt((r1 - r2) * (r1 + r2))));
-    return max_disk_height;
+    G4double r = disk_radius;
+    G4double h = r1 - sqrt(r0*r0 - r*r);
+    return h;
 }
 
 G4double WallSolidsOverlap(G4ThreeVector pmt_pos_0, G4ThreeVector pmt_pos_1, G4double inset_distance, G4double object_radius) {
     G4double z_dist = std::abs(pmt_pos_0.z() - pmt_pos_1.z());
+    G4double x0 = pmt_pos_0.x(); G4double y0 = pmt_pos_0.y();
+    G4double x1 = pmt_pos_1.x(); G4double y1 = pmt_pos_1.y();
+    G4double dx = x1 - x0; G4double dy = y1 - y0;
+    G4double xy_dist = sqrt(dx*dx + dy*dy);
     if(z_dist > 1.0 * cm) { // Not the same z-position
-        G4double x0 = pmt_pos_0.x(); G4double y0 = pmt_pos_0.y();
-        G4double x1 = pmt_pos_1.x(); G4double y1 = pmt_pos_1.y();
-        G4double dx = x1 - x0; G4double dy = y1 - y0;
-        G4double xy_dist = sqrt(dx*dx + dy*dy);
         if(xy_dist < 1.0 * cm) { // The same xy-position
             double distance = (pmt_pos_0 - pmt_pos_1).mag();
             return distance < 2*object_radius;
         } else {
-            return false;
+            return z_dist < 2*object_radius; // They are not the same z-position but close enough
         }
+    }
+
+    if(xy_dist > 3.0 * object_radius) { // Too far apart in xy
+        return false;
     }
 
     pmt_pos_0.setZ(0);
@@ -488,86 +492,95 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTSolid(double scale_factor) {
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTGlassFilledSolid() {
-    if(pmt_glass_solid)
+    if(pmt_glass_filled_solid)
         throw std::runtime_error("PMT glass solid already exists");
-    pmt_glass_solid = CreatePMTSolid(1.0);
-    return pmt_glass_solid;
+    pmt_glass_filled_solid = CreatePMTSolid(1.0);
+    return pmt_glass_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTTPBFilledSolid() {
-    if(pmt_tpb_solid)
+    if(pmt_tpb_filled_solid)
         throw std::runtime_error("PMT TPB solid already exists");
     double scale_factor = (pmt_radius + pmt_tpb_thickness) / pmt_radius;
-    pmt_tpb_solid = CreatePMTSolid(scale_factor);
-    return pmt_tpb_solid;
+    pmt_tpb_filled_solid = CreatePMTSolid(scale_factor);
+    return pmt_tpb_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTVacuumFilledSolid() {
-    if(pmt_vacuum_solid)
+    if(pmt_vacuum_filled_solid)
         throw std::runtime_error("PMT vacuum solid already exists");
     double scale_factor = (pmt_radius - pmt_glass_thickness) / pmt_radius;
-    pmt_vacuum_solid = CreatePMTSolid(scale_factor);
-    return pmt_vacuum_solid;
+    pmt_vacuum_filled_solid = CreatePMTSolid(scale_factor);
+    return pmt_vacuum_filled_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateCylinderCurvatureSolid() {
+    if(cylinder_curvature_solid)
+        throw std::runtime_error("Cylinder curvature solid already exists");
+    G4Tubs * tub = new G4Tubs("DetectorCylinderCurvature", 0*cm, cylinder_radius, pmt_radius * 2, 0*deg, 360*deg);
+    //temp_solids.emplace_back(tub);
+
+    cylinder_curvature_rotation = new G4RotationMatrix();
+    cylinder_curvature_rotation->rotateY(M_PI / 2.0); // Rotate 90degrees around the x axis
+    cylinder_curvature_position = G4ThreeVector(0, 0, pmt_radius - pmt_protrusion_distance + cylinder_radius);
+
+    cylinder_curvature_solid = std::shared_ptr<G4VSolid>(tub);
+    return cylinder_curvature_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateCylinderFaceSolid() {
+    if(cylinder_face_solid)
+        throw std::runtime_error("Cylinder face solid already exists");
+    G4Tubs * tub = new G4Tubs("DetectorCylinderFace", 0*cm, frill_radius * 2.0, pmt_protrusion_distance / 2.0, 0*deg, 360*deg);
+    //temp_solids.emplace_back(tub);
+
+    cylinder_face_rotation = new G4RotationMatrix();
+    cylinder_face_position = G4ThreeVector(0, 0, pmt_radius - pmt_protrusion_distance/2.0);
+
+    cylinder_face_solid = std::shared_ptr<G4VSolid>(tub);
+    return cylinder_face_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateWallSolid(std::shared_ptr<G4VSolid> pmt_solid) {
-    G4VSolid * DetectorCylinder = new G4Tubs("DetectorCylinder", 0*cm, cylinder_radius, pmt_radius * 2, 0*deg, 360*deg);
-    temp_solids.emplace_back(DetectorCylinder);
-
-    G4RotationMatrix * rotationMatrix = new G4RotationMatrix();
-    rotationMatrix->rotateY(M_PI / 2.0); // Rotate 90degrees around the x axis
-
-    G4double z_center = pmt_radius - pmt_protrusion_distance + cylinder_radius;
-
-    G4ThreeVector centerOfTub(0, 0, z_center);
-
-    G4VSolid * solid = new G4IntersectionSolid("WallSolid", pmt_solid.get(), DetectorCylinder, rotationMatrix, centerOfTub);
+    G4VSolid * solid = new G4IntersectionSolid("WallSolid" + pmt_solid->GetName(), pmt_solid.get(), cylinder_curvature_solid.get(), cylinder_curvature_rotation, cylinder_curvature_position);
     temp_solids.emplace_back(solid);
-    delete rotationMatrix;
     return temp_solids.back();
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateCapSolid(std::shared_ptr<G4VSolid> pmt_solid) {
-    G4VSolid * DetectorCylinder = new G4Tubs("DetectorCylinder", 0*cm, pmt_radius, pmt_protrusion_distance / 2.0, 0*deg, 360*deg);
-    temp_solids.emplace_back(DetectorCylinder);
-
-    G4double z_center = pmt_radius - pmt_protrusion_distance / 2.0;
-
-    G4ThreeVector centerOfTub(0, 0, z_center);
-
-    G4VSolid * solid = new G4IntersectionSolid("CapSolid", pmt_solid.get(), DetectorCylinder, 0, centerOfTub);
+    G4VSolid * solid = new G4IntersectionSolid("CapSolid" + pmt_solid->GetName(), pmt_solid.get(), cylinder_face_solid.get(), cylinder_face_rotation, cylinder_face_position);
     temp_solids.emplace_back(solid);
     return temp_solids.back();
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallGlassFilledSolid() {
-    pmt_wall_glass_solid = CreateWallSolid(pmt_glass_solid);
-    return pmt_wall_glass_solid;
+    pmt_wall_glass_filled_solid = CreateWallSolid(pmt_glass_filled_solid);
+    return pmt_wall_glass_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallTPBFilledSolid() {
-    pmt_wall_tpb_solid = CreateWallSolid(pmt_tpb_solid);
-    return pmt_wall_tpb_solid;
+    pmt_wall_tpb_filled_solid = CreateWallSolid(pmt_tpb_filled_solid);
+    return pmt_wall_tpb_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallVacuumFilledSolid() {
-    pmt_wall_vacuum_solid = CreateWallSolid(pmt_vacuum_solid);
-    return pmt_wall_vacuum_solid;
+    pmt_wall_vacuum_filled_solid = CreateWallSolid(pmt_vacuum_filled_solid);
+    return pmt_wall_vacuum_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapGlassFilledSolid() {
-    pmt_cap_glass_solid = CreateCapSolid(pmt_glass_solid);
-    return pmt_cap_glass_solid;
+    pmt_cap_glass_filled_solid = CreateCapSolid(pmt_glass_filled_solid);
+    return pmt_cap_glass_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapTPBFilledSolid() {
-    pmt_cap_tpb_solid = CreateCapSolid(pmt_tpb_solid);
-    return pmt_cap_tpb_solid;
+    pmt_cap_tpb_filled_solid = CreateCapSolid(pmt_tpb_filled_solid);
+    return pmt_cap_tpb_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapVacuumFilledSolid() {
-    pmt_cap_vacuum_solid = CreateCapSolid(pmt_vacuum_solid);
-    return pmt_cap_vacuum_solid;
+    pmt_cap_vacuum_filled_solid = CreateCapSolid(pmt_vacuum_filled_solid);
+    return pmt_cap_vacuum_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallFilledSolid() {
@@ -582,10 +595,11 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallFilledSolid() {
 
 
     // Solve for the height of the disk
-    G4double max_disk_height = ComputeDiskHeight(cylinder_radius, bridle_radius);
+    //G4double max_disk_height = ComputeDiskHeight(cylinder_radius, bridle_radius, bridle_width);
 
-    G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, max_disk_height, 0*deg, 360*deg);
-    temp_solids.emplace_back(fBridlePunchOut);
+    //G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, max_disk_height*4, 0*deg, 360*deg);
+    //temp_solids.emplace_back(fBridlePunchOut);
+    G4VSolid * fBridlePunchOut = frill_center_solid.get();
 
     // Create the surface that we are punching the disk out of
     G4VSolid * fBridleSurface = new G4Tubs("BridleSurface", cylinder_radius - bridle_width, cylinder_radius, bridle_radius * 2, 0*deg, 360*deg);
@@ -607,9 +621,9 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallFilledSolid() {
 
     G4DisplacedSolid * solid = new G4DisplacedSolid("Bridle", disk, 0, disk_offset);
     temp_solids.emplace_back(solid);
-    bridle_wall_solid = temp_solids.back();
+    bridle_wall_filled_solid = temp_solids.back();
     delete rotationMatrix;
-    return bridle_wall_solid;
+    return bridle_wall_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCapFilledSolid() {
@@ -621,15 +635,16 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCapFilledSolid() {
 
     G4DisplacedSolid * solid = new G4DisplacedSolid("Bridle", fBridleDisk, 0, disk_offset);
     temp_solids.emplace_back(solid);
-    bridle_cap_solid = temp_solids.back();
-    return bridle_cap_solid;
+    bridle_cap_filled_solid = temp_solids.back();
+    return bridle_cap_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillWallFilledSolid() {
-    G4double max_disk_height = ComputeDiskHeight(cylinder_radius, frill_radius);
+    G4double max_disk_height = ComputeDiskHeight(cylinder_radius, frill_radius, frill_width);
 
-    G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, max_disk_height, 0*deg, 360*deg);
+    G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, max_disk_height*4, 0*deg, 360*deg);
     temp_solids.emplace_back(fFrillPunchOut);
+    //G4VSolid * fFrillPunchOut = frill_center_solid.get(); // Use the same solid as the center of the frill
     G4VSolid * fFrillSurface = new G4Tubs("FrillSurface", cylinder_radius - frill_width, cylinder_radius, frill_radius * 2, 0*deg, 360*deg);
     temp_solids.emplace_back(fFrillSurface);
 
@@ -647,9 +662,9 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillWallFilledSolid() {
 
     G4DisplacedSolid * solid = new G4DisplacedSolid("Frill", disk, 0, disk_offset);
     temp_solids.emplace_back(solid);
-    frill_wall_solid = temp_solids.back();
+    frill_wall_filled_solid = temp_solids.back();
     delete rotationMatrix;
-    return frill_wall_solid;
+    return frill_wall_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillCapFilledSolid() {
@@ -661,7 +676,160 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillCapFilledSolid() {
 
     G4DisplacedSolid * solid = new G4DisplacedSolid("Frill", fFrillDisk, 0, disk_offset);
     temp_solids.emplace_back(solid);
-    frill_cap_solid = temp_solids.back();
+    frill_cap_filled_solid = temp_solids.back();
+    return frill_cap_filled_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTGlassSolid() {
+    if(pmt_glass_solid)
+        throw std::runtime_error("PMT glass solid already exists");
+    pmt_glass_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("PMTGlassHollow",
+            pmt_glass_filled_solid.get(),
+            pmt_vacuum_filled_solid.get()
+        )
+    );
+    return pmt_glass_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTTPBSolid() {
+    if(pmt_tpb_solid)
+        throw std::runtime_error("PMT TPB solid already exists");
+    pmt_tpb_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("PMTTPBHollow",
+            pmt_tpb_filled_solid.get(),
+            pmt_glass_filled_solid.get()
+        )
+    );
+    return pmt_tpb_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallGlassSolid() {
+    if(pmt_wall_glass_solid)
+        throw std::runtime_error("PMT wall glass solid already exists");
+    pmt_wall_glass_solid = CreateWallSolid(pmt_glass_solid);
+    return pmt_wall_glass_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapGlassSolid() {
+    if(pmt_cap_glass_solid)
+        throw std::runtime_error("PMT cap glass solid already exists");
+    pmt_cap_glass_solid = CreateCapSolid(pmt_glass_solid);
+    return pmt_cap_glass_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallTPBSolid() {
+    if(pmt_wall_tpb_solid)
+        throw std::runtime_error("PMT wall TPB solid already exists");
+    pmt_wall_tpb_solid = CreateWallSolid(pmt_tpb_solid);
+    return pmt_wall_tpb_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapTPBSolid() {
+    if(pmt_cap_tpb_solid)
+        throw std::runtime_error("PMT cap TPB solid already exists");
+    pmt_cap_tpb_solid = CreateCapSolid(pmt_tpb_solid);
+    return pmt_cap_tpb_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallCoatedSolid() {
+    if(bridle_wall_coated_solid)
+        throw std::runtime_error("Bridle wall coated solid already exists");
+    bridle_wall_coated_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("BridleWallCoated",
+            bridle_wall_filled_solid.get(),
+            pmt_tpb_filled_solid.get()
+        )
+    );
+    return bridle_wall_coated_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallUncoatedSolid() {
+    if(bridle_wall_uncoated_solid)
+        throw std::runtime_error("Bridle wall uncoated solid already exists");
+    bridle_wall_uncoated_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("BridleWallUncoated",
+            bridle_wall_filled_solid.get(),
+            pmt_glass_filled_solid.get()
+        )
+    );
+    return bridle_wall_uncoated_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCapCoatedSolid() {
+    if(bridle_cap_coated_solid)
+        throw std::runtime_error("Bridle cap coated solid already exists");
+    bridle_cap_coated_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("BridleCapCoated",
+            bridle_cap_filled_solid.get(),
+            pmt_tpb_filled_solid.get()
+        )
+    );
+    return bridle_cap_coated_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCapUncoatedSolid() {
+    if(bridle_cap_uncoated_solid)
+        throw std::runtime_error("Bridle cap uncoated solid already exists");
+    bridle_cap_uncoated_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("BridleCapUncoated",
+            bridle_cap_filled_solid.get(),
+            pmt_glass_filled_solid.get()
+        )
+    );
+    return bridle_cap_uncoated_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillCenterSolid() {
+    if(frill_center_solid)
+        throw std::runtime_error("Frill center solid already exists");
+    G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, bridle_width*4, 0*deg, 360*deg);
+    //temp_solids.emplace_back(fBridlePunchOut);
+
+    //G4double displacement = pmt_radius - pmt_protrusion_distance + frill_width;
+    //G4ThreeVector disk_offset(0, 0, displacement);
+    //frill_center_solid = std::shared_ptr<G4VSolid>(new G4DisplacedSolid("FrillCenter",
+    //    fBridlePunchOut, // we want to punch out the frill wall filled solid
+    //    0, // no rotation
+    //    disk_offset // offset to center of PMT
+    //));
+    frill_center_solid = std::shared_ptr<G4VSolid>(fBridlePunchOut);
+    return frill_center_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillWallSolid() {
+    if(frill_wall_solid)
+        throw std::runtime_error("Frill wall solid already exists");
+    //G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, frill_width*2, 0*deg, 360*deg);
+    //temp_solids.emplace_back(fBridlePunchOut);
+    G4double displacement = pmt_radius - pmt_protrusion_distance + frill_width/2.0;
+    G4ThreeVector disk_offset(0, 0, displacement);
+    frill_wall_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("FrillWall",
+            frill_wall_filled_solid.get(),
+            frill_center_solid.get(),
+            0,
+            disk_offset
+        )
+    );
+    return frill_wall_solid;
+}
+
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillCapSolid() {
+    if(frill_cap_solid)
+        throw std::runtime_error("Frill cap solid already exists");
+    //G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, frill_width*2, 0*deg, 360*deg);
+    //temp_solids.emplace_back(fBridlePunchOut);
+    G4double displacement = pmt_radius - pmt_protrusion_distance + frill_width;
+    G4ThreeVector disk_offset(0, 0, displacement);
+    frill_cap_solid = std::shared_ptr<G4VSolid>(
+        new G4SubtractionSolid("FrillCap",
+            frill_cap_filled_solid.get(),
+            frill_center_solid.get(),
+            0,
+            disk_offset
+        )
+    );
     return frill_cap_solid;
 }
 
@@ -760,30 +928,47 @@ G4ThreeVector J4PMTSolidMaker::GetPMTPosition(std::string pmt_id) {
 }
 
 void J4PMTSolidMaker::CreateBaseSolids() {
-    std::shared_ptr<G4VSolid> pmt_vacuum_solid = CreatePMTVacuumFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_glass_solid = CreatePMTGlassFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_tpb_solid = CreatePMTTPBFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_wall_glass_solid = CreatePMTWallGlassFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_wall_tpb_solid = CreatePMTWallTPBFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_wall_vacuum_solid = CreatePMTWallVacuumFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_cap_glass_solid = CreatePMTCapGlassFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_cap_tpb_solid = CreatePMTCapTPBFilledSolid();
-    std::shared_ptr<G4VSolid> pmt_cap_vacuum_solid = CreatePMTCapVacuumFilledSolid();
-    std::shared_ptr<G4VSolid> bridle_wall_solid = CreateBridleWallFilledSolid();
-    std::shared_ptr<G4VSolid> bridle_cap_solid = CreateBridleCapFilledSolid();
-    std::shared_ptr<G4VSolid> frill_wall_solid = CreateFrillWallFilledSolid();
-    std::shared_ptr<G4VSolid> frill_cap_solid = CreateFrillCapFilledSolid();
+    CreateCylinderFaceSolid();
+    CreateCylinderCurvatureSolid();
+    std::shared_ptr<G4VSolid> pmt_vacuum_filled_solid = CreatePMTVacuumFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_glass_filled_solid = CreatePMTGlassFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_tpb_filled_solid = CreatePMTTPBFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_wall_glass_filled_solid = CreatePMTWallGlassFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_wall_tpb_filled_solid = CreatePMTWallTPBFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_wall_vacuum_filled_solid = CreatePMTWallVacuumFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_cap_glass_filled_solid = CreatePMTCapGlassFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_cap_tpb_filled_solid = CreatePMTCapTPBFilledSolid();
+    std::shared_ptr<G4VSolid> pmt_cap_vacuum_filled_solid = CreatePMTCapVacuumFilledSolid();
+    std::shared_ptr<G4VSolid> frill_center_solid = CreateFrillCenterSolid();
+    std::shared_ptr<G4VSolid> bridle_wall_filled_solid = CreateBridleWallFilledSolid();
+    std::shared_ptr<G4VSolid> bridle_cap_filled_solid = CreateBridleCapFilledSolid();
+    std::shared_ptr<G4VSolid> frill_wall_filled_solid = CreateFrillWallFilledSolid();
+    std::shared_ptr<G4VSolid> frill_cap_filled_solid = CreateFrillCapFilledSolid();
+
+    std::shared_ptr<G4VSolid> pmt_glass_solid = CreatePMTGlassSolid();
+    std::shared_ptr<G4VSolid> pmt_tpb_solid = CreatePMTTPBSolid();
+    std::shared_ptr<G4VSolid> pmt_wall_glass_solid = CreatePMTWallGlassSolid();
+    std::shared_ptr<G4VSolid> pmt_cap_glass_solid = CreatePMTCapGlassSolid();
+    std::shared_ptr<G4VSolid> pmt_wall_tpb_solid = CreatePMTWallTPBSolid();
+    std::shared_ptr<G4VSolid> pmt_cap_tpb_solid = CreatePMTCapTPBSolid();
+
+    std::shared_ptr<G4VSolid> bridle_wall_coated_solid = CreateBridleWallCoatedSolid();
+    std::shared_ptr<G4VSolid> bridle_wall_uncoated_solid = CreateBridleWallUncoatedSolid();
+    std::shared_ptr<G4VSolid> bridle_cap_coated_solid = CreateBridleCapCoatedSolid();
+    std::shared_ptr<G4VSolid> bridle_cap_uncoated_solid = CreateBridleCapUncoatedSolid();
+    std::shared_ptr<G4VSolid> frill_wall_solid = CreateFrillWallSolid();
+    std::shared_ptr<G4VSolid> frill_cap_solid = CreateFrillCapSolid();
 
     for(std::string const & pmt_id : pmt_ids) {
         bool pmt_on_cap, coated;
         int pmt_row, pmt_col, pmt_ring, pmt_number;
         ParsePMTID(pmt_id, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
 
-        std::shared_ptr<G4VSolid> vacuum_solid = (pmt_on_cap) ? pmt_cap_vacuum_solid : pmt_wall_vacuum_solid;
-        std::shared_ptr<G4VSolid> glass_solid = (pmt_on_cap) ? pmt_cap_glass_solid : pmt_wall_glass_solid;
-        std::shared_ptr<G4VSolid> tpb_solid = (coated) ? ((pmt_on_cap) ? pmt_cap_tpb_solid : pmt_wall_tpb_solid) : nullptr;
-        std::shared_ptr<G4VSolid> bridle_solid = (pmt_on_cap) ? bridle_cap_solid : bridle_wall_solid;
-        std::shared_ptr<G4VSolid> frill_solid = (pmt_on_cap) ? frill_cap_solid : frill_wall_solid;
+        std::shared_ptr<G4VSolid> vacuum_solid = (pmt_on_cap) ? pmt_cap_vacuum_filled_solid : pmt_wall_vacuum_filled_solid;
+        std::shared_ptr<G4VSolid> glass_solid = (pmt_on_cap) ? pmt_cap_glass_filled_solid : pmt_wall_glass_filled_solid;
+        std::shared_ptr<G4VSolid> tpb_solid = (coated) ? ((pmt_on_cap) ? pmt_cap_tpb_filled_solid : pmt_wall_tpb_filled_solid) : nullptr;
+        std::shared_ptr<G4VSolid> bridle_solid = (pmt_on_cap) ? bridle_cap_filled_solid : bridle_wall_filled_solid;
+        std::shared_ptr<G4VSolid> frill_solid = (pmt_on_cap) ? frill_cap_filled_solid : frill_wall_filled_solid;
 
         std::shared_ptr<G4RotationMatrix> rotationMatrix(GetPMTRotationMatrix(pmt_id));
         G4ThreeVector position = GetPMTPosition(pmt_id);
@@ -798,11 +983,14 @@ void J4PMTSolidMaker::CreateBaseSolids() {
         vacuum_positions.insert({pmt_id, position});
         vacuum_rotations.insert({pmt_id, rotationMatrix});
 
-        base_solids.insert({pmt_id, {{vacuum_solid, glass_solid, tpb_solid, bridle_solid, frill_solid}, rotationMatrix, position}});
+        std::shared_ptr<G4VSolid> bridle_punchout_solid = (coated) ? pmt_tpb_filled_solid : pmt_glass_filled_solid;
+        std::shared_ptr<G4VSolid> frill_punchout_solid = frill_center_solid;
+
+        base_solids.insert({pmt_id, {{bridle_solid, bridle_punchout_solid, frill_solid, frill_punchout_solid}, rotationMatrix, position}});
         // transformed_solids.insert({
         //     pmt_id, {
-        //         new G4DisplacedSolid("PMTVacuum", pmt_vacuum_solid, rotationMatrix, position),
-        //         new G4DisplacedSolid("PMTGlass", pmt_glass_solid, rotationMatrix, position),
+        //         new G4DisplacedSolid("PMTVacuum", pmt_vacuum_filled_solid, rotationMatrix, position),
+        //         new G4DisplacedSolid("PMTGlass", pmt_glass_filled_solid, rotationMatrix, position),
         //         new G4DisplacedSolid("PMTTPB", tpb_solid, rotationMatrix, position),
         //         new G4DisplacedSolid("Bridle", bridle_solid, rotationMatrix, position),
         //         new G4DisplacedSolid("Frill", frill_solid, rotationMatrix, position)
@@ -854,8 +1042,8 @@ void J4PMTSolidMaker::CreateBaseSolids() {
 
     for(std::string const & pmt_id_0 : pmt_ids) {
         std::tuple<std::array<std::shared_ptr<G4VSolid>, 5>, std::shared_ptr<G4RotationMatrix>, G4ThreeVector> const & base_solid_0 = base_solids[pmt_id_0];
-        G4VSolid * bridle_solid_0 = std::get<0>(base_solid_0)[3].get();
-        G4VSolid * frill_solid_0 = std::get<0>(base_solid_0)[4].get();
+        G4VSolid * bridle_solid_0 = std::get<0>(base_solid_0)[0].get();
+        G4VSolid * frill_solid_0 = std::get<0>(base_solid_0)[2].get();
         G4RotationMatrix * rotationMatrix_0 = std::get<1>(base_solid_0).get();
         G4ThreeVector position_0 = std::get<2>(base_solid_0);
         bool pmt_on_cap_0, coated_0;
@@ -867,8 +1055,8 @@ void J4PMTSolidMaker::CreateBaseSolids() {
 
         for(std::string const & pmt_id_1 : pmt_ids) {
             std::tuple<std::array<std::shared_ptr<G4VSolid>, 5>, std::shared_ptr<G4RotationMatrix>, G4ThreeVector> const & base_solid_1 = base_solids[pmt_id_1];
-            G4VSolid * bridle_solid_1 = std::get<0>(base_solid_1)[3].get();
-            G4VSolid * frill_solid_1 = std::get<0>(base_solid_1)[4].get();
+            G4VSolid * bridle_solid_1 = std::get<0>(base_solid_1)[0].get();
+            G4VSolid * frill_solid_1 = std::get<0>(base_solid_1)[2].get();
             G4RotationMatrix * rotationMatrix_1 = std::get<1>(base_solid_1).get();
             G4ThreeVector position_1 = std::get<2>(base_solid_1);
             bool pmt_on_cap_1, coated_1;
@@ -978,11 +1166,20 @@ void J4PMTSolidMaker::CreateBaseSolids() {
         std::string group_id = std::to_string(overlap_group.first);
         if(group.size() == 1) {
             std::string pmt_id = group[0];
+            bool pmt_on_cap, coated;
+            int pmt_row, pmt_col, pmt_ring, pmt_number;
+            ParsePMTID(pmt_id, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
+
             std::string name = "Frill_" + pmt_id;
-            std::shared_ptr<G4VSolid> frill_group_punchout(new G4SubtractionSolid("Frill Group Punchout " + group_id,
-                    std::get<0>(base_solids[pmt_id])[4].get(),
-                    std::get<0>(base_solids[pmt_id])[3].get()));
-            frill_solids[name] = frill_group_punchout;
+            std::shared_ptr<G4VSolid> frill;
+            if(pmt_on_cap)
+                frill = frill_cap_solid;
+            else
+                frill = frill_wall_solid;
+            //std::shared_ptr<G4VSolid> frill_group_punchout(new G4SubtractionSolid("Frill Group Punchout " + group_id,
+            //        std::get<0>(base_solids[pmt_id])[4].get(),
+            //        std::get<0>(base_solids[pmt_id])[3].get()));
+            frill_solids[name] = frill;
             frill_rotations[name] = std::get<1>(base_solids[pmt_id]);
             frill_positions[name] = std::get<2>(base_solids[pmt_id]);
             continue;
@@ -995,7 +1192,7 @@ void J4PMTSolidMaker::CreateBaseSolids() {
         for(std::string const & pmt_id : group) {
             name += "_" + pmt_id;
             std::tuple<std::array<std::shared_ptr<G4VSolid>, 5>, std::shared_ptr<G4RotationMatrix>, G4ThreeVector> const & base_solid = base_solids[pmt_id];
-            std::shared_ptr<G4VSolid> frill = std::get<0>(base_solid)[4];
+            std::shared_ptr<G4VSolid> frill = std::get<0>(base_solid)[2];
             std::shared_ptr<G4VSolid> bridle = std::get<0>(base_solid)[3];
             G4RotationMatrix * rotationMatrix = std::get<1>(base_solid).get();
             G4ThreeVector position = std::get<2>(base_solid);
@@ -1019,14 +1216,29 @@ void J4PMTSolidMaker::CreateBaseSolids() {
         std::string group_id = std::to_string(overlap_group.first);
         if(group.size() == 1) {
             std::string pmt_id = group[0];
+            bool pmt_on_cap, coated;
+            int pmt_row, pmt_col, pmt_ring, pmt_number;
+            ParsePMTID(pmt_id, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
+
             std::string name = "Bridle_" + pmt_id;
-            std::shared_ptr<G4VSolid> pmt = std::get<0>(base_solids[pmt_id])[1];
-            std::shared_ptr<G4VSolid> tpb = std::get<0>(base_solids[pmt_id])[2];
-            std::shared_ptr<G4VSolid> bridle = std::get<0>(base_solids[pmt_id])[3];
-            std::shared_ptr<G4VSolid> bridle_group_punchout(new G4SubtractionSolid("Bridle Group Punchout " + group_id,
-                    bridle.get(),
-                    tpb ? tpb.get() : pmt.get()));
-            bridle_solids[name] = bridle_group_punchout;
+            std::shared_ptr<G4VSolid> bridle;
+            if(pmt_on_cap)
+                if(coated)
+                    bridle = bridle_cap_coated_solid;
+                else
+                    bridle = bridle_cap_uncoated_solid;
+            else
+                if(coated)
+                    bridle = bridle_wall_coated_solid;
+                else
+                    bridle = bridle_wall_uncoated_solid;
+            //std::shared_ptr<G4VSolid> pmt = std::get<0>(base_solids[pmt_id])[1];
+            //std::shared_ptr<G4VSolid> tpb = std::get<0>(base_solids[pmt_id])[2];
+            //std::shared_ptr<G4VSolid> bridle = std::get<0>(base_solids[pmt_id])[3];
+            //std::shared_ptr<G4VSolid> bridle_group_punchout(new G4SubtractionSolid("Bridle Group Punchout " + group_id,
+            //        bridle.get(),
+            //        tpb ? tpb.get() : pmt.get()));
+            bridle_solids[name] = bridle;
             bridle_rotations[name] = std::get<1>(base_solids[pmt_id]);
             bridle_positions[name] = std::get<2>(base_solids[pmt_id]);
             continue;
@@ -1039,15 +1251,14 @@ void J4PMTSolidMaker::CreateBaseSolids() {
         for(std::string const & pmt_id : group) {
             name += "_" + pmt_id;
             std::tuple<std::array<std::shared_ptr<G4VSolid>, 5>, std::shared_ptr<G4RotationMatrix>, G4ThreeVector> const & base_solid = base_solids[pmt_id];
-            std::shared_ptr<G4VSolid> pmt = std::get<0>(base_solid)[1];
-            std::shared_ptr<G4VSolid> tpb = std::get<0>(base_solid)[2];
-            std::shared_ptr<G4VSolid> bridle = std::get<0>(base_solid)[3];
+            std::shared_ptr<G4VSolid> bridle = std::get<0>(base_solid)[0];
+            std::shared_ptr<G4VSolid> punchout = std::get<0>(base_solid)[1];
             G4RotationMatrix * rotationMatrix = std::get<1>(base_solid).get();
             G4ThreeVector position = std::get<2>(base_solid);
             //G4Transform3D transform = G4Transform3D(*rotationMatrix, position);
             G4Transform3D transform;
             G4DisplacedSolid * displaced_bridle = new G4DisplacedSolid("Bridle" + group_id, bridle.get(), rotationMatrix, position);
-            G4DisplacedSolid * displaced_punchout = new G4DisplacedSolid("Punchout" + group_id, (tpb ? tpb.get() : pmt.get()), rotationMatrix, position);
+            G4DisplacedSolid * displaced_punchout = new G4DisplacedSolid("Punchout" + group_id, punchout.get(), rotationMatrix, position);
             bridle_group->AddNode(*displaced_bridle, transform);
             punchout_group->AddNode(*displaced_punchout, transform);
 

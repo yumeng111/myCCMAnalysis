@@ -22,18 +22,42 @@
 class J4PMTSolidMaker {
     std::vector<std::shared_ptr<G4VSolid>> temp_solids;
 public:
-    std::shared_ptr<G4VSolid> pmt_vacuum_solid;
+    std::shared_ptr<G4VSolid> pmt_vacuum_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_glass_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_tpb_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_wall_vacuum_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_wall_glass_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_wall_tpb_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_cap_vacuum_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_cap_glass_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_cap_tpb_filled_solid;
+
+    std::shared_ptr<G4VSolid> cylinder_curvature_solid;
+    std::shared_ptr<G4VSolid> cylinder_face_solid;
+    G4RotationMatrix * cylinder_curvature_rotation;
+    G4ThreeVector cylinder_curvature_position;
+    G4RotationMatrix * cylinder_face_rotation;
+    G4ThreeVector cylinder_face_position;
+
+    std::shared_ptr<G4VSolid> frill_center_solid;
+
+    std::shared_ptr<G4VSolid> bridle_wall_filled_solid;
+    std::shared_ptr<G4VSolid> bridle_cap_filled_solid;
+    std::shared_ptr<G4VSolid> frill_wall_filled_solid;
+    std::shared_ptr<G4VSolid> frill_cap_filled_solid;
+
     std::shared_ptr<G4VSolid> pmt_glass_solid;
     std::shared_ptr<G4VSolid> pmt_tpb_solid;
-    std::shared_ptr<G4VSolid> pmt_wall_vacuum_solid;
     std::shared_ptr<G4VSolid> pmt_wall_glass_solid;
-    std::shared_ptr<G4VSolid> pmt_wall_tpb_solid;
-    std::shared_ptr<G4VSolid> pmt_cap_vacuum_solid;
     std::shared_ptr<G4VSolid> pmt_cap_glass_solid;
+    std::shared_ptr<G4VSolid> pmt_wall_tpb_solid;
     std::shared_ptr<G4VSolid> pmt_cap_tpb_solid;
 
-    std::shared_ptr<G4VSolid> bridle_wall_solid;
-    std::shared_ptr<G4VSolid> bridle_cap_solid;
+    std::shared_ptr<G4VSolid> bridle_wall_coated_solid;
+    std::shared_ptr<G4VSolid> bridle_wall_uncoated_solid;
+    std::shared_ptr<G4VSolid> bridle_cap_coated_solid;
+    std::shared_ptr<G4VSolid> bridle_cap_uncoated_solid;
+
     std::shared_ptr<G4VSolid> frill_wall_solid;
     std::shared_ptr<G4VSolid> frill_cap_solid;
 
@@ -104,6 +128,9 @@ public:
     std::shared_ptr<G4VSolid> CreatePMTTPBFilledSolid();
     std::shared_ptr<G4VSolid> CreatePMTVacuumFilledSolid();
 
+    std::shared_ptr<G4VSolid> CreateCylinderCurvatureSolid();
+    std::shared_ptr<G4VSolid> CreateCylinderFaceSolid();
+
     std::shared_ptr<G4VSolid> CreateWallSolid(std::shared_ptr<G4VSolid> pmt_solid);
     std::shared_ptr<G4VSolid> CreateCapSolid(std::shared_ptr<G4VSolid> pmt_solid);
 
@@ -114,10 +141,26 @@ public:
     std::shared_ptr<G4VSolid> CreatePMTCapTPBFilledSolid();
     std::shared_ptr<G4VSolid> CreatePMTCapVacuumFilledSolid();
 
+    std::shared_ptr<G4VSolid> CreateFrillCenterSolid();
+
     std::shared_ptr<G4VSolid> CreateBridleWallFilledSolid();
     std::shared_ptr<G4VSolid> CreateBridleCapFilledSolid();
     std::shared_ptr<G4VSolid> CreateFrillWallFilledSolid();
     std::shared_ptr<G4VSolid> CreateFrillCapFilledSolid();
+
+    std::shared_ptr<G4VSolid> CreatePMTGlassSolid();
+    std::shared_ptr<G4VSolid> CreatePMTTPBSolid();
+    std::shared_ptr<G4VSolid> CreatePMTWallGlassSolid();
+    std::shared_ptr<G4VSolid> CreatePMTCapGlassSolid();
+    std::shared_ptr<G4VSolid> CreatePMTWallTPBSolid();
+    std::shared_ptr<G4VSolid> CreatePMTCapTPBSolid();
+
+    std::shared_ptr<G4VSolid> CreateBridleWallCoatedSolid();
+    std::shared_ptr<G4VSolid> CreateBridleWallUncoatedSolid();
+    std::shared_ptr<G4VSolid> CreateBridleCapCoatedSolid();
+    std::shared_ptr<G4VSolid> CreateBridleCapUncoatedSolid();
+    std::shared_ptr<G4VSolid> CreateFrillWallSolid();
+    std::shared_ptr<G4VSolid> CreateFrillCapSolid();
 
     G4RotationMatrix * GetPMTRotationMatrix(std::string pmt_id);
     G4ThreeVector GetPMTPosition(std::string pmt_id);
