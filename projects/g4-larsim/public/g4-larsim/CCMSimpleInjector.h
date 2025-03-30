@@ -36,6 +36,7 @@ private:
     bool seen_s_frame_ = false;
 
     double energy_;
+    double time_;
     I3Vector<double> location_;
     I3Vector<double> direction_;
     std::string typeName_;
