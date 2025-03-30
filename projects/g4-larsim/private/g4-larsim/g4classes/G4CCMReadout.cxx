@@ -44,6 +44,18 @@ void G4CCMReadout::SetOutputs(std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::
         }
     }
 
+    if(n_events == 0) {
+        throw std::runtime_error("No events found in outputs");
+    }
+
+    for(size_t i = 0; i < n_events; ++i) {
+        if(edep_trees[i].get() == nullptr) {
+            std::stringstream ss;
+            ss << "edep_trees[" << i << "] is null";
+            throw std::runtime_error(ss.str());
+        }
+    }
+
     this->mcpeseries = mcpeseries;
     this->edep_trees = edep_trees;
     this->veto_edep_trees = veto_edep_trees;
@@ -85,7 +97,10 @@ void G4CCMReadout::LogPMTResult(int event_id, CCMMCPESeriesMapPtr mcpeseries, bo
     }
 }
 
-I3Particle G4CCMReadout::GetPrimary(size_t i) const { return primaries.at(i); }
+I3Particle G4CCMReadout::GetPrimary(size_t i) const {
+    return primaries.at(i);
+}
+
 CCMMCPESeriesMapPtr G4CCMReadout::GetMCPESeries(size_t i) const { return mcpeseries.at(i); }
 I3MCTreePtr G4CCMReadout::GetEDepMCTree(size_t i) const { return edep_trees.at(i); }
 I3MCTreePtr G4CCMReadout::GetVetoEDepMCTree(size_t i) const { return veto_edep_trees.at(i); }
@@ -105,7 +120,7 @@ I3MCTreePtr G4CCMReadout::GetVolumeEDepMCTree(size_t i, VolumeType volume) const
 }
 I3VectorI3ParticlePtr G4CCMReadout::GetVolumeEDepVector(size_t i, VolumeType volume) const {
     switch(volume) {
-        case VolumeType::Detector:
+        case VolumeType::Veto:
             return veto_edep_vector.at(i);
         case VolumeType::Inner:
             return inner_edep_vector.at(i);
