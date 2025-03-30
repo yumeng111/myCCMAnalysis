@@ -150,8 +150,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
     // now let's build PMTs using J4SolidMaker
 
-    fPMTVacuumWall = pmt_solid_maker.pmt_wall_vacuum_solid.get();
-    fPMTVacuumCaps = pmt_solid_maker.pmt_cap_vacuum_solid.get();
+    fPMTVacuumWall = pmt_solid_maker.pmt_wall_vacuum_filled_solid.get();
+    fPMTVacuumCaps = pmt_solid_maker.pmt_cap_vacuum_filled_solid.get();
     fPMTVacuumWall_log = new G4LogicalVolume(fPMTVacuumWall, G4Material::GetMaterial("Vacuum"), "PMTVacuumWallLog");
     fPMTVacuumCaps_log = new G4LogicalVolume(fPMTVacuumCaps, G4Material::GetMaterial("Vacuum"), "PMTVacuumCapsLog");
 
@@ -350,7 +350,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         unsigned int copy_number_k;
         if(it == fBridleLogicalVolumes.end()) {
             copy_number_k = 0;
-            bridle_log = new G4LogicalVolume(bridle_solid.get(), G4Material::GetMaterial("BlackPlastic"), "Bridle_" + name);
+            bridle_log = new G4LogicalVolume(bridle_solid.get(), G4Material::GetMaterial("BlackPlastic"), name);
             fBridleLogicalVolumes[bridle_solid] = {1, std::shared_ptr<G4LogicalVolume>(bridle_log)};
 
             G4LogicalSkinSurface * bridle_skin = new G4LogicalSkinSurface("Bridle_" + name + "_Surface", bridle_log, PlasticOpticalSurface);
@@ -381,6 +381,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         pmt_solid_maker.ParsePMTID(name, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
         std::string pmt_name = (coated) ? "Coated" : "Uncoated";
         pmt_name += (pmt_on_cap) ? "Cap" : "Wall";
+
+        std::string descriptive_name = std::to_string(pmt_row) + "_" + std::to_string(pmt_number);
 
         G4OpticalSurface * pmt_optical_surface;
         unsigned int copy_number_k;
@@ -430,7 +432,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                     std::get<0>(pmt_it->second) += 1;
                     copy_number_k = std::get<0>(pmt_it->second);
                 }
-                fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), pmt_log, "PMTGlass_" + name, tpb_log, false, copy_number_k, true));
+                fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), pmt_log, "PMTGlass_" + descriptive_name, tpb_log, false, copy_number_k, true));
             } else {
                 tpb_log = std::get<1>(tpb_it->second).get();
                 std::get<0>(tpb_it->second) += 1;
@@ -474,7 +476,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 std::get<0>(pmt_it->second) += 1;
                 copy_number_k = std::get<0>(pmt_it->second);
             }
-            fPlacements.emplace_back(new G4PVPlacement(pmt_rotation.get(), pmt_position, pmt_log, "PMTGlass_" + name, fFiducialLAr_log, false, copy_number_k, true));
+            fPlacements.emplace_back(new G4PVPlacement(pmt_rotation.get(), pmt_position, pmt_log, "PMTGlass_" + descriptive_name, fFiducialLAr_log, false, copy_number_k, true));
         }
     }
 
@@ -638,6 +640,10 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     fPMTCoatedCaps_log->SetVisAttributes(pink);
     fPMTUncoatedWall_log->SetVisAttributes(teal);
     fPMTUncoatedCaps_log->SetVisAttributes(teal);
+    //fPMTCoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fPMTCoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fPMTUncoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    //fPMTUncoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     auto tpb_coating_va = new G4VisAttributes(G4Colour(0., 1., 0.)); //green
     tpb_coating_va->SetForceSolid(true);
