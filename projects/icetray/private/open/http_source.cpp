@@ -1,8 +1,7 @@
 /**
  *  $Id: open.cxx 2595 2016-06-01 18:26:57Z cweaver $
  *
- *  Copyright (C) 2007
- *  Troy D. Straszheim  <troy@icecube.umd.edu>
+ *  Copyright (C) 2007 Troy D. Straszheim  <troy@icecube.umd.edu>
  *  and the IceCube Collaboration <http://www.icecube.wisc.edu>
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -29,6 +28,10 @@
  *  SPDX-License-Identifier: BSD-2-Clause
  *  
  */
+
+#include <boost/version.hpp>
+
+#if BOOST_VERSION < 108700
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -176,3 +179,5 @@ http_source::read(char* s, std::streamsize size)
   
   return n;
 }
+
+#endif
