@@ -25,7 +25,7 @@
 
 #include <boost/checked_delete.hpp>
 #include <serialization/throw_exception.hpp>
-#include <boost/detail/lightweight_mutex.hpp>
+#include <boost/smart_ptr/detail/lightweight_mutex.hpp>
 
 #if defined(BOOST_SP_USE_QUICK_ALLOCATOR)
 #include <boost/detail/quick_allocator.hpp>
