@@ -54,6 +54,11 @@ private:
     bool TrackParticles_ = false;
     bool TrackEnergyLosses_ = false;
 
+    double SimulateNuclearRecoils_;
+    double G4RangeCut_;
+    double G4EDepMin_;
+    double G4ETrackingMin_;
+
     bool RecordHits_;
     bool SourceRodIn_; // place source rod into detector geometry
     double SourceRodLocation_; // location of end of source rod

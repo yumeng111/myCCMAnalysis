@@ -24,8 +24,8 @@
 #include "simclasses/PhotonSummary.h"
 
 struct ccmmcpe_lightweight {
-    float g4_time;
-    float g4_distance_uv;
+    float time;
+    float distance_uv;
 };
 
 
@@ -131,13 +131,13 @@ template<typename T> void ScaleAndBinG4Yields(std::vector<std::map<CCMPMTKey, st
             for (size_t m = 0; m < this_key_ccmmcpe.size(); m++){
                 ccmmcpe_lightweight const & this_ccmmcpe = this_key_ccmmcpe.at(m);
 
-                double distance_travelled_uv = this_ccmmcpe.g4_distance_uv / I3Units::cm;
+                double distance_travelled_uv = this_ccmmcpe.distance_uv / I3Units::cm;
                 // now figure out scaling due to uv absorption
                 T uv_scaling = exp(- distance_travelled_uv / UV_absorption_length.at(0));
                 if (UV_absorption_length.at(1) > 0.0){
                     uv_scaling += exp(- distance_travelled_uv / UV_absorption_length.at(1));
                 }
-                double time = this_ccmmcpe.g4_time / I3Units::nanosecond;
+                double time = this_ccmmcpe.time / I3Units::nanosecond;
 
                 // now grab time bin and save!
                 size_t bin_idx = time / bin_width;

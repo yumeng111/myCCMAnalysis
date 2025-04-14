@@ -83,6 +83,10 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     void SetTrackParticles(G4bool b) { TrackParticles_ = b; }
     void SetTrackEnergyLosses(G4bool b) { TrackEnergyLosses_ = b; }
 
+    void SetG4RangeCut(G4double G4RangeCut) { G4RangeCut_ = G4RangeCut; }
+    void SetG4EDepMin(G4double G4EDepMin) { G4EDepMin_ = G4EDepMin; }
+    void SetG4ETrackingMin(G4double G4ETrackingMin) { G4ETrackingMin_ = G4ETrackingMin; }
+
     // set SD configuration
     void SetRecordHits(bool RecordHits) { RecordHits_ = RecordHits; }
 
@@ -106,6 +110,10 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     bool GetDetailedPhotonTracking() { return DetailedPhotonTracking_; }
     bool GetTrackParticles() { return TrackParticles_; }
     bool GetTrackEnergyLosses() { return TrackEnergyLosses_; }
+
+    G4double GetG4RangeCut() { return G4RangeCut_; }
+    G4double GetG4EDepMin() { return G4EDepMin_; }
+    G4double GetG4ETrackingMin() { return G4ETrackingMin_; }
 
     // get SD configuration
     bool GetRecordHits() { return RecordHits_; }
@@ -203,6 +211,10 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
 
     // controls to turn SD on/off (set via G4Interface)
     bool RecordHits_ = true; // turn hit recording on/off
+
+    G4double G4RangeCut_ = 1e-6 * m; // range cut for all particles
+    G4double G4EDepMin_ = 0.01 * keV; // minimum energy deposit for hits
+    G4double G4ETrackingMin_ = 0.1 * keV; // minimum energy for tracking
 
     // controls to turn sodium source on/off
     bool SourceRodIn_ = false;

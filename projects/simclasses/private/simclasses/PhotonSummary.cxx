@@ -5,7 +5,7 @@
 const std::unordered_map<PhotonSummary::PhotonSource, std::string> PhotonSummary::photonSourceToProcessName = {{PhotonSummary::PhotonSource::Unknown, "Unknown"},
                                                                                                                {PhotonSummary::PhotonSource::Scintillation, "Scintillation"},
                                                                                                                {PhotonSummary::PhotonSource::OpWLS, "OpWLS"},
-                                                                                                               {PhotonSummary::PhotonSource::Cerenkov, "Cerenkov"}};
+                                                                                                               {PhotonSummary::PhotonSource::Cherenkov, "Cerenkov"}};
 
 template <class Archive>
 void PhotonSummary::save(Archive& ar, unsigned version) const {
@@ -13,18 +13,13 @@ void PhotonSummary::save(Archive& ar, unsigned version) const {
         log_fatal("Attempting to save version %u from file but running version %u of PhotonSummary class.", version, photonsummary_version_);
 
 
-    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("distance_uv",distance_uv);
     ar & make_nvp("original_wavelength",original_wavelength);
-    ar & make_nvp("g4_distance_visible",g4_distance_visible);
-    //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
-    //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
-    ar & make_nvp("g4_time",g4_time);
-    //ar & make_nvp("calculated_time",calculated_time);
-    ar & make_nvp("n_wls",n_wls);
+    ar & make_nvp("distance_visible",distance_visible);
+    ar & make_nvp("time",time);
     ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
     ar & make_nvp("wls_loc",wls_loc);
     ar & make_nvp("photon_source",photon_source);
-    ar & make_nvp("temp_parent",temp_parent);
     ar & make_nvp("current_process",current_process);
 }
 
@@ -33,42 +28,34 @@ void PhotonSummary::load(Archive& ar, unsigned version) {
     if (version > photonsummary_version_)
         log_fatal("Attempting to read version %u from file but running version %u of PhotonSummary class.", version, photonsummary_version_);
 
-    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("distance_uv",distance_uv);
     ar & make_nvp("original_wavelength",original_wavelength);
-    ar & make_nvp("g4_distance_visible",g4_distance_visible);
-    //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
-    //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
-    ar & make_nvp("g4_time",g4_time);
-    //ar & make_nvp("calculated_time",calculated_time);
-    ar & make_nvp("n_wls",n_wls);
+    ar & make_nvp("distance_visible",distance_visible);
+    ar & make_nvp("time",time);
+    if(version <= 2) {
+        size_t n_wls;
+        ar & make_nvp("n_wls",n_wls);
+    }
     ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
     ar & make_nvp("wls_loc",wls_loc);
     ar & make_nvp("photon_source",photon_source);
-    ar & make_nvp("temp_parent",temp_parent);
+    if(version <= 2) {
+        PhotonSource temp_parent;
+        ar & make_nvp("temp_parent",temp_parent);
+    }
     ar & make_nvp("current_process",current_process);
-
 }
 
 
 std::ostream& PhotonSummary::Print(std::ostream& os) const{
-    //std::vector<std::string> wls_loc_string = {};
-    //for (size_t w = 0; w < wls_loc.size(); w++){
-    //    wls_loc_string.push_back(WLSLocation::wlsLocationToProcessName.at(wls_loc.at(w)));
-    //}
-
     os << "[ PhotonSummary::"
-        << "\n  G4 Distance UV  :" << g4_distance_uv
+        << "\n  Distance UV  :" << distance_uv
         << "\n  Original Wavelength :" << original_wavelength
-        << "\n  G4 Distance Visible :" << g4_distance_visible
-        //<< "\n  Calculated Distance UV  :" << calculated_distance_uv
-        //<< "\n  Calculated Distance Visible :" << calculated_distance_visible
-        << "\n  G4 Global Time :" << g4_time
-        //<< "\n  Calculated Time :" << calculated_time
-        << "\n  Number WLS :" << n_wls
+        << "\n  Distance Visible :" << distance_visible
+        << "\n  Global Time :" << time
         << "\n  Number Photons Per WLS :" << n_photons_per_wls
         << "\n  WLS Location :" << wls_loc
         << "\n  Photon Source :" << photonSourceToProcessName.at(photon_source)
-        << "\n  Temporary Parent Type :" << photonSourceToProcessName.at(temp_parent)
         << "\n  Current Process :" << photonSourceToProcessName.at(current_process)
         << " ]";
     return os;

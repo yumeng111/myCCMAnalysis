@@ -12,9 +12,9 @@ void LightweightCCMMCPE::save(Archive& ar, unsigned version) const {
 
     ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
     ar & make_nvp("wls_loc",wls_loc);
-    ar & make_nvp("g4_time",g4_time);
+    ar & make_nvp("time",time);
     ar & make_nvp("wavelength",wavelength);
-    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("distance_uv",distance_uv);
 }
 
 template <class Archive>
@@ -24,9 +24,9 @@ void LightweightCCMMCPE::load(Archive& ar, unsigned version) {
     
     ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
     ar & make_nvp("wls_loc",wls_loc);
-    ar & make_nvp("g4_time",g4_time);
+    ar & make_nvp("time",time);
     ar & make_nvp("wavelength",wavelength);
-    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("distance_uv",distance_uv);
 
 }
 
@@ -39,9 +39,9 @@ std::ostream& LightweightCCMMCPE::Print(std::ostream& os) const{
     os << "[ LightweightCCMMCPE::"
         << "\n  NPhotons Per WLS :" << n_photons_per_wls 
         << "\n  WLS Location :" << wls_loc 
-        << "\n  G4 Time :" << g4_time
+        << "\n  Time :" << time
         << "\n  Wavelength :" << wavelength
-        << "\n  G4 Distance UV :" << g4_distance_uv
+        << "\n  Distance UV :" << distance_uv
         << " ]";
     return os;
 }

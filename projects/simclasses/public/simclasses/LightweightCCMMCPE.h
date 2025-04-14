@@ -31,32 +31,32 @@ struct LightweightCCMMCPE {
     // things we want to save about a photon hitting our pmts in simulation
     std::vector<size_t> n_photons_per_wls;
     WLSLocationSeries wls_loc; 
-    float g4_time;
+    float time;
     float wavelength; // wavelength of photon
-    float g4_distance_uv; // g4_distances travelled as uv photon
+    float distance_uv; // distances travelled as uv photon
 
     SET_LOGGER("LightweightCCMMCPE");
 
     bool operator==(const LightweightCCMMCPE& rhs) const {
         return n_photons_per_wls == rhs.n_photons_per_wls
             && wls_loc == rhs.wls_loc
-            && g4_time == rhs.g4_time
+            && time == rhs.time
             && wavelength == rhs.wavelength
-            && g4_distance_uv == rhs.g4_distance_uv;
+            && distance_uv == rhs.distance_uv;
     }
 
     LightweightCCMMCPE(const LightweightCCMMCPE&) = default;
 
     LightweightCCMMCPE(std::vector<size_t> n_photons_per_wls_ = {0},
                        WLSLocationSeries wls_loc_ = WLSLocationSeries(),
-                       float g4_time_ = 0,
+                       float time_ = 0,
                        float wavelength_ = 0,
-                       float g4_distance_uv_ = 0):
+                       float distance_uv_ = 0):
                        n_photons_per_wls(n_photons_per_wls_),
                        wls_loc(wls_loc_),
-                       g4_time(g4_time_),
+                       time(time_),
                        wavelength(wavelength_),
-                       g4_distance_uv(g4_distance_uv_){
+                       distance_uv(distance_uv_){
     }
 
 

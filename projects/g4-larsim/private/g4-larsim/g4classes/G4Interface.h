@@ -52,6 +52,7 @@ class G4Interface {
                              bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
                              bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
                              bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
+                             bool SimulateNuclearRecoils, double G4RangeCut, double G4EDepMin, double G4ETrackingMin,
                              bool RecordHits, bool SourceRodIn, double SourceRodLocation,
                              bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
                              double DecayX, double DecayY, double DecayZ,
@@ -75,6 +76,11 @@ class G4Interface {
         std::shared_ptr<G4CCMReadout> readout_;
         std::shared_ptr<G4MTRunManager> runManager_;
         std::shared_ptr<G4CCMParticleList> particle_list_;
+
+        double SimulateNuclearRecoils_ = false;
+        double G4RangeCut_ = 0.0; // range cut for all particles
+        double G4EDepMin_ = 0.0; // minimum energy deposit for hits
+        double G4ETrackingMin_ = 0.0; // minimum energy for tracking
 
         #ifdef G4VIS_USE
         G4VisManager* visManager_;

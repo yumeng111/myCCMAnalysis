@@ -188,8 +188,8 @@ template<typename T> void GenerateExpectation<T>::GrabG4Events(size_t n_events, 
 
                     // make a new ccmmcpe_lightweight
                     ccmmcpe_lightweight pe_light;
-                    pe_light.g4_time = pe.g4_time;
-                    pe_light.g4_distance_uv = pe.g4_distance_uv;
+                    pe_light.time = pe.time;
+                    pe_light.distance_uv = pe.distance_uv;
 
                     // now save
                     this_event_info[it->first].push_back(pe_light);

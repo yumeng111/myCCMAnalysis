@@ -67,6 +67,7 @@ void G4Interface::InstallDetector(
                                   bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
                                   bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
                                   bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
+                                  bool SimulateNuclearRecoils, double G4RangeCut, double G4EDepMin, double G4ETrackingMin,
                                   bool RecordHits, bool SourceRodIn, double SourceRodLocation,
                                   bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
                                   double DecayX, double DecayY, double DecayZ,
@@ -80,6 +81,11 @@ void G4Interface::InstallDetector(
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
     }
+
+    SimulateNuclearRecoils_ = SimulateNuclearRecoils;
+    G4RangeCut_ = G4RangeCut;
+    G4EDepMin_ = G4EDepMin;
+    G4ETrackingMin_ = G4ETrackingMin;
 
     RecordHits_ = RecordHits;
 
@@ -129,6 +135,9 @@ void G4Interface::InstallDetector(
         detector_->SetKillCherenkov(KillCherenkov);
         detector_->SetKillScintillation(KillScintillation);
         detector_->SetDetailedPhotonTracking(DetailedPhotonTracking);
+        detector_->SetG4RangeCut(G4RangeCut / I3Units::cm * CLHEP::cm);
+        detector_->SetG4EDepMin(G4EDepMin / I3Units::MeV * CLHEP::MeV);
+        detector_->SetG4ETrackingMin(G4ETrackingMin / I3Units::MeV * CLHEP::MeV);
         // set sodium rod status
         detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun,
                                              TrainingSource, DecayX / I3Units::cm * CLHEP::cm, DecayY / I3Units::cm * CLHEP::cm, DecayZ / I3Units::cm * CLHEP::cm);
@@ -177,10 +186,15 @@ void G4Interface::SimulateEvents(std::vector<I3Particle> const & particles, std:
     InitializeRun();
 
     // Set the particle list used for the primary generator user action
+    G4cout << "[G4Interface] Simulating " << particles.size() << " particles" << G4endl;
     particle_list_->SetParticles(particles);
 
     // Set readout information for sensitive detectors
     readout_->SetInput(particles);
+    G4cout << "[G4Interface] Simulating " << particles.size() << " particles" << G4endl;
+    if(trees.size() == 0) {
+        log_error("G4Interface::SimulateEvents: No trees provided!");
+    }
     readout_->SetOutputs(mcpeseries, trees, veto_trees, inner_trees, veto_vectors, inner_vectors);
 
     // Run the event
@@ -213,6 +227,9 @@ void G4Interface::Initialize() {
 
     // adding physics list
     G4CCMPhysicsList* physics_list = new G4CCMPhysicsList(verboseLevel);
+    physics_list->SimulateNuclearRecoils_ = SimulateNuclearRecoils_;
+    physics_list->G4RangeCut_ = G4RangeCut_;
+    physics_list->G4EDepMin_ = G4EDepMin_;
     runManager_->SetUserInitialization(physics_list);
 
     // Set user action initialization

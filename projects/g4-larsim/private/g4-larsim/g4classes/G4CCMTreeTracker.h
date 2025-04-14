@@ -64,18 +64,29 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         bool GetTrackEnergyLosses() { return TrackEnergyLosses_; }
         void SetTrackEnergyLosses(bool TrackEnergyLosses) { TrackEnergyLosses_ = TrackEnergyLosses; }
 
+        G4double GetG4RangeCut() { return G4RangeCut_ / I3Units::MeV * MeV; }
+        void SetG4RangeCut(G4double G4RangeCut) { G4RangeCut_ = G4RangeCut / MeV * I3Units::MeV; }
+        G4double GetG4EDepMin() { return G4EDepMin_ / I3Units::MeV * MeV; }
+        void SetG4EDepMin(G4double G4EDepMin) { G4EDepMin_ = G4EDepMin / MeV * I3Units::MeV; }
+        G4double GetG4ETrackingMin() { return G4ETrackingMin_ / I3Units::MeV * MeV; }
+        void SetG4ETrackingMin(G4double G4ETrackingMin) { G4ETrackingMin_ = G4ETrackingMin / MeV * I3Units::MeV; }
+
+
         void Reset() {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<PhotonSummarySeries>();
             optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
-            wls_parent_daughter_map = boost::make_shared<I3Map<int, std::vector<int>>>();
+            wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>();
+            wls_daughter_parent_map = boost::make_shared<I3Map<int, int>>();
+            sub_threshold_losses.clear();
+            parent_map.clear();
             mcTree = nullptr;
         }
 
-        void AddEntryToPhotonSummary(int parent_id, int track_id, double g4_delta_distance, double original_wavelength,
-                                     double g4_time, std::string creationProcessName);
-        void UpdatePhotonSummary(int parent_id, int track_id, double g4_time, std::string creationProcessName,
-                                 std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep, double g4_delta_distance);
+        void AddNewPhoton(int parent_id, int track_id, double time, double distance, double wavelength, std::string creation_process_name);
+        void AddPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, std::string creation_process_name);
+        void UpdatePhoton(int parent_id, int track_id, size_t photon_index, double delta_time, double delta_distance, std::string creation_process_name);
+        void AddWLSPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, G4Step* aStep);
 
 
     private:
@@ -93,21 +104,25 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
         double time_cut_value_ = 200.0;
 
+        double G4RangeCut_ = 0.0; // range cut for all particles
+        double G4EDepMin_ = 0.0; // minimum energy deposition for all particles
+        double G4ETrackingMin_ = 0.0; // minimum energy for tracking
+
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = nullptr;
-        I3VectorI3ParticlePtr mcVector = nullptr;
         I3Particle primary_;
 
         // and photon summary that keeps track of optical photons
         // note this is in two parts -- map between track id and idx
         // and vector containing photon summaries (idx in vector corresponds to track id)
         boost::shared_ptr<I3Map<int, size_t>> optical_photon_map = boost::make_shared<I3Map<int, size_t>>(); // map between track id and idx in vector
-        boost::shared_ptr<I3Map<int, std::vector<int>>> wls_parent_daughter_map = boost::make_shared<I3Map<int, std::vector<int>>>(); // map between parent id and group of track ids
+        boost::shared_ptr<I3Map<int, std::set<int>>> wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>(); // map between parent id and group of track ids
+        boost::shared_ptr<I3Map<int, int>> wls_daughter_parent_map = boost::make_shared<I3Map<int, int>>(); // map between track_id and parent_id
         PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
 
         // define a few things for converting energy to wavelength
-        const G4double hbarc = 197.326; //eV * nm
-        const G4double hc =  hbarc * (2 * 3.14159265358979323846); // eV * nm
+        G4double const hbarc = 197.326; // eV * nm
+        G4double const hc = hbarc * 2 * M_PI; // eV * nm
 
         static const std::unordered_map<std::string, int> energyLossToI3ParticlePDGCode;
         static const std::unordered_map<std::string, PhotonSummary::PhotonSource> processNameToPhotonSource;
@@ -116,6 +131,8 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         static const std::unordered_set<int> energyLossPDGCodes;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
+        std::map<int, int> parent_map;
+        std::map<int, std::tuple<double, std::vector<I3Particle>>> sub_threshold_losses;
 
         double c_mm_per_nsec = 299.792458 * (I3Units::mm / I3Units::ns); // speed of light in mm/nsec
 

@@ -28,6 +28,8 @@
 // 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+#include "icetray/I3Units.h"
+
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 
 #include <G4Version.hh>
@@ -215,14 +217,24 @@ void G4CCMPhysicsList::ConstructProcess() {
 }
 
 void G4CCMPhysicsList::SetCuts() {
-    if (verboseLevel >1){
+    if(verboseLevel > 1) {
         G4cout << "G4CCMPhysicsList::SetCuts:";
     }
     //  " G4VUserPhysicsList::SetCutsWithDefault" method sets
     //   the default cut value for all particle types
     SetCutsWithDefault();
+
     //Set proton cut value to 0 for producing low energy recoil nucleus
-    SetCutValue(0.0, "proton");
+    if(SimulateNuclearRecoils_)
+        SetCutValue(0.0, "proton");
+
+    G4double cutValue = G4RangeCut_ / I3Units::m * m;
+    G4ProductionCutsTable::GetProductionCutsTable()->SetEnergyRange(G4EDepMin_ / I3Units::GeV * GeV, 100 * GeV);
+
+    SetCutValue(cutValue, "gamma");
+    SetCutValue(cutValue, "opticalphoton");
+    SetCutValue(cutValue, "e-");
+    SetCutValue(0.0, "e+");
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

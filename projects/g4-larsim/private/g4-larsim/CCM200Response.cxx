@@ -43,6 +43,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     InteriorSDSaveEnergyLossesVector_(false), InteriorSDSaveEnergyLossesTree_(false), InteriorSDPruneTree_(false),
     KillNeutrinos_(false), KillPhotons_(false), KillScintillation_(false), KillCherenkov_(false),
     TimeCut_(false), DetailedPhotonTracking_(false), TrackParticles_(false), TrackEnergyLosses_(false),
+    SimulateNuclearRecoils_(false), G4RangeCut_(1e-9 * I3Units::m), G4EDepMin_(0.01 * I3Units::keV), G4ETrackingMin_(0.1 * I3Units::keV),
     RecordHits_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
     SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
@@ -67,6 +68,11 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("DetailedPhotonTracking", "track all optical photons to get distance travelled", DetailedPhotonTracking_);
     AddParameter("TrackParticles", "track particles", TrackParticles_);
     AddParameter("TrackEnergyLosses", "track energy losses", TrackEnergyLosses_);
+
+    AddParameter("SimulateNuclearRecoils", "simulate nuclear recoils", SimulateNuclearRecoils_);
+    AddParameter("G4RangeCut", "production cut for secondary particles in m", G4RangeCut_);
+    AddParameter("G4EDepMin", "minimum energy deposit for secondary particles in MeV", G4EDepMin_);
+    AddParameter("G4ETrackingMin", "minimum energy for tracking in MeV", G4ETrackingMin_);
 
     AddParameter("RecordHits", "record hits", RecordHits_);
     AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", SourceRodIn_);
@@ -117,6 +123,9 @@ void CCM200Response::Configure() {
     GetParameter("DetailedPhotonTracking", DetailedPhotonTracking_);
     GetParameter("TrackParticles", TrackParticles_);
     GetParameter("TrackEnergyLosses", TrackEnergyLosses_);
+
+    GetParameter("SimulateNuclearRecoils", SimulateNuclearRecoils_);
+    GetParameter("G4RangeCut", G4RangeCut_);
 
     GetParameter("RecordHits", RecordHits_);
     GetParameter("SourceRodIn", SourceRodIn_);
@@ -169,6 +178,7 @@ void CCM200Response::Initialize() {
                                   InteriorSDSaveEnergyLossesVector_, InteriorSDSaveEnergyLossesTree_, InteriorSDPruneTree_,
                                   KillNeutrinos_, KillPhotons_, KillScintillation_, KillCherenkov_,
                                   TimeCut_, DetailedPhotonTracking_, TrackParticles_, TrackEnergyLosses_,
+                                  SimulateNuclearRecoils_, G4RangeCut_, G4EDepMin_, G4ETrackingMin_,
                                   RecordHits_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
                                   DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsA_, UVAbsB_, UVAbsD_, UVAbsScaling_,
                                   WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,

@@ -43,6 +43,7 @@ private:
     std::string responseServiceName_;
     std::string input_mc_tree_name_;
 
+    std::string configuration_name_;
     std::string PMTHitSeriesName_;
     std::string LArMCTreeName_;
     std::string PhotonSummarySeriesName_;

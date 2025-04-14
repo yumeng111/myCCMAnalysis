@@ -30,12 +30,12 @@ const std::unordered_map<std::string, int> G4CCMTreeTracker::energyLossToI3Parti
 
 const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMTreeTracker::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
                                                                                                               {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
-                                                                                                              {"Cerenkov", PhotonSummary::PhotonSource::Cerenkov},
+                                                                                                              {"Cerenkov", PhotonSummary::PhotonSource::Cherenkov},
                                                                                                               {"OpWLS", PhotonSummary::PhotonSource::OpWLS}};
 
 const std::unordered_map<PhotonSummary::PhotonSource, std::string> G4CCMTreeTracker::photonSourceToProcessName = {{PhotonSummary::PhotonSource::Unknown, "Unknown"},
                                                                                                               {PhotonSummary::PhotonSource::Scintillation, "Scintillation"},
-                                                                                                              {PhotonSummary::PhotonSource::Cerenkov, "Cerenkov"},
+                                                                                                              {PhotonSummary::PhotonSource::Cherenkov, "Cerenkov"},
                                                                                                               {PhotonSummary::PhotonSource::OpWLS, "OpWLS"}};
 
 const std::unordered_map<WLSLocation::WLSLoc, std::string> G4CCMTreeTracker::wlsLocationToProcessName = {{WLSLocation::WLSLoc::Unknown, "Unknown"},
@@ -63,75 +63,156 @@ void G4CCMTreeTracker::Initialize(G4HCofThisEvent* hitsCE) {
 }
 
 void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
+    for(std::pair<int const, std::tuple<double, std::vector<I3Particle>> > & sub_loss : sub_threshold_losses) {
+        int track_id = sub_loss.first;
+        double total_energy = std::get<0>(sub_loss.second);
+        std::vector<I3Particle> & losses = std::get<1>(sub_loss.second);
+        if(losses.size() == 0 or total_energy == 0)
+            continue;
+
+        I3Particle daughter = losses.back();
+        I3Position position(0, 0, 0);
+        I3Position direction(0, 0, 0);
+        double time = 0.0;
+
+        for(I3Particle const & p : losses) {
+            double const & e = p.GetEnergy();
+            position += p.GetPos() * e;
+            direction += p.GetDir() * e;
+            time += p.GetTime() * e;
+        }
+
+        position /= total_energy;
+        direction /= total_energy;
+        time /= total_energy;
+
+        daughter.SetEnergy(total_energy);
+        daughter.SetPos(position);
+        daughter.SetDir(I3Direction(direction));
+        daughter.SetTime(time);
+
+        I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
+    }
+
     readout_->LogTrackingResult(event_id, photon_summary, optical_photon_map, DetailedPhotonTracking_);
 }
 
-void G4CCMTreeTracker::AddEntryToPhotonSummary(int parent_id, int track_id, double g4_delta_distance, double original_wavelength,
-                                               double g4_time, std::string creationProcessName) {
-    // map does not have key -- let's add our PhotonSummary then update map
-    size_t n_wls = 0;
-    std::vector<size_t> n_photons_per_wls = {0};
-    PhotonSummary this_photon_summary = PhotonSummary(g4_delta_distance, // distance travelled before wls
-                                                      original_wavelength,
+void G4CCMTreeTracker::AddNewPhoton(int parent_id, int track_id, double time, double distance, double wavelength, std::string creation_process_name) {
+    // We want to keep track of the parental lineage of any photon
+    // But this photon does not come from another optical photon
+    (*wls_daughter_parent_map)[track_id] = parent_id;
+
+    std::vector<size_t> n_photons_per_wls = {};
+    PhotonSummary this_photon_summary = PhotonSummary(distance, // distance travelled before wls
+                                                      wavelength,
                                                       0.0, // distance travelled after wls
-                                                      g4_time,
-                                                      n_wls, n_photons_per_wls, WLSLocationSeries(),
-                                                      processNameToPhotonSource.at(creationProcessName),
-                                                      processNameToPhotonSource.at(creationProcessName),
-                                                      processNameToPhotonSource.at(creationProcessName));
+                                                      time,
+                                                      n_photons_per_wls, WLSLocationSeries(),
+                                                      processNameToPhotonSource.at(creation_process_name),
+                                                      processNameToPhotonSource.at(creation_process_name));
     photon_summary->push_back(this_photon_summary);
     optical_photon_map->insert(std::make_pair(track_id, photon_summary->size() - 1));
 }
 
-void G4CCMTreeTracker::UpdatePhotonSummary(int parent_id, int track_id, double g4_time, std::string creationProcessName,
-                                           std::map<int, size_t>::iterator it, bool new_process, G4Step* aStep, double g4_delta_distance) {
-    // map contains this photon
-    // so we need to grab PhotonSummary and update it -- then update key
-    PhotonSummary this_photon_summary = photon_summary->at(it->second);
-    this_photon_summary.g4_time += g4_time;
-    this_photon_summary.current_process = processNameToPhotonSource.at(creationProcessName);
+void G4CCMTreeTracker::AddPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, std::string creation_process_name) {
+    // We want to keep track of the parental lineage of any photon
+    (*wls_daughter_parent_map)[track_id] = parent_id;
 
-    if (new_process){
-        this_photon_summary.temp_parent = photon_summary->at(optical_photon_map->find(parent_id)->second).current_process;
+    // Copy the existing entry from this parent track
+    PhotonSummary this_photon_summary = photon_summary->at(parent_index);
+
+    // Update the time, current process, and distance travelled
+    this_photon_summary.time += delta_time;
+    this_photon_summary.current_process = processNameToPhotonSource.at(creation_process_name);
+
+    if(this_photon_summary.n_photons_per_wls.size() > 0)
+        this_photon_summary.distance_visible += delta_distance;
+    else
+        this_photon_summary.distance_uv += delta_distance;
+
+    // Now add the new track to the vector of photon summaries
+    photon_summary->push_back(this_photon_summary);
+    size_t new_pos = photon_summary->size() - 1;
+    (*optical_photon_map)[track_id] = new_pos;
+}
+
+void G4CCMTreeTracker::UpdatePhoton(int parent_id, int track_id, size_t photon_index, double delta_time, double delta_distance, std::string creation_process_name) {
+    // Technically we should never end up here since each step has a unique track ID
+
+    // Grab the existing entry for this track ID
+    PhotonSummary & this_photon_summary = photon_summary->at(photon_index);
+
+    // Update the time, current process, and distance travelled
+    this_photon_summary.time += delta_time;
+    this_photon_summary.current_process = processNameToPhotonSource.at(creation_process_name);
+
+    if(this_photon_summary.n_photons_per_wls.size() > 0)
+        this_photon_summary.distance_visible += delta_distance;
+    else
+        this_photon_summary.distance_uv += delta_distance;
+}
+
+void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, G4Step* aStep) {
+    // At the end of the day we really only care about photons that are hitting the PMTs
+    // So we want to keep updating the photon's information until it hits a PMT
+
+    // We want to keep track of the parental lineage of any photon
+    (*wls_daughter_parent_map)[track_id] = parent_id;
+
+    // Copy the existing entry from this parent track
+    PhotonSummary this_photon_summary = photon_summary->at(parent_index);
+    this_photon_summary.time += delta_time;
+    this_photon_summary.current_process = PhotonSummary::PhotonSource::OpWLS;
+
+    // let's save where this wls occured
+    std::string wls_loc_string = static_cast<std::string>(aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName());
+
+    WLSLocation::WLSLoc wls_loc = WLSLocation::WLSLoc::Unknown;
+
+    if(wls_loc_string.find("Coating") != std::string::npos) {
+        wls_loc = WLSLocation::WLSLoc::PMT;
+    } else if(wls_loc_string.find("FoilTop") != std::string::npos) {
+        wls_loc = WLSLocation::WLSLoc::FoilTop;
+    } else if(wls_loc_string.find("FoilBottom") != std::string::npos) {
+        wls_loc = WLSLocation::WLSLoc::FoilBottom;
+    } else if(wls_loc_string.find("FoilSides") != std::string::npos) {
+        wls_loc = WLSLocation::WLSLoc::FoilSides;
     }
 
-    if(creationProcessName == "OpWLS" and new_process) {
-        this_photon_summary.n_wls += 1;
-
-        // let's save where this wls occured
-        std::string wls_loc_string = static_cast<std::string>(aStep->GetPreStepPoint()->GetPhysicalVolume()->GetName());
-
-        WLSLocation::WLSLoc wls_loc = WLSLocation::WLSLoc::Unknown;
-
-        if (wls_loc_string.find("Coating") != std::string::npos) {
-            wls_loc = WLSLocation::WLSLoc::PMT;
-        } else if (wls_loc_string.find("FoilTop") != std::string::npos) {
-            wls_loc = WLSLocation::WLSLoc::FoilTop;
-        } else if (wls_loc_string.find("FoilBottom") != std::string::npos) {
-            wls_loc = WLSLocation::WLSLoc::FoilBottom;
-        } else if (wls_loc_string.find("FoilSides") != std::string::npos) {
-            wls_loc = WLSLocation::WLSLoc::FoilSides;
-        }
-
-
-        size_t saving_idx = this_photon_summary.n_wls - 1;
-        if (this_photon_summary.wls_loc.size() > saving_idx){
-             this_photon_summary.wls_loc.at(saving_idx) = wls_loc;
-        } else {
-            this_photon_summary.wls_loc.push_back(wls_loc);
-        }
-    }
-
-    // now let's add our distance travelled based on whether or not we've wls
-    if (this_photon_summary.n_wls == 1 and new_process and creationProcessName == "OpWLS"){
-        // special case where wls triggered step, that means the distance travelled is before wls
-        this_photon_summary.g4_distance_uv += g4_delta_distance;
-    } else if (this_photon_summary.n_wls > 0) {
-        // we're already wls at least once
-        this_photon_summary.g4_distance_visible += g4_delta_distance;
+    // let's update the parent id and track id map
+    // this keeps track of parent id and wls daughter track ids
+    std::map<int, std::set<int>>::iterator wls_it = wls_parent_daughter_map->find(parent_id);
+    if(wls_it != wls_parent_daughter_map->end()) {
+        // ok this parent id is in our map! let's update daughter track ids
+        wls_it->second.insert(track_id);
     } else {
-        // not yet wls!
-        this_photon_summary.g4_distance_uv += g4_delta_distance;
+        // this key is NOT in our map!! let's add a value
+        (*wls_parent_daughter_map)[parent_id] = std::set<int> {track_id};
+    }
+
+    // now let's update n_photons_per_wls for all daughers tracks of this parent
+    std::set<int> & sibling_track_ids = (*wls_parent_daughter_map)[parent_id];
+    size_t n_siblings = sibling_track_ids.size();
+
+    // This is a new wavelength shift for this track so we need to keep track of the WLS locations
+    size_t n_wls = this_photon_summary.n_photons_per_wls.size();
+
+    n_wls += 1;
+    if(n_wls == 1)
+        this_photon_summary.distance_uv += delta_distance;
+    else
+        this_photon_summary.distance_visible += delta_distance;
+
+    if(this_photon_summary.n_photons_per_wls.size() >= n_wls) {
+        this_photon_summary.n_photons_per_wls.at(n_wls-1) = n_siblings;
+        this_photon_summary.wls_loc.at(n_wls-1) = wls_loc;
+    } else {
+        for(size_t n = this_photon_summary.n_photons_per_wls.size() + 1; n < n_wls - 1; ++n) {
+            this_photon_summary.n_photons_per_wls.push_back(0);
+            this_photon_summary.wls_loc.push_back(WLSLocation::WLSLoc::Unknown);
+        }
+        this_photon_summary.n_photons_per_wls.push_back(n_siblings);
+        this_photon_summary.wls_loc.push_back(wls_loc);
     }
 
     // now update the photon_summary, delete from map, and add new entry to the map
@@ -139,66 +220,34 @@ void G4CCMTreeTracker::UpdatePhotonSummary(int parent_id, int track_id, double g
     size_t new_pos = photon_summary->size() - 1;
     (*optical_photon_map)[track_id] = new_pos;
 
-    // let's also update n photons per wls
-    if (creationProcessName == "OpWLS" and new_process){
+    std::deque<int> fifo(sibling_track_ids.begin(), sibling_track_ids.end());
 
-        // let's update the parent id and track id map
-        // this keeps track of parent id and wls daughter track ids
-        std::map<int, std::vector<int>>::iterator wls_it = wls_parent_daughter_map->find(parent_id);
-        if (wls_it != wls_parent_daughter_map->end()) {
-            // ok this parent id is in our map! let's update daughter track ids
-            wls_it->second.push_back(track_id);
+    // loop over daughter tracks
+    while(not fifo.empty()) {
+        int sibling_track_id = fifo.front();
+        fifo.pop_front();
+
+        PhotonSummary & sibling_photon_summary = photon_summary->at((*optical_photon_map)[sibling_track_id]);
+
+        int parent_id = (*wls_daughter_parent_map)[sibling_track_id];
+        size_t n_siblings = (*wls_parent_daughter_map)[parent_id].size();
+        size_t current_sibling_n_wls = sibling_photon_summary.wls_loc.size();
+
+        if(current_sibling_n_wls >= n_wls) {
+            sibling_photon_summary.n_photons_per_wls.at(n_wls - 1) = n_siblings;
+            sibling_photon_summary.wls_loc.at(n_wls - 1) = wls_loc;
         } else {
-            // this key is NOT in our map!! let's add a value
-            (*wls_parent_daughter_map)[parent_id] = std::vector<int> {track_id};
-        }
-
-        // now let's update n_photons_per_wls for all daughers tracks of this parent
-        std::vector<int> tracks_per_parent = (*wls_parent_daughter_map)[parent_id];
-
-        // loop over daughter tracks
-        for (size_t t = 0; t < tracks_per_parent.size(); t++){
-            // grab n_wls this track has undergone
-            size_t this_n_wls =  photon_summary->at((*optical_photon_map)[tracks_per_parent[t]]).n_wls;
-
-            // looping over from current to original wls
-            int prev_track;
-            for (size_t n = this_n_wls; n > 0; n--){
-                // special logic for first iteration
-                if (n == this_n_wls) {
-                    size_t this_n_photons_per_wls = (*wls_parent_daughter_map)[parent_id].size();
-
-                    // now update our photon summary
-                    size_t s = photon_summary->at((*optical_photon_map)[tracks_per_parent[t]]).n_photons_per_wls.size();
-                    if (n <= s){
-                        photon_summary->at((*optical_photon_map)[tracks_per_parent[t]]).n_photons_per_wls.at(n-1) = this_n_photons_per_wls;
-                    } else {
-                        for (size_t nn = s; nn < n; nn++){
-                            photon_summary->at((*optical_photon_map)[tracks_per_parent[t]]).n_photons_per_wls.push_back(this_n_photons_per_wls);
-                        }
-                    }
-
-                    prev_track = parent_id;
-
-                } else {
-
-                    // ok our "track id"  is prev_track, let's find the corresponding parent id
-                    int prev_parent;
-                    for (auto it = wls_parent_daughter_map->begin(); it != wls_parent_daughter_map->end(); ++it) {
-                        std::vector<int>& vec = it->second;
-                        if (std::find(vec.begin(), vec.end(), prev_track) != vec.end()) {
-                            prev_parent = it->first;
-                        }
-                    }
-
-                    // ok now let's update our photon summary
-                    size_t this_n_photons_per_wls = (*wls_parent_daughter_map)[prev_parent].size();
-                    photon_summary->at((*optical_photon_map)[tracks_per_parent[t]]).n_photons_per_wls.at(n-1) = this_n_photons_per_wls;
-
-                    prev_track = prev_parent;
-                }
+            for(size_t n = current_sibling_n_wls + 1; n < n_wls - 1; ++n) {
+                sibling_photon_summary.n_photons_per_wls.push_back(0);
+                sibling_photon_summary.wls_loc.push_back(WLSLocation::WLSLoc::Unknown);
             }
+            sibling_photon_summary.n_photons_per_wls.push_back(n_siblings);
+            sibling_photon_summary.wls_loc.push_back(wls_loc);
         }
+
+        std::set<int> const & sibling_track_ids = (*wls_parent_daughter_map)[parent_id];
+
+        fifo.insert(fifo.end(), sibling_track_ids.cbegin(), sibling_track_ids.cend());
     }
 }
 
@@ -214,14 +263,14 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if(track->GetParentID() == 0 and track->GetTrackStatus() == fStopAndKill) {
         G4String processName;
         const G4VProcess* currentProcess = aStep->GetPostStepPoint()->GetProcessDefinedStep();
-        if (currentProcess) {
+        if(currentProcess) {
             processName = static_cast<std::string>(currentProcess->GetProcessName());
         }
         if(processName == "Radioactivation") {
             // Get the list of secondaries
             const G4TrackVector* secondaries = aStep->GetSecondary();
             // Modify the start time of each secondary particle
-            for (size_t i = 0; i < secondaries->size(); ++i) {
+            for(size_t i = 0; i < secondaries->size(); ++i) {
                 G4Track* secondary = const_cast<G4Track*>(secondaries->at(i));
                 secondary->SetGlobalTime(0.);
             }
@@ -264,14 +313,14 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         // check if we want to kill cerenkov photons
         if(KillCherenkov_ or KillScintillation_) {
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
-            std::string creationProcessName = "Unknown";
+            std::string creation_process_name = "Unknown";
             if(creationProcess) {
-                creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
+                creation_process_name = static_cast<std::string>(creationProcess->GetProcessName());
             }
-            if(KillCherenkov_ and creationProcessName == "Cerenkov") {
+            if(KillCherenkov_ and creation_process_name == "Cerenkov") {
                 aStep->GetTrack()->SetTrackStatus(fStopAndKill);
                 return false;
-            } else if (KillScintillation_ and creationProcessName == "Scintillation") {
+            } else if(KillScintillation_ and creation_process_name == "Scintillation") {
                 aStep->GetTrack()->SetTrackStatus(fStopAndKill);
                 return false;
             }
@@ -292,31 +341,33 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
             // let's also check if this photon got wls
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
-            std::string creationProcessName = "Unknown";
-            if (creationProcess) {
-                creationProcessName = static_cast<std::string>(creationProcess->GetProcessName());
+            std::string creation_process_name = "Unknown";
+            if(creationProcess) {
+                creation_process_name = static_cast<std::string>(creationProcess->GetProcessName());
             }
 
             // ok now let's save
             // check to see if the track id is in our map
-            bool new_process = false;
             std::map<int, size_t>::iterator it = optical_photon_map->find(track_id);
 
-            if (it != optical_photon_map->end()) {
-                // ok so this photon is in our map, let's just update
-                UpdatePhotonSummary(parent_id, track_id, g4_delta_time_step, creationProcessName, it, new_process, aStep, g4_delta_distance);
+            bool already_seen_track = it != optical_photon_map->end();
+
+            if(already_seen_track) {
+                UpdatePhoton(parent_id, track_id, it->second, g4_delta_time_step, g4_delta_distance, creation_process_name);
             } else {
                 // check if this parent id is in our map
                 std::map<int, size_t>::iterator parent_it = optical_photon_map->find(parent_id);
-
-                bool new_process = true;
-                if (parent_it != optical_photon_map->end()){
-                    // this is a new process! let's update our map
-                    UpdatePhotonSummary(parent_id, track_id, g4_delta_time_step, creationProcessName, parent_it, new_process, aStep, g4_delta_distance);
-
+                bool already_seen_parent = parent_it != optical_photon_map->end();
+                bool is_wavelength_shift = creation_process_name == "OpWLS";
+                if(already_seen_parent) {
+                    // Need to add a new photon track and update any siblings
+                    if(is_wavelength_shift)
+                        AddWLSPhotonTrack(parent_id, track_id, parent_it->second, g4_delta_time_step, g4_delta_distance, aStep);
+                    else
+                        AddPhotonTrack(parent_id, track_id, parent_it->second, g4_delta_time_step, g4_delta_distance, creation_process_name);
                 } else {
-                    // need to add a new photon to our map
-                    AddEntryToPhotonSummary(parent_id, track_id, g4_delta_distance, original_wavelength, primary_.GetTime() + pre_step_global_time + g4_delta_time_step, creationProcessName);
+                    // Just need to add a brand new photon track
+                    AddNewPhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, original_wavelength, creation_process_name);
                 }
             }
         }
@@ -333,7 +384,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // direction
     G4ThreeVector g4Direction = aStep->GetPostStepPoint()->GetMomentumDirection();
-    I3Direction direction(g4Direction.x(), g4Direction.y(), g4Direction.z());
+    I3Position direction(g4Direction.x(), g4Direction.y(), g4Direction.z());
 
     // time
     double time = primary_.GetTime() + aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
@@ -348,71 +399,95 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     std::string processName = (process) ? process->GetProcessName() : "Unknown";
 
     // now save to our MCTree!
-    if(parent_id == 0) {
-        // let's create and fill our I3Particle
-        // since parent id = 0, we need to add daughter energy loss (aka processName)
-
-        // process name -- use for parent id == 0!
-        if(energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()) {
-            if(TrackEnergyLosses_) {
-                I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
-                I3Particle daughter(daughter_type);
-
-                double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
-                daughter.SetEnergy(edep);
-                daughter.SetPos(position);
-                daughter.SetDir(direction);
-                daughter.SetTime(time);
-
-                if (DaughterParticleMap.find(1) == DaughterParticleMap.end()){
-                    G4cout << "oops! no primary particle in the map!" << std::endl;
-                } else {
-                    I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(1), daughter); // append energy deposition to primary particle
-                }
-            }
-        } else {
-            G4cout << "oops! no conversion for " << processName << std::endl;
-        }
-    } else if (parent_id > 0) {
+    if(parent_id > 0) {
         // ok so we've created a new particle
         // if this is the first time we're seeing this particle -- add particle + energy loss
         // if we've already added this daughter particle -- only add energy loss
 
         if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
-            // we have not added the daugher...let's do it now
             I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(pdg);
             I3Particle daughter(daughter_type);
-            daughter.SetEnergy(aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV);
-            daughter.SetPos(position);
-            daughter.SetDir(direction);
-            daughter.SetTime(time);
 
-            I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
+            std::map<int, int>::iterator parent_it = parent_map.find(parent_id);
+            if(parent_it != parent_map.end())
+                parent_id = parent_it->second;
+
+            // we have not added the daugher...let's do it now
+            double energy = aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV;
+            if(energy < G4ETrackingMin_) {
+                parent_map[track_id] = parent_id;
+            } else {
+                daughter.SetEnergy(energy);
+                daughter.SetPos(position);
+                daughter.SetDir(I3Direction(direction));
+                daughter.SetTime(time);
+                I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
+            }
 
             // update map
             DaughterParticleMap[track_id] = daughter.GetID();
         }
+    }
 
-        if(TrackEnergyLosses_) {
-            // Check if an energy loss has occurred
-            if(energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()) {
-                // now add energy loss
-                I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
-                I3Particle daughter(daughter_type);
+    if(TrackEnergyLosses_) {
+        // Check if an energy loss has occurred
+        if(energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()) {
+            // now add energy loss
+            I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
+            I3Particle daughter(daughter_type);
 
-                double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
-                daughter.SetEnergy(edep);
-                daughter.SetPos(position);
-                daughter.SetDir(direction);
-                daughter.SetTime(time);
-                if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
-                    G4cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
+            double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
+            daughter.SetEnergy(edep);
+            daughter.SetPos(position);
+            daughter.SetDir(I3Direction(direction));
+            daughter.SetTime(time);
+
+            std::map<int, int>::iterator parent_it = parent_map.find(track_id);
+            if(parent_it != parent_map.end())
+                track_id = parent_it->second;
+
+            if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
+                G4cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
+            } else {
+                if(edep < G4EDepMin_) {
+                    if(sub_threshold_losses.find(track_id) == sub_threshold_losses.end()) {
+                        sub_threshold_losses[track_id] = {0.0, std::vector<I3Particle>()};
+                    }
+                    std::tuple<double, std::vector<I3Particle>> & sub_losses = sub_threshold_losses[track_id];
+                    double & total_energy = std::get<0>(sub_losses);
+                    std::vector<I3Particle> & losses = std::get<1>(sub_losses);
+                    total_energy += edep;
+                    if(total_energy > G4EDepMin_) {
+                        position = position * edep;
+                        direction *= edep;
+                        time *= edep;
+                        for(I3Particle const & p : losses) {
+                            double const & e = p.GetEnergy();
+                            position += p.GetPos() * e;
+                            direction += p.GetDir() * e;
+                            time += p.GetTime() * e;
+                        }
+                        position /= total_energy;
+                        direction /= total_energy;
+                        time /= total_energy;
+
+                        // ok we have a valid energy deposition -- let's add it to the tree
+                        daughter.SetEnergy(total_energy);
+                        daughter.SetPos(position);
+                        daughter.SetDir(I3Direction(direction));
+                        daughter.SetTime(time);
+                        I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
+                        total_energy = 0.0;
+                        losses.clear();
+                    } else {
+                        losses.push_back(daughter);
+                    }
                 } else {
                     I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
                 }
-            } else {
-                G4cout << "oops! no conversion for " << processName << std::endl;
             }
+        } else {
+            G4cout << "oops! no conversion for " << processName << std::endl;
         }
     }
 

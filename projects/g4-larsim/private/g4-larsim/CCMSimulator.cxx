@@ -26,6 +26,9 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     responseServiceName_ = "CCM200Response";
     AddParameter("ResponseServiceName", "Name of the detector response service.", responseServiceName_);
 
+    configuration_name_ = "DetectorResponseConfig";
+    AddParameter("ConfigurationName", "Name of the detector response configuration object.", configuration_name_);
+
     input_mc_tree_name_ = "I3MCTree";
     AddParameter("InputMCTreeName", "Name of the input MC tree in the frame.", input_mc_tree_name_);
 
@@ -149,7 +152,7 @@ void CCMSimulator::ProcessNormally(I3FramePtr frame) {
 
 void CCMSimulator::FillSimulationFrame(I3FramePtr frame) {
     I3FrameObjectPtr obj = response_->GetSimulationConfiguration();
-    frame->Put("DetectorConfiguration", obj);
+    frame->Put(configuration_name_, obj);
 }
 
 void CCMSimulator::Simulation(I3FramePtr frame) {
@@ -201,7 +204,7 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
 
     // sort mcpeseries_map by time
     for (CCMMCPESeriesMap::iterator it = mcpeseries_map->begin(); it != mcpeseries_map->end(); ++it) {
-        std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.g4_time < b.g4_time; });
+        std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.time < b.time; });
     }
 
     frame->Put(PMTHitSeriesName_, mcpeseries_map);
@@ -327,7 +330,7 @@ void CCMSimulator::DAQMultiThreaded() {
         // sort mcpeseries_map by time
         if(mcpeseries_map != nullptr)
             for (CCMMCPESeriesMap::iterator it = mcpeseries_map->begin(); it != mcpeseries_map->end(); ++it) {
-                std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.g4_time < b.g4_time; });
+                std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.time < b.time; });
             }
 
         particle_idx += particles_per_event.at(i);

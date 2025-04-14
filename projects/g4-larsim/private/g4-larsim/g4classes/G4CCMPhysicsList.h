@@ -26,9 +26,9 @@
 /// \file G4CCMPhysicsList.hh
 /// \brief Definition of the G4CCMPhysicsList class
 //
-// 
+//
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo...... 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #ifndef G4CCMPhysicsList_h
 #define G4CCMPhysicsList_h 1
@@ -42,19 +42,22 @@
 
 //class G4CCMPhysicsList: public G4VUserPhysicsList {
 class G4CCMPhysicsList: public G4VModularPhysicsList {
-    public:
-        G4CCMPhysicsList(G4int ver=1);
-        ~G4CCMPhysicsList(); 
+public:
+    G4CCMPhysicsList(G4int ver=1);
+    ~G4CCMPhysicsList();
+    bool SimulateNuclearRecoils_ = false;
+    double G4RangeCut_ = 1e-6; // 1 um
+    double G4EDepMin_ = 1e-8; // 0.01 keV
 
-    protected:
-        // Construct particle and physics
-        void ConstructParticle() override;
-        void ConstructProcess()  override;
-        void SetCuts() override;
-    private : 
-	    G4VPhysicsConstructor* emPhysicsList;
-        G4VPhysicsConstructor* opticalPhysicsList;
-        G4VPhysicsConstructor* decayPhysicsList;
+protected:
+    // Construct particle and physics
+    void ConstructParticle() override;
+    void ConstructProcess()  override;
+    void SetCuts() override;
+private:
+    G4VPhysicsConstructor* emPhysicsList;
+    G4VPhysicsConstructor* opticalPhysicsList;
+    G4VPhysicsConstructor* decayPhysicsList;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

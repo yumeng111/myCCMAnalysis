@@ -695,6 +695,9 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             tree_tracker->SetKillScintillation(KillScintillation_);
             tree_tracker->SetKillPhotons(KillPhotons_);
             tree_tracker->SetReadout(readout_);
+            tree_tracker->SetG4RangeCut(G4RangeCut_);
+            tree_tracker->SetG4EDepMin(G4EDepMin_);
+            tree_tracker->SetG4ETrackingMin(G4ETrackingMin_);
             fTreeTracker_SD.Put(tree_tracker);
             G4SDManager::GetSDMpointer()->AddNewDetector(fTreeTracker_SD.Get());
             for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {

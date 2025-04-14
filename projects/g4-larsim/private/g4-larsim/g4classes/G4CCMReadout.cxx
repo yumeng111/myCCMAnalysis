@@ -18,7 +18,7 @@
 const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> G4CCMReadout::PhotonSummarytoCCMMCPEPhotonSource = {
     {PhotonSummary::PhotonSource::Unknown, CCMMCPE::PhotonSource::Unknown},
     {PhotonSummary::PhotonSource::Scintillation, CCMMCPE::PhotonSource::Scintillation},
-    {PhotonSummary::PhotonSource::Cerenkov, CCMMCPE::PhotonSource::Cerenkov}
+    {PhotonSummary::PhotonSource::Cherenkov, CCMMCPE::PhotonSource::Cherenkov}
 };
 
 
@@ -166,18 +166,17 @@ void G4CCMReadout::UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummar
                 PhotonSummary const & this_photon_summary = photon_summary_series->at(it_map->second);
 
                 // Update the destination CCMMCPE with the summary information
-                pe.g4_time = this_photon_summary.g4_time;
+                pe.time = this_photon_summary.time;
                 //pe.calculated_time = this_photon_summary.calculated_time;
-                pe.g4_distance_uv = this_photon_summary.g4_distance_uv;
-                //pe.g4_distance_visible = this_photon_summary.g4_distance_visible;
+                pe.distance_uv = this_photon_summary.distance_uv;
+                //pe.distance_visible = this_photon_summary.distance_visible;
                 //pe.calculated_distance_uv = this_photon_summary.calculated_distance_uv;
                 //pe.calculated_distance_visible = this_photon_summary.calculated_distance_visible;
                 pe.photon_source = PhotonSummarytoCCMMCPEPhotonSource.at(this_photon_summary.photon_source);
-                pe.n_wls = this_photon_summary.n_wls;
                 pe.n_photons_per_wls = this_photon_summary.n_photons_per_wls;
                 pe.wls_loc = this_photon_summary.wls_loc;
             }
         }
-        std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.g4_time < b.g4_time; });
+        std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.time < b.time; });
     }
 }

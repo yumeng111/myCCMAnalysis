@@ -7,7 +7,7 @@ I3_SERIALIZABLE(CCMMCPESeries);
 
 const std::unordered_map<CCMMCPE::PhotonSource, std::string> CCMMCPE::photonSourceToProcessName = {{CCMMCPE::PhotonSource::Unknown, "Unknown"},
                                                                                                       {CCMMCPE::PhotonSource::Scintillation, "Scintillation"},
-                                                                                                      {CCMMCPE::PhotonSource::Cerenkov, "Cerenkov"},
+                                                                                                      {CCMMCPE::PhotonSource::Cherenkov, "Cerenkov"},
                                                                                                       {CCMMCPE::PhotonSource::OpWLS, "OpWLS"}};
 template <class Archive>
 void CCMMCPE::save(Archive& ar, unsigned version) const {
@@ -16,15 +16,14 @@ void CCMMCPE::save(Archive& ar, unsigned version) const {
 
     ar & make_nvp("parent_id",parent_id);
     ar & make_nvp("track_id",track_id);
-    ar & make_nvp("n_wls",n_wls);
     ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
     ar & make_nvp("wls_loc",wls_loc);
-    ar & make_nvp("g4_time",g4_time);
+    ar & make_nvp("time",time);
     //ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
-    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("distance_uv",distance_uv);
     ar & make_nvp("original_wavelength",original_wavelength);
-    ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("distance_visible",distance_visible);
     //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
     //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     //ar & make_nvp("position",position);
@@ -40,20 +39,22 @@ void CCMMCPE::load(Archive& ar, unsigned version) {
     ar & make_nvp("parent_id",parent_id);
     ar & make_nvp("track_id",track_id);
     if (ccmmcpe_version_ == 0){
-        n_wls = 0;
         n_photons_per_wls = {};
         wls_loc = WLSLocationSeries();
     } else {
-        ar & make_nvp("n_wls",n_wls);
+        if (ccmmcpe_version_ == 1) {
+            size_t n_wls = 0;
+            ar & make_nvp("n_wls",n_wls);
+        }
         ar & make_nvp("n_photons_per_wls",n_photons_per_wls);
         ar & make_nvp("wls_loc",wls_loc);
     }
-    ar & make_nvp("g4_time",g4_time);
+    ar & make_nvp("time",time);
     //ar & make_nvp("calculated_time",calculated_time);
     ar & make_nvp("wavelength",wavelength);
-    ar & make_nvp("g4_distance_uv",g4_distance_uv);
+    ar & make_nvp("distance_uv",distance_uv);
     ar & make_nvp("original_wavelength",original_wavelength);
-    ar & make_nvp("g4_distance_visible",g4_distance_visible);
+    ar & make_nvp("distance_visible",distance_visible);
     //ar & make_nvp("calculated_distance_uv",calculated_distance_uv);
     //ar & make_nvp("calculated_distance_visible",calculated_distance_visible);
     //ar & make_nvp("position",position);
@@ -75,15 +76,14 @@ std::ostream& CCMMCPE::Print(std::ostream& os) const{
     os << "[ CCMMCPE::"
         << "\n  ParentID :" << parent_id
         << "\n  TrackID :" << track_id
-        << "\n  NWLS :" << n_wls
         << "\n  NPhotons Per WLS :" << n_photons_per_wls
         << "\n  WLS Location :" << wls_loc
-        << "\n  G4 Time :" << g4_time
+        << "\n  Time :" << time
         //<< "\n  Calculated Time :" << calculated_time
         << "\n  Wavelength :" << wavelength
-        << "\n  G4 Distance UV :" << g4_distance_uv
+        << "\n  Distance UV :" << distance_uv
         << "\n  Original Wavelength :" << original_wavelength
-        << "\n  G4 Distance Visible :" << g4_distance_visible
+        << "\n  Distance Visible :" << distance_visible
         //<< "\n  Calculated Distance UV :" << calculated_distance_uv
         //<< "\n  Calculated Distance Visible :" << calculated_distance_visible
         //<< "\n  Position :" << position

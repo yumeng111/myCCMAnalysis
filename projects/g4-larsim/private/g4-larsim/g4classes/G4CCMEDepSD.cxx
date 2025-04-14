@@ -198,15 +198,18 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4double ekin = aStep->GetTrack()->GetKineticEnergy() / electronvolt * I3Units::eV;
 
     // position
-    G4ThreeVector photonPosition = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(photonPosition.x() / mm * I3Units::mm, photonPosition.y() / mm * I3Units::mm, photonPosition.z() / mm * I3Units::mm);
+    G4ThreeVector prePosition = aStep->GetPostStepPoint()->GetPosition();
+    G4ThreeVector postPosition = aStep->GetPostStepPoint()->GetPosition();
+    I3Position position(prePosition.x() / mm * I3Units::mm, prePosition.y() / mm * I3Units::mm, prePosition.z() / mm * I3Units::mm);
+    position += I3Position(postPosition.x() / mm * I3Units::mm, postPosition.y() / mm * I3Units::mm, postPosition.z() / mm * I3Units::mm);
+    position /= 2.;
 
     // direction
     G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
     I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
     // time
-    G4double photonTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+    G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
 
     // process name -- use for parent id == 0!
     G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
@@ -223,6 +226,7 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         daughter.SetEnergy(edep);
         daughter.SetPos(position);
         daughter.SetDir(direction);
+        daughter.SetTime(time);
         output_energy_losses_vector->push_back(daughter);
     } else {
         std::cout << "oops! no conversion for " << processName << std::endl;

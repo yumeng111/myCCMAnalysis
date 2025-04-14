@@ -48,7 +48,7 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 const std::unordered_map<std::string, CCMMCPE::PhotonSource> G4CCMPMTSD::processNameToPhotonSource = {{"Unknown", CCMMCPE::PhotonSource::Unknown},
                                                                                                       {"Scintillation", CCMMCPE::PhotonSource::Scintillation},
-                                                                                                      {"Cerenkov", CCMMCPE::PhotonSource::Cerenkov},
+                                                                                                      {"Cerenkov", CCMMCPE::PhotonSource::Cherenkov},
                                                                                                       {"OpWLS", CCMMCPE::PhotonSource::OpWLS}};
 
 G4CCMPMTSD::G4CCMPMTSD(G4String name) : G4VSensitiveDetector(name) {
@@ -174,8 +174,7 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // so we have the CCMPMTKey and we have the CCMMCPE, let's save!
     CCMMCPEMap->at(key).emplace_back(
         parent_id, track_id,
-        0, // Number of WLS photons, updated later in G4CCMReadout
-        std::vector<size_t>{0}, // Number of photons per WLS, updated later
+        std::vector<size_t>{}, // Number of photons per WLS, updated later
         WLSLocationSeries(), // WLS locations, updated later
         globalTime, photonWavelength,
         0.0, // Distance in UV, updated later
