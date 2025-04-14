@@ -212,7 +212,7 @@ PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     remove_cherenkov_(false), flat_eff_(false), weight_uv_abs_(false) {
     AddParameter("InputHitsMapName", "", input_hits_map_name_);
     AddParameter("OutputRecoPulseName", "", output_reco_pulse_name_);
-    AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", I3DefaultName<DetectorResponseConfig>::value());
+    AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", std::string("DetectorResponseConfig"));
     AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
     AddParameter("QEWavelengths", "Wavelengths for quantum efficiency", wavelength_qe_wavelength);
     AddParameter("QEValues", "Values for quantum efficiency", wavelength_qe_efficiency);
@@ -226,25 +226,25 @@ void PMTResponse::Configure() {
     GetParameter("InputHitsMapName", input_hits_map_name_);
     GetParameter("OutputRecoPulseName", output_reco_pulse_name_);
     GetParameter("DetectorConfigurationName", detector_configuration_name_);
+    GetParameter("RandomServiceName", randomServiceName_);
+    if(randomServiceName_.empty()) {
+        randomService_ = I3RandomServicePtr(new I3GSLRandomService(0));
+        log_debug("+ Random service: I3GSLRandomService  (default)");
+    } else {
+        randomService_ = GetContext().Get<I3RandomServicePtr>(randomServiceName_);
+        if(randomService_) log_debug("+ Random service: %s  (EXTERNAL)",  randomServiceName_.c_str());
+        else log_fatal("No random service \"%s\" in context!", randomServiceName_.c_str());
+    }
+    GetParameter("QEWavelengths", wavelength_qe_wavelength);
+    GetParameter("QEValues", wavelength_qe_efficiency);
     if(wavelength_qe_wavelength.size() != wavelength_qe_efficiency.size()) {
         log_fatal("Wavelengths and QE values must have the same size!");
     }
     if(wavelength_qe_wavelength.empty()) {
         wavelength_qe_wavelength = default_wavelength_qe_wavelength;
         wavelength_qe_efficiency = default_wavelength_qe_efficiency;
-        log_info("Using default wavelength qe values");
+        log_debug("Using default wavelength qe values");
     }
-    GetParameter("RandomServiceName", randomServiceName_);
-    if(randomServiceName_.empty()) {
-        randomService_ = I3RandomServicePtr(new I3GSLRandomService(0));
-        log_info("+ Random service: I3GSLRandomService  (default)");
-    } else {
-        randomService_ = GetContext().Get<I3RandomServicePtr>(randomServiceName_);
-        if(randomService_) log_info("+ Random service: %s  (EXTERNAL)",  randomServiceName_.c_str());
-        else log_fatal("No random service \"%s\" in context!", randomServiceName_.c_str());
-    }
-    GetParameter("QEWavelengths", wavelength_qe_wavelength);
-    GetParameter("QEValues", wavelength_qe_efficiency);
     GetParameter("RemoveCherenkov", remove_cherenkov_);
     GetParameter("FlatEfficiency", flat_eff_);
     GetParameter("WeightUVAbsorption", weight_uv_abs_);
@@ -254,7 +254,7 @@ void PMTResponse::Configure() {
 
 void PMTResponse::Simulation(I3FramePtr frame) {
     if(not frame->Has(detector_configuration_name_)) {
-        log_fatal("No detector configuration found in frame");
+        log_fatal("No detector configuration found in frame with name %s", detector_configuration_name_.c_str());
     }
 
     DetectorResponseConfig const & detector_config = frame->Get<DetectorResponseConfig>(detector_configuration_name_);
@@ -454,6 +454,24 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         }
     }
 
+    std::map<CCMTriggerKey, std::tuple<std::vector<CCMPMTKey>, double, double>> _offsets;
+
+    for(std::pair<CCMPMTKey, CCMTriggerKey> const & key : trigger_copy_map_) {
+        if(_offsets.find(key.second) != _offsets.end()) {
+            std::get<0>(_offsets[key.second]).push_back(key.first);
+        } else {
+            std::vector<CCMPMTKey> pmts;
+            pmts.push_back(key.first);
+            _offsets.insert(std::make_pair(key.second, std::make_tuple(pmts, this_event_board_time_offset[key.first], this_event_board_time_error[key.first])));
+        }
+    }
+    for(std::pair<CCMTriggerKey, std::tuple<std::vector<CCMPMTKey>, double, double>> const & key : _offsets) {
+        std::cout << "Board " << key.first << " has " << std::get<0>(key.second).size() << " PMTs with offset " << std::get<1>(key.second) << " and error " << std::get<2>(key.second) << std::endl;
+        for(CCMPMTKey const & pmt : std::get<0>(key.second)) {
+            std::cout << "\t" << pmt << std::endl;
+        }
+    }
+
     // set up object to hold re-weighed simulation
     CCMRecoPulseSeriesMapPtr mcpeseries_dest = boost::make_shared<CCMRecoPulseSeriesMap>();
 
@@ -463,8 +481,13 @@ void PMTResponse::DAQ(I3FramePtr frame) {
     // grab a random number for the overall event time offset
     double event_time_offset = randomService_->Uniform(-10.0, 10.0);
 
+    log_debug("Event time offset: %f", event_time_offset);
+
     // Iterate over PMTs in source map
     for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
+        std::stringstream ss;
+        ss << it->first;
+        log_debug("PMT: %s", ss.str().c_str());
 
         // Find the corresponding PMT in the destination map
         CCMRecoPulseSeriesMap::iterator it_dest = mcpeseries_dest->find(it->first);
@@ -484,6 +507,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         if(flat_eff_) {
             pmt_efficiency = average_pmt_eff_;
         }
+        log_debug("PMT efficiency: %f", pmt_efficiency);
 
         // Adjust pmt efficiency by the integrated late pulse
         //pmt_efficiency *= (0.5 + integrated_late_pulse_.at(it->first));
@@ -494,11 +518,16 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         double this_tube_board_time_offset = this_event_board_time_offset.at(it->first);
         double this_tube_board_time_error = this_event_board_time_error.at(it->first);
 
+        log_debug("Board time offset: %f", this_tube_board_time_offset);
+        log_debug("Board time error: %f", this_tube_board_time_error);
+
         double this_tube_transit_time = 0.0;
         I3MapPMTKeyDouble::const_iterator pmt_tt_it = pmt_transit_times_->find(it->first);
         if(pmt_tt_it != pmt_transit_times_->end()) {
             this_tube_transit_time = pmt_tt_it->second;
         }
+
+        log_debug("PMT transit time: %f", this_tube_transit_time);
 
         double this_tube_spe_threshold = 0.0;
         I3MapPMTKeyDouble::const_iterator spe_threshold_it = spe_lower_threshold_->find(it->first);
@@ -506,30 +535,53 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             this_tube_spe_threshold = spe_threshold_it->second;
         }
 
+        log_debug("PMT SPE threshold: %f", this_tube_spe_threshold);
+
         double this_tube_spe_threshold_efficiency = 1.0 - NormalDistributionCDF(spe_mu_.at(it->first), spe_sigma_.at(it->first), this_tube_spe_threshold);
+
+        log_debug("PMT SPE threshold efficiency: %f", this_tube_spe_threshold_efficiency);
+
+        log_debug("%d hits", it->second.size());
 
         // Iterate over the vector of CCMMCPE in the source map for this PMT
         std::vector<CCMRecoPulse> temp_series; temp_series.reserve(size_t(it->second.size() * 0.5));
         for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+            log_debug("\tHit %d", std::distance(it->second.begin(), it2));
             CCMMCPE const & pe = *it2;
 
+            if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
+                log_debug("\tScintillation photon");
+            } else if(pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
+                log_debug("\tCherenkov photon");
+            }
+
             // If we want to remove cherenkov photons, do so now
-            if(remove_cherenkov_ and pe.photon_source == CCMMCPE::PhotonSource::Cerenkov)
+            if(remove_cherenkov_ and pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
+                log_debug("\tRemoving cherenkov photon");
                 continue;
+            }
 
             // first, grab random number 0 - 1 to determine if this photon survives
             double survival = randomService_->Uniform(0.0, 1.0);
+            log_debug("\tSurvival: %f", survival);
 
             // Check if we surive wavelength response of the tube
             double wavelength = pe.wavelength / I3Units::nanometer;
+            log_debug("\tWavelength: %f nm", wavelength);
 
             // find the first element in wavelength_qe_wavelength that is greater than or equal to wavelength
             double wavelength_qe_weighting;
             std::vector<double>::iterator lower_it = std::lower_bound(wavelength_qe_wavelength.begin(), wavelength_qe_wavelength.end(), wavelength);
-            size_t lower_index = std::distance(wavelength_qe_wavelength.begin(), lower_it);
             if(lower_it == wavelength_qe_wavelength.begin() or lower_it == wavelength_qe_wavelength.end()) {
+                log_debug("\tWavelength out of range: %f vs [%f, %f]", wavelength, wavelength_qe_wavelength.front(), wavelength_qe_wavelength.back());
+                if(lower_it == wavelength_qe_wavelength.begin()) {
+                    log_debug("\tWavelength below range");
+                } else {
+                    log_debug("\tWavelength above range");
+                }
                 wavelength_qe_weighting = 0.0;
             } else {
+                size_t lower_index = std::distance(wavelength_qe_wavelength.begin(), lower_it);
                 double wl_below = *lower_it;
                 double wlqe_below = wavelength_qe_efficiency.at(lower_index);
                 if(wl_below > wavelength) {
@@ -541,12 +593,14 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 double wlqe_above =  wavelength_qe_efficiency.at(lower_index + 1);
                 wavelength_qe_weighting = wlqe_below + (wavelength - wl_below) * ((wlqe_above - wlqe_below) / (wl_above - wl_below));
             }
+            log_debug("\tWavelength QE weighting: %f", wavelength_qe_weighting);
 
             // Check if survive uv absorption cuts
             double uv_abs_probability = 1.0;
             if(weight_uv_abs_) {
+                log_debug("\tWeighting UV absorption");
                 double original_wavelength = pe.wavelength / I3Units::nanometer;
-                double distance_travelled_before_wls = pe.g4_distance_uv / I3Units::m;
+                double distance_travelled_before_wls = pe.distance_uv / I3Units::m;
 
                 double uv_abs_length = ResponseUVAbsorptionCM(original_wavelength);
                 double simulated_uv_abs_length = SimulatedUVAbsorptionCM(original_wavelength);
@@ -554,16 +608,25 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 double absorption_probability = exp(-distance_travelled_before_wls / uv_abs_length);
                 double simulated_absorption_probability = exp(-distance_travelled_before_wls / simulated_uv_abs_length);
 
+                log_debug("\tAbsorption probability: %f", absorption_probability);
+                log_debug("\tSimulated absorption probability: %f", simulated_absorption_probability);
+
                 uv_abs_probability = absorption_probability / simulated_absorption_probability;
+                log_debug("\tUV absorption weight: %f", uv_abs_probability);
             }
 
             double survival_probability = this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
+            log_debug("\tSurvival probability: %f", survival_probability);
 
             double charge_scale_factor = 1.0;
             if(survival_probability > 1.0) {
+                log_debug("\tSurvival probability > 1.0, scaling charge");
                 charge_scale_factor = survival_probability;
             } else if(survival > survival_probability) {
+                log_debug("\tPhoton did not survive");
                 continue;
+            } else {
+                log_debug("\tPhoton survived");
             }
 
             // ok our photon has survived! yay! let's apply our various time offsets
@@ -571,50 +634,71 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             // 2 -- time jitter due to electron transit times
             // 3 -- physical time offset (either due to scintillation + tpb or to late pulse)
 
-            double total_time_offset = event_time_offset + (pe.g4_time / I3Units::nanosecond);
+            double total_time_offset = event_time_offset + (pe.time / I3Units::nanosecond);
+            log_debug("\tG4 time: %f", pe.time / I3Units::nanosecond);
 
             PulseTimeDistribution const & pmt_pulse_type = pulse_types_.at(pulse_selector_(randomService_));
             double pulse_time_offset = SampleGEV(pmt_pulse_type);
+            log_debug("\tPulse time offset: %f", pulse_time_offset);
 
             total_time_offset += pulse_time_offset;
 
+            double scint_time_offset = 0.0;
             if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
+                log_debug("\tScintillation photon");
                 // now let's get a random number to see if we're in singlet, triplet, or intermediate times
                 double time_distribution = randomService_->Uniform(0.0, 1.0);
                 if(time_distribution < (ratio_singlet_ + ratio_triplet_)) {
+                    log_debug("\tSinglet or triplet");
                     // ok singlet or triplet! throw another random number to figure it out
                     double t = randomService_->Uniform(0.0, ratio_singlet_ + ratio_triplet_);
                     if(t < ratio_singlet_) {
                         // in singlet!
                         double singlet_rand = randomService_->Uniform(0.0, 1.0);
-                        total_time_offset += ExponentialInverseCDF(singlet_rand, singlet_time_constant_);
+                        scint_time_offset = ExponentialInverseCDF(singlet_rand, singlet_time_constant_);
+                        log_debug("\tSinglet time offset: %f", scint_time_offset);
+                        total_time_offset += scint_time_offset;
                     } else {
                         // in triplet
                         double triplet_rand = randomService_->Uniform(0.0, 1.0);
-                        total_time_offset += ExponentialInverseCDF(triplet_rand, triplet_time_constant_);
+                        scint_time_offset += ExponentialInverseCDF(triplet_rand, triplet_time_constant_);
+                        log_debug("\tTriplet time offset: %f", scint_time_offset);
+                        total_time_offset += scint_time_offset;
                     }
                 } else {
+                    log_debug("\tIntermediate time");
                     // ok we are in the intermediate time component
                     double intermediate_rand = randomService_->Uniform(0.0, 1.0);
-                    total_time_offset += IntermediateInverseCDF(intermediate_rand, intermediate_time_constant_);
+                    scint_time_offset = IntermediateInverseCDF(intermediate_rand, intermediate_time_constant_);
+                    log_debug("\tIntermediate time offset: %f", scint_time_offset);
+                    total_time_offset += scint_time_offset;
                 }
             }
+
+            log_debug("\tTotal time offset: %f = %f + %f + %f + %f", total_time_offset, event_time_offset, pe.time / I3Units::nanosecond, pulse_time_offset, scint_time_offset);
 
             // now, finally, sample our spe shape for this tube to assign the appropiate magnitude to our pulse
             double pulse_amplitude_rand = randomService_->Uniform(1.0 - this_tube_spe_threshold_efficiency, 1.0);
             double pulse_amplitude = NormalDistributionInverseCDF(pulse_amplitude_rand, spe_mu_.at(it->first), spe_sigma_.at(it->first));
 
+            log_debug("\tPulse amplitude: %f", pulse_amplitude);
+
             // check to make sure we dont have any infinities and our pulse amplitude is appropriate
             if(std::isinf(pulse_amplitude) or std::isinf(total_time_offset)) {
+                log_debug("\tInfinite pulse amplitude or time offset, skipping");
+                log_debug("\tPulse amplitude: %f", pulse_amplitude);
+                log_debug("\tTotal time offset: %f", total_time_offset);
                 continue;
             }
 
             // If we undersimulated the number of photons, then the next best thing we can do is scale up the charge
             pulse_amplitude *= charge_scale_factor;
 
+            log_debug("\tScaled pulse amplitude: %f", pulse_amplitude);
+
             // note -- we are hacking the pmt width to be cherenkov spe
             double width = 0.0;
-            if(pe.photon_source == CCMMCPE::PhotonSource::Cerenkov) {
+            if(pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
                 width = pulse_amplitude;
             }
 
@@ -622,34 +706,47 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             // add transit time for this tube
             total_time_offset += this_tube_transit_time + this_tube_board_time_offset;
 
+            log_debug("\tFinal time offset: %f", total_time_offset);
+
             // bin
             double binned_reco_time = static_cast<int>(total_time_offset / 2.0) * 2.0;
 
             // and now subtract off our transit time with error
             binned_reco_time -= this_tube_transit_time + this_tube_board_time_offset + this_tube_board_time_error;
 
+            log_debug("\tBinned reco time: %f", binned_reco_time);
+
             temp_series.emplace_back();
             CCMRecoPulse & pulse = temp_series.back();
             pulse.SetCharge(pulse_amplitude);
             pulse.SetTime(binned_reco_time);
             pulse.SetWidth(width);
+            log_debug("\t");
         }
 
-        if(temp_series.empty())
+        if(temp_series.empty()) {
+            log_debug("No pulses for this tube, skipping");
             continue;
+        }
+
+        log_debug("Found %d pulses for this tube", temp_series.size());
 
         // Sort and merge the pulses
         std::sort(temp_series.begin(), temp_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
+        log_debug("Adding pulse at time %f", temp_series.front().GetTime());
         dest_series.push_back(temp_series.front());
         for(CCMRecoPulseSeries::const_iterator it = temp_series.begin() + 1; it != temp_series.end(); ++it) {
             CCMRecoPulse & dest_pulse = dest_series.back();
             if(it->GetTime() == dest_pulse.GetTime()) {
+                log_debug("Merging pulses at time %f", it->GetTime());
                 dest_pulse.SetCharge(dest_pulse.GetCharge() + it->GetCharge());
                 dest_pulse.SetWidth(dest_pulse.GetWidth() + it->GetWidth());
             } else {
+                log_debug("Adding pulse at time %f", it->GetTime());
                 dest_series.push_back(*it);
             }
         }
+        log_debug("");
     }
 
     frame->Put(output_reco_pulse_name_, mcpeseries_dest);
