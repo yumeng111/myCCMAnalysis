@@ -586,7 +586,9 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapVacuumFilledSolid() {
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleFilledSolid() {
     if(bridle_filled_solid)
         throw std::runtime_error("Frill center solid already exists");
-    G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, bridle_width*4, 0*deg, 360*deg);
+    G4double max_disk_height = ComputeDiskHeight(cylinder_radius, bridle_radius, bridle_width) + bridle_width;
+
+    G4VSolid * fBridlePunchOut = new G4Tubs("BridlePunchOut", 0*cm, bridle_radius, max_disk_height*4, 0*deg, 360*deg);
     bridle_filled_solid = std::shared_ptr<G4VSolid>(fBridlePunchOut);
     return bridle_filled_solid;
 }
@@ -599,7 +601,9 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCylinderSolid() {
 
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillFilledSolid() {
-    G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, frill_width*4, 0*deg, 360*deg);
+    G4double max_disk_height = ComputeDiskHeight(cylinder_radius, frill_radius, frill_width) + frill_width;
+
+    G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, max_disk_height*4, 0*deg, 360*deg);
     frill_filled_solid = std::shared_ptr<G4VSolid>(fFrillPunchOut);
     return frill_filled_solid;
 }
@@ -668,8 +672,6 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleCapFilledSolid() {
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillWallFilledSolid() {
-    G4double max_disk_height = ComputeDiskHeight(cylinder_radius, frill_radius, frill_width);
-
     //G4VSolid * fFrillPunchOut = new G4Tubs("FrillPunchOut", 0, frill_radius, max_disk_height*4, 0*deg, 360*deg);
     //temp_solids.emplace_back(fFrillPunchOut);
     G4VSolid * fFrillPunchOut = frill_filled_solid.get();
