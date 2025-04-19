@@ -221,11 +221,14 @@ void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, size_t par
     (*optical_photon_map)[track_id] = new_pos;
 
     std::deque<int> fifo(sibling_track_ids.begin(), sibling_track_ids.end());
+    std::set<int> processed;
 
     // loop over daughter tracks
     while(not fifo.empty()) {
         int sibling_track_id = fifo.front();
         fifo.pop_front();
+
+        processed.insert(sibling_track_id);
 
         PhotonSummary & sibling_photon_summary = photon_summary->at((*optical_photon_map)[sibling_track_id]);
 
@@ -247,7 +250,11 @@ void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, size_t par
 
         std::set<int> const & sibling_track_ids = (*wls_parent_daughter_map)[parent_id];
 
-        fifo.insert(fifo.end(), sibling_track_ids.cbegin(), sibling_track_ids.cend());
+        for(int const & sibling_track_id : sibling_track_ids) {
+            if(processed.find(sibling_track_id) == processed.end()) {
+                fifo.push_back(sibling_track_id);
+            }
+        }
     }
 }
 

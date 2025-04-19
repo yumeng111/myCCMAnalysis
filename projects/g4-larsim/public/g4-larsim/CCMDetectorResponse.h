@@ -25,6 +25,11 @@ class CCMDetectorResponse : public I3ServiceBase {
         // get configuration parameters
         virtual void Configure() = 0;
 
+        // set the number of threads
+        virtual void SetNumberOfThreads(size_t n_threads) {
+            n_threads_ = n_threads;
+        }
+
         // get config information
         virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
 
@@ -37,6 +42,7 @@ class CCMDetectorResponse : public I3ServiceBase {
         virtual void DestroyInterface() = 0;
 
     protected:
+        size_t n_threads_ = 0;
         template <class ParamType>
         void AddParameter(const std::string& name,
                         const std::string& description,

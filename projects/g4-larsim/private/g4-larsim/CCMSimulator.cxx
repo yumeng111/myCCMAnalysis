@@ -44,6 +44,9 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     multithreaded_ = false;
     AddParameter("Multithreaded", "Run the simulation in multithreaded mode.", multithreaded_);
 
+    n_threads_ = 1;
+    AddParameter("NumberOfThreads", "Number of threads to use for the simulation.", n_threads_);
+
     batch_size_ = 1;
     AddParameter("BatchSize", "Number of events to simulate in one batch.", batch_size_);
 
@@ -73,8 +76,13 @@ void CCMSimulator::Configure() {
     GetParameter("Multithreaded", multithreaded_);
     log_info("+ Multithreaded : %s", multithreaded_ ? "true" : "false");
 
+    GetParameter("NumberOfThreads", n_threads_);
+    log_info("+ NumberOfThreads : %zu", n_threads_);
+
     GetParameter("BatchSize", batch_size_);
     log_info("+ BatchSize : %zu", batch_size_);
+
+    response_->SetNumberOfThreads(n_threads_);
 
     // initialize the response services
     response_->Initialize();

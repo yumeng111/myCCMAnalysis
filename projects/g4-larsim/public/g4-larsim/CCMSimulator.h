@@ -51,6 +51,7 @@ private:
     bool multithreaded_;
     size_t batch_size_;
     std::deque<I3FramePtr> frame_queue_;
+    size_t n_threads_;
 
     bool seen_s_frame_ = false;
     unsigned int n_daq_frames_ = 0;

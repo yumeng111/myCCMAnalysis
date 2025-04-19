@@ -37,6 +37,8 @@
 #include <G4BetaPlusDecay.hh>
 #include <G4GenericIon.hh>
 #include <G4Geantino.hh>
+#include <G4TransportationManager.hh>
+#include <G4VNavigation.hh>
 
 std::shared_ptr<G4Interface> G4Interface::g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
 
@@ -100,6 +102,9 @@ void G4Interface::InstallDetector(
         runManager_ = std::make_shared<G4MTRunManager>();
     }
 
+    runManager_->SetNumberOfThreads(n_cores_);
+    runManager_->SetVerboseLevel(1);
+
     if(particle_list_ == nullptr) {
         particle_list_ = std::make_shared<G4CCMParticleList>();
     }
@@ -144,6 +149,9 @@ void G4Interface::InstallDetector(
         // Force reinitializatiion
         //runManager_->ReinitializeGeometry(true);
     }
+
+    //G4Navigator* tracking_navigator = G4TransportationManager::GetInstanceIfExist()->GetNavigatorForTracking();
+    //tracking_navigator->CheckMode(true);
 }
 
 void G4Interface::InitializeRun() {

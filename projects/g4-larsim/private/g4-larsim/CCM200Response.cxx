@@ -171,6 +171,8 @@ void CCM200Response::Initialize() {
         g4Interface_ = G4Interface::GetInstance();
     }
 
+    g4Interface_->SetNumberOfThreads(n_threads_);
+
     // let's let's construct the detector
     g4Interface_->InstallDetector(
                                   SaveAllEnergyLossesTree_,
