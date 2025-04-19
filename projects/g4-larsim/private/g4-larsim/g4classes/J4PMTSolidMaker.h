@@ -66,6 +66,10 @@ public:
     std::shared_ptr<G4VSolid> frill_wall_solid;
     std::shared_ptr<G4VSolid> frill_cap_solid;
 
+    std::shared_ptr<G4VSolid> shiny_solid;
+    std::shared_ptr<G4VSolid> shiny_top_solid;
+    std::shared_ptr<G4VSolid> shiny_bottom_solid;
+
     std::map<std::string, std::tuple<std::array<std::shared_ptr<G4VSolid>, 5>, std::shared_ptr<G4RotationMatrix>, G4ThreeVector>> base_solids;
 
     std::map<std::string, std::shared_ptr<G4VSolid>> frill_solids;
@@ -88,6 +92,10 @@ public:
     std::map<std::string, G4ThreeVector> vacuum_positions;
     std::map<std::string, std::shared_ptr<G4RotationMatrix>> vacuum_rotations;
 
+    std::map<std::string, std::shared_ptr<G4VSolid>> shiny_solids;
+    std::map<std::string, G4ThreeVector> shiny_positions;
+    std::map<std::string, std::shared_ptr<G4RotationMatrix>> shiny_rotations;
+
     G4double cylinder_radius = 1037.0*mm - 3.15*mm;
     G4double cylinder_half_height = 1239.6*mm / 2.0;
     G4double pmt_radius = 131.0 * mm;
@@ -102,6 +110,9 @@ public:
     G4double bridle_radius = 209.55 / 2.0 * mm;
     G4double frill_width = 0.813 * mm;
     G4double frill_radius = 228.6 / 2.0 * mm;
+    G4double shiny_top_radius = 13.335 * cm;
+    G4double shiny_radius = 205.0 / 2.0 * mm; // making the assumption that it is the same radius as the bridle
+    G4double shiny_half_height = 0.125 * mm;
 
     J4PMTSolidMaker() {}
 
@@ -172,11 +183,16 @@ public:
     std::shared_ptr<G4VSolid> CreateFrillWallSolid();
     std::shared_ptr<G4VSolid> CreateFrillCapSolid();
 
+    std::shared_ptr<G4VSolid> CreateShinySolid();
+    std::shared_ptr<G4VSolid> CreateShinyTopSolid();
+    std::shared_ptr<G4VSolid> CreateShinyBottomSolid();
+
     G4RotationMatrix * GetPMTRotationMatrix(std::string pmt_id);
     G4ThreeVector GetPMTPosition(std::string pmt_id);
 
     static void ParsePMTID(std::string pmt_id, bool & pmt_on_cap, int & pmt_row, int & pmt_col, int & pmt_ring, int & pmt_number, bool & coated);
     void CreateBaseSolids();
+    void CreateShinySolids();
 
     void CreateTPBCoatingSolid();
     void CreatePhotocathodeSolid();

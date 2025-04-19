@@ -142,6 +142,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     pmt_solid_maker.cylinder_radius = fiducial_lar_radius;
     pmt_solid_maker.pmt_protrusion_distance = pmt_protrusion_distance;
     pmt_solid_maker.CreateBaseSolids();
+    pmt_solid_maker.CreateShinySolids();
 
     fPMTPositions.clear();
     for(std::pair<std::string const, G4ThreeVector> const &pmt_position : pmt_solid_maker.pmt_positions) {
@@ -170,23 +171,6 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBCoatingCaps = pmt_solid_maker.pmt_cap_tpb_solid.get();
     fTPBCoatingWall_log = new G4LogicalVolume(fTPBCoatingWall, G4Material::GetMaterial("TPBPMT"), "TPBCoatingWallLog");
     fTPBCoatingCaps_log = new G4LogicalVolume(fTPBCoatingCaps, G4Material::GetMaterial("TPBPMT"), "TPBCoatingCapsLog");
-
-    // let's build the shiny guy who is at C406R0
-    // we are placing it in our loop over PMT position IDs!
-    G4double shiny_radius = 205.0 / 2.0 * mm; // making the assumption that it is the same radius as the bridle
-    G4double shiny_half_height = 0.125 * mm;
-    fShinyC406R0 = new G4Tubs("ShinyC406R0", 0*cm, shiny_radius, shiny_half_height, 0*deg, 360*deg);
-    fShinyC406R0_log= new G4LogicalVolume(fShinyC406R0, G4Material::GetMaterial("PTFE"), "ShinyC406R0");
-
-    // speaking of shiny, let's build our shiny reflective circles that go on top and bottom of detector
-    // documentation (https://docdb.lns.mit.edu/cgi-bin/captainmills/ShowDocument?docid=567) says it's 5.25in radius
-    G4double top_shiny_radius = 13.335 * cm;
-    fShinyTop = new G4Tubs("ShinyTop", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
-    fShinyTop_log= new G4LogicalVolume(fShinyTop, G4Material::GetMaterial("PTFE"), "ShinyTop");
-    new G4PVPlacement(0, G4ThreeVector(0, 0, fiducial_lar_half_height - shiny_half_height), fShinyTop_log, "ShinyTop", fFiducialLAr_log, false, 0, true);
-    fShinyBottom = new G4Tubs("ShinyBottom", 0*cm, top_shiny_radius, shiny_half_height, 0*deg, 360*deg);
-    fShinyBottom_log= new G4LogicalVolume(fShinyBottom, G4Material::GetMaterial("PTFE"), "ShinyBottom");
-    new G4PVPlacement(0, G4ThreeVector(0, 0, - fiducial_lar_half_height + shiny_half_height), fShinyBottom_log, "ShinyBottom", fFiducialLAr_log, false, 0, true);
 
     double pmt_radius_cm = (fiducial_lar_radius + (pmt_solid_maker.pmt_radius - pmt_protrusion_distance)) / cm;
     double pmt_height_cm = (fiducial_lar_half_height + (pmt_solid_maker.pmt_radius - pmt_protrusion_distance)) / cm;
@@ -385,13 +369,15 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         std::string descriptive_name = std::to_string(pmt_row) + "_" + std::to_string(pmt_number);
 
         G4OpticalSurface * pmt_optical_surface;
-        unsigned int copy_number_k;
+        unsigned int tpb_copy_number_k;
+        unsigned int glass_copy_number_k;
+        unsigned int vacuum_copy_number_k;
         std::map<std::shared_ptr<G4VSolid>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator tpb_it;
 
         if(tpb_solid != nullptr) {
             tpb_it = fTPBLogicalVolumes.find(tpb_solid);
             if(tpb_it == fTPBLogicalVolumes.end()) {
-                copy_number_k = 0;
+                tpb_copy_number_k = 0;
                 if(pmt_on_cap)
                     tpb_log = fTPBCoatingCaps_log;
                 else
@@ -401,7 +387,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 std::map<std::tuple<bool, std::shared_ptr<G4VSolid>>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator pmt_it;
                 pmt_it = fPMTLogicalVolumes.find({coated, pmt_solid});
                 if(pmt_it == fPMTLogicalVolumes.end()) {
-                    copy_number_k = 0;
+                    glass_copy_number_k = 0;
                     pmt_optical_surface = CoatedPMTGlassOpticalSurface;
                     if(pmt_on_cap)
                         pmt_log = fPMTCoatedCaps_log;
@@ -418,34 +404,34 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
                     vac_it = fVacuumLogicalVolumes.find(vacuum_solid);
                     if(vac_it == fVacuumLogicalVolumes.end()) {
-                        copy_number_k = 0;
+                        vacuum_copy_number_k = 0;
                         vacuum_log = new G4LogicalVolume(vacuum_solid.get(), G4Material::GetMaterial("Vacuum"), std::string("PMTVacuum_") + ((pmt_on_cap) ? "Cap" : "Wall") + "Log");
                         fVacuumLogicalVolumes[vacuum_solid] = {1, std::shared_ptr<G4LogicalVolume>(vacuum_log)};
                     } else {
                         vacuum_log = std::get<1>(vac_it->second).get();
                         std::get<0>(vac_it->second) += 1;
-                        copy_number_k = std::get<0>(vac_it->second);
+                        vacuum_copy_number_k = std::get<0>(vac_it->second);
                     }
-                    fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, copy_number_k, true));
+                    fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, vacuum_copy_number_k, true));
                 } else {
                     pmt_log = std::get<1>(pmt_it->second).get();
                     std::get<0>(pmt_it->second) += 1;
-                    copy_number_k = std::get<0>(pmt_it->second);
+                    glass_copy_number_k = std::get<0>(pmt_it->second);
                 }
-                fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), pmt_log, "PMTGlass_" + descriptive_name, tpb_log, false, copy_number_k, true));
+                fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), pmt_log, "PMTGlass_" + descriptive_name, tpb_log, false, glass_copy_number_k, true));
             } else {
                 tpb_log = std::get<1>(tpb_it->second).get();
                 std::get<0>(tpb_it->second) += 1;
-                copy_number_k = std::get<0>(tpb_it->second);
+                tpb_copy_number_k = std::get<0>(tpb_it->second);
             }
-            fPlacements.emplace_back(new G4PVPlacement(tpb_rotation.get(), tpb_position, tpb_log, "PMTTPB_" + name, fFiducialLAr_log, false, copy_number_k, true));
+            fPlacements.emplace_back(new G4PVPlacement(tpb_rotation.get(), tpb_position, tpb_log, "PMTTPB_" + name, fFiducialLAr_log, false, tpb_copy_number_k, true));
             fLogicalBorderSurfaces.emplace_back(new G4LogicalBorderSurface("PMTTPB_" + name + "_Surface", fFiducialLAr_phys, fPlacements.back().get(), TPBOpticalSurface));
         } else {
             std::map<std::tuple<bool, std::shared_ptr<G4VSolid>>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator pmt_it;
 
             pmt_it = fPMTLogicalVolumes.find({coated, pmt_solid});
             if(pmt_it == fPMTLogicalVolumes.end()) {
-                copy_number_k = 0;
+                glass_copy_number_k = 0;
                 pmt_optical_surface = UncoatedPMTGlassOpticalSurface;
                 if(pmt_on_cap)
                     pmt_log = fPMTUncoatedCaps_log;
@@ -462,36 +448,43 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
 
                 vac_it = fVacuumLogicalVolumes.find(vacuum_solid);
                 if(vac_it == fVacuumLogicalVolumes.end()) {
-                    copy_number_k = 0;
+                    vacuum_copy_number_k = 0;
                     vacuum_log = new G4LogicalVolume(vacuum_solid.get(), G4Material::GetMaterial("Vacuum"), std::string("PMTVacuum_") + ((pmt_on_cap) ? "Cap" : "Wall") + "Log");
                     fVacuumLogicalVolumes[vacuum_solid] = {1, std::shared_ptr<G4LogicalVolume>(vacuum_log)};
                 } else {
                     vacuum_log = std::get<1>(vac_it->second).get();
                     std::get<0>(vac_it->second) += 1;
-                    copy_number_k = std::get<0>(vac_it->second);
+                    vacuum_copy_number_k = std::get<0>(vac_it->second);
                 }
-                fPlacements.emplace_back(new G4PVPlacement(0, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, copy_number_k, true));
+                fPlacements.emplace_back(new G4PVPlacement(0, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, vacuum_copy_number_k, true));
             } else {
                 pmt_log = std::get<1>(pmt_it->second).get();
                 std::get<0>(pmt_it->second) += 1;
-                copy_number_k = std::get<0>(pmt_it->second);
+                glass_copy_number_k = std::get<0>(pmt_it->second);
             }
-            fPlacements.emplace_back(new G4PVPlacement(pmt_rotation.get(), pmt_position, pmt_log, "PMTGlass_" + descriptive_name, fFiducialLAr_log, false, copy_number_k, true));
+            fPlacements.emplace_back(new G4PVPlacement(pmt_rotation.get(), pmt_position, pmt_log, "PMTGlass_" + descriptive_name, fFiducialLAr_log, false, glass_copy_number_k, true));
         }
     }
 
-    std::string shiny_position_id = "C406R0";
-    G4ThreeVector shiny_position = pmt_solid_maker.GetPMTPosition(shiny_position_id);
-    shiny_position.setZ(fiducial_lar_half_height - shiny_half_height);
     // now place our shiny circle!
-    fPlacements.emplace_back(new G4PVPlacement(0, shiny_position, fShinyC406R0_log, "ShinyC406R0", fFiducialLAr_log, false, 0, true));
+    std::string shiny_position_id = "C406R0";
+    fShinyC406R0_log= new G4LogicalVolume(pmt_solid_maker.shiny_solids[shiny_position_id].get(), G4Material::GetMaterial("PTFE"), "Shiny" + shiny_position_id);
+    fPlacements.emplace_back(new G4PVPlacement(0, pmt_solid_maker.shiny_positions[shiny_position_id], fShinyC406R0_log, "Shiny" + shiny_position_id, fFiducialLAr_log, false, 0, true));
+
+    // speaking of shiny, let's build our shiny reflective circles that go on top and bottom of detector
+    // documentation (https://docdb.lns.mit.edu/cgi-bin/captainmills/ShowDocument?docid=567) says it's 5.25in radius
+    fShinyTop_log = new G4LogicalVolume(pmt_solid_maker.shiny_solids["ShinyTop"].get(), G4Material::GetMaterial("PTFE"), "ShinyTop");
+    new G4PVPlacement(0, pmt_solid_maker.shiny_positions["ShinyTop"], fShinyTop_log, "ShinyTop", fFiducialLAr_log, false, 0, true);
+
+    fShinyBottom_log = new G4LogicalVolume(pmt_solid_maker.shiny_solids["ShinyBottom"].get(), G4Material::GetMaterial("PTFE"), "ShinyBottom");
+    new G4PVPlacement(0, pmt_solid_maker.shiny_positions["ShinyBottom"], fShinyBottom_log, "ShinyBottom", fFiducialLAr_log, false, 0, true);
 
     if (SourceRodIn){
         // now let's make our source rod
         // i'm just doing the bayonet for now since it is >1m tall, it should only matter for sodium runs above -50cm
         G4double rod_inner_radius = 0.0*cm;
         G4double rod_outer_radius = 6.31 * mm;
-        G4double rod_height = fiducial_lar_half_height - SourceRodLocation - (shiny_half_height * 2.0);
+        G4double rod_height = fiducial_lar_half_height - SourceRodLocation - (pmt_solid_maker.shiny_half_height * 2.0);
         fSourceRod = new G4Tubs("SourceRod", rod_inner_radius, rod_outer_radius, rod_height/2, 0, 360*deg);
         G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SourceRodLocation + rod_height/2);
 
