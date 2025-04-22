@@ -156,19 +156,19 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fPMTVacuumWall_log = new G4LogicalVolume(fPMTVacuumWall, G4Material::GetMaterial("Vacuum"), "PMTVacuumWallLog");
     fPMTVacuumCaps_log = new G4LogicalVolume(fPMTVacuumCaps, G4Material::GetMaterial("Vacuum"), "PMTVacuumCapsLog");
 
-    fPMTCoatedWall = pmt_solid_maker.pmt_wall_glass_solid.get();
-    fPMTCoatedCaps = pmt_solid_maker.pmt_cap_glass_solid.get();
+    fPMTCoatedWall = pmt_solid_maker.pmt_wall_glass_filled_offset_solid.get();
+    fPMTCoatedCaps = pmt_solid_maker.pmt_cap_glass_filled_offset_solid.get();
     fPMTCoatedWall_log = new G4LogicalVolume(fPMTCoatedWall, G4Material::GetMaterial("Glass"), "PMTCoatedWallLog");
     fPMTCoatedCaps_log = new G4LogicalVolume(fPMTCoatedCaps, G4Material::GetMaterial("Glass"), "PMTCoatedCapsLog");
 
-    fPMTUncoatedWall = pmt_solid_maker.pmt_wall_glass_solid.get();
-    fPMTUncoatedCaps = pmt_solid_maker.pmt_cap_glass_solid.get();
+    fPMTUncoatedWall = pmt_solid_maker.pmt_wall_glass_filled_solid.get();
+    fPMTUncoatedCaps = pmt_solid_maker.pmt_cap_glass_filled_solid.get();
     fPMTUncoatedWall_log = new G4LogicalVolume(fPMTUncoatedWall, G4Material::GetMaterial("Glass"), "PMTUncoatedWallLog");
     fPMTUncoatedCaps_log = new G4LogicalVolume(fPMTUncoatedCaps, G4Material::GetMaterial("Glass"), "PMTUncoatedCapsLog");
 
     // now get TPB coating
-    fTPBCoatingWall = pmt_solid_maker.pmt_wall_tpb_solid.get();
-    fTPBCoatingCaps = pmt_solid_maker.pmt_cap_tpb_solid.get();
+    fTPBCoatingWall = pmt_solid_maker.pmt_wall_tpb_filled_solid.get();
+    fTPBCoatingCaps = pmt_solid_maker.pmt_cap_tpb_filled_solid.get();
     fTPBCoatingWall_log = new G4LogicalVolume(fTPBCoatingWall, G4Material::GetMaterial("TPBPMT"), "TPBCoatingWallLog");
     fTPBCoatingCaps_log = new G4LogicalVolume(fTPBCoatingCaps, G4Material::GetMaterial("TPBPMT"), "TPBCoatingCapsLog");
 
@@ -602,13 +602,19 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     auto pink = new G4VisAttributes(G4Colour(255/255., 0., 255/255.));
     //pink->SetForceSolid(true);
 
-    fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fOuterLAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    //fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fFiducialLAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fCryoVessel_log)
+        fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fVacuum_log)
+        fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fInnerJacket_log)
+        fInnerJacket_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fOuterLAr_log)
+        fOuterLAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fInnerFrame_log)
+        fInnerFrame_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+        //fTPBFoil_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fFiducialLAr_log)
+        fFiducialLAr_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     //fCryoVessel_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fVacuum_log->SetVisAttributes(G4VisAttributes::GetInvisible());
@@ -629,10 +635,14 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     //fPMTUncoatedWall_log->SetVisAttributes(pmt_va);
     //fPMTUncoatedCaps_log->SetVisAttributes(pmt_va);
     pink->SetForceSolid(true);
-    fPMTCoatedWall_log->SetVisAttributes(pink);
-    fPMTCoatedCaps_log->SetVisAttributes(pink);
-    fPMTUncoatedWall_log->SetVisAttributes(teal);
-    fPMTUncoatedCaps_log->SetVisAttributes(teal);
+    if(fPMTCoatedWall_log)
+        fPMTCoatedWall_log->SetVisAttributes(pink);
+    if(fPMTCoatedCaps_log)
+        fPMTCoatedCaps_log->SetVisAttributes(pink);
+    if(fPMTUncoatedWall_log)
+        fPMTUncoatedWall_log->SetVisAttributes(teal);
+    if(fPMTUncoatedCaps_log)
+        fPMTUncoatedCaps_log->SetVisAttributes(teal);
     //fPMTCoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPMTCoatedCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
     //fPMTUncoatedWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
@@ -642,16 +652,20 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     tpb_coating_va->SetForceSolid(true);
     //fTPBCoatingWall_log->SetVisAttributes(tpb_coating_va);
     //fTPBCoatingCaps_log->SetVisAttributes(tpb_coating_va);
-    fTPBCoatingWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fTPBCoatingCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fTPBCoatingWall_log)
+        fTPBCoatingWall_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fTPBCoatingCaps_log)
+        fTPBCoatingCaps_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     salmon->SetForceSolid(true);
     teal->SetForceSolid(true);
     for(G4LogicalVolume * log : GetFrillLogicalVolumes()) {
-        log->SetVisAttributes(dark_blue);
+        if(log)
+            log->SetVisAttributes(dark_blue);
     }
     for(G4LogicalVolume * log : GetBridleLogicalVolumes()) {
-        log->SetVisAttributes(salmon);
+        if(log)
+            log->SetVisAttributes(salmon);
     }
     //fFrillWall_log->SetVisAttributes(teal);
     //fFrillCaps_log->SetVisAttributes(teal);
@@ -663,14 +677,20 @@ void G4CCMMainVolume::VisAttributes(G4bool SourceRodIn)
     // add shiny guy!
     auto red = new G4VisAttributes(G4Colour(1., 0., 0.));
     red->SetForceSolid(true);
-    fShinyC406R0_log->SetVisAttributes(red);
-    fShinyTop_log->SetVisAttributes(red);
-    fShinyBottom_log->SetVisAttributes(red);
+    if(fShinyC406R0_log)
+        fShinyC406R0_log->SetVisAttributes(red);
+    if(fShinyTop_log)
+        fShinyTop_log->SetVisAttributes(red);
+    if(fShinyBottom_log)
+        fShinyBottom_log->SetVisAttributes(red);
 
     // tpb foils!
-    fTPBFoilSides_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fTPBFoilTop_log->SetVisAttributes(G4VisAttributes::GetInvisible());
-    fTPBFoilBottom_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fTPBFoilSides_log)
+        fTPBFoilSides_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fTPBFoilTop_log)
+        fTPBFoilTop_log->SetVisAttributes(G4VisAttributes::GetInvisible());
+    if(fTPBFoilBottom_log)
+        fTPBFoilBottom_log->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     // make our source rod green
     if (SourceRodIn)
