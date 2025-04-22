@@ -399,30 +399,37 @@ G4double CapSolidsOverlap(G4ThreeVector pmt_pos_0, G4ThreeVector pmt_pos_1, G4do
 
 //////////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTPolyconeSolid(double scale_factor) {
-    G4ThreeVector centerOfPolycone = G4ThreeVector(0, 0, 59.5 * scale_factor * mm);
-    std::vector<G4double> tempZ, tempInner, tempOuter;
+    //G4ThreeVector centerOfPolycone = G4ThreeVector(0, 0, 59.5 * scale_factor * mm);
+    double dStheta = 37.6392 * M_PI / 180.;
+    G4double polycone_z_offset = 59.5;
+    G4double polycone_radius = 57.0894; // radius of spindle torus sphere
+    G4double polycone_radius_offset = 43.9106; // distance from center of torus sphere to z-axis
+    double dSphi = acos((cos(dStheta) * pmt_radius * scale_factor - polycone_z_offset) / polycone_radius);
 
-    G4int segment = 100;
+    polycone_z_offset *= scale_factor * mm;
+    polycone_radius *= scale_factor * mm;
+    polycone_radius_offset *= scale_factor * mm;
 
-    G4double sr0 = 57.0894 * scale_factor; // radius of spindle torus sphere
-    G4double centerOfsr0 = 43.9106 * scale_factor; // distance from center of torus sphere to z-axis
-    G4double rplanet = sr0 * 2. / segment; // z length of each segment
+    G4double sphere_z = cos(dStheta) * pmt_radius * scale_factor;
+    G4double poly_z = cos(dSphi) * polycone_radius;
+    G4double dz = sphere_z - poly_z;
 
-    G4double rInner[segment + 1], rOuter[segment + 1], zPlane[segment + 1];
+    G4ThreeVector centerOfPolycone = G4ThreeVector(0, 0, dz);
 
-    for (G4int j = 0; j <= segment; ++j) {
-        tempZ.push_back((sr0 - j * rplanet) * mm);
-        tempInner.push_back(0.);
-        tempOuter.push_back((centerOfsr0 + sqrt(sr0 * sr0 - (sr0 - j * rplanet) * (sr0 - j * rplanet))) * mm);
+    size_t const n_segments = 50;
+
+    G4double rInner[n_segments + 1], rOuter[n_segments + 1], zPlane[n_segments + 1];
+
+    for(size_t j = 0; j <= n_segments; ++j) {
+        double phi = (M_PI - dSphi) * (1.0 - double(j)/double(n_segments)) + dSphi;
+        double z = cos(phi) * polycone_radius;
+        double r = polycone_radius_offset + sqrt(polycone_radius * polycone_radius - z * z);
+        rInner[j] = 0.;
+        rOuter[j] = polycone_radius_offset + sqrt(polycone_radius * polycone_radius - z * z);
+        zPlane[j] = z;
     }
 
-    for (G4int i = 0; i <= segment; i++) {
-        rInner[i] = tempInner[i];
-        rOuter[i] = tempOuter[i];
-        zPlane[i] = tempZ[i];
-    }
-
-    G4Polycone* polycone1 = new G4Polycone("polycone1", 0, 2 * M_PI, segment + 1, zPlane, rInner, rOuter);
+    G4Polycone* polycone1 = new G4Polycone("polycone1", 0, 2 * M_PI, n_segments + 1, zPlane, rInner, rOuter);
     temp_solids.emplace_back(polycone1);
     G4VSolid * solid = new G4DisplacedSolid("solid", polycone1, 0, centerOfPolycone);
     temp_solids.emplace_back(solid);
@@ -543,20 +550,21 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateCylinderFaceSolid() {
     return cylinder_face_solid;
 }
 
-std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateWallSolid(std::shared_ptr<G4VSolid> pmt_solid) {
-    G4VSolid * solid = new G4IntersectionSolid("WallSolid" + pmt_solid->GetName(), pmt_solid.get(), cylinder_curvature_solid.get(), cylinder_curvature_rotation, cylinder_curvature_position);
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateWallSolid(std::shared_ptr<G4VSolid> pmt_solid, G4double offset) {
+    G4VSolid * solid = new G4IntersectionSolid("WallSolid" + pmt_solid->GetName(), pmt_solid.get(), cylinder_curvature_solid.get(), cylinder_curvature_rotation, cylinder_curvature_position + G4ThreeVector(0, 0, offset));
     temp_solids.emplace_back(solid);
     return temp_solids.back();
 }
 
-std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateCapSolid(std::shared_ptr<G4VSolid> pmt_solid) {
-    G4VSolid * solid = new G4IntersectionSolid("CapSolid" + pmt_solid->GetName(), pmt_solid.get(), cylinder_face_solid.get(), cylinder_face_rotation, cylinder_face_position);
+std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateCapSolid(std::shared_ptr<G4VSolid> pmt_solid, G4double offset) {
+    G4VSolid * solid = new G4IntersectionSolid("CapSolid" + pmt_solid->GetName(), pmt_solid.get(), cylinder_face_solid.get(), cylinder_face_rotation, cylinder_face_position + G4ThreeVector(0, 0, offset));
     temp_solids.emplace_back(solid);
     return temp_solids.back();
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallGlassFilledSolid() {
     pmt_wall_glass_filled_solid = CreateWallSolid(pmt_glass_filled_solid);
+    pmt_wall_glass_filled_offset_solid = CreateWallSolid(pmt_glass_filled_solid, glass_offset);
     return pmt_wall_glass_filled_solid;
 }
 
@@ -567,11 +575,13 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallTPBFilledSolid() {
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTWallVacuumFilledSolid() {
     pmt_wall_vacuum_filled_solid = CreateWallSolid(pmt_vacuum_filled_solid);
+    pmt_wall_vacuum_filled_offset_solid = CreateWallSolid(pmt_vacuum_filled_solid, vacuum_offset);
     return pmt_wall_vacuum_filled_solid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapGlassFilledSolid() {
     pmt_cap_glass_filled_solid = CreateCapSolid(pmt_glass_filled_solid);
+    pmt_cap_glass_filled_offset_solid = CreateCapSolid(pmt_glass_filled_solid, glass_offset);
     return pmt_cap_glass_filled_solid;
 }
 
@@ -582,6 +592,7 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapTPBFilledSolid() {
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTCapVacuumFilledSolid() {
     pmt_cap_vacuum_filled_solid = CreateCapSolid(pmt_vacuum_filled_solid);
+    pmt_cap_vacuum_filled_offset_solid = CreateCapSolid(pmt_vacuum_filled_solid, vacuum_offset);
     return pmt_cap_vacuum_filled_solid;
 }
 
@@ -1002,8 +1013,8 @@ void J4PMTSolidMaker::CreateBaseSolids() {
         int pmt_row, pmt_col, pmt_ring, pmt_number;
         ParsePMTID(pmt_id, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
 
-        std::shared_ptr<G4VSolid> vacuum_solid = (pmt_on_cap) ? pmt_cap_vacuum_filled_solid : pmt_wall_vacuum_filled_solid;
-        std::shared_ptr<G4VSolid> glass_solid = (pmt_on_cap) ? pmt_cap_glass_filled_solid : pmt_wall_glass_filled_solid;
+        std::shared_ptr<G4VSolid> vacuum_solid = (pmt_on_cap) ? ((coated) ? pmt_cap_vacuum_filled_offset_solid : pmt_cap_vacuum_filled_solid) : ((coated) ? pmt_wall_vacuum_filled_offset_solid : pmt_wall_vacuum_filled_solid);
+        std::shared_ptr<G4VSolid> glass_solid = (pmt_on_cap) ? ((coated) ? pmt_cap_glass_filled_offset_solid : pmt_cap_glass_filled_solid) : ((coated) ? pmt_wall_glass_filled_offset_solid : pmt_wall_glass_filled_solid);
         std::shared_ptr<G4VSolid> tpb_solid = (coated) ? ((pmt_on_cap) ? pmt_cap_tpb_filled_solid : pmt_wall_tpb_filled_solid) : nullptr;
         std::shared_ptr<G4VSolid> bridle_solid = (pmt_on_cap) ? bridle_cap_filled_solid : bridle_wall_filled_solid;
         std::shared_ptr<G4VSolid> frill_solid = (pmt_on_cap) ? frill_cap_filled_solid : frill_wall_filled_solid;
@@ -1326,15 +1337,11 @@ void J4PMTSolidMaker::CreateBaseSolids() {
     delete motherSolid;
 }
 
-    std::shared_ptr<G4VSolid> CreateShinySolid();
-    std::shared_ptr<G4VSolid> CreateShinyTopSolid();
-    std::shared_ptr<G4VSolid> CreateShinyBottomSolid();
-
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateShinySolid() {
     temp_solids.emplace_back(new G4Tubs("ShinyC406R0", 0*cm, shiny_radius, shiny_half_height, 0*deg, 360*deg));
     shiny_solid = temp_solids.back();
 
-    G4ThreeVector displacement(0, 0, pmt_protrusion_distance - pmt_radius + shiny_half_height);
+    G4ThreeVector displacement(0, 0, pmt_radius - pmt_protrusion_distance + shiny_half_height);
 
     std::string pmt_id = "C406R0";
     bool pmt_on_cap, coated;
@@ -1342,7 +1349,8 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateShinySolid() {
     ParsePMTID(pmt_id, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
 
     std::shared_ptr<G4RotationMatrix> rotationMatrix(GetPMTRotationMatrix(pmt_id));
-    G4ThreeVector position = GetPMTPosition(pmt_id) + displacement;
+    // This reflector is on the top, so we have to subtract the displacement to get it into the interior volume
+    G4ThreeVector position = GetPMTPosition(pmt_id) - displacement;
 
     shiny_solids[pmt_id] = shiny_solid;
     shiny_rotations[pmt_id] = rotationMatrix;

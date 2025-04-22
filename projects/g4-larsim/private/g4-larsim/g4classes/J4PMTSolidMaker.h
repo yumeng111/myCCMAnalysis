@@ -26,10 +26,14 @@ public:
     std::shared_ptr<G4VSolid> pmt_glass_filled_solid;
     std::shared_ptr<G4VSolid> pmt_tpb_filled_solid;
     std::shared_ptr<G4VSolid> pmt_wall_vacuum_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_wall_vacuum_filled_offset_solid;
     std::shared_ptr<G4VSolid> pmt_wall_glass_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_wall_glass_filled_offset_solid;
     std::shared_ptr<G4VSolid> pmt_wall_tpb_filled_solid;
     std::shared_ptr<G4VSolid> pmt_cap_vacuum_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_cap_vacuum_filled_offset_solid;
     std::shared_ptr<G4VSolid> pmt_cap_glass_filled_solid;
+    std::shared_ptr<G4VSolid> pmt_cap_glass_filled_offset_solid;
     std::shared_ptr<G4VSolid> pmt_cap_tpb_filled_solid;
 
     std::shared_ptr<G4VSolid> cylinder_curvature_solid;
@@ -114,6 +118,9 @@ public:
     G4double shiny_radius = 205.0 / 2.0 * mm; // making the assumption that it is the same radius as the bridle
     G4double shiny_half_height = 0.125 * mm;
 
+    G4double glass_offset = 1.0 * um;
+    G4double vacuum_offset = 2.0 * um;
+
     J4PMTSolidMaker() {}
 
     G4double pmt_radial_distance;
@@ -147,8 +154,8 @@ public:
     std::shared_ptr<G4VSolid> CreateCylinderCurvatureSolid();
     std::shared_ptr<G4VSolid> CreateCylinderFaceSolid();
 
-    std::shared_ptr<G4VSolid> CreateWallSolid(std::shared_ptr<G4VSolid> pmt_solid);
-    std::shared_ptr<G4VSolid> CreateCapSolid(std::shared_ptr<G4VSolid> pmt_solid);
+    std::shared_ptr<G4VSolid> CreateWallSolid(std::shared_ptr<G4VSolid> pmt_solid, G4double offset = 0.0);
+    std::shared_ptr<G4VSolid> CreateCapSolid(std::shared_ptr<G4VSolid> pmt_solid, G4double offset = 0.0);
 
     std::shared_ptr<G4VSolid> CreatePMTWallGlassFilledSolid();
     std::shared_ptr<G4VSolid> CreatePMTWallTPBFilledSolid();
