@@ -31,6 +31,8 @@
 #include <G4LogicalVolumeStore.hh>
 #include <G4PhysicalVolumeStore.hh>
 #include <G4SolidStore.hh>
+#include <G4UnionSolid.hh>
+#include <G4Torus.hh>
 
 // let's define some things relevant for getting the geometry of our pmts
 std::vector<std::string> pmt_ids = {"C101R0",
@@ -416,12 +418,31 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTPolyconeSolid(double scale_f
 
     G4ThreeVector centerOfPolycone = G4ThreeVector(0, 0, dz);
 
-    size_t const n_segments = 50;
+    size_t const n_exposed_segments = 10;
+    size_t const n_hidden_segments = 3;
+    size_t const n_segments = n_exposed_segments + n_hidden_segments;
+
+    double hidden_phi = M_PI / 2.0;
 
     G4double rInner[n_segments + 1], rOuter[n_segments + 1], zPlane[n_segments + 1];
 
+    size_t final_n_segments = 0;
+
     for(size_t j = 0; j <= n_segments; ++j) {
-        double phi = (M_PI - dSphi) * (1.0 - double(j)/double(n_segments)) + dSphi;
+        double phi;
+        if(j < n_hidden_segments) {
+            double max_theta = M_PI;
+            double min_theta = std::max(dSphi, hidden_phi);
+            if(max_theta < hidden_phi)
+                continue;
+            phi = (max_theta - min_theta) * (1.0 - double(j)/double(n_hidden_segments)) + min_theta;
+        } else {
+            double max_theta = std::min(M_PI, hidden_phi);
+            double min_theta = dSphi;
+            phi = (max_theta - min_theta) * (1.0 - double(j - n_hidden_segments)/double(n_exposed_segments)) + min_theta;
+        }
+        ++final_n_segments;
+        //double phi = (M_PI - dSphi) * (1.0 - double(j)/double(n_segments)) + dSphi;
         double z = cos(phi) * polycone_radius;
         double r = polycone_radius_offset + sqrt(polycone_radius * polycone_radius - z * z);
         rInner[j] = 0.;
@@ -433,6 +454,14 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTPolyconeSolid(double scale_f
     temp_solids.emplace_back(polycone1);
     G4VSolid * solid = new G4DisplacedSolid("solid", polycone1, 0, centerOfPolycone);
     temp_solids.emplace_back(solid);
+
+    // A torus does not work here because the "swept radius" is smaller than the "torus radius",
+    // which is not supported by the G4Torus class
+    // G4Torus* torus = new G4Torus("torus", 0, polycone_radius, polycone_radius_offset, 0, 2 * M_PI);
+    // temp_solids.emplace_back(torus);
+    // G4VSolid * torus_solid = new G4DisplacedSolid("torus_solid", torus, 0, centerOfPolycone);
+    // temp_solids.emplace_back(torus_solid);
+
     return temp_solids.back();
 }
 
@@ -488,12 +517,15 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreatePMTSolid(double scale_factor) {
 
     G4Transform3D transform = G4Transform3D(G4RotationMatrix(), G4ThreeVector(0, 0, 0));
 
-    G4MultiUnion * solid = new G4MultiUnion("solid");
-    solid->AddNode(*sphere, transform);
-    solid->AddNode(*polycone, transform);
-    solid->AddNode(*tubs, transform);
-    solid->AddNode(*cons, transform);
-    solid->Voxelize();
+    //G4MultiUnion * solid = new G4MultiUnion("solid");
+    G4UnionSolid * sphere_poly = new G4UnionSolid("sphere_poly", sphere.get(), polycone.get(), transform);
+    G4UnionSolid * cons_tubs = new G4UnionSolid("cons_tubs", cons.get(), tubs.get(), transform);
+    G4UnionSolid * solid = new G4UnionSolid("solid", sphere_poly, cons_tubs, transform);
+    //solid->AddNode(*sphere, transform);
+    //solid->AddNode(*polycone, transform);
+    //solid->AddNode(*tubs, transform);
+    //solid->AddNode(*cons, transform);
+    //solid->Voxelize();
     temp_solids.emplace_back(solid);
     return temp_solids.back();
 }
@@ -671,7 +703,7 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateBridleWallFilledSolid() {
     G4DisplacedSolid * solid = new G4DisplacedSolid("Bridle", disk, 0, disk_offset);
     temp_solids.emplace_back(solid);
     bridle_wall_filled_solid = temp_solids.back();
-    delete rotationMatrix;
+    //delete rotationMatrix;
     return bridle_wall_filled_solid;
 }
 
@@ -712,7 +744,7 @@ std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateFrillWallFilledSolid() {
     G4DisplacedSolid * solid = new G4DisplacedSolid("Frill", disk, 0, disk_offset);
     temp_solids.emplace_back(solid);
     frill_wall_filled_solid = temp_solids.back();
-    delete rotationMatrix;
+    //delete rotationMatrix;
     return frill_wall_filled_solid;
 }
 
@@ -1073,11 +1105,11 @@ void J4PMTSolidMaker::CreateBaseSolids() {
         G4SolidStore::GetInstance()->DeRegister(solidA);
         G4SolidStore::GetInstance()->DeRegister(solidB);
 
-        delete rot;
-        delete lvA;
-        delete lvB;
-        delete pvA;
-        delete pvB;
+        //delete rot;
+        //delete lvA;
+        //delete lvB;
+        //delete pvA;
+        //delete pvB;
 
         return overlaps;
     };
@@ -1141,8 +1173,8 @@ void J4PMTSolidMaker::CreateBaseSolids() {
                     test_overlap(bridle_0, bridle_1));
             }
 
-            delete frill_1;
-            delete bridle_1;
+            //delete frill_1;
+            //delete bridle_1;
 
             std::vector<std::tuple<
                 bool,
@@ -1205,8 +1237,8 @@ void J4PMTSolidMaker::CreateBaseSolids() {
                 }
             }
         }
-        delete frill_0;
-        delete bridle_0;
+        //delete frill_0;
+        //delete bridle_0;
     }
 
     // frill_overlap_groups
@@ -1332,9 +1364,9 @@ void J4PMTSolidMaker::CreateBaseSolids() {
     G4PhysicalVolumeStore::GetInstance()->DeRegister(motherPV);
     G4LogicalVolumeStore::GetInstance()->DeRegister(motherLV);
     G4SolidStore::GetInstance()->DeRegister(motherSolid);
-    delete motherPV;
-    delete motherLV;
-    delete motherSolid;
+    //delete motherPV;
+    //delete motherLV;
+    //delete motherSolid;
 }
 
 std::shared_ptr<G4VSolid> J4PMTSolidMaker::CreateShinySolid() {
