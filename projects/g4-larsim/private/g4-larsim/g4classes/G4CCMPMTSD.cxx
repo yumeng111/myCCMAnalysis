@@ -150,7 +150,12 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() / electronvolt;
 
-    G4double photonWavelength = hc / photonEnergy * I3Units::nanometer;
+    double photonWavelength = hc / photonEnergy * I3Units::nanometer;
+
+    if(photonWavelength < min_pmt_wavelength || photonWavelength > max_pmt_wavelength) {
+        //std::cout << "Photon wavelength out of range: " << photonWavelength << std::endl;
+        return false;
+    }
 
     const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
     std::string creationProcessName = "Unknown";

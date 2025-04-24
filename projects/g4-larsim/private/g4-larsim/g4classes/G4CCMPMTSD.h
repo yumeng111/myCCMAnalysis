@@ -58,6 +58,8 @@ class G4Step;
 class G4CCMMainVolume;
 
 class G4CCMPMTSD : public G4VSensitiveDetector {
+    double min_pmt_wavelength = 271.0 * I3Units::nanometer;
+    double max_pmt_wavelength = 723.0 * I3Units::nanometer;
     public:
         G4CCMPMTSD(G4String name);
         ~G4CCMPMTSD() override;
