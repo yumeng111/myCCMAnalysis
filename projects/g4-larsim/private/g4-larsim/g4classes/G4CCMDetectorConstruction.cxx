@@ -117,6 +117,24 @@ G4CCMDetectorConstruction::~G4CCMDetectorConstruction()
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+double G4CCMDetectorConstruction::HarmonicOscillatorRefractiveIndex(double a0, double aUV, double gammaUV, double wlUV, double wl) {
+    return a0 + aUV * ((std::pow(wlUV,-2.0) - std::pow(wl,-2.0)) / (std::pow((std::pow(wlUV,-2.0) - std::pow(wl,-2.0)),2.0) + (std::pow(gammaUV,2.0) * std::pow(wl,-2.0))));
+}
+
+double G4CCMDetectorConstruction::HarmonicOscillatorRefractiveIndexDerivative(double aUV, double lambda, double lambdaUV, double gammaUV) {
+    double lambda2 = lambda * lambda;
+    double lambda4 = lambda2 * lambda2;
+    double lambdaUV2 = lambdaUV * lambdaUV;
+    double lambdaUV4 = lambdaUV2 * lambdaUV2;
+    double gammaUV2 = gammaUV * gammaUV;
+
+    double numerator = 2.0 * aUV * lambda * lambdaUV4 * (2.0 * lambda2 * lambdaUV2 - lambdaUV4 + lambda4 * (-1.0 + gammaUV2 * lambdaUV2));
+
+    double denominator = std::pow(lambda4 + lambdaUV4 + lambda2 * lambdaUV2 * (-2.0 + gammaUV2 * lambdaUV2), 2.0);
+
+    return numerator / denominator;
+}
+
 void G4CCMDetectorConstruction::DefineMaterials() {
     G4double a;  // atomic mass
     G4double z;  // atomic number
@@ -240,56 +258,55 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     fLAr_mt->AddProperty("SCINTILLATIONCOMPONENT1", lar_energy, lar_sorted_intensity);
 
+    // for LAr index of refraction, using grace fit around section 2.3.3 from https://arxiv.org/pdf/2408.00817v1
+    // can also calculate rayleigh scattering length at the same time
+    std::vector<G4double> lar_light_properties_energy = {};
+    std::vector<G4double> ho_rin_vals = {};
+    std::vector<G4double> grace_rin_vals = {};
+    std::vector<G4double> babicz_rin_vals = {};
+    std::vector<G4double> group_velocity_vals = {};
+    std::vector<G4double> rayl_scattering_length = {};
+
     // constants for index of refraction
     double a0 = 1.26;
     double aUV = 0.23;
     double aIR = 0.0023;
     double lamUV = 106.6;
     double lamIR = 908.3;
-    double starting_wavelength = 112.0;
-    double ending_wavelength = 850.0;
-    size_t n_entries = 1000;
+    double a0bab = 0.334;
+    double aUVbab =  0.100;
+    double aIRbab = 0.008;
 
-    // for LAr index of refraction, using grace fit around section 2.3.3 from https://arxiv.org/pdf/2408.00817v1
-    // can also calculate rayleigh scattering length at the same time
-    std::vector<G4double> lar_light_properties_energy; lar_light_properties_energy.reserve(n_entries+1);
-    std::vector<G4double> grace_rin_vals; grace_rin_vals.reserve(n_entries+1);
-    std::vector<G4double> group_velocity_vals; group_velocity_vals.reserve(n_entries+1);
-    std::vector<G4double> rayl_scattering_length; rayl_scattering_length.reserve(n_entries+1);
+    double a0ho = 1.10232;
+    double aUVho = 0.00001058;
+    //double gammaho = 0.002524;
+    double gammaho = 0.002794965;
+
+    double starting_wavelength = 100.0;
+    double ending_wavelength = 850.0;
+    size_t n_entries = 10000;
 
     // for rayl, we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
-    double rindex_128 = std::sqrt(a0 + ((aUV * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamUV, 2.0))) +
-                                   ((aIR * std::pow(128.0, 2.0)) / (std::pow(128.0, 2.0) - std::pow(lamIR, 2.0))));
+    double rindex_128 = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, gammaho, lamUV, 128.0);
     double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
 
     for(int i = (n_entries + 1); i >= 0; --i) {
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
         double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
-        double this_rindex = std::sqrt(a0 + ((aUV * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamUV, 2.0))) +
-                                       ((aIR * std::pow(this_wavelength, 2.0)) / (std::pow(this_wavelength, 2.0) - std::pow(lamIR, 2.0))));
+        double this_rindex = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, gammaho, lamUV, this_wavelength);
         double this_rayl = (rayl_scaling * std::pow(this_wavelength*1e-7, 4.0) / std::pow((std::pow(this_rindex, 2.0) - 1)*(std::pow(this_rindex, 2.0) + 2), 2.0) ) * cm;
 
-        // now let's calculate dn/dlambda to get group velocity
-        double term1 = aUV * lamUV * lamUV * (this_wavelength * this_wavelength - lamIR * lamIR) * (this_wavelength * this_wavelength - lamIR * lamIR);
-        double term2 = aIR * lamIR * lamIR * (this_wavelength * this_wavelength - lamUV * lamUV) * (this_wavelength * this_wavelength - lamUV * lamUV);
-        double denominator = ((this_wavelength * this_wavelength - lamIR * lamIR) * (this_wavelength * this_wavelength - lamIR * lamIR) *
-                              (this_wavelength * this_wavelength - lamUV * lamUV) * (this_wavelength * this_wavelength - lamUV * lamUV));
-        double sqrt_term = std::sqrt(a0 + this_wavelength * this_wavelength * (aIR / (this_wavelength * this_wavelength - lamIR * lamIR) +
-                                                             aUV / (this_wavelength * this_wavelength - lamUV * lamUV)));
-
-        double dn_dlambda = -((this_wavelength * (term1 + term2)) / (denominator * sqrt_term));
-
-        // now we can calculate group velocity!
-        double this_group_velocity = c_light / (this_rindex - (this_wavelength * dn_dlambda));
+        double dn_dlambda = HarmonicOscillatorRefractiveIndexDerivative(aUVho, this_wavelength, lamUV, gammaho);
+        double this_group_velocity = (c_light / this_rindex) * (1.0 + ((this_wavelength / this_rindex) * dn_dlambda));
 
         // save
         lar_light_properties_energy.push_back(this_energy);
-        grace_rin_vals.push_back(this_rindex);
+        ho_rin_vals.push_back(this_rindex);
         group_velocity_vals.push_back(this_group_velocity);
         rayl_scattering_length.push_back(this_rayl);
     }
 
-    fLAr_mt->AddProperty("RINDEX", lar_light_properties_energy, grace_rin_vals);
+    fLAr_mt->AddProperty("RINDEX", lar_light_properties_energy, ho_rin_vals);
     fLAr_mt->AddProperty("GROUPVEL", lar_light_properties_energy, group_velocity_vals);
     fLAr_mt->AddProperty("RAYLEIGH", lar_light_properties_energy, rayl_scattering_length);
 
@@ -345,7 +362,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 
     // Set the Birks Constant for the LAr scintillator
-    fLAr->GetIonisation()->SetBirksConstant(0.0486*mm/MeV);
+    fLAr->GetIonisation()->SetBirksConstant(0.145731*cm/MeV);
+    fLAr->GetIonisation()->SetMeanExcitationEnergy(203.0 * eV);
 
     // Set PMT glass constants
     std::vector<G4double> glass_energy = {1.0*eV, 5.0*eV, 7.07*eV, 10.14*eV, 12.0*eV};
@@ -515,8 +533,9 @@ void G4CCMDetectorConstruction::DefineMaterials() {
                                      1.67, 1.67, 1.67, 1.67, 1.67, 1.67, 1.67};
 
     // let's try adding some mie scattering to our tpb! i have no idea what this is gonna do...we'll see
-    std::vector<G4double> TPB_Scattering_Energy = {1.0 * eV, 3.1 * eV, 3.11 * eV, 5.9*eV, 6.0 * eV, 12.0*eV}; // ~1200 nm, ~400nm, ~401nm, ~210nm, ~206nm, ~100nm
-    std::vector<G4double> TPB_Mie_Scattering_Length = {0.001 * mm, 0.001 * mm, 1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m}; // mie scattering for vis light
+    std::vector<G4double> TPB_Scattering_Energy = {1.0 * eV, 2.0 * eV, 3.1 * eV, 3.11 * eV, 5.9*eV, 6.0 * eV, 12.0*eV}; // ~1200 nm, ~600nm, ~400nm, ~401nm, ~210nm, ~206nm, ~100nm
+    //std::vector<G4double> TPB_Mie_Scattering_Length = {0.00075 * mm, 0.00075 * mm, 0.00075 * mm, 1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m}; // mie scattering for vis light
+    std::vector<G4double> TPB_Mie_Scattering_Length = {0.0003 * mm, 0.0003 * mm, 0.0003 * mm, 1.0 * m, 1.0 * m, 1.0 * m, 1.0 * m}; // mie scattering for vis light
 
     // now make our tpb foils!
     // making different ones for sides and top/bottom :)
@@ -524,7 +543,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // side cylinder of TPB foil
     G4MaterialPropertiesTable* fTPBFoilSides_mt = new G4MaterialPropertiesTable();
     fTPBFoilSides_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", 0.3*ns); // setting to very small at the moment
     std::cout << "setting wls mean number of photons to " << WLSNPhotonsSideFoil_ << " for side tpb foils" << std::endl;
     fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsSideFoil_);
     fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
@@ -539,7 +558,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
     G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
     fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", 0.3*ns); // setting to very small at the moment
     std::cout << "setting wls mean number of photons to " << WLSNPhotonsEndCapFoil_ << " for top/bottom tpb foils" << std::endl;
     fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsEndCapFoil_);
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
@@ -554,7 +573,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // tpb on pmts
     G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
     fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.00001*ns); // setting to very small at the moment
+    fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.3*ns); // setting to very small at the moment
     std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for pmt tpb foils" << std::endl;
     fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);

@@ -31,6 +31,7 @@
 #include "icetray/I3Units.h"
 
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
+#include "g4-larsim/g4classes/G4CCMCerenkov.h"
 
 #include <G4Version.hh>
 #include <G4UnitsTable.hh>
@@ -54,6 +55,11 @@
 #include <G4RadioactiveDecayPhysics.hh>
 #include <G4OpticalPhysics.hh>
 #include <G4OpticalParameters.hh>
+
+#include <G4ProcessManager.hh>
+#include <G4PenelopeIonisationModel.hh>
+#include <G4ComptonScattering.hh>
+#include <G4PenelopeComptonModel.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -80,7 +86,7 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver):  G4VModularPhysicsList()
 
     //The Following lines set more specific parameters for scintillation.
     //params->SetBoundaryVerboseLevel(3);
-    params->SetWLSTimeProfile("delta");
+    params->SetWLSTimeProfile("exponential");
 #if G4VERSION_NUMBER >= 1100
 #else
     // In geant4.11.1 and beyond, this needs to be set in the material properties table
@@ -170,6 +176,39 @@ void G4CCMPhysicsList::ConstructProcess() {
     // optical physics list
     opticalPhysicsList->ConstructProcess();
 
+    // --- Remove default Cerenkov process if it was registered ---
+    auto particleIterator = GetParticleIterator();
+    particleIterator->reset();
+
+    while ((*particleIterator)()) {
+        G4ParticleDefinition* particle = particleIterator->value();
+        G4ProcessManager* pmanager = particle->GetProcessManager();
+
+        if (pmanager == nullptr) continue;
+
+        // Remove default G4Cerenkov if present
+        for (G4int i = 0; i < pmanager->GetProcessListLength(); ++i) {
+            G4VProcess* process = (*pmanager->GetProcessList())[i];
+            if (process && process->GetProcessName() == "Cerenkov") {
+                pmanager->RemoveProcess(process);
+                break;
+            }
+        }
+
+        // Add G4CCMCerenkov only for charged particles with beta > 0
+        if (particle->GetPDGCharge() != 0.0 && !particle->IsShortLived()) {
+            auto myCerenkov = new G4CCMCerenkov("CCMCerenkov");
+
+            // Optional: configure your custom process
+            myCerenkov->SetTrackSecondariesFirst(true);
+            //myCerenkov->SetMaxNumPhotonsPerStep(100);
+            //myCerenkov->SetMaxBetaChangePerStep(10.0);
+
+            pmanager->AddProcess(myCerenkov);
+            pmanager->SetProcessOrdering(myCerenkov, idxPostStep);
+        }
+    }
+
     // radioactive decay things
 #if G4VERSION_NUMBER >= 1120
     G4Radioactivation* radioactiveDecay = new G4Radioactivation("Radioactivation", 1.0e+60*CLHEP::year);
@@ -187,8 +226,8 @@ void G4CCMPhysicsList::ConstructProcess() {
     G4LossTableManager* man = G4LossTableManager::Instance();
     G4VAtomDeexcitation* deex = man->AtomDeexcitation();
     if (nullptr == deex) {
-     deex = new G4UAtomicDeexcitation();
-     man->SetAtomDeexcitation(deex);
+        deex = new G4UAtomicDeexcitation();
+        man->SetAtomDeexcitation(deex);
     }
     deex->InitialiseAtomicDeexcitation();
 
@@ -214,6 +253,39 @@ void G4CCMPhysicsList::ConstructProcess() {
         }
     } 
 
+    // remove old compton
+    G4ProcessManager* pManager = G4Gamma::Gamma()->GetProcessManager();
+    G4VProcess* oldCompton = nullptr;
+
+    // Find the existing Compton scattering process
+    G4ProcessVector* processList = pManager->GetProcessList();
+    for (size_t i = 0; i < processList->size(); ++i) {
+        if ((*processList)[i]->GetProcessName() == "compt") {
+            oldCompton = (*processList)[i];
+            break;
+        }
+    }
+
+    // Remove the existing Compton process if found
+    if(oldCompton) {
+        pManager->RemoveProcess(oldCompton);
+    }
+
+    // Define energy threshold
+    G4double energyThreshold = 3.0 * MeV;
+
+    // Create Penelope Compton scattering processes
+    G4ComptonScattering* penCompton = new G4ComptonScattering();
+
+    // Set up the models
+    G4PenelopeComptonModel* penModel = new G4PenelopeComptonModel();
+
+    penModel->SetHighEnergyLimit(energyThreshold);
+
+    penCompton->AddEmModel(0, penModel);
+
+    // Add both processes to the process manager
+    pManager->AddDiscreteProcess(penCompton);
 }
 
 void G4CCMPhysicsList::SetCuts() {

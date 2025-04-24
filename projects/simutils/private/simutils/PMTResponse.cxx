@@ -502,7 +502,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         // Reference to the destination
         CCMRecoPulseSeries & dest_series = it_dest->second;
 
-        // While we are looping over tubes, grab the PMT efficincy
+        // While we are looping over tubes, grab the PMT efficiency
         double pmt_efficiency = pmt_efficencies_.at(it->first);
         if(flat_eff_) {
             pmt_efficiency = average_pmt_eff_;

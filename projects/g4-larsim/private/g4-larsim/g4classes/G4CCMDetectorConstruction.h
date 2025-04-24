@@ -131,6 +131,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
         DecayZ_ = DecayZ;
     }
 
+    double HarmonicOscillatorRefractiveIndex(double a0, double aUV, double gammaUV, double wlUV, double wl);
+    double HarmonicOscillatorRefractiveIndexDerivative(double aUV, double lambda, double lambdaUV, double gammaUV);
+
   private:
 
     G4CCMReadout * readout_ = nullptr;
