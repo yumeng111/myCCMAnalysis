@@ -439,11 +439,13 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     if(TrackEnergyLosses_) {
         // Check if an energy loss has occurred
         if(energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()) {
+            double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
+            if(edep == 0.0)
+                return false;
             // now add energy loss
             I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
             I3Particle daughter(daughter_type);
 
-            double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
             daughter.SetEnergy(edep);
             daughter.SetPos(position);
             daughter.SetDir(I3Direction(direction));
@@ -493,6 +495,8 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                     I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
                 }
             }
+        } else if(processName == "NoProcess") {
+            return false;
         } else {
             G4cout << "oops! no conversion for " << processName << std::endl;
         }

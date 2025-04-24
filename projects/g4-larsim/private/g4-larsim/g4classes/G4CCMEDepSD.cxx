@@ -179,7 +179,6 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if(it != tree_tracker->DaughterParticleMap.cend()) {
             std::vector<I3Particle> daughters = I3MCTreeUtils::GetDaughters(*(tree_tracker->mcTree), it->second);
             if(daughters.empty()) {
-                std::cout << "Warning: no daughters found for track_id " << track_id << std::endl;
                 return false;
             }
             I3Particle energy_loss = *std::max_element(daughters.begin(), daughters.end(), [](I3Particle const & p0, I3Particle const & p1) -> bool {return p0.GetID() < p1.GetID();});
@@ -196,6 +195,9 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // now let's check energy deposited
     G4double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
     G4double ekin = aStep->GetTrack()->GetKineticEnergy() / electronvolt * I3Units::eV;
+
+    if(edep == 0.)
+        return false;
 
     // position
     G4ThreeVector prePosition = aStep->GetPostStepPoint()->GetPosition();
@@ -228,6 +230,8 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         daughter.SetDir(direction);
         daughter.SetTime(time);
         output_energy_losses_vector->push_back(daughter);
+    } else if(processName == "NoProcess") {
+        return false;
     } else {
         std::cout << "oops! no conversion for " << processName << std::endl;
     }
