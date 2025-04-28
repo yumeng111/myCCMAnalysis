@@ -260,6 +260,7 @@ bool OverlayNoise::NextFrame() {
             }
             frame_sequences->rewind();
             failed = true;
+            continue;
         }
         frame = frame_sequences->pop_frame();
         if(frame->GetStop() != I3Frame::DAQ) {
