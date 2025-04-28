@@ -184,8 +184,7 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             I3Particle energy_loss = *std::max_element(daughters.begin(), daughters.end(), [](I3Particle const & p0, I3Particle const & p1) -> bool {return p0.GetID() < p1.GetID();});
             if(SaveEnergyLossesTree_) {
                 energy_loss_ids.insert(energy_loss.GetID());
-            }
-            if(SaveEnergyLossesVector_) {
+            } else if(SaveEnergyLossesVector_) {
                 output_energy_losses_vector->push_back(energy_loss);
             }
         }
