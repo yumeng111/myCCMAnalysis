@@ -317,16 +317,18 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double d_param = UVAbsD_ / cm; // cm
     double scaling_param = UVAbsScaling_; // dimensionless
 
+    double large_abs_length = 100000.0; // cm
+
     // now let's get some min and max bounds
     double min_wavelength = b_param + 0.1;
-    double max_wavelength = 200.0; // nm
+    double max_wavelength = std::min(800.0, b_param - log(1.0 - std::exp(-d_param/large_abs_length)) / a_param);
 
     double min_wavelength_function_T = 1.0 - std::exp( - a_param * (min_wavelength - b_param));
     double min_abs_length = (d_param / std::log(1.0 / min_wavelength_function_T));
     min_abs_length *= scaling_param;
 
     double max_wavelength_function_T = 1.0 - std::exp( - a_param * (max_wavelength - b_param));
-    double max_abs_length = std::max((d_param / std::log(1.0 / max_wavelength_function_T)), 10000.0);
+    double max_abs_length = std::min((d_param / std::log(1.0 / max_wavelength_function_T)), large_abs_length /*cm*/);
     max_abs_length *= scaling_param;
 
     // now we need to fill in our absorption lengths
