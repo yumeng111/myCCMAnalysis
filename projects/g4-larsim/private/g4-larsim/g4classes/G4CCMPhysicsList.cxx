@@ -33,6 +33,12 @@
 #include "g4-larsim/g4classes/G4CCMPhysicsList.h"
 #include "g4-larsim/g4classes/G4CCMCerenkov.h"
 
+#include "G4EmExtraPhysics.hh"
+#include "G4IonPhysics.hh"
+#include "G4StoppingPhysics.hh"
+#include "G4HadronElasticPhysicsHP.hh"
+#include "G4HadronPhysicsFTFP_BERT_HP.hh"
+
 #include <G4Version.hh>
 #include <G4UnitsTable.hh>
 #include <G4EmStandardPhysics_option4.hh>
@@ -61,18 +67,44 @@
 #include <G4ComptonScattering.hh>
 #include <G4PenelopeComptonModel.hh>
 
+#include <G4ParticleDefinition.hh>
+#include <G4ParticleTypes.hh>
+#include <G4BosonConstructor.hh>
+#include <G4LeptonConstructor.hh>
+#include <G4MesonConstructor.hh>
+#include <G4BaryonConstructor.hh>
+#include <G4ShortLivedConstructor.hh>
+#include <G4DecayTable.hh>
+#include <G4VDecayChannel.hh>
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4CCMPhysicsList::G4CCMPhysicsList(G4int ver):  G4VModularPhysicsList()
 {
-    defaultCutValue = 0.0001*CLHEP::mm;
+    defaultCutValue = 0.7*CLHEP::mm;
     SetVerboseLevel(0);
 
 	// EM physics
 	emPhysicsList = new G4EmStandardPhysics_option4(ver);
 
+    // Synchroton Radiation & GN Physics
+    emExtraPhysicsList = new G4EmExtraPhysics(ver);
+
     // Decays 
     decayPhysicsList = new G4DecayPhysics(ver);
+    radioactiveDecayPhysicsList = new G4RadioactiveDecayPhysics(ver);
+
+    // Hadron Elastic scattering
+    hadronElasticPhysicsList = new G4HadronElasticPhysicsHP(ver);
+
+    // Hadron Physics
+    hadronPhysicsList = new G4HadronPhysicsFTFP_BERT_HP(ver);
+
+    // Stopping Physics
+    stoppingPhysicsList = new G4StoppingPhysics(ver);
+
+    // Ion Physics
+    ionPhysicsList = new G4IonPhysics(ver);
 
     // Optical Physics
     opticalPhysicsList = new G4OpticalPhysics(ver);
@@ -140,15 +172,18 @@ G4CCMPhysicsList::G4CCMPhysicsList(G4int ver):  G4VModularPhysicsList()
     deex->SetInternalConversionFlag(true);	  
     deex->SetIsomerProduction(true);  
     deex->SetMaxLifeTime(meanLife);
-
 }
 
 G4CCMPhysicsList::~G4CCMPhysicsList() {  
-	
     delete emPhysicsList;
-    delete opticalPhysicsList;
+    delete emExtraPhysicsList;
+    delete hadronElasticPhysicsList;
+    delete hadronPhysicsList;
+    delete stoppingPhysicsList;
+    delete ionPhysicsList;
+    delete radioactiveDecayPhysicsList;
     delete decayPhysicsList;
-
+    delete opticalPhysicsList;
 }
 
 
@@ -157,6 +192,25 @@ G4CCMPhysicsList::~G4CCMPhysicsList() {
 void G4CCMPhysicsList::ConstructParticle() {
     // minimal set of particles for EM physics and radioactive decay
     G4EmBuilder::ConstructMinimalEmSet();
+
+    // construct all particles
+    G4IonConstructor pIonConstructor;
+    pIonConstructor.ConstructParticle();
+
+    G4BosonConstructor pBosonConstructor;
+    pBosonConstructor.ConstructParticle();
+
+    G4LeptonConstructor pLeptonConstructor;
+    pLeptonConstructor.ConstructParticle();
+
+    G4MesonConstructor pMesonConstructor;
+    pMesonConstructor.ConstructParticle();
+
+    G4BaryonConstructor pBaryonConstructor;
+    pBaryonConstructor.ConstructParticle();
+
+    G4ShortLivedConstructor pShortLivedConstructor;
+    pShortLivedConstructor.ConstructParticle();
     
     // Register optical photon
     G4OpticalPhoton::Definition();
@@ -169,6 +223,24 @@ void G4CCMPhysicsList::ConstructProcess() {
 
     // electromagnetic physics list
     emPhysicsList->ConstructProcess();
+
+    // extra electromagnetic physics list
+    emExtraPhysicsList->ConstructProcess();
+
+    // hadron elastic physics list
+    hadronElasticPhysicsList->ConstructProcess();
+
+    // hadron physics list
+    hadronPhysicsList->ConstructProcess();
+
+    // stopping physics list
+    stoppingPhysicsList->ConstructProcess();
+
+    // ion physics list
+    ionPhysicsList->ConstructProcess();
+
+    // radioactive decay physics list
+    radioactiveDecayPhysicsList->ConstructProcess();
 
     // decay physics list
     decayPhysicsList->ConstructProcess();
@@ -195,14 +267,14 @@ void G4CCMPhysicsList::ConstructProcess() {
             }
         }
 
-        // Add G4CCMCerenkov only for charged particles with beta > 0
+        // Add Cerenkov only for charged particles with beta > 0
         if (particle->GetPDGCharge() != 0.0 && !particle->IsShortLived()) {
-            auto myCerenkov = new G4CCMCerenkov("CCMCerenkov");
+            auto myCerenkov = new G4CCMCerenkov("Cerenkov");
 
             // Optional: configure your custom process
             myCerenkov->SetTrackSecondariesFirst(true);
-            //myCerenkov->SetMaxNumPhotonsPerStep(100);
-            //myCerenkov->SetMaxBetaChangePerStep(10.0);
+            myCerenkov->SetMaxNumPhotonsPerStep(100);
+            myCerenkov->SetMaxBetaChangePerStep(10.0);
 
             pmanager->AddProcess(myCerenkov);
             pmanager->SetProcessOrdering(myCerenkov, idxPostStep);

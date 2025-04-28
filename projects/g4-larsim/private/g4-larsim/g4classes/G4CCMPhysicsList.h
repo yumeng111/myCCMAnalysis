@@ -56,8 +56,14 @@ protected:
     void SetCuts() override;
 private:
     G4VPhysicsConstructor* emPhysicsList;
-    G4VPhysicsConstructor* opticalPhysicsList;
+    G4VPhysicsConstructor* emExtraPhysicsList;
     G4VPhysicsConstructor* decayPhysicsList;
+    G4VPhysicsConstructor* radioactiveDecayPhysicsList;
+    G4VPhysicsConstructor* hadronElasticPhysicsList;
+    G4VPhysicsConstructor* hadronPhysicsList;
+    G4VPhysicsConstructor* stoppingPhysicsList;
+    G4VPhysicsConstructor* ionPhysicsList;
+    G4VPhysicsConstructor* opticalPhysicsList;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
