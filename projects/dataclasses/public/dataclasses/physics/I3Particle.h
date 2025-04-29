@@ -218,7 +218,9 @@ class I3Particle : public I3FrameObject
     Scintillation = 2000000013,
     OpticalWLS = 2000000014,
     IonIonization = 2000000015,
-    HIonization = 2000000016, //
+    HIonization = 2000000016,
+    NeutronInelastic = 2000000017,
+    HadronElastic = 2000000018,
   };
 
  public:
@@ -407,7 +409,7 @@ std::string i3particle_type_string(int32_t pdg_code);
  * the class.
  */
 #define I3PARTICLE_H_I3Particle_ParticleType                                      \
-    (unknown)(Gamma)(EPlus)(EMinus)(MuPlus)(MuMinus)(Pi0) \
+    (unknown)(Gamma)(EPlus)(EMinus)(MuPlus)(MuMinus)(Pi0)                         \
     (PiPlus)(PiMinus)(K0_Long)(KPlus)(KMinus)(Neutron)(PPlus)(PMinus)(K0_Short)   \
     (Eta)(Lambda)(SigmaPlus)(Sigma0)(SigmaMinus)(Xi0)(XiMinus)(OmegaMinus)        \
     (NeutronBar)(LambdaBar)(SigmaMinusBar)(Sigma0Bar)(SigmaPlusBar)(Xi0Bar)       \
@@ -438,7 +440,8 @@ std::string i3particle_type_string(int32_t pdg_code);
     (ElectronBremsstrahlung)(ElectronPairProduction)                              \
     (CoulombScattering)(Annihilation)                                             \
     (Na22Nucleus)(ExcitedNe22Nuclus)(Cherenkov)(Radioactivation)                  \
-    (Scintillation)(OpticalWLS)                                                   \
+    (Scintillation)(OpticalWLS)(IonIonization)(HIonization)(NeutronInelastic)     \
+    (HadronElastic)                                                               \
 
 std::ostream& operator<<(std::ostream& oss, const I3Particle& d);
 
