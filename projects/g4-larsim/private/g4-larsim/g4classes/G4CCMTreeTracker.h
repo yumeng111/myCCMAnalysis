@@ -127,6 +127,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         static const std::unordered_map<PhotonSummary::PhotonSource, std::string> photonSourceToProcessName;
         static const std::unordered_map<WLSLocation::WLSLoc, std::string> wlsLocationToProcessName;
         static const std::unordered_set<int> energyLossPDGCodes;
+        static const std::unordered_set<std::string> knownProcessNames;
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
         std::map<int, int> parent_map;

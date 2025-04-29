@@ -19,14 +19,16 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-const std::unordered_set<int> G4CCMTreeTracker::energyLossPDGCodes = {0, 2000000001, 2000000002, 2000000003, 2000000004, 2000000005, 2000000006, 2000000007, 2000000008, 2000000009, 2000000010, 2000000011, 2000000012, 2000000013, 2000000014, 2000000015, 2000000016};
+const std::unordered_set<int> G4CCMTreeTracker::energyLossPDGCodes = {0, 2000000001, 2000000002, 2000000003, 2000000004, 2000000005, 2000000006, 2000000007, 2000000008, 2000000009, 2000000010, 2000000011, 2000000012, 2000000013, 2000000014, 2000000015, 2000000016, 2000000017, 2000000018};
+
+const std::unordered_set<std::string> G4CCMTreeTracker::knownProcessNames = {"NoProcess", "Transportation"};
 
 const std::unordered_map<std::string, int> G4CCMTreeTracker::energyLossToI3ParticlePDGCode = {{"phot", 2000000001}, {"compt", 2000000002}, {"conv", 2000000003},
                                                                                           {"Rayl", 2000000004}, {"msc", 2000000005}, {"eIoni", 2000000006},
                                                                                           {"eBrem", 2000000007}, {"ePairProd", 2000000008}, {"CoulombScat", 2000000009},
                                                                                           {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012},
                                                                                           {"Scintillation", 2000000013}, {"OpWLS", 2000000014}, {"ionIoni" , 2000000015},
-                                                                                          {"hIoni", 2000000016}, {"Unknown", 0}};
+                                                                                          {"hIoni", 2000000016}, {"neutronInelastic", 2000000017}, {"hadElastic", 2000000018}, {"Unknown", 0}};
 
 const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMTreeTracker::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
                                                                                                               {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
@@ -369,6 +371,9 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // time
     double time = primary_.GetTime() + aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
 
+    // length
+    double length = aStep->GetStepLength() / mm * I3Units::mm;
+
     // let's also grab parent id
     // if parent id == 0, that's our primary injected particle
     G4int parent_id = aStep->GetTrack()->GetParentID();
@@ -401,77 +406,93 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 daughter.SetPos(position);
                 daughter.SetDir(I3Direction(direction));
                 daughter.SetTime(time);
-                I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id) , daughter);
+                daughter.SetLength(length);
+                I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(parent_id), daughter);
             }
 
             // update map
             DaughterParticleMap[track_id] = daughter.GetID();
+        } else {
+            I3MCTree::iterator it = mcTree->find(DaughterParticleMap.at(track_id));
+            if(it != mcTree->end()) {
+                // All particle properties are defined at creation,
+                // except length
+                I3Particle & daughter = *it;
+                daughter.SetLength(daughter.GetLength() + length);
+            }
         }
     }
 
     if(TrackEnergyLosses_) {
-        // Check if an energy loss has occurred
-        if(energyLossToI3ParticlePDGCode.find(processName) != energyLossToI3ParticlePDGCode.end()) {
-            double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
-            if(edep == 0.0)
-                return false;
-            // now add energy loss
-            I3Particle::ParticleType daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
-            I3Particle daughter(daughter_type);
-
-            daughter.SetEnergy(edep);
-            daughter.SetPos(position);
-            daughter.SetDir(I3Direction(direction));
-            daughter.SetTime(time);
-
-            std::map<int, int>::iterator parent_it = parent_map.find(track_id);
-            if(parent_it != parent_map.end())
-                track_id = parent_it->second;
-
-            if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
-                G4cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
-            } else {
-                if(edep < G4EDepMin_) {
-                    if(sub_threshold_losses.find(track_id) == sub_threshold_losses.end()) {
-                        sub_threshold_losses[track_id] = {0.0, std::vector<I3Particle>()};
-                    }
-                    std::tuple<double, std::vector<I3Particle>> & sub_losses = sub_threshold_losses[track_id];
-                    double & total_energy = std::get<0>(sub_losses);
-                    std::vector<I3Particle> & losses = std::get<1>(sub_losses);
-                    total_energy += edep;
-                    if(total_energy > G4EDepMin_) {
-                        position = position * edep;
-                        direction *= edep;
-                        time *= edep;
-                        for(I3Particle const & p : losses) {
-                            double const & e = p.GetEnergy();
-                            position += p.GetPos() * e;
-                            direction += p.GetDir() * e;
-                            time += p.GetTime() * e;
-                        }
-                        position /= total_energy;
-                        direction /= total_energy;
-                        time /= total_energy;
-
-                        // ok we have a valid energy deposition -- let's add it to the tree
-                        daughter.SetEnergy(total_energy);
-                        daughter.SetPos(position);
-                        daughter.SetDir(I3Direction(direction));
-                        daughter.SetTime(time);
-                        I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
-                        total_energy = 0.0;
-                        losses.clear();
-                    } else {
-                        losses.push_back(daughter);
-                    }
-                } else {
-                    I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
-                }
-            }
-        } else if(processName == "NoProcess") {
+        double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
+        if(edep == 0.0)
             return false;
+
+        I3Particle::ParticleType daughter_type;
+        // Check if an energy loss has occurred
+        if(energyLossToI3ParticlePDGCode.find(processName) == energyLossToI3ParticlePDGCode.end()) {
+            if(knownProcessNames.find(processName) == knownProcessNames.end()) {
+                G4cout << "oops! no conversion for " << processName << std::endl;
+            }
+            daughter_type = I3Particle::unknown;
         } else {
-            G4cout << "oops! no conversion for " << processName << std::endl;
+            daughter_type = static_cast<I3Particle::ParticleType>(energyLossToI3ParticlePDGCode.at(processName));
+        }
+
+        // now add energy loss
+        I3Particle daughter(daughter_type);
+
+        daughter.SetEnergy(edep);
+        daughter.SetPos(position);
+        daughter.SetDir(I3Direction(direction));
+        daughter.SetTime(time);
+        daughter.SetLength(length);
+
+        std::map<int, int>::iterator parent_it = parent_map.find(track_id);
+        if(parent_it != parent_map.end())
+            track_id = parent_it->second;
+
+        if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
+            G4cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
+        } else {
+            if(edep < G4EDepMin_) {
+                if(sub_threshold_losses.find(track_id) == sub_threshold_losses.end()) {
+                    sub_threshold_losses[track_id] = {0.0, std::vector<I3Particle>()};
+                }
+                std::tuple<double, std::vector<I3Particle>> & sub_losses = sub_threshold_losses[track_id];
+                double & total_energy = std::get<0>(sub_losses);
+                std::vector<I3Particle> & losses = std::get<1>(sub_losses);
+                total_energy += edep;
+                if(total_energy > G4EDepMin_) {
+                    position = position * edep;
+                    direction *= edep;
+                    time *= edep;
+                    for(I3Particle const & p : losses) {
+                        double const & e = p.GetEnergy();
+                        position += p.GetPos() * e;
+                        direction += p.GetDir() * e;
+                        time += p.GetTime() * e;
+                        length += p.GetLength();
+                    }
+                    position /= total_energy;
+                    direction /= total_energy;
+                    time /= total_energy;
+
+                    // ok we have a valid energy deposition -- let's add it to the tree
+                    daughter.SetEnergy(total_energy);
+                    daughter.SetPos(position);
+                    daughter.SetDir(I3Direction(direction));
+                    daughter.SetTime(time);
+                    daughter.SetLength(length);
+                    I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
+                    total_energy = 0.0;
+                    losses.clear();
+                } else {
+                    losses.push_back(daughter);
+                }
+            } else {
+                I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
+            }
         }
     }
 
