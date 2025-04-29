@@ -424,8 +424,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 std::get<0>(tpb_it->second) += 1;
                 tpb_copy_number_k = std::get<0>(tpb_it->second);
             }
-            fPlacements.emplace_back(new G4PVPlacement(tpb_rotation.get(), tpb_position, tpb_log, "PMTTPB_" + name, fFiducialLAr_log, false, tpb_copy_number_k, true));
-            fLogicalBorderSurfaces.emplace_back(new G4LogicalBorderSurface("PMTTPB_" + name + "_Surface", fFiducialLAr_phys, fPlacements.back().get(), TPBOpticalSurface));
+            fPlacements.emplace_back(new G4PVPlacement(tpb_rotation.get(), tpb_position, tpb_log, "PMTTPBCoating_" + name, fFiducialLAr_log, false, tpb_copy_number_k, true));
+            fLogicalBorderSurfaces.emplace_back(new G4LogicalBorderSurface("PMTTPBCoating_" + name + "_Surface", fFiducialLAr_phys, fPlacements.back().get(), TPBOpticalSurface));
         } else {
             std::map<std::tuple<bool, std::shared_ptr<G4VSolid>>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator pmt_it;
 
