@@ -43,7 +43,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     InteriorSDSaveEnergyLossesVector_(false), InteriorSDSaveEnergyLossesTree_(false), InteriorSDPruneTree_(false),
     KillNeutrinos_(false), KillPhotons_(false), KillScintillation_(false), KillCherenkov_(false),
     TimeCut_(false), DetailedPhotonTracking_(false), TrackParticles_(false), TrackEnergyLosses_(false),
-    SimulateNuclearRecoils_(false), G4RangeCut_(1e-9 * I3Units::m), G4EDepMin_(0.01 * I3Units::keV), G4ETrackingMin_(0.1 * I3Units::keV),
+    SimulateNuclearRecoils_(false), G4RangeCut_(0.7 * I3Units::mm), G4EDepMin_(1.0 * I3Units::keV), G4ETrackingMin_(1.0 * I3Units::keV),
     RecordHits_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
     SingletTau_(8.2 * I3Units::nanosecond), TripletTau_(743.0 * I3Units::nanosecond),
