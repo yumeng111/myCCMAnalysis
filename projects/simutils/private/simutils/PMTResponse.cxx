@@ -448,7 +448,6 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             // ok we already have an offset time for this board, let's just save
             this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
             this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
-            this_event_total_time_offsets->insert(std::make_pair(key.first, board_offsets[key.second]));
         } else {
             // first time seeing this board! let's make an offset
             double b_offset = randomService_->Uniform(-1.0, 1.0);
@@ -457,7 +456,6 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
             board_errors.insert(std::make_pair(key.second, b_error));
             this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
-            this_event_total_time_offsets->insert(std::make_pair(key.first, b_offset));
         }
     }
 
@@ -532,7 +530,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         I3MapPMTKeyDouble::const_iterator pmt_tt_it = pmt_transit_times_->find(it->first);
         if(pmt_tt_it != pmt_transit_times_->end()) {
             this_tube_transit_time = pmt_tt_it->second;
-            this_event_total_time_offsets->at(it->first) += this_tube_transit_time;
+            this_event_total_time_offsets->insert(std::make_pair(it->first, this_tube_transit_time + this_tube_board_time_offset));
         }
 
         log_debug("PMT transit time: %f", this_tube_transit_time);
