@@ -11,7 +11,7 @@
 #include <G4ParticleGun.hh>
 #include <G4EventManager.hh>
 
-G4CCMRunManager::G4CCMRunManager(): G4MTRunManager() {}
+G4CCMRunManager::G4CCMRunManager(): G4TaskRunManager(nullptr, true, 0) {}
 
 void G4CCMRunManager::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries) {
     BeamOn(1);
