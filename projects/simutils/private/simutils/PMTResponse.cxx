@@ -26,6 +26,7 @@
 #include <icetray/CCMPMTKey.h>
 #include <icetray/I3DefaultName.h>
 
+#include <dataclasses/I3Double.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/calibration/CCMSimulationCalibration.h>
@@ -90,6 +91,7 @@ class PMTResponse: public I3Module {
     std::string output_time_offsets_name_;
     std::string detector_configuration_name_;
     std::string randomServiceName_;
+    std::string output_true_event_time_name_;
 
     I3RandomServicePtr randomService_;
 
@@ -208,10 +210,12 @@ I3_MODULE(PMTResponse);
 PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     input_hits_map_name_("PMTMCHitsMap"), output_reco_pulse_name_("MCRecoPulses"),
     output_time_offsets_name_("SimulatedBoardTimeOffsets"), detector_configuration_name_("DetectorResponseConfig"),
+    output_true_event_time_name_("TrueEventTime"),
     remove_cherenkov_(false), flat_eff_(false), weight_uv_abs_(false) {
     AddParameter("InputHitsMapName", "Name of the input hits map", input_hits_map_name_);
     AddParameter("OutputRecoPulseName", "Name of the output reco pulse series map", output_reco_pulse_name_);
     AddParameter("OutputTimeOffsetsName", "Name of the output time offsets map", output_time_offsets_name_);
+    AddParameter("OutputTrueEventTimeName", "Name of the output true event time", output_true_event_time_name_);
     AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", detector_configuration_name_);
     AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
     AddParameter("QEWavelengths", "Wavelengths for quantum efficiency", wavelength_qe_wavelength);
@@ -226,6 +230,7 @@ void PMTResponse::Configure() {
     GetParameter("InputHitsMapName", input_hits_map_name_);
     GetParameter("OutputRecoPulseName", output_reco_pulse_name_);
     GetParameter("OutputTimeOffsetsName", output_time_offsets_name_);
+    GetParameter("OutputTrueEventTimeName", output_true_event_time_name_);
     GetParameter("DetectorConfigurationName", detector_configuration_name_);
     GetParameter("RandomServiceName", randomServiceName_);
     if(randomServiceName_.empty()) {
@@ -677,6 +682,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         }
     }
 
+    frame->Put(output_true_event_time_name_, boost::make_shared<I3Double>(event_time_offset));
     frame->Put(output_time_offsets_name_, this_event_total_time_offsets);
     frame->Put(output_reco_pulse_name_, mcpeseries_dest);
     PushFrame(frame);
