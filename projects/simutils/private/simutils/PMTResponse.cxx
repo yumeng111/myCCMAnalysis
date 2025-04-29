@@ -87,6 +87,7 @@ class PMTResponse: public I3Module {
 
     std::string input_hits_map_name_;
     std::string output_reco_pulse_name_;
+    std::string output_time_offsets_name_;
     std::string detector_configuration_name_;
     std::string randomServiceName_;
 
@@ -209,10 +210,12 @@ I3_MODULE(PMTResponse);
 
 PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     input_hits_map_name_("PMTMCHitsMap"), output_reco_pulse_name_("MCRecoPulses"),
+    output_time_offsets_name_("SimulatedBoardTimeOffsets"), detector_configuration_name_("DetectorResponseConfig"),
     remove_cherenkov_(false), flat_eff_(false), weight_uv_abs_(false) {
-    AddParameter("InputHitsMapName", "", input_hits_map_name_);
-    AddParameter("OutputRecoPulseName", "", output_reco_pulse_name_);
-    AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", std::string("DetectorResponseConfig"));
+    AddParameter("InputHitsMapName", "Name of the input hits map", input_hits_map_name_);
+    AddParameter("OutputRecoPulseName", "Name of the output reco pulse series map", output_reco_pulse_name_);
+    AddParameter("OutputTimeOffsetsName", "Name of the output time offsets map", output_time_offsets_name_);
+    AddParameter("DetectorConfigurationName", "Name of the detector configuration in the Simulation frame", detector_configuration_name_);
     AddParameter("RandomServiceName", "Name of the random service in the context. If empty default random service will be used.", randomServiceName_);
     AddParameter("QEWavelengths", "Wavelengths for quantum efficiency", wavelength_qe_wavelength);
     AddParameter("QEValues", "Values for quantum efficiency", wavelength_qe_efficiency);
@@ -225,6 +228,7 @@ PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
 void PMTResponse::Configure() {
     GetParameter("InputHitsMapName", input_hits_map_name_);
     GetParameter("OutputRecoPulseName", output_reco_pulse_name_);
+    GetParameter("OutputTimeOffsetsName", output_time_offsets_name_);
     GetParameter("DetectorConfigurationName", detector_configuration_name_);
     GetParameter("RandomServiceName", randomServiceName_);
     if(randomServiceName_.empty()) {
@@ -437,12 +441,14 @@ void PMTResponse::DAQ(I3FramePtr frame) {
     I3MapPMTKeyDouble this_event_board_time_error;
     I3Map<CCMTriggerKey, double> board_offsets;
     I3Map<CCMTriggerKey, double> board_errors;
+    I3MapPMTKeyDoublePtr this_event_total_time_offsets = boost::make_shared<I3MapPMTKeyDouble>();
 
     for(std::pair<CCMPMTKey, CCMTriggerKey> const & key : trigger_copy_map_) {
         if(board_offsets.find(key.second) != board_offsets.end()) {
             // ok we already have an offset time for this board, let's just save
             this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
             this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
+            this_event_total_time_offsets->insert(std::make_pair(key.first, board_offsets[key.second]));
         } else {
             // first time seeing this board! let's make an offset
             double b_offset = randomService_->Uniform(-1.0, 1.0);
@@ -451,6 +457,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
             board_errors.insert(std::make_pair(key.second, b_error));
             this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
+            this_event_total_time_offsets->insert(std::make_pair(key.first, b_offset));
         }
     }
 
@@ -525,6 +532,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         I3MapPMTKeyDouble::const_iterator pmt_tt_it = pmt_transit_times_->find(it->first);
         if(pmt_tt_it != pmt_transit_times_->end()) {
             this_tube_transit_time = pmt_tt_it->second;
+            this_event_total_time_offsets->at(it->first) += this_tube_transit_time;
         }
 
         log_debug("PMT transit time: %f", this_tube_transit_time);
@@ -704,7 +712,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
             // ok time to save as a reco pulse!
             // add transit time for this tube
-            total_time_offset += this_tube_transit_time + this_tube_board_time_offset;
+            total_time_offset += this_tube_transit_time + this_tube_board_time_offset + this_tube_board_time_error;
 
             log_debug("\tFinal time offset: %f", total_time_offset);
 
@@ -712,7 +720,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             double binned_reco_time = static_cast<int>(total_time_offset / 2.0) * 2.0;
 
             // and now subtract off our transit time with error
-            binned_reco_time -= this_tube_transit_time + this_tube_board_time_offset + this_tube_board_time_error;
+            binned_reco_time -= this_tube_transit_time + this_tube_board_time_offset;
 
             log_debug("\tBinned reco time: %f", binned_reco_time);
 
@@ -749,6 +757,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         log_debug("");
     }
 
+    frame->Put(output_time_offsets_name_, this_event_total_time_offsets);
     frame->Put(output_reco_pulse_name_, mcpeseries_dest);
     PushFrame(frame);
 }
