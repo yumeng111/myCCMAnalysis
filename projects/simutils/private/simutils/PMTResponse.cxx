@@ -113,14 +113,11 @@ class PMTResponse: public I3Module {
     std::vector<double> wavelength_qe_wavelength;
     std::vector<double> wavelength_qe_efficiency;
 
-    PulseTimeDistribution main_pulse_ = {-0.45, 0.9, 1.98e5};
-    double late_per_main_ = 0.0628;
+    PulseTimeDistribution main_pulse_ = {-0.45, 0.9, 0.7971466712310554};
     std::vector<PulseTimeDistribution> late_pulses_ = {
-        {32, -2.5, 1000},
-        {40, -5.2, 4900},
-        {45, 1.5, 4100},
-        {75, 15, 700},
-        {61, 1, 300}
+        {30.946544, 7.737966, 0.041169},
+        {47.129206, 3.287489, 0.015341},
+        {384.661399, 166.957997, 0.146343},
     };
     bool generate_late_pulses_ = false;
 
@@ -326,18 +323,21 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     std::cout << "average pmt eff = " << average_pmt_eff_ << std::endl;
 
     pulse_types_.clear();
-    pulse_types_.push_back(main_pulse_);
-
     std::vector<double> probs;
-    probs.push_back(1.0 - late_per_main_ * generate_late_pulses_);
     if(generate_late_pulses_) {
-        double total = 0.0;
+        double total = main_pulse_.scale;
         for(PulseTimeDistribution const & pulse : late_pulses_)
             total += pulse.scale;
+
+        pulse_types_.push_back(main_pulse_);
+        probs.push_back(main_pulse_.scale / total);
         for(PulseTimeDistribution const & pulse : late_pulses_) {
             pulse_types_.push_back(pulse);
-            probs.push_back(late_per_main_ * pulse.scale / total);
+            probs.push_back(pulse.scale / total);
         }
+    } else {
+        pulse_types_.push_back(main_pulse_);
+        probs.push_back(1.0);
     }
 
     PushFrame(frame);
