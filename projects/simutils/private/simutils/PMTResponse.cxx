@@ -344,6 +344,8 @@ void PMTResponse::Calibration(I3FramePtr frame) {
         probs.push_back(1.0);
     }
 
+    pulse_selector_ = DiscreteDistribution(probs);
+
     PushFrame(frame);
 }
 
