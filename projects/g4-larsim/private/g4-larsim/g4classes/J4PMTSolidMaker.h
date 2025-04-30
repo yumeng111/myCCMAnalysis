@@ -13,6 +13,7 @@
 //*************************************************************************
 
 #include <array>
+#include <memory>
 #include <vector>
 
 #include <G4VSolid.hh>
