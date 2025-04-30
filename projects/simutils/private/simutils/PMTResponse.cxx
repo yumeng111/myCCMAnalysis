@@ -47,13 +47,16 @@ struct DiscreteDistribution {
     std::vector<double> probs_;
     DiscreteDistribution(std::vector<double> const & probs) : probs_(probs) {
         double sum = 0.0;
-        for (double const & p : probs_)
+        for(double const & p : probs_)
             sum += p;
         std::transform(probs_.begin(), probs_.end(), probs_.begin(), [=](double p) { return p / sum; });
+        for(size_t i = 1; i < probs_.size(); ++i)
+            probs_[i] += probs_[i - 1];
+
     }
     size_t operator()(I3RandomServicePtr rng) {
         double r = rng->Uniform(0.0, 1.0);
-        size_t i = std::lower_bound(probs_.begin(), probs_.end(), r) - probs_.begin();
+        size_t i = std::distance(probs_.begin(), std::lower_bound(probs_.begin(), probs_.end(), r));
         return i;
     }
 };
