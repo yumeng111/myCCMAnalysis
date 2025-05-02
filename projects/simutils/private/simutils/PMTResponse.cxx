@@ -113,7 +113,7 @@ class PMTResponse: public I3Module {
         {47.129206, 3.287489, 0.015341},
         {384.661399, 166.957997, 0.146343},
     };
-    bool generate_late_pulses_ = false;
+    bool generate_late_pulses_ = true;
 
     std::map<CCMPMTKey, std::vector<CCMPulseTimeDistributionParameters>> pulse_types_;
     std::map<CCMPMTKey, DiscreteDistribution> pulse_selector_;
