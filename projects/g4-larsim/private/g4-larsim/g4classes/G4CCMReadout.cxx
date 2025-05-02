@@ -166,12 +166,9 @@ void G4CCMReadout::UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummar
                 PhotonSummary const & this_photon_summary = photon_summary_series->at(it_map->second);
 
                 // Update the destination CCMMCPE with the summary information
-                pe.time = this_photon_summary.time;
-                //pe.calculated_time = this_photon_summary.calculated_time;
                 pe.distance_uv = this_photon_summary.distance_uv;
-                //pe.distance_visible = this_photon_summary.distance_visible;
-                //pe.calculated_distance_uv = this_photon_summary.calculated_distance_uv;
-                //pe.calculated_distance_visible = this_photon_summary.calculated_distance_visible;
+                pe.original_wavelength = this_photon_summary.original_wavelength;
+                pe.distance_visible = this_photon_summary.distance_visible;
                 pe.photon_source = PhotonSummarytoCCMMCPEPhotonSource.at(this_photon_summary.photon_source);
                 pe.n_photons_per_wls = this_photon_summary.n_photons_per_wls;
                 pe.wls_loc = this_photon_summary.wls_loc;
