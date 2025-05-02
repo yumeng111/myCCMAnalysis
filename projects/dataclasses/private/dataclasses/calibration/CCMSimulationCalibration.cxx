@@ -4,109 +4,61 @@
 
 CCMSimulationCalibration::CCMSimulationCalibration(){}
 
-void CCMSimulationCalibration::SetPMTEfficiencies(I3MapPMTKeyDouble x){
-    PMTEfficiencies = x;
-}
-I3MapPMTKeyDouble CCMSimulationCalibration::GetPMTEfficiencies() const {
-    return PMTEfficiencies;
+
+/*
+    void SetPMTCalibration(CCMPMTKey key, const CCMSimulationPMTCalibration& pmt_cal);
+    CCMSimulationPMTCalibration const & GetPMTCalibration(CCMPMTKey key) const;
+    //CCMSimulationPMTCalibration & GetPMTCalibration(CCMPMTKey key);
+
+    void SetPMTCalibration(CCMSimulationPMTCalibrationMap const & pmt_cal);
+    CCMSimulationPMTCalibrationMap const & GetPMTCalibration() const;
+    //CCMSimulationPMTCalibrationMap & GetPMTCalibration();
+*/
+
+void CCMSimulationCalibration::SetPMTCalibration(CCMPMTKey key, const CCMSimulationPMTCalibration& pmt_cal) {
+    pmt_calibration[key] = pmt_cal;
 }
 
-void CCMSimulationCalibration::SetLatePulseMu(I3MapPMTKeyDouble x){
-    LatePulseMu = x;
-}
-I3MapPMTKeyDouble CCMSimulationCalibration::GetLatePulseMu() const {
-    return LatePulseMu;
+CCMSimulationPMTCalibration const & CCMSimulationCalibration::GetPMTCalibration(CCMPMTKey key) const {
+    return pmt_calibration.at(key);
 }
 
-void CCMSimulationCalibration::SetLatePulseSigma(I3MapPMTKeyDouble x){
-    LatePulseSigma = x;
-}
-I3MapPMTKeyDouble CCMSimulationCalibration::GetLatePulseSigma() const {
-    return LatePulseSigma;
+//CCMSimulationPMTCalibration & CCMSimulationCalibration::GetPMTCalibration(CCMPMTKey key) {
+//    return pmt_calibration[key];
+//    }
+
+void CCMSimulationCalibration::SetPMTCalibration(CCMSimulationPMTCalibrationMap const & pmt_cal) {
+    pmt_calibration = pmt_cal;
 }
 
-void CCMSimulationCalibration::SetLatePulseScale(I3MapPMTKeyDouble x){
-    LatePulseScale = x;
-}
-I3MapPMTKeyDouble CCMSimulationCalibration::GetLatePulseScale() const {
-    return LatePulseScale;
+CCMSimulationPMTCalibrationMap const & CCMSimulationCalibration::GetPMTCalibration() const {
+    return pmt_calibration;
 }
 
-void CCMSimulationCalibration::SetPMTSPEMu(I3MapPMTKeyDouble x){
-    PMTSPEMu = x;
-}
-I3MapPMTKeyDouble CCMSimulationCalibration::GetPMTSPEMu() const {
-    return PMTSPEMu;
+//CCMSimulationPMTCalibrationMap & CCMSimulationCalibration::GetPMTCalibration() {
+//    return pmt_calibration;
+//    }
+
+template <class Archive>
+void CCMSimulationPMTCalibration::serialize(Archive& ar, unsigned version) {
+    if (version > ccmsimulationpmtcalibration_version_)
+        log_fatal("Attempting to save version %u from file but running version %u of CCMSimulationPMTCalibration class.", version, ccmsimulationpmtcalibration_version_);
+    ar & make_nvp("pmt_efficiency", pmt_efficiency);
+    ar & make_nvp("pmt_spe_mu", pmt_spe_mu);
+    ar & make_nvp("pmt_spe_sigma", pmt_spe_sigma);
+    ar & make_nvp("pmt_spe_threshold", pmt_spe_threshold);
+    ar & make_nvp("main_pulse_mu", main_pulse_mu);
+    ar & make_nvp("main_pulse_sigma", main_pulse_sigma);
+    ar & make_nvp("late_pulses", late_pulses);
 }
 
-void CCMSimulationCalibration::SetPMTSPESigma(I3MapPMTKeyDouble x){
-    PMTSPESigma = x;
-}
-I3MapPMTKeyDouble CCMSimulationCalibration::GetPMTSPESigma() const {
-    return PMTSPESigma;
-}
-
-void CCMSimulationCalibration::SetRs(double x){
-    Rs = x;
-}
-double CCMSimulationCalibration::GetRs() const {
-    return Rs;
-}
-
-void CCMSimulationCalibration::SetRt(double x){
-    Rt = x;
-}
-double CCMSimulationCalibration::GetRt() const {
-    return Rt;
-}
-
-void CCMSimulationCalibration::SetTauS(double x){
-    tau_s = x;
-}
-double CCMSimulationCalibration::GetTauS() const {
-    return tau_s;
-}
-
-void CCMSimulationCalibration::SetTauT(double x){
-    tau_t = x;
-}
-double CCMSimulationCalibration::GetTauT() const {
-    return tau_t;
-}
-
-void CCMSimulationCalibration::SetTauOther(double x){
-    tau_other = x;
-}
-double CCMSimulationCalibration::GetTauOther() const {
-    return tau_other;
-}
-
-void CCMSimulationCalibration::SetUVAbsorptionA(double x){
-    uv_absorption_a = x;
-}
-double CCMSimulationCalibration::GetUVAbsorptionA() const {
-    return uv_absorption_a;
-}
-
-void CCMSimulationCalibration::SetUVAbsorptionB(double x){
-    uv_absorption_b = x;
-}
-double CCMSimulationCalibration::GetUVAbsorptionB() const {
-    return uv_absorption_b;
-}
-
-void CCMSimulationCalibration::SetUVAbsorptionD(double x){
-    uv_absorption_d = x;
-}
-double CCMSimulationCalibration::GetUVAbsorptionD() const {
-    return uv_absorption_d;
-}
-
-void CCMSimulationCalibration::SetUVAbsorptionScaling(double x){
-    uv_absorption_scaling = x;
-}
-double CCMSimulationCalibration::GetUVAbsorptionScaling() const {
-    return uv_absorption_scaling;
+template <class Archive>
+void CCMPulseTimeDistributionParameters::serialize(Archive& ar, unsigned version) {
+    if (version > ccmlatepulseparameters_version_)
+        log_fatal("Attempting to save version %u from file but running version %u of CCMPulseTimeDistributionParameters class.", version, ccmlatepulseparameters_version_);
+    ar & make_nvp("mu", mu);
+    ar & make_nvp("sigma", sigma);
+    ar & make_nvp("fraction", fraction);
 }
 
 template <class Archive>
@@ -115,12 +67,7 @@ void CCMSimulationCalibration::save(Archive& ar, unsigned version) const {
         log_fatal("Attempting to save version %u from file but running version %u of CCMSimulationCalibration class.", version, ccmsimulationcalibration_version_);
 
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
-    ar & make_nvp("PMTEfficiencies",PMTEfficiencies);
-    ar & make_nvp("LatePulseMu",LatePulseMu);
-    ar & make_nvp("LatePulseSigma",LatePulseSigma);
-    ar & make_nvp("LatePulseScale",LatePulseScale);
-    ar & make_nvp("PMTSPEMu",PMTSPEMu);
-    ar & make_nvp("PMTSPESigma",PMTSPESigma);
+    ar & make_nvp("PMTCalibration",pmt_calibration);
     ar & make_nvp("Rs",Rs);
     ar & make_nvp("Rt",Rt);
     ar & make_nvp("tau_s",tau_s);
@@ -138,12 +85,46 @@ void CCMSimulationCalibration::load(Archive& ar, unsigned version) {
         log_fatal("Attempting to read version %u from file but running version %u of CCMSimulationCalibration class.", version, ccmsimulationcalibration_version_);
 
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
-    ar & make_nvp("PMTEfficiencies",PMTEfficiencies);
-    ar & make_nvp("LatePulseMu",LatePulseMu);
-    ar & make_nvp("LatePulseSigma",LatePulseSigma);
-    ar & make_nvp("LatePulseScale",LatePulseScale);
-    ar & make_nvp("PMTSPEMu",PMTSPEMu);
-    ar & make_nvp("PMTSPESigma",PMTSPESigma);
+
+    if(version <= 2) {
+        I3MapPMTKeyDouble PMTEfficiencies;
+        I3MapPMTKeyDouble LatePulseMu;
+        I3MapPMTKeyDouble LatePulseSigma;
+        I3MapPMTKeyDouble LatePulseScale;
+        I3MapPMTKeyDouble PMTSPEMu;
+        I3MapPMTKeyDouble PMTSPESigma;
+        ar & make_nvp("PMTEfficiencies",PMTEfficiencies);
+        ar & make_nvp("LatePulseMu",LatePulseMu);
+        ar & make_nvp("LatePulseSigma",LatePulseSigma);
+        ar & make_nvp("LatePulseScale",LatePulseScale);
+        ar & make_nvp("PMTSPEMu",PMTSPEMu);
+        ar & make_nvp("PMTSPESigma",PMTSPESigma);
+        for(auto it = PMTEfficiencies.begin(); it != PMTEfficiencies.end(); ++it) {
+            CCMPMTKey key = it->first;
+            double eff = it->second;
+            double late_mu = LatePulseMu[key];
+            double late_sigma = LatePulseSigma[key];
+            double late_scale = LatePulseScale[key];
+            double mu = PMTSPEMu[key];
+            double sigma = PMTSPESigma[key];
+            CCMSimulationPMTCalibration cal;
+            if(pmt_calibration.find(key) != pmt_calibration.end()) {
+                cal = pmt_calibration[key];
+            } else {
+                cal = CCMSimulationPMTCalibration();
+            }
+            cal.pmt_efficiency = eff;
+            cal.pmt_spe_mu = mu;
+            cal.pmt_spe_sigma = sigma;
+            cal.pmt_spe_threshold = 0.0;
+            cal.main_pulse_mu = -0.45;
+            cal.main_pulse_sigma = 0.9;
+            cal.late_pulses.push_back(CCMPulseTimeDistributionParameters(late_mu, late_sigma, late_scale));
+            pmt_calibration[key] = cal;
+        }
+    } else {
+        ar & make_nvp("PMTCalibration",pmt_calibration);
+    }
     ar & make_nvp("Rs",Rs);
     if(version == 0) {
         Rt = 1.0 - Rs;
@@ -166,6 +147,44 @@ void CCMSimulationCalibration::load(Archive& ar, unsigned version) {
     }
 }
 
+std::ostream& operator<<(std::ostream& oss, const CCMPulseTimeDistributionParameters& c) {
+    return(c.Print(oss));
+}
+
+std::ostream& CCMPulseTimeDistributionParameters::Print(std::ostream& os) const{
+    os << "[ CCMPulseTimeDistributionParameters::"
+        << "\n  mu :" << mu
+        << "\n  sigma :" << sigma
+        << "\n  fraction :" << fraction
+        << " ]";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& oss, const CCMSimulationPMTCalibration& c) {
+    return(c.Print(oss));
+}
+
+std::ostream& operator<<(std::ostream& os, const CCMSimulationPMTCalibrationMap& m) {
+    os << "[ CCMSimulationPMTCalibrationMap::";
+    for (const auto& it : m) {
+        os << "\n    " << it.first << " : " << it.second;
+    }
+    os << " ]";
+    return os;
+}
+
+std::ostream& CCMSimulationPMTCalibration::Print(std::ostream& os) const{
+    os << "[ CCMSimulationPMTCalibration::"
+        << "\n  pmt_efficiency :" << pmt_efficiency
+        << "\n  pmt_spe_mu :" << pmt_spe_mu
+        << "\n  pmt_spe_sigma :" << pmt_spe_sigma
+        << "\n  pmt_spe_threshold :" << pmt_spe_threshold
+        << "\n  main_pulse_mu :" << main_pulse_mu
+        << "\n  main_pulse_sigma :" << main_pulse_sigma
+        << "\n  late_pulses :" << late_pulses
+        << " ]";
+    return os;
+}
 
 std::ostream& operator<<(std::ostream& os, const CCMSimulationCalibration& pe) {
     return(pe.Print(os));
@@ -173,18 +192,20 @@ std::ostream& operator<<(std::ostream& os, const CCMSimulationCalibration& pe) {
 
 std::ostream& CCMSimulationCalibration::Print(std::ostream& os) const{
     os << "[ CCMSimulationCalibration::"
-        << "\n  PMTEfficiencies :" << PMTEfficiencies
-        << "\n  LatePulseMu :" << LatePulseMu
-        << "\n  LatePulseSigma :" << LatePulseSigma
-        << "\n  LatePulseScale :" << LatePulseScale
-        << "\n  PMTSPEMu :" << PMTSPEMu
-        << "\n  PMTSPESigma :" << PMTSPESigma
         << "\n  Rs :" << Rs
         << "\n  Rt :" << Rt
         << "\n  Tau_s :" << tau_s
         << "\n  Tau_t :" << tau_t
         << "\n  Tau_other :" << tau_other
-        << " ]";
+        << "\n  uv_absorption_a :" << uv_absorption_a
+        << "\n  uv_absorption_b :" << uv_absorption_b
+        << "\n  uv_absorption_d :" << uv_absorption_d
+        << "\n  uv_absorption_scaling :" << uv_absorption_scaling
+        << "\n  PMTCalibration :";
+        for (const auto& it : pmt_calibration) {
+            os << "\n    " << it.first << " : " << it.second;
+        }
+        os << " ]";
     return os;
 }
 

@@ -32,15 +32,10 @@
 #include <dataclasses/calibration/CCMSimulationCalibration.h>
 
 #include <simclasses/CCMMCPE.h>
+#include <simclasses/SampledRecoPulse.h>
 #include <simclasses/DetectorResponseConfig.h>
 
 #include <phys-services/I3GSLRandomService.h>
-
-struct PulseTimeDistribution {
-    double mu;
-    double sigma;
-    double scale;
-};
 
 struct DiscreteDistribution {
     DiscreteDistribution() = default;
@@ -77,14 +72,7 @@ class PMTResponse: public I3Module {
     double uv_absorption_min_abs_length_;
     double uv_absorption_max_abs_length_;
 
-    I3MapPMTKeyDouble late_pulse_mu_;
-    I3MapPMTKeyDouble late_pulse_sigma_;
-    I3MapPMTKeyDouble late_pulse_scale_;
-    I3MapPMTKeyDouble pmt_efficencies_;
-    I3MapPMTKeyDouble integrated_late_pulse_;
-    I3MapPMTKeyDouble integrated_late_pulse_prob_;
-    I3MapPMTKeyDouble spe_mu_;
-    I3MapPMTKeyDouble spe_sigma_;
+    CCMSimulationPMTCalibrationMap pmt_cal_;
     boost::shared_ptr<const I3MapPMTKeyDouble> spe_lower_threshold_;
     boost::shared_ptr<const I3MapPMTKeyDouble> pmt_transit_times_;
     I3Map<CCMPMTKey, CCMTriggerKey> trigger_copy_map_;
@@ -112,35 +100,35 @@ class PMTResponse: public I3Module {
     bool flat_eff_;
     bool remove_cherenkov_;
     bool weight_uv_abs_;
+    bool track_sampled_pe_;
     bool seen_cal_frame = false;
     bool grabbed_wavelength_qe_ = false;
     bool grabbed_lp_integral_= false;
     std::vector<double> wavelength_qe_wavelength;
     std::vector<double> wavelength_qe_efficiency;
 
-    PulseTimeDistribution main_pulse_ = {-0.45, 0.9, 0.7971466712310554};
-    std::vector<PulseTimeDistribution> late_pulses_ = {
+    CCMPulseTimeDistributionParameters default_main_pulse_ = {-0.45, 0.9, 0.7971466712310554};
+    std::vector<CCMPulseTimeDistributionParameters> default_late_pulses_ = {
         {30.946544, 7.737966, 0.041169},
         {47.129206, 3.287489, 0.015341},
         {384.661399, 166.957997, 0.146343},
     };
     bool generate_late_pulses_ = false;
 
-    std::vector<PulseTimeDistribution> pulse_types_;
-    DiscreteDistribution pulse_selector_;
+    std::map<CCMPMTKey, std::vector<CCMPulseTimeDistributionParameters>> pulse_types_;
+    std::map<CCMPMTKey, DiscreteDistribution> pulse_selector_;
 
 public:
     PMTResponse(const I3Context&);
     void Configure();
+    void Geometry(I3FramePtr frame);
     void Simulation(I3FramePtr frame);
     void Calibration(I3FramePtr frame);
-    void IntegrateLatePulse();
     double NormalDistributionCDF(double mu, double sigma, double x);
     double NormalDistributionInverseCDF(double p, double mu, double sigma);
     double ExponentialInverseCDF(double p, double tau);
     double IntermediateInverseCDF(double p, double tau);
     void DAQ(I3FramePtr frame);
-    void Geometry(I3FramePtr frame);
     void Finish();
 
     static const std::vector<double> default_wavelength_qe_wavelength;
@@ -151,7 +139,7 @@ public:
     double ResponseUVAbsorptionCM(const double wavelength) const;
 
     double SampleGEV(double mu, double sigma);
-    double SampleGEV(PulseTimeDistribution const & pulse) {
+    double SampleGEV(CCMPulseTimeDistributionParameters const & pulse) {
         return SampleGEV(pulse.mu, pulse.sigma);
     }
 };
@@ -257,8 +245,6 @@ void PMTResponse::Configure() {
     GetParameter("RemoveCherenkov", remove_cherenkov_);
     GetParameter("FlatEfficiency", flat_eff_);
     GetParameter("WeightUVAbsorption", weight_uv_abs_);
-
-    IntegrateLatePulse();
 }
 
 void PMTResponse::Simulation(I3FramePtr frame) {
@@ -295,12 +281,7 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     singlet_time_constant_ = sim_calibration->tau_s;
     triplet_time_constant_ = sim_calibration->tau_t;
     intermediate_time_constant_ = sim_calibration->tau_other;
-    late_pulse_mu_ = sim_calibration->LatePulseMu;
-    late_pulse_sigma_ = sim_calibration->LatePulseSigma;
-    late_pulse_scale_ = sim_calibration->LatePulseScale;
-    pmt_efficencies_ = sim_calibration->PMTEfficiencies;
-    spe_mu_ = sim_calibration->PMTSPEMu;
-    spe_sigma_ = sim_calibration->PMTSPESigma;
+    pmt_cal_ = sim_calibration->pmt_calibration;
     uv_absorption_a_ = sim_calibration->uv_absorption_a / (1.0 / I3Units::nanometer);
     uv_absorption_b_ = sim_calibration->uv_absorption_b / I3Units::nanometer;
     uv_absorption_d_ = sim_calibration->uv_absorption_d / I3Units::m;
@@ -322,85 +303,69 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     // before we're done, let's grab the average pmt eff
     average_pmt_eff_ = 0.0;
     size_t total_keys = 0;
-    for (const std::pair<const CCMPMTKey, double>& entry : pmt_efficencies_) {
-        average_pmt_eff_ += entry.second;
+    for(const std::pair<const CCMPMTKey, CCMSimulationPMTCalibration>& entry : pmt_cal_) {
+        average_pmt_eff_ += entry.second.pmt_efficiency;
         total_keys += 1;
     }
 
     average_pmt_eff_ /= (static_cast<double>(total_keys));
 
     pulse_types_.clear();
-    std::vector<double> probs;
-    if(generate_late_pulses_) {
-        double total = main_pulse_.scale;
-        for(PulseTimeDistribution const & pulse : late_pulses_)
-            total += pulse.scale;
+    for(std::pair<CCMPMTKey const, CCMTriggerKey> const & key : trigger_copy_map_) {
+        auto it = pmt_cal_.find(key.first);
+        std::vector<double> probs;
+        std::vector<CCMPulseTimeDistributionParameters> pulses;
+        if(generate_late_pulses_) {
+            if(it != pmt_cal_.end()) {
+                CCMSimulationPMTCalibration const & cal = it->second;
+                std::vector<CCMPulseTimeDistributionParameters> const & late_pulse_params = cal.late_pulses;
+                double sum = 0.0;
+                for(CCMPulseTimeDistributionParameters const & pulse : late_pulse_params)
+                    sum += pulse.fraction;
+                double main_pulse_scale = 1.0 - sum;
+                assert(main_pulse_scale >= 0.0);
 
-        pulse_types_.push_back(main_pulse_);
-        probs.push_back(main_pulse_.scale / total);
-        for(PulseTimeDistribution const & pulse : late_pulses_) {
-            pulse_types_.push_back(pulse);
-            probs.push_back(pulse.scale / total);
+                probs.push_back(main_pulse_scale);
+                CCMPulseTimeDistributionParameters main_pulse = {cal.main_pulse_mu, cal.main_pulse_sigma, main_pulse_scale};
+                pulses.emplace_back(main_pulse);
+
+                for(CCMPulseTimeDistributionParameters const & pulse : late_pulse_params) {
+                    probs.push_back(pulse.fraction);
+                    pulses.emplace_back(pulse);
+                }
+            } else {
+                // no late pulse params for this pmt, use default
+                double sum = 0.0;
+                for(CCMPulseTimeDistributionParameters const & pulse : default_late_pulses_)
+                    sum += pulse.fraction;
+                double main_pulse_scale = 1.0 - sum;
+                assert(main_pulse_scale >= 0.0);
+
+                probs.push_back(main_pulse_scale);
+                CCMPulseTimeDistributionParameters main_pulse = {default_main_pulse_.mu, default_main_pulse_.sigma, main_pulse_scale};
+                pulses.emplace_back(main_pulse);
+
+                for(CCMPulseTimeDistributionParameters const & pulse : default_late_pulses_) {
+                    probs.push_back(pulse.fraction);
+                    pulses.emplace_back(pulse);
+                }
+            }
+        } else {
+            probs.push_back(1.0);
+            if(it != pmt_cal_.end()) {
+                CCMSimulationPMTCalibration const & cal = it->second;
+                CCMPulseTimeDistributionParameters main_pulse = {cal.main_pulse_mu, cal.main_pulse_sigma, 1.0};
+                pulses.emplace_back(main_pulse);
+            } else {
+                CCMPulseTimeDistributionParameters main_pulse = {default_main_pulse_.mu, default_main_pulse_.sigma, 1.0};
+                pulses.emplace_back(main_pulse);
+            }
         }
-    } else {
-        pulse_types_.push_back(main_pulse_);
-        probs.push_back(1.0);
+        pulse_types_[key.first] = pulses;
+        pulse_selector_[key.first] = DiscreteDistribution(probs);
     }
 
-    pulse_selector_ = DiscreteDistribution(probs);
-
     PushFrame(frame);
-}
-
-void PMTResponse::IntegrateLatePulse() {
-    // this function takes the gaussian parameters for each tube and integrates 0 to infinity
-    // this will be used for adjusting the pmt efficiencies slightly
-    // as well as for figuring out the probabability that a photon gets a scintillation time offset
-    // or a late pulse gaussian time offset
-
-    // first we need to grab the max of the light profile because the scale is relative to that value
-    //std::vector<double> times;
-    //for (size_t t = 0; t < 200; t++) {
-    //    times.push_back(static_cast<double>(t));
-    //}
-
-    ////double R_t = 1.0 - ratio_singlet_to_triplet_;
-    //double coeff_one = ratio_singlet_ / (singlet_time_constant_ - tpb_time_constant_);
-    //double coeff_two = ratio_triplet_ / (triplet_time_constant_ - tpb_time_constant_);
-    //double max_light_prof = 0.0;
-    //for (size_t time_it = 0; time_it < times.size(); time_it++) {
-    //    double const & t = times.at(time_it);
-    //    if(t <= 0) {
-    //        max_light_prof = 1e-18 * exp(t / 10.0);
-    //        continue;
-    //    }
-    //    double exp_singlet = exp(-t / singlet_time_constant_);
-    //    double exp_triplet = exp(-t / triplet_time_constant_);
-    //    double exp_prompt_TPB = exp(-t / tpb_time_constant_);
-
-    //    double one = coeff_one * (exp_singlet - exp_prompt_TPB);
-    //    double two = coeff_two * (exp_triplet - exp_prompt_TPB);
-
-    //    double y = one + two;
-    //    if(y > max_light_prof) {
-    //        max_light_prof = y;
-    //    }
-
-    //}
-
-    //for (I3MapPMTKeyDouble::const_iterator it = late_pulse_mu_.begin(); it != late_pulse_mu_.end(); ++it) {
-
-    //    double this_tube_mu = it->second;
-    //    double this_tube_sigma = late_pulse_sigma_.at(it->first);
-    //    double this_tube_scale = late_pulse_scale_.at(it->first);
-
-    //    // integrate from 10 - inf!
-    //    double integrated_gauss = this_tube_scale * max_light_prof * (1.0 + std::erf(this_tube_mu / (std::sqrt(2.0) * this_tube_sigma))) / 2.0;
-
-    //    // now save!
-    //    integrated_late_pulse_.insert(std::make_pair(it->first, integrated_gauss));
-    //    integrated_late_pulse_prob_.insert(std::make_pair(it->first, integrated_gauss / (this_tube_scale * max_light_prof)));
-    //}
 }
 
 double PMTResponse::NormalDistributionCDF(double mu, double sigma, double x) {
@@ -507,17 +472,13 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         // Reference to the destination
         CCMRecoPulseSeries & dest_series = it_dest->second;
 
+        CCMSimulationPMTCalibration const & pmt_cal = pmt_cal_.at(it->first);
+
         // While we are looping over tubes, grab the PMT efficiency
-        double pmt_efficiency = pmt_efficencies_.at(it->first);
+        double pmt_efficiency = pmt_cal.pmt_efficiency;
         if(flat_eff_) {
             pmt_efficiency = average_pmt_eff_;
         }
-
-        // Adjust pmt efficiency by the integrated late pulse
-        //pmt_efficiency *= (0.5 + integrated_late_pulse_.at(it->first));
-        //pmt_efficiency *= 0.5;
-
-        //double late_pulse_probability = integrated_late_pulse_.at(it->first) / (0.5 + integrated_late_pulse_.at(it->first));
 
         double this_tube_board_time_offset = this_event_board_time_offset.at(it->first);
         double this_tube_board_time_error = this_event_board_time_error.at(it->first);
@@ -535,7 +496,10 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             this_tube_spe_threshold = spe_threshold_it->second;
         }
 
-        double this_tube_spe_threshold_efficiency = 1.0 - NormalDistributionCDF(spe_mu_.at(it->first), spe_sigma_.at(it->first), this_tube_spe_threshold);
+        double this_tube_spe_threshold_efficiency = 1.0 - NormalDistributionCDF(pmt_cal.pmt_spe_mu, pmt_cal.pmt_spe_sigma, this_tube_spe_threshold);
+
+        DiscreteDistribution & pulse_selector = pulse_selector_.at(it->first);
+        std::vector<CCMPulseTimeDistributionParameters> const & pulse_types = pulse_types_.at(it->first);
 
         // Iterate over the vector of CCMMCPE in the source map for this PMT
         std::vector<CCMRecoPulse> temp_series; temp_series.reserve(size_t(it->second.size() * 0.5));
@@ -603,7 +567,8 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
             double total_time_offset = event_time_offset + (pe.time / I3Units::nanosecond);
 
-            PulseTimeDistribution const & pmt_pulse_type = pulse_types_.at(pulse_selector_(randomService_));
+            CCMPulseTimeDistributionParameters const & pmt_pulse_type = pulse_types.at(pulse_selector(randomService_));
+
             double pulse_time_offset = SampleGEV(pmt_pulse_type);
 
             total_time_offset += pulse_time_offset;
@@ -636,7 +601,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
             // now, finally, sample our spe shape for this tube to assign the appropiate magnitude to our pulse
             double pulse_amplitude_rand = randomService_->Uniform(1.0 - this_tube_spe_threshold_efficiency, 1.0);
-            double pulse_amplitude = NormalDistributionInverseCDF(pulse_amplitude_rand, spe_mu_.at(it->first), spe_sigma_.at(it->first));
+            double pulse_amplitude = NormalDistributionInverseCDF(pulse_amplitude_rand, pmt_cal.pmt_spe_mu, pmt_cal.pmt_spe_sigma);
 
             // check to make sure we dont have any infinities and our pulse amplitude is appropriate
             if(std::isinf(pulse_amplitude) or std::isinf(total_time_offset)) {

@@ -7,6 +7,7 @@ i3_project(${PROJECT_NAME}
 SET(LIB_${PROJECT_NAME}_SOURCEFILES
     private/simclasses/WLSLocation.cxx
     private/simclasses/CCMMCPE.cxx
+    private/simclasses/SampledRecoPulse.cxx
     private/simclasses/LightweightCCMMCPE.cxx
     private/simclasses/PhotonSummary.cxx
     private/simclasses/SodiumInjectorConfig.cxx
@@ -32,6 +33,7 @@ i3_add_library(${PROJECT_NAME} ${LIB_${PROJECT_NAME}_SOURCEFILES}
 i3_add_pybindings(simclasses
     private/pybindings/WLSLocation.cxx
     private/pybindings/CCMMCPE.cxx
+    private/pybindings/SampledRecoPulse.cxx
     private/pybindings/LightweightCCMMCPE.cxx
     private/pybindings/PhotonSummary.cxx
     private/pybindings/module.cxx
