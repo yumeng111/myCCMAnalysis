@@ -5,6 +5,7 @@
 std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
     oss << "DetectorResponseConfig: "
         << "\n  Rayleigh Scattering Length :" << rayleigh_scattering_length_
+        << "\n  Enable UV Absorption :" << enable_uv_absorption_
         << "\n  UV Absorption A :" << uv_absorption_a_
         << "\n  UV Absorption B :" << uv_absorption_b_
         << "\n  UV Absorption D :" << uv_absorption_d_
@@ -26,6 +27,7 @@ std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
 
 bool DetectorResponseConfig::operator==(const DetectorResponseConfig& rhs) const {
     return (rayleigh_scattering_length_ == rhs.rayleigh_scattering_length_ &&
+            enable_uv_absorption_ == rhs.enable_uv_absorption_ &&
             uv_absorption_a_ == rhs.uv_absorption_a_ &&
             uv_absorption_b_ == rhs.uv_absorption_b_ &&
             uv_absorption_d_ == rhs.uv_absorption_d_ &&

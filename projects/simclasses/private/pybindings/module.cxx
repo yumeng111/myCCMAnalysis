@@ -25,6 +25,7 @@
 #include <boost/python/import.hpp>
 
 #define REGISTER_THESE_THINGS                       \
+    (DetectorResponseConfig)                        \
     (WLSLocation)                                   \
     (CCMMCPE)(PhotonSummary)                        \
     (LightweightCCMMCPE)                            \

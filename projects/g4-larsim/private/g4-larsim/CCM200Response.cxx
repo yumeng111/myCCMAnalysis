@@ -46,7 +46,12 @@ CCM200Response::CCM200Response(const I3Context& context) :
     SimulateNuclearRecoils_(false), G4RangeCut_(0.7 * I3Units::mm), G4EDepMin_(1.0 * I3Units::keV), G4ETrackingMin_(1.0 * I3Units::keV),
     RecordHits_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
+<<<<<<< HEAD
     Rayleigh128_(99.1 * I3Units::cm), UVAbsA_(0.0618 * (1.0/I3Units::nanometer)), UVAbsB_(113.0 * I3Units::nanometer), UVAbsD_(5.8 * I3Units::cm), UVAbsScaling_(3.154),
+=======
+    SingletTau_(1e-5 * I3Units::nanosecond), TripletTau_(1e-5 * I3Units::nanosecond),
+    Rayleigh128_(99.1 * I3Units::cm), EnableUVAbsorption_(true), UVAbsA_(0.0618 * (1.0/I3Units::nanometer)), UVAbsB_(113.0 * I3Units::nanometer), UVAbsD_(5.8 * I3Units::cm), UVAbsScaling_(3.154),
+>>>>>>> 0dfad498 (Start adding flag to enable/disable uv abs)
     WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
     TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.84), MieRatio_(0.90), Normalization_(0.778), PhotonSampling_(0.5), RandomSeed_(0) {
@@ -83,6 +88,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("DecayY", "if generating training source data, provid Y position", DecayY_);
     AddParameter("DecayZ", "if generating training source data, provid Z position", DecayZ_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
+    AddParameter("EnableUVAbsorption", "Enable UV absorption", EnableUVAbsorption_);
     AddParameter("UVAbsA", "Set UV absorption slope [1/nm]", UVAbsA_ / (1.0/I3Units::nanometer));
     AddParameter("UVAbsB", "Set UV absorption offset [nm]", UVAbsB_ / I3Units::nanometer);
     AddParameter("UVAbsD", "Set UV absorption reference distance [m]", UVAbsD_ / I3Units::meter);
@@ -134,6 +140,7 @@ void CCM200Response::Configure() {
     GetParameter("DecayY", DecayY_);
     GetParameter("DecayZ", DecayZ_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
+    GetParameter("EnableUVAbsorption", EnableUVAbsorption_);
     GetParameter("UVAbsA", UVAbsA_);
     GetParameter("UVAbsB", UVAbsB_);
     GetParameter("UVAbsD", UVAbsD_);
@@ -177,7 +184,7 @@ void CCM200Response::Initialize() {
                                   TimeCut_, DetailedPhotonTracking_, TrackParticles_, TrackEnergyLosses_,
                                   SimulateNuclearRecoils_, G4RangeCut_, G4EDepMin_, G4ETrackingMin_,
                                   RecordHits_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
-                                  DecayX_, DecayY_, DecayZ_, Rayleigh128_, UVAbsA_, UVAbsB_, UVAbsD_, UVAbsScaling_,
+                                  DecayX_, DecayY_, DecayZ_, Rayleigh128_, EnableUVAbsorption_, UVAbsA_, UVAbsB_, UVAbsD_, UVAbsScaling_,
                                   WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
                                   MieGG_, MieRatio_, Normalization_, PhotonSampling_, RandomSeed_);
@@ -186,6 +193,7 @@ void CCM200Response::Initialize() {
 I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
     config->rayleigh_scattering_length_ = Rayleigh128_;
+    config->enable_uv_absorption_ = EnableUVAbsorption_;
     config->uv_absorption_a_ = UVAbsA_;
     config->uv_absorption_b_ = UVAbsB_;
     config->uv_absorption_d_ = UVAbsD_;

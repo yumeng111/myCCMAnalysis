@@ -9,10 +9,11 @@
 #include <iostream>
 #include <sstream>
 
-static const unsigned g4ccmconfig_version_ = 6;
+static const unsigned g4ccmconfig_version_ = 7;
 class DetectorResponseConfig : public I3FrameObject {
 public:
     double rayleigh_scattering_length_;
+    bool enable_uv_absorption_;
     double uv_absorption_a_;
     double uv_absorption_b_;
     double uv_absorption_d_;
@@ -53,6 +54,7 @@ void DetectorResponseConfig::save(Archive& ar, unsigned version) const {
         log_fatal("Attempting to read version %u from file but running version %u of DetectorResponseConfig class.",version,g4ccmconfig_version_);
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("rayleigh_scattering_length", rayleigh_scattering_length_);
+    ar & make_nvp("enable_uv_absorption", enable_uv_absorption_);
     ar & make_nvp("uv_absorption_a", uv_absorption_a_);
     ar & make_nvp("uv_absorption_b", uv_absorption_b_);
     ar & make_nvp("uv_absorption_d", uv_absorption_d_);
@@ -78,6 +80,10 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
         log_fatal("Attempting to read version %u from file but running version %u of DetectorResponseConfig class.",version,g4ccmconfig_version_);
     ar & make_nvp("I3FrameObject", base_object<I3FrameObject>(*this));
     ar & make_nvp("rayleigh_scattering_length", rayleigh_scattering_length_);
+    if(version >= 7)
+        ar & make_nvp("enable_uv_absorption", enable_uv_absorption_);
+    else
+        enable_uv_absorption_ = false;
 
     double uv_absorption_length_;
     if(version == 5)

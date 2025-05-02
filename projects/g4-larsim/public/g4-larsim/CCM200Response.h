@@ -69,6 +69,7 @@ private:
     double DecayY_; // if training source data, provide Y position of decay
     double DecayZ_; // if training source data, provide Z position of decay
     double Rayleigh128_; // set rayl scattering length for 128nm light
+    bool EnableUVAbsorption_;
     double UVAbsA_;
     double UVAbsB_;
     double UVAbsD_;
