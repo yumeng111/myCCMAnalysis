@@ -59,7 +59,7 @@ private:
     G4VPhysicsConstructor* emPhysicsList;
     G4VPhysicsConstructor* emExtraPhysicsList;
     G4VPhysicsConstructor* decayPhysicsList;
-    G4VPhysicsConstructor* radioactiveDecayPhysicsList;
+    //G4VPhysicsConstructor* radioactiveDecayPhysicsList;
     G4VPhysicsConstructor* hadronElasticPhysicsList;
     G4VPhysicsConstructor* hadronPhysicsList;
     G4VPhysicsConstructor* stoppingPhysicsList;
