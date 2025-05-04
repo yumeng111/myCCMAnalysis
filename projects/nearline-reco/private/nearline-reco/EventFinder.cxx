@@ -56,9 +56,10 @@ class EventFinder: public I3ConditionalModule {
     std::string output_prefix_;
     std::string pulses_;
 
+    I3Vector<std::string> bad_keys_names_ = {"BadKeys"};
     I3Vector<CCMOMGeo::OMType> pmt_types;
     std::set<CCMPMTKey> pmt_keys;
-    boost::shared_ptr<const I3Vector<CCMPMTKey>> bad_keys;
+    std::set<CCMPMTKey> bad_keys;
 
     public:
     void Geometry(I3FramePtr frame);
@@ -78,6 +79,7 @@ EventFinder::EventFinder(const I3Context& context) : I3ConditionalModule(context
         AddParameter("EventChargeThreshold", "Charge threshold in window to define an event", double(5.0));
         AddParameter("Pulses", "Name of pulse series to use", "WavedeformPulses");
         AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
+        AddParameter("BadKeysNames", "List of bad keys to exclude from event finding", bad_keys_names_);
         AddParameter("AllowOverlappingEvents", "False -> merge overlapping event windows. True -> allow overlapping event windows", bool(false));
         AddParameter("Output", "Prefix for the outputs", std::string(""));
 }
@@ -89,6 +91,7 @@ void EventFinder::Configure() {
     GetParameter("EventChargeThreshold", event_charge_threshold_);
     GetParameter("Pulses", pulses_);
     GetParameter("PMTTypes", pmt_types);
+    GetParameter("BadKeysNames", bad_keys_names_);
     GetParameter("AllowOverlappingEvents", allow_overlapping_events_);
     GetParameter("Output", output_prefix_);
 }
@@ -99,8 +102,14 @@ void EventFinder::Geometry(I3FramePtr frame) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
     }
     // check if frame has list of bad keys to exclude
-    if (frame->Has("BadKeys")){
-        bad_keys = frame->Get<boost::shared_ptr<const I3Vector<CCMPMTKey>>>("BadKeys");
+    bad_keys.clear();
+    for(std::string const & bad_keys_name : bad_keys_names_) {
+        if(frame->Has(bad_keys_name)) {
+            boost::shared_ptr<const I3Vector<CCMPMTKey>> keys = frame->Get<boost::shared_ptr<const I3Vector<CCMPMTKey>>>(bad_keys_name);
+            for(CCMPMTKey const & k : *keys) {
+                bad_keys.insert(k);
+            }
+        }
     }
     geo = frame->Get<CCMGeometryConstPtr>(geometry_name_);
     geo_seen = bool(geo);
@@ -110,7 +119,7 @@ void EventFinder::Geometry(I3FramePtr frame) {
         for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
             if(allowed_pmt_types.count(p.second.omtype) == 0)
                 continue;
-            if (std::find(bad_keys->begin(), bad_keys->end(), p.first) != bad_keys->end())
+            if(bad_keys.count(p.first) != 0)
                 continue;
             pmt_keys.insert(p.first);
         }
