@@ -46,12 +46,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     SimulateNuclearRecoils_(false), G4RangeCut_(0.7 * I3Units::mm), G4EDepMin_(1.0 * I3Units::keV), G4ETrackingMin_(1.0 * I3Units::keV),
     RecordHits_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
-<<<<<<< HEAD
-    Rayleigh128_(99.1 * I3Units::cm), UVAbsA_(0.0618 * (1.0/I3Units::nanometer)), UVAbsB_(113.0 * I3Units::nanometer), UVAbsD_(5.8 * I3Units::cm), UVAbsScaling_(3.154),
-=======
-    SingletTau_(1e-5 * I3Units::nanosecond), TripletTau_(1e-5 * I3Units::nanosecond),
     Rayleigh128_(99.1 * I3Units::cm), EnableUVAbsorption_(true), UVAbsA_(0.0618 * (1.0/I3Units::nanometer)), UVAbsB_(113.0 * I3Units::nanometer), UVAbsD_(5.8 * I3Units::cm), UVAbsScaling_(3.154),
->>>>>>> 0dfad498 (Start adding flag to enable/disable uv abs)
     WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
     TPBAbsTau_(0.13457), TPBAbsNorm_(8.13914e-21), TPBAbsScale_(1.0), MieGG_(0.84), MieRatio_(0.90), Normalization_(0.778), PhotonSampling_(0.5), RandomSeed_(0) {
