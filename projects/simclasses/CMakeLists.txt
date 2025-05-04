@@ -36,6 +36,7 @@ i3_add_pybindings(simclasses
     private/pybindings/SampledRecoPulse.cxx
     private/pybindings/LightweightCCMMCPE.cxx
     private/pybindings/PhotonSummary.cxx
+    private/pybindings/DetectorResponseConfig.cxx
     private/pybindings/module.cxx
     USE_TOOLS boost python
     USE_PROJECTS simclasses icetray tableio
