@@ -46,13 +46,11 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double SingletTau, G4double TripletTau, G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
                                                      G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                                                      G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
                                                      G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor) {
-    SingletTau_ = SingletTau;
-    TripletTau_ = TripletTau;
     UVAbsA_ = UVAbsA;
     UVAbsB_ = UVAbsB;
     UVAbsD_ = UVAbsD;
@@ -359,7 +357,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)); // scintillation yield: 50 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE",1.0);
-    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", SingletTau_);
+    fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 1e-5 * ns);
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",1.0); // for e/m scintillation
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 

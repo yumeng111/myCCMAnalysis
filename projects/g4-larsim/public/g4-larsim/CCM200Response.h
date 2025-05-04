@@ -68,8 +68,6 @@ private:
     double DecayX_; // if training source data, provide X position of decay
     double DecayY_; // if training source data, provide Y position of decay
     double DecayZ_; // if training source data, provide Z position of decay
-    double SingletTau_; // set LAr singlet time constant
-    double TripletTau_; // set LAr triplet time constant
     double Rayleigh128_; // set rayl scattering length for 128nm light
     double UVAbsA_;
     double UVAbsB_;

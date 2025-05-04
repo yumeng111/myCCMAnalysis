@@ -72,8 +72,7 @@ void G4Interface::InstallDetector(
                                   bool SimulateNuclearRecoils, double G4RangeCut, double G4EDepMin, double G4ETrackingMin,
                                   bool RecordHits, bool SourceRodIn, double SourceRodLocation,
                                   bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
-                                  double DecayX, double DecayY, double DecayZ,
-                                  double SingletTau, double TripletTau, double Rayleigh128,
+                                  double DecayX, double DecayY, double DecayZ, double Rayleigh128,
                                   double UVAbsA, double UVAbsB, double UVAbsD, double UVAbsScaling, 
                                   double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                                   double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
@@ -110,7 +109,7 @@ void G4Interface::InstallDetector(
     }
 
     if(detector_ == nullptr) {
-        detector_ = new G4CCMDetectorConstruction(SingletTau / I3Units::nanosecond * CLHEP::ns, TripletTau / I3Units::nanosecond * CLHEP::ns,
+        detector_ = new G4CCMDetectorConstruction(
                                                   UVAbsA / (1.0/I3Units::nanometer) * (1.0/CLHEP::nm),
                                                   UVAbsB / I3Units::nanometer * CLHEP::nm,
                                                   UVAbsD / I3Units::m * CLHEP::m, UVAbsScaling,

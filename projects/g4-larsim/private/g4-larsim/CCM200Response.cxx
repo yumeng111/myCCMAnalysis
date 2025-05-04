@@ -46,7 +46,6 @@ CCM200Response::CCM200Response(const I3Context& context) :
     SimulateNuclearRecoils_(false), G4RangeCut_(0.7 * I3Units::mm), G4EDepMin_(1.0 * I3Units::keV), G4ETrackingMin_(1.0 * I3Units::keV),
     RecordHits_(true), SourceRodIn_(false), SourceRodLocation_(0.0 * I3Units::cm),
     CobaltSourceRun_(false), SodiumSourceRun_(false), TrainingSource_(false), DecayX_(0.0 * I3Units::cm), DecayY_(0.0 * I3Units::cm), DecayZ_(0.0 * I3Units::cm),
-    SingletTau_(1e-5 * I3Units::nanosecond), TripletTau_(1e-5 * I3Units::nanosecond),
     Rayleigh128_(99.1 * I3Units::cm), UVAbsA_(0.0618 * (1.0/I3Units::nanometer)), UVAbsB_(113.0 * I3Units::nanometer), UVAbsD_(5.8 * I3Units::cm), UVAbsScaling_(3.154),
     WLSNPhotonsEndCapFoil_(0.605), WLSNPhotonsSideFoil_(0.605), WLSNPhotonsPMT_(0.605),
     EndCapFoilTPBThickness_(0.00278035 * I3Units::mm), SideFoilTPBThickness_(0.00278035 * I3Units::mm), PMTTPBThickness_(0.00203892 * I3Units::mm),
@@ -83,8 +82,6 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("DecayX", "if generating training source data, provid X position", DecayX_);
     AddParameter("DecayY", "if generating training source data, provid Y position", DecayY_);
     AddParameter("DecayZ", "if generating training source data, provid Z position", DecayZ_);
-    AddParameter("SingletTimeConstant", "LAr singlet tau", SingletTau_);
-    AddParameter("TripletTimeConstant", "LAr triplet tau", TripletTau_);
     AddParameter("Rayleigh128Length", "Rayleigh scattering length for 128nm light", Rayleigh128_);
     AddParameter("UVAbsA", "Set UV absorption slope [1/nm]", UVAbsA_ / (1.0/I3Units::nanometer));
     AddParameter("UVAbsB", "Set UV absorption offset [nm]", UVAbsB_ / I3Units::nanometer);
@@ -136,8 +133,6 @@ void CCM200Response::Configure() {
     GetParameter("DecayX", DecayX_);
     GetParameter("DecayY", DecayY_);
     GetParameter("DecayZ", DecayZ_);
-    GetParameter("SingletTimeConstant", SingletTau_);
-    GetParameter("TripletTimeConstant", TripletTau_);
     GetParameter("Rayleigh128Length", Rayleigh128_);
     GetParameter("UVAbsA", UVAbsA_);
     GetParameter("UVAbsB", UVAbsB_);
@@ -182,7 +177,7 @@ void CCM200Response::Initialize() {
                                   TimeCut_, DetailedPhotonTracking_, TrackParticles_, TrackEnergyLosses_,
                                   SimulateNuclearRecoils_, G4RangeCut_, G4EDepMin_, G4ETrackingMin_,
                                   RecordHits_, SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_, TrainingSource_, 
-                                  DecayX_, DecayY_, DecayZ_, SingletTau_, TripletTau_, Rayleigh128_, UVAbsA_, UVAbsB_, UVAbsD_, UVAbsScaling_,
+                                  DecayX_, DecayY_, DecayZ_, Rayleigh128_, UVAbsA_, UVAbsB_, UVAbsD_, UVAbsScaling_,
                                   WLSNPhotonsEndCapFoil_, WLSNPhotonsSideFoil_, WLSNPhotonsPMT_,
                                   EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_, TPBAbsTau_, TPBAbsNorm_, TPBAbsScale_,
                                   MieGG_, MieRatio_, Normalization_, PhotonSampling_, RandomSeed_);
