@@ -50,7 +50,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4bool EnableUVAbsorption, 
                                                      G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                                                      G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
-                                                     G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor) {
+                                                     G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor, G4double RindexGamma) {
     EnableUVAbsorption_ = EnableUVAbsorption;
     UVAbsA_ = UVAbsA;
     UVAbsB_ = UVAbsB;
@@ -70,6 +70,7 @@ G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4bool EnableUVAbsorption, 
     Mie_Ratio_ = Mie_Ratio;
     Normalization_ = Normalization;
     PhotonSamplingFactor_ = PhotonSamplingFactor;
+    RindexGamma_ = RindexGamma;
     SetDefaults();
     DefineMaterials();
     fDetectorMessenger = new G4CCMDetectorMessenger(this);
@@ -278,24 +279,22 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     double a0ho = 1.10232;
     double aUVho = 0.00001058;
-    //double gammaho = 0.002524;
-    double gammaho = 0.002794965;
 
     double starting_wavelength = 100.0;
     double ending_wavelength = 850.0;
     size_t n_entries = 10000;
 
     // for rayl, we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
-    double rindex_128 = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, gammaho, lamUV, 128.0);
+    double rindex_128 = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, RindexGamma_, lamUV, 128.0);
     double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
 
     for(int i = (n_entries + 1); i >= 0; --i) {
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
         double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
-        double this_rindex = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, gammaho, lamUV, this_wavelength);
+        double this_rindex = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, RindexGamma_, lamUV, this_wavelength);
         double this_rayl = (rayl_scaling * std::pow(this_wavelength*1e-7, 4.0) / std::pow((std::pow(this_rindex, 2.0) - 1)*(std::pow(this_rindex, 2.0) + 2), 2.0) ) * cm;
 
-        double dn_dlambda = HarmonicOscillatorRefractiveIndexDerivative(aUVho, this_wavelength, lamUV, gammaho);
+        double dn_dlambda = HarmonicOscillatorRefractiveIndexDerivative(aUVho, this_wavelength, lamUV, RindexGamma_);
         double this_group_velocity = (c_light / this_rindex) * (1.0 + ((this_wavelength / this_rindex) * dn_dlambda));
 
         // save
