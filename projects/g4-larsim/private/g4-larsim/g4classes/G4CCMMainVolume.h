@@ -82,7 +82,7 @@ class G4CCMMainVolume : public G4PVPlacement {
     std::vector<G4LogicalVolume*> GetBridleLogicalVolumes() {
         std::vector<G4LogicalVolume * > logicalVolumes;
         for(auto logicalVolume : fBridleLogicalVolumes) {
-            logicalVolumes.push_back(std::get<1>(logicalVolume.second).get());
+            logicalVolumes.push_back(logicalVolume.second.get());
         }
         return logicalVolumes;
     }
@@ -90,7 +90,7 @@ class G4CCMMainVolume : public G4PVPlacement {
     std::vector<G4LogicalVolume*> GetFrillLogicalVolumes() {
         std::vector<G4LogicalVolume * > logicalVolumes;
         for(auto logicalVolume : fFrillLogicalVolumes) {
-            logicalVolumes.push_back(std::get<1>(logicalVolume.second).get());
+            logicalVolumes.push_back(logicalVolume.second.get());
         }
         return logicalVolumes;
     }
@@ -163,11 +163,11 @@ class G4CCMMainVolume : public G4PVPlacement {
     G4Tubs* fShinyTop = nullptr;
     G4Tubs* fShinyBottom = nullptr;
 
-    std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fBridleLogicalVolumes;
-    std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fFrillLogicalVolumes;
-    std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fTPBLogicalVolumes;
-    std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fVacuumLogicalVolumes;
-    std::map<std::tuple<bool, G4VSolid *>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>> fPMTLogicalVolumes;
+    std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>> fBridleLogicalVolumes;
+    std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>> fFrillLogicalVolumes;
+    std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>> fTPBLogicalVolumes;
+    std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>> fVacuumLogicalVolumes;
+    std::map<std::tuple<bool, G4VSolid *>, std::shared_ptr<G4LogicalVolume>> fPMTLogicalVolumes;
     std::map<std::tuple<bool, G4VSolid *>, std::shared_ptr<G4LogicalSkinSurface>> fLogicalSkinSurfaces;
     std::vector<std::shared_ptr<G4LogicalBorderSurface>> fLogicalBorderSurfaces;
     std::vector<std::shared_ptr<G4PVPlacement>> fPlacements;

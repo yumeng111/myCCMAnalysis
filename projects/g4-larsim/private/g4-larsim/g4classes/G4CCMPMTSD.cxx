@@ -113,24 +113,48 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         return false;
 
     // User replica number 1 since photocathode is a daughter volume to the pmt which was replicated
-    G4int pmtNumber = aStep->GetPostStepPoint()->GetTouchable()->GetReplicaNumber(1);
     G4VPhysicalVolume* physVol = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(0);
-    std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber
+    G4VPhysicalVolume* physVolParent = aStep->GetPreStepPoint()->GetTouchable()->GetVolume(1);
+    size_t copyNo = aStep->GetPreStepPoint()->GetTouchable()->GetReplicaNumber(0);
+    size_t copyNoParent = aStep->GetPreStepPoint()->GetTouchable()->GetReplicaNumber(1);
+    size_t int_key = copyNoParent * 1000 + copyNo; // this is the key for the PMT in the map
 
     // let's convert physVolName to a row and pmt number to make a CCMPMTKey
     CCMPMTKey key;
-    std::map<std::string, CCMPMTKey>::iterator vol_it = volumeToKey.find(physVolName);
+    std::map<size_t, CCMPMTKey>::iterator vol_it = volumeToKey.find(int_key);
     if (vol_it == volumeToKey.end()) {
-        std::stringstream string_stream(physVolName);
+        std::string physVolName = static_cast<std::string>(physVol->GetName()); // the name is CoatedPMT_row_pmtNumber
+        std::string physVolNameParent = static_cast<std::string>(physVolParent->GetName()); // the name is CoatedPMT_row_pmtNumber
+        std::stringstream string_stream(physVolNameParent);
         std::string segment;
         std::getline(string_stream, segment, '_');
+        // segment == Glass or TPB
+
+        if(segment != "PMTTPBCoating") {
+            string_stream.clear();
+            string_stream.str(physVolName);
+
+            std::getline(string_stream, segment, '_');
+            // segment == Glass or TPB
+        }
+
         std::getline(string_stream, segment, '_');
+        // segment == Coated or Uncoated
+
+        std::getline(string_stream, segment, '_');
+        // segment == Cap or Wall
+
+        std::getline(string_stream, segment, '_');
+        // segment == row
+
         int row = std::stoi(segment);
+
         std::getline(string_stream, segment);
+        // segment == pmtNumber
         int pmt_number = std::stoi(segment);
 
         key = CCMPMTKey(row, pmt_number);
-        volumeToKey.insert(std::pair<std::string, CCMPMTKey>(physVolName, key));
+        volumeToKey.insert(std::pair<size_t, CCMPMTKey>(int_key, key));
     } else {
         key = vol_it->second;
     }

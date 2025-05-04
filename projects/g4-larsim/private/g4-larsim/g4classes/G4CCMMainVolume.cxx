@@ -124,7 +124,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fFiducialLAr = new G4Tubs("FiducialArgon", 0*cm, fiducial_lar_radius, fiducial_lar_half_height, 0*deg, 360*deg);
     fFiducialLAr_log = new G4LogicalVolume(fFiducialLAr, G4Material::GetMaterial("LAr"), "FiducialArgon");
     //fFiducialLAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialLAr_log, "FiducialArgon", fTPBFoil_log, false, 0, true);
-    fFiducialLAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialLAr_log, "FiducialArgon", fTPBFoilSides_log, false, 0, true);
+    fFiducialLAr_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fFiducialLAr_log, "FiducialArgon", fTPBFoilSides_log, false, 1, true);
 
     G4double pmt_protrusion_distance = 61.89 * mm;
     G4double bridle_width = 12.0 * mm;
@@ -287,6 +287,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     new G4LogicalBorderSurface("TPBFoilTop_Surface", fFiducialLAr_phys, fTPBFoilTop_phys, TPBOpticalSurface);
     new G4LogicalBorderSurface("TPBFoilBottom_Surface", fFiducialLAr_phys, fTPBFoilBottom_phys, TPBOpticalSurface);
 
+    unsigned int frill_copy_number_k = 0;
+
     // Place the frills
     for(std::pair<std::string const, G4VSolid *> & p : pmt_solid_maker.frill_solids) {
         std::string name = p.first;
@@ -294,22 +296,21 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         G4ThreeVector & frill_position = pmt_solid_maker.frill_positions[name];
         std::shared_ptr<G4RotationMatrix> & frill_rotation = pmt_solid_maker.frill_rotations[name];
         G4LogicalVolume * frill_log;
-        std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator it = fFrillLogicalVolumes.find(frill_solid);
-        unsigned int copy_number_k;
+        std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>>::iterator it = fFrillLogicalVolumes.find(frill_solid);
         if(it == fFrillLogicalVolumes.end()) {
-            copy_number_k = 0;
             frill_log = new G4LogicalVolume(frill_solid, G4Material::GetMaterial("Plastic"), name);
-            fFrillLogicalVolumes[frill_solid] = {1, std::shared_ptr<G4LogicalVolume>(frill_log)};
+            fFrillLogicalVolumes[frill_solid] = std::shared_ptr<G4LogicalVolume>(frill_log);
 
             G4LogicalSkinSurface * frill_skin = new G4LogicalSkinSurface(name + "_Surface", frill_log, PlasticOpticalSurface);
             fLogicalSkinSurfaces.insert({{false, frill_solid}, std::shared_ptr<G4LogicalSkinSurface>(frill_skin)});
         } else {
-            frill_log = std::get<1>(it->second).get();
-            std::get<0>(it->second) += 1;
-            copy_number_k = std::get<0>(it->second);
+            frill_log = it->second.get();
         }
-        fPlacements.emplace_back(new G4PVPlacement(frill_rotation.get(), frill_position, frill_log, name, fFiducialLAr_log, false, copy_number_k, true));
+        frill_copy_number_k += 1;
+        fPlacements.emplace_back(new G4PVPlacement(frill_rotation.get(), frill_position, frill_log, name, fFiducialLAr_log, false, frill_copy_number_k, true));
     }
+
+    unsigned int bridle_copy_number_k = 0;
 
     // Place the bridles
     for(std::pair<std::string const, G4VSolid *> & p : pmt_solid_maker.bridle_solids) {
@@ -318,22 +319,23 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         G4ThreeVector & bridle_position = pmt_solid_maker.bridle_positions[name];
         std::shared_ptr<G4RotationMatrix> & bridle_rotation = pmt_solid_maker.bridle_rotations[name];
         G4LogicalVolume * bridle_log;
-        std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator it = fBridleLogicalVolumes.find(bridle_solid);
-        unsigned int copy_number_k;
+        std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>>::iterator it = fBridleLogicalVolumes.find(bridle_solid);
         if(it == fBridleLogicalVolumes.end()) {
-            copy_number_k = 0;
             bridle_log = new G4LogicalVolume(bridle_solid, G4Material::GetMaterial("BlackPlastic"), name);
-            fBridleLogicalVolumes[bridle_solid] = {1, std::shared_ptr<G4LogicalVolume>(bridle_log)};
+            fBridleLogicalVolumes[bridle_solid] = std::shared_ptr<G4LogicalVolume>(bridle_log);
 
             G4LogicalSkinSurface * bridle_skin = new G4LogicalSkinSurface("Bridle_" + name + "_Surface", bridle_log, PlasticOpticalSurface);
             fLogicalSkinSurfaces.insert({{false, bridle_solid}, std::shared_ptr<G4LogicalSkinSurface>(bridle_skin)});
         } else {
-            bridle_log = std::get<1>(it->second).get();
-            std::get<0>(it->second) += 1;
-            copy_number_k = std::get<0>(it->second);
+            bridle_log = it->second.get();
         }
-        fPlacements.emplace_back(new G4PVPlacement(bridle_rotation.get(), bridle_position, bridle_log, name, fFiducialLAr_log, false, copy_number_k, true));
+        bridle_copy_number_k += 1;
+        fPlacements.emplace_back(new G4PVPlacement(bridle_rotation.get(), bridle_position, bridle_log, name, fFiducialLAr_log, false, bridle_copy_number_k, true));
     }
+
+    unsigned int tpb_copy_number_k = 1;
+    unsigned int glass_copy_number_k = 1;
+    unsigned int vacuum_copy_number_k = 1;
 
     // Place the pmts
     for(std::pair<std::string const, G4VSolid *> & p : pmt_solid_maker.pmt_solids) {
@@ -352,104 +354,92 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         int pmt_row, pmt_col, pmt_ring, pmt_number;
         pmt_solid_maker.ParsePMTID(name, pmt_on_cap, pmt_row, pmt_col, pmt_ring, pmt_number, coated);
         std::string pmt_name = (coated) ? "Coated" : "Uncoated";
-        pmt_name += (pmt_on_cap) ? "Cap" : "Wall";
+        pmt_name += std::string("_") + ((pmt_on_cap) ? "Cap" : "Wall");
 
-        std::string descriptive_name = std::to_string(pmt_row) + "_" + std::to_string(pmt_number);
+        std::string descriptive_name = pmt_name + "_" +
+            std::to_string(pmt_row) + "_" + std::to_string(pmt_number);
 
         G4OpticalSurface * pmt_optical_surface;
-        unsigned int tpb_copy_number_k;
-        unsigned int glass_copy_number_k;
-        unsigned int vacuum_copy_number_k;
-        std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator tpb_it;
+        std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>>::iterator tpb_it;
 
         if(tpb_solid != nullptr) {
             tpb_it = fTPBLogicalVolumes.find(tpb_solid);
             if(tpb_it == fTPBLogicalVolumes.end()) {
-                tpb_copy_number_k = 0;
                 if(pmt_on_cap)
                     tpb_log = fTPBCoatingCaps_log;
                 else
                     tpb_log = fTPBCoatingWall_log;
-                fTPBLogicalVolumes[tpb_solid] = {1, std::shared_ptr<G4LogicalVolume>(tpb_log)};
+                fTPBLogicalVolumes[tpb_solid] = std::shared_ptr<G4LogicalVolume>(tpb_log);
 
-                std::map<std::tuple<bool, G4VSolid *>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator pmt_it;
+                std::map<std::tuple<bool, G4VSolid *>, std::shared_ptr<G4LogicalVolume>>::iterator pmt_it;
                 pmt_it = fPMTLogicalVolumes.find({coated, pmt_solid});
                 if(pmt_it == fPMTLogicalVolumes.end()) {
-                    glass_copy_number_k = 0;
                     pmt_optical_surface = UncoatedPMTGlassOpticalSurface;
                     if(pmt_on_cap)
                         pmt_log = fPMTCoatedCaps_log;
                     else
                         pmt_log = fPMTCoatedWall_log;
-                    fPMTLogicalVolumes[{coated, pmt_solid}] = {1, std::shared_ptr<G4LogicalVolume>(pmt_log)};
+                    fPMTLogicalVolumes[{coated, pmt_solid}] = std::shared_ptr<G4LogicalVolume>(pmt_log);
 
                     G4LogicalSkinSurface * pmt_skin = new G4LogicalSkinSurface("PMTGlass_" + pmt_name + "_Surface", pmt_log, pmt_optical_surface);
                     fLogicalSkinSurfaces.insert({{coated, pmt_solid}, std::shared_ptr<G4LogicalSkinSurface>(pmt_skin)});
 
-                    std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator vac_it;
+                    std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>>::iterator vac_it;
                     G4VSolid * vacuum_solid = pmt_solid_maker.vacuum_solids[name];
                     G4LogicalVolume * vacuum_log;
 
                     vac_it = fVacuumLogicalVolumes.find(vacuum_solid);
                     if(vac_it == fVacuumLogicalVolumes.end()) {
-                        vacuum_copy_number_k = 0;
                         vacuum_log = new G4LogicalVolume(vacuum_solid, G4Material::GetMaterial("Vacuum"), std::string("PMTVacuum_") + ((pmt_on_cap) ? "Cap" : "Wall") + "Log");
-                        fVacuumLogicalVolumes[vacuum_solid] = {1, std::shared_ptr<G4LogicalVolume>(vacuum_log)};
+                        fVacuumLogicalVolumes[vacuum_solid] = std::shared_ptr<G4LogicalVolume>(vacuum_log);
                     } else {
-                        vacuum_log = std::get<1>(vac_it->second).get();
-                        std::get<0>(vac_it->second) += 1;
-                        vacuum_copy_number_k = std::get<0>(vac_it->second);
+                        vacuum_log = vac_it->second.get();
                     }
+                    vacuum_copy_number_k += 1;
                     fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, vacuum_copy_number_k, true));
                 } else {
-                    pmt_log = std::get<1>(pmt_it->second).get();
-                    std::get<0>(pmt_it->second) += 1;
-                    glass_copy_number_k = std::get<0>(pmt_it->second);
+                    pmt_log = pmt_it->second.get();
                 }
+                glass_copy_number_k += 1;
                 fPlacements.emplace_back(new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), pmt_log, "PMTGlass_" + descriptive_name, tpb_log, false, glass_copy_number_k, true));
             } else {
-                tpb_log = std::get<1>(tpb_it->second).get();
-                std::get<0>(tpb_it->second) += 1;
-                tpb_copy_number_k = std::get<0>(tpb_it->second);
+                tpb_log = tpb_it->second.get();
             }
-            fPlacements.emplace_back(new G4PVPlacement(tpb_rotation.get(), tpb_position, tpb_log, "PMTTPBCoating_" + name, fFiducialLAr_log, false, tpb_copy_number_k, true));
+            tpb_copy_number_k += 1;
+            fPlacements.emplace_back(new G4PVPlacement(tpb_rotation.get(), tpb_position, tpb_log, "PMTTPBCoating_" + descriptive_name, fFiducialLAr_log, false, tpb_copy_number_k, true));
             fLogicalBorderSurfaces.emplace_back(new G4LogicalBorderSurface("PMTTPBCoating_" + name + "_Surface", fFiducialLAr_phys, fPlacements.back().get(), TPBOpticalSurface));
         } else {
-            std::map<std::tuple<bool, G4VSolid *>, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator pmt_it;
+            std::map<std::tuple<bool, G4VSolid *>, std::shared_ptr<G4LogicalVolume>>::iterator pmt_it;
 
             pmt_it = fPMTLogicalVolumes.find({coated, pmt_solid});
             if(pmt_it == fPMTLogicalVolumes.end()) {
-                glass_copy_number_k = 0;
                 pmt_optical_surface = UncoatedPMTGlassOpticalSurface;
                 if(pmt_on_cap)
                     pmt_log = fPMTUncoatedCaps_log;
                 else
                     pmt_log = fPMTUncoatedWall_log;
-                fPMTLogicalVolumes[{coated, pmt_solid}] = {1, std::shared_ptr<G4LogicalVolume>(pmt_log)};
+                fPMTLogicalVolumes[{coated, pmt_solid}] = std::shared_ptr<G4LogicalVolume>(pmt_log);
 
                 G4LogicalSkinSurface * pmt_skin = new G4LogicalSkinSurface("PMTGlass_" + pmt_name + "_Surface", pmt_log, pmt_optical_surface);
                 fLogicalSkinSurfaces.insert({{coated, pmt_solid}, std::shared_ptr<G4LogicalSkinSurface>(pmt_skin)});
 
-                std::map<G4VSolid *, std::tuple<unsigned int, std::shared_ptr<G4LogicalVolume>>>::iterator vac_it;
+                std::map<G4VSolid *, std::shared_ptr<G4LogicalVolume>>::iterator vac_it;
                 G4VSolid * vacuum_solid = pmt_solid_maker.vacuum_solids[name];
                 G4LogicalVolume * vacuum_log;
 
                 vac_it = fVacuumLogicalVolumes.find(vacuum_solid);
                 if(vac_it == fVacuumLogicalVolumes.end()) {
-                    vacuum_copy_number_k = 0;
                     vacuum_log = new G4LogicalVolume(vacuum_solid, G4Material::GetMaterial("Vacuum"), std::string("PMTVacuum_") + ((pmt_on_cap) ? "Cap" : "Wall") + "Log");
-                    fVacuumLogicalVolumes[vacuum_solid] = {1, std::shared_ptr<G4LogicalVolume>(vacuum_log)};
+                    fVacuumLogicalVolumes[vacuum_solid] = std::shared_ptr<G4LogicalVolume>(vacuum_log);
                 } else {
-                    vacuum_log = std::get<1>(vac_it->second).get();
-                    std::get<0>(vac_it->second) += 1;
-                    vacuum_copy_number_k = std::get<0>(vac_it->second);
+                    vacuum_log = vac_it->second.get();
                 }
+                vacuum_copy_number_k += 1;
                 fPlacements.emplace_back(new G4PVPlacement(0, G4ThreeVector(0,0,0), vacuum_log, "PMTVacuum_" + name, pmt_log, false, vacuum_copy_number_k, true));
             } else {
-                pmt_log = std::get<1>(pmt_it->second).get();
-                std::get<0>(pmt_it->second) += 1;
-                glass_copy_number_k = std::get<0>(pmt_it->second);
+                pmt_log = pmt_it->second.get();
             }
+            glass_copy_number_k += 1;
             fPlacements.emplace_back(new G4PVPlacement(pmt_rotation.get(), pmt_position, pmt_log, "PMTGlass_" + descriptive_name, fFiducialLAr_log, false, glass_copy_number_k, true));
         }
     }
