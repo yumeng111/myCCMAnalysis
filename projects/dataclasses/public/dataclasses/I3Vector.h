@@ -14,6 +14,8 @@
 #include <icetray/ostream_pair.hpp>
 #include <icetray/has_operator.h>
 #include <vector>
+#include <initializer_list>
+
 #include "dataclasses/Utility.h"
 #include "icetray/OMKey.h"
 #include "dataclasses/ModuleKey.h"
@@ -44,6 +46,9 @@ struct I3Vector : public std::vector<T>, public I3FrameObject
 
   template <typename Iterator>
   I3Vector(Iterator l, Iterator r) : base_t(l, r) { }
+
+  I3Vector(std::initializer_list<T> __il) : base_t(__il) { }
+  I3Vector(std::initializer_list<T> __il, const typename base_t::allocator_type& __a) : base_t(__il, __a) { }
 
   template <class Archive>
   void serialize(Archive & ar, unsigned version)
