@@ -56,7 +56,7 @@ class G4Interface {
                              bool RecordHits, bool SourceRodIn, double SourceRodLocation,
                              bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
                              double DecayX, double DecayY, double DecayZ, double Rayleigh128,
-                             double UVAbsA, double UVAbsB, double UVAbsD, double UVAbsScaling,
+                             bool EnableUVAbsorption, double UVAbsA, double UVAbsB, double UVAbsD, double UVAbsScaling,
                              double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
                              double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
                              double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,

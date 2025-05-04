@@ -71,11 +71,11 @@ void G4Interface::InstallDetector(
                                   bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
                                   bool SimulateNuclearRecoils, double G4RangeCut, double G4EDepMin, double G4ETrackingMin,
                                   bool RecordHits, bool SourceRodIn, double SourceRodLocation,
-                                  bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource, 
+                                  bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
                                   double DecayX, double DecayY, double DecayZ, double Rayleigh128,
-                                  double UVAbsA, double UVAbsB, double UVAbsD, double UVAbsScaling, 
-                                  double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT, 
-                                  double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness, 
+                                  bool EnableUVAbsorption, double UVAbsA, double UVAbsB, double UVAbsD, double UVAbsScaling,
+                                  double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT,
+                                  double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness,
                                   double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
                                   double Normalization, double PhotonSampling, long RandomSeed) {
     if(initialized_) {
@@ -111,6 +111,7 @@ void G4Interface::InstallDetector(
 
     if(detector_ == nullptr) {
         detector_ = new G4CCMDetectorConstruction(
+                                                  EnableUVAbsorption,
                                                   UVAbsA / (1.0/I3Units::nanometer) * (1.0/CLHEP::nm),
                                                   UVAbsB / I3Units::nanometer * CLHEP::nm,
                                                   UVAbsD / I3Units::m * CLHEP::m, UVAbsScaling,

@@ -40,7 +40,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
   public:
 
     // constructor and destructor
-    G4CCMDetectorConstruction(G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
+    G4CCMDetectorConstruction(G4bool EnableUVAbsorption, G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
                               G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                               G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                               G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
@@ -230,6 +230,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4double DecayZ_ = 0.0 * cm;
 
     G4double Rayleigh128_ = 95.0 * cm;
+    G4bool EnableUVAbsorption_ = true;;
     G4double UVAbsA_ = 0.234 * (1.0/nm);
     G4double UVAbsB_ = 113.02 * nm;
     G4double UVAbsD_ = 5.8 * cm;

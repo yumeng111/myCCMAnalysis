@@ -46,11 +46,12 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4bool EnableUVAbsorption, G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
                                                      G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
                                                      G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
                                                      G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
                                                      G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor) {
+    EnableUVAbsorption_ = EnableUVAbsorption;
     UVAbsA_ = UVAbsA;
     UVAbsB_ = UVAbsB;
     UVAbsD_ = UVAbsD;
@@ -351,7 +352,8 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         uv_abs_length.push_back(this_abs);
     }
 
-    fLAr_mt->AddProperty("ABSLENGTH", uv_abs_energy, uv_abs_length);
+    if(EnableUVAbsorption_)
+        fLAr_mt->AddProperty("ABSLENGTH", uv_abs_energy, uv_abs_length);
 
     std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;
     G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)) * PhotonSamplingFactor_; // scintillation yield: 50 per keV.
