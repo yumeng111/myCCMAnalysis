@@ -131,6 +131,12 @@ public:
     void SetVerboseLevel(G4int);
     // sets verbosity
 
+    void SetPhotonSamplingFactor(G4double factor);
+    // sets the scaling factor for the number of photons produced
+
+    G4double GetPhotonSamplingFactor() const;
+    // returns the scaling factor for the number of photons produced
+
 protected:
     G4PhysicsTable* thePhysicsTable;
     boost::shared_ptr<std::vector<std::vector<G4double>>> RefractiveIndexValsVectors = boost::make_shared<std::vector<std::vector<G4double>>>();
@@ -138,6 +144,8 @@ protected:
 
 private:
     G4double fMaxBetaChange;
+
+    G4double fPhotonSamplingFactor;
 
     G4int fMaxPhotons;
     G4int fNumPhotons;
@@ -169,6 +177,8 @@ inline G4PhysicsTable* G4CCMCerenkov::GetPhysicsTable() const
 {
     return thePhysicsTable;
 }
+
+inline G4double G4CCMCerenkov::GetPhotonSamplingFactor() const { return fPhotonSamplingFactor; }
 
 #endif /* G4CCMCerenkov_h */
 

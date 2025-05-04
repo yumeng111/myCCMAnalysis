@@ -275,6 +275,7 @@ void G4CCMPhysicsList::ConstructProcess() {
             myCerenkov->SetTrackSecondariesFirst(true);
             myCerenkov->SetMaxNumPhotonsPerStep(100);
             myCerenkov->SetMaxBetaChangePerStep(10.0);
+            myCerenkov->SetPhotonSamplingFactor(PhotonSamplingFactor_);
 
             pmanager->AddProcess(myCerenkov);
             pmanager->SetProcessOrdering(myCerenkov, idxPostStep);

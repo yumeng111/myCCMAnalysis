@@ -45,6 +45,7 @@ class G4CCMPhysicsList: public G4VModularPhysicsList {
 public:
     G4CCMPhysicsList(G4int ver=1);
     ~G4CCMPhysicsList();
+    double PhotonSamplingFactor_ = 1.0;
     bool SimulateNuclearRecoils_ = false;
     double G4RangeCut_ = 1e-6; // 1 um
     double G4EDepMin_ = 1e-8; // 0.01 keV

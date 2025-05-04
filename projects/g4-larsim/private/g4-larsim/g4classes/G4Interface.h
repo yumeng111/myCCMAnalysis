@@ -83,6 +83,7 @@ class G4Interface {
         double G4RangeCut_ = 0.0; // range cut for all particles
         double G4EDepMin_ = 0.0; // minimum energy deposit for hits
         double G4ETrackingMin_ = 0.0; // minimum energy for tracking
+        double PhotonSamplingFactor_ = 1.0; // scaling factor for number of photons produced
 
         #ifdef G4VIS_USE
         G4VisManager* visManager_;

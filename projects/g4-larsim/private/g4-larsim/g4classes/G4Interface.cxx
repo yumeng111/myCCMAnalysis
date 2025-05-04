@@ -87,6 +87,7 @@ void G4Interface::InstallDetector(
     G4RangeCut_ = G4RangeCut;
     G4EDepMin_ = G4EDepMin;
     G4ETrackingMin_ = G4ETrackingMin;
+    PhotonSamplingFactor_ = PhotonSampling;
 
     RecordHits_ = RecordHits;
 
@@ -237,6 +238,7 @@ void G4Interface::Initialize() {
     physics_list->SimulateNuclearRecoils_ = SimulateNuclearRecoils_;
     physics_list->G4RangeCut_ = G4RangeCut_;
     physics_list->G4EDepMin_ = G4EDepMin_;
+    physics_list->PhotonSamplingFactor_ = PhotonSamplingFactor_;
     runManager_->SetUserInitialization(physics_list);
 
     // Set user action initialization

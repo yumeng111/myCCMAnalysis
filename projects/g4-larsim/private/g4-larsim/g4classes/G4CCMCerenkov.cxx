@@ -79,6 +79,7 @@
 G4CCMCerenkov::G4CCMCerenkov(const G4String& processName, G4ProcessType type)
   : G4VProcess(processName, type)
   , fNumPhotons(0)
+  , fPhotonSamplingFactor(1.0)
 {
   secID = G4PhysicsModelCatalog::GetModelID("model_Cerenkov");
   SetProcessSubType(fCerenkov);
@@ -267,7 +268,16 @@ G4VParticleChange* G4CCMCerenkov::PostStepDoIt(const G4Track& aTrack,
   }
 
   MeanNumberOfPhotons *= aStep.GetStepLength();
-  fNumPhotons         = (G4int) G4Poisson(MeanNumberOfPhotons);
+  if(MeanNumberOfPhotons > 10.)
+  {
+    G4double ResolutionScale = std::sqrt(fPhotonSamplingFactor);
+    G4double sigma = ResolutionScale * std::sqrt(MeanNumberOfPhotons);
+    fNumPhotons = G4int(G4RandGauss::shoot(MeanNumberOfPhotons, sigma) + 0.5);
+  }
+  else
+  {
+    fNumPhotons = G4int(G4Poisson(MeanNumberOfPhotons));
+  }
 
   // third condition added to prevent infinite loop in do-while below,
   // see bugzilla 2555
@@ -652,6 +662,8 @@ PhotonNumInfo G4CCMCerenkov::GetAverageNumberOfPhotons(
     }
   }
 
+  NumPhotons *= fPhotonSamplingFactor;
+
   // save!
   result.avgPhotons = NumPhotons;
   result.omegaMin = entering_cerenkov_region_omega;
@@ -703,5 +715,12 @@ void G4CCMCerenkov::SetVerboseLevel(G4int verbose)
 {
   verboseLevel = verbose;
   G4OpticalParameters::Instance()->SetCerenkovVerboseLevel(verboseLevel);
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+void G4CCMCerenkov::SetPhotonSamplingFactor(G4double factor)
+{
+  fPhotonSamplingFactor = factor;
+  //G4OpticalParameters::Instance()->SetCerenkovPhotonSamplingFactor(fPhotonSamplingFactor);
 }
 
