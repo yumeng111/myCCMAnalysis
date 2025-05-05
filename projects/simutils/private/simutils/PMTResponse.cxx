@@ -66,6 +66,7 @@ class PMTResponse: public I3Module {
     double uv_absorption_b_;
     double uv_absorption_d_;
     double uv_absorption_scaling_;
+    double normalization_;
 
     double uv_absorption_min_wavelength_;
     double uv_absorption_max_wavelength_ = 200.0; // nm
@@ -96,6 +97,7 @@ class PMTResponse: public I3Module {
     double simulated_uv_absorption_max_wavelength_ = 200.0; // nm
     double simulated_uv_absorption_min_abs_length_;
     double simulated_uv_absorption_max_abs_length_;
+    double simulated_normalization_;
 
     double average_pmt_eff_;
     bool flat_eff_;
@@ -316,6 +318,7 @@ void PMTResponse::Simulation(I3FramePtr frame) {
     simulated_uv_absorption_b_ = detector_config.uv_absorption_b_; // [nm]
     simulated_uv_absorption_d_ = detector_config.uv_absorption_d_; // [cm]
     simulated_uv_absorption_scaling_ = detector_config.uv_absorption_scaling_;
+    simulated_normalization_ = detector_config.normalization_;
 
     simulated_uv_absorption_min_wavelength_ = simulated_uv_absorption_b_ + 0.1;
     simulated_uv_absorption_max_wavelength_ = 200.0;
@@ -344,6 +347,7 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     uv_absorption_b_ = sim_calibration->uv_absorption_b; // [nm]
     uv_absorption_d_ = sim_calibration->uv_absorption_d; // [cm]
     uv_absorption_scaling_ = sim_calibration->uv_absorption_scaling;
+    normalization_ = sim_calibration->normalization;
 
     uv_absorption_min_wavelength_ = uv_absorption_b_ + 0.1;
     uv_absorption_max_wavelength_ = 200.0;
@@ -647,6 +651,10 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                     uv_abs_probability /= (simulated_scaling_before * simulated_scaling_after);
                 }
             }
+            double normalization = 1.0;
+            if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
+                normalization = normalization_ / simulated_normalization_;
+            }
             std::cout << "uv_absorption probability: " << uv_abs_probability << std::endl;
 
             std::cout << "wavelength: " << wavelength << std::endl;
@@ -656,7 +664,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             std::cout << "this_tube_spe_threshold: " << this_tube_spe_threshold << std::endl;
             std::cout << "photon_sampling_factor_: " << photon_sampling_factor_ << std::endl;
 
-            double survival_probability = this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
+            double survival_probability = normalization * this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
             std::cout << "survival probability: " << survival_probability << std::endl;
 
             double charge_scale_factor = 1.0;

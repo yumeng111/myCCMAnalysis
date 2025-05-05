@@ -20,7 +20,7 @@
 
 #include <icetray/CCMPMTKey.h>
 
-static const unsigned ccmsimulationcalibration_version_ = 3;
+static const unsigned ccmsimulationcalibration_version_ = 4;
 static const unsigned ccmsimulationpmtcalibration_version_ = 0;
 static const unsigned ccmlatepulseparameters_version_ = 0;
 
@@ -111,6 +111,8 @@ public:
     double uv_absorption_d;
     double uv_absorption_scaling;
 
+    double normalization;
+
     SET_LOGGER("CCMSimulationCalibration");
 
     bool operator==(const CCMSimulationCalibration& rhs) const {
@@ -123,7 +125,8 @@ public:
             && uv_absorption_a == rhs.uv_absorption_a
             && uv_absorption_b == rhs.uv_absorption_b
             && uv_absorption_d == rhs.uv_absorption_d
-            && uv_absorption_scaling == rhs.uv_absorption_scaling;
+            && uv_absorption_scaling == rhs.uv_absorption_scaling
+            && normalization == rhs.normalization;
     }
 
     CCMSimulationCalibration();

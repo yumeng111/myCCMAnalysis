@@ -77,6 +77,7 @@ void CCMSimulationCalibration::save(Archive& ar, unsigned version) const {
     ar & make_nvp("uv_absorption_b",uv_absorption_b);
     ar & make_nvp("uv_absorption_d",uv_absorption_d);
     ar & make_nvp("uv_absorption_scaling",uv_absorption_scaling);
+    ar & make_nvp("normalization",normalization);
 }
 
 template <class Archive>
@@ -145,6 +146,11 @@ void CCMSimulationCalibration::load(Archive& ar, unsigned version) {
         uv_absorption_d = 5.8;
         uv_absorption_scaling = 0.0418985;
     }
+    if(version >= 4) {
+        ar & make_nvp("normalization",normalization);
+    } else {
+        normalization = 1.0;
+    }
 }
 
 std::ostream& operator<<(std::ostream& oss, const CCMPulseTimeDistributionParameters& c) {
@@ -201,6 +207,7 @@ std::ostream& CCMSimulationCalibration::Print(std::ostream& os) const{
         << "\n  uv_absorption_b :" << uv_absorption_b
         << "\n  uv_absorption_d :" << uv_absorption_d
         << "\n  uv_absorption_scaling :" << uv_absorption_scaling
+        << "\n  normalization :" << normalization
         << "\n  PMTCalibration :";
         for (const auto& it : pmt_calibration) {
             os << "\n    " << it.first << " : " << it.second;

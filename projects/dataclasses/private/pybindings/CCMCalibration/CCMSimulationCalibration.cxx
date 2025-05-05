@@ -67,6 +67,7 @@ void register_CCMSimulationCalibration() {
         .def_readwrite("uv_absorption_b",&CCMSimulationCalibration::uv_absorption_b)
         .def_readwrite("uv_absorption_d",&CCMSimulationCalibration::uv_absorption_d)
         .def_readwrite("uv_absorption_scaling",&CCMSimulationCalibration::uv_absorption_scaling)
+        .def_readwrite("normalization",&CCMSimulationCalibration::normalization)
         ;
 }
     register_pointer_conversions<CCMSimulationCalibration>();
