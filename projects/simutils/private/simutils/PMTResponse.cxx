@@ -629,10 +629,6 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
             // Check if survive uv absorption cuts
             double uv_abs_probability = 1.0;
-            std::cout << "uv_absorption_a: " << uv_absorption_a_ << ", " << simulated_uv_absorption_a_ << std::endl;
-            std::cout << "uv_absorption_b: " << uv_absorption_b_ << ", " << simulated_uv_absorption_b_ << std::endl;
-            std::cout << "uv_absorption_d: " << uv_absorption_d_ << ", " << simulated_uv_absorption_d_ << std::endl;
-            std::cout << "uv_absorption_scaling: " << uv_absorption_scaling_ << ", " << simulated_uv_absorption_scaling_ << std::endl;
             if(weight_uv_absorption_) {
                 double original_wavelength = pe.original_wavelength / I3Units::nanometer;
                 double wavelength = pe.wavelength / I3Units::nanometer;
@@ -641,13 +637,11 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
                 double scaling_before = ResponseUVAbsorptionScalingCM(original_wavelength, distance_travelled_before_wls);
                 double scaling_after = ResponseUVAbsorptionScalingCM(wavelength, distance_travelled_after_wls);
-                std::cout << "absorption probability: " << scaling_before * scaling_after << std::endl;
                 uv_abs_probability *= scaling_before * scaling_after;
 
                 if(simulated_enable_uv_absorption_) {
                     double simulated_scaling_before = SimulatedUVAbsorptionScalingCM(original_wavelength, distance_travelled_before_wls);
                     double simulated_scaling_after = SimulatedUVAbsorptionScalingCM(wavelength, distance_travelled_after_wls);
-                    std::cout << "simulated absorption probability: " << simulated_scaling_before * simulated_scaling_after << std::endl;
                     uv_abs_probability /= (simulated_scaling_before * simulated_scaling_after);
                 }
             }
@@ -655,17 +649,8 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
                 normalization = normalization_ / simulated_normalization_;
             }
-            std::cout << "uv_absorption probability: " << uv_abs_probability << std::endl;
-
-            std::cout << "wavelength: " << wavelength << std::endl;
-            std::cout << "wavelength_qe_weighting: " << wavelength_qe_weighting << std::endl;
-            std::cout << "pmt_efficiency: " << pmt_efficiency << std::endl;
-            std::cout << "this_tube_spe_threshold_efficiency: " << this_tube_spe_threshold_efficiency << std::endl;
-            std::cout << "this_tube_spe_threshold: " << this_tube_spe_threshold << std::endl;
-            std::cout << "photon_sampling_factor_: " << photon_sampling_factor_ << std::endl;
 
             double survival_probability = normalization * this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
-            std::cout << "survival probability: " << survival_probability << std::endl;
 
             double charge_scale_factor = 1.0;
             if(survival_probability > 1.0) {
