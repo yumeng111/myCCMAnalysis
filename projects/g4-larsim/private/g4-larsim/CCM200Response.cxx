@@ -86,7 +86,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("EnableUVAbsorption", "Enable UV absorption", EnableUVAbsorption_);
     AddParameter("UVAbsA", "Set UV absorption slope [1/nm]", UVAbsA_ / (1.0/I3Units::nanometer));
     AddParameter("UVAbsB", "Set UV absorption offset [nm]", UVAbsB_ / I3Units::nanometer);
-    AddParameter("UVAbsD", "Set UV absorption reference distance [m]", UVAbsD_ / I3Units::meter);
+    AddParameter("UVAbsD", "Set UV absorption reference distance [cm]", UVAbsD_ / I3Units::cm);
     AddParameter("UVAbsScaling", "Set UV absorption scale [dimensionless]", UVAbsScaling_);
     AddParameter("WLSNPhotonsEndCapFoil", "mean number of photons produced per WLS for TPB foils on the end caps of the detector", WLSNPhotonsEndCapFoil_);
     AddParameter("WLSNPhotonsSideFoil", "mean number of photons produced per WLS for TPB foils on the sides of the detector", WLSNPhotonsSideFoil_);
@@ -159,7 +159,7 @@ void CCM200Response::Configure() {
 
     UVAbsA_ *= (1.0/I3Units::nanometer);
     UVAbsB_ *= I3Units::nanometer;
-    UVAbsD_ *= I3Units::meter;
+    UVAbsD_ *= I3Units::cm;
 }
 
 CCM200Response::~CCM200Response() {}
@@ -191,9 +191,9 @@ I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
     DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
     config->rayleigh_scattering_length_ = Rayleigh128_;
     config->enable_uv_absorption_ = EnableUVAbsorption_;
-    config->uv_absorption_a_ = UVAbsA_;
-    config->uv_absorption_b_ = UVAbsB_;
-    config->uv_absorption_d_ = UVAbsD_;
+    config->uv_absorption_a_ = UVAbsA_ / (1.0/I3Units::nanometer);
+    config->uv_absorption_b_ = UVAbsB_ / I3Units::nanometer;
+    config->uv_absorption_d_ = UVAbsD_ / I3Units::cm;
     config->uv_absorption_scaling_ = UVAbsScaling_;
     config->pmt_tpb_qe_ = WLSNPhotonsPMT_;
     config->endcap_tpb_qe_ = WLSNPhotonsEndCapFoil_;

@@ -314,6 +314,16 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double b_param = UVAbsB_ / nm; // nm
     double d_param = UVAbsD_ / cm; // cm
     double scaling_param = UVAbsScaling_; // dimensionless
+    for(size_t i=0; i<10; ++i) {
+        std::cout << "######################################################################################################################" << std::endl;
+    }
+    std::cout << "a_param = " << a_param << std::endl;
+    std::cout << "b_param = " << b_param << std::endl;
+    std::cout << "d_param = " << d_param << std::endl;
+    std::cout << "scaling_param = " << scaling_param << std::endl;
+    for(size_t i=0; i<10; ++i) {
+        std::cout << "######################################################################################################################" << std::endl;
+    }
 
     double large_abs_length = 100000.0; // cm
 

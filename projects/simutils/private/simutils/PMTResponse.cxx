@@ -87,6 +87,7 @@ class PMTResponse: public I3Module {
     I3RandomServicePtr randomService_;
 
     double photon_sampling_factor_;
+    bool simulated_enable_uv_absorption_;
     double simulated_uv_absorption_a_;
     double simulated_uv_absorption_b_;
     double simulated_uv_absorption_d_;
@@ -99,11 +100,11 @@ class PMTResponse: public I3Module {
     double average_pmt_eff_;
     bool flat_eff_;
     bool remove_cherenkov_;
-    bool weight_uv_abs_;
+    bool weight_uv_absorption_;
     bool track_sampled_pe_;
     bool seen_cal_frame = false;
-    bool grabbed_wavelength_qe_ = false;
-    bool grabbed_lp_integral_= false;
+    bool check_for_detailed_photon_tracking = false;
+    I3FramePtr calibration_frame_ = nullptr;
     std::vector<double> wavelength_qe_wavelength;
     std::vector<double> wavelength_qe_efficiency;
 
@@ -134,33 +135,89 @@ public:
     static const std::vector<double> default_wavelength_qe_wavelength;
     static const std::vector<double> default_wavelength_qe_efficiency;
 
-    static const double UVAbsorptionLengthCM(const double wavelength, const double a, const double b, const double d, const double scaling, const double min_wavelength, const double max_wavelength, const double min_abs_length, const double max_abs_length);
-    double SimulatedUVAbsorptionCM(const double wavelength) const;
-    double ResponseUVAbsorptionCM(const double wavelength) const;
+    static double UVAbsorptionLengthCM(double wavelength, double a, double b, double d, double scaling, double min_wavelength, double max_wavelength, double min_abs_length, double max_abs_length);
+    static double UVAbsorptionScalingCM(double wavelength, double distance, double a, double b, double d, double scaling, double min_wavelength, double max_wavelength, double min_abs_length, double max_abs_length);
+    double SimulatedUVAbsorptionCM(double wavelength) const;
+    double SimulatedUVAbsorptionScalingCM(double wavelength, double distance) const;
+    double ResponseUVAbsorptionCM(double wavelength) const;
+    double ResponseUVAbsorptionScalingCM(double wavelength, double distance) const;
 
     double SampleGEV(double mu, double sigma);
     double SampleGEV(CCMPulseTimeDistributionParameters const & pulse) {
         return SampleGEV(pulse.mu, pulse.sigma);
     }
+
+    int CheckForDetailedPhotonTracking(I3FramePtr frame) const;
+    void UpdateCalibrationFrame();
 };
 
-const double PMTResponse::UVAbsorptionLengthCM(const double wavelength, const double a, const double b, const double d, const double scaling, const double min_wavelength, const double max_wavelength, const double min_abs_length, const double max_abs_length) {
+int PMTResponse::CheckForDetailedPhotonTracking(I3FramePtr frame) const {
+    boost::shared_ptr<CCMMCPESeriesMap const> mcpeseries_source = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>(input_hits_map_name_);
+    bool has_photon = false;
+    for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it)
+        for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+            CCMMCPE const & pe = *it2;
+            if(pe.distance_uv > 0.0 or pe.distance_visible > 0.0)
+                return true;
+            else
+                has_photon = true;
+        }
+    if(not has_photon)
+        return -1;
+    return false;
+}
+
+void PMTResponse::UpdateCalibrationFrame() {
+    if(weight_uv_absorption_)
+        return;
+    std::string sim_cal_name_ = "SimulationCalibration";
+    CCMSimulationCalibration cal = calibration_frame_->Get<CCMSimulationCalibration>(sim_cal_name_);
+    boost::shared_ptr<CCMSimulationCalibration> sim_calibration = boost::make_shared<CCMSimulationCalibration>(cal);
+    calibration_frame_->Delete(sim_cal_name_);
+
+    sim_calibration->uv_absorption_a = simulated_uv_absorption_a_; // [1/nm]
+    sim_calibration->uv_absorption_b = simulated_uv_absorption_b_; // [nm]
+    sim_calibration->uv_absorption_d = simulated_uv_absorption_d_; // [cm]
+    sim_calibration->uv_absorption_scaling = simulated_uv_absorption_scaling_;
+
+    calibration_frame_->Put(sim_cal_name_, sim_calibration);
+}
+
+double PMTResponse::UVAbsorptionLengthCM(double wavelength, double a, double b, double d, double scaling, double min_wavelength, double max_wavelength, double min_abs_length, double max_abs_length) {
     if(wavelength < min_wavelength) {
-        return min_abs_length;
+        return min_abs_length * I3Units::cm;
     } else if(wavelength > max_wavelength) {
-        return max_abs_length;
+        return max_abs_length * I3Units::cm;
     } else {
         double function_T = 1.0 - std::exp( - a * (wavelength - b));
-        return (d / std::log(1.0 / function_T)) * scaling;
+        return (d / std::log(1.0 / function_T)) * scaling * I3Units::cm;
     }
 }
 
-double PMTResponse::SimulatedUVAbsorptionCM(const double wavelength) const {
+double PMTResponse::UVAbsorptionScalingCM(double wavelength, double distance, double a, double b, double d, double scaling, double min_wavelength, double max_wavelength, double min_abs_length, double max_abs_length) {
+    if(wavelength < min_wavelength) {
+        return std::exp(-distance / (min_abs_length * I3Units::cm));
+    } else if(wavelength > max_wavelength) {
+        return std::exp(-distance / (max_abs_length * I3Units::cm));
+    } else {
+        return std::pow(1.0 - std::exp(a * (b - wavelength)), distance / (scaling * d * I3Units::cm));
+    }
+}
+
+double PMTResponse::SimulatedUVAbsorptionCM(double wavelength) const {
     return UVAbsorptionLengthCM(wavelength, simulated_uv_absorption_a_, simulated_uv_absorption_b_, simulated_uv_absorption_d_, simulated_uv_absorption_scaling_, simulated_uv_absorption_min_wavelength_, simulated_uv_absorption_max_wavelength_, simulated_uv_absorption_min_abs_length_, simulated_uv_absorption_max_abs_length_);
 }
 
-double PMTResponse::ResponseUVAbsorptionCM(const double wavelength) const {
+double PMTResponse::SimulatedUVAbsorptionScalingCM(double wavelength, double distance) const {
+    return UVAbsorptionScalingCM(wavelength, distance, simulated_uv_absorption_a_, simulated_uv_absorption_b_, simulated_uv_absorption_d_, simulated_uv_absorption_scaling_, simulated_uv_absorption_min_wavelength_, simulated_uv_absorption_max_wavelength_, simulated_uv_absorption_min_abs_length_, simulated_uv_absorption_max_abs_length_);
+}
+
+double PMTResponse::ResponseUVAbsorptionCM(double wavelength) const {
     return UVAbsorptionLengthCM(wavelength, uv_absorption_a_, uv_absorption_b_, uv_absorption_d_, uv_absorption_scaling_, uv_absorption_min_wavelength_, uv_absorption_max_wavelength_, uv_absorption_min_abs_length_, uv_absorption_max_abs_length_);
+}
+
+double PMTResponse::ResponseUVAbsorptionScalingCM(double wavelength, double distance) const {
+    return UVAbsorptionScalingCM(wavelength, distance, uv_absorption_a_, uv_absorption_b_, uv_absorption_d_, uv_absorption_scaling_, uv_absorption_min_wavelength_, uv_absorption_max_wavelength_, uv_absorption_min_abs_length_, uv_absorption_max_abs_length_);
 }
 
 double PMTResponse::SampleGEV(double mu, double sigma) {
@@ -202,7 +259,7 @@ PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     input_hits_map_name_("PMTMCHitsMap"), output_reco_pulse_name_("MCRecoPulses"),
     output_time_offsets_name_("SimulatedBoardTimeOffsets"), detector_configuration_name_("DetectorResponseConfig"),
     output_true_event_time_name_("TrueEventTime"),
-    remove_cherenkov_(false), flat_eff_(false), weight_uv_abs_(false) {
+    flat_eff_(false), remove_cherenkov_(false), weight_uv_absorption_(false) {
     AddParameter("InputHitsMapName", "Name of the input hits map", input_hits_map_name_);
     AddParameter("OutputRecoPulseName", "Name of the output reco pulse series map", output_reco_pulse_name_);
     AddParameter("OutputTimeOffsetsName", "Name of the output time offsets map", output_time_offsets_name_);
@@ -213,7 +270,7 @@ PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     AddParameter("QEValues", "Values for quantum efficiency", wavelength_qe_efficiency);
     AddParameter("RemoveCherenkov", "true removes cherenkov photons, false keeps them all", remove_cherenkov_);
     AddParameter("FlatEfficiency", "true to use flat efficiency", flat_eff_);
-    AddParameter("WeightUVAbsorption", "true to throw away photons based on uv absorption", weight_uv_abs_);
+    AddParameter("WeightUVAbsorption", "true to add uv absorption via reweighting", weight_uv_absorption_);
 }
 
 
@@ -244,7 +301,7 @@ void PMTResponse::Configure() {
     }
     GetParameter("RemoveCherenkov", remove_cherenkov_);
     GetParameter("FlatEfficiency", flat_eff_);
-    GetParameter("WeightUVAbsorption", weight_uv_abs_);
+    GetParameter("WeightUVAbsorption", weight_uv_absorption_);
 }
 
 void PMTResponse::Simulation(I3FramePtr frame) {
@@ -254,18 +311,19 @@ void PMTResponse::Simulation(I3FramePtr frame) {
 
     DetectorResponseConfig const & detector_config = frame->Get<DetectorResponseConfig>(detector_configuration_name_);
     photon_sampling_factor_ = detector_config.photon_sampling_factor_;
-    simulated_uv_absorption_a_ = detector_config.uv_absorption_a_ / (1.0 / I3Units::nanometer);
-    simulated_uv_absorption_b_ = detector_config.uv_absorption_b_ / I3Units::nanometer;
-    simulated_uv_absorption_d_ = detector_config.uv_absorption_d_ / I3Units::m;
+    simulated_enable_uv_absorption_ = detector_config.enable_uv_absorption_;
+    simulated_uv_absorption_a_ = detector_config.uv_absorption_a_; // [1/nm]
+    simulated_uv_absorption_b_ = detector_config.uv_absorption_b_; // [nm]
+    simulated_uv_absorption_d_ = detector_config.uv_absorption_d_; // [cm]
     simulated_uv_absorption_scaling_ = detector_config.uv_absorption_scaling_;
 
     simulated_uv_absorption_min_wavelength_ = simulated_uv_absorption_b_ + 0.1;
     simulated_uv_absorption_max_wavelength_ = 200.0;
     double min_wavelength_function_T = 1.0 - std::exp( - simulated_uv_absorption_a_ * (simulated_uv_absorption_min_wavelength_ - simulated_uv_absorption_b_));
-    simulated_uv_absorption_min_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / min_wavelength_function_T)); // units of m!
+    simulated_uv_absorption_min_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / min_wavelength_function_T)); // units of cm!
     simulated_uv_absorption_min_abs_length_ *= simulated_uv_absorption_scaling_;
     double max_wavelength_function_T = 1.0 - std::exp( - simulated_uv_absorption_a_ * (simulated_uv_absorption_max_wavelength_ - simulated_uv_absorption_b_));
-    simulated_uv_absorption_max_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / max_wavelength_function_T)); // units of m!
+    simulated_uv_absorption_max_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / max_wavelength_function_T)); // units of cm!
     simulated_uv_absorption_max_abs_length_ *= simulated_uv_absorption_scaling_;
 
     PushFrame(frame);
@@ -282,9 +340,9 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     triplet_time_constant_ = sim_calibration->tau_t;
     intermediate_time_constant_ = sim_calibration->tau_other;
     pmt_cal_ = sim_calibration->pmt_calibration;
-    uv_absorption_a_ = sim_calibration->uv_absorption_a / (1.0 / I3Units::nanometer);
-    uv_absorption_b_ = sim_calibration->uv_absorption_b / I3Units::nanometer;
-    uv_absorption_d_ = sim_calibration->uv_absorption_d / I3Units::m;
+    uv_absorption_a_ = sim_calibration->uv_absorption_a; // [1/nm]
+    uv_absorption_b_ = sim_calibration->uv_absorption_b; // [nm]
+    uv_absorption_d_ = sim_calibration->uv_absorption_d; // [cm]
     uv_absorption_scaling_ = sim_calibration->uv_absorption_scaling;
 
     uv_absorption_min_wavelength_ = uv_absorption_b_ + 0.1;
@@ -303,7 +361,7 @@ void PMTResponse::Calibration(I3FramePtr frame) {
     // before we're done, let's grab the average pmt eff
     average_pmt_eff_ = 0.0;
     size_t total_keys = 0;
-    for(const std::pair<const CCMPMTKey, CCMSimulationPMTCalibration>& entry : pmt_cal_) {
+    for(const std::pair<CCMPMTKey const, CCMSimulationPMTCalibration>& entry : pmt_cal_) {
         average_pmt_eff_ += entry.second.pmt_efficiency;
         total_keys += 1;
     }
@@ -365,7 +423,12 @@ void PMTResponse::Calibration(I3FramePtr frame) {
         pulse_selector_[key.first] = DiscreteDistribution(probs);
     }
 
-    PushFrame(frame);
+    if(weight_uv_absorption_) {
+        check_for_detailed_photon_tracking = true;
+        PushFrame(frame);
+    } else {
+        calibration_frame_ = frame;
+    }
 }
 
 double PMTResponse::NormalDistributionCDF(double mu, double sigma, double x) {
@@ -407,6 +470,30 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         log_fatal("Did not see calibration frame -- please provide calibration frame first so I can reweight");
     }
 
+    if(check_for_detailed_photon_tracking) {
+        int has_detailed_photon_tracking = CheckForDetailedPhotonTracking(frame);
+        if(has_detailed_photon_tracking < 0) {
+            // No photons in this event
+            // Cannot use it to check for detailed photon weighting
+            // So we just skip it
+        } else if(has_detailed_photon_tracking) {
+            // We have detailed photon tracking
+            // Don't need to check for it again
+            check_for_detailed_photon_tracking = false;
+        } else {
+            log_fatal("Simulation does not have detailed photon tracking, but it is needed to reweight for UV absorption. Either resimulate with DetailedPhotonTracking=True, or disable UV absorption reweighting by setting WeightUVAbsorption=False.");
+        }
+    }
+
+    // Update the calibration frame if necessary
+    // This is done when UV absorption is handled by Geant4 instead of in this module
+    // We ideally want the SimulationCalibration object to reflect the settings used by Geant4 if we are not overriding them
+    if(calibration_frame_) {
+        UpdateCalibrationFrame();
+        PushFrame(calibration_frame_);
+        calibration_frame_ = nullptr;
+    }
+
     // before we start, for this event, let's take our trigger copy map and assign some time smearing based on boards
 
     // ok so this frame should contain a PMTMCHitsMap
@@ -417,7 +504,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
     I3Map<CCMTriggerKey, double> board_errors;
     I3MapPMTKeyDoublePtr this_event_total_time_offsets = boost::make_shared<I3MapPMTKeyDouble>();
 
-    for(std::pair<CCMPMTKey, CCMTriggerKey> const & key : trigger_copy_map_) {
+    for(std::pair<CCMPMTKey const, CCMTriggerKey> const & key : trigger_copy_map_) {
         if(board_offsets.find(key.second) != board_offsets.end()) {
             // ok we already have an offset time for this board, let's just save
             this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
@@ -435,7 +522,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
     std::map<CCMTriggerKey, std::tuple<std::vector<CCMPMTKey>, double, double>> _offsets;
 
-    for(std::pair<CCMPMTKey, CCMTriggerKey> const & key : trigger_copy_map_) {
+    for(std::pair<CCMPMTKey const, CCMTriggerKey> const & key : trigger_copy_map_) {
         if(_offsets.find(key.second) != _offsets.end()) {
             std::get<0>(_offsets[key.second]).push_back(key.first);
         } else {
@@ -538,20 +625,39 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
             // Check if survive uv absorption cuts
             double uv_abs_probability = 1.0;
-            if(weight_uv_abs_) {
-                double original_wavelength = pe.wavelength / I3Units::nanometer;
-                double distance_travelled_before_wls = pe.distance_uv / I3Units::m;
+            std::cout << "uv_absorption_a: " << uv_absorption_a_ << ", " << simulated_uv_absorption_a_ << std::endl;
+            std::cout << "uv_absorption_b: " << uv_absorption_b_ << ", " << simulated_uv_absorption_b_ << std::endl;
+            std::cout << "uv_absorption_d: " << uv_absorption_d_ << ", " << simulated_uv_absorption_d_ << std::endl;
+            std::cout << "uv_absorption_scaling: " << uv_absorption_scaling_ << ", " << simulated_uv_absorption_scaling_ << std::endl;
+            if(weight_uv_absorption_) {
+                double original_wavelength = pe.original_wavelength / I3Units::nanometer;
+                double wavelength = pe.wavelength / I3Units::nanometer;
+                double distance_travelled_before_wls = pe.distance_uv;
+                double distance_travelled_after_wls = pe.distance_visible;
 
-                double uv_abs_length = ResponseUVAbsorptionCM(original_wavelength);
-                double simulated_uv_abs_length = SimulatedUVAbsorptionCM(original_wavelength);
+                double scaling_before = ResponseUVAbsorptionScalingCM(original_wavelength, distance_travelled_before_wls);
+                double scaling_after = ResponseUVAbsorptionScalingCM(wavelength, distance_travelled_after_wls);
+                std::cout << "absorption probability: " << scaling_before * scaling_after << std::endl;
+                uv_abs_probability *= scaling_before * scaling_after;
 
-                double absorption_probability = exp(-distance_travelled_before_wls / uv_abs_length);
-                double simulated_absorption_probability = exp(-distance_travelled_before_wls / simulated_uv_abs_length);
-
-                uv_abs_probability = absorption_probability / simulated_absorption_probability;
+                if(simulated_enable_uv_absorption_) {
+                    double simulated_scaling_before = SimulatedUVAbsorptionScalingCM(original_wavelength, distance_travelled_before_wls);
+                    double simulated_scaling_after = SimulatedUVAbsorptionScalingCM(wavelength, distance_travelled_after_wls);
+                    std::cout << "simulated absorption probability: " << simulated_scaling_before * simulated_scaling_after << std::endl;
+                    uv_abs_probability /= (simulated_scaling_before * simulated_scaling_after);
+                }
             }
+            std::cout << "uv_absorption probability: " << uv_abs_probability << std::endl;
+
+            std::cout << "wavelength: " << wavelength << std::endl;
+            std::cout << "wavelength_qe_weighting: " << wavelength_qe_weighting << std::endl;
+            std::cout << "pmt_efficiency: " << pmt_efficiency << std::endl;
+            std::cout << "this_tube_spe_threshold_efficiency: " << this_tube_spe_threshold_efficiency << std::endl;
+            std::cout << "this_tube_spe_threshold: " << this_tube_spe_threshold << std::endl;
+            std::cout << "photon_sampling_factor_: " << photon_sampling_factor_ << std::endl;
 
             double survival_probability = this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
+            std::cout << "survival probability: " << survival_probability << std::endl;
 
             double charge_scale_factor = 1.0;
             if(survival_probability > 1.0) {
