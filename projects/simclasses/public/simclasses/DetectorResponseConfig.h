@@ -35,7 +35,7 @@ public:
     DetectorResponseConfig() = default;
     virtual ~DetectorResponseConfig() override = default;
 
-    std::ostream& Print(std::ostream&) const;
+    std::ostream& Print(std::ostream&) const override;
 
     bool operator==(const DetectorResponseConfig& rhs) const;
 private:
