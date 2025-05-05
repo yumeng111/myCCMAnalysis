@@ -38,7 +38,6 @@
 #include <G4GenericIon.hh>
 #include <G4Geantino.hh>
 #include <G4TransportationManager.hh>
-#include <G4VNavigation.hh>
 
 std::shared_ptr<G4Interface> G4Interface::g4Interface_ = std::shared_ptr<G4Interface>(nullptr);
 
