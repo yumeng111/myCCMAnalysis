@@ -9,6 +9,7 @@ set(ALL_TOOLS pthread python boost boostnumpy root
     opencl cuda gmp zmq
     multinest nlopt zstd fftw3 photospline
     cpptrace
+    marley
     ${I3_EXTRA_TOOLS}   # add the extra tools and dedupe
     )
 list(REMOVE_DUPLICATES ALL_TOOLS)
