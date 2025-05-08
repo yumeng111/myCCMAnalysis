@@ -74,8 +74,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
         void Reset() {
             DaughterParticleMap.clear();
-            photon_summary = boost::make_shared<PhotonSummarySeries>();
-            optical_photon_map = boost::make_shared<I3Map<int, size_t>>();
+            photon_summary = boost::make_shared<I3Map<int, PhotonSummary>>();
             wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>();
             sub_threshold_losses.clear();
             parent_map.clear();
@@ -83,9 +82,9 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         }
 
         void AddNewPhoton(int parent_id, int track_id, double time, double distance, double wavelength, std::string creation_process_name);
-        void AddPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, std::string creation_process_name);
-        void UpdatePhoton(int parent_id, int track_id, size_t photon_index, double delta_time, double delta_distance, std::string creation_process_name);
-        void AddWLSPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, G4Step* aStep);
+        void AddPhotonTrack(int parent_id, int track_id, double delta_time, double delta_distance, std::string creation_process_name);
+        void UpdatePhoton(int parent_id, int track_id, double delta_time, double delta_distance, std::string creation_process_name);
+        void AddWLSPhotonTrack(int parent_id, int track_id, double delta_time, double delta_distance, G4Step* aStep);
 
 
     private:
@@ -114,9 +113,9 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         // and photon summary that keeps track of optical photons
         // note this is in two parts -- map between track id and idx
         // and vector containing photon summaries (idx in vector corresponds to track id)
-        boost::shared_ptr<I3Map<int, size_t>> optical_photon_map = boost::make_shared<I3Map<int, size_t>>(); // map between track id and idx in vector
         boost::shared_ptr<I3Map<int, std::set<int>>> wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>(); // map between parent id and group of track ids
-        PhotonSummarySeriesPtr photon_summary = boost::make_shared<PhotonSummarySeries>();
+        int last_photon_summary_idx = -1;
+        boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary = boost::make_shared<I3Map<int, PhotonSummary>>();
 
         // define a few things for converting energy to wavelength
         G4double const hbarc = 197.326; // eV * nm
@@ -132,6 +131,8 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
         std::map<int, int> parent_map;
         std::map<int, std::tuple<double, std::vector<I3Particle>>> sub_threshold_losses;
+
+        std::map<int, size_t> num_children;
 
         double c_mm_per_nsec = 299.792458 * (I3Units::mm / I3Units::ns); // speed of light in mm/nsec
 

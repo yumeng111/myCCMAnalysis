@@ -63,8 +63,7 @@ void G4CCMReadout::SetOutputs(std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::
     this->veto_edep_vector = veto_edep_vector;
     this->inner_edep_vector = inner_edep_vector;
 
-    this->photon_summary_series = std::vector<PhotonSummarySeriesPtr>(n_events, nullptr);
-    this->photon_summary_series_map = std::vector<boost::shared_ptr<I3Map<int, size_t>>>(n_events, nullptr);
+    this->photon_summary_map = std::vector<boost::shared_ptr<I3Map<int, PhotonSummary>>>(n_events, nullptr);
 
     this->tracking_logged = std::vector<bool>(n_events, false);
     this->pmts_logged = std::vector<bool>(n_events, false);
@@ -74,15 +73,13 @@ void G4CCMReadout::SetNumberOfThreads(size_t n_threads) {
     n_threads_ = n_threads;
 }
 
-void G4CCMReadout::LogTrackingResult(int event_id, PhotonSummarySeriesPtr photon_summary_series,
-                            boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking) {
-    this->photon_summary_series[event_id] = photon_summary_series;
-    this->photon_summary_series_map[event_id] = photon_summary_series_map;
+void G4CCMReadout::LogTrackingResult(int event_id, boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary_map, bool full_photon_tracking) {
+    this->photon_summary_map[event_id] = photon_summary_map;
     this->tracking_logged[event_id] = true;
 
     if(this->pmts_logged[event_id]) {
         CCMMCPESeriesMapPtr mcpeseries = this->mcpeseries[event_id];
-        UpdateMCPESeries(mcpeseries, photon_summary_series, photon_summary_series_map, full_photon_tracking);
+        UpdateMCPESeries(mcpeseries, photon_summary_map, full_photon_tracking);
     }
 }
 
@@ -91,9 +88,8 @@ void G4CCMReadout::LogPMTResult(int event_id, CCMMCPESeriesMapPtr mcpeseries, bo
     this->pmts_logged[event_id] = true;
 
     if(this->tracking_logged[event_id]) {
-        PhotonSummarySeriesPtr photon_summary_series = this->photon_summary_series[event_id];
-        boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map = this->photon_summary_series_map[event_id];
-        UpdateMCPESeries(mcpeseries, photon_summary_series, photon_summary_series_map, full_photon_tracking);
+        boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary_map = this->photon_summary_map[event_id];
+        UpdateMCPESeries(mcpeseries, photon_summary_map, full_photon_tracking);
     }
 }
 
@@ -136,14 +132,12 @@ void G4CCMReadout::Reset() {
     veto_edep_vector.clear();
     inner_edep_vector.clear();
     mcpeseries.clear();
-    photon_summary_series.clear();
-    photon_summary_series_map.clear();
+    photon_summary_map.clear();
     tracking_logged.clear();
     pmts_logged.clear();
 }
 
-void G4CCMReadout::UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummarySeriesPtr photon_summary_series,
-                                    boost::shared_ptr<I3Map<int, size_t>> photon_summary_series_map, bool full_photon_tracking) {
+void G4CCMReadout::UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary_map, bool full_photon_tracking) {
     // Iterate over PMTs in source map
     for(CCMMCPESeriesMap::iterator it = mcpeseries->begin(); it != mcpeseries->end(); ++it) {
         // Reference to the PE series
@@ -155,15 +149,15 @@ void G4CCMReadout::UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, PhotonSummar
                 CCMMCPE & pe = pe_series[i];
 
                 // Check if the photon has everything properly recorded
-                I3Map<int, size_t>::iterator it_map = photon_summary_series_map->find(pe.track_id);
+                I3Map<int, PhotonSummary>::const_iterator it_map = photon_summary_map->find(pe.track_id);
                 // If not trash it as an edge case
-                if(it_map == photon_summary_series_map->end()) {
+                if(it_map == photon_summary_map->end()) {
                     pe_series.erase(pe_series.begin() + i);
                     continue;
                 }
 
                 // Grab the summary information for this photon track
-                PhotonSummary const & this_photon_summary = photon_summary_series->at(it_map->second);
+                PhotonSummary const & this_photon_summary = it_map->second;
 
                 // Update the destination CCMMCPE with the summary information
                 pe.distance_uv = this_photon_summary.distance_uv;

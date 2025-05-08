@@ -96,7 +96,7 @@ void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
         I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
     }
 
-    readout_->LogTrackingResult(event_id, photon_summary, optical_photon_map, DetailedPhotonTracking_);
+    readout_->LogTrackingResult(event_id, photon_summary, DetailedPhotonTracking_);
 }
 
 void G4CCMTreeTracker::AddNewPhoton(int parent_id, int track_id, double time, double distance, double wavelength, std::string creation_process_name) {
@@ -111,13 +111,12 @@ void G4CCMTreeTracker::AddNewPhoton(int parent_id, int track_id, double time, do
                                                       n_photons_per_wls, WLSLocationSeries(),
                                                       processNameToPhotonSource.at(creation_process_name),
                                                       processNameToPhotonSource.at(creation_process_name));
-    photon_summary->push_back(this_photon_summary);
-    optical_photon_map->insert(std::make_pair(track_id, photon_summary->size() - 1));
+    photon_summary->insert({track_id, this_photon_summary});
 }
 
-void G4CCMTreeTracker::AddPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, std::string creation_process_name) {
+void G4CCMTreeTracker::AddPhotonTrack(int parent_id, int track_id, double delta_time, double delta_distance, std::string creation_process_name) {
     // Copy the existing entry from this parent track
-    PhotonSummary this_photon_summary = photon_summary->at(parent_index);
+    PhotonSummary this_photon_summary = photon_summary->at(parent_id);
 
     // Update the time, current process, and distance travelled
     this_photon_summary.time += delta_time;
@@ -129,16 +128,14 @@ void G4CCMTreeTracker::AddPhotonTrack(int parent_id, int track_id, size_t parent
         this_photon_summary.distance_uv += delta_distance;
 
     // Now add the new track to the vector of photon summaries
-    photon_summary->push_back(this_photon_summary);
-    size_t new_pos = photon_summary->size() - 1;
-    (*optical_photon_map)[track_id] = new_pos;
+    photon_summary->insert({track_id, this_photon_summary});
 }
 
-void G4CCMTreeTracker::UpdatePhoton(int parent_id, int track_id, size_t photon_index, double delta_time, double delta_distance, std::string creation_process_name) {
+void G4CCMTreeTracker::UpdatePhoton(int parent_id, int track_id, double delta_time, double delta_distance, std::string creation_process_name) {
     // Technically we should never end up here since each step has a unique track ID
 
     // Grab the existing entry for this track ID
-    PhotonSummary & this_photon_summary = photon_summary->at(photon_index);
+    PhotonSummary & this_photon_summary = photon_summary->at(track_id);
 
     // Update the time, current process, and distance travelled
     this_photon_summary.time += delta_time;
@@ -150,12 +147,12 @@ void G4CCMTreeTracker::UpdatePhoton(int parent_id, int track_id, size_t photon_i
         this_photon_summary.distance_uv += delta_distance;
 }
 
-void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, size_t parent_index, double delta_time, double delta_distance, G4Step* aStep) {
+void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, double delta_time, double delta_distance, G4Step* aStep) {
     // At the end of the day we really only care about photons that are hitting the PMTs
     // So we want to keep updating the photon's information until it hits a PMT
 
     // Copy the existing entry from this parent track
-    PhotonSummary this_photon_summary = photon_summary->at(parent_index);
+    PhotonSummary this_photon_summary = photon_summary->at(parent_id);
     this_photon_summary.time += delta_time;
     this_photon_summary.current_process = PhotonSummary::PhotonSource::OpWLS;
 
@@ -199,9 +196,7 @@ void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, size_t par
         this_photon_summary.distance_visible += delta_distance;
 
     // now update the photon_summary, delete from map, and add new entry to the map
-    photon_summary->push_back(this_photon_summary);
-    size_t new_pos = photon_summary->size() - 1;
-    (*optical_photon_map)[track_id] = new_pos;
+    photon_summary->insert({track_id, this_photon_summary});
 
     std::deque<int> fifo(sibling_track_ids.begin(), sibling_track_ids.end());
 
@@ -210,7 +205,7 @@ void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, size_t par
         int sibling_track_id = fifo.front();
         fifo.pop_front();
 
-        PhotonSummary & sibling_photon_summary = photon_summary->at((*optical_photon_map)[sibling_track_id]);
+        PhotonSummary & sibling_photon_summary = photon_summary->at(sibling_track_id);
 
         if(sibling_photon_summary.n_photons_per_wls.size() >= n_wls) {
             sibling_photon_summary.n_photons_per_wls.at(n_wls-1) = n_siblings;
@@ -285,6 +280,23 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
     }
 
+    if(DetailedPhotonTracking_) {
+        std::vector<G4Track const *> const * secondaries = aStep->GetSecondaryInCurrentStep();
+        if(secondaries != nullptr) {
+            size_t n_photon_secondaries = 0;
+            for(G4Track const * secondary : *secondaries) {
+                G4ParticleDefinition * secondary_definition = secondary->GetDefinition();
+                if(secondary_definition == G4OpticalPhoton::OpticalPhotonDefinition()) {
+                    n_photon_secondaries += 1;
+                }
+            }
+            if(n_photon_secondaries > 0) {
+                G4int track_id = aStep->GetTrack()->GetTrackID();
+                num_children[track_id] = n_photon_secondaries;
+            }
+        }
+    }
+
     // Handle optical photons
     if(particle_definition == G4OpticalPhoton::OpticalPhotonDefinition()) {
         if(KillPhotons_) {
@@ -330,26 +342,33 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
             // ok now let's save
             // check to see if the track id is in our map
-            std::map<int, size_t>::iterator it = optical_photon_map->find(track_id);
+            std::map<int, PhotonSummary>::iterator it = photon_summary->find(track_id);
 
-            bool already_seen_track = it != optical_photon_map->end();
+            bool already_seen_track = it != photon_summary->end();
 
             if(already_seen_track) {
-                UpdatePhoton(parent_id, track_id, it->second, g4_delta_time_step, g4_delta_distance, creation_process_name);
+                UpdatePhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
             } else {
                 // check if this parent id is in our map
-                std::map<int, size_t>::iterator parent_it = optical_photon_map->find(parent_id);
-                bool already_seen_parent = parent_it != optical_photon_map->end();
+                std::map<int, PhotonSummary>::iterator parent_it = photon_summary->find(parent_id);
+                bool already_seen_parent = parent_it != photon_summary->end();
                 bool is_wavelength_shift = creation_process_name == "OpWLS";
                 if(already_seen_parent) {
                     // Need to add a new photon track and update any siblings
                     if(is_wavelength_shift)
-                        AddWLSPhotonTrack(parent_id, track_id, parent_it->second, g4_delta_time_step, g4_delta_distance, aStep);
+                        AddWLSPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, aStep);
                     else
-                        AddPhotonTrack(parent_id, track_id, parent_it->second, g4_delta_time_step, g4_delta_distance, creation_process_name);
+                        AddPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
                 } else {
                     // Just need to add a brand new photon track
                     AddNewPhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, original_wavelength, creation_process_name);
+                }
+
+                assert(num_children[parent_id] > 0);
+                num_children[parent_id] -= 1;
+                if(num_children[parent_id] == 0) {
+                    photon_summary->erase(parent_id);
+                    num_children.erase(parent_id);
                 }
             }
         }
