@@ -1,4 +1,4 @@
-set(PROJECT_NAME marley)
+set(PROJECT_NAME ccm_marley)
 
 i3_project(${PROJECT_NAME}
     DOCS_DIR resources/docs
