@@ -279,8 +279,8 @@ void CCMSimulator::DAQMultiThreaded() {
             particles.push_back(*tree_iter);
             edep_trees.push_back(boost::make_shared<I3MCTree>(*injection_tree));
             mcpeseries_maps.push_back(boost::make_shared<CCMMCPESeriesMap>());
-            veto_trees.push_back(boost::make_shared<I3MCTree>());
-            inner_trees.push_back(boost::make_shared<I3MCTree>());
+            veto_trees.push_back(boost::make_shared<I3MCTree>(*injection_tree));
+            inner_trees.push_back(boost::make_shared<I3MCTree>(*injection_tree));
             veto_vectors.push_back(boost::make_shared<I3Vector<I3Particle>>());
             inner_vectors.push_back(boost::make_shared<I3Vector<I3Particle>>());
         }
@@ -308,31 +308,32 @@ void CCMSimulator::DAQMultiThreaded() {
         I3VectorI3ParticlePtr veto_vector = veto_vectors.size() > particle_idx ? veto_vectors.at(particle_idx) : nullptr;
         I3VectorI3ParticlePtr inner_vector = inner_vectors.size() > particle_idx ? inner_vectors.at(particle_idx) : nullptr;
 
-        if(edep_tree != nullptr)
-            final_edep_trees.push_back(edep_tree);
-        if(mcpeseries_map != nullptr)
-            final_mcpeseries_maps.push_back(mcpeseries_map);
-        if(veto_tree != nullptr)
-            final_veto_trees.push_back(veto_tree);
-        if(inner_tree != nullptr)
-            final_inner_trees.push_back(inner_tree);
-        if(veto_vector != nullptr)
-            final_veto_vectors.push_back(veto_vector);
-        if(inner_vector != nullptr)
-            final_inner_vectors.push_back(inner_vector);
+        final_edep_trees.push_back(edep_tree);
+        final_mcpeseries_maps.push_back(mcpeseries_map);
+        final_veto_trees.push_back(veto_tree);
+        final_inner_trees.push_back(inner_tree);
+        final_veto_vectors.push_back(veto_vector);
+        final_inner_vectors.push_back(inner_vector);
         for(size_t j=1; j<particles_per_event.at(i); ++j) {
-            if(edep_tree != nullptr)
+            I3Particle const & p = particles.at(particle_idx + j);
+            if(edep_tree != nullptr) {
                 MergeEDepTrees(edep_tree, edep_trees.at(particle_idx+j), particles.at(particle_idx+j));
-            if(mcpeseries_map != nullptr)
+            }
+            if(mcpeseries_map != nullptr) {
                 MergeMCPESeries(mcpeseries_map, mcpeseries_maps.at(particle_idx+j));
-            if(veto_tree != nullptr)
+            }
+            if(veto_tree != nullptr) {
                 MergeEDepTrees(veto_tree, veto_trees.at(particle_idx+j), particles.at(particle_idx+j));
-            if(inner_tree != nullptr)
+            }
+            if(inner_tree != nullptr) {
                 MergeEDepTrees(inner_tree, inner_trees.at(particle_idx+j), particles.at(particle_idx+j));
-            if(veto_vector != nullptr)
+            }
+            if(veto_vector != nullptr) {
                 veto_vector->insert(veto_vector->end(), veto_vectors.at(particle_idx+j)->begin(), veto_vectors.at(particle_idx+j)->end());
-            if(inner_vector != nullptr)
+            }
+            if(inner_vector != nullptr) {
                 inner_vector->insert(inner_vector->end(), inner_vectors.at(particle_idx+j)->begin(), inner_vectors.at(particle_idx+j)->end());
+            }
         }
 
         // sort mcpeseries_map by time
@@ -347,17 +348,17 @@ void CCMSimulator::DAQMultiThreaded() {
     // Put it all back into the DAQ frames
     for(size_t i=0; i<daq_frames.size(); ++i) {
         I3FramePtr frame = daq_frames.at(i);
-        if(final_mcpeseries_maps.size() > i)
+        if(final_mcpeseries_maps.at(i) != nullptr)
             frame->Put(PMTHitSeriesName_, final_mcpeseries_maps.at(i));
-        if(final_edep_trees.size() > i)
+        if(final_edep_trees.at(i) != nullptr)
             frame->Put(LArMCTreeName_, final_edep_trees.at(i));
-        if(final_veto_trees.size() > i)
+        if(final_veto_trees.at(i) != nullptr)
             frame->Put("VetoLArMCTree", final_veto_trees.at(i));
-        if(final_inner_trees.size() > i)
+        if(final_inner_trees.at(i) != nullptr)
             frame->Put("InnerLArMCTree", final_inner_trees.at(i));
-        if(final_veto_vectors.size() > i)
+        if(final_veto_vectors.at(i) != nullptr)
             frame->Put("VetoLArMCTreeVector", final_veto_vectors.at(i));
-        if(final_inner_vectors.size() > i)
+        if(final_inner_vectors.at(i) != nullptr)
             frame->Put("InnerLArMCTreeVector", final_inner_vectors.at(i));
     }
 
