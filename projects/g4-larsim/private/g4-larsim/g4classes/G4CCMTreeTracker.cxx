@@ -290,9 +290,14 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                     n_photon_secondaries += 1;
                 }
             }
+
             if(n_photon_secondaries > 0) {
                 G4int track_id = aStep->GetTrack()->GetTrackID();
                 num_children[track_id] = n_photon_secondaries;
+                std::shared_ptr<size_t> siblings = std::make_shared<size_t>(n_photon_secondaries);
+                for(G4Track const * secondary : *secondaries) {
+                    num_siblings.insert({secondary->GetTrackID(), siblings});
+                }
             }
         }
     }
@@ -365,10 +370,13 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 }
 
                 assert(num_children[parent_id] > 0);
+                assert((*num_siblings[track_id]) > 0);
                 num_children[parent_id] -= 1;
-                if(num_children[parent_id] == 0) {
+                (*num_siblings[track_id]) -= 1;
+                if(num_children[parent_id] == 0 and (*num_siblings[parent_id]) == 0) {
                     photon_summary->erase(parent_id);
                     num_children.erase(parent_id);
+                    num_siblings.erase(parent_id);
                 }
             }
         }

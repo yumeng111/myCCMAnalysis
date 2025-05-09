@@ -78,6 +78,8 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
             wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>();
             sub_threshold_losses.clear();
             parent_map.clear();
+            num_children.clear();
+            num_siblings.clear();
             mcTree = nullptr;
         }
 
@@ -133,6 +135,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         std::map<int, std::tuple<double, std::vector<I3Particle>>> sub_threshold_losses;
 
         std::map<int, size_t> num_children;
+        std::map<int, std::shared_ptr<size_t>> num_siblings;
 
         double c_mm_per_nsec = 299.792458 * (I3Units::mm / I3Units::ns); // speed of light in mm/nsec
 
