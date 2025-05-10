@@ -28,7 +28,8 @@ public:
     G4CCMReadout(size_t n_threads);
     ~G4CCMReadout() = default;
 
-    static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary_map, bool full_photon_tracking);
+    static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary_map);
+    static void UpdateMCPESeries(CCMMCPESeriesMapPtr mcpeseries, boost::shared_ptr<I3Map<int, PhotonSummary::PhotonSource>> photon_source_map);
 
     void SetInput(std::vector<I3Particle> primaries);
     void SetOutputs(std::vector<CCMMCPESeriesMapPtr> mcpeseries, std::vector<I3MCTreePtr> edep_trees, std::vector<I3MCTreePtr> veto_edep_trees, std::vector<I3MCTreePtr> inner_edep_trees, std::vector<I3VectorI3ParticlePtr> veto_edep_vector, std::vector<I3VectorI3ParticlePtr> inner_edep_vector);
@@ -47,8 +48,9 @@ public:
 
     void Reset();
 
-    void LogTrackingResult(int event_id, boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary_map, bool full_photon_tracking);
-    void LogPMTResult(int event_id, CCMMCPESeriesMapPtr mcpeseries, bool full_photon_tracking);
+    void LogTrackingResult(int event_id, boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary_map);
+    void LogTrackingResult(int event_id, boost::shared_ptr<I3Map<int, PhotonSummary::PhotonSource>> photon_source_map);
+    void LogPMTResult(int event_id, CCMMCPESeriesMapPtr mcpeseries);
 
 private:
     size_t n_threads_ = 0;
@@ -64,8 +66,10 @@ private:
     std::vector<I3VectorI3ParticlePtr> inner_edep_vector;
 
     std::vector<boost::shared_ptr<I3Map<int, PhotonSummary>>> photon_summary_map;
+    std::vector<boost::shared_ptr<I3Map<int, PhotonSummary::PhotonSource>>> photon_source_map;
 
     std::vector<bool> tracking_logged;
+    std::vector<bool> detailed_photon_tracking;
     std::vector<bool> pmts_logged;
 
     static const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> PhotonSummarytoCCMMCPEPhotonSource;

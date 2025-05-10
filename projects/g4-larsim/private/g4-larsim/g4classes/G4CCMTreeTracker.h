@@ -75,11 +75,13 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         void Reset() {
             DaughterParticleMap.clear();
             photon_summary = boost::make_shared<I3Map<int, PhotonSummary>>();
+            photon_source_map = boost::make_shared<I3Map<int, PhotonSummary::PhotonSource>>();
             wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>();
             sub_threshold_losses.clear();
             parent_map.clear();
             num_children.clear();
             num_siblings.clear();
+            wls_info_map.clear();
             mcTree = nullptr;
         }
 
@@ -94,7 +96,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         public:
             size_t n_children = 0;
             size_t n_children_remaining = 0;
-            bool stopped = false;
+            PhotonSummary::PhotonSource photon_source = PhotonSummary::PhotonSource::Unknown;
         };
         int event_id = -1;
         G4CCMReadout * readout_ = nullptr;
@@ -139,6 +141,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
         std::map<int, int> parent_map;
         std::map<int, WLSInfo> wls_info_map; // map between track_id and WLSInfo
+        boost::shared_ptr<I3Map<int, PhotonSummary::PhotonSource>> photon_source_map = boost::make_shared<I3Map<int, PhotonSummary::PhotonSource>>();
         std::map<int, std::tuple<double, std::vector<I3Particle>>> sub_threshold_losses;
 
         std::map<int, size_t> num_children;

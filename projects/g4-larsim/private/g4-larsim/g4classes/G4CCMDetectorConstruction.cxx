@@ -698,7 +698,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
         }
     }
 
-    bool tree_tracker = TrackParticles_ or TrackEnergyLosses_
+    bool tree_tracker = RecordHits_ or TrackParticles_ or TrackEnergyLosses_
                      or DetailedPhotonTracking_ or TimeCut_
                      or KillNeutrinos_ or KillCherenkov_ or KillScintillation_ or KillPhotons_
                      or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_
