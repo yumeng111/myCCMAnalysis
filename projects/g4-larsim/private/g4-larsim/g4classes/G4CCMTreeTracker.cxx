@@ -171,21 +171,6 @@ void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, double del
         wls_loc = WLSLocation::WLSLoc::FoilSides;
     }
 
-    // let's update the parent id and track id map
-    // this keeps track of parent id and wls daughter track ids
-    std::map<int, std::set<int>>::iterator wls_it = wls_parent_daughter_map->find(parent_id);
-    if(wls_it != wls_parent_daughter_map->end()) {
-        // ok this parent id is in our map! let's update daughter track ids
-        wls_it->second.insert(track_id);
-    } else {
-        // this key is NOT in our map!! let's add a value
-        (*wls_parent_daughter_map)[parent_id] = std::set<int> {track_id};
-    }
-
-    // now let's update n_photons_per_wls for all daughers tracks of this parent
-    std::set<int> & sibling_track_ids = (*wls_parent_daughter_map)[parent_id];
-    size_t n_siblings = sibling_track_ids.size();
-
     // This is a new wavelength shift for this track so we need to keep track of the WLS locations
     size_t n_wls = this_photon_summary.n_photons_per_wls.size();
 
@@ -195,37 +180,11 @@ void G4CCMTreeTracker::AddWLSPhotonTrack(int parent_id, int track_id, double del
     else
         this_photon_summary.distance_visible += delta_distance;
 
+    this_photon_summary.wls_loc.push_back(wls_loc);
+    this_photon_summary.n_photons_per_wls.push_back(wls_info_map.at(parent_id).n_children);
+
     // now update the photon_summary, delete from map, and add new entry to the map
     photon_summary->insert({track_id, this_photon_summary});
-
-    std::deque<int> fifo(sibling_track_ids.begin(), sibling_track_ids.end());
-
-    // loop over daughter tracks
-    while(not fifo.empty()) {
-        int sibling_track_id = fifo.front();
-        fifo.pop_front();
-
-        PhotonSummary & sibling_photon_summary = photon_summary->at(sibling_track_id);
-
-        if(sibling_photon_summary.n_photons_per_wls.size() >= n_wls) {
-            sibling_photon_summary.n_photons_per_wls.at(n_wls-1) = n_siblings;
-            sibling_photon_summary.wls_loc.at(n_wls-1) = wls_loc;
-        } else {
-            for(size_t n = sibling_photon_summary.n_photons_per_wls.size() + 1; n < n_wls - 1; ++n) {
-                sibling_photon_summary.n_photons_per_wls.push_back(0);
-                sibling_photon_summary.wls_loc.push_back(WLSLocation::WLSLoc::Unknown);
-            }
-            sibling_photon_summary.n_photons_per_wls.push_back(n_siblings);
-            sibling_photon_summary.wls_loc.push_back(wls_loc);
-        }
-
-        std::map<int, std::set<int>>::iterator daughter_it = wls_parent_daughter_map->find(sibling_track_id);
-        if(daughter_it != wls_parent_daughter_map->end()) {
-            // ok this daughter id is in our map! let's update daughter track ids
-            std::set<int> & sibling_track_ids = daughter_it->second;
-            fifo.insert(fifo.end(), sibling_track_ids.begin(), sibling_track_ids.end());
-        }
-    }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -280,28 +239,6 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         }
     }
 
-    if(DetailedPhotonTracking_) {
-        std::vector<G4Track const *> const * secondaries = aStep->GetSecondaryInCurrentStep();
-        if(secondaries != nullptr) {
-            size_t n_photon_secondaries = 0;
-            for(G4Track const * secondary : *secondaries) {
-                G4ParticleDefinition * secondary_definition = secondary->GetDefinition();
-                if(secondary_definition == G4OpticalPhoton::OpticalPhotonDefinition()) {
-                    n_photon_secondaries += 1;
-                }
-            }
-
-            if(n_photon_secondaries > 0) {
-                G4int track_id = aStep->GetTrack()->GetTrackID();
-                num_children[track_id] = n_photon_secondaries;
-                std::shared_ptr<size_t> siblings = std::make_shared<size_t>(n_photon_secondaries);
-                for(G4Track const * secondary : *secondaries) {
-                    num_siblings.insert({secondary->GetTrackID(), siblings});
-                }
-            }
-        }
-    }
-
     // Handle optical photons
     if(particle_definition == G4OpticalPhoton::OpticalPhotonDefinition()) {
         if(KillPhotons_) {
@@ -325,6 +262,80 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             }
         }
 
+        const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
+        std::string creation_process_name = "Unknown";
+        if(creationProcess) {
+            creation_process_name = static_cast<std::string>(creationProcess->GetProcessName());
+        }
+
+        bool already_seen_photon = photon_summary->find(aStep->GetTrack()->GetTrackID()) != photon_summary->end();
+        bool parent_seen = photon_summary->find(aStep->GetTrack()->GetParentID()) != photon_summary->end();
+        bool brand_new_photon = not (already_seen_photon or parent_seen or creation_process_name == "OpWLS");
+        bool photon_from_wls = (not already_seen_photon) and creation_process_name == "OpWLS";
+        bool photon_from_photon = (not already_seen_photon) and parent_seen and creation_process_name != "OpWLS";
+
+        size_t n_photon_secondaries = 0;
+        std::vector<const G4Track*> const * secondaries = aStep->GetSecondaryInCurrentStep();
+        if(secondaries != nullptr) {
+            size_t n_secondaries = secondaries->size();
+            for(size_t i = 0; i < n_secondaries; ++i) {
+                G4Track const * secondary = (*secondaries)[i];
+                if(secondary->GetDefinition() == G4OpticalPhoton::OpticalPhotonDefinition()) {
+                    n_photon_secondaries += 1;
+                }
+            }
+        }
+        bool has_photon_secondaries = n_photon_secondaries > 0;
+        bool stopping = aStep->GetTrack()->GetTrackStatus() == fStopAndKill;
+
+        // Child processing
+        bool child_case_1_brand_new_photon = brand_new_photon;
+        bool child_case_2_existing_photon = already_seen_photon;
+        bool child_case_3_new_photon_from_wls = photon_from_wls;
+        bool child_case_4_new_photon_from_photon = photon_from_photon;
+
+        G4int parent_id = aStep->GetTrack()->GetParentID();
+        G4int track_id = aStep->GetTrack()->GetTrackID();
+
+        double g4_delta_distance = (aStep->GetStepLength() / mm) * I3Units::mm;
+        double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+        double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
+
+        double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
+        double original_wavelength = wavelength * I3Units::nanometer;
+
+        if(child_case_1_brand_new_photon) {
+            AddNewPhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, original_wavelength, creation_process_name);
+        } else if(child_case_2_existing_photon) {
+            UpdatePhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
+        } else if(child_case_3_new_photon_from_wls) {
+            AddWLSPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, aStep);
+            // Check if we still need the parent
+            std::map<int, WLSInfo>::iterator it = wls_info_map.find(parent_id);
+            WLSInfo & info = it->second;
+            info.n_children_remaining -= 1;
+            if(info.n_children_remaining == 0) {
+                // this parent is done
+                wls_info_map.erase(parent_id);
+                photon_summary->erase(parent_id);
+            }
+        } else if(child_case_4_new_photon_from_photon) {
+            AddPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
+        }
+
+        bool parent_case_1_photon_is_wls = has_photon_secondaries and stopping;
+        bool parent_case_2_photon_not_stopping = has_photon_secondaries and (not stopping);
+        if(parent_case_1_photon_is_wls) {
+            WLSInfo info;
+            info.n_children = n_photon_secondaries;
+            info.n_children_remaining = n_photon_secondaries;
+            info.stopped = true;
+            wls_info_map.insert({track_id, info});
+        }
+
+        assert(not parent_case_2_photon_not_stopping);
+
+        /*
         if(DetailedPhotonTracking_) {
             // ok if we survived all checks, add an entry to our photon summary
             // we need parent id, track id, distance travelled, and wavelength
@@ -337,6 +348,21 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
             double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
             double original_wavelength = wavelength * I3Units::nanometer;
+
+            G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
+            std::string processName = (process) ? process->GetProcessName() : "Unknown";
+            if(processName == "OpWLS") {
+                WLSInfo info;
+                std::vector<const G4Track*> * secondaries = aStep->GetSecondaryInCurrentStep();
+                if(secondaries != nullptr) {
+                    size_t n_secondaries = secondaries->size();
+                    if(n_secondaries > 0) {
+                        // this is a WLS photon that produced some secondaries
+                        info.n_children = n_secondaries;
+                        info.n_children_remaining = n_secondaries;
+                    }
+                }
+            }
 
             // let's also check if this photon got wls
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
@@ -352,6 +378,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             bool already_seen_track = it != photon_summary->end();
 
             if(already_seen_track) {
+                // child case 2
                 UpdatePhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
             } else {
                 // check if this parent id is in our map
@@ -361,10 +388,13 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 if(already_seen_parent) {
                     // Need to add a new photon track and update any siblings
                     if(is_wavelength_shift)
+                        // child case 3
                         AddWLSPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, aStep);
                     else
+                        // child case 5
                         AddPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
                 } else {
+                    // child case 1
                     // Just need to add a brand new photon track
                     AddNewPhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, original_wavelength, creation_process_name);
                 }
@@ -380,6 +410,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 }
             }
         }
+        */
         return false;
     }
 

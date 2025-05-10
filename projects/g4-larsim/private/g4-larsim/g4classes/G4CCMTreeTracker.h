@@ -90,6 +90,12 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
 
     private:
+        class WLSInfo {
+        public:
+            size_t n_children = 0;
+            size_t n_children_remaining = 0;
+            bool stopped = false;
+        };
         int event_id = -1;
         G4CCMReadout * readout_ = nullptr;
 
@@ -132,6 +138,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
         std::map<int, int> parent_map;
+        std::map<int, WLSInfo> wls_info_map; // map between track_id and WLSInfo
         std::map<int, std::tuple<double, std::vector<I3Particle>>> sub_threshold_losses;
 
         std::map<int, size_t> num_children;
