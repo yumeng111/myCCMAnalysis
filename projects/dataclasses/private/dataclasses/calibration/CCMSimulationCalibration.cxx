@@ -216,6 +216,9 @@ std::ostream& CCMSimulationCalibration::Print(std::ostream& os) const{
     return os;
 }
 
-I3_SPLIT_SERIALIZABLE(CCMSimulationCalibration);
+I3_SERIALIZABLE(CCMPulseTimeDistributionParameters);
 
+I3_SERIALIZABLE(CCMSimulationPMTCalibration);
+
+I3_SPLIT_SERIALIZABLE(CCMSimulationCalibration);
 
