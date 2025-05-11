@@ -24,6 +24,7 @@ class G4HCofThisEvent;
 class G4CCMEDepSD;
 
 class G4CCMTreeTracker : public G4VSensitiveDetector {
+    typedef G4CCMReadout::ParentInfo ParentInfo;
     public:
         friend G4CCMEDepSD;
         G4CCMTreeTracker(G4String name);
@@ -74,14 +75,13 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
         void Reset() {
             DaughterParticleMap.clear();
-            photon_summary = boost::make_shared<I3Map<int, PhotonSummary>>();
-            photon_source_map = boost::make_shared<I3Map<int, PhotonSummary::PhotonSource>>();
+            summary_map = boost::make_shared<I3Map<int, std::tuple<ParentInfo, PhotonSummary>>>();
+            source_map = boost::make_shared<I3Map<int, std::tuple<ParentInfo, PhotonSummary::PhotonSource>>>();
             wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>();
             sub_threshold_losses.clear();
             parent_map.clear();
             num_children.clear();
             num_siblings.clear();
-            wls_info_map.clear();
             mcTree = nullptr;
         }
 
@@ -92,12 +92,6 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
 
     private:
-        class WLSInfo {
-        public:
-            size_t n_children = 0;
-            size_t n_children_remaining = 0;
-            PhotonSummary::PhotonSource photon_source = PhotonSummary::PhotonSource::Unknown;
-        };
         int event_id = -1;
         G4CCMReadout * readout_ = nullptr;
 
@@ -124,8 +118,6 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         // note this is in two parts -- map between track id and idx
         // and vector containing photon summaries (idx in vector corresponds to track id)
         boost::shared_ptr<I3Map<int, std::set<int>>> wls_parent_daughter_map = boost::make_shared<I3Map<int, std::set<int>>>(); // map between parent id and group of track ids
-        int last_photon_summary_idx = -1;
-        boost::shared_ptr<I3Map<int, PhotonSummary>> photon_summary = boost::make_shared<I3Map<int, PhotonSummary>>();
 
         // define a few things for converting energy to wavelength
         G4double const hbarc = 197.326; // eV * nm
@@ -140,8 +132,8 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
 
         std::map<int, I3ParticleID> DaughterParticleMap; // map between track_id and I3ParticleID
         std::map<int, int> parent_map;
-        std::map<int, WLSInfo> wls_info_map; // map between track_id and WLSInfo
-        boost::shared_ptr<I3Map<int, PhotonSummary::PhotonSource>> photon_source_map = boost::make_shared<I3Map<int, PhotonSummary::PhotonSource>>();
+        boost::shared_ptr<I3Map<int, std::tuple<ParentInfo, PhotonSummary>>> summary_map = boost::make_shared<I3Map<int, std::tuple<ParentInfo, PhotonSummary>>>();
+        boost::shared_ptr<I3Map<int, std::tuple<ParentInfo, PhotonSummary::PhotonSource>>> source_map = boost::make_shared<I3Map<int, std::tuple<ParentInfo, PhotonSummary::PhotonSource>>>();
         std::map<int, std::tuple<double, std::vector<I3Particle>>> sub_threshold_losses;
 
         std::map<int, size_t> num_children;

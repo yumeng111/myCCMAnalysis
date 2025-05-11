@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <vector>
+#include <tuple>
 #include <icetray/I3DefaultName.h>
 #include <icetray/I3FrameObject.h>
 #include <icetray/I3PointerTypedefs.h>
@@ -22,14 +23,14 @@ public:
         OpWLS = 3
     };
 
-    float distance_uv; // record distance as given by GetStepLength
-    float original_wavelength;
-    float distance_visible;
-    float time; // as as reported using g4 global time
+    float distance_uv = 0; // record distance as given by GetStepLength
+    float original_wavelength = 0;
+    float distance_visible = 0;
+    float time = 0; // as as reported using g4 global time
     std::vector<size_t> n_photons_per_wls;
     WLSLocationSeries wls_loc;
-    PhotonSource photon_source;
-    PhotonSource current_process;
+    PhotonSource photon_source = PhotonSummary::PhotonSource::Unknown;
+    PhotonSource current_process = PhotonSummary::PhotonSource::Unknown;
 
     SET_LOGGER("PhotonSummary");
 
@@ -44,24 +45,7 @@ public:
             && current_process == rhs.current_process;
     }
 
-
-    PhotonSummary(float distance_uv_ = 0,
-            float original_wavelength_ = 0,
-            float distance_visible_ = 0,
-            float time_ = 0,
-            std::vector<size_t> n_photons_per_wls_ = {},
-            WLSLocationSeries wls_loc_ = WLSLocationSeries(),
-            PhotonSource photon_source_ = PhotonSummary::PhotonSource::Unknown,
-            PhotonSource current_process_ = PhotonSummary::PhotonSource::Unknown)
-        :
-            distance_uv(distance_uv_),
-            original_wavelength(original_wavelength_),
-            distance_visible(distance_visible_),
-            time(time_),
-            n_photons_per_wls(n_photons_per_wls_),
-            wls_loc(wls_loc_),
-            photon_source(photon_source_),
-            current_process(current_process_) {}
+    PhotonSummary() = default;
 
     std::ostream& Print(std::ostream&) const;
 
