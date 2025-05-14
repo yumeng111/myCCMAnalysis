@@ -41,14 +41,14 @@ class OverlayNoise: public I3Module {
     std::string input_simulated_board_time_offsets_name_;
 
     bool match_times_to_data_ = false;
-    bool match_times_to_simulation_ = false;
+    bool match_times_to_simulation_ = true;
 
     bool restrict_range_ = false;
     double min_noise_time_ = -10000;
-    double max_noise_time_ = 0;
-    bool allow_stitching_ = true;
-    double min_padding_time_ = 0;
-    double max_padding_time_ = 500;
+    double max_noise_time_ = 6000;
+    bool allow_stitching_ = false;
+    double min_padding_time_ = 500;
+    double max_padding_time_ = 1000;
 
     std::string randomServiceName_;
     I3RandomServicePtr randomService_;
@@ -188,15 +188,17 @@ std::map<CCMPMTKey, double> GetDataBoardOffsets(CCMRecoPulseSeriesMapConstPtr pu
 std::tuple<double, double> GetPulsesTimeRange(CCMRecoPulseSeriesMapConstPtr pulses, bool expansive = false) {
     double min_time;
     double max_time;
+    bool found_valid_pulse = false;
 
     if(expansive) {
         min_time = std::numeric_limits<double>::max();
-        max_time = std::numeric_limits<double>::min();
+        max_time = -std::numeric_limits<double>::max();
 
         for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
             if(it->second.empty()) {
                 continue;
             }
+            found_valid_pulse = true;
             double const & start_time = it->second.front().GetTime();
             double const & end_time = it->second.back().GetTime();
             if(start_time < min_time) {
@@ -207,12 +209,13 @@ std::tuple<double, double> GetPulsesTimeRange(CCMRecoPulseSeriesMapConstPtr puls
             }
         }
     } else {
-        min_time = std::numeric_limits<double>::min();
+        min_time = -std::numeric_limits<double>::max();
         max_time = std::numeric_limits<double>::max();
         for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
             if(it->second.empty()) {
                 continue;
             }
+            found_valid_pulse = true;
             double const & start_time = it->second.front().GetTime();
             double const & end_time = it->second.back().GetTime();
             if(start_time > min_time) {
@@ -222,6 +225,10 @@ std::tuple<double, double> GetPulsesTimeRange(CCMRecoPulseSeriesMapConstPtr puls
                 max_time = end_time;
             }
         }
+    }
+    if(not found_valid_pulse) {
+        min_time = 0;
+        max_time = 0;
     }
     return {min_time, max_time};
 }
@@ -340,13 +347,16 @@ boost::shared_ptr<CCMRecoPulseSeriesMap> OverlayNoise::GetNoisePulses(double dur
         double random_start_time = randomService_->Uniform(current_start_time, current_end_time - duration);
         double random_end_time = random_start_time + duration;
         for(CCMRecoPulseSeriesMap::const_iterator it = current_noise_pulses->begin(); it != current_noise_pulses->end(); ++it) {
+            if(it->second.empty()) {
+                continue;
+            }
             CCMRecoPulseSeries noise_series;
             for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
                 double time = it2->GetTime();
-                if(time >= random_start_time and time < random_end_time + duration) {
+                if(time >= random_start_time and time < random_end_time) {
                     noise_series.push_back(*it2);
                     CCMRecoPulse & noise = noise_series.back();
-                    noise.SetTime(time - random_start_time - zero_time);
+                    noise.SetTime(time - random_start_time + zero_time);
                     noise.SetWidth(noise.GetWidth() * zero_out_width);
                 }
             }
@@ -414,14 +424,14 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
             double data_sim_offset = 0.0;
             std::map<CCMPMTKey, double>::const_iterator it2 = data_board_time_offsets.find(it->first);
             I3MapPMTKeyDouble::const_iterator it3 = sim_board_time_offsets_ptr->find(it->first);
-            if(it2 != data_board_time_offsets.end() and it3 != sim_board_time_offsets_ptr->end()) {
-                data_sim_offset = it2->second - it3->second;
+            if(it2 == data_board_time_offsets.end() or it3 == sim_board_time_offsets_ptr->end()) {
+                continue;
             }
+
+            data_sim_offset = std::fmod(it2->second - it3->second, 2.0);
             for(CCMRecoPulseSeries::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
                 double time = it2->GetTime();
-                if(time >= event_start_time and time < event_end_time) {
-                    it2->SetTime(time + data_sim_offset);
-                }
+                it2->SetTime(time + data_sim_offset);
             }
         }
     }
@@ -445,7 +455,7 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
             std::map<CCMPMTKey, double>::const_iterator it2 = data_board_time_offsets.find(it->first);
             I3MapPMTKeyDouble::const_iterator it3 = sim_board_time_offsets_ptr->find(it->first);
             if(it2 != data_board_time_offsets.end() and it3 != sim_board_time_offsets_ptr->end()) {
-                double data_sim_offset = it2->second - it3->second;
+                double data_sim_offset = std::fmod(it2->second - it3->second, 2.0);
                 for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
                     CCMRecoPulse pulse = *it2;
                     double time = pulse.GetTime();
