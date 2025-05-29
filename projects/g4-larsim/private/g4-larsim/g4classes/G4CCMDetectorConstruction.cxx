@@ -730,11 +730,15 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             tree_tracker->SetG4ETrackingMin(G4ETrackingMin_);
             fTreeTracker_SD.Put(tree_tracker);
             G4SDManager::GetSDMpointer()->AddNewDetector(fTreeTracker_SD.Get());
-            for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {
-                if(log == nullptr)
-                    continue;
+            auto const & lvStore = *G4LogicalVolumeStore::GetInstance();
+            for(G4LogicalVolume * log : lvStore) {
                 SetSensitiveDetector(log, fTreeTracker_SD.Get());
             }
+            //for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {
+            //    if(log == nullptr)
+            //        continue;
+            //    SetSensitiveDetector(log, fTreeTracker_SD.Get());
+            //}
         }
     }
     if(VetoSDSaveEnergyLossesTree_ or VetoSDSaveEnergyLossesVector_) {
@@ -746,8 +750,10 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             veto_SD->SetSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector_);
             veto_SD->SetPruneTree(VetoSDPruneTree_);
             veto_SD->SetReadout(readout_);
-            if(fTreeTracker_SD.Get())
+            if(tree_tracker) {
+                assert(fTreeTracker_SD.Get() != nullptr);
                 veto_SD->SetTreeTracker(fTreeTracker_SD.Get());
+            }
             fVeto_SD.Put(veto_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fVeto_SD.Get());
             for(G4LogicalVolume * log : fMainVolume->GetVetoLArLogicalVolumes()) {
@@ -765,10 +771,11 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             interior_SD->SetSaveEnergyLossesTree(InteriorSDSaveEnergyLossesTree_);
             interior_SD->SetSaveEnergyLossesVector(InteriorSDSaveEnergyLossesVector_);
             interior_SD->SetPruneTree(InteriorSDPruneTree_);
-            interior_SD->SetTreeTracker(fTreeTracker_SD.Get());
             interior_SD->SetReadout(readout_);
-            if(fTreeTracker_SD.Get())
+            if(tree_tracker) {
+                assert(fTreeTracker_SD.Get() != nullptr);
                 interior_SD->SetTreeTracker(fTreeTracker_SD.Get());
+            }
             fInterior_SD.Put(interior_SD);
             G4SDManager::GetSDMpointer()->AddNewDetector(fInterior_SD.Get());
             for(G4LogicalVolume * log : fMainVolume->GetInteriorLArLogicalVolumes()) {
@@ -777,6 +784,16 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
                 SetSensitiveDetector(log, fInterior_SD.Get());
             }
         }
+    }
+
+    if(tree_tracker) {
+        assert(fTreeTracker_SD.Get());
+    }
+    if(VetoSDSaveEnergyLossesTree_ or VetoSDSaveEnergyLossesVector_) {
+        assert(fVeto_SD.Get());
+    }
+    if(InteriorSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesVector_) {
+        assert(fInterior_SD.Get());
     }
 }
 
