@@ -60,7 +60,11 @@ class G4CCMMainVolume : public G4PVPlacement {
     G4LogicalVolume* GetLogCryoVessel() {return fCryoVessel_log;}
 
     std::vector<G4LogicalVolume*> GetPMTLogicalVolumes() {
-        return {fPMTCoatedWall_log, fPMTCoatedCaps_log, fPMTUncoatedWall_log, fPMTUncoatedCaps_log};
+        std::vector<G4LogicalVolume*> res = {fPMTCoatedWall_log, fPMTCoatedCaps_log, fPMTUncoatedWall_log, fPMTUncoatedCaps_log};
+        for(std::pair<std::tuple<bool, G4VSolid *> const, std::shared_ptr<G4LogicalVolume>> const & p : fPMTLogicalVolumes) {
+            res.push_back(p.second.get());
+        }
+        return res;
     }
 
     std::vector<G4LogicalVolume*> GetScintLogicalVolumes() {
@@ -72,7 +76,19 @@ class G4CCMMainVolume : public G4PVPlacement {
     }
 
     std::vector<G4LogicalVolume*> GetTPBLogicalVolumes() {
-        return {fTPBCoatingWall_log, fTPBCoatingCaps_log, fTPBFoilSides_log, fTPBFoilTop_log, fTPBFoilBottom_log};
+        std::vector<G4LogicalVolume*> res = {fTPBCoatingWall_log, fTPBCoatingCaps_log, fTPBFoilSides_log, fTPBFoilTop_log, fTPBFoilBottom_log};
+        for(auto const & p : fTPBLogicalVolumes) {
+            res.push_back(p.second.get());
+        }
+        return res;
+    }
+
+    std::vector<G4LogicalVolume*> GetPMTVacuumLogicalVolumes() {
+        std::vector<G4LogicalVolume*> res = {fPMTVacuumWall_log, fPMTVacuumCaps_log};
+        for(auto const & p : fVacuumLogicalVolumes) {
+            res.push_back(p.second.get());
+        }
+        return res;
     }
 
     std::vector<G4LogicalVolume*> GetReflectorLogicalVolumes() {
@@ -105,7 +121,8 @@ class G4CCMMainVolume : public G4PVPlacement {
 
     std::vector<G4LogicalVolume*> GetAllLogicalVolumes() {
         std::vector<G4LogicalVolume*> allLogicalVolumes;
-        std::vector<std::vector<G4LogicalVolume*>> logicalVolumes = {GetPMTLogicalVolumes(), GetScintLogicalVolumes(), GetSourceLogicalVolumes(), GetTPBLogicalVolumes(), GetReflectorLogicalVolumes(), GetBridleLogicalVolumes(), GetFrillLogicalVolumes(), GetFrameLogicalVolumes(), GetCryoLogicalVolumes()};
+        allLogicalVolumes.push_back(fMother_log);
+        std::vector<std::vector<G4LogicalVolume*>> logicalVolumes = {GetPMTLogicalVolumes(), GetScintLogicalVolumes(), GetSourceLogicalVolumes(), GetTPBLogicalVolumes(), GetPMTVacuumLogicalVolumes(), GetReflectorLogicalVolumes(), GetBridleLogicalVolumes(), GetFrillLogicalVolumes(), GetFrameLogicalVolumes(), GetCryoLogicalVolumes()};
         for(auto logicalVolume : logicalVolumes) {
             allLogicalVolumes.insert(allLogicalVolumes.end(), logicalVolume.begin(), logicalVolume.end());
         }
@@ -173,6 +190,7 @@ class G4CCMMainVolume : public G4PVPlacement {
     std::vector<std::shared_ptr<G4PVPlacement>> fPlacements;
 
     // Logical volumes
+    G4LogicalVolume* fMother_log = nullptr;
     G4LogicalVolume* fCryoVessel_log = nullptr;
     G4LogicalVolume* fVacuum_log = nullptr;
     G4LogicalVolume* fInnerJacket_log = nullptr;

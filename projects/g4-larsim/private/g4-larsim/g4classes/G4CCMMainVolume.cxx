@@ -38,6 +38,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             "Cryogen", pMotherLogical, false, 0, true)
   , fConstructor(c) {
 
+    fMother_log = pMotherLogical;
+
     // now let's build our detector
     // Outer cryogen
     fCryoVessel_log = GetLogicalVolume();
