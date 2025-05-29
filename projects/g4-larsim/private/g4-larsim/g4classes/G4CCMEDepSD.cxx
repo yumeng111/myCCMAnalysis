@@ -49,6 +49,7 @@ void G4CCMEDepSD::Initialize(G4HCofThisEvent* hitsCE) {
 
 void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
     if(SaveEnergyLossesTree_) {
+        assert(tree_tracker != nullptr);
         std::map<I3ParticleID, std::tuple<bool, bool, std::vector<I3ParticleID>>> energy_loss_map;
         std::vector<I3ParticleID> queue;
         std::vector<I3Particle*> primaries;
