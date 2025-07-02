@@ -44,6 +44,7 @@ private:
 
     void LoadK40Transitions(const std::string& filename);
     void PrintLevelsAndTransitions(const std::string& outfilename);
+    void AdjustGammaTimes(I3MCTreePtr mcTree);
 
     SET_LOGGER("MarleySimulator");
 };
