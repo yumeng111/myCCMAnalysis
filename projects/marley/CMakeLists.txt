@@ -6,8 +6,10 @@ i3_project(${PROJECT_NAME}
     PYTHON_DEST icecube/marley
 )
 
+
 i3_add_library(${PROJECT_NAME}
     private/marley/MarleySimulator.cxx
+    public/marley/MarleySimulator.h
     IWYU
     USE_TOOLS boost python marley
     USE_PROJECTS icetray serialization dataio dataclasses phys-services CCMBinary
