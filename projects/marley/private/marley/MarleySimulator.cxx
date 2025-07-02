@@ -160,6 +160,9 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
 
 
     //I3MCTreePtr outputMCTree = boost::make_shared<I3MCTree>(); //output is an empty tree
+
+    //Pass the outputMCTree to the function for gammas
+    AdjustGammaTimes(outputMCTree);
     // Now save to a frame
     frame->Put(output_mc_tree_name_, outputMCTree);
     PushFrame(frame);
@@ -178,8 +181,17 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
     int level_index = 0;
 
     //Header: Z, A, Num of levels
+    //  Raw string()
+    //  ^ Start of the line
+    //  \d+ One or more digits
+    //  \s+ One or more blank spaces
+    //  $ End of line
     std::regex header_regex(R"(^\d+\s+\d+\s+\d+$)");
+
     //Excitation energy of level, 2*Spin, Parity, Total gammas
+    // ([\d\.Ee+-]+) Digit, point, scientific notation E, sign
+    // [-+]? Optional sign
+    // [+-] Mandatory sign (Parity)
     std::regex level_regex(R"(^\s*([\d\.Ee+-]+)\s+[-+]?\d+\s+[+-]\s+(\d+))");
 
     if (!infile.is_open()) {
@@ -189,7 +201,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
     //Start reading the file line by line
     while (std::getline(infile, line)) {
-        log_info("Line raw content: '%s'", line.c_str());
+        //log_info("Line raw content: '%s'", line.c_str());
 
         // Skip the Z A num_levels if header line (header_regex)
         if (std::regex_match(line, header_regex)) {
@@ -197,7 +209,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
             continue;
         }
 
-        std::smatch match; //que es esto
+        std::smatch match; //saves results of regex into strings
         //If it is not header check if it is a line with exitation energy level (level_regex)
         if (std::regex_match(line, match, level_regex)) {
             //Get Initial energy and number of gammas
@@ -226,8 +238,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
                     //Save the transition in this structure:
                     k40_transitions_.push_back({E_initial, E_final, E_gamma, RI});
 
-                    log_info("   Transition: %.5f MeV -> %.5f MeV | Gamma Energy = %.5f MeV | RI = %.5f",
-                        E_initial, E_final, E_gamma, RI);
+                    //log_info("Transition: %.5f MeV -> %.5f MeV | Gamma Energy = %.5f MeV | RI = %.5f",E_initial, E_final, E_gamma, RI);
                 } else {
                     log_warn("Could not parse gamma line: '%s'", line.c_str());
                 }
@@ -239,14 +250,14 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
 
     // Summary printout
-    //stdcout::Transitions for K40 loaded in MarleySimulator
+    std::cout << "Transitions for K40 loaded in MarleySimulator" << std::endl;
     log_info("Finished reading K40.dat");
     log_info(" Total number of levels parsed: %zu", energy_levels_.size());
     log_info("Total number of transitions parsed: %zu", k40_transitions_.size());
 
     //Some checks...
     // Print the first few transitions
-    size_t N = std::min(k40_transitions_.size(), size_t(10));
+    size_t N = std::min(k40_transitions_.size(), size_t(5));
     for (size_t i = 0; i < N; ++i) {
         const auto& tr = k40_transitions_[i];
         log_info("Transition %zu: %.5f MeV → %.5f MeV | Gamma Energy= %.5f MeV | RI = %.5f",
@@ -255,7 +266,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
 }
 
-//This is for testing but it could be useful
+//This is for testing but it could be useful to have all the info in one single file
 void MarleySimulator::PrintLevelsAndTransitions(const std::string& outfilename) {
     std::ofstream outfile(outfilename);
     if (!outfile.is_open()) {
@@ -280,6 +291,49 @@ void MarleySimulator::PrintLevelsAndTransitions(const std::string& outfilename) 
 
     outfile.close();
     log_info("K40 levels and transitions written to %s", outfilename.c_str());
+}
+
+// Look for events with K40 in the I3MCTree and save save pointers to the gamma particles
+void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree) {
+    log_info("AdjustGammaTimes called.");
+
+    //Let's look into the I3MCtree
+    for (auto iter = mcTree->begin(); iter != mcTree->end(); ++iter) {
+        const I3Particle& particle = *iter;
+
+        //Checking everything is ok...
+        /*log_info("Particle PDG: %d, E = %.5f GeV, time = %.5f ns",
+                 particle.GetPdgEncoding(),
+                 particle.GetEnergy(),
+                 particle.GetTime());
+        */
+
+        //Then look for interactions with K40
+        if (particle.GetPdgEncoding() == 1000190400) { // K40
+            double nucleus_energy = particle.GetEnergy() * 1e3; // GeV to MeV
+
+            if (nucleus_energy > 0.0) {
+                log_info("Found excited K40 nucleus at E = %.5f MeV", nucleus_energy);
+
+                //Look for gammas in the tree
+                std::vector<const I3Particle*> gamma_candidates;
+
+                for (auto gamma_iter = mcTree->begin(); gamma_iter != mcTree->end(); ++gamma_iter) {
+                    const I3Particle& gamma = *gamma_iter;
+
+                    // Filter only gammas
+                    if (gamma.GetPdgEncoding() == 22) {
+                        gamma_candidates.push_back(&gamma);
+                    }
+                }
+
+                log_info("Collected %zu gamma energies for this nucleus.", gamma_candidates.size());
+                for (const auto*g : gamma_candidates) {
+                    log_info("Gamma energy: %.5f MeV", g->GetEnergy() * 1e3);
+                }
+            }
+        }
+    }
 }
 
 
