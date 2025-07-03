@@ -31,6 +31,22 @@ struct NuclearCascadeStep {
     double cumulative_time_ns;
 };
 
+struct LevelInfo {
+    int level_index;
+    double energy_keV;
+    double spin; //2J
+    int parity;
+    double lifetime_ns;
+
+    struct Transition {
+        double gamma_energy_keV;
+        double branching_ratio;
+        int final_level_index;
+    };
+
+    std::vector<Transition> transitions;
+};
+
 
 // Marley forward-declaration
 namespace marley {
@@ -62,6 +78,8 @@ private:
     void LoadK40Transitions(const std::string& filename);
     void PrintLevelsAndTransitions(const std::string& outfilename);
     void AdjustGammaTimes(I3MCTreePtr mcTree);
+
+    std::map<int, LevelInfo> levels_map_;
 
     SET_LOGGER("MarleySimulator");
 };
