@@ -3,16 +3,10 @@
 
 #include <icetray/I3ConditionalModule.h>
 #include <icetray/I3Frame.h>
+#include "phys-services/I3RandomService.h"
 
 #include <string>
 #include <vector>
-
-struct K40Transition {
-    double initial_energy;
-    double final_energy;
-    double gamma_energy;
-    double relative_intensity;
-};
 
 struct NuclearCascadeStep {
     int initial_level_index;
@@ -26,7 +20,10 @@ struct NuclearCascadeStep {
     int final_level_parity;
 
     double gamma_energy_keV;
-    double lifetime_ns;
+
+    double T12_ns;  // Half-life in ns
+    double tau_ns;  // Mean lifetime in ns
+
     double sampled_delay_ns;
     double cumulative_time_ns;
 };
@@ -36,11 +33,13 @@ struct LevelInfo {
     double energy_keV;
     double spin; //2J
     int parity;
-    double lifetime_ns;
+
+    double T12_ns;  // Half-life in ns
+    double tau_ns;  // Mean lifetime in ns
 
     struct Transition {
         double gamma_energy_keV;
-        double branching_ratio;
+        double branching_ratio;  //called RI in MARLEY
         int final_level_index;
     };
 
@@ -72,14 +71,13 @@ private:
     // Add marley_generator_as member of the class
     marley::Generator marley_generator_;
 
-    std::vector<K40Transition> k40_transitions_;
-    std::vector<double> energy_levels_;
-
     void LoadK40Transitions(const std::string& filename);
-    void PrintLevelsAndTransitions(const std::string& outfilename);
-    void AdjustGammaTimes(I3MCTreePtr mcTree);
+    void AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame);
 
     std::map<int, LevelInfo> levels_map_;
+
+    double sampleDelay(double mean_lifetime_ns);
+    I3RandomServicePtr rng_;
 
     SET_LOGGER("MarleySimulator");
 };
