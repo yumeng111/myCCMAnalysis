@@ -407,107 +407,137 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
         //Then look for interactions with K40
         if (particle.GetPdgEncoding() == 1000190400) { // K40
-            double nucleus_energy_keV = particle.GetEnergy() * 1e6; // GeV to keV (Marley in GeV, my levels_map in keV)
 
-            if (nucleus_energy_keV > 0.0) {
-                log_info("Found excited K40 nucleus at E = %.5f MeV", nucleus_energy_keV);
+            //Look for gammas in the tree
+            std::vector<I3Particle*> gamma_candidates;
+            std::vector<double> gamma_energies_keV;
 
-                //Look for gammas in the tree
-                std::vector<I3Particle*> gamma_candidates;
-                std::vector<double> gamma_energies_keV;
+            for (auto gamma_iter = mcTree->begin(); gamma_iter != mcTree->end(); ++gamma_iter) {
+                // Filter only gammas
+                if (gamma_iter->GetPdgEncoding() == 22) {
+                    gamma_candidates.push_back(&(*gamma_iter));
+                    gamma_energies_keV.push_back(gamma_iter->GetEnergy() * 1e6); // GeV -> keV
+                }
+            }
 
-                for (auto gamma_iter = mcTree->begin(); gamma_iter != mcTree->end(); ++gamma_iter) {
-                    // Filter only gammas
-                    if (gamma_iter->GetPdgEncoding() == 22) {
-                        gamma_candidates.push_back(&(*gamma_iter));
-                        gamma_energies_keV.push_back(gamma_iter->GetEnergy() * 1e6); // GeV -> keV
+            if (gamma_candidates.empty()) {
+                log_info("No gamma particles found in this event.");
+                continue;
+            }
+
+            //Calculate the sum of all the gammas
+            double total_energy = std::accumulate(
+                gamma_energies_keV.begin(),
+                gamma_energies_keV.end(),
+                0.0
+            );
+
+            log_info("Collected %zu gammas. Total energy sum = %.3f keV",
+                    gamma_energies_keV.size(), total_energy);
+
+
+            //Now we add the logic for the time delays
+            //First we need to reconstruct the cascade
+            //Let's look for the initial level that matches the sum of total gammas
+
+            double min_diff = 1e9;
+            int initial_level_index = -1;
+            for (const auto& kv : levels_map_) {
+                double diff = std::abs(kv.second.energy_keV - total_energy);
+                if (diff < min_diff) {
+                    min_diff = diff;
+                    initial_level_index = kv.first;
+                }
+            }
+
+            if (min_diff < 2.0) {
+                const auto& lvl = levels_map_.at(initial_level_index);
+                std::string parity_init = (lvl.parity > 0) ? "+" : "-";
+                log_info("Gamma cascade matches initial excitation level [%d] %.3f keV J=%.1f%s",
+                         initial_level_index,
+                         lvl.energy_keV,
+                         lvl.spin,
+                         parity_init.c_str());
+            } else {
+                log_warn("Gamma cascade sum does NOT match any known level.");
+            }
+
+            //Now order gammas from lower to higher
+
+            std::vector<double> sorted_gammas = gamma_energies_keV;
+            std::sort(sorted_gammas.begin(), sorted_gammas.end());
+
+            double final_energy = 0.0;
+            double cumulative_time_ns = 0.0;
+            //vector for saving info of the cascade and then pass it to a key in the frame
+            std::vector<NuclearCascadeStep> cascade_steps;
+
+            for (double gamma_energy : sorted_gammas) {
+
+                double initial_energy = final_energy + gamma_energy;
+
+                // Look for initial level
+                double min_diff_initial = 1e9;
+                int initial_lvl_idx = -1;
+                for (const auto& kv : levels_map_) {
+                    double diff = std::abs(kv.second.energy_keV - initial_energy);
+                    if (diff < min_diff_initial) {
+                        min_diff_initial = diff;
+                        initial_lvl_idx = kv.first;
                     }
                 }
+                if (min_diff_initial > 2.0)
+                    initial_lvl_idx = -1;
 
-                if (gamma_candidates.empty()) {
-                    log_info("No gamma particles found in this event.");
-                    continue;
+                // Look for final level
+                double min_diff_final = 1e9;
+                int final_lvl_idx = -1;
+                for (const auto& kv : levels_map_) {
+                    double diff = std::abs(kv.second.energy_keV - final_energy);
+                    if (diff < min_diff_final) {
+                        min_diff_final = diff;
+                        final_lvl_idx = kv.first;
+                    }
+                }
+                if (min_diff_final > 2.0)
+                    final_lvl_idx = -1;
+
+                // Level info
+                double initial_T12_ns = 0.0;
+                double initial_tau_ns = 0.0;
+                double initial_spin = 0.0;
+                int initial_parity = 0;
+                double final_spin = 0.0;
+                int final_parity = 0;
+
+                if (initial_lvl_idx >= 0) {
+                    const auto& lvl_init = levels_map_.at(initial_lvl_idx);
+                    initial_T12_ns = lvl_init.T12_ns;
+                    initial_tau_ns = lvl_init.tau_ns;
+                    initial_spin = lvl_init.spin;
+                    initial_parity = lvl_init.parity;
                 }
 
-                //Order the gammas from higher to lower energies
-                std::sort(
-                    gamma_energies_keV.begin(),
-                    gamma_energies_keV.end(),
-                    std::greater<double>()
-                );
+                if (final_lvl_idx >= 0) {
+                    const auto& lvl_final = levels_map_.at(final_lvl_idx);
+                    final_spin = lvl_final.spin;
+                    final_parity = lvl_final.parity;
+                }
 
-                double total_energy = std::accumulate(
-                    gamma_energies_keV.begin(),
-                    gamma_energies_keV.end(),
-                    0.0
-                );
-
-                log_info("Collected %zu gammas. Total energy sum = %.3f keV",
-                        gamma_energies_keV.size(), total_energy);
-
-
-                //Now we add the logic for the time delays
-                //First we need to reconstruct the cascade
-
-                double current_energy = nucleus_energy_keV;
-                double cumulative_time_ns = 0.0;
-                //vector for saving info of the cascade and then pass it to a key in the frame
-                std::vector<NuclearCascadeStep> cascade_steps;
-
-                for (size_t i = 0; i < gamma_energies_keV.size(); ++i) {
-                    double gamma_energy = gamma_energies_keV[i];
-                    double new_energy = current_energy - gamma_energy;
-
-                    // Find matching level
-                    int final_level_index = -1;
-                    for (const auto& kv : levels_map_) {
-                        if (std::abs(kv.second.energy_keV - new_energy) < 1.0) {
-                            final_level_index = kv.first;
-                            break;
-                        }
-                    }
-
-                    double delay_ns = 0.0;
-                    int initial_level_index = -1;
-                    double initial_T12_ns = 0.0;
-                    double initial_tau_ns = 0.0;
-                    double initial_spin = 0.0;
-                    int initial_parity = 0;
-
-                    int final_spin = 0;
-                    int final_parity = 0;
-
-                    if (final_level_index >= 0) {
-                        // Get info about initial level
-                        for (const auto& kv : levels_map_) {
-                            if (std::abs(kv.second.energy_keV - current_energy) < 1.0) {
-                                initial_level_index = kv.first;
-                                initial_T12_ns = kv.second.T12_ns;
-                                initial_tau_ns = kv.second.tau_ns;
-                                initial_spin = kv.second.spin;
-                                initial_parity = kv.second.parity;
-                                break;
-                            }
-                        }
-
-                        const auto& lvl_final = levels_map_.at(final_level_index);
-                        final_spin = lvl_final.spin;
-                        final_parity = lvl_final.parity;
-
-                        //We use the sampleDelay function:
-                        if (initial_tau_ns > 0.0) {
-                            delay_ns = sampleDelay(initial_tau_ns);
-                            cumulative_time_ns += delay_ns;
-                        }
-                    }
+                // Sample delay with sampleDelay method
+                double delay_ns = 0.0;
+                if (initial_tau_ns > 0.0) {
+                    delay_ns = sampleDelay(initial_tau_ns);
+                    cumulative_time_ns += delay_ns;
+                }
 
                     NuclearCascadeStep step;
-                    step.initial_level_index = initial_level_index;
-                    step.initial_level_energy_keV = current_energy;
+                    step.initial_level_index = initial_lvl_idx;
+                    step.initial_level_energy_keV = initial_energy;
                     step.initial_level_spin = initial_spin;
                     step.initial_level_parity = initial_parity;
-                    step.final_level_index = final_level_index;
-                    step.final_level_energy_keV = new_energy;
+                    step.final_level_index = final_lvl_idx;
+                    step.final_level_energy_keV = final_energy;
                     step.final_level_spin = final_spin;
                     step.final_level_parity = final_parity;
                     step.gamma_energy_keV = gamma_energy;
@@ -531,7 +561,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                         step.sampled_delay_ns
                     );
 
-                    current_energy = new_energy;
+                    final_energy = initial_energy;
                 }
 
                 // Apply the accumulated delay to the gammas
@@ -578,7 +608,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                     ss << "  T1/2 = " << step.T12_ns << " ns\n";
                     ss << "  Tau = " << step.tau_ns << " ns\n";
                     ss << "  Delta t = " << step.sampled_delay_ns << " ns\n";
-
                     ss << "  Cumulative time = " << step.cumulative_time_ns << " ns\n";
 
                      cascade_info->push_back(ss.str());
@@ -589,7 +618,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             }
         }
     }
-}
 
 
 //This method samples the delay for a given lifetime
