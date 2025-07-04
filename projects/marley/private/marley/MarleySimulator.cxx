@@ -20,7 +20,7 @@
 #include "icetray/I3FrameObject.h"
 
 #include "phys-services/I3RandomService.h"
-#include "phys-services/I3GSLRandomService.h" ///???????
+#include "phys-services/I3GSLRandomService.h"
 
 #include "marley/JSON.hh"
 #include "marley/JSONConfig.hh"
@@ -29,7 +29,7 @@
 #include <fstream>
 #include <sstream>
 #include <regex> //searches for patterns
-#include <cmath> //????
+#include <cmath> //math functions
 
 I3_MODULE(MarleySimulator);
 
@@ -38,7 +38,7 @@ MarleySimulator::MarleySimulator(const I3Context& context) : I3ConditionalModule
     AddParameter("MarleySearchPath", "Search path for Marley environment file", marley_search_path_);
     AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
     AddParameter("InputMCTreeName", "Name of the MCTree in the frame.", input_mc_tree_name_);
-    AddParameter("RandomSeed", "Seed for the random number generator", 12345); //???? por que 12345
+    AddParameter("RandomSeed", "Seed for the random number generator", 12345); //TO DO: Change this for a real random seed
     }
 
 void MarleySimulator::Configure() {
@@ -62,7 +62,7 @@ void MarleySimulator::Configure() {
     // Call the config.create_generator function to get a marley::Generator object
     marley_generator_ = config.create_generator();
 
-    this->LoadK40Transitions("K40.dat"); //Test.. I would like to use the original K.dat from marley that has all the isotopes but later
+    this->LoadK40Transitions("K40.dat"); //TO DO: I would like to use the original K.dat from marley that has all the isotopes but later
     //Saves all the info of levels and transitions
 }
 
@@ -518,7 +518,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
                     cascade_steps.push_back(step);
 
-                    log_info("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Δt = %.3f ns",
+                    log_info("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Delta t = %.3f ns",
                         step.initial_level_index,
                         step.initial_level_energy_keV,
                         step.initial_level_spin,
@@ -562,22 +562,26 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
                 for (const auto& step : cascade_steps) {
                     std::ostringstream ss;
-                    ss << "Step: ["
-                       << step.initial_level_index << "] "
-                       << step.initial_level_energy_keV << " keV J="
-                       << step.initial_level_spin
-                       << (step.initial_level_parity > 0 ? "+" : "-")
-                       << " -> ["
-                       << step.final_level_index << "] "
-                       << step.final_level_energy_keV << " keV J="
-                       << step.final_level_spin
-                       << (step.final_level_parity > 0 ? "+" : "-")
-                       << ", gamma = " << step.gamma_energy_keV << " keV"
-                       << ", T1/2 = " << step.T12_ns << " ns"
-                       << ", Delta_t = " << step.sampled_delay_ns << " ns"
-                       << ", cumulative t = " << step.cumulative_time_ns << " ns";
 
-                    cascade_info->push_back(ss.str());
+                    ss << "Step:\n";
+                    ss << "  From Level [" << (step.initial_level_index >= 0 ? std::to_string(step.initial_level_index) : "UNKNOWN") << "] "
+                       << step.initial_level_energy_keV << " keV, "
+                       << "J=" << step.initial_level_spin
+                       << (step.initial_level_parity > 0 ? "+" : "-") << "\n";
+
+                    ss << "  To Level [" << (step.final_level_index >= 0 ? std::to_string(step.final_level_index) : "UNKNOWN") << "] "
+                       << step.final_level_energy_keV << " keV, "
+                       << "J=" << step.final_level_spin
+                       << (step.final_level_parity > 0 ? "+" : "-") << "\n";
+
+                    ss << "  Gamma Energy = " << step.gamma_energy_keV << " keV\n";
+                    ss << "  T1/2 = " << step.T12_ns << " ns\n";
+                    ss << "  Tau = " << step.tau_ns << " ns\n";
+                    ss << "  Delta t = " << step.sampled_delay_ns << " ns\n";
+
+                    ss << "  Cumulative time = " << step.cumulative_time_ns << " ns\n";
+
+                     cascade_info->push_back(ss.str());
                 }
 
                 frame->Put("MarleyGammaCascadeInfo", cascade_info);
