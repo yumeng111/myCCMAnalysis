@@ -76,7 +76,7 @@ private:
 
     std::map<int, LevelInfo> levels_map_;
 
-    double sampleDelay(double mean_lifetime_ns);
+    double SampleDelay(double mean_lifetime_ns);
     I3RandomServicePtr rng_;
 
     SET_LOGGER("MarleySimulator");
