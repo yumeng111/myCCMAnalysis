@@ -389,8 +389,11 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 }
 
 
-
 // Look for events with K40 in the I3MCTree and save save pointers to the gamma particles
+// Reconstruct the cascade for each event
+// Save the cascade info in a key
+// Sample a time delay for those de excitations coming from levels with a tau > ns
+// Add new time delay in the I3MCTree
 void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     log_info("AdjustGammaTimes called.");
 
@@ -442,6 +445,9 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
             double min_diff = 1e9;
             int initial_level_index = -1;
+            //Tolerance for diff between real levels from .dat and the levels in the marley cascade
+            const double match_tolerance_keV = 5.0;
+
             for (const auto& kv : levels_map_) {
                 double diff = std::abs(kv.second.energy_keV - total_energy);
                 if (diff < min_diff) {
@@ -450,7 +456,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                 }
             }
 
-            if (min_diff < 2.0) {
+            if (min_diff < match_tolerance_keV) {
                 const auto& lvl = levels_map_.at(initial_level_index);
                 std::string parity_init = (lvl.parity > 0) ? "+" : "-";
                 log_info("Gamma cascade matches initial excitation level [%d] %.3f keV J=%.1f%s",
@@ -463,7 +469,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             }
 
             //Now order gammas from lower to higher
-
             std::vector<double> sorted_gammas = gamma_energies_keV;
             std::sort(sorted_gammas.begin(), sorted_gammas.end());
 
@@ -486,7 +491,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                         initial_lvl_idx = kv.first;
                     }
                 }
-                if (min_diff_initial > 2.0)
+                if (min_diff_initial > match_tolerance_keV)
                     initial_lvl_idx = -1;
 
                 // Look for final level
@@ -499,7 +504,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                         final_lvl_idx = kv.first;
                     }
                 }
-                if (min_diff_final > 2.0)
+                if (min_diff_final > match_tolerance_keV)
                     final_lvl_idx = -1;
 
                 // Level info
@@ -524,10 +529,10 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                     final_parity = lvl_final.parity;
                 }
 
-                // Sample delay with sampleDelay method
+                // Sample delay with SampleDelay method if level has lifetime > ns
                 double delay_ns = 0.0;
                 if (initial_tau_ns > 0.0) {
-                    delay_ns = sampleDelay(initial_tau_ns);
+                    delay_ns = SampleDelay(initial_tau_ns);
                     cumulative_time_ns += delay_ns;
                 }
 
@@ -625,7 +630,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 //t= -tau * ln (1-u)
 //tau in ns
 //u= random number between [0,1]
-double MarleySimulator::sampleDelay(double mean_lifetime_ns) {
+double MarleySimulator::SampleDelay(double mean_lifetime_ns) {
     if (mean_lifetime_ns <= 0.0)
         return 0.0;
 
