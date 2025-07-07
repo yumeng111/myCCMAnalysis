@@ -491,9 +491,34 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                         initial_lvl_idx = kv.first;
                     }
                 }
-                if (min_diff_initial > match_tolerance_keV)
-                    initial_lvl_idx = -1;
 
+                if (min_diff_initial > match_tolerance_keV) {
+                    // If there is no match within tolerance, force it to fall into the to nearest level
+                    const auto& lvl_nearest = levels_map_.at(initial_lvl_idx);
+                    std::string parity = (lvl_nearest.parity > 0) ? "+" : "-";
+
+                    log_warn("###############################################");
+                    log_warn("WARNING: Initial level %.3f keV does not match any level within ±%.1f keV tolerance.",
+                             initial_energy, match_tolerance_keV);
+                    log_warn("Assigning NEAREST level instead: [%d] %.3f keV J=%.1f%s (DeltaE = %.3f keV).",
+                             initial_lvl_idx,
+                             lvl_nearest.energy_keV,
+                             lvl_nearest.spin,
+                             parity.c_str(),
+                             initial_energy - lvl_nearest.energy_keV);
+                    log_warn("###############################################");
+
+                    // Check if it's one of the important delayed levels
+                    if (std::abs(lvl_nearest.energy_keV - 29.8299) < 1.0 ||
+                        std::abs(lvl_nearest.energy_keV - 1643.64) < 1.0 ||
+                        std::abs(lvl_nearest.energy_keV - 2542.79) < 1.0) {
+                        log_warn("!!! IMPORTANT: This level has significant lifetime and may impact delays !!!");
+                    }
+                    else{log_warn("This level has negligible time delay, nothing to worry about");
+                    }
+                }
+
+                // Look for final level
                 // Look for final level
                 double min_diff_final = 1e9;
                 int final_lvl_idx = -1;
@@ -504,8 +529,33 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                         final_lvl_idx = kv.first;
                     }
                 }
-                if (min_diff_final > match_tolerance_keV)
-                    final_lvl_idx = -1;
+
+                if (min_diff_final > match_tolerance_keV) {
+                    // No match within tolerance, fall back to nearest level
+                    const auto& lvl_nearest = levels_map_.at(final_lvl_idx);
+                    std::string parity = (lvl_nearest.parity > 0) ? "+" : "-";
+
+                    log_warn("###############################################");
+                    log_warn("WARNING: Final level %.3f keV does not match any level within ±%.1f keV tolerance.",
+                             final_energy, match_tolerance_keV);
+                    log_warn("Assigning NEAREST level instead: [%d] %.3f keV J=%.1f%s (DeltaE = %.3f keV).",
+                             final_lvl_idx,
+                             lvl_nearest.energy_keV,
+                             lvl_nearest.spin,
+                             parity.c_str(),
+                             final_energy - lvl_nearest.energy_keV);
+                    log_warn("###############################################");
+
+                    // Check if it's one of the important delayed levels
+                    if (std::abs(lvl_nearest.energy_keV - 29.8299) < 1.0 ||
+                        std::abs(lvl_nearest.energy_keV - 1643.64) < 1.0 ||
+                        std::abs(lvl_nearest.energy_keV - 2542.79) < 1.0) {
+                        log_warn("!!! IMPORTANT: This level has significant lifetime and may impact delays !!!");
+                    }
+                    else{log_warn("This level has negligible time delay, nothing to worry about");
+                    }
+                }
+
 
                 // Level info
                 double initial_T12_ns = 0.0;
@@ -567,63 +617,99 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                     );
 
                     final_energy = initial_energy;
-                }
+            } //end of 'for' for gammas
 
-                // Apply the accumulated delay to the gammas
-                // According to the energy of the gamma
-                // There will be only 3 levels that will add a significant delay
-                // n=15 E=2.54279 MeV  T1/2=1.09 ns
-                // n=4  E=1.64364 MeV  T1/2=336  ns <--------THIS IS THE META-STABLE LEVEL
-                // n=1  E=0.0298  MeV  T1/2=4.25 ns
-                // All the other levels have half life times of pico or femto seconds
-                //-----------------------------------------------------------------------
-                //Possible transitions from these levels:
-                //15-3-1-0
-                //15-3-0
-                //15-0
-                //4-2-1-0
-                //4-2-0
-                //4-1-0
-                //
-                for (auto* g : gamma_candidates) {
-                    double new_time = g->GetTime() + cumulative_time_ns;
-                    g->SetTime(new_time);
-                    log_info("Gamma energy %.3f keV assigned new time %.3f ns",
-                             g->GetEnergy() * 1e3, new_time);
-                }
-
-                //Save the cascade into the frame
-                I3VectorStringPtr cascade_info = boost::make_shared<I3VectorString>();
-
-                for (const auto& step : cascade_steps) {
-                    std::ostringstream ss;
-
-                    ss << "Step:\n";
-                    ss << "  From Level [" << (step.initial_level_index >= 0 ? std::to_string(step.initial_level_index) : "UNKNOWN") << "] "
-                       << step.initial_level_energy_keV << " keV, "
-                       << "J=" << step.initial_level_spin
-                       << (step.initial_level_parity > 0 ? "+" : "-") << "\n";
-
-                    ss << "  To Level [" << (step.final_level_index >= 0 ? std::to_string(step.final_level_index) : "UNKNOWN") << "] "
-                       << step.final_level_energy_keV << " keV, "
-                       << "J=" << step.final_level_spin
-                       << (step.final_level_parity > 0 ? "+" : "-") << "\n";
-
-                    ss << "  Gamma Energy = " << step.gamma_energy_keV << " keV\n";
-                    ss << "  T1/2 = " << step.T12_ns << " ns\n";
-                    ss << "  Tau = " << step.tau_ns << " ns\n";
-                    ss << "  Delta t = " << step.sampled_delay_ns << " ns\n";
-                    ss << "  Cumulative time = " << step.cumulative_time_ns << " ns\n";
-
-                     cascade_info->push_back(ss.str());
-                }
-
-                frame->Put("MarleyGammaCascadeInfo", cascade_info);
-                log_info("Stored MarleyGammaCascadeInfo in frame.");
+            // Apply the accumulated delay to the gammas
+            // According to the energy of the gamma
+            // There will be only 3 levels that will add a significant delay
+            // n=15 E=2.54279 MeV  T1/2=1.09 ns
+            // n=4  E=1.64364 MeV  T1/2=336  ns <--------THIS IS THE META-STABLE LEVEL
+            // n=1  E=0.0298  MeV  T1/2=4.25 ns
+            // All the other levels have half life times of pico or femto seconds
+            //-----------------------------------------------------------------------
+            //Possible transitions from these levels:
+            //15-3-1-0
+            //15-3-0
+            //15-0
+            //4-2-1-0
+            //4-2-0
+            //4-1-0
+            //
+            for (auto* g : gamma_candidates) {
+                double new_time = g->GetTime() + cumulative_time_ns;
+                g->SetTime(new_time);
+                log_info("Gamma energy %.3f keV assigned new time %.3f ns",
+                         g->GetEnergy() * 1e3, new_time);
             }
-        }
-    }
 
+            //Some counters
+            frames_with_cascade++;
+
+            bool has_unknown = false;
+            bool has_metastable = false;
+
+            for (const auto& step : cascade_steps) {
+                if (step.initial_level_index < 0 || step.final_level_index < 0) {
+                    has_unknown = true;
+                }
+
+                if (step.initial_level_index >= 0) {
+                    double E = levels_map_.at(step.initial_level_index).energy_keV;
+                    if (std::abs(E - 1643.64) < 1.0) {
+                        has_metastable = true;
+                    }
+                }
+
+                if (step.final_level_index >= 0) {
+                    double E = levels_map_.at(step.final_level_index).energy_keV;
+                    if (std::abs(E - 1643.64) < 1.0) {
+                        has_metastable = true;
+                    }
+                }
+            }
+
+            if (has_unknown) {
+                frames_with_unknowns++;
+            }
+            if (has_metastable) {
+                frames_with_metastable++;
+            }
+
+            // End of counters
+
+
+            //Save the cascade into the frame
+            I3VectorStringPtr cascade_info = boost::make_shared<I3VectorString>();
+
+            for (const auto& step : cascade_steps) {
+                std::ostringstream ss;
+
+                ss << "Step:\n";
+                ss << "  From Level [" << (step.initial_level_index >= 0 ? std::to_string(step.initial_level_index) : "UNKNOWN") << "] "
+                   << step.initial_level_energy_keV << " keV, "
+                   << "J=" << step.initial_level_spin
+                   << (step.initial_level_parity > 0 ? "+" : "-") << "\n";
+
+                ss << "  To Level [" << (step.final_level_index >= 0 ? std::to_string(step.final_level_index) : "UNKNOWN") << "] "
+                   << step.final_level_energy_keV << " keV, "
+                   << "J=" << step.final_level_spin
+                   << (step.final_level_parity > 0 ? "+" : "-") << "\n";
+
+                ss << "  Gamma Energy = " << step.gamma_energy_keV << " keV\n";
+                ss << "  T1/2 = " << step.T12_ns << " ns\n";
+                ss << "  Tau = " << step.tau_ns << " ns\n";
+                ss << "  Delta t = " << step.sampled_delay_ns << " ns\n";
+                ss << "  Cumulative time = " << step.cumulative_time_ns << " ns\n";
+
+                 cascade_info->push_back(ss.str());
+            }
+
+            frame->Put("MarleyGammaCascadeInfo", cascade_info);
+            log_info("Stored MarleyGammaCascadeInfo in frame.");
+        } //end of 'if' for K40
+    }//end of main 'for' mcTree
+
+} //End of MarleySimulator
 
 //This method samples the delay for a given lifetime
 //using an exponential distribution.
@@ -644,3 +730,10 @@ void MarleySimulator::FillSimulationFrame(I3FramePtr frame) {
     frame->Put("MarleyConfiguration", obj);
 }
 
+void MarleySimulator::Finish(){
+    log_info("====== MARLEY SIMULATION SUMMARY ======");
+    log_info("Frames with MarleyGammaCascadeInfo: %zu", frames_with_cascade);
+    log_info("Frames with UNKNOWN levels in cascade: %zu", frames_with_unknowns); //TO DO: Fix this counter, this is not correct
+    log_info("Frames passing through metastable level (1.64364 MeV): %zu", frames_with_metastable);
+    log_info("=======================================");
+}
