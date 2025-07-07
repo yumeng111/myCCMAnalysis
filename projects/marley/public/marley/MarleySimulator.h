@@ -61,7 +61,7 @@ public:
     void Simulation(I3FramePtr frame);
     void DAQ(I3FramePtr frame);
     void FillSimulationFrame(I3FramePtr frame);
-
+    void Finish(); 
 private:
     bool seen_s_frame_;
 
@@ -78,6 +78,12 @@ private:
 
     double SampleDelay(double mean_lifetime_ns);
     I3RandomServicePtr rng_;
+
+    size_t frames_with_cascade = 0;
+    size_t frames_with_unknowns = 0;
+    size_t frames_with_metastable = 0;
+    size_t frames_with_corrections_ = 0;
+    size_t corrections_total_ = 0;
 
     SET_LOGGER("MarleySimulator");
 };
