@@ -82,8 +82,8 @@ private:
     size_t frames_with_cascade = 0;
     size_t frames_with_unknowns = 0;
     size_t frames_with_metastable = 0;
-    size_t frames_with_corrections_ = 0;
-    size_t corrections_total_ = 0;
+    size_t frames_in_total =0;
+    std::vector<double> metastable_energy_diffs;
 
     SET_LOGGER("MarleySimulator");
 };
