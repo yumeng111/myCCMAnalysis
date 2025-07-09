@@ -61,7 +61,7 @@ public:
     void Simulation(I3FramePtr frame);
     void DAQ(I3FramePtr frame);
     void FillSimulationFrame(I3FramePtr frame);
-    void Finish(); 
+    void Finish();
 private:
     bool seen_s_frame_;
 
@@ -80,7 +80,6 @@ private:
     I3RandomServicePtr rng_;
 
     size_t frames_with_cascade = 0;
-    size_t frames_with_unknowns = 0;
     size_t frames_with_metastable = 0;
     size_t frames_in_total =0;
     std::vector<double> metastable_energy_diffs;
