@@ -601,15 +601,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                     cumulative_time_ns += delay_ns;
                 }
 
-                // Assign the new time to the gamma
-                // Gammas are reversed to process cascade from lowest to highest level inverted.
-                // Assigning the time from last to first
-                double new_time = g->GetTime() + cumulative_time_ns;
-                g->SetTime(new_time);
-                log_info("Gamma energy %.3f keV assigned new time %.3f ns",
-                         g->GetEnergy() * 1e3, new_time);
-
-
 
                 //And save the step in the cascade
                 NuclearCascadeStep step;
@@ -631,7 +622,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
                 cascade_steps.push_back(step);
 
-                log_info("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Delta t = %.3f ns",
+                log_info("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Sampled delay = %.3f ns",
                     step.initial_level_index,
                     step.initial_level_energy_keV,
                     step.initial_level_spin,
@@ -647,7 +638,64 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                 // Update the runnning energy for the next step
                 running_energy = initial_energy;
             } //end of 'for' for gammas
+            //END OF LEVELS RECONSTRUCTION
 
+
+            // Assign the new time to the gamma
+
+            // If the initial nuclear level has a non-zero lifetime,
+            // we sample a random delay to simulate how long it stays excited
+
+            double initial_delay_ns = 0.0;
+
+            if (!cascade_steps.empty()) {
+                const auto& top_step = cascade_steps.back();
+
+                if (top_step.tau_ns > 0.0) {
+                    initial_delay_ns = SampleDelay(top_step.tau_ns);
+                }
+            }
+
+            // Initialize cumulative time with the initial delay, if any
+            // This represents how much time has passed since the creation of the nucleus
+            // before the first gamma is emitted
+            cumulative_time_ns = initial_delay_ns;
+
+            // Loop through the cascade steps from highest to lowest nuclear levels
+            // and accumulate delays for each gamma emission
+            for (auto it = cascade_steps.rbegin(); it != cascade_steps.rend(); ++it) {
+                auto& step = *it;
+
+                // Add the sampled delay of THIS level to the cumulative time for the next step going down
+                cumulative_time_ns += step.sampled_delay_ns;
+                // Store the total cumulative time at which this gamma is emitted
+                step.cumulative_time_ns = cumulative_time_ns;
+            }
+
+            // Re-invert to restore physical emission order
+            // Originally, we reversed it to reconstruct levels from bottom-up
+            // Now we restore it to the order of emission (from highest to lowest levels)
+            std::reverse(gamma_candidates.begin(), gamma_candidates.end());
+
+            // Assign the correct emission time to each gamma particle
+            // This ensures that each gamma in the tree has the proper time offset
+            // corresponding to delays in the nuclear cascade
+            for (size_t i = 0; i < gamma_candidates.size(); ++i) {
+                auto* g = gamma_candidates[i];
+                // We need to access the cascade steps in reverse order,
+                // because cascade_steps was filled from lowest to highest,
+                // while gamma_candidates is now in physical emission order (highest to lowest)
+                const auto& step = cascade_steps[cascade_steps.size() - 1 - i];
+
+                double new_time = g->GetTime() + step.cumulative_time_ns;
+                g->SetTime(new_time);
+
+                log_info("Gamma energy %.3f keV assigned new time %.3f ns "
+                         "(cumulative delay %.3f ns)",
+                         g->GetEnergy() * 1e3,
+                         new_time,
+                         step.cumulative_time_ns);
+            }
 
             //Save the cascade into the frame
             I3VectorStringPtr cascade_info = boost::make_shared<I3VectorString>();
@@ -669,7 +717,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                 ss << "  Gamma Energy = " << step.gamma_energy_keV << " keV\n";
                 ss << "  T1/2 = " << step.T12_ns << " ns\n";
                 ss << "  Tau = " << step.tau_ns << " ns\n";
-                ss << "  Delta t = " << step.sampled_delay_ns << " ns\n";
+                ss << "  Sampled Delay = " << step.sampled_delay_ns << " ns\n";
                 ss << "  Cumulative time = " << step.cumulative_time_ns << " ns\n";
 
                  cascade_info->push_back(ss.str());
@@ -714,7 +762,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             }
             // Saves in the frame if has metastable level n the cascade
             frame->Put("HasMetaStable", I3BoolPtr(new I3Bool(has_metastable)));
-            // And the difference in Energy from max tto meta stable
+            // And the difference in Energy from max to meta stable
             frame->Put("MarleyMetastableDeltaE",
                        boost::make_shared<I3Double>(metastable_energy_diff));
 
