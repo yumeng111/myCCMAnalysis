@@ -82,8 +82,6 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
         seen_s_frame_ = true;
     }
 
-    frames_in_total++; //TO DO: Correct this
-
     I3MCTreeConstPtr inputMCTree = frame->Get<I3MCTreeConstPtr>(input_mc_tree_name_);
 
     //The script crashes if the tree does not exist
@@ -114,6 +112,7 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
         return;
     }
 
+    frames_in_total++; //Count how many frames have Marley events
 
     //Pass the parameters to marley_generator_.create_event()
     int pdg_a = neutrino.GetPdgEncoding();
@@ -400,7 +399,6 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     log_info("AdjustGammaTimes called.");
 
-    
     //Let's look into the I3MCtree
     for (auto iter = mcTree->begin(); iter != mcTree->end(); ++iter) {
 
@@ -434,14 +432,15 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             }
 
             //Calculate the sum of all the gammas
-            double total_energy = std::accumulate(
+            //I don't use gamma_total_energy but it could be helpful
+            double gamma_total_energy = std::accumulate(
                 gamma_energies_keV.begin(),
                 gamma_energies_keV.end(),
                 0.0
-            ); //TO DO: Do I keep this block?
+            );
 
             log_info("Collected %zu gammas. Total energy sum = %.3f keV",
-                    gamma_energies_keV.size(), total_energy);
+                    gamma_energies_keV.size(), gamma_total_energy);
 
 
             //Now we add the logic for the time delays
@@ -586,7 +585,8 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                 }
 
                 // Assign the new time to the gamma
-                // Don't forget The gammas are inverted. Assigning the time from last to first
+                // Gammas are reversed to process cascade from lowest to highest level inverted.
+                // Assigning the time from last to first
                 double new_time = g->GetTime() + cumulative_time_ns;
                 g->SetTime(new_time);
                 log_info("Gamma energy %.3f keV assigned new time %.3f ns",
@@ -662,7 +662,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             // ===Some counters ===
             frames_with_cascade++;
 
-            bool has_unknown = false;
             bool has_metastable = false;
 
             // Save the energy difference if it falls into the meta-stable
@@ -670,10 +669,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             double highest_level_energy = 0.0;
 
             for (const auto& step : cascade_steps) {
-                // Check UNKNOWN levels
-                if (step.initial_level_index < 0 || step.final_level_index < 0) {
-                    has_unknown = true;
-                }
 
                 // Check metastable (use index 4 directly)
                 if (step.initial_level_index == 4 || step.final_level_index == 4) {
@@ -687,10 +682,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                         highest_level_energy = E;
                     }
                 }
-            }
-
-            if (has_unknown) {
-                frames_with_unknowns++;
             }
 
             if (has_metastable) {
@@ -710,8 +701,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             frame->Put("MarleyMetastableDeltaE",
                        boost::make_shared<I3Double>(metastable_energy_diff));
 
-            // Saves if there was a level not matched
-            frame->Put("HasUnknownLevels", I3BoolPtr(new I3Bool(has_unknown)));
             // ==End of counters=====
 
 
@@ -744,9 +733,8 @@ void MarleySimulator::FillSimulationFrame(I3FramePtr frame) {
 
 void MarleySimulator::Finish(){
     log_info("====== MARLEY SIMULATOR SUMMARY ======");
-    log_info("Frames with Marley Events: %zu", frames_in_total); //TO DO: Correct this
+    log_info("Frames with Marley Events: %zu", frames_in_total);
     log_info("Frames with MarleyGammaCascadeInfo: %zu", frames_with_cascade);
-    log_info("Frames with UNKNOWN levels in cascade: %zu", frames_with_unknowns); //TO DO: Fix this counter, this is not correct
     log_info("Frames passing through metastable level [n=4] (1.64364 MeV): %zu", frames_with_metastable);
 
     //I want to check if the E of these prompt gamma is around 2.74 MeV as with the solar neutrinos
