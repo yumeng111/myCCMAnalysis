@@ -452,10 +452,10 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             // Tolerance for matching energy sums from marley to real levels real levels from .dat
             const double match_tolerance_keV = 5.0;
 
-            // Sort gammas from lower to higher energy
-            // Gammas from Marley are not in order....whyyyyyyyy? TO DO: Check this again in dataio shovel!
-            std::vector<double> sorted_gammas = gamma_energies_keV; //gamma energies from I3MCTree
-            std::sort(sorted_gammas.begin(), sorted_gammas.end());
+            // Gammas from Marley in the I3MCTree are in order of production
+            // We need to reverse order, to start from the last gamma produced
+            std::reverse(gamma_candidates.begin(), gamma_candidates.end());
+            std::reverse(gamma_energies_keV.begin(), gamma_energies_keV.end());
 
             // We start from the ground state (E=0)
             double running_energy = 0.0;
@@ -464,7 +464,9 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             // Vector for saving info of the cascade and then pass it to a key in the frame
             std::vector<NuclearCascadeStep> cascade_steps;
 
-            for (double gamma_energy : sorted_gammas) {
+            for (size_t i = 0; i < gamma_candidates.size(); ++i) {
+                double gamma_energy = gamma_energies_keV[i];
+                I3Particle* g = gamma_candidates[i];
                 // Calculate the energy of the level we’d reach by emitting this gamma
                 // Note: initial = local higher level, running = local lower level
                 double initial_energy_candidate = running_energy + gamma_energy;
@@ -502,6 +504,21 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                                  initial_energy_candidate,
                                  nearest_idx,
                                  lvl_nearest.energy_keV);
+
+                        // According to the energy of the gamma
+                        // There will be only 3 levels that will add a significant delay
+                        // n=15 E=2.54279 MeV  T1/2=1.09 ns
+                        // n=4  E=1.64364 MeV  T1/2=336  ns <--------THIS IS THE META-STABLE LEVEL
+                        // n=1  E=0.0298  MeV  T1/2=4.25 ns
+                        // All the other levels have half life times of pico or femto seconds
+                        //-----------------------------------------------------------------------
+                        //Possible transitions from these levels:
+                        //15-3-1-0
+                        //15-3-0
+                        //15-0
+                        //4-2-1-0
+                        //4-2-0
+                        //4-1-0
 
                         // Check if it's one of the important delayed levels
                         if (std::abs(lvl_nearest.energy_keV - 29.8299) < 1.0 ||
@@ -568,6 +585,15 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                     cumulative_time_ns += delay_ns;
                 }
 
+                // Assign the new time to the gamma
+                // Don't forget The gammas are inverted. Assigning the time from last to first
+                double new_time = g->GetTime() + cumulative_time_ns;
+                g->SetTime(new_time);
+                log_info("Gamma energy %.3f keV assigned new time %.3f ns",
+                         g->GetEnergy() * 1e3, new_time);
+
+
+
                 //And save the step in the cascade
                 NuclearCascadeStep step;
                 step.initial_level_index = initial_lvl_idx;
@@ -604,29 +630,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
                 // Update the runnning energy for the next step
                 running_energy = initial_energy;
             } //end of 'for' for gammas
-
-            // Apply the accumulated delay to the gammas
-            // According to the energy of the gamma
-            // There will be only 3 levels that will add a significant delay
-            // n=15 E=2.54279 MeV  T1/2=1.09 ns
-            // n=4  E=1.64364 MeV  T1/2=336  ns <--------THIS IS THE META-STABLE LEVEL
-            // n=1  E=0.0298  MeV  T1/2=4.25 ns
-            // All the other levels have half life times of pico or femto seconds
-            //-----------------------------------------------------------------------
-            //Possible transitions from these levels:
-            //15-3-1-0
-            //15-3-0
-            //15-0
-            //4-2-1-0
-            //4-2-0
-            //4-1-0
-            //
-            for (auto* g : gamma_candidates) {
-                double new_time = g->GetTime() + cumulative_time_ns;
-                g->SetTime(new_time);
-                log_info("Gamma energy %.3f keV assigned new time %.3f ns",
-                         g->GetEnergy() * 1e3, new_time);
-            }
 
 
             //Save the cascade into the frame
