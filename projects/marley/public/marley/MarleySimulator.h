@@ -71,6 +71,7 @@ private:
     // Add marley_generator_as member of the class
     marley::Generator marley_generator_;
 
+    bool enable_gamma_time_offset_;
     void LoadK40Transitions(const std::string& filename);
     void AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame);
 

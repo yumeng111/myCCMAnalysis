@@ -44,6 +44,10 @@ MarleySimulator::MarleySimulator(const I3Context& context) : I3ConditionalModule
         AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
         AddParameter("InputMCTreeName", "Name of the MCTree in the frame.", input_mc_tree_name_);
         AddParameter("RandomSeed", "Seed for the random number generator in SampleDelay", static_cast<int>(default_seed));
+        AddParameter("EnableGammaTimeOffset",
+                 "True: applies time offsets to gamma rays from nuclear cascade. "
+                 "False: leaves gamma times untouched.",
+                 true);
     }
 
 void MarleySimulator::Configure() {
@@ -55,6 +59,9 @@ void MarleySimulator::Configure() {
     GetParameter("RandomSeed",random_seed);
     log_info("Using random seed for Sample Delay in gamma times = %d", random_seed);
     rng_ = boost::make_shared<I3GSLRandomService>(random_seed);
+
+    GetParameter("EnableGammaTimeOffset", enable_gamma_time_offset_);
+    log_info("EnableGammaTimeOffset = %s", enable_gamma_time_offset_ ? "True" : "False");
 
     setenv("MARLEY", "", 0);
     setenv("MARLEY_SEARCH_PATH", marley_search_path_.c_str(), 0);
@@ -403,6 +410,11 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 // Add new time delay in the I3MCTree
 void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     log_info("AdjustGammaTimes called.");
+
+    if (!enable_gamma_time_offset_) {
+        log_info("Skipping time offsets for gammas because EnableGammaTimeOffset=False.");
+        return;
+    }
 
     //Let's look into the I3MCtree
     for (auto iter = mcTree->begin(); iter != mcTree->end(); ++iter) {
