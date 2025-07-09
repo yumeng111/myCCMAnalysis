@@ -31,15 +31,19 @@
 #include <sstream>
 #include <regex> //searches for patterns
 #include <cmath> //math functions
+#include <random> //for the seed
 
 I3_MODULE(MarleySimulator);
 
 MarleySimulator::MarleySimulator(const I3Context& context) : I3ConditionalModule(context),
     output_mc_tree_name_("I3MCTree"), input_mc_tree_name_("SIRENMarleyInjectionTree") {
-    AddParameter("MarleySearchPath", "Search path for Marley environment file", marley_search_path_);
-    AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
-    AddParameter("InputMCTreeName", "Name of the MCTree in the frame.", input_mc_tree_name_);
-    AddParameter("RandomSeed", "Seed for the random number generator", 12345); //TO DO: Change this for a real random seed
+        std::random_device rd;
+        unsigned int default_seed = rd() & 0x7FFFFFFF;
+
+        AddParameter("MarleySearchPath", "Search path for Marley environment file", marley_search_path_);
+        AddParameter("OutputMCTreeName", "Name of the MCTree in the frame.", output_mc_tree_name_);
+        AddParameter("InputMCTreeName", "Name of the MCTree in the frame.", input_mc_tree_name_);
+        AddParameter("RandomSeed", "Seed for the random number generator in SampleDelay", static_cast<int>(default_seed));
     }
 
 void MarleySimulator::Configure() {
@@ -49,6 +53,7 @@ void MarleySimulator::Configure() {
 
     int random_seed;
     GetParameter("RandomSeed",random_seed);
+    log_info("Using random seed for Sample Delay in gamma times = %d", random_seed);
     rng_ = boost::make_shared<I3GSLRandomService>(random_seed);
 
     setenv("MARLEY", "", 0);
