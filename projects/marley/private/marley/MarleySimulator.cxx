@@ -772,6 +772,22 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             frame->Put("MarleyGammaCascadeInfo", cascade_info);
             log_info("Stored MarleyGammaCascadeInfo in frame.");
             log_info("=== Finished reconstructing gamma cascade ===");
+
+            //Save other important variables for analysis
+
+            //Reverse cascade_steps so we save gammas in physical production order
+            std::reverse(cascade_steps.begin(), cascade_steps.end());
+            auto cumulative_times_vec = boost::make_shared<I3VectorDouble>();
+            auto gamma_energies_vec = boost::make_shared<I3VectorDouble>();
+
+            for (const auto& step : cascade_steps){
+                cumulative_times_vec->push_back(step.cumulative_time_ns);
+                gamma_energies_vec->push_back(step.gamma_energy_keV);
+            }
+
+            frame->Put("MarleyGammaCumulativeTimes", cumulative_times_vec);
+            frame->Put("MarleyGammaEnergies", gamma_energies_vec);
+
         } //end of 'if' for K40
     }//end of main 'for' mcTree
 
