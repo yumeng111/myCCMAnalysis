@@ -416,6 +416,9 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         return;
     }
 
+    bool has_k40 = false;
+    bool has_metastable = false;
+
     //Let's look into the I3MCtree
     for (auto iter = mcTree->begin(); iter != mcTree->end(); ++iter) {
 
@@ -431,6 +434,8 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         //Then look for interactions with K40
         if (particle.GetPdgEncoding() == 1000190400) { // K40
 
+            //Add a flag for K40 events
+            has_k40 = true;
             //Look for gammas in the tree
             std::vector<I3Particle*> gamma_candidates;
             std::vector<double> gamma_energies_keV;
@@ -727,8 +732,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             // ===Some counters ===
             frames_with_cascade++;
 
-            bool has_metastable = false;
-
             // Save the energy difference if it falls into the meta-stable
             double metastable_energy_diff = -1.0;
             double highest_level_energy = 0.0;
@@ -765,7 +768,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             // And the difference in Energy from max to meta stable
             frame->Put("MarleyMetastableDeltaE",
                        boost::make_shared<I3Double>(metastable_energy_diff));
-
             // ==End of counters=====
 
 
@@ -789,7 +791,10 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             frame->Put("MarleyGammaEnergies", gamma_energies_vec);
 
         } //end of 'if' for K40
+
     }//end of main 'for' mcTree
+
+    frame->Put("HasK40", I3BoolPtr(new I3Bool(has_k40)));
 
 } //End of AdjustGammaTimes
 
