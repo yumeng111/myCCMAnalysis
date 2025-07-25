@@ -32,6 +32,7 @@
 #include <regex> //searches for patterns
 #include <cmath> //math functions
 #include <random> //for the seed
+#include <exception>
 
 I3_MODULE(MarleySimulator);
 
@@ -75,8 +76,8 @@ void MarleySimulator::Configure() {
     // Call the config.create_generator function to get a marley::Generator object
     marley_generator_ = config.create_generator();
 
-    this->LoadK40Transitions("K40.dat"); //TO DO: I would like to use the original K.dat from marley that has all the isotopes but later
-    //Saves all the info of levels and transitions
+    //Loads and saves all the info of levels and transitions for K40
+    this->LoadK40Transitions("/users/marisolc/workspaces/CCM2/sources/marley/data/structure/K.dat"); //need TO DO a generic path
 }
 
 void MarleySimulator::Simulation(I3FramePtr frame) {
@@ -196,16 +197,12 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line;
 
-    //Header: Z, A, Num of levels
+    //Excitation energy of level, 2*Spin, Parity, Total gammas (transitions)
     //  Raw string()
     //  ^ Start of the line
-    //  \d+ One or more digits
     //  \s+ One or more blank spaces
-    //  $ End of line
-    std::regex header_regex(R"(^\d+\s+\d+\s+\d+$)");
-
-    //Excitation energy of level, 2*Spin, Parity, Total gammas (transitions)
     // ([\d\.Ee+-]+) Digit, point, scientific notation E, sign
+    //  \d+ One or more digits
     // [-+]? Optional sign
     // [+-] Mandatory sign (Parity)
     std::regex level_regex(R"(^\s*([\d\.Ee+-]+)\s+([-+]?\d+)\s+([+-])\s+(\d+))");
@@ -217,6 +214,9 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
     int current_level_index = -1;
 
+    //We need to look for the block of K40 in the K.dat file
+    bool inside_K40_block = false;
+
     if (!infile.is_open()) {
         log_error("Could not open file %s", filename.c_str());
         return;
@@ -224,59 +224,78 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
     //Start reading the file line by line
     while (std::getline(infile, line)) {
-        //log_info("Line raw content: '%s'", line.c_str());
+        std::smatch match;
 
-        // Skip the Z A num_levels if header line (header_regex)
-        if (std::regex_match(line, header_regex)) {
-            log_info("Skipping header line.");
+        //Match header lines (Z A num_levels)
+        std::istringstream line_stream(line);
+        int Z, A, num_levels;
+
+        if (line_stream >> Z >> A >> num_levels){
+            if(Z == 19 && A == 40) {
+                inside_K40_block = true;
+                log_info("Found start of the K40 block: Z=%d A=%d N=%d", Z, A, num_levels);
+            }else if (inside_K40_block){
+                inside_K40_block = false;
+                log_info("Exiting block");
+            }
             continue;
         }
+        //Ignore everything outside the K40 block
+        if(!inside_K40_block) continue;
 
-        std::smatch match; //saves results of regex into strings
+        //Now match level line
+        if (inside_K40_block && std::regex_match(line, match, level_regex)) {
+            try{
+                //Get Energy of the level, 2J, parity, and number of gammas (or transitions)
+                double energy_MeV = std::stod(match[1]);
+                double spin_times_two = std::stod(match[2]);
+                std::string parity_sign = match[3];
+                int num_transitions = std::stoi(match[4]);
 
-        //If it is not header check if it is a line with exitation energy level (level_regex)
-        if (std::regex_match(line, match, level_regex)) {
-            //Get Energy of the level, 2J, parity, and number of gammas (or transitions)
-            double energy_MeV = std::stod(match[1]);
-            double spin_times_two = std::stod(match[2]);
-            std::string parity_sign = match[3];
-            int num_transitions = std::stoi(match[4]);
+                log_info("Found level: %.5f MeV with %d gammas", energy_MeV, num_transitions);
 
-            log_info("Found level: %.5f MeV with %d gammas", energy_MeV, num_transitions);
+                //Then save the info:
+                LevelInfo lvl;
+                lvl.level_index = static_cast<int>(levels_temp.size());
+                lvl.energy_keV = energy_MeV * 1e3;
+                lvl.spin = spin_times_two / 2.0;
+                lvl.parity = (parity_sign == "+") ? +1 : -1; //I don't like this logic (??)
 
-            //Then save the info:
-            LevelInfo lvl;
-            lvl.level_index = static_cast<int>(levels_temp.size());
-            lvl.energy_keV = energy_MeV * 1e3;
-            lvl.spin = spin_times_two / 2.0;
-            lvl.parity = (parity_sign == "+") ? +1 : -1; //I don't like this logic (??)
+                lvl.T12_ns = 0.0; //half life time
+                lvl.tau_ns = 0.0; //mean life time
 
-            lvl.T12_ns = 0.0; //half life time (Si es asi en ingles??? check this)
-            lvl.tau_ns = 0.0; //mean half life (Si es asi en ingles??? check this)
+                current_level_index = lvl.level_index;
 
-            current_level_index = lvl.level_index;
-
-            levels_temp[current_level_index] = lvl;
+                levels_temp[current_level_index] = lvl;
+            } catch (const std::exception& e){
+                log_warn("Failed to parse level line: '%s'. Exception: %s", line.c_str(), e.what());
+                continue;
+            }
         }
 
         //Now we look at the lines for gammas
-        else if (std::regex_match(line, match, gamma_regex) && current_level_index >= 0) {
-            double E_gamma_MeV = std::stod(match[1]);  //Energy of the gamma
-            double branching_ratio = std::stod(match[2]); //Relative intensity
-            int final_level_idx = std::stoi(match[3]);  //index of the level of de-excitation (to which it descends)
+        else if (inside_K40_block && std::regex_match(line, match, gamma_regex) && current_level_index >= 0) {
+            try{
+                double E_gamma_MeV = std::stod(match[1]);  //Energy of the gamma
+                double branching_ratio = std::stod(match[2]); //Relative intensity
+                int final_level_idx = std::stoi(match[3]);  //index of the level of de-excitation (to which it descends)
 
-            LevelInfo::Transition t;
-            t.gamma_energy_keV = E_gamma_MeV * 1e3;
-            t.branching_ratio = branching_ratio;
-            t.final_level_index = final_level_idx;
+                LevelInfo::Transition t;
+                t.gamma_energy_keV = E_gamma_MeV * 1e3;
+                t.branching_ratio = branching_ratio;
+                t.final_level_index = final_level_idx;
 
-            levels_temp[current_level_index].transitions.push_back(t);
+                levels_temp[current_level_index].transitions.push_back(t);
+            } catch (const std::exception& e){
+                log_warn("Failed to parse gamma line: '%s'. Error: %s", line.c_str(), e.what());
+                continue;
+            }
         }
     }
 
     // Copy levels_temp into levels_map_
     levels_map_ = levels_temp;
-
+    log_info("Loaded %zu K-40 levels.", levels_map_.size());
     // There are only 3 levels that will add a significant T1/2
     // All the other levels are of the order of pico or femto seconds
     // Manually set T1/2 where known from ENSDF
