@@ -1,14 +1,92 @@
 import siren
 from siren import utilities
-import pickle
-import argparse
-import os
 import numpy as np
 from icecube import icetray, dataclasses
-from icecube.icetray import I3Frame, I3Module, I3ConditionalModule
+from icecube.icetray import I3ConditionalModule
+
+
+def siren_primary_to_i3_particle(record):
+    particle = dataclasses.I3Particle()  # Create a particle object
+    # Extract the information from the SIREN interaction record and pass them to the I3 particle
+    major_ID = record.primary_id.major_id
+    minor_ID = record.primary_id.minor_id
+    p_type = record.signature.primary_type
+    position = record.primary_initial_position
+    vertex = record.interaction_vertex
+    length = np.sqrt(np.sum((np.array(vertex) - np.array(position)) ** 2))
+
+    momentum = np.array(record.primary_momentum[1:])
+    momentum_magnitude = np.sqrt(np.sum(momentum**2))
+    direction = momentum / momentum_magnitude
+    mass = record.primary_mass
+    energy = record.primary_momentum[0]
+    kinetic_energy = energy - mass
+    if mass == 0:
+        beta = 1
+    else:
+        gamma = energy / mass
+        beta = np.sqrt(1 - 1 / gamma**2)
+    speed = beta * dataclasses.I3Constants.c
+    time = 0
+
+    # And now pass the information to the I3Particle
+    particle.type = dataclasses.I3Particle.ParticleType(int(p_type))
+    particle.id.majorID = major_ID
+    particle.id.minorID = minor_ID
+    particle.pos = dataclasses.I3Position(*position)
+    particle.dir = dataclasses.I3Direction(*direction)
+    particle.time = time  # Time for the neutrino in the W target
+    particle.energy = kinetic_energy
+    particle.length = length
+    particle.speed = speed
+
+    return particle
+
+
+def siren_secondary_to_i3_particle(primary_particle, record, index):
+    particle = dataclasses.I3Particle()
+
+    secondary_type = record.signature.secondary_types[index]
+    particle.type = dataclasses.I3Particle.ParticleType(int(secondary_type))
+    major_ID = record.secondary_ids[index].major_id
+    minor_ID = record.secondary_ids[index].minor_id
+    position = record.interaction_vertex
+    mass = record.secondary_masses[index]
+    energy = record.secondary_momenta[index][0]
+    if mass:
+        beta = 1
+    else:
+        gamma = energy / mass
+        beta = np.sqrt(1 - 1 / gamma**2)
+    speed = beta * dataclasses.I3Constants.c
+    time = primary_particle.time + primary_particle.length / primary_particle.speed
+
+    momentum = np.array(record.secondary_momenta[index][1:])
+    momentum_magnitude = np.sqrt(np.sum(momentum**2))
+    direction = momentum / momentum_magnitude
+    kinetic_energy = energy - mass
+
+    particle.id.majorID = major_ID
+    particle.id.minorID = minor_ID
+    particle.pos = dataclasses.I3Position(*position)
+    particle.dir = dataclasses.I3Direction(*direction)
+    particle.time = time
+    particle.energy = kinetic_energy
+    particle.length = np.nan
+    particle.speed = speed
+
+    return particle
+
+
+def siren_get_children(siren_tree, particle_id):
+    pass
 
 
 class NuESIRENMarleyInjector(I3ConditionalModule):
+    """
+    A module that injects NuE CC events into CCM using SIREN and the total cross section from MARLEY
+    """
+
     def __init__(self, context):
         I3ConditionalModule.__init__(self, context)
         self.AddParameter(
@@ -20,6 +98,10 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
     def Configure(self):
         self.target = self.GetParameter("Target")
         self.events_to_inject = self.GetParameter("EventsToInject")
+        if self.target not in [0, 1]:
+            raise ValueError("Target option must be 0 or 1")
+        if self.events_to_inject <= 0:
+            raise ValueError("EventsToInject must be a positive integer")
 
         # Load experiment and detector
         self.experiment = "CCM"
@@ -49,7 +131,7 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
         # Fixed tungsten target
         if self.target == 0:
             self.target_origin = siren.math.Vector3D(0, 0, 0.1375)
-        else:
+        elif self.target == 1:
             self.target_origin = siren.math.Vector3D(0, 0, -0.241)
 
         self.detector_origin = siren.math.Vector3D(23, 0, -0.65)
@@ -141,127 +223,42 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
             self.seen_s_frame_ = True
 
         event = self.injector.generate_event()
-
         weight = self.weighter(event)
+
+        all_records = {datum.record.primary_id: datum.record for datum in event.tree}
+        primaries = [datum.record for datum in event.tree if datum.parent is None]
 
         # Create tree
         tree = dataclasses.I3MCTree()
-        particle = dataclasses.I3Particle()  # Create a particle object
-        interaction_record = siren.dataclasses.InteractionRecord()
-
-        primaries = []
-
-        for datum in event.tree:
-            if datum.parent is None:
-                record = datum.record
-                primaries.append(record)
 
         secondaries = []
 
-        for prim in primaries:
-            record = prim
-            # Extract the information from the SIREN interaction record and pass them to the I3 particle
-            major_ID = record.primary_id.major_id
-            minor_ID = record.primary_id.minor_id
-            p_type = record.signature.primary_type
-            prim_position = record.primary_initial_position
-            vertex = record.interaction_vertex
-            length = np.sqrt(np.sum((np.array(vertex) - np.array(prim_position)) ** 2))
-
-            px = record.primary_momentum[1]
-            py = record.primary_momentum[2]
-            pz = record.primary_momentum[3]
-            momentum_magnitude = np.sqrt(px**2 + py**2 + pz**2)
-            dir_x = px / momentum_magnitude
-            dir_y = py / momentum_magnitude
-            dir_z = pz / momentum_magnitude
-            kinetic_energy = momentum_magnitude
-            if record.primary_mass == 0:
-                beta = 1
-            else:
-                gamma = record.primary_momentum[0] / record.primary_mass
-                beta = np.sqrt(1 - 1 / gamma**2)
-            speed = beta * dataclasses.I3Constants.c
-            time = 0
-
-            # And now pass the information to the I3Particle
-            particle.type = dataclasses.I3Particle.ParticleType(int(p_type))
-            particle.id.majorID = major_ID
-            particle.id.minorID = minor_ID
-            particle.pos = dataclasses.I3Position(*prim_position)
-            particle.dir = dataclasses.I3Direction(dir_x, dir_y, dir_z)
-            particle.time = time  # Time for the neutrino in the W target
-            particle.energy = kinetic_energy
-            particle.length = length
-            particle.speed = speed
-
+        for record in primaries:
+            particle = siren_primary_to_i3_particle(record)
             tree.add_primary(particle)
-
-            time = time + length / speed
-
-            for i in range(len(record.secondary_ids)):
-                secondaries.append([record.primary_id, particle.id, record, time, i])
+            secondaries.extend(
+                [(particle, record, i) for i in range(record.secondary_ids)]
+            )
 
         while len(secondaries) > 0:
-            s_parent_id, parent_id, parent_record, parent_time, index = secondaries[0]
+            primary_particle, record, index = secondaries[0]
+            secondary_particle = siren_secondary_to_i3_particle(*secondaries[0])
             secondaries.pop(0)
 
-            particle = dataclasses.I3Particle()
-            s_type = parent_record.signature.secondary_types
-            particle.type = dataclasses.I3Particle.ParticleType(int(s_type[index]))
-            major_ID = parent_record.secondary_ids[index].major_id
-            minor_ID = parent_record.secondary_ids[index].minor_id
-            sec_position = parent_record.interaction_vertex
-            if record.secondary_masses[index] == 0:
-                beta = 1
-            else:
-                gamma = (
-                    record.secondary_momenta[index][0] / record.secondary_masses[index]
+            if record.secondary_ids[index] in all_records:
+                secondary_record = all_records[record.secondary_ids[index]]
+                position = secondary_record.primary_initial_position
+                vertex = secondary_record.interaction_vertex
+                length = np.sqrt(np.sum((np.array(vertex) - np.array(position)) ** 2))
+                secondary_particle.length = length
+                secondaries.extend(
+                    [
+                        (secondary_particle, secondary_record, i)
+                        for i in range(secondary_record.secondary_ids)
+                    ]
                 )
-                beta = np.sqrt(1 - 1 / gamma**2)
-            speed = beta * dataclasses.I3Constants.c
 
-            px = parent_record.secondary_momenta[index][1]
-            py = parent_record.secondary_momenta[index][2]
-            pz = parent_record.secondary_momenta[index][3]
-            momentum_magnitude = np.sqrt(px**2 + py**2 + pz**2)
-            dir_x = px / momentum_magnitude
-            dir_y = py / momentum_magnitude
-            dir_z = pz / momentum_magnitude
-            kinetic_energy = momentum_magnitude
-
-            particle.id.majorID = major_ID
-            particle.id.minorID = minor_ID
-            particle.pos = dataclasses.I3Position(*sec_position)
-            particle.dir = dataclasses.I3Direction(dir_x, dir_y, dir_z)
-            particle.time = parent_time
-            particle.energy = kinetic_energy
-            particle.speed = speed
-
-            records = [
-                datum.record
-                for datum in event.tree
-                if datum.record.primary_id == parent_record.secondary_ids[index]
-            ]
-            if len(records) > 0:
-                record = records[0]
-                length = np.sqrt(
-                    np.sum(
-                        (np.array(record.interaction_vertex) - np.array(sec_position))
-                        ** 2
-                    )
-                )
-                time = parent_time + length / speed
-                for i in range(len(record.secondary_ids)):
-                    secondaries.append(
-                        [record.primary_id, particle.id, record, time, i]
-                    )
-            else:
-                length = np.nan
-
-            particle.length = length
-
-            tree.append_child(parent_id, particle)
+            tree.append_child(primary_particle.id, secondary_particle)
 
         # Add the mctree to the frame
         frame["SIRENMarleyInjectionTree"] = tree

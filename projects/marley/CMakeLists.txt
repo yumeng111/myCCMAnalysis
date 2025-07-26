@@ -15,6 +15,6 @@ i3_add_library(${PROJECT_NAME}
     USE_PROJECTS icetray serialization dataio dataclasses phys-services CCMBinary
 )
 else(MARLEY_FOUND)
-colormsg(CYAN "+-- MARLEY not found. Skipping ccm_marley.
-   If you need to install MARLEY you can find it at https://github.com/austinschneider/marley")
+colormsg(CYAN "+-- MARLEY not found. Skipping ccm_marley.\n"
+              "   If you need to install MARLEY you can find it at https://github.com/austinschneider/marley")
 endif(MARLEY_FOUND)
