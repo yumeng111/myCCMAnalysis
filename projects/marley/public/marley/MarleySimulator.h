@@ -48,6 +48,11 @@ struct LevelInfo {
     };
 
     std::vector<Transition> transitions;
+
+    bool operator<(double const energy) const {
+        double keV = energy / I3Units::keV;
+        return energy_keV < energy;
+    }
 };
 
 
@@ -71,10 +76,11 @@ private:
     marley::Generator marley_generator_;
 
     bool enable_gamma_time_offset_;
+    LevelInfo & ClosestLevel(std::vector<LevelInfo> & levels, double energy);
     void LoadK40Transitions(const std::string& filename);
     void AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame);
 
-    std::map<int, LevelInfo> levels_map_;
+    std::vector<LevelInfo> levels_map_;
 
     double SampleDelay(double mean_lifetime_ns);
     I3RandomServicePtr rng_;
@@ -86,6 +92,7 @@ private:
 
     // Tolerance for matching energy sums from marley to real levels real levels from .dat
     static constexpr double match_tolerance_keV = 5.0;
+
 
     SET_LOGGER("MarleySimulator");
 };
