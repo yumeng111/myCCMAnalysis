@@ -1,8 +1,9 @@
 import siren
 from siren import utilities
 import numpy as np
+import traceback
 from icecube import icetray, dataclasses
-from icecube.icetray import I3ConditionalModule
+from icecube.icetray import I3ConditionalModule, logging
 
 
 def siren_primary_to_i3_particle(record):
@@ -112,13 +113,18 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
         self.primary_type = siren.dataclasses.Particle.ParticleType.NuE
 
         # Load Marley process
-        self.primary_processes, self.secondary_processes = (
-            siren.resources.load_processes(
-                "MarleyCrossSection",
-                primary_types=[self.primary_type],
-                process_types=["CC"],
+        try:
+            self.primary_processes, self.secondary_processes = (
+                siren.resources.load_processes(
+                    "MarleyCrossSection",
+                    primary_types=[self.primary_type],
+                    process_types=["CC"],
+                )
             )
-        )
+        except Exception as e:
+            logging.log_info("Caught exception when loading MarleyCrossSection siren process")
+            logging.log_info(traceback.format_exc())
+            logging.log_fatal(e.what())
 
         # Primary distributions
         self.mass_ddist = siren.distributions.PrimaryMass(0)  # mass
