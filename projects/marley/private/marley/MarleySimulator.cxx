@@ -76,8 +76,17 @@ void MarleySimulator::Configure() {
     // Call the config.create_generator function to get a marley::Generator object
     marley_generator_ = config.create_generator();
 
-    //Loads and saves all the info of levels and transitions for K40
-    this->LoadK40Transitions("/users/marisolc/workspaces/CCM2/sources/marley/data/structure/K.dat"); //need TO DO a generic path
+    //Loads all the info of levels and transitions for K40
+    //This works for the version with MARLEY-SIREN-CCMAnalysis shared framework
+    //The data files are in local/share/marley/structure
+    const char* marley_path = std::getenv("MARLEY_SEARCH_PATH");
+    if (!marley_path) {
+        log_fatal("MARLEY_SEARCH_PATH is not set! Cannot load K.dat.");
+    }
+
+    std::string k40_file = std::string(marley_path) + "/structure/K.dat";
+    log_info("Loading K40 transitions from: %s", k40_file.c_str());
+    this->LoadK40Transitions(k40_file);
 }
 
 void MarleySimulator::Simulation(I3FramePtr frame) {
@@ -259,7 +268,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
                 lvl.level_index = static_cast<int>(levels_temp.size());
                 lvl.energy_keV = energy_MeV * 1e3;
                 lvl.spin = spin_times_two / 2.0;
-                lvl.parity = (parity_sign == "+") ? +1 : -1; //I don't like this logic (??)
+                lvl.parity = (parity_sign == "+") ? +1 : -1;
 
                 lvl.T12_ns = 0.0; //half life time
                 lvl.tau_ns = 0.0; //mean life time
