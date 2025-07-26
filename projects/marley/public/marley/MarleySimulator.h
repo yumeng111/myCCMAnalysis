@@ -1,12 +1,16 @@
 #ifndef MARLEY_SIMULATOR_H
 #define MARLEY_SIMULATOR_H
 
-#include <icetray/I3ConditionalModule.h>
-#include <icetray/I3Frame.h>
-#include "phys-services/I3RandomService.h"
-
 #include <string>
 #include <vector>
+
+#include <marley/Generator.hh>
+
+#include "icetray/I3Frame.h"
+#include "icetray/I3ConditionalModule.h"
+#include "dataclasses/physics/I3MCTree.h"
+#include "phys-services/I3RandomService.h"
+
 
 struct NuclearCascadeStep {
     int initial_level_index;
@@ -47,11 +51,6 @@ struct LevelInfo {
 };
 
 
-// Marley forward-declaration
-namespace marley {
-    class Generator;
-}
-
 class MarleySimulator : public I3ConditionalModule {
 public:
     MarleySimulator(const I3Context& context);
@@ -82,8 +81,11 @@ private:
 
     size_t frames_with_cascade = 0;
     size_t frames_with_metastable = 0;
-    size_t frames_in_total =0;
+    size_t frames_in_total = 0;
     std::vector<double> metastable_energy_diffs;
+
+    // Tolerance for matching energy sums from marley to real levels real levels from .dat
+    static constexpr double match_tolerance_keV = 5.0;
 
     SET_LOGGER("MarleySimulator");
 };

@@ -8,16 +8,14 @@
 #include "dataclasses/I3Double.h"
 #include "dataclasses/I3Int32.h"
 #include "dataclasses/physics/I3MCTree.h"
-#include "dataclasses/physics/I3Particle.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
+#include "dataclasses/physics/I3Particle.h"
 
 #include "icetray/I3Frame.h"
-#include "icetray/I3Units.h"
 #include "icetray/I3Module.h"
 #include "icetray/I3ConditionalModule.h"
 #include "icetray/I3Logging.h"
 #include "icetray/IcetrayFwd.h"
-#include "icetray/I3FrameObject.h"
 #include "icetray/I3Bool.h"
 
 #include "phys-services/I3RandomService.h"
@@ -108,48 +106,42 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
 
     //The script crashes if the tree does not exist
     if (!inputMCTree) {
-    log_warn("Input I3MCTree not found in frame!");
-    PushFrame(frame);
-    return;
-}
+        log_warn("Input I3MCTree not found in frame!");
+        PushFrame(frame);
+        return;
+    }
 
     // look for the primary particle in the input I3MCTree
-    I3Particle neutrino;
-    bool found_neutrino = false;
+    std::vector<I3Particle const *> primaries = I3MCTreeUtils::GetPrimariesPtr(inputMCTree);
 
-    // Iterate over all the particles in the tree
-    for (auto iter = inputMCTree->begin(); iter != inputMCTree->end(); ++iter) {
-        // If the particle does not have parent, is primary
-        if(not inputMCTree->parent(*iter)) {
-            neutrino = *iter;  // Save the primary particle
-            found_neutrino = true;
-            break;
-        }
-    }
-    if(not found_neutrino) {
+    if(primaries.size() == 0 or (primaries.size() == 1 and not primaries[0]->IsNeutrino())) {
         log_warn("Neutrino not found in input tree");
         I3MCTreePtr outputMCTree = boost::make_shared<I3MCTree>(*inputMCTree);
         frame->Put(output_mc_tree_name_, outputMCTree);
         PushFrame(frame);
         return;
+    } else if(primaries.size() > 1) {
+        log_fatal("Found more than one primary in the tree: %s", input_mc_tree_name_.c_str());
     }
 
-    frames_in_total++; //Count how many frames have Marley events
+    I3Particle const * neutrino = primaries.at(0);
+
+    ++frames_in_total; //Count how many frames have Marley events
 
     //Pass the parameters to marley_generator_.create_event()
-    int pdg_a = neutrino.GetPdgEncoding();
-    double KEa = neutrino.GetEnergy() * 1000.0;  // Energy in MeV (it was in GeV in the input Tree)
-    int pdg_atom = 1000180400;  //  40Ar
-    std::array<double, 3> dir_vec = { neutrino.GetDir().GetX(),
-                                      neutrino.GetDir().GetY(),
-                                      neutrino.GetDir().GetZ() };
+    int pdg_a = neutrino->GetPdgEncoding();
+    double KEa = neutrino->GetEnergy() / I3Units::MeV;  // Energy in MeV (it was in GeV in the input Tree)
+    int pdg_atom = I3Particle::ParticleType::K40Nucleus;
+    std::array<double, 3> dir_vec = { neutrino->GetDir().GetX(),
+                                      neutrino->GetDir().GetY(),
+                                      neutrino->GetDir().GetZ() };
 
     // Call the function create_event from marley generator
     marley::Event ev = marley_generator_.create_event(pdg_a, KEa, pdg_atom, dir_vec);
 
     //Create a new I3MCTree to add the particles from Marley event
     I3MCTreePtr outputMCTree = boost::make_shared<I3MCTree>(*inputMCTree);
-    outputMCTree->erase_children(neutrino.GetID());
+    outputMCTree->erase_children(neutrino->GetID());
 
     //Put particles from Marley into output tree
     //
@@ -161,12 +153,10 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
         double total_energy = fp->total_energy();
         double mass = fp->mass();
         double kinetic_energy = total_energy - mass;
-        p.SetEnergy(kinetic_energy*1.0e-3); //kinetic_energy is in MeV. The energies in the tree are in GeV
+        p.SetEnergy(kinetic_energy * I3Units::MeV); //kinetic_energy is in MeV. The energies in the tree are in GeV
 
         //Set the position of the interaction using the initial neutrino position, direction and length
-        p.SetPos(neutrino.GetPos() + (neutrino.GetLength() * neutrino.GetDir()));
-        //if (p.pdg_code() == 11) { //electron
-        //    p.SetPos(neutrino.GetPos() + (neutrino.GetLength() * neutrino.GetDir()));
+        p.SetPos(neutrino->GetStopPos());
 
         //Calculate the Direction using the momentum
         double px = fp->px();
@@ -176,16 +166,14 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
 
         double dirx = px / magnitude;
         double diry = py / magnitude;
-        double dirz = pz /magnitude;
+        double dirz = pz / magnitude;
 
         p.SetDir(dirx, diry, dirz);
 
-        //Calculate the time when the neutrino arrives. This will be the start time for p
-        const double c = 3.0e8;
-        p.SetTime((neutrino.GetTime() + neutrino.GetLength() /c)*1.0e9 ); //time in s. Time in tree in ns
+        p.SetTime(neutrino->GetStopTime());
 
         // Add the particle as daughter of the primary neutrino in the output tree
-        outputMCTree->append_child(neutrino, p);
+        outputMCTree->append_child(*neutrino, p);
     }
 
 
@@ -460,7 +448,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         */
 
         //Then look for interactions with K40
-        if (particle.GetPdgEncoding() == 1000190400) { // K40
+        if (particle.GetType() == I3Particle::ParticleType::K40Nucleus) {
 
             //Add a flag for K40 events
             has_k40 = true;
@@ -497,9 +485,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
             //First we need to reconstruct the cascade
 
             log_info("=== Begin reconstructing gamma cascade ===");
-
-            // Tolerance for matching energy sums from marley to real levels real levels from .dat
-            const double match_tolerance_keV = 5.0;
 
             // Gammas from Marley in the I3MCTree are in order of production
             // We need to reverse order, to start from the last gamma produced
@@ -836,7 +821,7 @@ double MarleySimulator::SampleDelay(double mean_lifetime_ns) {
         return 0.0;
 
     double u = rng_->Uniform(0.0, 1.0);
-    return -mean_lifetime_ns * std::log(1.0 - u);
+    return -mean_lifetime_ns * std::log1p(-u);
 }
 
 
