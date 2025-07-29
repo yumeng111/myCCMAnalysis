@@ -47,6 +47,8 @@ MarleySimulator::MarleySimulator(const I3Context& context) : I3ConditionalModule
                  "True: applies time offsets to gamma rays from nuclear cascade. "
                  "False: leaves gamma times untouched.",
                  true);
+        AddParameter("SaveLevelsFile", "Name of file to which level information will be saved. An empty string (default)"
+                                       "will prevent the file from being produced.", std::string(""));
     }
 
 void MarleySimulator::Configure() {
@@ -61,6 +63,9 @@ void MarleySimulator::Configure() {
 
     GetParameter("EnableGammaTimeOffset", enable_gamma_time_offset_);
     log_info("EnableGammaTimeOffset = %s", enable_gamma_time_offset_ ? "True" : "False");
+
+    AddParameter("SaveLevelsFile", levels_filename_);
+    save_levels_file_ = levels_filename_ != std::string("");
 
     setenv("MARLEY", "", 0);
     setenv("MARLEY_SEARCH_PATH", marley_search_path_.c_str(), 0);
@@ -377,47 +382,49 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
     //Finally we can write all the levels and transitions into a file for reference
     // Write all levels and transitions to a file for reference
-    std::ofstream outfile("K40_levels_and_transitions.txt");
-    if (!outfile.is_open()) {
-        log_error("Could not open output file K40_levels_and_transitions.txt");
-        return;
-    }
-
-    outfile << "# K40 Nuclear Levels and Transitions\n";
-    outfile << "# =================================\n\n";
-
-    outfile << "# ENERGY LEVELS (in keV)\n";
-    for (LevelInfo const & lvl : levels_map_) {
-        outfile << "Level[" << lvl.level_index << "] "
-                << lvl.energy_keV << " keV, "
-                << "J=" << lvl.spin
-                << ((lvl.parity > 0) ? "+" : "-");
-
-        if (lvl.T12_ns > 0.0) {
-            outfile << ", T1/2=" << lvl.T12_ns << " ns";
+    if(save_levels_file_) {
+        std::ofstream outfile(levels_filename_);
+        if (!outfile.is_open()) {
+            log_error("Could not open output file %s", levels_filename_.c_str());
+            return;
         }
 
-        outfile << "\n";
-    }
+        outfile << "# K40 Nuclear Levels and Transitions\n";
+        outfile << "# =================================\n\n";
 
-    outfile << "\n# TRANSITIONS\n";
-    for (LevelInfo const & lvl : levels_map_) {
-        for (const auto& t : lvl.transitions) {
-            const LevelInfo& lvl_final = levels_map_.at(t.final_level_index);
-            outfile << "Transition: "
-                    << "[" << lvl.level_index << "] "
-                    << lvl.energy_keV << " keV → "
-                    << "[" << lvl_final.level_index << "] "
-                    << lvl_final.energy_keV << " keV, "
-                    << "Gamma = " << t.gamma_energy_keV << " keV, "
-                    << "BR = " << t.branching_ratio
-                    << "\n";
+        outfile << "# ENERGY LEVELS (in keV)\n";
+        for (LevelInfo const & lvl : levels_map_) {
+            outfile << "Level[" << lvl.level_index << "] "
+                    << lvl.energy_keV << " keV, "
+                    << "J=" << lvl.spin
+                    << ((lvl.parity > 0) ? "+" : "-");
+
+            if (lvl.T12_ns > 0.0) {
+                outfile << ", T1/2=" << lvl.T12_ns << " ns";
+            }
+
+            outfile << "\n";
         }
-    }
 
-    outfile.close();
-    log_info("K40 levels and transitions written to K40_levels_and_transitions.txt");
-    log_info("Loaded %zu levels and %zu transitions.", levels_map_.size(), total_transitions);
+        outfile << "\n# TRANSITIONS\n";
+        for (LevelInfo const & lvl : levels_map_) {
+            for (const auto& t : lvl.transitions) {
+                const LevelInfo& lvl_final = levels_map_.at(t.final_level_index);
+                outfile << "Transition: "
+                        << "[" << lvl.level_index << "] "
+                        << lvl.energy_keV << " keV → "
+                        << "[" << lvl_final.level_index << "] "
+                        << lvl_final.energy_keV << " keV, "
+                        << "Gamma = " << t.gamma_energy_keV << " keV, "
+                        << "BR = " << t.branching_ratio
+                        << "\n";
+            }
+        }
+
+        outfile.close();
+        log_info("K40 levels and transitions written to %s", levels_filename_.c_str());
+        log_info("Loaded %zu levels and %zu transitions.", levels_map_.size(), total_transitions);
+    }
 
 }
 

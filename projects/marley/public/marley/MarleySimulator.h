@@ -76,6 +76,8 @@ private:
     marley::Generator marley_generator_;
 
     bool enable_gamma_time_offset_;
+    bool save_levels_file_;
+    std::string levels_filename_;
     LevelInfo & ClosestLevel(std::vector<LevelInfo> & levels, double energy);
     void LoadK40Transitions(const std::string& filename);
     void AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame);
