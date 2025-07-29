@@ -64,7 +64,7 @@ void MarleySimulator::Configure() {
     GetParameter("EnableGammaTimeOffset", enable_gamma_time_offset_);
     log_debug("EnableGammaTimeOffset = %s", enable_gamma_time_offset_ ? "True" : "False");
 
-    AddParameter("SaveLevelsFile", levels_filename_);
+    GetParameter("SaveLevelsFile", levels_filename_);
     save_levels_file_ = levels_filename_ != std::string("");
 
     setenv("MARLEY", "", 0);
