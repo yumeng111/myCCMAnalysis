@@ -136,7 +136,7 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
     //Pass the parameters to marley_generator_.create_event()
     int pdg_a = neutrino->GetPdgEncoding();
     double KEa = neutrino->GetEnergy() / I3Units::MeV;  // Energy in MeV (it was in GeV in the input Tree)
-    int pdg_atom = I3Particle::ParticleType::K40Nucleus;
+    int pdg_atom = I3Particle::ParticleType::Ar40Nucleus;
     std::array<double, 3> dir_vec = { neutrino->GetDir().GetX(),
                                       neutrino->GetDir().GetY(),
                                       neutrino->GetDir().GetZ() };
