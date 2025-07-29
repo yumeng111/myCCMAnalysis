@@ -252,7 +252,7 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
             particle = siren_primary_to_i3_particle(record)
             tree.add_primary(particle)
             secondaries.extend(
-                [(particle, record, i) for i in range(record.secondary_ids)]
+                [(particle, record, i) for i in range(len(record.secondary_ids))]
             )
 
         while len(secondaries) > 0:
@@ -269,7 +269,7 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
                 secondaries.extend(
                     [
                         (secondary_particle, secondary_record, i)
-                        for i in range(secondary_record.secondary_ids)
+                        for i in range(len(secondary_record.secondary_ids))
                     ]
                 )
 
