@@ -58,11 +58,11 @@ void MarleySimulator::Configure() {
 
     int random_seed;
     GetParameter("RandomSeed",random_seed);
-    log_info("Using random seed for Sample Delay in gamma times = %d", random_seed);
+    log_debug("Using random seed for Sample Delay in gamma times = %d", random_seed);
     rng_ = boost::make_shared<I3GSLRandomService>(random_seed);
 
     GetParameter("EnableGammaTimeOffset", enable_gamma_time_offset_);
-    log_info("EnableGammaTimeOffset = %s", enable_gamma_time_offset_ ? "True" : "False");
+    log_debug("EnableGammaTimeOffset = %s", enable_gamma_time_offset_ ? "True" : "False");
 
     AddParameter("SaveLevelsFile", levels_filename_);
     save_levels_file_ = levels_filename_ != std::string("");
@@ -88,7 +88,7 @@ void MarleySimulator::Configure() {
     }
 
     std::string k40_file = std::string(marley_path) + "/structure/K.dat";
-    log_info("Loading K40 transitions from: %s", k40_file.c_str());
+    log_debug("Loading K40 transitions from: %s", k40_file.c_str());
     this->LoadK40Transitions(k40_file);
 }
 
@@ -249,10 +249,10 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
         if (line_stream >> Z >> A >> num_levels){
             if(Z == 19 && A == 40) {
                 inside_K40_block = true;
-                log_info("Found start of the K40 block: Z=%d A=%d N=%d", Z, A, num_levels);
+                log_debug("Found start of the K40 block: Z=%d A=%d N=%d", Z, A, num_levels);
             }else if (inside_K40_block){
                 inside_K40_block = false;
-                log_info("Exiting block");
+                log_debug("Exiting block");
             }
             continue;
         }
@@ -268,7 +268,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
                 std::string parity_sign = match[3];
                 int num_transitions = std::stoi(match[4]);
 
-                log_info("Found level: %.5f MeV with %d gammas", energy_MeV, num_transitions);
+                log_debug("Found level: %.5f MeV with %d gammas", energy_MeV, num_transitions);
 
                 //Then save the info:
                 LevelInfo lvl;
@@ -311,7 +311,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
     // Copy levels_temp into levels_map_
     levels_map_ = levels_temp;
-    log_info("Loaded %zu K-40 levels.", levels_map_.size());
+    log_debug("Loaded %zu K-40 levels.", levels_map_.size());
     // There are only 3 levels that will add a significant T1/2
     // All the other levels are of the order of pico or femto seconds
     // Manually set T1/2 where known from ENSDF
@@ -320,21 +320,21 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
     LevelInfo & level_15 = ClosestLevel(levels_map_, 2542.79 * I3Units::keV);
     level_15.T12_ns = 1.09; //from www.nndc.bnl.gov/
     level_15.tau_ns = level_15.T12_ns / std::log(2.0);
-    log_info("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns) ",
+    log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns) ",
              level_15.level_index, level_15.energy_keV, level_15.T12_ns, level_15.tau_ns);
 
     // Level n = 4 (1643.64 keV)
     LevelInfo & level_4 = ClosestLevel(levels_map_, 1643.64 * I3Units::keV);
     level_4.T12_ns = 336.0; //from www.nndc.bnl.gov/
     level_4.tau_ns = level_4.T12_ns / std::log(2.0);
-    log_info("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
+    log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
              level_4.level_index, level_4.energy_keV, level_4.T12_ns, level_4.tau_ns);
 
     // Level n = 1  (29.83 keV)
     LevelInfo & level_1 = ClosestLevel(levels_map_, 29.8299 * I3Units::keV);
     level_1.T12_ns = 4.25; //from www.nndc.bnl.gov/
     level_1.tau_ns = level_1.T12_ns / std::log(2.0);
-    log_info("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
+    log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
              level_1.level_index, level_1.energy_keV, level_1.T12_ns, level_1.tau_ns);
 
     // Check that everything is ok for the first levels
@@ -343,7 +343,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
         const LevelInfo& lvl = levels_map_[i];
         std::string parity_init = (lvl.parity > 0) ? "+" : "-";
 
-        log_info("Level [%d]: %.3f keV, spin %.1f%s, T1/2 = %.3f ns",
+        log_debug("Level [%d]: %.3f keV, spin %.1f%s, T1/2 = %.3f ns",
                  lvl.level_index,
                  lvl.energy_keV,
                  lvl.spin,
@@ -354,7 +354,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
             const LevelInfo& lvl_final = levels_map_[t.final_level_index];
             std::string parity_final = (lvl_final.parity > 0) ? "+" : "-";
 
-            log_info("   Transition: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | Gamma = %.3f keV | BR = %.5f",
+            log_debug("   Transition: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | Gamma = %.3f keV | BR = %.5f",
                      lvl.level_index,
                      lvl.energy_keV,
                      lvl.spin,
@@ -375,9 +375,9 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
         total_transitions += level.transitions.size();
     }
 
-    log_info("Finished reading K40.dat");
-    log_info("Total number of levels parsed: %zu", levels_map_.size());
-    log_info("Total number of transitions parsed: %zu", total_transitions);
+    log_debug("Finished reading K40.dat");
+    log_debug("Total number of levels parsed: %zu", levels_map_.size());
+    log_debug("Total number of transitions parsed: %zu", total_transitions);
 
 
     //Finally we can write all the levels and transitions into a file for reference
@@ -422,8 +422,8 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
         }
 
         outfile.close();
-        log_info("K40 levels and transitions written to %s", levels_filename_.c_str());
-        log_info("Loaded %zu levels and %zu transitions.", levels_map_.size(), total_transitions);
+        log_debug("K40 levels and transitions written to %s", levels_filename_.c_str());
+        log_debug("Loaded %zu levels and %zu transitions.", levels_map_.size(), total_transitions);
     }
 
 }
@@ -522,7 +522,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
         cascade_steps.at(i) = step;
 
-        log_info("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Sampled delay = %.3f ns",
+        log_debug("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Sampled delay = %.3f ns",
                 step.initial_level_index,
                 step.initial_level_energy_keV,
                 step.initial_level_spin,
@@ -547,7 +547,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         step.cumulative_time_ns = cumulative_time_ns;
         double new_time = g->GetTime() + cumulative_time_ns;
         g->SetTime(new_time);
-        log_info("Gamma energy %.3f keV assigned new time %.3f ns "
+        log_debug("Gamma energy %.3f keV assigned new time %.3f ns "
                 "(cumulative delay %.3f ns)",
                 g->GetEnergy() / I3Units::keV,
                 new_time,
@@ -604,7 +604,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         metastable_energy_diff = highest_level_energy - metastable_energy;
         metastable_energy_diffs.push_back(metastable_energy_diff);
 
-        log_info("Frame with metastable level. Energy diff from highest level = %.3f keV",
+        log_debug("Frame with metastable level. Energy diff from highest level = %.3f keV",
                 metastable_energy_diff);
     }
     // Saves in the frame if has metastable level n the cascade
@@ -616,8 +616,8 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
 
     frame->Put("MarleyGammaCascadeInfo", cascade_info);
-    log_info("Stored MarleyGammaCascadeInfo in frame.");
-    log_info("=== Finished reconstructing gamma cascade ===");
+    log_debug("Stored MarleyGammaCascadeInfo in frame.");
+    log_debug("=== Finished reconstructing gamma cascade ===");
 
     //Save other important variables for analysis
 
@@ -656,18 +656,18 @@ void MarleySimulator::FillSimulationFrame(I3FramePtr frame) {
 }
 
 void MarleySimulator::Finish(){
-    log_info("====== MARLEY SIMULATOR SUMMARY ======");
-    log_info("Frames with Marley Events: %zu", frames_in_total);
-    log_info("Frames with MarleyGammaCascadeInfo: %zu", frames_with_cascade);
-    log_info("Frames passing through metastable level [n=4] (1.64364 MeV): %zu", frames_with_metastable);
+    log_debug("====== MARLEY SIMULATOR SUMMARY ======");
+    log_debug("Frames with Marley Events: %zu", frames_in_total);
+    log_debug("Frames with MarleyGammaCascadeInfo: %zu", frames_with_cascade);
+    log_debug("Frames passing through metastable level [n=4] (1.64364 MeV): %zu", frames_with_metastable);
 
     //I want to check if the E of these prompt gamma is around 2.74 MeV as with the solar neutrinos
     if (!metastable_energy_diffs.empty()) {
         double sum = 0.0;
         for (auto x : metastable_energy_diffs) sum += x;
         double mean_diff = sum / metastable_energy_diffs.size();
-        log_info("Average energy difference to metastable level: %.3f keV", mean_diff);
+        log_debug("Average energy difference to metastable level: %.3f keV", mean_diff);
     }
 
-    log_info("=======================================");
+    log_debug("=======================================");
 }
