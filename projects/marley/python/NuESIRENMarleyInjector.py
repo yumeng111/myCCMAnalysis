@@ -71,6 +71,11 @@ def siren_secondary_to_i3_particle(primary_particle, record, index):
 
     momentum = np.array(record.secondary_momenta[index][1:])
     momentum_magnitude = np.sqrt(np.sum(momentum**2))
+
+    if momentum_magnitude == 0:
+        print("Skipping event due to zero momentum vector:", momentum)
+        return
+
     direction = momentum / momentum_magnitude
     kinetic_energy = energy - mass
 
