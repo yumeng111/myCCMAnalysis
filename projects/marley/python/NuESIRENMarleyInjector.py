@@ -5,6 +5,13 @@ import traceback
 from icecube import icetray, dataclasses
 from icecube.icetray import I3ConditionalModule, logging
 
+if siren.dataclasses.ParticleID.__hash__ is None:
+
+    def pid_hash(self):
+        return hash((self.is_set(), self.major_id, self.minor_id))
+
+    siren.dataclasses.ParticleID.__hash__ = pid_hash
+
 
 def siren_primary_to_i3_particle(record):
     particle = dataclasses.I3Particle()  # Create a particle object
@@ -122,7 +129,9 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
                 )
             )
         except Exception as e:
-            logging.log_info("Caught exception when loading MarleyCrossSection siren process")
+            logging.log_info(
+                "Caught exception when loading MarleyCrossSection siren process"
+            )
             logging.log_info(traceback.format_exc())
             logging.log_fatal(e.what())
 
