@@ -77,12 +77,29 @@ void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
         I3Position direction(0, 0, 0);
         double time = 0.0;
 
+        std::map<I3Particle::ParticleType, double> type_vote;
+
         for(I3Particle const & p : losses) {
             double const & e = p.GetEnergy();
             position += p.GetPos() * e;
             direction += p.GetDir() * e;
             time += p.GetTime() * e;
+            std::map<I3Particle::ParticleType, double>::iterator it = type_vote.find(p.GetType());
+            if(it == type_vote.end()) {
+                it = std::get<0>(type_vote.insert(std::make_pair(p.GetType(), 0.0)));
+            }
+            it->second += e;
         }
+
+        using pair_type = std::pair<I3Particle::ParticleType const, double>;
+
+        I3Particle::ParticleType max_type = std::max_element(
+            std::begin(type_vote),
+            std::end(type_vote),
+            [] (pair_type const & p1, pair_type const & p2) {
+                return p1.second < p2.second;
+            }
+        )->first;
 
         position /= total_energy;
         direction /= total_energy;
@@ -92,6 +109,7 @@ void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
         daughter.SetPos(position);
         daughter.SetDir(I3Direction(direction));
         daughter.SetTime(time);
+        daughter.SetType(max_type);
 
         I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
     }
@@ -629,8 +647,10 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 std::tuple<double, std::vector<I3Particle>> & sub_losses = sub_loss_it->second;
                 double & total_energy = std::get<0>(sub_losses);
                 std::vector<I3Particle> & losses = std::get<1>(sub_losses);
+                std::map<I3Particle::ParticleType, double> type_vote;
                 total_energy += edep;
                 if(total_energy > G4EDepMin_) {
+                    type_vote.insert(std::make_pair(daughter.GetType(), edep));
                     position = position * edep;
                     direction *= edep;
                     time *= edep;
@@ -640,10 +660,25 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                         direction += p.GetDir() * e;
                         time += p.GetTime() * e;
                         length += p.GetLength();
+                        std::map<I3Particle::ParticleType, double>::iterator it = type_vote.find(p.GetType());
+                        if(it == type_vote.end()) {
+                            it = std::get<0>(type_vote.insert(std::make_pair(p.GetType(), 0.0)));
+                        }
+                        it->second += e;
                     }
                     position /= total_energy;
                     direction /= total_energy;
                     time /= total_energy;
+
+                    using pair_type = std::pair<I3Particle::ParticleType const, double>;
+
+                    I3Particle::ParticleType max_type = std::max_element(
+                        std::begin(type_vote),
+                        std::end(type_vote),
+                        [] (pair_type const & p1, pair_type const & p2) {
+                            return p1.second < p2.second;
+                        }
+                    )->first;
 
                     // ok we have a valid energy deposition -- let's add it to the tree
                     daughter.SetEnergy(total_energy);
@@ -651,6 +686,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                     daughter.SetDir(I3Direction(direction));
                     daughter.SetTime(time);
                     daughter.SetLength(length);
+                    daughter.SetType(max_type);
                     I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
                     total_energy = 0.0;
                     losses.clear();
