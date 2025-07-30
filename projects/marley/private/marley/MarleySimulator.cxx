@@ -67,8 +67,27 @@ void MarleySimulator::Configure() {
     GetParameter("SaveLevelsFile", levels_filename_);
     save_levels_file_ = levels_filename_ != std::string("");
 
-    setenv("MARLEY", "", 0);
-    setenv("MARLEY_SEARCH_PATH", marley_search_path_.c_str(), 0);
+    if(FileManager_::get_search_path().empty()) {
+        setenv("MARLEY", "", 0);
+        if(marley_search_path_.empty()) {
+            const char* marley_path = std::getenv("MARLEY_SEARCH_PATH");
+            if (!marley_path) {
+                log_fatal("MARLEY_SEARCH_PATH is not set and marley_search_path_ is empty! Cannot load K.dat.");
+            }
+        marley_search_path_ = marley_path;
+        } else {
+            setenv("MARLEY_SEARCH_PATH", marley_search_path_.c_str(), 0);
+        }
+        marley::FileManager::Instance();
+        FileManager_::set_search_path(marley_search_path_);
+    }
+    if(marley_search_path_.empty()) {
+        const char* marley_path = std::getenv("MARLEY_SEARCH_PATH");
+        if (!marley_path) {
+            log_fatal("MARLEY_SEARCH_PATH is not set and marley_search_path_ is empty! Cannot load K.dat.");
+        }
+        marley_search_path_ = marley_path;
+    }
 
     // String that contains the contents of the config file (from examples/config/annotated.js, we only will need the reaction, in this case ve40arCC, but there are more.)
     std::string marley_config = R"({reactions: ["ve40ArCC_Bhattacharya2009.react"]})";
@@ -82,13 +101,11 @@ void MarleySimulator::Configure() {
     //Loads all the info of levels and transitions for K40
     //This works for the version with MARLEY-SIREN-CCMAnalysis shared framework
     //The data files are in local/share/marley/structure
-    const char* marley_path = std::getenv("MARLEY_SEARCH_PATH");
-    if (!marley_path) {
-        log_fatal("MARLEY_SEARCH_PATH is not set! Cannot load K.dat.");
-    }
-
-    std::string k40_file = std::string(marley_path) + "/structure/K.dat";
+    std::string k40_file = marley::FileManager::Instance().find_file("K.dat", marley_search_path_);
     log_debug("Loading K40 transitions from: %s", k40_file.c_str());
+    if(not std::filesystem::exists(k40_file)) {
+        log_fatal("K40 file \"%s\" does not exist!", k40_file.c_str());
+    }
     this->LoadK40Transitions(k40_file);
 }
 
@@ -188,21 +205,21 @@ void MarleySimulator::DAQ(I3FramePtr frame) {
     PushFrame(frame);
 }
 
-LevelInfo & MarleySimulator::ClosestLevel(std::vector<LevelInfo> & levels, double energy) {
+std::vector<LevelInfo>::iterator MarleySimulator::ClosestLevel(std::vector<LevelInfo> & levels, double energy) {
     // high points to the first element that is *not* ordered before the energy
     // i.e. high >= energy
     std::vector<LevelInfo>::iterator high = std::lower_bound(levels.begin(), levels.end(), energy);
     if(high == levels.begin())
-        return levels.front();
+        return levels.begin();
     if(high == levels.end())
-        return levels.back();
+        return levels.begin() + (std::max(levels.size(), size_t(1)) - 1);
     std::vector<LevelInfo>::iterator low = high-1;
     double diff_high = std::abs(high->energy_keV / I3Units::keV - energy);
     double diff_low = std::abs(energy - low->energy_keV / I3Units::keV);
     if(diff_low < diff_high)
-        return *low;
+        return low;
     else
-        return *high;
+        return high;
 }
 
 //This method gets the transitions from the K40.dat file
@@ -317,25 +334,25 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
     // Manually set T1/2 where known from ENSDF
 
     // Level n = 15 (2542.79 keV)
-    LevelInfo & level_15 = ClosestLevel(levels_map_, 2542.79 * I3Units::keV);
-    level_15.T12_ns = 1.09; //from www.nndc.bnl.gov/
-    level_15.tau_ns = level_15.T12_ns / std::log(2.0);
+    std::vector<LevelInfo>::iterator level_15 = ClosestLevel(levels_map_, 2542.79 * I3Units::keV);
+    level_15->T12_ns = 1.09; //from www.nndc.bnl.gov/
+    level_15->tau_ns = level_15->T12_ns / std::log(2.0);
     log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns) ",
-             level_15.level_index, level_15.energy_keV, level_15.T12_ns, level_15.tau_ns);
+             level_15->level_index, level_15->energy_keV, level_15->T12_ns, level_15->tau_ns);
 
     // Level n = 4 (1643.64 keV)
-    LevelInfo & level_4 = ClosestLevel(levels_map_, 1643.64 * I3Units::keV);
-    level_4.T12_ns = 336.0; //from www.nndc.bnl.gov/
-    level_4.tau_ns = level_4.T12_ns / std::log(2.0);
+    std::vector<LevelInfo>::iterator level_4 = ClosestLevel(levels_map_, 1643.64 * I3Units::keV);
+    level_4->T12_ns = 336.0; //from www.nndc.bnl.gov/
+    level_4->tau_ns = level_4->T12_ns / std::log(2.0);
     log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
-             level_4.level_index, level_4.energy_keV, level_4.T12_ns, level_4.tau_ns);
+             level_4->level_index, level_4->energy_keV, level_4->T12_ns, level_4->tau_ns);
 
     // Level n = 1  (29.83 keV)
-    LevelInfo & level_1 = ClosestLevel(levels_map_, 29.8299 * I3Units::keV);
-    level_1.T12_ns = 4.25; //from www.nndc.bnl.gov/
-    level_1.tau_ns = level_1.T12_ns / std::log(2.0);
+    std::vector<LevelInfo>::iterator level_1 = ClosestLevel(levels_map_, 29.8299 * I3Units::keV);
+    level_1->T12_ns = 4.25; //from www.nndc.bnl.gov/
+    level_1->tau_ns = level_1->T12_ns / std::log(2.0);
     log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
-             level_1.level_index, level_1.energy_keV, level_1.T12_ns, level_1.tau_ns);
+             level_1->level_index, level_1->energy_keV, level_1->T12_ns, level_1->tau_ns);
 
     // Check that everything is ok for the first levels
     size_t N = std::min(levels_map_.size(), size_t(5));
@@ -457,7 +474,6 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
     if(not has_K40) {
         frame->Put("HasK40", I3BoolPtr(new I3Bool(has_K40)));
-        PushFrame(frame);
         return;
     }
 
@@ -490,34 +506,34 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
         //Find the matching level in the nuclear levels map
         //Remember the map wad made from the .dat file
-        LevelInfo & final_level = ClosestLevel(levels_map_, running_energy);
+        std::vector<LevelInfo>::iterator final_level = ClosestLevel(levels_map_, running_energy);
         running_energy += gamma_energy;
-        LevelInfo & initial_level = ClosestLevel(levels_map_, running_energy);
+        std::vector<LevelInfo>::iterator initial_level = ClosestLevel(levels_map_, running_energy);
 
         // Update the runnning energy for the next step
-        running_energy = initial_level.energy_keV * I3Units::keV;
+        running_energy = initial_level->energy_keV * I3Units::keV;
 
         // Sample delay with SampleDelay function if level has lifetime > ns
         double delay_ns = 0.0;
-        if(initial_level.tau_ns > 0.0) {
-            delay_ns = SampleDelay(initial_level.tau_ns);
+        if(initial_level->tau_ns > 0.0) {
+            delay_ns = SampleDelay(initial_level->tau_ns);
         }
 
         //And save the step in the cascade
         NuclearCascadeStep step;
-        step.initial_level_index = initial_level.level_index;
-        step.initial_level_energy_keV = initial_level.energy_keV;
-        step.initial_level_spin = initial_level.spin;
-        step.initial_level_parity = initial_level.parity;
+        step.initial_level_index = initial_level->level_index;
+        step.initial_level_energy_keV = initial_level->energy_keV;
+        step.initial_level_spin = initial_level->spin;
+        step.initial_level_parity = initial_level->parity;
 
-        step.final_level_index = final_level.level_index;
-        step.final_level_energy_keV = final_level.energy_keV;
-        step.final_level_spin = final_level.spin;
-        step.final_level_parity = final_level.parity;
+        step.final_level_index = final_level->level_index;
+        step.final_level_energy_keV = final_level->energy_keV;
+        step.final_level_spin = final_level->spin;
+        step.final_level_parity = final_level->parity;
 
         step.gamma_energy_keV = gamma_energy;
-        step.T12_ns = initial_level.T12_ns;
-        step.tau_ns = initial_level.tau_ns;
+        step.T12_ns = initial_level->T12_ns;
+        step.tau_ns = initial_level->tau_ns;
         step.sampled_delay_ns = delay_ns;
 
         cascade_steps.at(i) = step;

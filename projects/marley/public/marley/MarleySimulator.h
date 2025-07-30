@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <marley/Generator.hh>
+#include <marley/FileManager.hh>
 
 #include "icetray/I3Frame.h"
 #include "icetray/I3ConditionalModule.h"
@@ -56,6 +57,24 @@ struct LevelInfo {
 };
 
 
+class FileManager_ : public ::marley::FileManager {
+friend class MarleySimulator;
+    static std::string get_search_path() {
+        return ::marley::FileManager::default_search_path_;
+    }
+    static void set_search_path(std::string const & search_path) {
+        ::marley::FileManager::default_search_path_ = search_path;
+    }
+    static void set_marley_path(std::string const & marley_path) {
+        std::string default_search_path;
+        default_search_path = marley_path + "/data";
+        default_search_path += ':' + marley_path + "/data/react";
+        default_search_path += ':' + marley_path + "/data/structure";
+        set_search_path(default_search_path);
+    }
+};
+
+
 class MarleySimulator : public I3ConditionalModule {
 public:
     MarleySimulator(const I3Context& context);
@@ -78,7 +97,7 @@ private:
     bool enable_gamma_time_offset_;
     bool save_levels_file_;
     std::string levels_filename_;
-    LevelInfo & ClosestLevel(std::vector<LevelInfo> & levels, double energy);
+    std::vector<LevelInfo>::iterator ClosestLevel(std::vector<LevelInfo> & levels, double energy);
     void LoadK40Transitions(const std::string& filename);
     void AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame);
 
