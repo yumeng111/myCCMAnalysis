@@ -31,6 +31,7 @@
 #include <cmath> //math functions
 #include <random> //for the seed
 #include <exception>
+#include <filesystem>
 
 I3_MODULE(MarleySimulator);
 
