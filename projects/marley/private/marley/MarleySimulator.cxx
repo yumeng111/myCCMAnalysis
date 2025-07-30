@@ -210,17 +210,29 @@ std::vector<LevelInfo>::iterator MarleySimulator::ClosestLevel(std::vector<Level
     // high points to the first element that is *not* ordered before the energy
     // i.e. high >= energy
     std::vector<LevelInfo>::iterator high = std::lower_bound(levels.begin(), levels.end(), energy);
-    if(high == levels.begin())
+    if(high == levels.begin()) {
+        log_info("Hit begin");
+        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), levels.begin()));
         return levels.begin();
-    if(high == levels.end())
-        return levels.begin() + (std::max(levels.size(), size_t(1)) - 1);
+    }
+    if(high == levels.end()) {
+        log_info("Hit end");
+        auto it = levels.begin() + (std::max(levels.size(), size_t(1)) - 1);
+        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), it));
+        return it;
+    }
     std::vector<LevelInfo>::iterator low = high-1;
-    double diff_high = std::abs(high->energy_keV / I3Units::keV - energy);
-    double diff_low = std::abs(energy - low->energy_keV / I3Units::keV);
-    if(diff_low < diff_high)
+    double diff_high = std::abs(high->energy - energy);
+    double diff_low = std::abs(energy - low->energy);
+    if(diff_low < diff_high) {
+        log_info("Using low");
+        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), low));
         return low;
-    else
+    } else {
+        log_info("Using high");
+        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), high));
         return high;
+    }
 }
 
 //This method gets the transitions from the K40.dat file
@@ -291,7 +303,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
                 //Then save the info:
                 LevelInfo lvl;
                 lvl.level_index = static_cast<int>(levels_temp.size());
-                lvl.energy_keV = energy_MeV * 1e3;
+                lvl.energy = energy_MeV * I3Units::MeV;
                 lvl.spin = spin_times_two / 2.0;
                 lvl.parity = (parity_sign == "+") ? +1 : -1;
 
@@ -315,7 +327,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
                 int final_level_idx = std::stoi(match[3]);  //index of the level of de-excitation (to which it descends)
 
                 LevelInfo::Transition t;
-                t.gamma_energy_keV = E_gamma_MeV * 1e3;
+                t.gamma_energy = E_gamma_MeV * I3Units::MeV;
                 t.branching_ratio = branching_ratio;
                 t.final_level_index = final_level_idx;
 
@@ -339,21 +351,21 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
     level_15->T12_ns = 1.09; //from www.nndc.bnl.gov/
     level_15->tau_ns = level_15->T12_ns / std::log(2.0);
     log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns) ",
-             level_15->level_index, level_15->energy_keV, level_15->T12_ns, level_15->tau_ns);
+             level_15->level_index, level_15->energy / I3Units::keV, level_15->T12_ns, level_15->tau_ns);
 
     // Level n = 4 (1643.64 keV)
     std::vector<LevelInfo>::iterator level_4 = ClosestLevel(levels_map_, 1643.64 * I3Units::keV);
     level_4->T12_ns = 336.0; //from www.nndc.bnl.gov/
     level_4->tau_ns = level_4->T12_ns / std::log(2.0);
     log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
-             level_4->level_index, level_4->energy_keV, level_4->T12_ns, level_4->tau_ns);
+             level_4->level_index, level_4->energy / I3Units::keV, level_4->T12_ns, level_4->tau_ns);
 
     // Level n = 1  (29.83 keV)
     std::vector<LevelInfo>::iterator level_1 = ClosestLevel(levels_map_, 29.8299 * I3Units::keV);
     level_1->T12_ns = 4.25; //from www.nndc.bnl.gov/
     level_1->tau_ns = level_1->T12_ns / std::log(2.0);
     log_debug("Set T1/2 for level %d (%.3f keV) = %.3f ns. Tau = (%.3f ns)",
-             level_1->level_index, level_1->energy_keV, level_1->T12_ns, level_1->tau_ns);
+             level_1->level_index, level_1->energy / I3Units::keV, level_1->T12_ns, level_1->tau_ns);
 
     // Check that everything is ok for the first levels
     size_t N = std::min(levels_map_.size(), size_t(5));
@@ -363,7 +375,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
         log_debug("Level [%d]: %.3f keV, spin %.1f%s, T1/2 = %.3f ns",
                  lvl.level_index,
-                 lvl.energy_keV,
+                 lvl.energy / I3Units::keV,
                  lvl.spin,
                  parity_init.c_str(),
                  lvl.T12_ns);
@@ -374,14 +386,14 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
 
             log_debug("   Transition: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | Gamma = %.3f keV | BR = %.5f",
                      lvl.level_index,
-                     lvl.energy_keV,
+                     lvl.energy / I3Units::keV,
                      lvl.spin,
                      parity_init.c_str(),
                      t.final_level_index,
-                     lvl_final.energy_keV,
+                     lvl_final.energy / I3Units::keV,
                      lvl_final.spin,
                      parity_final.c_str(),
-                     t.gamma_energy_keV,
+                     t.gamma_energy / I3Units::keV,
                      t.branching_ratio);
         }
     }
@@ -413,7 +425,7 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
         outfile << "# ENERGY LEVELS (in keV)\n";
         for (LevelInfo const & lvl : levels_map_) {
             outfile << "Level[" << lvl.level_index << "] "
-                    << lvl.energy_keV << " keV, "
+                    << lvl.energy / I3Units::keV << " keV, "
                     << "J=" << lvl.spin
                     << ((lvl.parity > 0) ? "+" : "-");
 
@@ -430,10 +442,10 @@ void MarleySimulator::LoadK40Transitions(const std::string& filename) {
                 const LevelInfo& lvl_final = levels_map_.at(t.final_level_index);
                 outfile << "Transition: "
                         << "[" << lvl.level_index << "] "
-                        << lvl.energy_keV << " keV → "
+                        << lvl.energy / I3Units::keV << " keV → "
                         << "[" << lvl_final.level_index << "] "
-                        << lvl_final.energy_keV << " keV, "
-                        << "Gamma = " << t.gamma_energy_keV << " keV, "
+                        << lvl_final.energy / I3Units::keV << " keV, "
+                        << "Gamma = " << t.gamma_energy / I3Units::keV << " keV, "
                         << "BR = " << t.branching_ratio
                         << "\n";
             }
@@ -512,7 +524,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         std::vector<LevelInfo>::iterator initial_level = ClosestLevel(levels_map_, running_energy);
 
         // Update the runnning energy for the next step
-        running_energy = initial_level->energy_keV * I3Units::keV;
+        running_energy = initial_level->energy;
 
         // Sample delay with SampleDelay function if level has lifetime > ns
         double delay_ns = 0.0;
@@ -523,16 +535,16 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         //And save the step in the cascade
         NuclearCascadeStep step;
         step.initial_level_index = initial_level->level_index;
-        step.initial_level_energy_keV = initial_level->energy_keV;
+        step.initial_level_energy = initial_level->energy;
         step.initial_level_spin = initial_level->spin;
         step.initial_level_parity = initial_level->parity;
 
         step.final_level_index = final_level->level_index;
-        step.final_level_energy_keV = final_level->energy_keV;
+        step.final_level_energy = final_level->energy;
         step.final_level_spin = final_level->spin;
         step.final_level_parity = final_level->parity;
 
-        step.gamma_energy_keV = gamma_energy;
+        step.gamma_energy = gamma_energy;
         step.T12_ns = initial_level->T12_ns;
         step.tau_ns = initial_level->tau_ns;
         step.sampled_delay_ns = delay_ns;
@@ -541,14 +553,14 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
         log_debug("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Sampled delay = %.3f ns",
                 step.initial_level_index,
-                step.initial_level_energy_keV,
+                step.initial_level_energy / I3Units::keV,
                 step.initial_level_spin,
                 (step.initial_level_parity > 0) ? "+" : "-",
                 step.final_level_index,
-                step.final_level_energy_keV,
+                step.final_level_energy / I3Units::keV,
                 step.final_level_spin,
                 (step.final_level_parity > 0) ? "+" : "-",
-                step.gamma_energy_keV,
+                step.gamma_energy / I3Units::keV,
                 step.sampled_delay_ns
                 );
 
@@ -579,16 +591,16 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
         ss << "Step:\n";
         ss << "  From Level [" << (step.initial_level_index >= 0 ? std::to_string(step.initial_level_index) : "UNKNOWN") << "] "
-            << step.initial_level_energy_keV << " keV, "
+            << step.initial_level_energy / I3Units::keV << " keV, "
             << "J=" << step.initial_level_spin
             << (step.initial_level_parity > 0 ? "+" : "-") << "\n";
 
         ss << "  To Level [" << (step.final_level_index >= 0 ? std::to_string(step.final_level_index) : "UNKNOWN") << "] "
-            << step.final_level_energy_keV << " keV, "
+            << step.final_level_energy / I3Units::keV << " keV, "
             << "J=" << step.final_level_spin
             << (step.final_level_parity > 0 ? "+" : "-") << "\n";
 
-        ss << "  Gamma Energy = " << step.gamma_energy_keV << " keV\n";
+        ss << "  Gamma Energy = " << step.gamma_energy / I3Units::keV << " keV\n";
         ss << "  T1/2 = " << step.T12_ns << " ns\n";
         ss << "  Tau = " << step.tau_ns << " ns\n";
         ss << "  Sampled Delay = " << step.sampled_delay_ns << " ns\n";
@@ -601,7 +613,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     ++frames_with_cascade;
 
     // Save the energy difference if it falls into the meta-stable
-    double highest_level_energy = cascade_steps.front().initial_level_energy_keV;
+    double highest_level_energy = cascade_steps.front().initial_level_energy;
     double metastable_energy_diff = -1.0;
 
     bool has_metastable = false;
@@ -617,12 +629,12 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         ++frames_with_metastable;
 
         // Calculate difference between max E and metastable
-        const double metastable_energy = levels_map_.at(4).energy_keV;
+        const double metastable_energy = levels_map_.at(4).energy;
         metastable_energy_diff = highest_level_energy - metastable_energy;
         metastable_energy_diffs.push_back(metastable_energy_diff);
 
         log_debug("Frame with metastable level. Energy diff from highest level = %.3f keV",
-                metastable_energy_diff);
+                metastable_energy_diff / I3Units::keV);
     }
     // Saves in the frame if has metastable level n the cascade
     frame->Put("HasMetaStable", I3BoolPtr(new I3Bool(has_metastable)));
@@ -643,7 +655,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
     for(const auto& step : cascade_steps) {
         cumulative_times_vec->push_back(step.cumulative_time_ns);
-        gamma_energies_vec->push_back(step.gamma_energy_keV);
+        gamma_energies_vec->push_back(step.gamma_energy);
     }
 
     frame->Put("MarleyGammaCumulativeTimes", cumulative_times_vec);
@@ -683,7 +695,7 @@ void MarleySimulator::Finish(){
         double sum = 0.0;
         for (auto x : metastable_energy_diffs) sum += x;
         double mean_diff = sum / metastable_energy_diffs.size();
-        log_debug("Average energy difference to metastable level: %.3f keV", mean_diff);
+        log_debug("Average energy difference to metastable level: %.3f keV", mean_diff / I3Units::keV);
     }
 
     log_debug("=======================================");

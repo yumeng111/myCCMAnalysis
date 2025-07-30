@@ -15,16 +15,16 @@
 
 struct NuclearCascadeStep {
     int initial_level_index;
-    double initial_level_energy_keV;
+    double initial_level_energy;
     double initial_level_spin; //2J
     int initial_level_parity; // +1 or -1
 
     int final_level_index;
-    double final_level_energy_keV;
+    double final_level_energy;
     double final_level_spin;
     int final_level_parity;
 
-    double gamma_energy_keV;
+    double gamma_energy;
 
     double T12_ns;  // Half-life in ns
     double tau_ns;  // Mean lifetime in ns
@@ -35,7 +35,7 @@ struct NuclearCascadeStep {
 
 struct LevelInfo {
     int level_index;
-    double energy_keV;
+    double energy;
     double spin; //2J
     int parity;
 
@@ -43,7 +43,7 @@ struct LevelInfo {
     double tau_ns;  // Mean lifetime in ns
 
     struct Transition {
-        double gamma_energy_keV;
+        double gamma_energy;
         double branching_ratio;  //called RI in MARLEY
         int final_level_index;
     };
@@ -51,8 +51,7 @@ struct LevelInfo {
     std::vector<Transition> transitions;
 
     bool operator<(double const energy) const {
-        double keV = energy / I3Units::keV;
-        return energy_keV < energy;
+        return this->energy < energy;
     }
 };
 
@@ -110,10 +109,6 @@ private:
     size_t frames_with_metastable = 0;
     size_t frames_in_total = 0;
     std::vector<double> metastable_energy_diffs;
-
-    // Tolerance for matching energy sums from marley to real levels real levels from .dat
-    static constexpr double match_tolerance_keV = 5.0;
-
 
     SET_LOGGER("MarleySimulator");
 };
