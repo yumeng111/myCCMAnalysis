@@ -87,10 +87,6 @@ def siren_secondary_to_i3_particle(primary_particle, record, index):
     return particle
 
 
-def siren_get_children(siren_tree, particle_id):
-    pass
-
-
 class NuESIRENMarleyInjector(I3ConditionalModule):
     """
     A module that injects NuE CC events into CCM using SIREN and the total cross section from MARLEY
@@ -134,7 +130,8 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
                 "Caught exception when loading MarleyCrossSection siren process"
             )
             logging.log_info(traceback.format_exc())
-            logging.log_fatal(e.what())
+            logging.log_fatal(str(e))
+            raise
 
         # Primary distributions
         self.mass_ddist = siren.distributions.PrimaryMass(0)  # mass
@@ -225,18 +222,19 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
         self.weighter.secondary_interactions = {}
         self.weighter.secondary_physical_distributions = {}
 
-    def Simulation(self, frame):
+    def ProcessSimulationFrame(self, frame):
         self.seen_s_frame_ = True
         self.FillSimulationFrame(frame)
         self.PushFrame(frame)
+
+    def Simulation(self, frame):
+        self.ProcessSimulationFrame(frame)
 
     def DAQ(self, frame):
 
         if not self.seen_s_frame_:
             sim_frame = icetray.I3Frame(icetray.I3Frame.Simulation)
-            self.FillSimulationFrame(sim_frame)
-            self.PushFrame(sim_frame)
-            self.seen_s_frame_ = True
+            self.ProcessSimulationFrame(sim_frame)
 
         event = self.injector.generate_event()
         weight = self.weighter(event)
