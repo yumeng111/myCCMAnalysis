@@ -61,6 +61,7 @@ void MarleySimulator::Configure() {
     GetParameter("RandomSeed",random_seed);
     log_debug("Using random seed for Sample Delay in gamma times = %d", random_seed);
     rng_ = boost::make_shared<I3GSLRandomService>(random_seed);
+    unsigned int marley_seed = (unsigned int)rng_->Uniform(std::numeric_limits<unsigned int>::max());
 
     GetParameter("EnableGammaTimeOffset", enable_gamma_time_offset_);
     log_debug("EnableGammaTimeOffset = %s", enable_gamma_time_offset_ ? "True" : "False");
@@ -68,30 +69,35 @@ void MarleySimulator::Configure() {
     GetParameter("SaveLevelsFile", levels_filename_);
     save_levels_file_ = levels_filename_ != std::string("");
 
-    if(FileManager_::get_search_path().empty()) {
-        setenv("MARLEY", "", 0);
-        if(marley_search_path_.empty()) {
-            const char* marley_path = std::getenv("MARLEY_SEARCH_PATH");
-            if (!marley_path) {
-                log_fatal("MARLEY_SEARCH_PATH is not set and marley_search_path_ is empty! Cannot load K.dat.");
-            }
-        marley_search_path_ = marley_path;
-        } else {
-            setenv("MARLEY_SEARCH_PATH", marley_search_path_.c_str(), 0);
-        }
-        marley::FileManager::Instance();
-        FileManager_::set_search_path(marley_search_path_);
-    }
     if(marley_search_path_.empty()) {
+        // Check the environment variable for a value if no argument is provided
         const char* marley_path = std::getenv("MARLEY_SEARCH_PATH");
-        if (!marley_path) {
+        if(!marley_path) {
             log_fatal("MARLEY_SEARCH_PATH is not set and marley_search_path_ is empty! Cannot load K.dat.");
         }
         marley_search_path_ = marley_path;
+    } else {
+        // If an argument is provided then store the value for potential downstream use
+        setenv("MARLEY_SEARCH_PATH", marley_search_path_.c_str(), 0);
+    }
+
+    if(FileManager_::get_search_path().empty()) {
+        // An empty search path indicated that MARLEY has not been initialized
+
+        // Set the MARLEY environment variable to bypass internal MARLEY check
+        setenv("MARLEY", "", 0);
+
+        // Set up MARELY and override the search path
+        marley::FileManager::Instance();
+        FileManager_::set_search_path(marley_search_path_);
     }
 
     // String that contains the contents of the config file (from examples/config/annotated.js, we only will need the reaction, in this case ve40arCC, but there are more.)
-    std::string marley_config = R"({reactions: ["ve40ArCC_Bhattacharya2009.react"]})";
+    std::stringstream config_ss;
+    config_ss << R"({reactions: ["ve40ArCC_Bhattacharya2009.react"], seed: )";
+    config_ss << marley_seed;
+    config_ss << R"(})";
+    std::string marley_config = config_ss.str();
     // Now convert the string into a JSON object of MARLEY (Using include/marley/JSON.hh)
     marley::JSON marley_json = marley::JSON::load(marley_config);
     // Pass the json object to the marley::JSONConfig constructor to create a config object (as in examples/marg4/src/MarleyPrimaryGeneratorAction.cc)
@@ -211,26 +217,26 @@ std::vector<LevelInfo>::iterator MarleySimulator::ClosestLevel(std::vector<Level
     // i.e. high >= energy
     std::vector<LevelInfo>::iterator high = std::lower_bound(levels.begin(), levels.end(), energy);
     if(high == levels.begin()) {
-        log_info("Hit begin");
-        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), levels.begin()));
+        log_debug("Hit begin");
+        log_debug("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), levels.begin()));
         return levels.begin();
     }
     if(high == levels.end()) {
-        log_info("Hit end");
+        log_debug("Hit end");
         auto it = levels.begin() + (std::max(levels.size(), size_t(1)) - 1);
-        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), it));
+        log_debug("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), it));
         return it;
     }
     std::vector<LevelInfo>::iterator low = high-1;
     double diff_high = std::abs(high->energy - energy);
     double diff_low = std::abs(energy - low->energy);
     if(diff_low < diff_high) {
-        log_info("Using low");
-        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), low));
+        log_debug("Using low");
+        log_debug("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), low));
         return low;
     } else {
-        log_info("Using high");
-        log_info("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), high));
+        log_debug("Using high");
+        log_debug("Energy: %f keV, Level: %d", energy / I3Units::keV, (int)std::distance(levels.begin(), high));
         return high;
     }
 }
