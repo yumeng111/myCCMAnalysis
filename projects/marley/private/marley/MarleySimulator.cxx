@@ -87,7 +87,7 @@ void MarleySimulator::Configure() {
         // Set the MARLEY environment variable to bypass internal MARLEY check
         setenv("MARLEY", "", 0);
 
-        // Set up MARELY and override the search path
+        // Set up MARLEY and override the search path
         marley::FileManager::Instance();
         FileManager_::set_search_path(marley_search_path_);
     }
