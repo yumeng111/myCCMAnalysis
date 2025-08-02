@@ -4,15 +4,13 @@
 #include "icetray/I3Units.h"
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
-#include "g4-larsim/g4classes/G4CCMScintHit.h"
 #include "g4-larsim/g4classes/G4CCMReadout.h"
-#include "dataclasses/physics/I3MCTreeUtils.h"
 #include "dataclasses/I3Map.h"
 #include "simclasses/PhotonSummary.h"
 
-#include <vector>
+#include <tuple>
 #include <string>
-#include <sstream>
+#include <vector>
 #include <unordered_map>
 #include <unordered_set>
 

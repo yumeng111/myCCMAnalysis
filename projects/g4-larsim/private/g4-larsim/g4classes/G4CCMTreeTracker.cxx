@@ -1,6 +1,14 @@
 
 #include "g4-larsim/g4classes/G4CCMTreeTracker.h"
-#include "g4-larsim/g4classes/G4CCMScintHit.h"
+#include "dataclasses/physics/I3MCTreeUtils.h"
+
+#include <map>
+#include <tuple>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <G4ios.hh>
 #include <G4Step.hh>
