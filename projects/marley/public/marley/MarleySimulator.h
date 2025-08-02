@@ -1,6 +1,8 @@
 #ifndef MARLEY_SIMULATOR_H
 #define MARLEY_SIMULATOR_H
 
+#include <map>
+#include <tuple>
 #include <string>
 #include <vector>
 
@@ -87,9 +89,9 @@ public:
 
     static std::map<I3Particle::ParticleType, std::vector<std::tuple<double, double>>> const delayed_levels_;
     static constexpr const int CHAR_BUF_SIZE = 8196;
-    static int GetNucleonContent(int code, int & strange_count, int & neutron_count, int & proton_count, int & nucleon_count);
+    static void GetNucleonContent(int code, int & strange_count, int & neutron_count, int & proton_count, int & nucleon_count);
 private:
-    bool seen_s_frame_;
+    bool seen_s_frame_ = false;
 
     std::string output_mc_tree_name_;
     std::string input_mc_tree_name_;

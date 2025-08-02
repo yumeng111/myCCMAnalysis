@@ -1,10 +1,20 @@
 // standard library stuff
 
+#include <cmath> // math functions
+#include <regex> // searches for patterns
 #include <cctype>
+#include <cstdio>
+#include <limits>
+#include <random> // for the seed
 #include <string>
 #include <vector>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <algorithm>
-#include <stdlib.h>
+#include <exception>
+#include <stdexcept>
+#include <filesystem>
 
 #include "dataclasses/I3Double.h"
 #include "dataclasses/I3Int32.h"
@@ -26,17 +36,10 @@
 #include "marley/JSONConfig.hh"
 #include "marley/MarleySimulator.h"
 
-#include <fstream>
-#include <sstream>
-#include <regex> // searches for patterns
-#include <cmath> // math functions
-#include <random> // for the seed
-#include <exception>
-#include <filesystem>
 
 I3_MODULE(MarleySimulator);
 
-int MarleySimulator::GetNucleonContent(int code, int & strange_count, int & neutron_count, int & proton_count, int & nucleon_count) {
+void MarleySimulator::GetNucleonContent(int code, int & strange_count, int & neutron_count, int & proton_count, int & nucleon_count) {
     int prefix = 0;
     int excitation = 0;
 
@@ -48,7 +51,6 @@ int MarleySimulator::GetNucleonContent(int code, int & strange_count, int & neut
                 "prefix "+std::to_string(prefix)+", L "+std::to_string(strange_count)+", Z "+std::to_string(proton_count)+", A "+std::to_string(nucleon_count)+", I "+std::to_string(excitation));
     }
     neutron_count = nucleon_count - proton_count - strange_count;
-    return 0;
 }
 
 std::map<I3Particle::ParticleType, std::vector<std::tuple<double, double>>> const MarleySimulator::delayed_levels_ = {
@@ -80,7 +82,7 @@ MarleySimulator::MarleySimulator(const I3Context& context) : I3ConditionalModule
 
         AddParameter("Nuclei", "Nuclei with delayed gamma rays", I3Vector<I3Particle::ParticleType>({I3Particle::ParticleType::K40Nucleus}));
 
-        AddParameter("Debug", "Enable dubugging outputs", bool(false));
+        AddParameter("Debug", "Enable debugging outputs", bool(false));
 }
 
 void MarleySimulator::Configure() {
