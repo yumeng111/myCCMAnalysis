@@ -84,6 +84,10 @@ public:
     void DAQ(I3FramePtr frame);
     void FillSimulationFrame(I3FramePtr frame);
     void Finish();
+
+    static std::map<I3Particle::ParticleType, std::vector<std::tuple<double, double>>> const delayed_levels_;
+    static constexpr const int CHAR_BUF_SIZE = 8196;
+    static int GetNucleonContent(int code, int & strange_count, int & neutron_count, int & proton_count, int & nucleon_count);
 private:
     bool seen_s_frame_;
 
@@ -97,14 +101,16 @@ private:
     bool save_levels_file_;
     std::string levels_filename_;
     std::vector<LevelInfo>::iterator ClosestLevel(std::vector<LevelInfo> & levels, double energy);
-    void LoadK40Transitions(const std::string& filename);
+    void LoadK40Transitions(I3Particle::ParticleType type, const std::string& filename);
     void AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame);
 
-    std::vector<LevelInfo> levels_map_;
+    std::map<I3Particle::ParticleType, std::vector<LevelInfo>> levels_map_;
+    std::map<I3Particle::ParticleType, size_t> metastable_index_;
 
     double SampleDelay(double mean_lifetime_ns);
     I3RandomServicePtr rng_;
 
+    bool debug_ = false;
     size_t frames_with_cascade = 0;
     size_t frames_with_metastable = 0;
     size_t frames_in_total = 0;
