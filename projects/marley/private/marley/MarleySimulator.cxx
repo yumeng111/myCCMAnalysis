@@ -21,6 +21,7 @@
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
 #include "dataclasses/physics/I3Particle.h"
+#include "dataclasses/physics/NuclearCascadeStep.h"
 
 #include "icetray/I3Frame.h"
 #include "icetray/I3Module.h"
@@ -548,6 +549,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
 
     if(not has_K40) {
         frame->Put("HasK40", boost::make_shared<I3Bool>(has_K40));
+        frame->Put("HasMetaStable", boost::make_shared<I3Bool>(false));
         return;
     }
 
@@ -572,7 +574,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     double running_energy = 0.0;
 
     // Vector for saving info of the cascade and then pass it to a key in the frame
-    std::vector<NuclearCascadeStep> cascade_steps(gamma_rays.size());
+    NuclearCascadeStepSeriesPtr cascade_steps = boost::make_shared<NuclearCascadeStepSeries>(gamma_rays.size());
 
     bool has_metastable = false;
 
@@ -617,7 +619,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         step.tau_ns = initial_level->tau_ns;
         step.sampled_delay_ns = delay_ns;
 
-        cascade_steps.at(i) = step;
+        cascade_steps->at(i) = step;
 
         log_trace("Cascade step: [%d] %.3f keV J=%.1f%s → [%d] %.3f keV J=%.1f%s | gamma = %.3f keV | Sampled delay = %.3f ns",
                 step.initial_level_index,
@@ -639,7 +641,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     double cumulative_time_ns = 0.0;
     for(size_t i=0; i<gamma_rays.size(); ++i) {
         I3Particle* g = gamma_rays.at(i);
-        NuclearCascadeStep & step = cascade_steps.at(i);
+        NuclearCascadeStep & step = cascade_steps->at(i);
         cumulative_time_ns += step.sampled_delay_ns;
         step.cumulative_time_ns = cumulative_time_ns;
         double new_time = g->GetTime() + cumulative_time_ns;
@@ -652,39 +654,16 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         );
     }
 
+    // Save the cascade into the frame
+    frame->Put("MarleyGammaCascadeInfo", cascade_steps);
+    log_trace("Stored MarleyGammaCascadeInfo in frame.");
+    // ===Some counters ===
+    ++frames_with_cascade;
+
     if(debug_) {
-        // Save the cascade into the frame
-        I3VectorStringPtr cascade_info = boost::make_shared<I3VectorString>();
-        for(const auto& step : cascade_steps) {
-            std::ostringstream ss;
-
-            ss << "Step:\n";
-            ss << "  From Level [" << (step.initial_level_index >= 0 ? std::to_string(step.initial_level_index) : "UNKNOWN") << "] "
-                << step.initial_level_energy / I3Units::keV << " keV, "
-                << "J=" << step.initial_level_spin
-                << (step.initial_level_parity > 0 ? "+" : "-") << "\n";
-
-            ss << "  To Level [" << (step.final_level_index >= 0 ? std::to_string(step.final_level_index) : "UNKNOWN") << "] "
-                << step.final_level_energy / I3Units::keV << " keV, "
-                << "J=" << step.final_level_spin
-                << (step.final_level_parity > 0 ? "+" : "-") << "\n";
-
-            ss << "  Gamma Energy = " << step.gamma_energy / I3Units::keV << " keV\n";
-            ss << "  T1/2 = " << step.T12_ns << " ns\n";
-            ss << "  Tau = " << step.tau_ns << " ns\n";
-            ss << "  Sampled Delay = " << step.sampled_delay_ns << " ns\n";
-            ss << "  Cumulative time = " << step.cumulative_time_ns << " ns\n";
-
-            cascade_info->push_back(ss.str());
-        }
-        frame->Put("MarleyGammaCascadeInfo", cascade_info);
-        log_trace("Stored MarleyGammaCascadeInfo in frame.");
-        // ===Some counters ===
-        ++frames_with_cascade;
-
         if(has_metastable) {
             // Save the energy difference if it falls into the meta-stable
-            double highest_level_energy = cascade_steps.front().initial_level_energy;
+            double highest_level_energy = cascade_steps->front().initial_level_energy;
             double metastable_energy_diff = -1.0;
             ++frames_with_metastable;
 
@@ -710,7 +689,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     auto cumulative_times_vec = boost::make_shared<I3VectorDouble>();
     auto gamma_energies_vec = boost::make_shared<I3VectorDouble>();
 
-    for(const auto& step : cascade_steps) {
+    for(const auto& step : *cascade_steps) {
         cumulative_times_vec->push_back(step.cumulative_time_ns);
         gamma_energies_vec->push_back(step.gamma_energy);
     }

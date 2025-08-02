@@ -73,6 +73,7 @@ i3_add_pybindings(dataclasses
   private/pybindings/HESodiumEvent.cxx
   private/pybindings/AnalyticLightYieldGenerator.cxx
   private/pybindings/PhotonYieldSummary.cxx
+  private/pybindings/NuclearCascadeStep.cxx
   private/pybindings/I3Waveform/*.cxx
   private/pybindings/I3Vectors/*.cxx
   private/pybindings/I3Maps/*.cxx

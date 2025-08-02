@@ -15,26 +15,6 @@
 #include "phys-services/I3RandomService.h"
 
 
-struct NuclearCascadeStep {
-    int initial_level_index;
-    double initial_level_energy;
-    double initial_level_spin; //2J
-    int initial_level_parity; // +1 or -1
-
-    int final_level_index;
-    double final_level_energy;
-    double final_level_spin;
-    int final_level_parity;
-
-    double gamma_energy;
-
-    double T12_ns;  // Half-life in ns
-    double tau_ns;  // Mean lifetime in ns
-
-    double sampled_delay_ns;
-    double cumulative_time_ns;
-};
-
 struct LevelInfo {
     int level_index;
     double energy;
