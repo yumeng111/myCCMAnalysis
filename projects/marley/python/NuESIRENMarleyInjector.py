@@ -1,7 +1,10 @@
+"""Injection utilities for nu_e CC events using SIREN and MARLEY."""
+
 import siren
 from siren import utilities
 import numpy as np
 import traceback
+import collections
 from icecube import icetray, dataclasses
 from icecube.icetray import I3ConditionalModule, logging
 
@@ -61,7 +64,7 @@ def siren_secondary_to_i3_particle(primary_particle, record, index):
     position = record.interaction_vertex
     mass = record.secondary_masses[index]
     energy = record.secondary_momenta[index][0]
-    if mass:
+    if mass == 0:
         beta = 1
     else:
         gamma = energy / mass
@@ -126,11 +129,11 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
                 )
             )
         except Exception as e:
-            logging.log_info(
+            self.log_info(
                 "Caught exception when loading MarleyCrossSection siren process"
             )
-            logging.log_info(traceback.format_exc())
-            logging.log_fatal(str(e))
+            self.log_info(traceback.format_exc())
+            self.log_fatal(str(e))
             raise
 
         # Primary distributions
@@ -245,7 +248,7 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
         # Create tree
         tree = dataclasses.I3MCTree()
 
-        secondaries = []
+        secondaries = collections.deque()
 
         for record in primaries:
             particle = siren_primary_to_i3_particle(record)
@@ -257,7 +260,7 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
         while len(secondaries) > 0:
             primary_particle, record, index = secondaries[0]
             secondary_particle = siren_secondary_to_i3_particle(*secondaries[0])
-            secondaries.pop(0)
+            secondaries.popleft()
 
             if record.secondary_ids[index] in all_records:
                 secondary_record = all_records[record.secondary_ids[index]]
