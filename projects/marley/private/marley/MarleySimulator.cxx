@@ -547,7 +547,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     }
 
     if(not has_K40) {
-        frame->Put("HasK40", I3BoolPtr(new I3Bool(has_K40)));
+        frame->Put("HasK40", boost::make_shared<I3Bool>(has_K40));
         return;
     }
 
@@ -702,7 +702,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
         }
     }
     // Saves in the frame if has metastable level n the cascade
-    frame->Put("HasMetaStable", I3BoolPtr(new I3Bool(has_metastable)));
+    frame->Put("HasMetaStable", boost::make_shared<I3Bool>(has_metastable));
 
     log_trace("=== Finished reconstructing gamma cascade ===");
 
@@ -718,7 +718,7 @@ void MarleySimulator::AdjustGammaTimes(I3MCTreePtr mcTree, I3FramePtr frame) {
     frame->Put("MarleyGammaCumulativeTimes", cumulative_times_vec);
     frame->Put("MarleyGammaEnergies", gamma_energies_vec);
 
-    frame->Put("HasK40", I3BoolPtr(new I3Bool(has_K40)));
+    frame->Put("HasK40", boost::make_shared<I3Bool>(has_K40));
 
 } // End of AdjustGammaTimes
 
