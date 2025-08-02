@@ -19,8 +19,8 @@ if siren.dataclasses.ParticleID.__hash__ is None:
 def siren_primary_to_i3_particle(record):
     particle = dataclasses.I3Particle()  # Create a particle object
     # Extract the information from the SIREN interaction record and pass them to the I3 particle
-    major_ID = record.primary_id.major_id
-    minor_ID = record.primary_id.minor_id
+    major_id = record.primary_id.major_id
+    minor_id = record.primary_id.minor_id
     p_type = record.signature.primary_type
     position = record.primary_initial_position
     vertex = record.interaction_vertex
@@ -42,8 +42,8 @@ def siren_primary_to_i3_particle(record):
 
     # And now pass the information to the I3Particle
     particle.type = dataclasses.I3Particle.ParticleType(int(p_type))
-    particle.id.majorID = major_ID
-    particle.id.minorID = minor_ID
+    particle.id.majorID = major_id
+    particle.id.minorID = minor_id
     particle.pos = dataclasses.I3Position(*position)
     particle.dir = dataclasses.I3Direction(*direction)
     particle.time = time  # Time for the neutrino in the W target
@@ -59,8 +59,8 @@ def siren_secondary_to_i3_particle(primary_particle, record, index):
 
     secondary_type = record.signature.secondary_types[index]
     particle.type = dataclasses.I3Particle.ParticleType(int(secondary_type))
-    major_ID = record.secondary_ids[index].major_id
-    minor_ID = record.secondary_ids[index].minor_id
+    major_id = record.secondary_ids[index].major_id
+    minor_id = record.secondary_ids[index].minor_id
     position = record.interaction_vertex
     mass = record.secondary_masses[index]
     energy = record.secondary_momenta[index][0]
@@ -78,8 +78,8 @@ def siren_secondary_to_i3_particle(primary_particle, record, index):
     direction = momentum / momentum_magnitude
     kinetic_energy = energy - mass
 
-    particle.id.majorID = major_ID
-    particle.id.minorID = minor_ID
+    particle.id.majorID = major_id
+    particle.id.minorID = minor_id
     particle.pos = dataclasses.I3Position(*position)
     particle.dir = dataclasses.I3Direction(*direction)
     particle.time = time

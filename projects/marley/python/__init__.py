@@ -1,9 +1,7 @@
 """Python helpers for MARLEY integration."""
 
 from icecube import icetray
-from . import NuESIRENMarleyInjector
-
-NuESIRENMarleyInjector = NuESIRENMarleyInjector.NuESIRENMarleyInjector
+from .NuESIRENMarleyInjector import NuESIRENMarleyInjector
 
 __all__ = ["NuESIRENMarleyInjector"]
 
