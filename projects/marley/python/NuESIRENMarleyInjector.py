@@ -28,7 +28,7 @@ def siren_primary_to_i3_particle(record):
 
     momentum = np.array(record.primary_momentum[1:])
     momentum_magnitude = np.sqrt(np.sum(momentum**2))
-    direction = momentum / momentum_magnitude
+    direction = momentum / momentum_magnitude if momentum_magnitude > 0 else np.array([0,0,1.])
     mass = record.primary_mass
     energy = record.primary_momentum[0]
     kinetic_energy = energy - mass
@@ -75,7 +75,7 @@ def siren_secondary_to_i3_particle(primary_particle, record, index):
     momentum = np.array(record.secondary_momenta[index][1:])
     momentum_magnitude = np.sqrt(np.sum(momentum**2))
 
-    direction = momentum / momentum_magnitude
+    direction = momentum / momentum_magnitude if momentum_magnitude > 0 else np.array([0,0,1.])
     kinetic_energy = energy - mass
 
     particle.id.majorID = major_id
@@ -128,12 +128,10 @@ class NuESIRENMarleyInjector(I3ConditionalModule):
                     process_types=["CC"],
                 )
             )
-        except Exception as e:
-            self.log_info(
+        except Exception:
+            logging.log_info(
                 "Caught exception when loading MarleyCrossSection siren process"
             )
-            self.log_info(traceback.format_exc())
-            self.log_fatal(str(e))
             raise
 
         # Primary distributions
