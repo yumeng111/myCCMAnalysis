@@ -377,12 +377,10 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         }
 
         // special logic for absorption length in the visible
-        if (this_wavelength >= 140.0 and this_wavelength < 200.0){
-            this_abs = 5000.00000000000000000000000000000000 * cm;
-        } else if (this_wavelength >= 200.0 and this_wavelength < 300.0){
-            this_abs = 5000.00000000000000000000000000000000 * cm;
+        if (this_wavelength >= 140.0 and this_wavelength < 300.0){
+            this_abs = 5000.0 * cm;
         } else if (this_wavelength >= 300.0 and this_wavelength < 400.0){
-            this_abs = 98.25061067071035836306691635400057 * cm;
+            this_abs = 98.25 * cm;
         }
 
         uv_abs_energy.push_back(this_energy);
