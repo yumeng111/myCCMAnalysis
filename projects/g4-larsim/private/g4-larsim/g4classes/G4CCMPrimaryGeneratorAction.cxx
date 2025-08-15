@@ -106,7 +106,7 @@ G4ParticleDefinition * GetParticleDefinition(I3Particle const & particle) {
 
     switch(particle.GetType()) {
     case I3Particle::Gamma:
-       particleDef = particleTable->FindParticle("gamma"); //originally was opticalphoton
+       particleDef = particleTable->FindParticle("gamma");
        break;
     case I3Particle::EMinus:
        particleDef = particleTable->FindParticle("e-");
