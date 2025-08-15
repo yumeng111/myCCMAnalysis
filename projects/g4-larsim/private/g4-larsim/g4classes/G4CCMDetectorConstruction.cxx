@@ -286,7 +286,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     size_t n_entries = 10000;
 
     double no_mie_scatt_len = 10000.0 * cm;
-    double mie_scatt_len = 9.36786657390368660003332479391247;
+    double mie_scatt_len = 9.37;
     double mie_scaling = mie_scatt_len / (200.0 * 200.0);
 
     // for rayl, we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
