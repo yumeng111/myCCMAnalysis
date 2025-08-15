@@ -266,6 +266,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> babicz_rin_vals = {};
     std::vector<G4double> group_velocity_vals = {};
     std::vector<G4double> rayl_scattering_length = {};
+    std::vector<G4double> mie_scattering_length = {};
 
     // constants for index of refraction
     double a0 = 1.26;
@@ -284,6 +285,10 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double ending_wavelength = 850.0;
     size_t n_entries = 10000;
 
+    double no_mie_scatt_len = 10000.0 * cm;
+    double mie_scatt_len = 9.36786657390368660003332479391247;
+    double mie_scaling = mie_scatt_len / (200.0 * 200.0);
+
     // for rayl, we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
     double rindex_128 = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, RindexGamma_, lamUV, 128.0);
     double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
@@ -297,6 +302,14 @@ void G4CCMDetectorConstruction::DefineMaterials() {
         double dn_dlambda = HarmonicOscillatorRefractiveIndexDerivative(aUVho, this_wavelength, lamUV, RindexGamma_);
         double this_group_velocity = (c_light / this_rindex) * (1.0 + ((this_wavelength / this_rindex) * dn_dlambda));
 
+        if (this_wavelength > 200.0){
+            // let's try a little mie scattering
+            mie_scattering_length.push_back(mie_scaling * this_wavelength * this_wavelength * cm);
+        } else {
+            // other wavelengths -- no mie!
+            mie_scattering_length.push_back(no_mie_scatt_len);
+        }
+
         // save
         lar_light_properties_energy.push_back(this_energy);
         ho_rin_vals.push_back(this_rindex);
@@ -307,6 +320,12 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     fLAr_mt->AddProperty("RINDEX", lar_light_properties_energy, ho_rin_vals);
     fLAr_mt->AddProperty("GROUPVEL", lar_light_properties_energy, group_velocity_vals);
     fLAr_mt->AddProperty("RAYLEIGH", lar_light_properties_energy, rayl_scattering_length);
+
+    // mie scattering!
+    fLAr_mt->AddProperty("MIEHG", lar_light_properties_energy, mie_scattering_length);
+    fLAr_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
+    fLAr_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
+    fLAr_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
 
     // using this paper: https://link.springer.com/article/10.1140/epjc/s10052-012-2190-z#Bib1
     // set parameter for uv abs scaling function
@@ -355,6 +374,15 @@ void G4CCMDetectorConstruction::DefineMaterials() {
             this_abs = scaling_param * abs_length * cm;
         } else {
             this_abs = max_abs_length * cm;
+        }
+
+        // special logic for absorption length in the visible
+        if (this_wavelength >= 140.0 and this_wavelength < 200.0){
+            this_abs = 5000.00000000000000000000000000000000 * cm;
+        } else if (this_wavelength >= 200.0 and this_wavelength < 300.0){
+            this_abs = 5000.00000000000000000000000000000000 * cm;
+        } else if (this_wavelength >= 300.0 and this_wavelength < 400.0){
+            this_abs = 98.25061067071035836306691635400057 * cm;
         }
 
         uv_abs_energy.push_back(this_energy);
