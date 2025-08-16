@@ -65,8 +65,8 @@ void G4CCMTreeTracker::Initialize(G4HCofThisEvent* hitsCE) {
 
     primary_ = readout_->GetPrimary(event_id);
     mcTree = readout_->GetEDepMCTree(event_id);
+    primary_.SetLength(0);
 
-    DaughterParticleMap.insert({1, primary_.GetID()});
     if(not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) {
         I3MCTreeUtils::AddPrimary(*mcTree, primary_);
     }
@@ -612,6 +612,19 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 I3Particle & daughter = *it;
                 daughter.SetLength(daughter.GetLength() + length);
             }
+        }
+    } else {
+        // Handle the primary particle
+        std::map<int, I3ParticleID>::iterator daughter_it = DaughterParticleMap.find(track_id);
+        if(daughter_it == DaughterParticleMap.end()) {
+            daughter_it = DaughterParticleMap.insert({track_id, primary_.GetID()}).first;
+        }
+        I3MCTree::iterator it = mcTree->find(DaughterParticleMap.at(track_id));
+        if(it != mcTree->end()) {
+            // All particle properties are defined at creation,
+            // except length
+            I3Particle & daughter = *it;
+            daughter.SetLength(daughter.GetLength() + length);
         }
     }
 
