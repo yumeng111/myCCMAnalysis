@@ -614,23 +614,17 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             }
         }
     } else {
-        if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
-            DaughterParticleMap.insert({track_id, primary_.GetID()});
-            I3MCTree::iterator it = mcTree->find(DaughterParticleMap.at(track_id));
-            if(it != mcTree->end()) {
-                // All particle properties are defined at creation,
-                // except length
-                I3Particle & daughter = *it;
-                daughter.SetLength(length);
-            }
-        } else {
-            I3MCTree::iterator it = mcTree->find(DaughterParticleMap.at(track_id));
-            if(it != mcTree->end()) {
-                // All particle properties are defined at creation,
-                // except length
-                I3Particle & daughter = *it;
-                daughter.SetLength(daughter.GetLength() + length);
-            }
+        // Handle the primary particle
+        std::map<int, I3ParticleID>::iterator daughter_it = DaughterParticleMap.find(track_id);
+        if(daughter_it == DaughterParticleMap.end()) {
+            daughter_it = DaughterParticleMap.insert({track_id, primary_.GetID()}).first;
+        }
+        I3MCTree::iterator it = mcTree->find(DaughterParticleMap.at(track_id));
+        if(it != mcTree->end()) {
+            // All particle properties are defined at creation,
+            // except length
+            I3Particle & daughter = *it;
+            daughter.SetLength(daughter.GetLength() + length);
         }
     }
 
