@@ -67,7 +67,6 @@ void G4CCMTreeTracker::Initialize(G4HCofThisEvent* hitsCE) {
     mcTree = readout_->GetEDepMCTree(event_id);
     primary_.SetLength(0);
 
-    //DaughterParticleMap.insert({1, primary_.GetID()});
     if(not I3MCTreeUtils::Has(*mcTree, primary_.GetID())) {
         I3MCTreeUtils::AddPrimary(*mcTree, primary_);
     }
