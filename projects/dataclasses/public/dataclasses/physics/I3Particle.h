@@ -221,6 +221,12 @@ class I3Particle : public I3FrameObject
     HIonization = 2000000016,
     NeutronInelastic = 2000000017,
     HadronElastic = 2000000018,
+    muIoni = 2000000019,
+    muBrems = 2000000020,
+    Decay = 2000000021,
+    muPairProd = 2000000022,
+    Transportation = 2000000023,
+    muonNuclear = 2000000024,
   };
 
  public:
