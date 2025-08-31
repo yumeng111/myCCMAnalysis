@@ -49,7 +49,6 @@ void G4CCMEDepSD::Initialize(G4HCofThisEvent* hitsCE) {
 
 void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
     if(SaveEnergyLossesTree_) {
-        assert(tree_tracker != nullptr);
         std::map<I3ParticleID, std::tuple<bool, bool, std::vector<I3ParticleID>>> energy_loss_map;
         std::vector<I3ParticleID> queue;
         std::vector<I3Particle*> primaries;
@@ -136,7 +135,7 @@ void G4CCMEDepSD::EndOfEvent(G4HCofThisEvent*) {
     }
 
     if(SaveEnergyLossesVector_) {
-        bool source_from_tree = SaveEnergyLossesTree_ or (SaveEnergyLossesVector_ and (tree_tracker != nullptr) and tree_tracker->GetTrackEnergyLosses());
+        bool source_from_tree = SaveEnergyLossesTree_ or (SaveEnergyLossesVector_ and tree_tracker->GetTrackEnergyLosses());
         // Only need to fill the vector if we are referencing ids from the tree
         if(source_from_tree) {
             for(auto const & energy_loss_id : energy_loss_ids) {
@@ -173,7 +172,7 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // now we want to grab energy deposited, location, direction, time, and process type to save to MCTree
 
-    bool source_from_tree = SaveEnergyLossesTree_ or (SaveEnergyLossesVector_ and (tree_tracker != nullptr) and tree_tracker->GetTrackEnergyLosses());
+    bool source_from_tree = SaveEnergyLossesTree_ or (SaveEnergyLossesVector_ and tree_tracker->GetTrackEnergyLosses());
 
     if(source_from_tree) {
         auto it = tree_tracker->DaughterParticleMap.find(track_id);
