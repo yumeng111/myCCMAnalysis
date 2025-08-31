@@ -27,7 +27,7 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-const std::unordered_set<int> G4CCMTreeTracker::energyLossPDGCodes = {0, 2000000001, 2000000002, 2000000003, 2000000004, 2000000005, 2000000006, 2000000007, 2000000008, 2000000009, 2000000010, 2000000011, 2000000012, 2000000013, 2000000014, 2000000015, 2000000016, 2000000017, 2000000018};
+const std::unordered_set<int> G4CCMTreeTracker::energyLossPDGCodes = {0, 2000000001, 2000000002, 2000000003, 2000000004, 2000000005, 2000000006, 2000000007, 2000000008, 2000000009, 2000000010, 2000000011, 2000000012, 2000000013, 2000000014, 2000000015, 2000000016, 2000000017, 2000000018, 2000000019, 2000000020, 2000000021, 2000000022, 2000000023, 2000000024};
 
 const std::unordered_set<std::string> G4CCMTreeTracker::knownProcessNames = {"NoProcess", "Transportation"};
 
@@ -36,7 +36,9 @@ const std::unordered_map<std::string, int> G4CCMTreeTracker::energyLossToI3Parti
                                                                                           {"eBrem", 2000000007}, {"ePairProd", 2000000008}, {"CoulombScat", 2000000009},
                                                                                           {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012},
                                                                                           {"Scintillation", 2000000013}, {"OpWLS", 2000000014}, {"ionIoni" , 2000000015},
-                                                                                          {"hIoni", 2000000016}, {"neutronInelastic", 2000000017}, {"hadElastic", 2000000018}, {"Unknown", 0}};
+                                                                                          {"hIoni", 2000000016}, {"neutronInelastic", 2000000017}, {"hadElastic", 2000000018}, {"Unknown", 0},
+                                                                                          {"muIoni", 2000000019}, {"muBrems", 2000000020}, {"Decay", 2000000021}, {"muPairProd", 2000000022},
+                                                                                          {"Transportation", 2000000023}, {"muonNuclear", 2000000024}};
 
 const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMTreeTracker::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
                                                                                                               {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
