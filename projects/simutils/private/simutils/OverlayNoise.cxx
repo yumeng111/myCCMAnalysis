@@ -40,8 +40,8 @@ class OverlayNoise: public I3Module {
 
     std::string input_simulated_board_time_offsets_name_;
 
-    bool match_times_to_data_ = false;
-    bool match_times_to_simulation_ = true;
+    bool match_times_to_data_ = true;
+    bool match_times_to_simulation_ = false;
 
     bool restrict_range_ = false;
     double min_noise_time_ = -10000;
@@ -57,7 +57,7 @@ class OverlayNoise: public I3Module {
     std::vector<std::string> file_lists;
 
     boost::shared_ptr<CCMRecoPulseSeriesMap const> current_noise_pulses = nullptr;
-    std::map<CCMPMTKey, double> data_board_time_offsets;
+    std::map<CCMPMTKey, double> current_frame_data_board_time_offsets;
     double current_start_time;
     double current_end_time;
 public:
@@ -65,7 +65,7 @@ public:
     void Configure();
     void DAQ(I3FramePtr frame);
     bool NextFrame();
-    boost::shared_ptr<CCMRecoPulseSeriesMap> GetNoisePulses(double duration, double zero_time, bool zero_out_width = false);
+    std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>> GetNoisePulses(double duration, double zero_time, bool zero_out_width = false);
 };
 
 I3_MODULE(OverlayNoise);
@@ -296,12 +296,19 @@ std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3Frame
 }
 
 std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double> const & from, std::map<CCMPMTKey, double> const & to, double mod) {
+    std::map<CCMPMTKey, double> board_offset_corrections;
+    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
+        board_offset_corrections.insert({from_it->first, 0.0});
+    }
+    if(to.size() == 0)
+        return board_offset_corrections;
+
     size_t count = 0;
     double to_avg = 0.0;
     double from_avg = 0.0;
-    for(std::map<CCMPMTKey, double>::const_iterator from_it = to.begin(); from_it != to.end(); ++from_it) {
-        std::map<CCMPMTKey, double>::const_iterator to_it = from.find(from_it->first);
-        if(to_it == from.end()) {
+    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
+        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(from_it->first);
+        if(to_it == to.end()) {
             continue;
         }
         to_avg += to_it->second;
@@ -313,9 +320,9 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
 
     double min_diff = std::numeric_limits<double>::max();
     CCMPMTKey min_diff_key;
-    for(std::map<CCMPMTKey, double>::const_iterator from_it = to.begin(); from_it != to.end(); ++from_it) {
-        std::map<CCMPMTKey, double>::const_iterator to_it = from.find(from_it->first);
-        if(to_it == from.end()) {
+    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
+        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(from_it->first);
+        if(to_it == to.end()) {
             continue;
         }
         double to_diff = std::abs(to_it->second - to_avg);
@@ -326,21 +333,20 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
             min_diff_key = to_it->first;
         }
     }
+
     double to_reference_time = to.at(min_diff_key);
     double to_mod = std::fmod(to_reference_time, mod);
     if(to_mod < 0)
         to_mod += mod;
-    double const_offset = to_mod - to_reference_time;
+    to_reference_time -= to_mod;
 
-    std::map<CCMPMTKey, double> board_offset_corrections;
-    for(std::map<CCMPMTKey, double>::const_iterator from_it = to.begin(); from_it != to.end(); ++from_it) {
-        std::map<CCMPMTKey, double>::const_iterator to_it = from.find(from_it->first);
-        if(to_it == from.end()) {
-            board_offset_corrections.insert(std::make_pair(from_it->first, 0.0));
+    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
+        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(from_it->first);
+        if(to_it == to.end()) {
             continue;
         }
-        double offset = to_it->second - from_it->second + const_offset;
-        board_offset_corrections.insert(std::make_pair(to_it->first, offset));
+        double offset = from_it->second - (to_it->second - to_reference_time);
+        board_offset_corrections.at(to_it->first) = offset;
     }
     return board_offset_corrections;
 }
@@ -370,7 +376,7 @@ bool OverlayNoise::NextFrame() {
     std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(frame, noise_pulse_name_, false);
     current_start_time = std::get<0>(noise_extent);
     current_end_time = std::get<1>(noise_extent);
-    data_board_time_offsets = std::get<2>(noise_extent);
+    current_frame_data_board_time_offsets = std::get<2>(noise_extent);
 
     if(restrict_range_) {
         current_start_time = std::max(current_start_time, min_noise_time_);
@@ -379,7 +385,7 @@ bool OverlayNoise::NextFrame() {
     return failed;
 }
 
-boost::shared_ptr<CCMRecoPulseSeriesMap> OverlayNoise::GetNoisePulses(double duration, double zero_time, bool zero_out_width) {
+std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>> OverlayNoise::GetNoisePulses(double duration, double zero_time, bool zero_out_width) {
     zero_out_width = not zero_out_width;
 
     if(not allow_stitching_) {
@@ -413,31 +419,47 @@ boost::shared_ptr<CCMRecoPulseSeriesMap> OverlayNoise::GetNoisePulses(double dur
             noise_pulses->insert(std::make_pair(it->first, noise_series));
         }
         current_start_time = random_start_time;
-        return noise_pulses;
+        return {noise_pulses, current_frame_data_board_time_offsets};
     }
+
 
     double accumulated_time = 0.0;
     boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
+
+    std::map<CCMPMTKey, double> target_board_time_offsets;
+    if(current_noise_pulses != nullptr) {
+        target_board_time_offsets = current_frame_data_board_time_offsets;
+    }
+
+    std::map<CCMPMTKey, double> board_offset_corrections;
+
     while(accumulated_time < duration) {
         if(current_noise_pulses == nullptr) {
             NextFrame();
+            target_board_time_offsets = current_frame_data_board_time_offsets;
         }
         double remaining_time = current_end_time - current_start_time;
         double random_start_time = randomService_->Uniform(
                 current_start_time,
                 std::max(current_start_time, current_end_time - (duration - accumulated_time))
         );
-        double random_end_time = random_start_time + std::min(remaining_time, duration - accumulated_time);
+        double random_end_time = std::min(current_end_time, random_start_time + std::min(remaining_time, duration - accumulated_time));
         for(CCMRecoPulseSeriesMap::const_iterator it = current_noise_pulses->begin(); it != current_noise_pulses->end(); ++it) {
             if(not noise_pulses->count(it->first)) {
                 noise_pulses->insert(std::make_pair(it->first, CCMRecoPulseSeries()));
             }
+            double offset_correction = 0;
+            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(it->first);
+            if(offset_it != board_offset_corrections.end()) {
+                offset_correction = offset_it->second;
+            }
+
             CCMRecoPulseSeries & noise_series = noise_pulses->at(it->first);
             for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
                 double time = it2->GetTime();
                 if(time >= random_start_time and time < random_end_time) {
                     noise_series.push_back(*it2);
-                    noise_series.back().SetTime(time - random_start_time + accumulated_time - zero_time);
+                    noise_series.back().SetTime(time - random_start_time + accumulated_time + zero_time + offset_correction);
                 }
             }
             noise_pulses->insert(std::make_pair(it->first, noise_series));
@@ -446,9 +468,12 @@ boost::shared_ptr<CCMRecoPulseSeriesMap> OverlayNoise::GetNoisePulses(double dur
         current_start_time = random_end_time;
         if(random_end_time >= current_end_time) {
             NextFrame();
+            board_offset_corrections.clear();
+            board_offset_corrections = GetBoardOffsetCorrections(current_frame_data_board_time_offsets, target_board_time_offsets, 2.0);
         }
     }
-    return noise_pulses;
+
+    return {noise_pulses, target_board_time_offsets};
 }
 
 void OverlayNoise::DAQ(I3FramePtr frame) {
@@ -467,6 +492,11 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
     double noise_post_padding = randomService_->Uniform(min_padding_time_, max_padding_time_);
     double noise_duration = event_duration + noise_pre_padding + noise_post_padding;
 
+    // Get noise pulses with the correct time offset
+    CCMRecoPulseSeriesMapPtr combined_pulses;
+    std::map<CCMPMTKey, double> data_board_time_offsets;
+    std::tie(combined_pulses, data_board_time_offsets) = GetNoisePulses(noise_duration, event_start_time, true);
+
     std::map<CCMPMTKey, double> board_offset_corrections;
     if(match_times_to_simulation_) {
         board_offset_corrections = GetBoardOffsetCorrections(data_board_time_offsets, *sim_board_time_offsets_ptr, 2.0);
@@ -474,8 +504,6 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
         board_offset_corrections = GetBoardOffsetCorrections(*sim_board_time_offsets_ptr, data_board_time_offsets, 2.0);
     }
 
-    // Get noise pulses with the correct time offset
-    CCMRecoPulseSeriesMapPtr combined_pulses = GetNoisePulses(noise_duration, event_start_time, true);
     if(match_times_to_simulation_) {
         for(CCMRecoPulseSeriesMap::iterator it = combined_pulses->begin(); it != combined_pulses->end(); ++it) {
             std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(it->first);
