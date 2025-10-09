@@ -150,6 +150,11 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
         uv_absorption_d_ = uv_absorption_length_;
         uv_absorption_scaling_ = 1.0;
     }
+
+    if(normalization_ < 0.0 or normalization_ > 10.0 or normalization_ < 1e-8) {
+        log_warn("Normalization value %f is out of range [1e-8,10.0]. Resetting to 1.0 since fits of this era have the normalization on the 1.0 boundary", normalization_);
+        normalization_ = 1.0;
+    }
 }
 
 I3_CLASS_VERSION(DetectorResponseConfig, g4ccmconfig_version_);
