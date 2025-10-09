@@ -650,7 +650,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 normalization = normalization_ / simulated_normalization_;
             }
 
-            double survival_probability =  this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
+            double survival_probability =  normalization * this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
 
             double charge_scale_factor = 1.0;
             if(survival_probability > 1.0) {
