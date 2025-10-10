@@ -12,6 +12,7 @@ SET(LIB_${PROJECT_NAME}_SOURCEFILES
     private/simclasses/PhotonSummary.cxx
     private/simclasses/SodiumInjectorConfig.cxx
     private/simclasses/DetectorResponseConfig.cxx
+    private/simclasses/CCMSimulationSettings.cxx
 )
 
 
@@ -42,6 +43,7 @@ i3_add_pybindings(simclasses
     private/pybindings/LightweightCCMMCPE.cxx
     private/pybindings/PhotonSummary.cxx
     private/pybindings/DetectorResponseConfig.cxx
+    private/pybindings/CCMSimulationSettings.cxx
     private/pybindings/module.cxx
     USE_TOOLS ${LIB_${PROJECT_NAME}_TOOLS}
     USE_PROJECTS simclasses icetray tableio
