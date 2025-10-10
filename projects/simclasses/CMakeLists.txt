@@ -18,6 +18,11 @@ SET(LIB_${PROJECT_NAME}_SOURCEFILES
 SET(LIB_${PROJECT_NAME}_PROJECTS serialization icetray dataclasses phys-services)
 SET(LIB_${PROJECT_NAME}_TOOLS boost python)
 
+# Use Geant4 if available
+if(GEANT4_FOUND)
+    LIST(APPEND LIB_${PROJECT_NAME}_TOOLS clhep geant4)
+endif(GEANT4_FOUND)
+
 if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/tableio)
     LIST(APPEND LIB_${PROJECT_NAME}_PROJECTS tableio)
     LIST(APPEND LIB_${PROJECT_NAME}_SOURCEFILES private/simclasses/converter/*.cxx)
@@ -38,7 +43,7 @@ i3_add_pybindings(simclasses
     private/pybindings/PhotonSummary.cxx
     private/pybindings/DetectorResponseConfig.cxx
     private/pybindings/module.cxx
-    USE_TOOLS boost python
+    USE_TOOLS ${LIB_${PROJECT_NAME}_TOOLS}
     USE_PROJECTS simclasses icetray tableio
 )
 

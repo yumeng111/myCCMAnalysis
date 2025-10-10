@@ -36,6 +36,9 @@ void register_DetectorResponseConfig() {
         .def_readwrite("refractive_index_gamma_UV", &DetectorResponseConfig::refractive_index_gamma_UV_)
         .def_readwrite("refractive_index_wavelength_UV", &DetectorResponseConfig::refractive_index_wavelength_UV_)
         .def_readwrite("rayleigh_scattering_length_128nm", &DetectorResponseConfig::rayleigh_scattering_length_128nm_)
+        .def_readwrite("birks_constant", &DetectorResponseConfig::birks_constant_)
+        .def_readwrite("mean_excitation_energy", &DetectorResponseConfig::mean_excitation_energy_)
+        .def_readwrite("tpb_wls_time_constant", &DetectorResponseConfig::tpb_wls_time_constant_)
         .add_property("__str__", make_function(&DetectorResponseConfig::Print, return_internal_reference<>()))
     ;
 }
