@@ -21,7 +21,16 @@ std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
         << "\n  TPB Absorption Scale :" << tpb_abs_scale_
         << "\n  Mie GG :" << mie_gg_
         << "\n  Mie Ratio :" << mie_ratio_
-        << "\n  Normalization :" << normalization_;
+        << "\n  Normalization :" << normalization_
+        << "\n  Photon Sampling Factor :" << photon_sampling_factor_
+        << "\n  Mie Scattering Length at 200nm :" << mie_scattering_length_200nm_
+        << "\n  Mie Scattering Cutoff :" << mie_scattering_cutoff_
+        << "\n  Refractive Index a0 :" << refractive_index_a0_
+        << "\n  Refractive Index aUV :" << refractive_index_aUV_
+        << "\n  Refractive Index gamma_UV :" << refractive_index_gamma_UV_
+        << "\n  Refractive Index wavelength_UV :" << refractive_index_wavelength_UV_
+        << "\n  Rayleigh Scattering Length at 128nm :" << rayleigh_scattering_length_128nm_
+        << std::endl;
     return oss;
 }
 
@@ -42,8 +51,16 @@ bool DetectorResponseConfig::operator==(const DetectorResponseConfig& rhs) const
             tpb_abs_norm_ == rhs.tpb_abs_norm_ &&
             tpb_abs_scale_ == rhs.tpb_abs_scale_ &&
             mie_gg_ == rhs.mie_gg_ &&
-            mie_ratio_ == rhs.mie_ratio_ && 
-            normalization_ == rhs.normalization_);
+            mie_ratio_ == rhs.mie_ratio_ &&
+            normalization_ == rhs.normalization_ &&
+            photon_sampling_factor_ == rhs.photon_sampling_factor_ &&
+            mie_scattering_length_200nm_ == rhs.mie_scattering_length_200nm_ &&
+            mie_scattering_cutoff_ == rhs.mie_scattering_cutoff_ &&
+            refractive_index_a0_ == rhs.refractive_index_a0_ &&
+            refractive_index_aUV_ == rhs.refractive_index_aUV_ &&
+            refractive_index_gamma_UV_ == rhs.refractive_index_gamma_UV_ &&
+            refractive_index_wavelength_UV_ == rhs.refractive_index_wavelength_UV_ &&
+            rayleigh_scattering_length_128nm_ == rhs.rayleigh_scattering_length_128nm_);
 }
 
 std::ostream& operator<<(std::ostream& oss, DetectorResponseConfig const & bcm) {

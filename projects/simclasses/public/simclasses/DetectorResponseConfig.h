@@ -3,13 +3,12 @@
 
 #include <icetray/I3DefaultName.h>
 #include "icetray/I3FrameObject.h"
+#include "icetray/I3Units.h"
 #include "dataclasses/Utility.h"
 
-#include <string>
 #include <iostream>
-#include <sstream>
 
-static const unsigned g4ccmconfig_version_ = 7;
+static const unsigned g4ccmconfig_version_ = 8;
 class DetectorResponseConfig : public I3FrameObject {
 public:
     double rayleigh_scattering_length_;
@@ -27,10 +26,24 @@ public:
     double tpb_abs_tau_;
     double tpb_abs_norm_;
     double tpb_abs_scale_;
+
     double mie_gg_;
     double mie_ratio_;
     double normalization_;
     double photon_sampling_factor_;
+
+    // Mie scattering length at 200nm
+    double mie_scattering_length_200nm_;
+    double mie_scattering_cutoff_;
+
+    // Refractive index parameters in harmonic oscillator model
+    double refractive_index_a0_;
+    double refractive_index_aUV_;
+    double refractive_index_gamma_UV_;
+    double refractive_index_wavelength_UV_;
+
+    // Mie scattering parameters
+    double rayleigh_scattering_length_128nm_;
 
     DetectorResponseConfig() = default;
     virtual ~DetectorResponseConfig() override = default;
@@ -72,6 +85,13 @@ void DetectorResponseConfig::save(Archive& ar, unsigned version) const {
     ar & make_nvp("mie_ratio", mie_ratio_);
     ar & make_nvp("normalization", normalization_);
     ar & make_nvp("photon_sampling_factor", photon_sampling_factor_);
+    ar & make_nvp("mie_scattering_length_200nm", mie_scattering_length_200nm_);
+    ar & make_nvp("mie_scattering_cutoff", mie_scattering_cutoff_);
+    ar & make_nvp("refractive_index_a0", refractive_index_a0_);
+    ar & make_nvp("refractive_index_aUV", refractive_index_aUV_);
+    ar & make_nvp("refractive_index_gamma_UV", refractive_index_gamma_UV_);
+    ar & make_nvp("refractive_index_wavelength_UV", refractive_index_wavelength_UV_);
+    ar & make_nvp("rayleigh_scattering_length_128nm", rayleigh_scattering_length_128nm_);
 }
 
 template <class Archive>
@@ -154,6 +174,29 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
     if(normalization_ < 0.0 or normalization_ > 10.0 or normalization_ < 1e-8) {
         log_warn("Normalization value %f is out of range [1e-8,10.0]. Resetting to 1.0 since fits of this era have the normalization on the 1.0 boundary", normalization_);
         normalization_ = 1.0;
+    }
+
+    if(version < 8) {
+        // Set Mie scattering length at 200nm
+        mie_scattering_length_200nm_ = 9.37 * I3Units::cm;
+        mie_scattering_cutoff_ = 200.0 * (I3Units::m * 1e-9); // nm
+
+        // Set refractive index parameters to some reasonable values
+        refractive_index_a0_ = 1.10232;
+        refractive_index_aUV_ = 0.00001058;
+        refractive_index_gamma_UV_ = 0.0018280705;
+        refractive_index_wavelength_UV_ = 106.6 * (I3Units::m * 1e-9); // nm
+
+        // Set Rayleigh scattering length at 128nm
+        rayleigh_scattering_length_128nm_ = 99.9769 * I3Units::cm;
+    } else {
+        ar & make_nvp("mie_scattering_length_200nm", mie_scattering_length_200nm_);
+        ar & make_nvp("mie_scattering_cutoff", mie_scattering_cutoff_);
+        ar & make_nvp("refractive_index_a0", refractive_index_a0_);
+        ar & make_nvp("refractive_index_aUV", refractive_index_aUV_);
+        ar & make_nvp("refractive_index_gamma_UV", refractive_index_gamma_UV_);
+        ar & make_nvp("refractive_index_wavelength_UV", refractive_index_wavelength_UV_);
+        ar & make_nvp("rayleigh_scattering_length_128nm", rayleigh_scattering_length_128nm_);
     }
 }
 
