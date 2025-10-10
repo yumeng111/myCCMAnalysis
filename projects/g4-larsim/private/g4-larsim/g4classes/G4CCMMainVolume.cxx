@@ -1,8 +1,10 @@
-
 #include "g4-larsim/g4classes/G4CCMMainVolume.h"
 
+#include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
+#include "simclasses/CCMSimulationSettings.h"
+#include "simclasses/DetectorResponseConfig.h"
+
 #include <map>
-#include <set>
 #include <math.h>
 #include <tuple>
 
@@ -27,9 +29,8 @@
 G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                                  G4LogicalVolume* pMotherLogical, G4bool pMany,
                                  G4int pCopyNo, G4CCMDetectorConstruction* c,
-                                 G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun,
-                                 G4bool TrainingSource, G4double DecayX, G4double DecayY, G4double DecayZ,
-                                 G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness)
+                                 CCMSimulationSettings const & settings,
+                                 DetectorResponseConfig const & config)
   // Pass info to the G4PVPlacement constructor
   : G4PVPlacement(pRot, tlate,
             new G4LogicalVolume(
@@ -37,6 +38,12 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 G4Material::GetMaterial("Steel"), "Cryogen"),
             "Cryogen", pMotherLogical, false, 0, true)
   , fConstructor(c) {
+
+    detectorConfig_ = config;
+    simulationSettings_ = settings;
+    detectorConfig_.to_g4_units();
+    simulationSettings_.to_g4_units();
+
 
     fMother_log = pMotherLogical;
 
@@ -71,11 +78,11 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     G4double ptfe_thickness = 0.5 * mm;
     //G4double tpb_thickness = 0.00278035 * mm; // from Vincent Basque's thesis https://pure.manchester.ac.uk/ws/portalfiles/portal/205622566/FULL_TEXT.PDF
 
-    std::cout << "endcap tpb thickness = " << EndCapFoilTPBThickness << ", side foil tpb thickness = " << SideFoilTPBThickness << ", and pmt tpb thickness = " << PMTTPBThickness << std::endl;
+    std::cout << "endcap tpb thickness = " << detectorConfig_.endcap_tpb_thickness_/CLHEP::micrometer << "um, side foil tpb thickness = " << detectorConfig_.side_tpb_thickness_/CLHEP::micrometer << "um, and pmt tpb thickness = " << detectorConfig_.pmt_tpb_thickness_/CLHEP::micrometer << "um" << std::endl;
 
-    G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + EndCapFoilTPBThickness) * 2.0;
+    G4double frame_height = 1239.6*mm + (frame_thickness + ptfe_thickness + detectorConfig_.endcap_tpb_thickness_) * 2.0;
     G4double frame_half_height = frame_height / 2.0;
-    G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + SideFoilTPBThickness); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
+    G4double frame_radius = 1037.0*mm - 3.15*mm + (frame_thickness + ptfe_thickness + detectorConfig_.side_tpb_thickness_); // reducing radius by ~1/2cm to account for flexing of PTFE sheets
 
     // Aluminum frame holding PMTs and instrumentation
     fInnerFrame = new G4Tubs("InnerFrame", 0*cm, frame_radius, frame_half_height, 0*deg, 360*deg);
@@ -100,8 +107,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBFoilSides_log = new G4LogicalVolume(fTPBFoilSides, G4Material::GetMaterial("TPBFoilSides"), "TPBFoilSidesLogical");
 
     // Create the top and bottom disks
-    fTPBFoilTop = new G4Tubs("TPBFoilTop", 0*cm, tpb_radius, EndCapFoilTPBThickness/2.0, 0.*deg, 360.*deg);
-    fTPBFoilBottom = new G4Tubs("TPBFoilBottom", 0*cm, tpb_radius, EndCapFoilTPBThickness/2.0, 0.*deg, 360.*deg);
+    fTPBFoilTop = new G4Tubs("TPBFoilTop", 0*cm, tpb_radius, detectorConfig_.endcap_tpb_thickness_/2.0, 0.*deg, 360.*deg);
+    fTPBFoilBottom = new G4Tubs("TPBFoilBottom", 0*cm, tpb_radius, detectorConfig_.endcap_tpb_thickness_/2.0, 0.*deg, 360.*deg);
     fTPBFoilTop_log = new G4LogicalVolume(fTPBFoilTop, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilTopLogical");
     fTPBFoilBottom_log = new G4LogicalVolume(fTPBFoilBottom, G4Material::GetMaterial("TPBFoilTopBottom"), "TPBFoilBottomLogical");
 
@@ -109,8 +116,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fTPBFoilSides_phys = new G4PVPlacement(0, G4ThreeVector(0,0,0), fTPBFoilSides_log, "TPBFoilSides", fReflectorFoil_log, false, 0, true);
 
     // Place the top and bottom disks
-    G4double zTopPosition = tpb_half_height - EndCapFoilTPBThickness/2;
-    G4double zBottomPosition = -tpb_half_height + EndCapFoilTPBThickness/2;
+    G4double zTopPosition = tpb_half_height - detectorConfig_.endcap_tpb_thickness_/2;
+    G4double zBottomPosition = -tpb_half_height + detectorConfig_.endcap_tpb_thickness_/2;
 
     fTPBFoilTop_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zTopPosition), fTPBFoilTop_log, "TPBFoilTop", fTPBFoilSides_log, false, 0, true);
     fTPBFoilBottom_phys = new G4PVPlacement(0, G4ThreeVector(0,0,zBottomPosition), fTPBFoilBottom_log, "TPBFoilBottom", fTPBFoilSides_log, false, 0, true);
@@ -119,8 +126,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     //fTPBFoil_log = new G4LogicalVolume(fTPBFoil, G4Material::GetMaterial("TPBFoil"), "TPBFoil");
     //fTPBFoil_phys = new G4PVPlacement(0, G4ThreeVector(0*cm, 0*cm, 0*cm), fTPBFoil_log, "TPBFoil", fReflectorFoil_log, false, 0, true);
 
-    G4double fiducial_lar_half_height = tpb_half_height - EndCapFoilTPBThickness;
-    G4double fiducial_lar_radius = tpb_radius - SideFoilTPBThickness;
+    G4double fiducial_lar_half_height = tpb_half_height - detectorConfig_.endcap_tpb_thickness_;
+    G4double fiducial_lar_radius = tpb_radius - detectorConfig_.side_tpb_thickness_;
 
     // now fiducial LAr!
     fFiducialLAr = new G4Tubs("FiducialArgon", 0*cm, fiducial_lar_radius, fiducial_lar_half_height, 0*deg, 360*deg);
@@ -139,7 +146,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     pmt_solid_maker.frill_width = frill_width;
     pmt_solid_maker.frill_radius = frill_radius;
 
-    pmt_solid_maker.pmt_tpb_thickness = PMTTPBThickness;
+    pmt_solid_maker.pmt_tpb_thickness = detectorConfig_.pmt_tpb_thickness_;
     pmt_solid_maker.cylinder_half_height = fiducial_lar_half_height;
     pmt_solid_maker.cylinder_radius = fiducial_lar_radius;
     pmt_solid_maker.pmt_protrusion_distance = pmt_protrusion_distance;
@@ -459,14 +466,14 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
     fShinyBottom_log = new G4LogicalVolume(pmt_solid_maker.shiny_solids["ShinyBottom"], G4Material::GetMaterial("PTFE"), "ShinyBottom");
     new G4PVPlacement(0, pmt_solid_maker.shiny_positions["ShinyBottom"], fShinyBottom_log, "ShinyBottom", fFiducialLAr_log, false, 0, true);
 
-    if (SourceRodIn){
+    if(simulationSettings_.source_rod_in_) {
         // now let's make our source rod
         // i'm just doing the bayonet for now since it is >1m tall, it should only matter for sodium runs above -50cm
         G4double rod_inner_radius = 0.0*cm;
         G4double rod_outer_radius = 6.31 * mm;
-        G4double rod_height = fiducial_lar_half_height - SourceRodLocation - (pmt_solid_maker.shiny_half_height * 2.0);
+        G4double rod_height = fiducial_lar_half_height - simulationSettings_.source_rod_location_ - (pmt_solid_maker.shiny_half_height * 2.0);
         fSourceRod = new G4Tubs("SourceRod", rod_inner_radius, rod_outer_radius, rod_height/2, 0, 360*deg);
-        G4ThreeVector rodPosition(0.0*cm, 0.0*cm, SourceRodLocation + rod_height/2);
+        G4ThreeVector rodPosition(0.0*cm, 0.0*cm, simulationSettings_.source_rod_location_ + rod_height/2);
 
         // let's make a source rod optical surface
         G4OpticalSurface *SourceRodOpticalSurface = new G4OpticalSurface("SourceRodOpticalSurface");
@@ -494,19 +501,19 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         StainlessSteelMPT->AddProperty("REFLECTIVITY", StainlessSteelEnergy, StainlessSteelReflection);
         SourceRodOpticalSurface->SetMaterialPropertiesTable(StainlessSteelMPT);
 
-        if (CobaltSourceRun or SodiumSourceRun){
+        if(simulationSettings_.cobalt_source_run_ or simulationSettings_.sodium_source_run_) {
             // now make source pellet -- really guessing on these measurements
             G4double pellet_radius = 4.0*mm;
             G4double pellet_height = 3.0*mm;
             fSourcePellet = new G4Tubs("SourcePellet", 0, pellet_radius, pellet_height/2.0, 0, 360*deg);
             G4NistManager* nistManager = G4NistManager::Instance();
             G4Material* fSource = nistManager->FindOrBuildMaterial("G4_Na");
-            if (CobaltSourceRun){
+            if(simulationSettings_.cobalt_source_run_) {
                 fSource = nistManager->FindOrBuildMaterial("G4_Co");
             }
             fSourcePellet_log  = new G4LogicalVolume(fSourcePellet, fSource, "SourcePelletLog");
 
-            if (TrainingSource) {
+            if(simulationSettings_.training_source_) {
                 // this is the special case where we are injecting sodium events randomly within the detector to get training data
                 // so we have special logic for placing the source pellet and making steel housing
                 G4double source_pellet_housing_height = 1.0 * cm;
@@ -516,8 +523,8 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
                 G4SubtractionSolid* housingWithPelletHole = new G4SubtractionSolid("HousingWithPelletHole", fSourcePelletHousing, fSourcePellet, nullptr, G4ThreeVector(0, 0, 0));
                 fSourcePelletHousing_log = new G4LogicalVolume(housingWithPelletHole, G4Material::GetMaterial("Steel"), "fSourcePelletHousingLog");
 
-                G4ThreeVector pelletPosition(DecayX, DecayY, DecayZ);
-                std::cout << "placing sodium decay at " << DecayX << ", " << DecayY << ", " << DecayZ << std::endl;
+                G4ThreeVector pelletPosition(simulationSettings_.decay_x_, simulationSettings_.decay_y_, simulationSettings_.decay_z_);
+                std::cout << "placing sodium decay at " << simulationSettings_.decay_x_/cm << ", " << simulationSettings_.decay_y_/cm << ", " << simulationSettings_.decay_z_/cm << " cm" << std::endl;
 
                 // First, subtract the pellet from the rod
                 G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
@@ -538,7 +545,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
             } else {
                 // standard case where the source pellet is inserted 1/4 cm into the end of the source rod
                 G4double inset = 1.0 * mm;
-                G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, SourceRodLocation + pellet_height/2.0 + inset);
+                G4ThreeVector pelletPosition(0.0*cm, 0.0*cm, simulationSettings_.source_rod_location_ + pellet_height/2.0 + inset);
 
                 // again let's first subtract the pellet from the rod, make logical vol for rod, and place rod
                 G4SubtractionSolid* rodWithPelletHole = new G4SubtractionSolid("RodWithPelletHole", fSourceRod, fSourcePellet, nullptr, pelletPosition);
@@ -558,7 +565,7 @@ G4CCMMainVolume::G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tl
         new G4LogicalSkinSurface("SourceRod_Surface", fSourceRod_log, SourceRodOpticalSurface);
     }
 
-    VisAttributes(SourceRodIn);
+    VisAttributes(simulationSettings_.source_rod_in_);
     SurfaceProperties();
 }
 

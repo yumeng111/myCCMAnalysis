@@ -7,6 +7,8 @@
 #include "g4-larsim/g4classes/G4CCMReadout.h"
 #include "dataclasses/I3Map.h"
 #include "simclasses/PhotonSummary.h"
+#include "simclasses/CCMSimulationSettings.h"
+#include "simclasses/DetectorResponseConfig.h"
 
 #include <tuple>
 #include <string>
@@ -25,7 +27,7 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
     typedef G4CCMReadout::ParentInfo ParentInfo;
     public:
         friend G4CCMEDepSD;
-        G4CCMTreeTracker(G4String name);
+        G4CCMTreeTracker(G4String name, bool trackParticles = false, bool trackEnergyLosses = false);
         ~G4CCMTreeTracker() override = default;
 
         void SetReadout(G4CCMReadout * readout) {readout_ = readout;}
@@ -34,42 +36,18 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         void EndOfEvent(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
 
-        void SetTracking(bool do_tracking);
+        void SetDetectorResponseConfig(DetectorResponseConfig const & config) {
+            detectorConfig_ = config;
+            detectorConfig_.to_g4_units();
+        }
 
-        bool GetKillNeutrinos() { return KillNeutrinos_; }
-        void SetKillNeutrinos(bool KillNeutrinos) { KillNeutrinos_ = KillNeutrinos; }
+        void SetSimulationSettings(CCMSimulationSettings const & settings) {
+            simulationSettings_ = settings;
+            simulationSettings_.to_g4_units();
+        }
 
-        bool GetKillPhotons() { return KillPhotons_; }
-        void SetKillPhotons(bool KillPhotons) { KillPhotons_ = KillPhotons; }
-
-        double GetTimeCutValue() { return time_cut_value_; }
-        void SetTimeCutValue(double time_cut) { time_cut_value_ = time_cut; }
-
-        bool GetTimeCut() { return TimeCut_; }
-        void SetTimeCut(bool TimeCut) { TimeCut_ = TimeCut; }
-
-        bool GetKillCherenkov() { return KillCherenkov_; }
-        void SetKillCherenkov(bool KillCherenkov) { KillCherenkov_ = KillCherenkov; }
-
-        bool GetKillScintillation() { return KillScintillation_; }
-        void SetKillScintillation(bool KillScintillation) { KillScintillation_ = KillScintillation; }
-
-        bool GetDetailedPhotonTracking() { return DetailedPhotonTracking_; }
-        void SetDetailedPhotonTracking(bool DetailedPhotonTracking) { DetailedPhotonTracking_ = DetailedPhotonTracking; }
-
-        bool GetTrackParticles() { return TrackParticles_; }
-        void SetTrackParticles(bool TrackParticles) { TrackParticles_ = TrackParticles; }
-
-        bool GetTrackEnergyLosses() { return TrackEnergyLosses_; }
-        void SetTrackEnergyLosses(bool TrackEnergyLosses) { TrackEnergyLosses_ = TrackEnergyLosses; }
-
-        G4double GetG4RangeCut() { return G4RangeCut_ / I3Units::MeV * MeV; }
-        void SetG4RangeCut(G4double G4RangeCut) { G4RangeCut_ = G4RangeCut / MeV * I3Units::MeV; }
-        G4double GetG4EDepMin() { return G4EDepMin_ / I3Units::MeV * MeV; }
-        void SetG4EDepMin(G4double G4EDepMin) { G4EDepMin_ = G4EDepMin / MeV * I3Units::MeV; }
-        G4double GetG4ETrackingMin() { return G4ETrackingMin_ / I3Units::MeV * MeV; }
-        void SetG4ETrackingMin(G4double G4ETrackingMin) { G4ETrackingMin_ = G4ETrackingMin / MeV * I3Units::MeV; }
-
+        bool GetTrackParticles() const { return TrackParticles_; }
+        bool GetTrackEnergyLosses() const { return TrackEnergyLosses_; }
 
         void Reset() {
             DaughterParticleMap.clear();
@@ -93,20 +71,11 @@ class G4CCMTreeTracker : public G4VSensitiveDetector {
         int event_id = -1;
         G4CCMReadout * readout_ = nullptr;
 
-        bool KillNeutrinos_ = false;
-        bool KillPhotons_ = false;
-        bool KillScintillation_ = false;
-        bool KillCherenkov_ = false;
-        bool TimeCut_ = false;
-        bool DetailedPhotonTracking_ = false;
+        DetectorResponseConfig detectorConfig_;
+        CCMSimulationSettings simulationSettings_;
+
         bool TrackParticles_ = false;
         bool TrackEnergyLosses_ = false;
-
-        double time_cut_value_ = 200.0;
-
-        double G4RangeCut_ = 0.0; // range cut for all particles
-        double G4EDepMin_ = 0.0; // minimum energy deposition for all particles
-        double G4ETrackingMin_ = 0.0; // minimum energy for tracking
 
         // our mc tree we will save energy depositions to
         I3MCTreePtr mcTree = nullptr;

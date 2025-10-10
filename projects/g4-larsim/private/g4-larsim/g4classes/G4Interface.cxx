@@ -62,36 +62,20 @@ G4Interface::~G4Interface() {
 }
 
 
-void G4Interface::InstallDetector(
-                                  bool SaveAllEnergyLossesTree,
-                                  bool VetoSDSaveEnergyLossesVector, bool VetoSDSaveEnergyLossesTree, bool VetoSDPruneTree,
-                                  bool InteriorSDSaveEnergyLossesVector, bool InteriorSDSaveEnergyLossesTree, bool InteriorSDPruneTree,
-                                  bool KillNeutrinos, bool KillPhotons, bool KillScintillation, bool KillCherenkov,
-                                  bool TimeCut, bool DetailedPhotonTracking, bool TrackParticles, bool TrackEnergyLosses,
-                                  bool SimulateNuclearRecoils, double G4RangeCut, double G4EDepMin, double G4ETrackingMin,
-                                  bool RecordHits, bool SourceRodIn, double SourceRodLocation,
-                                  bool CobaltSourceRun, bool SodiumSourceRun, bool TrainingSource,
-                                  double DecayX, double DecayY, double DecayZ, double Rayleigh128,
-                                  bool EnableUVAbsorption, double UVAbsA, double UVAbsB, double UVAbsD, double UVAbsScaling,
-                                  double WLSNPhotonsEndCapFoil, double WLSNPhotonsSideFoil, double WLSNPhotonsPMT,
-                                  double EndCapFoilTPBThickness, double SideFoilTPBThickness, double PMTTPBThickness,
-                                  double TPBAbsTau, double TPBAbsNorm, double TPBAbsScale, double Mie_GG, double Mie_Ratio,
-                                  double Normalization, double PhotonSampling, double RindexGamma, long RandomSeed) {
+void G4Interface::InstallDetector(CCMSimulationSettings const & settings, DetectorResponseConfig const & config) {
     if(initialized_) {
         log_fatal("G4Interface already initialized. Cannot install detector!");
         return;
     }
 
-    SimulateNuclearRecoils_ = SimulateNuclearRecoils;
-    G4RangeCut_ = G4RangeCut;
-    G4EDepMin_ = G4EDepMin;
-    G4ETrackingMin_ = G4ETrackingMin;
-    PhotonSamplingFactor_ = PhotonSampling;
+    CCMSimulationSettings & s = simulationSettings_;
+    DetectorResponseConfig & c = detectorConfig_;
 
-    RecordHits_ = RecordHits;
+    s = settings;
+    c = config;
 
     // add random seed for geant4
-    G4Random::setTheSeed(RandomSeed);
+    G4Random::setTheSeed(s.random_seed_);
 
     if(readout_ == nullptr) {
         readout_ = std::make_shared<G4CCMReadout>();
@@ -109,43 +93,11 @@ void G4Interface::InstallDetector(
     }
 
     if(detector_ == nullptr) {
-        detector_ = new G4CCMDetectorConstruction(
-                                                  EnableUVAbsorption,
-                                                  UVAbsA / (1.0/I3Units::nanometer) * (1/nm),
-                                                  UVAbsB / I3Units::nanometer * nm,
-                                                  UVAbsD / I3Units::cm * cm, UVAbsScaling,
-                                                  WLSNPhotonsEndCapFoil, WLSNPhotonsSideFoil, WLSNPhotonsPMT,
-                                                  EndCapFoilTPBThickness / I3Units::mm * CLHEP::mm, SideFoilTPBThickness / I3Units::mm * CLHEP::mm, PMTTPBThickness / I3Units::mm * CLHEP::mm,
-                                                  Rayleigh128 / I3Units::cm * CLHEP::cm, TPBAbsTau, TPBAbsNorm, TPBAbsScale, Mie_GG, Mie_Ratio, Normalization, PhotonSampling, RindexGamma);
+        detector_ = new G4CCMDetectorConstruction(s, c);
+
         // set readout
         detector_->SetReadout(readout_.get());
 
-        detector_->SetSaveAllEnergyLossesTree(SaveAllEnergyLossesTree);
-
-        detector_->SetVetoSDSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector);
-        detector_->SetVetoSDSaveEnergyLossesTree(VetoSDSaveEnergyLossesTree);
-        detector_->SetVetoSDPruneTree(VetoSDPruneTree);
-
-        detector_->SetInteriorSDSaveEnergyLossesVector(InteriorSDSaveEnergyLossesVector);
-        detector_->SetInteriorSDSaveEnergyLossesTree(InteriorSDSaveEnergyLossesTree);
-        detector_->SetInteriorSDPruneTree(InteriorSDPruneTree);
-
-        // set SD status
-        detector_->SetRecordHits(RecordHits_);
-
-        // set time cut and cerenkov control
-        detector_->SetTimeCut(TimeCut);
-        detector_->SetKillNeutrinos(KillNeutrinos);
-        detector_->SetKillPhotons(KillPhotons);
-        detector_->SetKillCherenkov(KillCherenkov);
-        detector_->SetKillScintillation(KillScintillation);
-        detector_->SetDetailedPhotonTracking(DetailedPhotonTracking);
-        detector_->SetG4RangeCut(G4RangeCut / I3Units::cm * CLHEP::cm);
-        detector_->SetG4EDepMin(G4EDepMin / I3Units::MeV * CLHEP::MeV);
-        detector_->SetG4ETrackingMin(G4ETrackingMin / I3Units::MeV * CLHEP::MeV);
-        // set sodium rod status
-        detector_->InitializeSodiumSourceRun(SourceRodIn, SourceRodLocation / I3Units::cm * CLHEP::cm, CobaltSourceRun, SodiumSourceRun,
-                                             TrainingSource, DecayX / I3Units::cm * CLHEP::cm, DecayY / I3Units::cm * CLHEP::cm, DecayZ / I3Units::cm * CLHEP::cm);
         // Force reinitializatiion
         //runManager_->ReinitializeGeometry(true);
     }
@@ -235,10 +187,10 @@ void G4Interface::Initialize() {
 
     // adding physics list
     G4CCMPhysicsList* physics_list = new G4CCMPhysicsList(verboseLevel);
-    physics_list->SimulateNuclearRecoils_ = SimulateNuclearRecoils_;
-    physics_list->G4RangeCut_ = G4RangeCut_;
-    physics_list->G4EDepMin_ = G4EDepMin_;
-    physics_list->PhotonSamplingFactor_ = PhotonSamplingFactor_;
+    physics_list->SimulateNuclearRecoils_ = simulationSettings_.simulate_nuclear_recoils_;
+    physics_list->G4RangeCut_ = simulationSettings_.g4_range_cut_;
+    physics_list->G4EDepMin_ = simulationSettings_.g4_edep_min_;
+    physics_list->PhotonSamplingFactor_ = detectorConfig_.photon_sampling_factor_;
     runManager_->SetUserInitialization(physics_list);
 
     // Set user action initialization

@@ -8,12 +8,12 @@ Global variables include most of the important volumes and materials.
 #ifndef G4CCMDetectorConstruction_H
 #define G4CCMDetectorConstruction_H 1
 
-#include "icetray/CCMPMTKey.h"
-#include "dataclasses/I3Map.h"
 #include "g4-larsim/g4classes/G4CCMDetectorMessenger.h"
 #include "g4-larsim/g4classes/G4CCMReadout.h"
 #include "g4-larsim/g4classes/G4CCMTreeTracker.h"
 #include "g4-larsim/g4classes/G4CCMEDepSD.h"
+#include "simclasses/CCMSimulationSettings.h"
+#include "simclasses/DetectorResponseConfig.h"
 
 #include <G4Cache.hh>
 #include <G4Material.hh>
@@ -40,11 +40,7 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
   public:
 
     // constructor and destructor
-    G4CCMDetectorConstruction(G4bool EnableUVAbsorption, G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
-                              G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
-                              G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
-                              G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
-                              G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor, G4double RindexGamma_);
+    G4CCMDetectorConstruction(CCMSimulationSettings const & settings, DetectorResponseConfig const & config);
     ~G4CCMDetectorConstruction() override;
 
     void SetReadout(G4CCMReadout * readout);
@@ -61,75 +57,6 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     //Construct main volume
     void SetMainVolumeOn(G4bool b);
     G4bool GetMainVolumeOn() const { return fMainVolumeOn; }
-
-    void SetSaveAllEnergyLossesVector(G4bool b) { SaveAllEnergyLossesVector_ = b; }
-    void SetSaveAllEnergyLossesTree(G4bool b) { SaveAllEnergyLossesTree_ = b; }
-
-    void SetVetoSDSaveEnergyLossesVector(G4bool b) { VetoSDSaveEnergyLossesVector_ = b; }
-    void SetVetoSDSaveEnergyLossesTree(G4bool b) { VetoSDSaveEnergyLossesTree_ = b; }
-    void SetVetoSDPruneTree(G4bool b) { VetoSDPruneTree_ = b; }
-
-    void SetInteriorSDSaveEnergyLossesVector(G4bool b) { InteriorSDSaveEnergyLossesVector_ = b; }
-    void SetInteriorSDSaveEnergyLossesTree(G4bool b) { InteriorSDSaveEnergyLossesTree_ = b; }
-    void SetInteriorSDPruneTree(G4bool b) { InteriorSDPruneTree_ = b; }
-
-    void SetKillNeutrinos(G4bool b) { KillNeutrinos_ = b; }
-    void SetKillPhotons(G4bool b) { KillPhotons_ = b; }
-    void SetKillScintillation(G4bool b) { KillScintillation_ = b; }
-    void SetKillCherenkov(G4bool b) { KillCherenkov_ = b; }
-
-    void SetTimeCut(G4bool b) { TimeCut_ = b; }
-    void SetDetailedPhotonTracking(G4bool b) { DetailedPhotonTracking_ = b; }
-    void SetTrackParticles(G4bool b) { TrackParticles_ = b; }
-    void SetTrackEnergyLosses(G4bool b) { TrackEnergyLosses_ = b; }
-
-    void SetG4RangeCut(G4double G4RangeCut) { G4RangeCut_ = G4RangeCut; }
-    void SetG4EDepMin(G4double G4EDepMin) { G4EDepMin_ = G4EDepMin; }
-    void SetG4ETrackingMin(G4double G4ETrackingMin) { G4ETrackingMin_ = G4ETrackingMin; }
-
-    // set SD configuration
-    void SetRecordHits(bool RecordHits) { RecordHits_ = RecordHits; }
-
-    bool GetSaveAllEnergyLossesVector() { return SaveAllEnergyLossesVector_; }
-    bool GetSaveAllEnergyLossesTree() { return SaveAllEnergyLossesTree_; }
-
-    bool GetVetoSDSaveEnergyLossesVector() { return VetoSDSaveEnergyLossesVector_; }
-    bool GetVetoSDSaveEnergyLossesTree() { return VetoSDSaveEnergyLossesTree_; }
-    bool GetVetoSDPruneTree() { return VetoSDPruneTree_; }
-
-    bool GetInteriorSDSaveEnergyLossesVector() { return InteriorSDSaveEnergyLossesVector_; }
-    bool GetInteriorSDSaveEnergyLossesTree() { return InteriorSDSaveEnergyLossesTree_; }
-    bool GetInteriorSDPruneTree() { return InteriorSDPruneTree_; }
-
-    bool GetKillNeutrinos() { return KillNeutrinos_; }
-    bool GetKillPhotons() { return KillPhotons_; }
-    bool GetKillScintillation() { return KillScintillation_; }
-    bool GetKillCherenkov() { return KillCherenkov_; }
-
-    bool GetTimeCut() { return TimeCut_; }
-    bool GetDetailedPhotonTracking() { return DetailedPhotonTracking_; }
-    bool GetTrackParticles() { return TrackParticles_; }
-    bool GetTrackEnergyLosses() { return TrackEnergyLosses_; }
-
-    G4double GetG4RangeCut() { return G4RangeCut_; }
-    G4double GetG4EDepMin() { return G4EDepMin_; }
-    G4double GetG4ETrackingMin() { return G4ETrackingMin_; }
-
-    // get SD configuration
-    bool GetRecordHits() { return RecordHits_; }
-
-    // set sodium source calibration run status
-    void InitializeSodiumSourceRun(bool SourceRodIn, G4double SourceRodLocation, bool CobaltSourceRun,
-                                  bool SodiumSourceRun, bool TrainingSource, G4double DecayX, G4double DecayY, G4double DecayZ) {
-        SourceRodIn_ = SourceRodIn;
-        SourceRodLocation_ = SourceRodLocation;
-        CobaltSourceRun_ = CobaltSourceRun;
-        SodiumSourceRun_ = SodiumSourceRun;
-        TrainingSource_ = TrainingSource;
-        DecayX_ = DecayX;
-        DecayY_ = DecayY;
-        DecayZ_ = DecayZ;
-    }
 
     double HarmonicOscillatorRefractiveIndex(double a0, double aUV, double gammaUV, double wlUV, double wl);
     double HarmonicOscillatorRefractiveIndexDerivative(double aUV, double lambda, double lambdaUV, double gammaUV);
@@ -191,64 +118,9 @@ class G4CCMDetectorConstruction : public G4VUserDetectorConstruction {
     G4Cache<G4CCMEDepSD*> fVeto_SD;
     G4Cache<G4CCMEDepSD*> fInterior_SD;
 
-    bool SaveAllEnergyLossesVector_ = false;
-    bool SaveAllEnergyLossesTree_ = false;
-    bool VetoSDSaveEnergyLossesVector_ = false;
-    bool VetoSDSaveEnergyLossesTree_ = false;
-    bool VetoSDPruneTree_ = false;
-    bool InteriorSDSaveEnergyLossesVector_ = false;
-    bool InteriorSDSaveEnergyLossesTree_ = false;
-    bool InteriorSDPruneTree_ = false;
-
-    bool KillNeutrinos_ = false;
-    bool KillPhotons_ = false;
-    bool KillScintillation_ = false;
-    bool KillCherenkov_ = false;
-
-    bool TimeCut_ = false;
-    bool DetailedPhotonTracking_ = false;
-    bool TrackParticles_ = false;
-    bool TrackEnergyLosses_ = false;
-
-
-
-    // controls to turn SD on/off (set via G4Interface)
-    bool RecordHits_ = true; // turn hit recording on/off
-
-    G4double G4RangeCut_ = 1e-6 * m; // range cut for all particles
-    G4double G4EDepMin_ = 0.01 * keV; // minimum energy deposit for hits
-    G4double G4ETrackingMin_ = 0.1 * keV; // minimum energy for tracking
-
-    // controls to turn sodium source on/off
-    bool SourceRodIn_ = false;
-    G4double SourceRodLocation_ = 0.0 * cm;
-    bool CobaltSourceRun_ = false;
-    bool SodiumSourceRun_ = false;
-    bool TrainingSource_ = false;
-    G4double DecayX_ = 0.0 * cm;
-    G4double DecayY_ = 0.0 * cm;
-    G4double DecayZ_ = 0.0 * cm;
-
-    G4double Rayleigh128_ = 95.0 * cm;
-    G4bool EnableUVAbsorption_ = true;;
-    G4double UVAbsA_ = 0.234 * (1.0/nm);
-    G4double UVAbsB_ = 113.02 * nm;
-    G4double UVAbsD_ = 5.8 * cm;
-    G4double UVAbsScaling_ = 1.0;
-    G4double WLSNPhotonsEndCapFoil_ = 0.605;
-    G4double WLSNPhotonsSideFoil_ = 0.605;
-    G4double WLSNPhotonsPMT_ = 0.605;
-    G4double EndCapFoilTPBThickness_ = 0.00278035 * mm;
-    G4double SideFoilTPBThickness_ = 0.00278035 * mm;
-    G4double PMTTPBThickness_ = 0.00203892 * mm;
-    G4double TPBAbsTau_ = 0.13457;
-    G4double TPBAbsNorm_ = 8.13914e-21;
-    G4double TPBAbsScale_ = 1.0;
-    G4double Mie_GG_ = 0.99;
-    G4double Mie_Ratio_ = 1.0;
-    G4double Normalization_ = 1.0;
-    G4double PhotonSamplingFactor_ = 0.5;
-    G4double RindexGamma_ = 0.002524;
+    // Settings
+    CCMSimulationSettings simulationSettings_;
+    DetectorResponseConfig detectorConfig_;
 };
 
 #endif

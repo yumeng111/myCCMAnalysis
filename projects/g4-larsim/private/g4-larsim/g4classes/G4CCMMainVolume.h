@@ -1,15 +1,11 @@
 #ifndef G4CCMMainVolume_h
 #define G4CCMMainVolume_h 1
 
-#include "dataclasses/I3Map.h"
-#include "dataclasses/I3Position.h"
-#include "dataclasses/I3Orientation.h"
-#include "dataclasses/geometry/CCMGeometry.h"
-
 #include "g4-larsim/g4classes/J4PMTSolidMaker.h"
 #include "g4-larsim/g4classes/G4CCMDetectorConstruction.h"
 
-#include "icetray/CCMPMTKey.h"
+#include "simclasses/CCMSimulationSettings.h"
+#include "simclasses/DetectorResponseConfig.h"
 
 #include <map>
 
@@ -27,9 +23,9 @@ class G4CCMMainVolume : public G4PVPlacement {
   public:
     G4CCMMainVolume(G4RotationMatrix* pRot, const G4ThreeVector& tlate,
                 G4LogicalVolume* pMotherLogical, G4bool pMany, G4int pCopyNo,
-                G4CCMDetectorConstruction* c, G4bool SourceRodIn, G4double SourceRodLocation, G4bool CobaltSourceRun, G4bool SodiumSourceRun,
-                G4bool TrainingSource, G4double DecayX, G4double DecayY, G4double DecayZ,
-                G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness);
+                G4CCMDetectorConstruction* c,
+                CCMSimulationSettings const & settings,
+                DetectorResponseConfig const & config);
 
     G4LogicalVolume* GetLogPMTCoatedWall() { return fPMTCoatedWall_log; }
     G4LogicalVolume* GetLogPMTCoatedCaps() { return fPMTCoatedCaps_log; }
@@ -146,6 +142,9 @@ class G4CCMMainVolume : public G4PVPlacement {
     void VisAttributes(G4bool SourceRodIn);
     void SurfaceProperties();
     G4CCMDetectorConstruction* fConstructor = nullptr;
+
+    DetectorResponseConfig detectorConfig_;
+    CCMSimulationSettings simulationSettings_;
 
     // Basic Volumes
     G4Tubs* fCryoVessel = nullptr;

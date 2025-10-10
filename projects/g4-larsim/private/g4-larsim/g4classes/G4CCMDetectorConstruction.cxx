@@ -15,7 +15,6 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
-#include <functional>
 #include <numeric>
 #include <vector>
 
@@ -46,31 +45,14 @@
 #include <G4LogicalBorderSurface.hh>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-G4CCMDetectorConstruction::G4CCMDetectorConstruction(G4bool EnableUVAbsorption, G4double UVAbsA, G4double UVAbsB, G4double UVAbsD, G4double UVAbsScaling,
-                                                     G4double WLSNPhotonsEndCapFoil, G4double WLSNPhotonsSideFoil, G4double WLSNPhotonsPMT,
-                                                     G4double EndCapFoilTPBThickness, G4double SideFoilTPBThickness, G4double PMTTPBThickness,
-                                                     G4double Rayleigh128, G4double TPBAbsTau, G4double TPBAbsNorm, G4double TPBAbsScale,
-                                                     G4double Mie_GG, G4double Mie_Ratio, G4double Normalization, G4double PhotonSamplingFactor, G4double RindexGamma) {
-    EnableUVAbsorption_ = EnableUVAbsorption;
-    UVAbsA_ = UVAbsA;
-    UVAbsB_ = UVAbsB;
-    UVAbsD_ = UVAbsD;
-    UVAbsScaling_ = UVAbsScaling;
-    WLSNPhotonsEndCapFoil_ = WLSNPhotonsEndCapFoil;
-    WLSNPhotonsSideFoil_ = WLSNPhotonsSideFoil;
-    WLSNPhotonsPMT_ = WLSNPhotonsPMT;
-    EndCapFoilTPBThickness_ = EndCapFoilTPBThickness;
-    SideFoilTPBThickness_ = SideFoilTPBThickness;
-    PMTTPBThickness_ = PMTTPBThickness;
-    Rayleigh128_ = Rayleigh128;
-    TPBAbsTau_ = TPBAbsTau;
-    TPBAbsNorm_ = TPBAbsNorm;
-    TPBAbsScale_ = TPBAbsScale;
-    Mie_GG_ = Mie_GG;
-    Mie_Ratio_ = Mie_Ratio;
-    Normalization_ = Normalization;
-    PhotonSamplingFactor_ = PhotonSamplingFactor;
-    RindexGamma_ = RindexGamma;
+G4CCMDetectorConstruction::G4CCMDetectorConstruction(CCMSimulationSettings const & settings, DetectorResponseConfig const & config) {
+    simulationSettings_ = settings;
+    detectorConfig_ = config;
+
+    // Convert to Geant4 units
+    simulationSettings_.to_g4_units();
+    detectorConfig_.to_g4_units();
+
     SetDefaults();
     DefineMaterials();
     fDetectorMessenger = new G4CCMDetectorMessenger(this);
@@ -269,35 +251,40 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> mie_scattering_length = {};
 
     // constants for index of refraction
-    double lamUV = 106.6;
+    double lamUV = detectorConfig_.refractive_index_wavelength_UV_;
 
-    double a0ho = 1.10232;
-    double aUVho = 0.00001058;
+    double a0ho = detectorConfig_.refractive_index_a0_;
+    double aUVho = detectorConfig_.refractive_index_aUV_;
+    double RindexGamma = detectorConfig_.refractive_index_gamma_UV_;
+    double Rayleigh128 = detectorConfig_.rayleigh_scattering_length_128nm_;
 
-    double starting_wavelength = 100.0;
-    double ending_wavelength = 850.0;
+    double starting_wavelength = 100.0 * CLHEP::nm;
+    double ending_wavelength = 850.0 * CLHEP::nm;
     size_t n_entries = 10000;
 
     double no_mie_scatt_len = 10000.0 * cm;
-    double mie_scatt_len = 9.37;
-    double mie_scaling = mie_scatt_len / (200.0 * 200.0);
+    double mie_scatt_len = detectorConfig_.mie_scattering_length_200nm_;
+    double mie_cutoff = detectorConfig_.mie_scattering_cutoff_;
+    double wavelength_200nm = 200.0 * CLHEP::nm;
+    double mie_scaling = mie_scatt_len / (wavelength_200nm * wavelength_200nm);
 
     // for rayl, we have the desired scattering length (in cm) at 128nm so first we need to solve for the scaling
-    double rindex_128 = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, RindexGamma_, lamUV, 128.0);
-    double rayl_scaling = (Rayleigh128_ / cm) * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(128.0*1e-7, 4.0);
+    double wavelength_128nm = 128.0 * CLHEP::nm;
+    double rindex_128 = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, RindexGamma, lamUV, wavelength_128nm);
+    double rayl_scaling = Rayleigh128 * std::pow((std::pow(rindex_128, 2.0) - 1)*(std::pow(rindex_128, 2.0) + 2), 2.0) / std::pow(wavelength_128nm, 4.0);
 
     for(int i = (n_entries + 1); i >= 0; --i) {
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
-        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
-        double this_rindex = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, RindexGamma_, lamUV, this_wavelength);
-        double this_rayl = (rayl_scaling * std::pow(this_wavelength*1e-7, 4.0) / std::pow((std::pow(this_rindex, 2.0) - 1)*(std::pow(this_rindex, 2.0) + 2), 2.0) ) * cm;
+        double this_energy = ((197.326 * 2.0 * M_PI) / (this_wavelength / CLHEP::nm)) * CLHEP::eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        double this_rindex = HarmonicOscillatorRefractiveIndex(a0ho, aUVho, RindexGamma, lamUV, this_wavelength);
+        double this_rayl = rayl_scaling * std::pow(this_wavelength, 4.0) / std::pow((std::pow(this_rindex, 2.0) - 1)*(std::pow(this_rindex, 2.0) + 2), 2.0);
 
-        double dn_dlambda = HarmonicOscillatorRefractiveIndexDerivative(aUVho, this_wavelength, lamUV, RindexGamma_);
+        double dn_dlambda = HarmonicOscillatorRefractiveIndexDerivative(aUVho, this_wavelength, lamUV, RindexGamma);
         double this_group_velocity = (c_light / this_rindex) * (1.0 + ((this_wavelength / this_rindex) * dn_dlambda));
 
-        if (this_wavelength > 200.0){
+        if(this_wavelength > mie_cutoff) {
             // let's try a little mie scattering
-            mie_scattering_length.push_back(mie_scaling * this_wavelength * this_wavelength * cm);
+            mie_scattering_length.push_back(mie_scaling * this_wavelength * this_wavelength);
         } else {
             // other wavelengths -- no mie!
             mie_scattering_length.push_back(no_mie_scatt_len);
@@ -316,39 +303,39 @@ void G4CCMDetectorConstruction::DefineMaterials() {
 
     // mie scattering!
     fLAr_mt->AddProperty("MIEHG", lar_light_properties_energy, mie_scattering_length);
-    fLAr_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fLAr_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fLAr_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    fLAr_mt->AddConstProperty("MIEHG_FORWARD", detectorConfig_.mie_gg_);
+    fLAr_mt->AddConstProperty("MIEHG_BACKWARD", detectorConfig_.mie_gg_);
+    fLAr_mt->AddConstProperty("MIEHG_FORWARD_RATIO", detectorConfig_.mie_ratio_);
 
     // using this paper: https://link.springer.com/article/10.1140/epjc/s10052-012-2190-z#Bib1
     // set parameter for uv abs scaling function
-    double a_param = UVAbsA_ / (1.0/nm); // per nm
-    double b_param = UVAbsB_ / nm; // nm
-    double d_param = UVAbsD_ / cm; // cm
-    double scaling_param = UVAbsScaling_; // dimensionless
+    double a_param = detectorConfig_.uv_absorption_a_;// / (1.0 / CLHEP::nm); // per nm
+    double b_param = detectorConfig_.uv_absorption_b_;// / CLHEP::nm; // nm
+    double d_param = detectorConfig_.uv_absorption_d_;// / CLHEP::cm; // cm
+    double scaling_param = detectorConfig_.uv_absorption_scaling_; // dimensionless
     for(size_t i=0; i<10; ++i) {
         std::cout << "######################################################################################################################" << std::endl;
     }
-    std::cout << "a_param = " << a_param << std::endl;
-    std::cout << "b_param = " << b_param << std::endl;
-    std::cout << "d_param = " << d_param << std::endl;
+    std::cout << "a_param = " << a_param / (1.0 / CLHEP::nm) << " [1/nm]" << std::endl;
+    std::cout << "b_param = " << b_param / CLHEP::nm << " [nm]" << std::endl;
+    std::cout << "d_param = " << d_param / CLHEP::cm << " [cm]" << std::endl;
     std::cout << "scaling_param = " << scaling_param << std::endl;
     for(size_t i=0; i<10; ++i) {
         std::cout << "######################################################################################################################" << std::endl;
     }
 
-    double large_abs_length = 100000.0; // cm
+    double large_abs_length = 100000.0 * CLHEP::cm; // cm
 
     // now let's get some min and max bounds
-    double min_wavelength = b_param + 0.1;
-    double max_wavelength = std::min(800.0, b_param - log(1.0 - std::exp(-d_param/large_abs_length)) / a_param);
+    double min_wavelength = b_param + 0.1 * CLHEP::nm;
+    double max_wavelength = std::min(800.0 * CLHEP::nm, b_param - log(1.0 - std::exp(-d_param/large_abs_length)) / a_param);
 
     double min_wavelength_function_T = 1.0 - std::exp( - a_param * (min_wavelength - b_param));
     double min_abs_length = (d_param / std::log(1.0 / min_wavelength_function_T));
     min_abs_length *= scaling_param;
 
     double max_wavelength_function_T = 1.0 - std::exp( - a_param * (max_wavelength - b_param));
-    double max_abs_length = std::min((d_param / std::log(1.0 / max_wavelength_function_T)), large_abs_length /*cm*/);
+    double max_abs_length = std::min((d_param / std::log(1.0 / max_wavelength_function_T)), large_abs_length);
     max_abs_length *= scaling_param;
 
     // now we need to fill in our absorption lengths
@@ -356,44 +343,44 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> uv_abs_length; uv_abs_length.reserve(n_entries+1);
     for(int i = (n_entries + 1); i >= 0; --i) {
         double this_wavelength = starting_wavelength + ((static_cast<double>(i-1) / static_cast<double>(n_entries)) * (ending_wavelength - starting_wavelength));
-        G4double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        G4double this_energy = ((197.326 * 2.0 * M_PI) / (this_wavelength / CLHEP::nm)) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
         G4double this_abs;
 
         if(this_wavelength <= b_param) {
-            this_abs = min_abs_length * cm;
+            this_abs = min_abs_length;
         } else if (this_wavelength > b_param and this_wavelength < max_wavelength){
             double function_T = 1.0 - std::exp( - a_param * (this_wavelength - b_param));
             double abs_length = (d_param / std::log(1.0 / function_T));
-            this_abs = scaling_param * abs_length * cm;
+            this_abs = scaling_param * abs_length;
         } else {
-            this_abs = max_abs_length * cm;
+            this_abs = max_abs_length;
         }
 
         // special logic for absorption length in the visible
-        if (this_wavelength >= 140.0 and this_wavelength < 300.0){
-            this_abs = 5000.0 * cm;
-        } else if (this_wavelength >= 300.0 and this_wavelength < 400.0){
-            this_abs = 98.25 * cm;
+        if(this_wavelength >= (140.0 * CLHEP::nm) and this_wavelength < (300.0 * CLHEP::nm)) {
+            this_abs = 5000.0 * CLHEP::cm;
+        } else if(this_wavelength >= (300.0 * CLHEP::nm) and this_wavelength < (400.0 * CLHEP::nm)) {
+            this_abs = 98.25 * CLHEP::cm;
         }
 
         uv_abs_energy.push_back(this_energy);
         uv_abs_length.push_back(this_abs);
     }
 
-    if(EnableUVAbsorption_)
+    if(detectorConfig_.enable_uv_absorption_)
         fLAr_mt->AddProperty("ABSLENGTH", uv_abs_energy, uv_abs_length);
 
-    std::cout << "using normalization = " << Normalization_ << " for scintillation yields" << std::endl;
-    G4double scint_yeild = Normalization_ * (1.0/(19.5*eV)) * PhotonSamplingFactor_; // scintillation yield: 50 per keV.
+    std::cout << "using normalization = " << detectorConfig_.normalization_ << " for scintillation yields" << std::endl;
+    G4double scint_yeild = detectorConfig_.normalization_ * (1.0/(19.5*eV)) * detectorConfig_.photon_sampling_factor_; // scintillation yield: 51 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
-    fLAr_mt->AddConstProperty("RESOLUTIONSCALE", std::sqrt(PhotonSamplingFactor_));
+    fLAr_mt->AddConstProperty("RESOLUTIONSCALE", std::sqrt(detectorConfig_.photon_sampling_factor_));
     fLAr_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 1e-5 * ns);
-    fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1",1.0); // for e/m scintillation
+    fLAr_mt->AddConstProperty("SCINTILLATIONYIELD1", 1.0); // for e/m scintillation
     fLAr->SetMaterialPropertiesTable(fLAr_mt);
 
     // Set the Birks Constant for the LAr scintillator
-    fLAr->GetIonisation()->SetBirksConstant(0.145731*cm/MeV);
-    fLAr->GetIonisation()->SetMeanExcitationEnergy(203.0 * eV);
+    fLAr->GetIonisation()->SetBirksConstant(detectorConfig_.birks_constant_);
+    fLAr->GetIonisation()->SetMeanExcitationEnergy(detectorConfig_.mean_excitation_energy_);
 
     // Set PMT glass constants
     std::vector<G4double> glass_energy = {1.0*eV, 5.0*eV, 7.07*eV, 10.14*eV, 12.0*eV};
@@ -534,20 +521,20 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> TPB_WLSAbsLength = {1e35*nm}; // padding lower bound (doesnt really matter, just need super big absorption length)
     // note -- looping over backwards to go from low energy (high wavelength) to high energy (low wavelength)
     for (size_t w = (TPB_WLSAbsLength_Wavelength.size() - 1); w > 0; w --){
-        G4double this_wavelength = TPB_WLSAbsLength_Wavelength.at(w) / nm;
+        G4double this_wavelength = TPB_WLSAbsLength_Wavelength.at(w);
         G4double this_abs;
         if (w < TPB_WLSAbsLength_FixedAbsorption.size()){
             this_abs = TPB_WLSAbsLength_FixedAbsorption.at(w);
         } else {
             // ok now we need to calculate our absorption length
-            this_abs = TPBAbsNorm_ * exp(TPBAbsTau_ * this_wavelength) * nm;
+            this_abs = detectorConfig_.tpb_abs_norm_ * exp(detectorConfig_.tpb_abs_tau_ * this_wavelength);
         }
 
         // multiply our absorption by the overall scaling
-        this_abs *= TPBAbsScale_;
+        this_abs *= detectorConfig_.tpb_abs_scale_;
 
         // now convert wavelength to energy and save!
-        double this_energy = ((197.326 * 2.0 * M_PI) / this_wavelength) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
+        double this_energy = ((197.326 * 2.0 * M_PI) / (this_wavelength / nm)) * eV; // hc / wavelength (units are hardcoded -- energy in ev and wavelength in nm)
         TPB_WLSAbsLength_Energy.push_back(this_energy);
         TPB_WLSAbsLength.push_back(this_abs);
     }
@@ -573,46 +560,46 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     // side cylinder of TPB foil
     G4MaterialPropertiesTable* fTPBFoilSides_mt = new G4MaterialPropertiesTable();
     fTPBFoilSides_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", 0.3*ns); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << WLSNPhotonsSideFoil_ << " for side tpb foils" << std::endl;
-    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsSideFoil_);
+    fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", detectorConfig_.tpb_wls_time_constant_); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << detectorConfig_.side_tpb_qe_ << " for side tpb foils" << std::endl;
+    fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", detectorConfig_.side_tpb_qe_);
     fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
     fTPBFoilSides_mt->AddProperty("MIEHG", TPB_Scattering_Energy, TPB_Mie_Scattering_Length);
-    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD", detectorConfig_.mie_gg_);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_BACKWARD", detectorConfig_.mie_gg_);
+    fTPBFoilSides_mt->AddConstProperty("MIEHG_FORWARD_RATIO", detectorConfig_.mie_ratio_);
     fTPBFoilSides->SetMaterialPropertiesTable(fTPBFoilSides_mt);
 
     // top/bottom faces of tpb foil -- these have WLSNPhotonsFoil_!!!
     G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
     fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", 0.3*ns); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << WLSNPhotonsEndCapFoil_ << " for top/bottom tpb foils" << std::endl;
-    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsEndCapFoil_);
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", detectorConfig_.tpb_wls_time_constant_); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << detectorConfig_.endcap_tpb_thickness_ / CLHEP::micrometer << "um for top/bottom tpb foils" << std::endl;
+    fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", detectorConfig_.endcap_tpb_qe_);
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
     fTPBFoilTopBottom_mt->AddProperty("MIEHG", TPB_Scattering_Energy, TPB_Mie_Scattering_Length);
-    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD", detectorConfig_.mie_gg_);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_BACKWARD", detectorConfig_.mie_gg_);
+    fTPBFoilTopBottom_mt->AddConstProperty("MIEHG_FORWARD_RATIO", detectorConfig_.mie_ratio_);
     fTPBFoilTopBottom->SetMaterialPropertiesTable(fTPBFoilTopBottom_mt);
 
     // tpb on pmts
     G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
     fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
-    fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", 0.3*ns); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << WLSNPhotonsPMT_ << " for pmt tpb foils" << std::endl;
-    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", WLSNPhotonsPMT_);
+    fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", detectorConfig_.tpb_wls_time_constant_); // setting to very small at the moment
+    std::cout << "setting wls mean number of photons to " << detectorConfig_.pmt_tpb_qe_ << " for pmt tpb foils" << std::endl;
+    fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", detectorConfig_.pmt_tpb_qe_);
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
     // mie scattering!
     fTPBPMT_mt->AddProperty("MIEHG", TPB_Scattering_Energy, TPB_Mie_Scattering_Length);
-    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", Mie_GG_);
-    fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", Mie_GG_);
-    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", Mie_Ratio_);
+    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD", detectorConfig_.mie_gg_);
+    fTPBPMT_mt->AddConstProperty("MIEHG_BACKWARD", detectorConfig_.mie_gg_);
+    fTPBPMT_mt->AddConstProperty("MIEHG_FORWARD_RATIO", detectorConfig_.mie_ratio_);
     fTPBPMT->SetMaterialPropertiesTable(fTPBPMT_mt);
 
     // Defines properties of the reflectors.
@@ -679,9 +666,7 @@ G4VPhysicalVolume* G4CCMDetectorConstruction::Construct() {
     // Place the main volume
     if(fMainVolumeOn) {
         fMainVolume = new G4CCMMainVolume(nullptr, G4ThreeVector(), fExperimentalHall_log, false, 0, this,
-                                          SourceRodIn_, SourceRodLocation_, CobaltSourceRun_, SodiumSourceRun_,
-                                          TrainingSource_, DecayX_, DecayY_, DecayZ_,
-                                          EndCapFoilTPBThickness_, SideFoilTPBThickness_, PMTTPBThickness_);
+                                          simulationSettings_, detectorConfig_);
     }
 
     return fExperimentalHall_phys;
@@ -695,7 +680,10 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
     if(!fMainVolume)
         return;
 
-    if(RecordHits_) {
+    CCMSimulationSettings const & s = simulationSettings_;
+    DetectorResponseConfig const & c = detectorConfig_;
+
+    if(s.record_hits_) {
         // PMT SD
         G4CCMPMTSD* pmt = fPMT_SD.Get();
         if(!pmt) {
@@ -706,7 +694,7 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
 
             pmt_SD->InitPMTs();
             pmt_SD->SetPmtPositions(fMainVolume->GetPMTPositions());
-            pmt_SD->SetPhotonTracking(DetailedPhotonTracking_);
+            pmt_SD->SetPhotonTracking(s.record_hits_);
             pmt_SD->SetReadout(readout_);
             G4SDManager::GetSDMpointer()->AddNewDetector(fPMT_SD.Get());
             for(G4LogicalVolume * log : fMainVolume->GetPMTLogicalVolumes()) {
@@ -717,57 +705,43 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
         }
     }
 
-    bool tree_tracker = RecordHits_ or TrackParticles_ or TrackEnergyLosses_
-                     or DetailedPhotonTracking_ or TimeCut_
-                     or KillNeutrinos_ or KillCherenkov_ or KillScintillation_ or KillPhotons_
-                     or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_
-                     or SaveAllEnergyLossesTree_;
+    bool tree_tracker = s.record_hits_ or s.track_particles_ or s.track_energy_losses_
+                     or s.detailed_photon_tracking_ or s.do_time_cut_
+                     or s.kill_neutrinos_ or s.kill_cherenkov_ or s.kill_scintillation_ or s.kill_photons_
+                     or s.veto_sd_save_energy_losses_tree_ or s.interior_sd_save_energy_losses_tree_
+                     or s.save_all_energy_losses_tree_;
 
-    bool track_particles = TrackParticles_ or TrackEnergyLosses_
-                     or SaveAllEnergyLossesTree_ or VetoSDSaveEnergyLossesTree_
-                     or InteriorSDSaveEnergyLossesTree_;
+    bool track_particles = s.track_particles_ or s.track_energy_losses_
+                     or s.save_all_energy_losses_tree_ or s.veto_sd_save_energy_losses_tree_
+                     or s.interior_sd_save_energy_losses_tree_;
 
-    bool track_energy_losses = TrackEnergyLosses_ or SaveAllEnergyLossesTree_
-                     or VetoSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesTree_;
+    bool track_energy_losses = s.track_energy_losses_ or s.save_all_energy_losses_tree_
+                     or s.veto_sd_save_energy_losses_tree_ or s.interior_sd_save_energy_losses_tree_;
 
     if(tree_tracker) {
         // Tree tracker
         if(!fTreeTracker_SD.Get()) {
             G4cout << "Construction /LAr/treeTracker" << G4endl;
-            auto tree_tracker = new G4CCMTreeTracker("/LAr/treeTracker");
-            tree_tracker->SetTrackParticles(track_particles);
-            tree_tracker->SetTrackEnergyLosses(track_energy_losses);
-            tree_tracker->SetDetailedPhotonTracking(DetailedPhotonTracking_);
-            tree_tracker->SetTimeCut(TimeCut_);
-            tree_tracker->SetKillNeutrinos(KillNeutrinos_);
-            tree_tracker->SetKillCherenkov(KillCherenkov_);
-            tree_tracker->SetKillScintillation(KillScintillation_);
-            tree_tracker->SetKillPhotons(KillPhotons_);
+            auto tree_tracker = new G4CCMTreeTracker("/LAr/treeTracker", track_particles, track_energy_losses);
+            tree_tracker->SetDetectorResponseConfig(c);
+            tree_tracker->SetSimulationSettings(s);
             tree_tracker->SetReadout(readout_);
-            tree_tracker->SetG4RangeCut(G4RangeCut_);
-            tree_tracker->SetG4EDepMin(G4EDepMin_);
-            tree_tracker->SetG4ETrackingMin(G4ETrackingMin_);
             fTreeTracker_SD.Put(tree_tracker);
             G4SDManager::GetSDMpointer()->AddNewDetector(fTreeTracker_SD.Get());
             auto const & lvStore = *G4LogicalVolumeStore::GetInstance();
             for(G4LogicalVolume * log : lvStore) {
                 SetSensitiveDetector(log, fTreeTracker_SD.Get());
             }
-            //for(G4LogicalVolume * log : fMainVolume->GetAllLogicalVolumes()) {
-            //    if(log == nullptr)
-            //        continue;
-            //    SetSensitiveDetector(log, fTreeTracker_SD.Get());
-            //}
         }
     }
-    if(VetoSDSaveEnergyLossesTree_ or VetoSDSaveEnergyLossesVector_) {
+    if(s.veto_sd_save_energy_losses_tree_ or s.veto_sd_save_energy_losses_vector_) {
         // Veto SD
         if(!fVeto_SD.Get()) {
             G4cout << "Construction /LAr/vetoSD" << G4endl;
             auto veto_SD = new G4CCMEDepSD("/LAr/vetoSD", G4CCMReadout::VolumeType::Veto);
-            veto_SD->SetSaveEnergyLossesTree(VetoSDSaveEnergyLossesTree_);
-            veto_SD->SetSaveEnergyLossesVector(VetoSDSaveEnergyLossesVector_);
-            veto_SD->SetPruneTree(VetoSDPruneTree_);
+            veto_SD->SetSaveEnergyLossesTree(s.veto_sd_save_energy_losses_tree_);
+            veto_SD->SetSaveEnergyLossesVector(s.veto_sd_save_energy_losses_vector_);
+            veto_SD->SetPruneTree(s.veto_sd_prune_tree_);
             veto_SD->SetReadout(readout_);
             if(tree_tracker) {
                 assert(fTreeTracker_SD.Get() != nullptr);
@@ -782,14 +756,14 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
             }
         }
     }
-    if(InteriorSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesVector_) {
+    if(s.interior_sd_save_energy_losses_tree_ or s.interior_sd_save_energy_losses_vector_) {
         // Interior SD
         if(!fInterior_SD.Get()) {
             G4cout << "Construction /LAr/interiorSD" << G4endl;
             auto interior_SD = new G4CCMEDepSD("/LAr/interiorSD", G4CCMReadout::VolumeType::Inner);
-            interior_SD->SetSaveEnergyLossesTree(InteriorSDSaveEnergyLossesTree_);
-            interior_SD->SetSaveEnergyLossesVector(InteriorSDSaveEnergyLossesVector_);
-            interior_SD->SetPruneTree(InteriorSDPruneTree_);
+            interior_SD->SetSaveEnergyLossesTree(s.interior_sd_save_energy_losses_tree_);
+            interior_SD->SetSaveEnergyLossesVector(s.interior_sd_save_energy_losses_vector_);
+            interior_SD->SetPruneTree(s.interior_sd_prune_tree_);
             interior_SD->SetReadout(readout_);
             if(tree_tracker) {
                 assert(fTreeTracker_SD.Get() != nullptr);
@@ -808,10 +782,10 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
     if(tree_tracker) {
         assert(fTreeTracker_SD.Get());
     }
-    if(VetoSDSaveEnergyLossesTree_ or VetoSDSaveEnergyLossesVector_) {
+    if(s.veto_sd_save_energy_losses_tree_ or s.veto_sd_save_energy_losses_vector_) {
         assert(fVeto_SD.Get());
     }
-    if(InteriorSDSaveEnergyLossesTree_ or InteriorSDSaveEnergyLossesVector_) {
+    if(s.interior_sd_save_energy_losses_tree_ or s.interior_sd_save_energy_losses_vector_) {
         assert(fInterior_SD.Get());
     }
 }
