@@ -269,14 +269,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     std::vector<G4double> mie_scattering_length = {};
 
     // constants for index of refraction
-    double a0 = 1.26;
-    double aUV = 0.23;
-    double aIR = 0.0023;
     double lamUV = 106.6;
-    double lamIR = 908.3;
-    double a0bab = 0.334;
-    double aUVbab =  0.100;
-    double aIRbab = 0.008;
 
     double a0ho = 1.10232;
     double aUVho = 0.00001058;
