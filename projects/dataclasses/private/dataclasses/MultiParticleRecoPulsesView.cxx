@@ -22,8 +22,9 @@ MultiParticleRecoPulsesView::MultiParticleRecoPulsesView(I3Frame const & frame,
 
 CCMRecoPulseSeriesMapConstPtr MultiParticleRecoPulsesView::Apply(const I3Frame &frame) const {
     typedef I3Map<CCMPMTKey, std::vector<CCMRecoPulse>> MapType;
-    typedef I3Map<I3ParticleID, std::map<CCMPMTKey, std::vector<CCMRecoPulse>>> InputType;
+    typedef I3Map<I3ParticleID, I3Map<CCMPMTKey, std::vector<CCMRecoPulse>>> InputType;
 	if(unified_) return unified_;
+
 
     boost::shared_ptr<InputType const> input = frame.Get<boost::shared_ptr<InputType const>>(key_);
     if(!input) log_fatal("Couldn't find '%s' in the frame!", key_.c_str());

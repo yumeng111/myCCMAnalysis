@@ -8,6 +8,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/math/special_functions/erf.hpp>
 
+#include <map>
 #include <vector>
 #include <tuple>
 #include <cctype>
@@ -24,6 +25,7 @@
 #include <icetray/I3DefaultName.h>
 
 #include <dataclasses/I3Double.h>
+#include <dataclasses/MultiParticleRecoPulsesView.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
 #include <dataclasses/calibration/CCMSimulationCalibration.h>
@@ -175,15 +177,32 @@ public:
 
 int PMTResponse::CheckForDetailedPhotonTracking(I3FramePtr frame) const {
     boost::shared_ptr<CCMMCPESeriesMap const> mcpeseries_source = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>(input_hits_map_name_);
+    boost::shared_ptr<CCMMCPESeriesMapByID const> mcpeseries_source_by_id = frame->Get<boost::shared_ptr<CCMMCPESeriesMapByID const>>(input_hits_map_name_);
     bool has_photon = false;
-    for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it)
-        for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-            CCMMCPE const & pe = *it2;
-            if(pe.distance_uv > 0.0 or pe.distance_visible > 0.0)
-                return true;
-            else
-                has_photon = true;
+    if(mcpeseries_source) {
+        for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it)
+            for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                CCMMCPE const & pe = *it2;
+                if(pe.distance_uv > 0.0 or pe.distance_visible > 0.0)
+                    return true;
+                else
+                    has_photon = true;
+            }
+    } else if(mcpeseries_source_by_id) {
+        for(CCMMCPESeriesMapByID::const_iterator id_it = mcpeseries_source_by_id->begin(); id_it != mcpeseries_source_by_id->end(); ++id_it) {
+            for(CCMMCPESeriesMap::const_iterator it = id_it->second.begin(); it != id_it->second.end(); ++it) {
+                for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                    CCMMCPE const & pe = *it2;
+                    if(pe.distance_uv > 0.0 or pe.distance_visible > 0.0)
+                        return true;
+                    else
+                        has_photon = true;
+                }
+            }
         }
+    } else {
+        log_fatal("No CCMMCPESeriesMap or CCMMCPESeriesMapByID found in frame with name %s", input_hits_map_name_.c_str());
+    }
     if(not has_photon)
         return -1;
     return false;
@@ -589,31 +608,50 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         }
     }
 
-    // set up object to hold re-weighed simulation
-    CCMRecoPulseSeriesMapPtr mcpeseries_dest = boost::make_shared<CCMRecoPulseSeriesMap>();
-
     // grab the simulation output ccm mcpe series map
-    boost::shared_ptr<CCMMCPESeriesMap const> mcpeseries_source = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>(input_hits_map_name_);
+    bool multiparticle = false;
+    boost::shared_ptr<CCMMCPESeriesMap const> mcpeseries_source;
+    boost::shared_ptr<CCMMCPESeriesMapByID const> mcpeseries_source_by_id = frame->Get<boost::shared_ptr<CCMMCPESeriesMapByID const>>(input_hits_map_name_);
+    if(mcpeseries_source_by_id) {
+        multiparticle = true;
+    } else {
+        multiparticle = false;
+        mcpeseries_source = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>(input_hits_map_name_);
+    }
+
+    if(not mcpeseries_source and not mcpeseries_source_by_id) {
+        log_fatal("No CCMMCPESeriesMap or CCMMCPESeriesMapByID found in frame with name %s", input_hits_map_name_.c_str());
+    }
+
+    CCMRecoPulseSeriesMapPtr mcpeseries_dest_ptr = nullptr;
+    CCMRecoPulseSeriesMapByIDPtr mcpeseries_dest_by_id_ptr = nullptr;
+    std::set<CCMPMTKey> all_pmts;
+    std::set<I3ParticleID> all_ids;
+    std::map<I3ParticleID, std::reference_wrapper<std::map<CCMPMTKey, CCMMCPESeries> const>> inputs;
+    std::map<I3ParticleID, std::reference_wrapper<std::map<CCMPMTKey, CCMRecoPulseSeries>>> outputs;
+    if(multiparticle) {
+        mcpeseries_dest_by_id_ptr = boost::make_shared<CCMRecoPulseSeriesMapByID>();
+        for(CCMMCPESeriesMapByID::const_iterator it = mcpeseries_source_by_id->begin(); it != mcpeseries_source_by_id->end(); ++it) {
+            all_ids.insert(it->first);
+            inputs.insert(std::make_pair(it->first, std::ref(it->second)));
+            outputs.insert(std::make_pair(it->first, std::ref((*mcpeseries_dest_by_id_ptr)[it->first])));
+            for(CCMMCPESeriesMap::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                all_pmts.insert(it2->first);
+            }
+        }
+    } else {
+        mcpeseries_dest_ptr = boost::make_shared<CCMRecoPulseSeriesMap>();
+        all_ids.insert(I3ParticleID());
+        inputs.insert(std::make_pair(I3ParticleID(), std::ref(*mcpeseries_source)));
+        outputs.insert(std::make_pair(I3ParticleID(), std::ref(*mcpeseries_dest_ptr)));
+        for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
+            all_pmts.insert(it->first);
+        }
+    }
 
     // Iterate over PMTs in source map
-    for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
-        std::stringstream ss;
-        ss << it->first;
-
-        // Find the corresponding PMT in the destination map
-        CCMRecoPulseSeriesMap::iterator it_dest = mcpeseries_dest->find(it->first);
-
-        // If the PMT is not in the destination, then insert an empty vector
-        if(it_dest == mcpeseries_dest->end()) {
-            mcpeseries_dest->insert(std::make_pair(it->first, CCMRecoPulseSeries()));
-            // Update the iterator so it points to our new entry
-            it_dest = mcpeseries_dest->find(it->first);
-        }
-
-        // Reference to the destination
-        CCMRecoPulseSeries & dest_series = it_dest->second;
-
-        CCMSimulationPMTCalibration const & pmt_cal = pmt_cal_.at(it->first);
+    for(CCMPMTKey const & pmt : all_pmts) {
+        CCMSimulationPMTCalibration const & pmt_cal = pmt_cal_.at(pmt);
 
         // While we are looping over tubes, grab the PMT efficiency
         double pmt_efficiency = pmt_cal.pmt_efficiency;
@@ -621,188 +659,216 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             pmt_efficiency = average_pmt_eff_;
         }
 
-        double this_tube_board_time_offset = this_event_board_time_offset.at(it->first);
-        double this_tube_board_time_error = this_event_board_time_error.at(it->first);
+        double this_tube_board_time_offset = this_event_board_time_offset.at(pmt);
+        double this_tube_board_time_error = this_event_board_time_error.at(pmt);
 
         double this_tube_transit_time = 0.0;
-        I3MapPMTKeyDouble::const_iterator pmt_tt_it = pmt_transit_times_->find(it->first);
+        I3MapPMTKeyDouble::const_iterator pmt_tt_it = pmt_transit_times_->find(pmt);
         if(pmt_tt_it != pmt_transit_times_->end()) {
             this_tube_transit_time = pmt_tt_it->second;
-            this_event_total_time_offsets->insert(std::make_pair(it->first, this_tube_transit_time + this_tube_board_time_offset));
+            this_event_total_time_offsets->insert(std::make_pair(pmt, this_tube_transit_time + this_tube_board_time_offset));
         }
 
         double this_tube_spe_threshold = 0.0;
-        I3MapPMTKeyDouble::const_iterator spe_threshold_it = spe_lower_threshold_->find(it->first);
+        I3MapPMTKeyDouble::const_iterator spe_threshold_it = spe_lower_threshold_->find(pmt);
         if(spe_threshold_it != spe_lower_threshold_->end()) {
             this_tube_spe_threshold = spe_threshold_it->second;
         }
 
         double this_tube_spe_threshold_efficiency = 1.0 - NormalDistributionCDF(pmt_cal.pmt_spe_mu, pmt_cal.pmt_spe_sigma, this_tube_spe_threshold);
 
-        DiscreteDistribution & pulse_selector = pulse_selector_.at(it->first);
-        std::vector<CCMPulseTimeDistributionParameters> const & pulse_types = pulse_types_.at(it->first);
+        DiscreteDistribution & pulse_selector = pulse_selector_.at(pmt);
+        std::vector<CCMPulseTimeDistributionParameters> const & pulse_types = pulse_types_.at(pmt);
 
-        // Iterate over the vector of CCMMCPE in the source map for this PMT
-        std::vector<CCMRecoPulse> temp_series; temp_series.reserve(size_t(it->second.size() * 0.5));
-        for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-            CCMMCPE const & pe = *it2;
-
-            // If we want to remove cherenkov photons, do so now
-            if(remove_cherenkov_ and pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
+        for(I3ParticleID const & id : all_ids) {
+            CCMMCPESeriesMap const & input_map = inputs.at(id).get();
+            CCMMCPESeriesMap::const_iterator it = input_map.find(pmt);
+            if(it == input_map.end()) {
+                // no hits on this pmt
                 continue;
             }
 
-            // first, grab random number 0 - 1 to determine if this photon survives
-            double survival = randomService_->Uniform(0.0, 1.0);
+            // Iterate over the vector of CCMMCPE in the source map for this PMT
+            std::vector<CCMRecoPulse> temp_series; temp_series.reserve(size_t(it->second.size() * 0.5));
+            for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                CCMMCPE const & pe = *it2;
 
-            // Check if we surive wavelength response of the tube
-            double wavelength = pe.wavelength / I3Units::nanometer;
-
-            // find the first element in wavelength_qe_wavelength that is greater than or equal to wavelength
-            double wavelength_qe_weighting;
-            std::vector<double>::iterator lower_it = std::lower_bound(wavelength_qe_wavelength.begin(), wavelength_qe_wavelength.end(), wavelength);
-            if(lower_it == wavelength_qe_wavelength.begin() or lower_it == wavelength_qe_wavelength.end()) {
-                wavelength_qe_weighting = 0.0;
-            } else {
-                size_t lower_index = std::distance(wavelength_qe_wavelength.begin(), lower_it);
-                double wl_below = *lower_it;
-                double wlqe_below = wavelength_qe_efficiency.at(lower_index);
-                if(wl_below > wavelength) {
-                    lower_index -= 1;
-                    wl_below = wavelength_qe_wavelength.at(lower_index);
-                    wlqe_below = wavelength_qe_efficiency.at(lower_index);
+                // If we want to remove cherenkov photons, do so now
+                if(remove_cherenkov_ and pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
+                    continue;
                 }
-                double wl_above =  wavelength_qe_wavelength.at(lower_index + 1);
-                double wlqe_above =  wavelength_qe_efficiency.at(lower_index + 1);
-                wavelength_qe_weighting = wlqe_below + (wavelength - wl_below) * ((wlqe_above - wlqe_below) / (wl_above - wl_below));
-            }
 
-            // Check if survive uv absorption cuts
-            double uv_abs_probability = 1.0;
-            if(weight_uv_absorption_) {
-                double original_wavelength = pe.original_wavelength / I3Units::nanometer;
+                // first, grab random number 0 - 1 to determine if this photon survives
+                double survival = randomService_->Uniform(0.0, 1.0);
+
+                // Check if we surive wavelength response of the tube
                 double wavelength = pe.wavelength / I3Units::nanometer;
-                double distance_travelled_before_wls = pe.distance_uv;
-                double distance_travelled_after_wls = pe.distance_visible;
 
-                double scaling_before = ResponseUVAbsorptionScaling(original_wavelength, distance_travelled_before_wls);
-                double scaling_after = ResponseUVAbsorptionScaling(wavelength, distance_travelled_after_wls);
-                uv_abs_probability *= scaling_before * scaling_after;
-
-                if(simulated_enable_uv_absorption_) {
-                    double simulated_scaling_before = SimulatedUVAbsorptionScaling(original_wavelength, distance_travelled_before_wls);
-                    double simulated_scaling_after = SimulatedUVAbsorptionScaling(wavelength, distance_travelled_after_wls);
-                    uv_abs_probability /= (simulated_scaling_before * simulated_scaling_after);
+                // find the first element in wavelength_qe_wavelength that is greater than or equal to wavelength
+                double wavelength_qe_weighting;
+                std::vector<double>::iterator lower_it = std::lower_bound(wavelength_qe_wavelength.begin(), wavelength_qe_wavelength.end(), wavelength);
+                if(lower_it == wavelength_qe_wavelength.begin() or lower_it == wavelength_qe_wavelength.end()) {
+                    wavelength_qe_weighting = 0.0;
+                } else {
+                    size_t lower_index = std::distance(wavelength_qe_wavelength.begin(), lower_it);
+                    double wl_below = *lower_it;
+                    double wlqe_below = wavelength_qe_efficiency.at(lower_index);
+                    if(wl_below > wavelength) {
+                        lower_index -= 1;
+                        wl_below = wavelength_qe_wavelength.at(lower_index);
+                        wlqe_below = wavelength_qe_efficiency.at(lower_index);
+                    }
+                    double wl_above =  wavelength_qe_wavelength.at(lower_index + 1);
+                    double wlqe_above =  wavelength_qe_efficiency.at(lower_index + 1);
+                    wavelength_qe_weighting = wlqe_below + (wavelength - wl_below) * ((wlqe_above - wlqe_below) / (wl_above - wl_below));
                 }
-            }
-            double normalization = 1.0;
-            if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
-                normalization = normalization_ / simulated_normalization_;
-            }
 
-            double survival_probability = normalization * this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
+                // Check if survive uv absorption cuts
+                double uv_abs_probability = 1.0;
+                if(weight_uv_absorption_) {
+                    double original_wavelength = pe.original_wavelength / I3Units::nanometer;
+                    double wavelength = pe.wavelength / I3Units::nanometer;
+                    double distance_travelled_before_wls = pe.distance_uv;
+                    double distance_travelled_after_wls = pe.distance_visible;
 
-            double charge_scale_factor = 1.0;
-            if(survival_probability > 1.0) {
-                charge_scale_factor = survival_probability;
-            } else if(survival > survival_probability) {
-                continue;
-            }
+                    double scaling_before = ResponseUVAbsorptionScaling(original_wavelength, distance_travelled_before_wls);
+                    double scaling_after = ResponseUVAbsorptionScaling(wavelength, distance_travelled_after_wls);
+                    uv_abs_probability *= scaling_before * scaling_after;
 
-            // ok our photon has survived! yay! let's apply our various time offsets
-            // 1 -- overall event time offset
-            // 2 -- time jitter due to electron transit times
-            // 3 -- physical time offset (either due to scintillation + tpb or to late pulse)
+                    if(simulated_enable_uv_absorption_) {
+                        double simulated_scaling_before = SimulatedUVAbsorptionScaling(original_wavelength, distance_travelled_before_wls);
+                        double simulated_scaling_after = SimulatedUVAbsorptionScaling(wavelength, distance_travelled_after_wls);
+                        uv_abs_probability /= (simulated_scaling_before * simulated_scaling_after);
+                    }
+                }
+                double normalization = 1.0;
+                if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
+                    normalization = normalization_ / simulated_normalization_;
+                }
 
-            double total_time_offset = pe.time / I3Units::nanosecond;
+                double survival_probability = normalization * this_tube_spe_threshold_efficiency * pmt_efficiency * wavelength_qe_weighting * uv_abs_probability / photon_sampling_factor_;
 
-            CCMPulseTimeDistributionParameters const & pmt_pulse_type = pulse_types.at(pulse_selector(randomService_));
+                double charge_scale_factor = 1.0;
+                if(survival_probability > 1.0) {
+                    charge_scale_factor = survival_probability;
+                } else if(survival > survival_probability) {
+                    continue;
+                }
 
-            double pulse_time_offset = SampleGEV(pmt_pulse_type);
+                // ok our photon has survived! yay! let's apply our various time offsets
+                // 1 -- overall event time offset
+                // 2 -- time jitter due to electron transit times
+                // 3 -- physical time offset (either due to scintillation + tpb or to late pulse)
 
-            total_time_offset += pulse_time_offset;
+                double total_time_offset = pe.time / I3Units::nanosecond;
 
-            double scint_time_offset = 0.0;
-            if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
-                // now let's get a random number to see if we're in singlet, triplet, or intermediate times
-                double time_distribution = randomService_->Uniform(0.0, 1.0);
-                if(time_distribution < (ratio_singlet_ + ratio_triplet_)) {
-                    // ok singlet or triplet! throw another random number to figure it out
-                    double t = randomService_->Uniform(0.0, ratio_singlet_ + ratio_triplet_);
-                    if(t < ratio_singlet_) {
-                        // in singlet!
-                        double singlet_rand = randomService_->Uniform(0.0, 1.0);
-                        scint_time_offset = ExponentialInverseCDF(singlet_rand, singlet_time_constant_);
-                        total_time_offset += scint_time_offset;
+                CCMPulseTimeDistributionParameters const & pmt_pulse_type = pulse_types.at(pulse_selector(randomService_));
+
+                double pulse_time_offset = SampleGEV(pmt_pulse_type);
+
+                total_time_offset += pulse_time_offset;
+
+                double scint_time_offset = 0.0;
+                if(pe.photon_source == CCMMCPE::PhotonSource::Scintillation) {
+                    // now let's get a random number to see if we're in singlet, triplet, or intermediate times
+                    double time_distribution = randomService_->Uniform(0.0, 1.0);
+                    if(time_distribution < (ratio_singlet_ + ratio_triplet_)) {
+                        // ok singlet or triplet! throw another random number to figure it out
+                        double t = randomService_->Uniform(0.0, ratio_singlet_ + ratio_triplet_);
+                        if(t < ratio_singlet_) {
+                            // in singlet!
+                            double singlet_rand = randomService_->Uniform(0.0, 1.0);
+                            scint_time_offset = ExponentialInverseCDF(singlet_rand, singlet_time_constant_);
+                            total_time_offset += scint_time_offset;
+                        } else {
+                            // in triplet
+                            double triplet_rand = randomService_->Uniform(0.0, 1.0);
+                            scint_time_offset += ExponentialInverseCDF(triplet_rand, triplet_time_constant_);
+                            total_time_offset += scint_time_offset;
+                        }
                     } else {
-                        // in triplet
-                        double triplet_rand = randomService_->Uniform(0.0, 1.0);
-                        scint_time_offset += ExponentialInverseCDF(triplet_rand, triplet_time_constant_);
+                        // ok we are in the intermediate time component
+                        double intermediate_rand = randomService_->Uniform(0.0, 1.0);
+                        scint_time_offset = IntermediateInverseCDF(intermediate_rand, intermediate_time_constant_);
                         total_time_offset += scint_time_offset;
                     }
-                } else {
-                    // ok we are in the intermediate time component
-                    double intermediate_rand = randomService_->Uniform(0.0, 1.0);
-                    scint_time_offset = IntermediateInverseCDF(intermediate_rand, intermediate_time_constant_);
-                    total_time_offset += scint_time_offset;
                 }
+
+                // now, finally, sample our spe shape for this tube to assign the appropiate magnitude to our pulse
+                double pulse_amplitude_rand = randomService_->Uniform(1.0 - this_tube_spe_threshold_efficiency, 1.0);
+                double pulse_amplitude = NormalDistributionInverseCDF(pulse_amplitude_rand, pmt_cal.pmt_spe_mu, pmt_cal.pmt_spe_sigma);
+
+                // check to make sure we dont have any infinities and our pulse amplitude is appropriate
+                if(std::isinf(pulse_amplitude) or std::isinf(total_time_offset)) {
+                    continue;
+                }
+
+                // If we undersimulated the number of photons, then the next best thing we can do is scale up the charge
+                pulse_amplitude *= charge_scale_factor;
+
+                // note -- we are hacking the pmt width to be cherenkov spe
+                double width = 0.0;
+                if(pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
+                    width = pulse_amplitude;
+                }
+
+                // ok time to save as a reco pulse!
+                // add transit time for this tube
+                total_time_offset += this_tube_transit_time + this_tube_board_time_offset + this_tube_board_time_error;
+
+                // bin
+                double binned_reco_time = static_cast<int>(total_time_offset / 2.0) * 2.0;
+
+                // and now subtract off our transit time with error
+                binned_reco_time -= this_tube_transit_time + this_tube_board_time_offset;
+
+                temp_series.emplace_back();
+                CCMRecoPulse & pulse = temp_series.back();
+                pulse.SetCharge(pulse_amplitude);
+                pulse.SetTime(binned_reco_time);
+                pulse.SetWidth(width);
             }
 
-            // now, finally, sample our spe shape for this tube to assign the appropiate magnitude to our pulse
-            double pulse_amplitude_rand = randomService_->Uniform(1.0 - this_tube_spe_threshold_efficiency, 1.0);
-            double pulse_amplitude = NormalDistributionInverseCDF(pulse_amplitude_rand, pmt_cal.pmt_spe_mu, pmt_cal.pmt_spe_sigma);
-
-            // check to make sure we dont have any infinities and our pulse amplitude is appropriate
-            if(std::isinf(pulse_amplitude) or std::isinf(total_time_offset)) {
+            if(temp_series.empty()) {
                 continue;
             }
 
-            // If we undersimulated the number of photons, then the next best thing we can do is scale up the charge
-            pulse_amplitude *= charge_scale_factor;
+            // Find the corresponding PMT in the destination map
+            std::map<CCMPMTKey, CCMRecoPulseSeries> & dest = outputs.at(id).get();
+            CCMRecoPulseSeriesMap::iterator it_dest = dest.find(pmt);
 
-            // note -- we are hacking the pmt width to be cherenkov spe
-            double width = 0.0;
-            if(pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
-                width = pulse_amplitude;
+            // If the PMT is not in the destination, then insert an empty vector
+            if(it_dest == dest.end()) {
+                dest.insert(std::make_pair(pmt, CCMRecoPulseSeries()));
+                // Update the iterator so it points to our new entry
+                it_dest = dest.find(pmt);
             }
 
-            // ok time to save as a reco pulse!
-            // add transit time for this tube
-            total_time_offset += this_tube_transit_time + this_tube_board_time_offset + this_tube_board_time_error;
+            // Reference to the destination
+            CCMRecoPulseSeries & dest_series = it_dest->second;
 
-            // bin
-            double binned_reco_time = static_cast<int>(total_time_offset / 2.0) * 2.0;
-
-            // and now subtract off our transit time with error
-            binned_reco_time -= this_tube_transit_time + this_tube_board_time_offset;
-
-            temp_series.emplace_back();
-            CCMRecoPulse & pulse = temp_series.back();
-            pulse.SetCharge(pulse_amplitude);
-            pulse.SetTime(binned_reco_time);
-            pulse.SetWidth(width);
-        }
-
-        if(temp_series.empty()) {
-            continue;
-        }
-
-        // Sort and merge the pulses
-        std::sort(temp_series.begin(), temp_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
-        dest_series.push_back(temp_series.front());
-        for(CCMRecoPulseSeries::const_iterator it = temp_series.begin() + 1; it != temp_series.end(); ++it) {
-            CCMRecoPulse & dest_pulse = dest_series.back();
-            if(it->GetTime() == dest_pulse.GetTime()) {
-                dest_pulse.SetCharge(dest_pulse.GetCharge() + it->GetCharge());
-                dest_pulse.SetWidth(dest_pulse.GetWidth() + it->GetWidth());
-            } else {
-                dest_series.push_back(*it);
+            // Sort and merge the pulses
+            std::sort(temp_series.begin(), temp_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
+            dest_series.push_back(temp_series.front());
+            for(CCMRecoPulseSeries::const_iterator it = temp_series.begin() + 1; it != temp_series.end(); ++it) {
+                CCMRecoPulse & dest_pulse = dest_series.back();
+                if(it->GetTime() == dest_pulse.GetTime()) {
+                    dest_pulse.SetCharge(dest_pulse.GetCharge() + it->GetCharge());
+                    dest_pulse.SetWidth(dest_pulse.GetWidth() + it->GetWidth());
+                } else {
+                    dest_series.push_back(*it);
+                }
             }
         }
     }
 
     frame->Put(output_time_offsets_name_, this_event_total_time_offsets);
-    frame->Put(output_reco_pulse_name_, mcpeseries_dest);
+    if(multiparticle) {
+        frame->Put(output_reco_pulse_name_ + "MultiParticle", mcpeseries_dest_by_id_ptr);
+        frame->Put(output_reco_pulse_name_, boost::make_shared<MultiParticleRecoPulsesView>(*frame, output_reco_pulse_name_ + "MultiParticle"));
+    } else {
+        frame->Put(output_reco_pulse_name_, mcpeseries_dest_ptr);
+    }
     PushFrame(frame);
 }
 

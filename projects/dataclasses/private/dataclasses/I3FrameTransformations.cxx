@@ -3,11 +3,11 @@
  *
  *  Specializations of I3Frame::Get() that perform format
  *  conversions behind the scenes.
- *  
+ *
  *  Copyright (C) 2011
  *  Jakob van Santen <vansanten@wisc.edu>
  *  and the IceCube Collaboration <http://www.icecube.wisc.edu>
- *  
+ *
  */
 
 #include <boost/shared_ptr.hpp>
@@ -20,6 +20,7 @@
 #include <dataclasses/I3RecoPulseSeriesMapApplySPECorrection.h>
 #include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime.h>
 #include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusBeamTime.h>
+#include <dataclasses/MultiParticleRecoPulsesView.h>
 #include <dataclasses/physics/I3RecoPulseSeriesMapCombineByModule.h>
 #include <dataclasses/physics/I3RecoHit.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
@@ -38,52 +39,52 @@ static I3RecoPulseSeriesMapPtr HitsAsPulses(I3RecoHitSeriesMapConstPtr hits);
  * a mask behind the scenes. This lets client code treat masks
  * and SuperDST payloads (and masked SuperDST payloads)
  * just like I3RecoPulseSeriesMaps.
- */ 
+ */
 template <>
 I3RecoPulseSeriesMapConstPtr
 I3Frame::Get(const std::string& name, void*, void*) const
 {
 	I3FrameObjectConstPtr focp = this->Get<I3FrameObjectConstPtr>(name);
-	
+
 	I3RecoPulseSeriesMapConstPtr pulses =
 	    boost::dynamic_pointer_cast<const I3RecoPulseSeriesMap>(focp);
-	
+
 	if (!focp || pulses)
 		return pulses;
-	
-	I3RecoPulseSeriesMapMaskConstPtr mask = 
+
+	I3RecoPulseSeriesMapMaskConstPtr mask =
 	    boost::dynamic_pointer_cast<const I3RecoPulseSeriesMapMask>(focp);
-	
+
 	if (mask)
-		return mask->Apply(*this); 
-		
-	I3RecoPulseSeriesMapUnionConstPtr uni = 
+		return mask->Apply(*this);
+
+	I3RecoPulseSeriesMapUnionConstPtr uni =
 	    boost::dynamic_pointer_cast<const I3RecoPulseSeriesMapUnion>(focp);
 
 	if (uni)
 		return uni->Apply(*this);
 
-	I3RecoPulseSeriesMapApplySPECorrectionConstPtr spe_shift = 
+	I3RecoPulseSeriesMapApplySPECorrectionConstPtr spe_shift =
 	    boost::dynamic_pointer_cast<const I3RecoPulseSeriesMapApplySPECorrection>(focp);
 
 	if (spe_shift)
 		return spe_shift->Apply(*this);
-	
+
 	{
-		I3RecoPulseSeriesMapCombineByModuleConstPtr combined = 
+		I3RecoPulseSeriesMapCombineByModuleConstPtr combined =
 		    boost::dynamic_pointer_cast<const I3RecoPulseSeriesMapCombineByModule>(focp);
 		if (combined)
 			return combined->Apply(*this);
 	}
-	
-	I3SuperDSTConstPtr superdst = 
+
+	I3SuperDSTConstPtr superdst =
 	    boost::dynamic_pointer_cast<const I3SuperDST>(focp);
-	
+
 	if (superdst)
 		return superdst->Unpack();
 
 	// Compatibility with old data
-	I3RecoHitSeriesMapConstPtr hits = 
+	I3RecoHitSeriesMapConstPtr hits =
 	    boost::dynamic_pointer_cast<const I3RecoHitSeriesMap>(focp);
 
 	if (hits)
@@ -100,7 +101,7 @@ HitsAsPulses(I3RecoHitSeriesMapConstPtr hits)
 	for (I3RecoHitSeriesMap::const_iterator i = hits->begin();
 	    i != hits->end(); i++) {
 		I3RecoPulseSeries &ps = (*pulses)[i->first];
-		
+
 		for (I3RecoHitSeries::const_iterator j = i->second.begin();
 		    j != i->second.end(); j++) {
 			I3RecoPulse pulse;
@@ -127,7 +128,7 @@ I3Frame::Get(const std::string& name, void*, void*) const
 	    boost::dynamic_pointer_cast<const I3TriggerHierarchy>(focp);
 	if (triggers)
 		return triggers;
-	
+
 	I3SuperDSTTriggerSeriesConstPtr sdst =
 	    boost::dynamic_pointer_cast<const I3SuperDSTTriggerSeries>(focp);
 	I3DetectorStatusConstPtr status =
@@ -136,7 +137,7 @@ I3Frame::Get(const std::string& name, void*, void*) const
 		log_fatal("Can't decode SuperDST triggers without an I3DetectorStatus!");
 	else if (sdst && status)
 		return sdst->Unpack(*status);
-	
+
 	return triggers;
 }
 
@@ -145,30 +146,36 @@ I3Frame::Get(const std::string& name, void*, void*) const
  * a mask behind the scenes. This lets client code treat masks
  * and SuperDST payloads (and masked SuperDST payloads)
  * just like CCMRecoPulseSeriesMaps.
- */ 
+ */
 template <>
 CCMRecoPulseSeriesMapConstPtr
 I3Frame::Get(const std::string& name, void*, void*) const
 {
 	I3FrameObjectConstPtr focp = this->Get<I3FrameObjectConstPtr>(name);
-	
+
 	CCMRecoPulseSeriesMapConstPtr pulses =
 	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMap>(focp);
-	
+
 	if (!focp || pulses)
 		return pulses;
-	
-	CCMRecoPulseSeriesMapMaskConstPtr mask = 
+
+	CCMRecoPulseSeriesMapMaskConstPtr mask =
 	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapMask>(focp);
-	
+
 	if (mask)
-		return mask->Apply(*this); 
-		
-	CCMRecoPulseSeriesMapUnionConstPtr uni = 
+		return mask->Apply(*this);
+
+	CCMRecoPulseSeriesMapUnionConstPtr uni =
 	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapUnion>(focp);
 
 	if (uni)
 		return uni->Apply(*this);
+
+    MultiParticleRecoPulsesViewConstPtr multiparticle =
+        boost::dynamic_pointer_cast<const MultiParticleRecoPulsesView>(focp);
+
+    if (multiparticle)
+        return multiparticle->Apply(*this);
 
 	CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr spe_cal_trigger_time =
 	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(focp);
@@ -181,11 +188,11 @@ I3Frame::Get(const std::string& name, void*, void*) const
 
 	if (spe_cal_beam_time)
 		return spe_cal_beam_time->Apply(*this);
-	
+
     // Not yet implemented: CCMRecoPulseSeriesMapCombineByModule
     /*
 	{
-		CCMRecoPulseSeriesMapCombineByModuleConstPtr combined = 
+		CCMRecoPulseSeriesMapCombineByModuleConstPtr combined =
 		    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapCombineByModule>(focp);
 		if (combined)
 			return combined->Apply(*this);
