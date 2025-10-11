@@ -117,6 +117,30 @@ class PMTResponse: public I3Module {
     std::map<CCMPMTKey, std::vector<CCMPulseTimeDistributionParameters>> pulse_types_;
     std::map<CCMPMTKey, DiscreteDistribution> pulse_selector_;
 
+    double reference_board_mu = 9933.40;
+    double reference_board_sigma = 4.63;
+    size_t reference_board_id = 1;
+
+    std::map<size_t, std::vector<double>> delta_board_time_distribution_ = {
+       {2,  {-0.00998532, 0.00958708}},
+       {3,  {-1.89344397, 0.07452632}},
+       {4,  {-1.70714055, 0.09044278}},
+       {5,  {-1.52254546, 0.13096519}},
+       {6,  {0.21225201,  0.0503306}},
+       {7,  {0.48017816,  0.09293804}},
+       {8,  {0.32073773,  0.06370754}},
+       {9,  {-1.54486299, 0.12558913}},
+       {10, {-1.57049364, 0.11778177}},
+       {11, {-1.90992671, 0.06480756}},
+       {12, {-2.01338679, 0.07199275}},
+       {13, {0.09525654,  0.02246422}},
+       {14, {-1.99535745, 0.06948145}},
+       {15, {-1.83590584, 0.09061427}},
+       {16, {-1.94431984, 0.08316526}},
+       {17, {-2.13187432, 0.08107044}},
+       {18, {-2.32866528, 0.07812655}}
+    };
+
 public:
     PMTResponse(const I3Context&);
     void Configure();
@@ -525,6 +549,9 @@ void PMTResponse::DAQ(I3FramePtr frame) {
     I3Map<CCMTriggerKey, double> board_errors;
     I3MapPMTKeyDoublePtr this_event_total_time_offsets = boost::make_shared<I3MapPMTKeyDouble>();
 
+    double reference_board_offset = NormalDistributionInverseCDF(randomService_->Uniform(0.0, 1.0), reference_board_mu, reference_board_sigma);
+    double reference_board_error = randomService_->Uniform(-0.001, 0.001);
+
     for(std::pair<CCMPMTKey const, CCMTriggerKey> const & key : trigger_copy_map_) {
         if(board_offsets.find(key.second) != board_offsets.end()) {
             // ok we already have an offset time for this board, let's just save
@@ -532,8 +559,17 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
         } else {
             // first time seeing this board! let's make an offset
-            double b_offset = randomService_->Uniform(-1.0, 1.0);
-            double b_error = randomService_->Uniform(-0.1, 0.1);
+            if(key.second.GetNumber() == reference_board_id) {
+                board_offsets.insert(std::make_pair(key.second, reference_board_offset));
+                this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
+                board_errors.insert(std::make_pair(key.second, reference_board_error));
+                this_event_board_time_error.insert(std::make_pair(key.first, board_errors[key.second]));
+                continue;
+            }
+            double delta_mu = delta_board_time_distribution_[key.second.GetNumber()][0];
+            double delta_sigma = delta_board_time_distribution_[key.second.GetNumber()][1];
+            double b_offset = NormalDistributionInverseCDF(randomService_->Uniform(0.0, 1.0), reference_board_offset + delta_mu, delta_sigma);
+            double b_error = randomService_->Uniform(-0.001, 0.001);
             board_offsets.insert(std::make_pair(key.second, b_offset));
             this_event_board_time_offset.insert(std::make_pair(key.first, board_offsets[key.second]));
             board_errors.insert(std::make_pair(key.second, b_error));
@@ -558,9 +594,6 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
     // grab the simulation output ccm mcpe series map
     boost::shared_ptr<CCMMCPESeriesMap const> mcpeseries_source = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>(input_hits_map_name_);
-
-    // grab a random number for the overall event time offset
-    double event_time_offset = randomService_->Uniform(-10.0, 10.0);
 
     // Iterate over PMTs in source map
     for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
@@ -681,7 +714,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             // 2 -- time jitter due to electron transit times
             // 3 -- physical time offset (either due to scintillation + tpb or to late pulse)
 
-            double total_time_offset = event_time_offset + (pe.time / I3Units::nanosecond);
+            double total_time_offset = pe.time / I3Units::nanosecond;
 
             CCMPulseTimeDistributionParameters const & pmt_pulse_type = pulse_types.at(pulse_selector(randomService_));
 
@@ -768,7 +801,6 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         }
     }
 
-    frame->Put(output_true_event_time_name_, boost::make_shared<I3Double>(event_time_offset));
     frame->Put(output_time_offsets_name_, this_event_total_time_offsets);
     frame->Put(output_reco_pulse_name_, mcpeseries_dest);
     PushFrame(frame);
