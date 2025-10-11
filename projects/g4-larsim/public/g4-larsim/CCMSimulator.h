@@ -1,17 +1,13 @@
 #ifndef _CCMSIMULATOR_CCMSIMULATOR_H_
 #define _CCMSIMULATOR_CCMSIMULATOR_H_
 
-#include "dataclasses/I3Map.h"
-#include "dataclasses/I3Vector.h"
 #include "dataclasses/physics/I3Particle.h"
 
 #include "g4-larsim/CCMDetectorResponse.h"
-#include "g4-larsim/CCMParticleInjector.h"
 
 #include "icetray/I3Module.h"
 
 #include "simclasses/CCMMCPE.h"
-#include "simclasses/PhotonSummary.h"
 
 /**
  * \brief The CCMSimulator module handles the whole simulation and
@@ -23,7 +19,7 @@ public:
     CCMSimulator(const I3Context& context);
     ~CCMSimulator() = default;
 
-    void Configure();
+    void Configure() override;
 
     void Process() override;
     void ProcessNormally(I3FramePtr frame);
@@ -40,19 +36,19 @@ public:
     static void MergeMCPESeries(CCMMCPESeriesMapPtr mcpeseries_dest, CCMMCPESeriesMapPtr mcpeseries_source);
     static void MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary);
 private:
-    std::string responseServiceName_;
-    std::string input_mc_tree_name_;
+    std::string responseServiceName_ = "CCM200Response";
+    std::string input_mc_tree_name_ = "I3MCTree";
+    std::string configuration_name_ = "DetectorResponseConfig";
+    std::string PMTHitSeriesName_ = "PMTMCHitsMap";
+    std::string LArMCTreeName_ = "LArMCTree";
 
-    std::string configuration_name_;
-    std::string PMTHitSeriesName_;
-    std::string LArMCTreeName_;
-    std::string PhotonSummarySeriesName_;
+    bool multithreaded_ = false;
+    size_t batch_size_ = 1;
+    size_t n_threads_ = 1;
+    bool multi_particle_output_ = false;
+    bool per_event_output_ = true;
 
-    bool multithreaded_;
-    size_t batch_size_;
     std::deque<I3FramePtr> frame_queue_;
-    size_t n_threads_;
-
     bool seen_s_frame_ = false;
     unsigned int n_daq_frames_ = 0;
 

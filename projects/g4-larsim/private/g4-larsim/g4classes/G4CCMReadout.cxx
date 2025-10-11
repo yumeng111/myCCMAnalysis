@@ -1,8 +1,5 @@
-#include "icetray/I3Units.h"
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
-#include "g4-larsim/g4classes/G4CCMScintHit.h"
-#include "dataclasses/physics/I3MCTreeUtils.h"
 #include "dataclasses/I3Map.h"
 #include "simclasses/PhotonSummary.h"
 #include "simclasses/CCMMCPE.h"
@@ -10,7 +7,6 @@
 #include "g4-larsim/g4classes/G4CCMReadout.h"
 
 #include <vector>
-#include <string>
 #include <sstream>
 
 #include <G4SystemOfUnits.hh>
@@ -117,6 +113,8 @@ I3VectorI3ParticlePtr G4CCMReadout::GetVolumeEDepVector(size_t i, VolumeType vol
             return veto_edep_vector.at(i);
         case VolumeType::Inner:
             return inner_edep_vector.at(i);
+        case VolumeType::Detector:
+            throw std::runtime_error("No edep vector for full detector volume");
     }
     throw std::runtime_error("Invalid volume type");
 }

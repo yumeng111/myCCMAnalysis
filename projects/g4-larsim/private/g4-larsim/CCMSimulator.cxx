@@ -1,20 +1,15 @@
 
 #include "dataclasses/I3Map.h"
-#include "dataclasses/I3Double.h"
+#include "dataclasses/I3Vector.h"
 #include "dataclasses/physics/I3Particle.h"
-#include "dataclasses/physics/I3EventHeader.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
-#include "dataclasses/physics/I3ScintRecoPulseSeriesMap.h"
 
 #include "g4-larsim/CCMSimulator.h"
 
-#include "icetray/I3Bool.h"
 #include "icetray/I3Frame.h"
 #include "icetray/I3Context.h"
 #include "icetray/I3Module.h"
 #include "icetray/I3Logging.h"
-
-#include <stdexcept>
 
 #define i3_log(format, ...) log_trace("%s: " format, this->GetName().c_str(), ##__VA_ARGS__)
 
@@ -23,34 +18,16 @@ I3_MODULE(CCMSimulator);
 CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
     response_ = CCMDetectorResponsePtr();
 
-    responseServiceName_ = "CCM200Response";
     AddParameter("ResponseServiceName", "Name of the detector response service.", responseServiceName_);
-
-    configuration_name_ = "DetectorResponseConfig";
-    AddParameter("ConfigurationName", "Name of the detector response configuration object.", configuration_name_);
-
-    input_mc_tree_name_ = "I3MCTree";
     AddParameter("InputMCTreeName", "Name of the input MC tree in the frame.", input_mc_tree_name_);
-
-    PMTHitSeriesName_ = "PMTMCHitsMap";
+    AddParameter("ConfigurationName", "Name of the detector response configuration object.", configuration_name_);
     AddParameter("PMTHitSeriesName", "Name of the resulting PMT hit map in the frame.", PMTHitSeriesName_);
-
-    LArMCTreeName_ = "LArMCTree";
     AddParameter("LArMCTreeName", "Name of the MC tree containing energy depositions in LAr", LArMCTreeName_);
-
-    PhotonSummarySeriesName_ = "PhotonSummarySeries";
-    AddParameter("PhotonSummarySeriesName", "Name of the photon summary series containing optical photon hits in LAr", PhotonSummarySeriesName_);
-
-    multithreaded_ = false;
     AddParameter("Multithreaded", "Run the simulation in multithreaded mode.", multithreaded_);
-
-    n_threads_ = 1;
     AddParameter("NumberOfThreads", "Number of threads to use for the simulation.", n_threads_);
-
-    batch_size_ = 1;
     AddParameter("BatchSize", "Number of events to simulate in one batch.", batch_size_);
-
-    AddOutBox("OutBox");
+    AddParameter("MultiParticleOutput", "If true, outputs from each particle in the I3MCTree are stored separately.", multi_particle_output_);
+    AddParameter("PerEventOutput", "If true, outputs from all particles in the I3MCTree are merged into a single output.", per_event_output_);
 }
 
 void CCMSimulator::Configure() {
@@ -64,14 +41,14 @@ void CCMSimulator::Configure() {
     GetParameter("InputMCTreeName", input_mc_tree_name_);
     log_info("+ Input MC Tree : %s", input_mc_tree_name_.c_str());
 
+    GetParameter("ConfigurationName", configuration_name_);
+    log_info("+ Configuration Name : %s", configuration_name_.c_str());
+
     GetParameter("PMTHitSeriesName", PMTHitSeriesName_);
     log_info("+ PMT hit series : %s", PMTHitSeriesName_.c_str());
 
     GetParameter("LArMCTreeName", LArMCTreeName_);
     log_info("+ LAr MC Tree : %s", LArMCTreeName_.c_str());
-
-    GetParameter("PhotonSummarySeriesName", PhotonSummarySeriesName_);
-    log_info("+ PhotonSummarySeries : %s", PhotonSummarySeriesName_.c_str());
 
     GetParameter("Multithreaded", multithreaded_);
     log_info("+ Multithreaded : %s", multithreaded_ ? "true" : "false");
@@ -81,6 +58,16 @@ void CCMSimulator::Configure() {
 
     GetParameter("BatchSize", batch_size_);
     log_info("+ BatchSize : %zu", batch_size_);
+
+    GetParameter("MultiParticleOutput", multi_particle_output_);
+    log_info("+ MultiParticleOutput : %s", multi_particle_output_ ? "true" : "false");
+
+    GetParameter("PerEventOutput", per_event_output_);
+    log_info("+ PerEventOutput : %s", per_event_output_ ? "true" : "false");
+
+    if((not multi_particle_output_) and (not per_event_output_)) {
+        log_fatal("At least one of MultiParticleOutput or PerEventOutput must be true");
+    }
 
     response_->SetNumberOfThreads(n_threads_);
 
@@ -232,7 +219,6 @@ void CCMSimulator::DAQMultiThreaded() {
         frame_queue_.pop_front();
     }
 
-    size_t max_queue_index = 0;
     std::deque<I3FramePtr> daq_frames;
     // Get all the DAQ frames until the next frame that supersedes them
     for(size_t i=0; i<frame_queue_.size(); ++i) {
@@ -241,7 +227,6 @@ void CCMSimulator::DAQMultiThreaded() {
             break;
         } else if(frame->GetStop() == I3Frame::DAQ) {
             daq_frames.push_back(frame);
-            max_queue_index = i;
         }
     }
 
@@ -298,6 +283,14 @@ void CCMSimulator::DAQMultiThreaded() {
     std::vector<I3VectorI3ParticlePtr> final_veto_vectors;
     std::vector<I3VectorI3ParticlePtr> final_inner_vectors;
 
+    std::vector<boost::shared_ptr<I3Map<I3ParticleID,CCMMCPESeriesMap>>> final_multi_particle_mcpeseries_maps;
+    if(multi_particle_output_) {
+        final_multi_particle_mcpeseries_maps.reserve(daq_frames.size());
+        for(size_t i=0; i<daq_frames.size(); ++i) {
+            final_multi_particle_mcpeseries_maps.push_back(boost::make_shared<I3Map<I3ParticleID,CCMMCPESeriesMap>>());
+        }
+    }
+
     // Now need to merge everything into individual data structures for each event
     size_t particle_idx = 0;
     for(size_t i=0; i<daq_frames.size(); ++i) {
@@ -307,6 +300,26 @@ void CCMSimulator::DAQMultiThreaded() {
         I3MCTreePtr inner_tree = inner_trees.size() > particle_idx ? inner_trees.at(particle_idx) : nullptr;
         I3VectorI3ParticlePtr veto_vector = veto_vectors.size() > particle_idx ? veto_vectors.at(particle_idx) : nullptr;
         I3VectorI3ParticlePtr inner_vector = inner_vectors.size() > particle_idx ? inner_vectors.at(particle_idx) : nullptr;
+
+        if(multi_particle_output_) {
+            boost::shared_ptr<I3Map<I3ParticleID,CCMMCPESeriesMap>> multi_particle_mcpeseries_map = final_multi_particle_mcpeseries_maps.at(i);
+            for(size_t j=0; j<particles_per_event.at(i); ++j) {
+                I3Particle const & p = particles.at(particle_idx + j);
+                if(mcpeseries_maps.size() > particle_idx + j) {
+                    CCMMCPESeriesMapPtr mcpeseries_map = mcpeseries_maps.at(particle_idx + j);
+                    if(mcpeseries_map != nullptr)
+                        (*multi_particle_mcpeseries_map)[p.GetID()] = *mcpeseries_map;
+                }
+            }
+            if(multi_particle_mcpeseries_map->size() > 0) {
+                daq_frames.at(i)->Put(PMTHitSeriesName_ + "MultiParticle", multi_particle_mcpeseries_map);
+            }
+        }
+
+        if(not per_event_output_) {
+            particle_idx += particles_per_event.at(i);
+            continue;
+        }
 
         final_edep_trees.push_back(edep_tree);
         final_mcpeseries_maps.push_back(mcpeseries_map);
@@ -345,21 +358,23 @@ void CCMSimulator::DAQMultiThreaded() {
         particle_idx += particles_per_event.at(i);
     }
 
-    // Put it all back into the DAQ frames
-    for(size_t i=0; i<daq_frames.size(); ++i) {
-        I3FramePtr frame = daq_frames.at(i);
-        if(final_mcpeseries_maps.at(i) != nullptr)
-            frame->Put(PMTHitSeriesName_, final_mcpeseries_maps.at(i));
-        if(final_edep_trees.at(i) != nullptr)
-            frame->Put(LArMCTreeName_, final_edep_trees.at(i));
-        if(final_veto_trees.at(i) != nullptr)
-            frame->Put("VetoLArMCTree", final_veto_trees.at(i));
-        if(final_inner_trees.at(i) != nullptr)
-            frame->Put("InnerLArMCTree", final_inner_trees.at(i));
-        if(final_veto_vectors.at(i) != nullptr)
-            frame->Put("VetoLArMCTreeVector", final_veto_vectors.at(i));
-        if(final_inner_vectors.at(i) != nullptr)
-            frame->Put("InnerLArMCTreeVector", final_inner_vectors.at(i));
+    if(per_event_output_) {
+        // Put it all back into the DAQ frames
+        for(size_t i=0; i<daq_frames.size(); ++i) {
+            I3FramePtr frame = daq_frames.at(i);
+            if(final_mcpeseries_maps.at(i) != nullptr)
+                frame->Put(PMTHitSeriesName_, final_mcpeseries_maps.at(i));
+            if(final_edep_trees.at(i) != nullptr)
+                frame->Put(LArMCTreeName_, final_edep_trees.at(i));
+            if(final_veto_trees.at(i) != nullptr)
+                frame->Put("VetoLArMCTree", final_veto_trees.at(i));
+            if(final_inner_trees.at(i) != nullptr)
+                frame->Put("InnerLArMCTree", final_inner_trees.at(i));
+            if(final_veto_vectors.at(i) != nullptr)
+                frame->Put("VetoLArMCTreeVector", final_veto_vectors.at(i));
+            if(final_inner_vectors.at(i) != nullptr)
+                frame->Put("InnerLArMCTreeVector", final_inner_vectors.at(i));
+        }
     }
 
     size_t original_frame_queue_size = frame_queue_.size();

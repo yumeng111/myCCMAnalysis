@@ -7,16 +7,14 @@
 #ifndef CCMMCPE_H_INCLUDED
 #define CCMMCPE_H_INCLUDED
 
-#include "dataclasses/I3Position.h"
-#include "dataclasses/I3Direction.h"
 #include "dataclasses/Utility.h"
+#include "dataclasses/physics/I3ParticleID.h"
 #include "dataclasses/I3Map.h"
 #include "dataclasses/I3Vector.h"
 #include <simclasses/WLSLocation.h>
 
 #include <string>
 #include <iostream>
-#include <sstream>
 
 #include <icetray/CCMPMTKey.h>
 
@@ -119,10 +117,12 @@ I3_CLASS_VERSION(CCMMCPE,ccmmcpe_version_);
 
 typedef I3Vector<CCMMCPE> CCMMCPESeries;
 typedef I3Map<CCMPMTKey, CCMMCPESeries > CCMMCPESeriesMap;
+typedef I3Map<I3ParticleID, CCMMCPESeriesMap> CCMMCPESeriesMapByID;
 
 std::ostream& operator<<(std::ostream&, const CCMMCPE&);
 
 I3_POINTER_TYPEDEFS(CCMMCPE);
 I3_POINTER_TYPEDEFS(CCMMCPESeries);
 I3_POINTER_TYPEDEFS(CCMMCPESeriesMap);
+I3_POINTER_TYPEDEFS(CCMMCPESeriesMapByID);
 #endif

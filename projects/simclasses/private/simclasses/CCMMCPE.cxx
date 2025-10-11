@@ -2,8 +2,9 @@
 #include <ostream>
 #include <icetray/serialization.h>
 
-I3_SERIALIZABLE(CCMMCPESeriesMap);
 I3_SERIALIZABLE(CCMMCPESeries);
+I3_SERIALIZABLE(CCMMCPESeriesMap);
+I3_SERIALIZABLE(CCMMCPESeriesMapByID);
 
 const std::unordered_map<CCMMCPE::PhotonSource, std::string> CCMMCPE::photonSourceToProcessName = {{CCMMCPE::PhotonSource::Unknown, "Unknown"},
                                                                                                       {CCMMCPE::PhotonSource::Scintillation, "Scintillation"},
