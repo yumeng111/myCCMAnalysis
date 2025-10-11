@@ -43,6 +43,6 @@ std::ostream& operator<<(std::ostream& oss, const CCMRecoPulse& p){
 
 
 I3_SERIALIZABLE(CCMRecoPulse);
-
 I3_SERIALIZABLE(CCMRecoPulseSeriesMap);
 I3_SERIALIZABLE(CCMRecoPulseMap);
+I3_SERIALIZABLE(CCMRecoPulseSeriesMapByID);

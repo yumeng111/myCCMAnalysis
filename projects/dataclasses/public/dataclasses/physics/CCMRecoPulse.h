@@ -13,6 +13,7 @@
 #include "dataclasses/I3Vector.h"
 #include "icetray/CCMPMTKey.h"
 #include "dataclasses/I3Map.h"
+#include "dataclasses/physics/I3ParticleID.h"
 #include "icetray/I3Frame.h"
 
 /**
@@ -38,7 +39,7 @@ class CCMRecoPulse {
    * Print a string representation of this pulse
    */
   std::ostream& Print(std::ostream&) const;
-  
+
   /**
    * @brief Get the start time of the pulse.
    */
@@ -95,12 +96,14 @@ I3_CLASS_VERSION(CCMRecoPulse, ccmrecopulse_version_);
 typedef std::vector<CCMRecoPulse> CCMRecoPulseSeries;
 typedef I3Map<CCMPMTKey, CCMRecoPulseSeries> CCMRecoPulseSeriesMap;
 typedef I3Map<CCMPMTKey, CCMRecoPulse> CCMRecoPulseMap;
+typedef I3Map<I3ParticleID, CCMRecoPulseSeriesMap> CCMRecoPulseSeriesMapByID;
 
 std::ostream& operator<<(std::ostream& oss, const CCMRecoPulse& p);
 
 I3_POINTER_TYPEDEFS(CCMRecoPulseSeries);
 I3_POINTER_TYPEDEFS(CCMRecoPulseSeriesMap);
 I3_POINTER_TYPEDEFS(CCMRecoPulseMap);
+I3_POINTER_TYPEDEFS(CCMRecoPulseSeriesMapByID);
 
 /*
  * Specialize I3Frame::Get() to turn convert various objects
