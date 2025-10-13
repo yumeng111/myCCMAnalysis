@@ -17,7 +17,6 @@ const std::unordered_map<PhotonSummary::PhotonSource, CCMMCPE::PhotonSource> G4C
     {PhotonSummary::PhotonSource::Cherenkov, CCMMCPE::PhotonSource::Cherenkov}
 };
 
-
 G4CCMReadout::G4CCMReadout(size_t n_threads) : n_threads_(n_threads) {}
 
 void G4CCMReadout::SetInput(std::vector<I3Particle> primaries) {
