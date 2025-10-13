@@ -14,7 +14,7 @@
     #define CCM_HAS_G4 1
 #endif
 
-static const unsigned ccm_simulation_settings_version_ = 0;
+static const unsigned ccm_simulation_settings_version_ = 1;
 class CCMSimulationSettings : public I3FrameObject {
 public:
     bool save_all_energy_losses_tree_ = false;
@@ -39,6 +39,7 @@ public:
     double g4_e_tracking_min_ = 1.0 * I3Units::keV;
     bool record_hits_ = true;
 
+    bool reset_time_for_radioactivation = false;
     bool source_rod_in_ = false;
     double source_rod_location_ = 0.0*I3Units::cm;
     bool cobalt_source_run_ = false;
@@ -97,6 +98,7 @@ void CCMSimulationSettings::save(Archive& ar, unsigned version) const {
     ar & make_nvp("g4_edep_min", g4_edep_min_);
     ar & make_nvp("g4_e_tracking_min", g4_e_tracking_min_);
     ar & make_nvp("record_hits", record_hits_);
+    ar & make_nvp("reset_time_for_radioactivation", reset_time_for_radioactivation_);
     ar & make_nvp("source_rod_in", source_rod_in_);
     ar & make_nvp("source_rod_location", source_rod_location_);
     ar & make_nvp("cobalt_source_run", cobalt_source_run_);
@@ -134,6 +136,11 @@ void CCMSimulationSettings::load(Archive& ar, unsigned version) {
     ar & make_nvp("g4_edep_min", g4_edep_min_);
     ar & make_nvp("g4_e_tracking_min", g4_e_tracking_min_);
     ar & make_nvp("record_hits", record_hits_);
+    if(ccm_simulation_settings_version_ >= 1) {
+        ar & make_nvp("reset_time_for_radioactivation", reset_time_for_radioactivation_);
+    } else {
+        reset_time_for_radioactivation_ = true;
+    }
     ar & make_nvp("source_rod_in", source_rod_in_);
     ar & make_nvp("source_rod_location", source_rod_location_);
     ar & make_nvp("cobalt_source_run", cobalt_source_run_);

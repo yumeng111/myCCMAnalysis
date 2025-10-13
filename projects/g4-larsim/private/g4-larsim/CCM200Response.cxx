@@ -54,6 +54,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("G4ETrackingMin", "minimum energy for tracking (I3Units) [GeV]", s.g4_e_tracking_min_);
 
     AddParameter("RecordHits", "record hits", s.record_hits_);
+    AddParameter("ResetTimeForRadioActivation", "If true, then reset the global geant4 time to zero when a radioactive decay occurs", s.reset_time_for_radioactivation_);
     AddParameter("SourceRodIn", "true if we want to simulate the sodium source rod", s.source_rod_in_);
     AddParameter("SourceRodLocation", "z location of the end of the sodium source rod (I3Units) [m]", s.source_rod_location_);
     AddParameter("CobaltSourceRun", "true if we want to simulate cobalt source pellet", s.cobalt_source_run_);
@@ -115,6 +116,7 @@ void CCM200Response::Configure() {
     GetParameter("G4ETrackingMin", s.g4_e_tracking_min_);
 
     GetParameter("RecordHits", s.record_hits_);
+    GetParameter("ResetTimeForRadioActivation", s.reset_time_for_radioactivation_);
     GetParameter("SourceRodIn", s.source_rod_in_);
     GetParameter("SourceRodLocation", s.source_rod_location_);
     GetParameter("CobaltSourceRun", s.cobalt_source_run_);
@@ -205,6 +207,8 @@ void CCM200Response::Configure() {
             log_info("  G4ETrackingMin : %f keV", s.g4_e_tracking_min_/I3Units::keV);
         if(s.record_hits_ != defaultSimulationSettings_.record_hits_)
             log_info("  RecordHits : %s", s.record_hits_ ? "True" : "False");
+        if(s.reset_time_for_radioactivation_ != defaultSimulationSettings_.reset_time_for_radioactivation_)
+            log_info("  ResetTimeForRadioactivation : %s", s.reset_time_for_radioactivation_ ? "True" : "False");
         if(s.source_rod_in_ != defaultSimulationSettings_.source_rod_in_)
             log_info("  SourceRodIn : %s", s.source_rod_in_ ? "True" : "False");
         if(s.source_rod_location_ != defaultSimulationSettings_.source_rod_location_)

@@ -248,7 +248,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if(currentProcess) {
             processName = static_cast<std::string>(currentProcess->GetProcessName());
         }
-        if(processName == "Radioactivation") {
+        if(simulationSettings_.reset_time_for_radioactivation_ and processName == "Radioactivation") {
             // Get the list of secondaries
             const G4TrackVector* secondaries = aStep->GetSecondary();
             // Modify the start time of each secondary particle
