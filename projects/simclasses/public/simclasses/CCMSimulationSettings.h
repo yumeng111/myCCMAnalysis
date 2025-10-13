@@ -39,7 +39,7 @@ public:
     double g4_e_tracking_min_ = 1.0 * I3Units::keV;
     bool record_hits_ = true;
 
-    bool reset_time_for_radioactivation = false;
+    bool reset_time_for_radioactivation_ = false;
     bool source_rod_in_ = false;
     double source_rod_location_ = 0.0*I3Units::cm;
     bool cobalt_source_run_ = false;
