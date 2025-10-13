@@ -252,9 +252,9 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
         }
     }
 
-    // Merge per-event outputs if requested (parity with MT semantics and order)
-    if(per_event_output_) {
-        if(n > 0) {
+    // Merge per-event outputs
+    if(n > 0) {
+        if(per_event_output_) {
             // MCPESeries
             CCMMCPESeriesMapPtr final_mcpeseries_map = boost::make_shared<CCMMCPESeriesMap>();
             if(multi_particle_output_) {
@@ -274,25 +274,6 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
                 }
             }
 
-            // Trees & vectors: take first then merge the rest (null guards where needed)
-            I3MCTreePtr final_edep_tree  = edep_trees.at(0)  ? edep_trees.at(0)  : boost::make_shared<I3MCTree>();
-            I3MCTreePtr final_veto_tree  = veto_trees.at(0)  ? veto_trees.at(0)  : boost::make_shared<I3MCTree>();
-            I3MCTreePtr final_inner_tree = inner_trees.at(0) ? inner_trees.at(0) : boost::make_shared<I3MCTree>();
-
-            I3VectorI3ParticlePtr final_veto_vec  = veto_vectors.at(0)  ? veto_vectors.at(0)  : boost::make_shared<I3Vector<I3Particle>>();
-            I3VectorI3ParticlePtr final_inner_vec = inner_vectors.at(0) ? inner_vectors.at(0) : boost::make_shared<I3Vector<I3Particle>>();
-
-            for(size_t j = 1; j < n; ++j) {
-                MergeEDepTrees(final_edep_tree,  edep_trees.at(j),  particles.at(j));
-                MergeEDepTrees(final_veto_tree,  veto_trees.at(j),  particles.at(j));
-                MergeEDepTrees(final_inner_tree, inner_trees.at(j), particles.at(j));
-
-                if(auto src = veto_vectors.at(j))
-                    final_veto_vec->insert(final_veto_vec->end(), src->begin(), src->end());
-                if(auto src = inner_vectors.at(j))
-                    final_inner_vec->insert(final_inner_vec->end(), src->begin(), src->end());
-            }
-
             // Sort by time
             for(CCMMCPESeriesMap::iterator it = final_mcpeseries_map->begin();
                  it != final_mcpeseries_map->end(); ++it) {
@@ -300,16 +281,36 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
                           [](const CCMMCPE& a, const CCMMCPE& b){ return a.time < b.time; });
             }
 
-            // Write per-event outputs
             frame->Put(PMTHitSeriesName_,       final_mcpeseries_map);
-            frame->Put(LArMCTreeName_,         final_edep_tree);
-            frame->Put("VetoLArMCTree",        final_veto_tree);
-            frame->Put("InnerLArMCTree",       final_inner_tree);
-            frame->Put("VetoLArMCTreeVector",  final_veto_vec);
-            frame->Put("InnerLArMCTreeVector", final_inner_vec);
         }
-        // n == 0 => write nothing for per-event outputs
-    }
+
+        // Trees & vectors: take first then merge the rest (null guards where needed)
+        I3MCTreePtr final_edep_tree  = edep_trees.at(0)  ? edep_trees.at(0)  : boost::make_shared<I3MCTree>();
+        I3MCTreePtr final_veto_tree  = veto_trees.at(0)  ? veto_trees.at(0)  : boost::make_shared<I3MCTree>();
+        I3MCTreePtr final_inner_tree = inner_trees.at(0) ? inner_trees.at(0) : boost::make_shared<I3MCTree>();
+
+        I3VectorI3ParticlePtr final_veto_vec  = veto_vectors.at(0)  ? veto_vectors.at(0)  : boost::make_shared<I3Vector<I3Particle>>();
+        I3VectorI3ParticlePtr final_inner_vec = inner_vectors.at(0) ? inner_vectors.at(0) : boost::make_shared<I3Vector<I3Particle>>();
+
+        for(size_t j = 1; j < n; ++j) {
+            MergeEDepTrees(final_edep_tree,  edep_trees.at(j),  particles.at(j));
+            MergeEDepTrees(final_veto_tree,  veto_trees.at(j),  particles.at(j));
+            MergeEDepTrees(final_inner_tree, inner_trees.at(j), particles.at(j));
+
+            if(auto src = veto_vectors.at(j))
+                final_veto_vec->insert(final_veto_vec->end(), src->begin(), src->end());
+            if(auto src = inner_vectors.at(j))
+                final_inner_vec->insert(final_inner_vec->end(), src->begin(), src->end());
+        }
+
+
+        // Write per-event outputs
+        frame->Put(LArMCTreeName_,         final_edep_tree);
+        frame->Put("VetoLArMCTree",        final_veto_tree);
+        frame->Put("InnerLArMCTree",       final_inner_tree);
+        frame->Put("VetoLArMCTreeVector",  final_veto_vec);
+        frame->Put("InnerLArMCTreeVector", final_inner_vec);
+    } // n == 0 => write nothing for per-event outputs
 
     PushFrame(frame);
 }
@@ -440,30 +441,38 @@ void CCMSimulator::DAQMultiThreaded() {
                     std::swap(dst, *this_mcpeseries_map);
                 }
             }
-            if(multi_particle_mcpeseries_map->size() > 0)
-                daq_frames.at(i)->Put(PMTHitSeriesName_ + "MultiParticle", multi_particle_mcpeseries_map);
+            if(multi_particle_mcpeseries_map->size() > 0) {
+                I3FramePtr & frame = daq_frames.at(i);
+                frame->Put(PMTHitSeriesName_ + "MultiParticle", multi_particle_mcpeseries_map);
+            }
         }
 
-        if(not per_event_output_) {
-            particle_idx += particles_per_event.at(i);
-            continue;
-        }
-
-        if(multi_particle_output_) {
-            final_mcpeseries_maps.push_back(boost::make_shared<CCMMCPESeriesMap>());
-            for(size_t j=0; j<particles_per_event.at(i); ++j) {
-                I3Particle const & p = particles.at(particle_idx + j);
-                auto it = multi_particle_mcpeseries_map->find(p.GetID());
-                if(it != multi_particle_mcpeseries_map->end()) {
-                    MergeMCPESeries(*final_mcpeseries_maps.back(), it->second);
+        if(per_event_output_) {
+            if(multi_particle_output_) {
+                final_mcpeseries_maps.push_back(boost::make_shared<CCMMCPESeriesMap>());
+                for(size_t j=0; j<particles_per_event.at(i); ++j) {
+                    I3Particle const & p = particles.at(particle_idx + j);
+                    auto it = multi_particle_mcpeseries_map->find(p.GetID());
+                    if(it != multi_particle_mcpeseries_map->end()) {
+                        MergeMCPESeries(*final_mcpeseries_maps.back(), it->second);
+                    }
+                }
+            } else {
+                final_mcpeseries_maps.push_back(mcpeseries_maps.at(particle_idx));
+                for(size_t j=1; j<particles_per_event.at(i); ++j) {
+                    if(mcpeseries_maps.size() > particle_idx + j and mcpeseries_maps.at(particle_idx + j) != nullptr) {
+                        MergeMCPESeries(*final_mcpeseries_maps.back(), *mcpeseries_maps.at(particle_idx+j));
+                    }
                 }
             }
-        } else {
-            final_mcpeseries_maps.push_back(mcpeseries_maps.at(particle_idx));
-            for(size_t j=1; j<particles_per_event.at(i); ++j) {
-                if(mcpeseries_maps.size() > particle_idx + j and mcpeseries_maps.at(particle_idx + j) != nullptr) {
-                    MergeMCPESeries(*final_mcpeseries_maps.back(), *mcpeseries_maps.at(particle_idx+j));
-                }
+
+            // sort mcpeseries_map by time
+            for(CCMMCPESeriesMap::iterator it = final_mcpeseries_maps.back()->begin(); it != final_mcpeseries_maps.back()->end(); ++it) {
+                std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.time < b.time; });
+            }
+            if(final_mcpeseries_maps.at(i) != nullptr) {
+                I3FramePtr & frame = daq_frames.at(i);
+                frame->Put(PMTHitSeriesName_, final_mcpeseries_maps.at(i));
             }
         }
 
@@ -493,31 +502,23 @@ void CCMSimulator::DAQMultiThreaded() {
                 final_inner_vectors.back()->insert(final_inner_vectors.back()->end(), src->begin(), src->end());
         }
 
-        // sort mcpeseries_map by time
-        for(CCMMCPESeriesMap::iterator it = final_mcpeseries_maps.back()->begin(); it != final_mcpeseries_maps.back()->end(); ++it) {
-            std::sort(it->second.begin(), it->second.end(), [](const CCMMCPE& a, const CCMMCPE& b) { return a.time < b.time; });
+        I3FramePtr &frame = daq_frames.at(i);
+        if(final_edep_trees.at(i) != nullptr)
+            frame->Put(LArMCTreeName_, final_edep_trees.at(i));
+        if(final_veto_trees.at(i) != nullptr) {
+            log_info("Saving veto tree with %zu particles", final_veto_trees.at(i)->size());
+            frame->Put("VetoLArMCTree", final_veto_trees.at(i));
+        } else {
+            log_info("No veto tree to save");
         }
+        if(final_inner_trees.at(i) != nullptr)
+            frame->Put("InnerLArMCTree", final_inner_trees.at(i));
+        if(final_veto_vectors.at(i) != nullptr)
+            frame->Put("VetoLArMCTreeVector", final_veto_vectors.at(i));
+        if(final_inner_vectors.at(i) != nullptr)
+            frame->Put("InnerLArMCTreeVector", final_inner_vectors.at(i));
 
         particle_idx += particles_per_event.at(i);
-    }
-
-    if(per_event_output_) {
-        // Put it all back into the DAQ frames
-        for(size_t i=0; i<daq_frames.size(); ++i) {
-            I3FramePtr frame = daq_frames.at(i);
-            if(final_mcpeseries_maps.at(i) != nullptr)
-                frame->Put(PMTHitSeriesName_, final_mcpeseries_maps.at(i));
-            if(final_edep_trees.at(i) != nullptr)
-                frame->Put(LArMCTreeName_, final_edep_trees.at(i));
-            if(final_veto_trees.at(i) != nullptr)
-                frame->Put("VetoLArMCTree", final_veto_trees.at(i));
-            if(final_inner_trees.at(i) != nullptr)
-                frame->Put("InnerLArMCTree", final_inner_trees.at(i));
-            if(final_veto_vectors.at(i) != nullptr)
-                frame->Put("VetoLArMCTreeVector", final_veto_vectors.at(i));
-            if(final_inner_vectors.at(i) != nullptr)
-                frame->Put("InnerLArMCTreeVector", final_inner_vectors.at(i));
-        }
     }
 
     size_t original_frame_queue_size = frame_queue_.size();
