@@ -194,6 +194,9 @@ void G4Interface::Initialize() {
     runManager_->SetUserInitialization(physics_list);
 
     // Set user action initialization
+    if(particle_list_ == nullptr) {
+        particle_list_ = std::make_shared<G4CCMParticleList>();
+    }
     G4CCMActionInitialization* actionInitialization = new G4CCMActionInitialization(particle_list_.get());
     runManager_->SetUserInitialization(actionInitialization);
 
