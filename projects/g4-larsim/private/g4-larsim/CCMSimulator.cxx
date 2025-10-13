@@ -71,6 +71,13 @@ void CCMSimulator::Configure() {
 
     response_->SetNumberOfThreads(n_threads_);
 
+    if(multithreaded_) {
+        if (batch_size_ == 0)
+            log_fatal("BatchSize must be > 0 in multithreaded mode");
+        if (n_threads_ == 0)
+            log_fatal("NumberOfThreads must be > 0 in multithreaded mode");
+    }
+
     // initialize the response services
     response_->Initialize();
 }
@@ -89,13 +96,6 @@ void CCMSimulator::Process() {
         return;
     }
 
-    methods_t::iterator miter = methods_.find(frame->GetStop());
-
-    if(miter != methods_.end()) {
-        miter->second(frame);
-        return;
-    }
-
     if(not multithreaded_) {
         ProcessNormally(frame);
         return;
@@ -106,9 +106,9 @@ void CCMSimulator::Process() {
         ++n_daq_frames_;
         if(n_daq_frames_ == batch_size_) {
             ndaqcall_ += n_daq_frames_;
-            n_daq_frames_ = 0;
             // Reached the batch size, process all frames in the queue
             DAQMultiThreaded();
+            n_daq_frames_ = 0;
         }
     } else {
         if(frame->GetStop() == I3Frame::Geometry or frame->GetStop() == I3Frame::Calibration or frame->GetStop() == I3Frame::DetectorStatus or frame->GetStop() == I3Frame::Simulation) {
@@ -118,6 +118,7 @@ void CCMSimulator::Process() {
                 // Got a frame that should be processed before the DAQ frame
                 // Process all frames in the queue
                 DAQMultiThreaded();
+                n_daq_frames_ = 0;
                 ProcessNormally(frame);
             }
         } else {
@@ -141,8 +142,16 @@ void CCMSimulator::ProcessNormally(I3FramePtr frame) {
     else if(frame->GetStop() == I3Frame::DAQ && ShouldDoDAQ(frame)) {
         ++ndaqcall_;
         DAQ(frame);
-    } else if(ShouldDoOtherStops(frame))
+    } else if(ShouldDoOtherStops(frame)) {
         OtherStops(frame);
+    } else {
+        methods_t::iterator miter = methods_.find(frame->GetStop());
+
+        if(miter != methods_.end()) {
+            miter->second(frame);
+            return;
+        }
+    }
 }
 
 void CCMSimulator::FillSimulationFrame(I3FramePtr frame) {
@@ -562,18 +571,18 @@ void CCMSimulator::MergeMCPESeries(CCMMCPESeriesMap & mcpeseries_dest, CCMMCPESe
     }
 }
 
-void CCMSimulator::MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary) {
+void CCMSimulator::MergeEDepTrees(I3MCTreePtr dest, I3MCTreeConstPtr source, I3Particle const & primary) {
     if(source == nullptr) {
         log_fatal("CCMSimulator::MergeEDepTrees: Source tree is nullptr");
     }
     if(dest == nullptr) {
         log_fatal("CCMSimulator::MergeEDepTrees: Destination tree is nullptr");
     }
-    I3Particle * source_particle = I3MCTreeUtils::GetParticlePtr(source, primary.GetID());
+    I3Particle const * source_particle = I3MCTreeUtils::GetParticlePtr(source, primary.GetID());
     I3Particle * dest_particle = I3MCTreeUtils::GetParticlePtr(dest, primary.GetID());
 
     if(source_particle == nullptr) {
-        // Print particle ids in source tree}
+        // Print particle ids in source tree
         std::cout << "Search particle id: " << primary.GetID() << std::endl;
         std::cout << "Source tree particle ids:" << std::endl;
         for(I3MCTree::const_iterator it = source->cbegin(); it != source->cend(); ++it) {
@@ -587,18 +596,18 @@ void CCMSimulator::MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Partic
         for(I3MCTree::const_iterator it = dest->cbegin(); it != dest->cend(); ++it) {
             std::cout << it->GetID() << std::endl;
         }
-        log_fatal("Source particle not found in destination tree");
+        log_fatal("Destination particle not found in destination tree");
     }
 
-    std::vector<I3Particle *> daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_particle->GetID());
-    std::deque<std::tuple<I3Particle *, I3Particle *>> source_children(daughters.size());
+    std::vector<I3Particle const *> daughters = I3MCTreeUtils::GetDaughtersPtr(source, source_particle->GetID());
+    std::deque<std::tuple<I3Particle const *, I3Particle const *>> source_children(daughters.size());
     for(size_t i=0; i<daughters.size(); ++i) {
         source_children[i] = std::make_tuple(source_particle, daughters.at(i));
     }
 
     while(source_children.size() > 0) {
-        I3Particle * source_parent = std::get<0>(source_children.front());
-        I3Particle * source_child = std::get<1>(source_children.front());
+        I3Particle const * source_parent = std::get<0>(source_children.front());
+        I3Particle const * source_child = std::get<1>(source_children.front());
         source_children.pop_front();
 
         if(source_parent == nullptr) {

@@ -34,7 +34,7 @@ public:
     void Finish() override;
 
     static void MergeMCPESeries(CCMMCPESeriesMap & mcpeseries_dest, CCMMCPESeriesMap const & mcpeseries_source);
-    static void MergeEDepTrees(I3MCTreePtr dest, I3MCTreePtr source, I3Particle primary);
+    static void MergeEDepTrees(I3MCTreePtr dest, I3MCTreeConstPtr source, I3Particle const & primary);
 private:
     std::string responseServiceName_ = "CCM200Response";
     std::string input_mc_tree_name_ = "I3MCTree";
