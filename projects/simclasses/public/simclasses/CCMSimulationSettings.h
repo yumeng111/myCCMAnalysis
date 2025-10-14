@@ -136,7 +136,7 @@ void CCMSimulationSettings::load(Archive& ar, unsigned version) {
     ar & make_nvp("g4_edep_min", g4_edep_min_);
     ar & make_nvp("g4_e_tracking_min", g4_e_tracking_min_);
     ar & make_nvp("record_hits", record_hits_);
-    if(ccm_simulation_settings_version_ >= 1) {
+    if(version >= 1) {
         ar & make_nvp("reset_time_for_radioactivation", reset_time_for_radioactivation_);
     } else {
         reset_time_for_radioactivation_ = true;
