@@ -20,7 +20,6 @@ CCMSimulator::CCMSimulator(const I3Context& context): I3Module(context) {
 
     AddParameter("ResponseServiceName", "Name of the detector response service.", responseServiceName_);
     AddParameter("InputMCTreeName", "Name of the input MC tree in the frame.", input_mc_tree_name_);
-    AddParameter("ConfigurationName", "Name of the detector response configuration object.", configuration_name_);
     AddParameter("PMTHitSeriesName", "Name of the resulting PMT hit map in the frame.", PMTHitSeriesName_);
     AddParameter("LArMCTreeName", "Name of the MC tree containing energy depositions in LAr", LArMCTreeName_);
     AddParameter("Multithreaded", "Run the simulation in multithreaded mode.", multithreaded_);
@@ -40,9 +39,6 @@ void CCMSimulator::Configure() {
 
     GetParameter("InputMCTreeName", input_mc_tree_name_);
     log_info("+ Input MC Tree : %s", input_mc_tree_name_.c_str());
-
-    GetParameter("ConfigurationName", configuration_name_);
-    log_info("+ Configuration Name : %s", configuration_name_.c_str());
 
     GetParameter("PMTHitSeriesName", PMTHitSeriesName_);
     log_info("+ PMT hit series : %s", PMTHitSeriesName_.c_str());
@@ -155,8 +151,10 @@ void CCMSimulator::ProcessNormally(I3FramePtr frame) {
 }
 
 void CCMSimulator::FillSimulationFrame(I3FramePtr frame) {
-    I3FrameObjectPtr obj = response_->GetSimulationConfiguration();
-    frame->Put(configuration_name_, obj);
+    std::map<std::string, I3FrameObjectPtr> obj = response_->GetSimulationConfiguration();
+    for(auto const & [key, value] : obj) {
+        frame->Put(key, value);
+    }
 }
 
 void CCMSimulator::Simulation(I3FramePtr frame) {

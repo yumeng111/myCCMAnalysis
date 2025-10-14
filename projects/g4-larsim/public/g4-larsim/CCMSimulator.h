@@ -38,7 +38,6 @@ public:
 private:
     std::string responseServiceName_ = "CCM200Response";
     std::string input_mc_tree_name_ = "I3MCTree";
-    std::string configuration_name_ = "DetectorResponseConfig";
     std::string PMTHitSeriesName_ = "PMTMCHitsMap";
     std::string LArMCTreeName_ = "LArMCTree";
 

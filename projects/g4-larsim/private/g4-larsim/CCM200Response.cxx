@@ -305,10 +305,12 @@ void CCM200Response::Initialize() {
     g4Interface_->InstallDetector(simulationSettings_, detectorConfig_);
 }
 
-I3FrameObjectPtr CCM200Response::GetSimulationConfiguration() {
+std::map<std::string, I3FrameObjectPtr> CCM200Response::GetSimulationConfiguration() {
     DetectorResponseConfigPtr config = boost::make_shared<DetectorResponseConfig>();
     *config = detectorConfig_;
-    return config;
+    CCMSimulationSettingsPtr simulationSettings = boost::make_shared<CCMSimulationSettings>();
+    *simulationSettings = simulationSettings_;
+    return { {"DetectorResponseConfig", config}, {"CCMSimulationSettings", simulationSettings} };
 }
 
 void CCM200Response::SimulateEvent(const I3Particle& primary, I3MCTreePtr tree, CCMMCPESeriesMapPtr mcpeseries, I3MCTreePtr veto_tree, I3MCTreePtr inner_tree, I3VectorI3ParticlePtr veto_vector, I3VectorI3ParticlePtr inner_vector) {

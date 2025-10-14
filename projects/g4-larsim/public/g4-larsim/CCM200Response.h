@@ -99,7 +99,7 @@ public:
     virtual ~CCM200Response() override;
 
     virtual void Configure() override;
-    virtual I3FrameObjectPtr GetSimulationConfiguration() override;
+    virtual std::map<std::string, I3FrameObjectPtr> GetSimulationConfiguration() override;
 
     // initialize geant4 detector
     virtual void Initialize() override;
