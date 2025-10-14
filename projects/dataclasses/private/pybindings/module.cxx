@@ -87,7 +87,8 @@ namespace bp = boost::python;
   (CCMRecoPulseSeriesMapMask)(CCMRecoPulseSeriesMapUnion)               \
   (MultiParticleRecoPulsesView)                                         \
   (CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime)                     \
-  (CCMRecoPulseSeriesMapApplySPECalPlusBeamTime)                     \
+  (CCMRecoPulseSeriesMapApplySPECalPlusBeamTime)                        \
+  (CCMRecoPulseSeriesMapApplyOffsets)                                   \
   (I3Double)(I3String)(I3Constants)(I3RecoPulseSeriesMapMask)           \
   (I3RecoPulseSeriesMapUnion)(I3SuperDST)(TankKey)(I3Orientation)       \
   (ModuleKey)(I3ModuleGeo)(I3OMGeo)(I3TankGeo)(I3FilterResult)          \

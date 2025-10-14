@@ -18,6 +18,7 @@
 #include <dataclasses/I3MapCCMPMTKeyMask.h>
 #include <dataclasses/I3MapCCMPMTKeyUnion.h>
 #include <dataclasses/I3RecoPulseSeriesMapApplySPECorrection.h>
+#include <dataclasses/CCMRecoPulseSeriesMapApplyOffsets.h>
 #include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime.h>
 #include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusBeamTime.h>
 #include <dataclasses/MultiParticleRecoPulsesView.h>
@@ -188,6 +189,12 @@ I3Frame::Get(const std::string& name, void*, void*) const
 
 	if (spe_cal_beam_time)
 		return spe_cal_beam_time->Apply(*this);
+
+	CCMRecoPulseSeriesMapApplyOffsetsConstPtr offset_time =
+	    boost::dynamic_pointer_cast<const CCMRecoPulseSeriesMapApplyOffsets>(focp);
+
+	if (offset_time)
+		return offset_time->Apply(*this);
 
     // Not yet implemented: CCMRecoPulseSeriesMapCombineByModule
     /*
