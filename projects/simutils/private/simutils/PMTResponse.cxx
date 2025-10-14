@@ -607,15 +607,11 @@ void PMTResponse::DAQ(I3FramePtr frame) {
     }
 
     // grab the simulation output ccm mcpe series map
-    bool multiparticle = false;
     boost::shared_ptr<CCMMCPESeriesMap const> mcpeseries_source;
     boost::shared_ptr<CCMMCPESeriesMapByID const> mcpeseries_source_by_id = frame->Get<boost::shared_ptr<CCMMCPESeriesMapByID const>>(input_hits_map_name_);
-    if(mcpeseries_source_by_id) {
-        multiparticle = true;
-    } else {
-        multiparticle = false;
+    bool multiparticle = mcpeseries_source_by_id != nullptr;
+    if(not multiparticle)
         mcpeseries_source = frame->Get<boost::shared_ptr<CCMMCPESeriesMap const>>(input_hits_map_name_);
-    }
 
     if(not mcpeseries_source and not mcpeseries_source_by_id) {
         log_fatal("No CCMMCPESeriesMap or CCMMCPESeriesMapByID found in frame with name %s", input_hits_map_name_.c_str());
