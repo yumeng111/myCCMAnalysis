@@ -73,7 +73,7 @@ G4PrimaryVertex * CreatePrimaryVertex(I3Particle const & particle) {
                             particle.GetDir().GetY(),
                             particle.GetDir().GetZ());
 
-    G4double time = particle.GetTime() / I3Units::ns * CLHEP::ns;
+    G4double time = 0.0;
 
     G4PrimaryVertex * vertex = new G4PrimaryVertex(x, y, z, time);
     G4ParticleTable * particleTable = G4ParticleTable::GetParticleTable();

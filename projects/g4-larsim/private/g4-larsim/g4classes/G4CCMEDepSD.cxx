@@ -2,6 +2,8 @@
 #include "g4-larsim/g4classes/G4CCMEDepSD.h"
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 
+#include "dataclasses/physics/I3MCTreeUtils.h"
+
 #include <G4ios.hh>
 #include <G4Step.hh>
 #include <G4Event.hh>
@@ -158,6 +160,15 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         return false;
     }
 
+    // Perform time cut if enabled
+    if(simulationSettings_.do_time_cut_) {
+        G4double time = aStep->GetPostStepPoint()->GetGlobalTime(); // G4 time units
+        if(time > simulationSettings_.time_cut_) { // Also G4 time units
+            aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+            return false;
+        }
+    }
+
     // Check the type of particle
     G4ParticleDefinition * particle_definition = aStep->GetTrack()->GetDefinition();
 
@@ -193,14 +204,13 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // now let's check energy deposited
-    G4double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
-    G4double ekin = aStep->GetTrack()->GetKineticEnergy() / electronvolt * I3Units::eV;
+    double edep = aStep->GetTotalEnergyDeposit() / CLHEP::eV * I3Units::eV;
 
     if(edep == 0.)
         return false;
 
     // position
-    G4ThreeVector prePosition = aStep->GetPostStepPoint()->GetPosition();
+    G4ThreeVector prePosition = aStep->GetPreStepPoint()->GetPosition();
     G4ThreeVector postPosition = aStep->GetPostStepPoint()->GetPosition();
     I3Position position(prePosition.x() / mm * I3Units::mm, prePosition.y() / mm * I3Units::mm, prePosition.z() / mm * I3Units::mm);
     position += I3Position(postPosition.x() / mm * I3Units::mm, postPosition.y() / mm * I3Units::mm, postPosition.z() / mm * I3Units::mm);
@@ -211,7 +221,7 @@ G4bool G4CCMEDepSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
     // time
-    G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+    double time = primary_.GetTime() + aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
 
     // process name -- use for parent id == 0!
     G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();

@@ -739,6 +739,8 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
         if(!fVeto_SD.Get()) {
             G4cout << "Construction /LAr/vetoSD" << G4endl;
             auto veto_SD = new G4CCMEDepSD("/LAr/vetoSD", G4CCMReadout::VolumeType::Veto);
+            veto_SD->SetDetectorResponseConfig(c);
+            veto_SD->SetSimulationSettings(s);
             veto_SD->SetSaveEnergyLossesTree(s.veto_sd_save_energy_losses_tree_);
             veto_SD->SetSaveEnergyLossesVector(s.veto_sd_save_energy_losses_vector_);
             veto_SD->SetPruneTree(s.veto_sd_prune_tree_);
@@ -761,6 +763,8 @@ void G4CCMDetectorConstruction::ConstructSDandField() {
         if(!fInterior_SD.Get()) {
             G4cout << "Construction /LAr/interiorSD" << G4endl;
             auto interior_SD = new G4CCMEDepSD("/LAr/interiorSD", G4CCMReadout::VolumeType::Inner);
+            interior_SD->SetDetectorResponseConfig(c);
+            interior_SD->SetSimulationSettings(s);
             interior_SD->SetSaveEnergyLossesTree(s.interior_sd_save_energy_losses_tree_);
             interior_SD->SetSaveEnergyLossesVector(s.interior_sd_save_energy_losses_vector_);
             interior_SD->SetPruneTree(s.interior_sd_prune_tree_);

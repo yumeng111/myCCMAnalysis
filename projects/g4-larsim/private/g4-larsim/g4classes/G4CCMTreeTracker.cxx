@@ -141,7 +141,7 @@ void G4CCMTreeTracker::AddNewPhoton(int parent_id, int track_id, double time, do
     s.distance_uv = distance;
     s.original_wavelength = wavelength;
     // s.distance_visible = 0.0;
-    s.time = time;
+    s.time = time + primary_.GetTime();
     //s.n_photons_per_wls = std::vector<size_t>();
     //s.wls_loc = WLSLocationSeries();
     s.photon_source = processNameToPhotonSource.at(creation_process_name);
@@ -261,8 +261,8 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // Perform time cut if enabled
     if(simulationSettings_.do_time_cut_) {
-        G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
-        if(time > simulationSettings_.time_cut_) {
+        G4double time = aStep->GetPostStepPoint()->GetGlobalTime(); // G4 time units
+        if(time > simulationSettings_.time_cut_) { // Also G4 time units
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;
         }
@@ -348,7 +348,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
             double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
 
-            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
+            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / CLHEP::eV); // units of nanometer
             double original_wavelength = wavelength * I3Units::nanometer;
 
             if(child_case_1_brand_new_photon) {
@@ -423,7 +423,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
             double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
 
-            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
+            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / CLHEP::eV); // units of nanometer
             double original_wavelength = wavelength * I3Units::nanometer;
 
             if(child_case_1_brand_new_photon) {
@@ -479,8 +479,11 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // position
-    G4ThreeVector g4Position = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(g4Position.x() / mm * I3Units::mm, g4Position.y() / mm * I3Units::mm, g4Position.z() / mm * I3Units::mm);
+    G4ThreeVector prePosition = aStep->GetPreStepPoint()->GetPosition();
+    G4ThreeVector postPosition = aStep->GetPostStepPoint()->GetPosition();
+    I3Position position(prePosition.x() / mm * I3Units::mm, prePosition.y() / mm * I3Units::mm, prePosition.z() / mm * I3Units::mm);
+    position += I3Position(postPosition.x() / mm * I3Units::mm, postPosition.y() / mm * I3Units::mm, postPosition.z() / mm * I3Units::mm);
+    position /= 2.;
 
     // direction
     G4ThreeVector g4Direction = aStep->GetPostStepPoint()->GetMomentumDirection();
@@ -516,11 +519,11 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 parent_id = parent_it->second;
 
             // we have not added the daugher...let's do it now
-            double energy = aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV;
+            G4double energy = aStep->GetTrack()->GetVertexKineticEnergy();
             if(energy < simulationSettings_.g4_e_tracking_min_) {
                 parent_map.insert({track_id, parent_id});
             } else {
-                daughter.SetEnergy(energy);
+                daughter.SetEnergy(energy / CLHEP::eV * I3Units::eV);
                 daughter.SetPos(position);
                 daughter.SetDir(I3Direction(direction));
                 daughter.SetTime(time);
@@ -555,7 +558,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     if(TrackEnergyLosses_) {
-        double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
+        double edep = aStep->GetTotalEnergyDeposit() / CLHEP::eV * I3Units::eV;
         if(edep == 0.0)
             return false;
 
@@ -586,7 +589,8 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
             G4cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
         } else {
-            if(edep < simulationSettings_.g4_edep_min_) {
+            double i3_edpep_min = simulationSettings_.g4_edep_min_ / CLHEP::eV * I3Units::eV;
+            if(edep < i3_edpep_min) {
                 std::map<int, std::tuple<double, std::vector<I3Particle>>>::iterator sub_loss_it = sub_threshold_losses.find(track_id);
                 if(sub_loss_it == sub_threshold_losses.end()) {
                     sub_loss_it = sub_threshold_losses.insert(sub_loss_it, {track_id, {0.0, std::vector<I3Particle>()}});
@@ -596,7 +600,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 std::vector<I3Particle> & losses = std::get<1>(sub_losses);
                 std::map<I3Particle::ParticleType, double> type_vote;
                 total_energy += edep;
-                if(total_energy > simulationSettings_.g4_edep_min_) {
+                if(total_energy > i3_edpep_min) {
                     type_vote.insert(std::make_pair(daughter.GetType(), edep));
                     position = position * edep;
                     direction *= edep;

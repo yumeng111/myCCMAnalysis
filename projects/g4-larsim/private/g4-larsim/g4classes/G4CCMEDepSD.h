@@ -7,9 +7,10 @@
 #include "g4-larsim/g4classes/G4CCMScintHit.h"
 #include "g4-larsim/g4classes/G4CCMReadout.h"
 #include "g4-larsim/g4classes/G4CCMTreeTracker.h"
-#include "dataclasses/physics/I3MCTreeUtils.h"
 #include "dataclasses/I3Map.h"
 #include "simclasses/PhotonSummary.h"
+#include "simclasses/CCMSimulationSettings.h"
+#include "simclasses/DetectorResponseConfig.h"
 
 #include <vector>
 #include <string>
@@ -31,6 +32,16 @@ class G4CCMEDepSD : public G4VSensitiveDetector {
         void Initialize(G4HCofThisEvent*) override;
         void EndOfEvent(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
+
+        void SetDetectorResponseConfig(DetectorResponseConfig const & config) {
+            detectorConfig_ = config;
+            detectorConfig_.to_g4_units();
+        }
+
+        void SetSimulationSettings(CCMSimulationSettings const & settings) {
+            simulationSettings_ = settings;
+            simulationSettings_.to_g4_units();
+        }
 
         void Reset();
 
@@ -57,6 +68,8 @@ class G4CCMEDepSD : public G4VSensitiveDetector {
         I3VectorI3ParticlePtr output_energy_losses_vector = nullptr;
         I3MCTreePtr output_energy_losses_tree = nullptr;
         I3Particle primary_;
+        DetectorResponseConfig detectorConfig_;
+        CCMSimulationSettings simulationSettings_;
 
         std::set<I3ParticleID> energy_loss_ids;
 

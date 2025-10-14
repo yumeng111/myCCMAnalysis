@@ -42,7 +42,7 @@ CCM200Response::CCM200Response(const I3Context& context) :
     AddParameter("KillPhotons", "kill photons", s.kill_photons_);
     AddParameter("KillScintillation", "kill scintillation", s.kill_scintillation_);
     AddParameter("KillCherenkov", "kill cherenkov", s.kill_cherenkov_);
-    AddParameter("TimeCut", "only track events up to N nsec", s.do_time_cut_);
+    AddParameter("TimeCut", "only track activity in the detector up to N nsec after the input particle", s.do_time_cut_);
     AddParameter("TimeCutValue", "only track events up to this time if \"TimeCut\" is set to True [ns]", s.time_cut_ / I3Units::ns);
     AddParameter("DetailedPhotonTracking", "track all optical photons to get distance travelled", s.detailed_photon_tracking_);
     AddParameter("TrackParticles", "track particles", s.track_particles_);

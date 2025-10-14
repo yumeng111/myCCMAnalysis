@@ -32,13 +32,11 @@
 #define G4CCMPMTSD_h 1
 
 #include "icetray/I3Units.h"
-#include "dataclasses/I3Map.h"
-#include "dataclasses/I3Position.h"
-#include "dataclasses/I3Direction.h"
 
 #include "g4-larsim/g4classes/G4CCMPMTHit.h"
-#include "g4-larsim/g4classes/G4CCMMainVolume.h"
 #include "g4-larsim/g4classes/G4CCMReadout.h"
+#include "simclasses/CCMSimulationSettings.h"
+#include "simclasses/DetectorResponseConfig.h"
 
 #include "icetray/CCMPMTKey.h"
 
@@ -46,7 +44,6 @@
 
 #include <vector>
 #include <string>
-#include <sstream>
 
 #include <G4SystemOfUnits.hh>
 #include <G4VSensitiveDetector.hh>
@@ -69,6 +66,16 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         void Initialize(G4HCofThisEvent*) override;
         void EndOfEvent(G4HCofThisEvent*) override;
         G4bool ProcessHits(G4Step* aStep, G4TouchableHistory*) override;
+
+        void SetDetectorResponseConfig(DetectorResponseConfig const & config) {
+            detectorConfig_ = config;
+            detectorConfig_.to_g4_units();
+        }
+
+        void SetSimulationSettings(CCMSimulationSettings const & settings) {
+            simulationSettings_ = settings;
+            simulationSettings_.to_g4_units();
+        }
 
         // Initialize the arrays to store pmt positions
         inline void InitPMTs() {
@@ -95,12 +102,15 @@ class G4CCMPMTSD : public G4VSensitiveDetector {
         void Reset() {
             CCMMCPEMap = nullptr;
         }
-        
+
         void SetPhotonTracking(bool FullPhotonTracking) { FullPhotonTracking_ = FullPhotonTracking; }
 
     private:
         bool FullPhotonTracking_;
         int event_id = -1;
+        I3Particle primary_;
+        DetectorResponseConfig detectorConfig_;
+        CCMSimulationSettings simulationSettings_;
         G4CCMReadout * readout_ = nullptr;
         G4CCMPMTHitsCollection* fPMTHitCollection = nullptr;
 
