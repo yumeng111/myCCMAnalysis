@@ -34,6 +34,7 @@ void register_CCMSimulationSettings() {
         .def_readwrite("g4_edep_min", &CCMSimulationSettings::g4_edep_min_)
         .def_readwrite("g4_e_tracking_min", &CCMSimulationSettings::g4_e_tracking_min_)
         .def_readwrite("record_hits", &CCMSimulationSettings::record_hits_)
+        .def_readwrite("reset_time_for_radioactivation", &CCMSimulationSettings::reset_time_for_radioactivation_)
         .def_readwrite("source_rod_in", &CCMSimulationSettings::source_rod_in_)
         .def_readwrite("source_rod_location", &CCMSimulationSettings::source_rod_location_)
         .def_readwrite("cobalt_source_run", &CCMSimulationSettings::cobalt_source_run_)
