@@ -576,7 +576,7 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
     fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", detectorConfig_.tpb_wls_time_constant_); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << detectorConfig_.endcap_tpb_thickness_ / CLHEP::micrometer << "um for top/bottom tpb foils" << std::endl;
+    std::cout << "setting wls mean number of photons to " << detectorConfig_.endcap_tpb_qe_ << " for top/bottom tpb foils" << std::endl;
     fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", detectorConfig_.endcap_tpb_qe_);
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
