@@ -241,7 +241,6 @@ void CCMSimulator::DAQSingleThreaded(I3FramePtr frame) {
             if(dst.empty()) {
                 std::swap(dst, *mp); // swap to avoid copy
             } else {
-                // Defensive: if duplicate IDs ever occur, merge rather than overwrite
                 MergeMCPESeries(dst, *mp);
             }
         }
@@ -435,8 +434,11 @@ void CCMSimulator::DAQMultiThreaded() {
                     if(this_mcpeseries_map == nullptr)
                         continue;
                     auto& dst = (*multi_particle_mcpeseries_map)[p.GetID()];
-                    assert(dst.empty());
-                    std::swap(dst, *this_mcpeseries_map);
+                    if(dst.empty()) {
+                        std::swap(dst, *this_mcpeseries_map); // swap to avoid copy
+                    } else {
+                        MergeMCPESeries(dst, *this_mcpeseries_map);
+                    }
                 }
             }
             if(multi_particle_mcpeseries_map->size() > 0) {
