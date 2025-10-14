@@ -1,4 +1,3 @@
-#include "dataclasses/I3Double.h"
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
@@ -6,7 +5,6 @@
 #include "icetray/I3Frame.h"
 #include "icetray/I3Module.h"
 #include "icetray/I3ConditionalModule.h"
-#include "icetray/I3Logging.h"
 #include "icetray/IcetrayFwd.h"
 #include "icetray/I3FrameObject.h"
 
@@ -14,7 +12,6 @@
 
 #include <vector>
 #include <string>
-#include <algorithm>
 
 CCMParticleInjector::CCMParticleInjector(const I3Context& context) : I3ConditionalModule(context),
     mcPrimaryName_("MCPrimaries"), output_mc_tree_name_("I3MCTree") {
@@ -53,6 +50,8 @@ void CCMParticleInjector::DAQ(I3FramePtr frame) {
 }
 
 void CCMParticleInjector::FillSimulationFrame(I3FramePtr frame) {
-    I3FrameObjectPtr obj = this->GetSimulationConfiguration();
-    frame->Put("InjectorConfiguration", obj);
+    std::map<std::string, I3FrameObjectPtr> obj = this->GetSimulationConfiguration();
+    for(auto const & [key, value] : obj) {
+        frame->Put(key, value);
+    }
 }

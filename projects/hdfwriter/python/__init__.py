@@ -34,7 +34,7 @@ def I3SimHDFWriter(tray, name, RunNumber=0, **kwargs):
     """
 
     if "SubEventStreams" in kwargs:
-        raise ArgumentError("SubEventStreams cannot be set for I3SimHDFWriter")
+        raise ValueError("SubEventStreams cannot be set for I3SimHDFWriter")
 
     from icecube import icetray, dataclasses, phys_services
     def fake_event_header(frame):
@@ -61,7 +61,7 @@ def CCMSimHDFWriter(tray, name, RunNumber=0, **kwargs):
     """
 
     if "SubEventStreams" in kwargs:
-        raise ArgumentError("SubEventStreams cannot be set for CCMSimHDFWriter")
+        raise ValueError("SubEventStreams cannot be set for CCMSimHDFWriter")
 
     from icecube import icetray, dataclasses, phys_services
     def fake_event_header(frame):

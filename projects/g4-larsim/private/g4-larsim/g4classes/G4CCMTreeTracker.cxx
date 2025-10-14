@@ -27,7 +27,7 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-const std::unordered_set<int> G4CCMTreeTracker::energyLossPDGCodes = {0, 2000000001, 2000000002, 2000000003, 2000000004, 2000000005, 2000000006, 2000000007, 2000000008, 2000000009, 2000000010, 2000000011, 2000000012, 2000000013, 2000000014, 2000000015, 2000000016, 2000000017, 2000000018};
+const std::unordered_set<int> G4CCMTreeTracker::energyLossPDGCodes = {0, 2000000001, 2000000002, 2000000003, 2000000004, 2000000005, 2000000006, 2000000007, 2000000008, 2000000009, 2000000010, 2000000011, 2000000012, 2000000013, 2000000014, 2000000015, 2000000016, 2000000017, 2000000018, 2000000019, 2000000020, 2000000021, 2000000022, 2000000023, 2000000024};
 
 const std::unordered_set<std::string> G4CCMTreeTracker::knownProcessNames = {"NoProcess", "Transportation"};
 
@@ -36,7 +36,9 @@ const std::unordered_map<std::string, int> G4CCMTreeTracker::energyLossToI3Parti
                                                                                           {"eBrem", 2000000007}, {"ePairProd", 2000000008}, {"CoulombScat", 2000000009},
                                                                                           {"annihil", 2000000010}, {"Cerenkov", 2000000011}, {"Radioactivation", 2000000012},
                                                                                           {"Scintillation", 2000000013}, {"OpWLS", 2000000014}, {"ionIoni" , 2000000015},
-                                                                                          {"hIoni", 2000000016}, {"neutronInelastic", 2000000017}, {"hadElastic", 2000000018}, {"Unknown", 0}};
+                                                                                          {"hIoni", 2000000016}, {"neutronInelastic", 2000000017}, {"hadElastic", 2000000018}, {"Unknown", 0},
+                                                                                          {"muIoni", 2000000019}, {"muBrems", 2000000020}, {"Decay", 2000000021}, {"muPairProd", 2000000022},
+                                                                                          {"Transportation", 2000000023}, {"muonNuclear", 2000000024}};
 
 const std::unordered_map<std::string, PhotonSummary::PhotonSource> G4CCMTreeTracker::processNameToPhotonSource = {{"Unknown", PhotonSummary::PhotonSource::Unknown},
                                                                                                               {"Scintillation", PhotonSummary::PhotonSource::Scintillation},
@@ -54,7 +56,7 @@ const std::unordered_map<WLSLocation::WLSLoc, std::string> G4CCMTreeTracker::wls
                                                                                                              {WLSLocation::WLSLoc::FoilBottom, "FoilBottom"},
                                                                                                              {WLSLocation::WLSLoc::FoilSides, "FoilSides"}};
 
-G4CCMTreeTracker::G4CCMTreeTracker(G4String name) : G4VSensitiveDetector(name) {
+G4CCMTreeTracker::G4CCMTreeTracker(G4String name, bool track_particles, bool track_energy_losses) : G4VSensitiveDetector(name), TrackParticles_(track_particles), TrackEnergyLosses_(track_energy_losses) {
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -122,7 +124,7 @@ void G4CCMTreeTracker::EndOfEvent(G4HCofThisEvent*) {
         I3MCTreeUtils::AppendChild(*mcTree, DaughterParticleMap.at(track_id), daughter);
     }
 
-    if(DetailedPhotonTracking_) {
+    if(simulationSettings_.detailed_photon_tracking_) {
         readout_->LogTrackingResult(event_id, summary_map);
     } else {
         readout_->LogTrackingResult(event_id, source_map);
@@ -138,10 +140,11 @@ void G4CCMTreeTracker::AddNewPhoton(int parent_id, int track_id, double time, do
     PhotonSummary & s = std::get<1>(it.first->second);
     s.distance_uv = distance;
     s.original_wavelength = wavelength;
-    // s.distance_visible = 0.0;
-    s.time = time;
-    //s.n_photons_per_wls = std::vector<size_t>();
-    //s.wls_loc = WLSLocationSeries();
+
+    // The photon time is stored relative to the input particle's time.
+    // Add the input particle's time offset to the simulation time to ensure all photon times
+    // are in the global event reference frame.
+    s.time = time + primary_.GetTime();
     s.photon_source = processNameToPhotonSource.at(creation_process_name);
     s.current_process = s.photon_source;
 }
@@ -246,7 +249,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if(currentProcess) {
             processName = static_cast<std::string>(currentProcess->GetProcessName());
         }
-        if(processName == "Radioactivation") {
+        if(simulationSettings_.reset_time_for_radioactivation_ and processName == "Radioactivation") {
             // Get the list of secondaries
             const G4TrackVector* secondaries = aStep->GetSecondary();
             // Modify the start time of each secondary particle
@@ -258,9 +261,9 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     // Perform time cut if enabled
-    if(TimeCut_) {
-        G4double time = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
-        if(time > time_cut_value_) {
+    if(simulationSettings_.do_time_cut_) {
+        G4double time = aStep->GetPostStepPoint()->GetGlobalTime(); // G4 time units
+        if(time > simulationSettings_.time_cut_) { // Also G4 time units
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;
         }
@@ -273,7 +276,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     G4int pdg = particle_definition->GetPDGEncoding();
 
     // Handle neutrinos
-    if(KillNeutrinos_) {
+    if(simulationSettings_.kill_neutrinos_) {
         unsigned int abs_pdg = std::abs(int(pdg));
         bool pdg_even = abs_pdg % 2 == 0;
         bool is_nu = pdg_even and (abs_pdg >= 12 and abs_pdg <= 16);
@@ -285,28 +288,28 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // Handle optical photons
     if(particle_definition == G4OpticalPhoton::OpticalPhotonDefinition()) {
-        if(KillPhotons_) {
+        if(simulationSettings_.kill_photons_) {
             aStep->GetTrack()->SetTrackStatus(fStopAndKill);
             return false;
         }
 
         // check if we want to kill cerenkov photons
-        if(KillCherenkov_ or KillScintillation_) {
+        if(simulationSettings_.kill_cherenkov_ or simulationSettings_.kill_scintillation_) {
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
             std::string creation_process_name = "Unknown";
             if(creationProcess) {
                 creation_process_name = static_cast<std::string>(creationProcess->GetProcessName());
             }
-            if(KillCherenkov_ and (creation_process_name == "Cerenkov")) {
+            if(simulationSettings_.kill_cherenkov_ and (creation_process_name == "Cerenkov")) {
                 aStep->GetTrack()->SetTrackStatus(fStopAndKill);
                 return false;
-            } else if(KillScintillation_ and creation_process_name == "Scintillation") {
+            } else if(simulationSettings_.kill_scintillation_ and creation_process_name == "Scintillation") {
                 aStep->GetTrack()->SetTrackStatus(fStopAndKill);
                 return false;
             }
         }
 
-        if(DetailedPhotonTracking_) {
+        if(simulationSettings_.detailed_photon_tracking_) {
             const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
             std::string creation_process_name = "Unknown";
             if(creationProcess) {
@@ -346,7 +349,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
             double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
 
-            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
+            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / CLHEP::eV); // units of nanometer
             double original_wavelength = wavelength * I3Units::nanometer;
 
             if(child_case_1_brand_new_photon) {
@@ -421,7 +424,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
             double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
 
-            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
+            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / CLHEP::eV); // units of nanometer
             double original_wavelength = wavelength * I3Units::nanometer;
 
             if(child_case_1_brand_new_photon) {
@@ -469,92 +472,19 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
             assert(not parent_case_2_photon_not_stopping);
         }
 
-        /*
-        if(DetailedPhotonTracking_) {
-            // ok if we survived all checks, add an entry to our photon summary
-            // we need parent id, track id, distance travelled, and wavelength
-            G4int parent_id = aStep->GetTrack()->GetParentID();
-            G4int track_id = aStep->GetTrack()->GetTrackID();
-
-            double g4_delta_distance = (aStep->GetStepLength() / mm) * I3Units::mm;
-            double pre_step_global_time = aStep->GetPreStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
-            double g4_delta_time_step = aStep->GetDeltaTime() / nanosecond * I3Units::nanosecond;
-
-            double wavelength = hc / (aStep->GetTrack()->GetTotalEnergy() / electronvolt); // units of nanometer
-            double original_wavelength = wavelength * I3Units::nanometer;
-
-            G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
-            std::string processName = (process) ? process->GetProcessName() : "Unknown";
-            if(processName == "OpWLS") {
-                ParentInfo info;
-                std::vector<const G4Track*> * secondaries = aStep->GetSecondaryInCurrentStep();
-                if(secondaries != nullptr) {
-                    size_t n_secondaries = secondaries->size();
-                    if(n_secondaries > 0) {
-                        // this is a WLS photon that produced some secondaries
-                        info.n_children = n_secondaries;
-                        info.n_children_remaining = n_secondaries;
-                    }
-                }
-            }
-
-            // let's also check if this photon got wls
-            const G4VProcess* creationProcess = aStep->GetTrack()->GetCreatorProcess();
-            std::string creation_process_name = "Unknown";
-            if(creationProcess) {
-                creation_process_name = static_cast<std::string>(creationProcess->GetProcessName());
-            }
-
-            // ok now let's save
-            // check to see if the track id is in our map
-            std::map<int, PhotonSummary>::iterator it = photon_summary->find(track_id);
-
-            bool already_seen_track = it != photon_summary->end();
-
-            if(already_seen_track) {
-                // child case 2
-                UpdatePhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
-            } else {
-                // check if this parent id is in our map
-                std::map<int, PhotonSummary>::iterator parent_it = photon_summary->find(parent_id);
-                bool already_seen_parent = parent_it != photon_summary->end();
-                bool is_wavelength_shift = creation_process_name == "OpWLS";
-                if(already_seen_parent) {
-                    // Need to add a new photon track and update any siblings
-                    if(is_wavelength_shift)
-                        // child case 3
-                        AddWLSPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, aStep);
-                    else
-                        // child case 5
-                        AddPhotonTrack(parent_id, track_id, g4_delta_time_step, g4_delta_distance, creation_process_name);
-                } else {
-                    // child case 1
-                    // Just need to add a brand new photon track
-                    AddNewPhoton(parent_id, track_id, g4_delta_time_step, g4_delta_distance, original_wavelength, creation_process_name);
-                }
-
-                assert(num_children[parent_id] > 0);
-                assert((*num_siblings[track_id]) > 0);
-                num_children[parent_id] -= 1;
-                (*num_siblings[track_id]) -= 1;
-                if(num_children[parent_id] == 0 and (*num_siblings[parent_id]) == 0) {
-                    photon_summary->erase(parent_id);
-                    num_children.erase(parent_id);
-                    num_siblings.erase(parent_id);
-                }
-            }
-        }
-        */
         return false;
     }
 
-    if(not (TrackParticles_ or DetailedPhotonTracking_ or TrackEnergyLosses_)) {
+    if(not (TrackParticles_ or simulationSettings_.detailed_photon_tracking_ or TrackEnergyLosses_)) {
         return false;
     }
 
     // position
-    G4ThreeVector g4Position = aStep->GetPostStepPoint()->GetPosition();
-    I3Position position(g4Position.x() / mm * I3Units::mm, g4Position.y() / mm * I3Units::mm, g4Position.z() / mm * I3Units::mm);
+    G4ThreeVector prePosition = aStep->GetPreStepPoint()->GetPosition();
+    G4ThreeVector postPosition = aStep->GetPostStepPoint()->GetPosition();
+    I3Position position(prePosition.x() / mm * I3Units::mm, prePosition.y() / mm * I3Units::mm, prePosition.z() / mm * I3Units::mm);
+    position += I3Position(postPosition.x() / mm * I3Units::mm, postPosition.y() / mm * I3Units::mm, postPosition.z() / mm * I3Units::mm);
+    position /= 2.;
 
     // direction
     G4ThreeVector g4Direction = aStep->GetPostStepPoint()->GetMomentumDirection();
@@ -590,11 +520,11 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 parent_id = parent_it->second;
 
             // we have not added the daugher...let's do it now
-            double energy = aStep->GetTrack()->GetVertexKineticEnergy() / electronvolt * I3Units::eV;
-            if(energy < G4ETrackingMin_) {
+            G4double energy = aStep->GetTrack()->GetVertexKineticEnergy();
+            if(energy < simulationSettings_.g4_e_tracking_min_) {
                 parent_map.insert({track_id, parent_id});
             } else {
-                daughter.SetEnergy(energy);
+                daughter.SetEnergy(energy / CLHEP::eV * I3Units::eV);
                 daughter.SetPos(position);
                 daughter.SetDir(I3Direction(direction));
                 daughter.SetTime(time);
@@ -629,7 +559,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
 
     if(TrackEnergyLosses_) {
-        double edep = aStep->GetTotalEnergyDeposit() / electronvolt * I3Units::eV;
+        double edep = aStep->GetTotalEnergyDeposit() / CLHEP::eV * I3Units::eV;
         if(edep == 0.0)
             return false;
 
@@ -660,7 +590,8 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
         if(DaughterParticleMap.find(track_id) == DaughterParticleMap.end()) {
             G4cout << "oops! trying to save energy deposition type but DaughterParticleMap does not have track id!" << std::endl;
         } else {
-            if(edep < G4EDepMin_) {
+            double i3_edpep_min = simulationSettings_.g4_edep_min_ / CLHEP::eV * I3Units::eV;
+            if(edep < i3_edpep_min) {
                 std::map<int, std::tuple<double, std::vector<I3Particle>>>::iterator sub_loss_it = sub_threshold_losses.find(track_id);
                 if(sub_loss_it == sub_threshold_losses.end()) {
                     sub_loss_it = sub_threshold_losses.insert(sub_loss_it, {track_id, {0.0, std::vector<I3Particle>()}});
@@ -670,7 +601,7 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
                 std::vector<I3Particle> & losses = std::get<1>(sub_losses);
                 std::map<I3Particle::ParticleType, double> type_vote;
                 total_energy += edep;
-                if(total_energy > G4EDepMin_) {
+                if(total_energy > i3_edpep_min) {
                     type_vote.insert(std::make_pair(daughter.GetType(), edep));
                     position = position * edep;
                     direction *= edep;

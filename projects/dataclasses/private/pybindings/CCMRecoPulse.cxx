@@ -276,13 +276,18 @@ void register_CCMRecoPulse()
     ;
   register_pointer_conversions<CCMRecoPulseSeriesMap>();
 
+  object rpsmbid = class_<CCMRecoPulseSeriesMapByID, bases<I3FrameObject>, CCMRecoPulseSeriesMapByIDPtr>("CCMRecoPulseSeriesMapByID")
+    .def(dataclass_suite<CCMRecoPulseSeriesMapByID>())
+    ;
+  register_pointer_conversions<CCMRecoPulseSeriesMapByID>();
+
   // Add buffer protocol interface
   PyTypeObject *rpsmclass = (PyTypeObject *)rpsm.ptr();
   rpsm_bufferprocs.bf_getbuffer = CCMRecoPulseSeriesMap_getbuffer;
   rpsm_bufferprocs.bf_releasebuffer = CCMRecoPulseSeries_relbuffer;
   rpsmclass->tp_as_buffer = &rpsm_bufferprocs;
 
-  scope outer = 
+  scope outer =
   class_<CCMRecoPulse, boost::shared_ptr<CCMRecoPulse> >("CCMRecoPulse")
     #define PROPS (Time)(Charge)(Width)
     BOOST_PP_SEQ_FOR_EACH(WRAP_PROP, CCMRecoPulse, PROPS)

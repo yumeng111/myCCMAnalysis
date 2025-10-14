@@ -1,6 +1,5 @@
 // standard library stuff
 
-#include "dataclasses/I3Double.h"
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
@@ -8,7 +7,6 @@
 #include "g4-larsim/CCMSimpleInjector.h"
 #include "g4-larsim/CCMParticleInjector.h"
 
-#include "icetray/I3Frame.h"
 #include "icetray/I3Units.h"
 #include "icetray/I3Module.h"
 #include "icetray/I3Logging.h"
@@ -21,7 +19,6 @@
 
 #include <vector>
 #include <string>
-#include <algorithm>
 #include <sstream>
 
 #define PARTICLE_TYPE_MAP_APPEND(r, data, t) types[BOOST_PP_STRINGIZE(t)] = I3Particle::t;
@@ -51,6 +48,7 @@ const std::map<std::string, I3Particle::ParticleType>& AvailableTypes() {
 CCMSimpleInjector::CCMSimpleInjector(const I3Context& context) : CCMParticleInjector(context),
     energy_(1.0 * I3Units::MeV), time_(0.0 * I3Units::ns), location_({0.0, 0.0, 0.0}), direction_({1.0, 0., 0.}),
     typeName_("e-") {
+    AddParameter("MCPrimaryName", "Key for the primary I3Particle in the frame", mcPrimaryName_);
     AddParameter("ParticleEnergy", "energy of particle to inject into Geant4 in MeV", energy_);
     AddParameter("ParticleTime", "time of particle to inject into Geant4", time_);
     AddParameter("ParticleLocation", "location of particle to inject into Geant4 in m", location_);
@@ -61,11 +59,12 @@ CCMSimpleInjector::CCMSimpleInjector(const I3Context& context) : CCMParticleInje
 void CCMSimpleInjector::Configure() {
     CCMParticleInjector::Configure();
 
+    GetParameter("MCPrimaryName", mcPrimaryName_);
     GetParameter("ParticleEnergy", energy_);
     GetParameter("ParticleTime", time_);
     GetParameter("ParticleLocation", location_);
     GetParameter("ParticleDirection", direction_);
-   
+
     std::string typeName;
     GetParameter("ParticleType", typeName);
     particleType_ = GetParticleType(typeName);
@@ -91,18 +90,18 @@ I3MCTreePtr CCMSimpleInjector::GetMCTree() {
     primary.SetTime(time_);
     primary.SetPos(location_[0], location_[1], location_[2]);
     primary.SetDir(direction_[0], direction_[1], direction_[2]);
-    
+
     I3MCTreeUtils::AddPrimary(*mcTree, primary);
     return mcTree;
 }
 
-I3FrameObjectPtr CCMSimpleInjector::GetSimulationConfiguration() {
+std::map<std::string, I3FrameObjectPtr> CCMSimpleInjector::GetSimulationConfiguration() {
     I3ParticlePtr primary = boost::make_shared<I3Particle>(particleType_);
     primary->SetEnergy(energy_);
     primary->SetTime(time_);
     primary->SetPos(location_[0], location_[1], location_[2]);
     primary->SetDir(direction_[0], direction_[1], direction_[2]);
-    return primary;
+    return { {mcPrimaryName_, primary} };
 }
 
 I3Particle::ParticleType CCMSimpleInjector::GetParticleType(const std::string& typeName) {

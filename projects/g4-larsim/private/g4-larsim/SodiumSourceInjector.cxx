@@ -1,6 +1,7 @@
 // standard library stuff
 
-#include "dataclasses/I3Double.h"
+#include "simclasses/SodiumInjectorConfig.h"
+
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
 #include "dataclasses/physics/I3MCTreeUtils.h"
@@ -8,28 +9,20 @@
 #include "g4-larsim/SodiumSourceInjector.h"
 #include "g4-larsim/CCMParticleInjector.h"
 
-#include "icetray/I3Frame.h"
 #include "icetray/I3Units.h"
 #include "icetray/I3Module.h"
 #include "icetray/I3Logging.h"
 #include "icetray/IcetrayFwd.h"
-#include "icetray/I3ServiceBase.h"
-#include "icetray/I3SingleServiceFactory.h"
 
 #include "phys-services/I3GSLRandomService.h"
 
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 
-#include <vector>
-#include <string>
-#include <algorithm>
-#include <sstream>
-#include <random>
 
 SodiumSourceInjector::SodiumSourceInjector(const I3Context& context) :
-    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), randomServiceName_(""), training_(false),
-    decay_x_(0.0 * I3Units::cm), decay_y_(0.0 * I3Units::cm), decay_z_(0.0 * I3Units::cm){
+    CCMParticleInjector(context), z_position_(0.0 * I3Units::cm), training_(false),
+    decay_x_(0.0 * I3Units::cm), decay_y_(0.0 * I3Units::cm), decay_z_(0.0 * I3Units::cm), randomServiceName_("") {
     AddParameter("SourceZPosition", "z location of source pellet", z_position_);
     AddParameter("Inset", "Inset of the source pellet", inset_);
     AddParameter("PelletRadius", "Radius of the source pellet", pellet_radius_);
@@ -103,13 +96,13 @@ I3MCTreePtr SodiumSourceInjector::GetMCTree() {
     return mcTree;
 }
 
-I3FrameObjectPtr SodiumSourceInjector::GetSimulationConfiguration() {
+std::map<std::string, I3FrameObjectPtr> SodiumSourceInjector::GetSimulationConfiguration() {
     SodiumInjectorConfigPtr config = boost::make_shared<SodiumInjectorConfig>();
     config->z_position_ = z_position_;
     config->inset_ = inset_;
     config->pellet_radius_ = pellet_radius_;
     config->pellet_height_ = pellet_height_;
-    return config;
+    return { { "SodiumInjectorConfig", config } };
 }
 
 I3_MODULE(SodiumSourceInjector);

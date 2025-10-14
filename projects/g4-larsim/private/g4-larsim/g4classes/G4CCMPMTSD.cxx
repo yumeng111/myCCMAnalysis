@@ -88,6 +88,8 @@ void G4CCMPMTSD::Initialize(G4HCofThisEvent* hitsCE) {
 
     event_id = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
 
+    primary_ = readout_->GetPrimary(event_id);
+
     CCMMCPEMap = readout_->GetMCPESeries(event_id);
 }
 
@@ -103,6 +105,15 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // need to know if this is an optical photon
     if(aStep->GetTrack()->GetDefinition() != G4OpticalPhoton::OpticalPhotonDefinition())
         return false;
+
+    // Perform time cut if enabled
+    if(simulationSettings_.do_time_cut_) {
+        G4double time = aStep->GetPostStepPoint()->GetGlobalTime(); // G4 time units
+        if(time > simulationSettings_.time_cut_) { // Also G4 time units
+            aStep->GetTrack()->SetTrackStatus(fStopAndKill);
+            return false;
+        }
+    }
 
     G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
     std::string processName = (process) ? process->GetProcessName() : "Unknown";
@@ -169,10 +180,10 @@ G4bool G4CCMPMTSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     //G4ThreeVector photonDirection = aStep->GetPostStepPoint()->GetMomentumDirection();
     //I3Direction direction(photonDirection.x(), photonDirection.y(), photonDirection.z());
 
-    G4double globalTime = aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
+    double globalTime = primary_.GetTime() + aStep->GetPostStepPoint()->GetGlobalTime() / nanosecond * I3Units::nanosecond;
     //G4double localTime = aStep->GetPostStepPoint()->GetLocalTime() / nanosecond * I3Units::nanosecond;
 
-    G4double photonEnergy = aStep->GetTrack()->GetTotalEnergy() / electronvolt;
+    double photonEnergy = aStep->GetTrack()->GetTotalEnergy() / CLHEP::eV; // in eV
 
     double photonWavelength = hc / photonEnergy * I3Units::nanometer;
 

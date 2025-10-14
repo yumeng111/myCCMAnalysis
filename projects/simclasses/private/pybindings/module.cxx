@@ -26,6 +26,7 @@
 
 #define REGISTER_THESE_THINGS                       \
     (DetectorResponseConfig)                        \
+    (CCMSimulationSettings)                         \
     (WLSLocation)                                   \
     (CCMMCPE)(PhotonSummary)                        \
     (LightweightCCMMCPE)                            \

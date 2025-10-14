@@ -5,9 +5,7 @@
 #include "icetray/I3FrameObject.h"
 #include "dataclasses/Utility.h"
 
-#include <string>
 #include <iostream>
-#include <sstream>
 
 static const unsigned sodiuminjectorconfig_version_ = 1;
 class SodiumInjectorConfig : public I3FrameObject {
@@ -20,7 +18,7 @@ public:
     SodiumInjectorConfig() = default;
     virtual ~SodiumInjectorConfig() override = default;
 
-    std::ostream& Print(std::ostream&) const;
+    std::ostream& Print(std::ostream&) const override;
 
     bool operator==(const SodiumInjectorConfig& rhs) const;
 private:

@@ -3,16 +3,12 @@
 
 #include "dataclasses/physics/I3MCTree.h"
 #include "dataclasses/physics/I3Particle.h"
-#include "dataclasses/physics/I3MCTreeUtils.h"
 
 #include "icetray/I3Context.h"
 #include "icetray/I3ServiceBase.h"
-#include "icetray/I3Configuration.h"
 #include "icetray/I3PointerTypedefs.h"
-#include "icetray/I3SingleServiceFactory.h"
 
 #include "simclasses/CCMMCPE.h"
-#include "simclasses/PhotonSummary.h"
 
 class CCMDetectorResponse : public I3ServiceBase {
     public:
@@ -31,7 +27,7 @@ class CCMDetectorResponse : public I3ServiceBase {
         }
 
         // get config information
-        virtual I3FrameObjectPtr GetSimulationConfiguration() = 0;
+        virtual std::map<std::string, I3FrameObjectPtr> GetSimulationConfiguration() = 0;
 
         // initialize geant4 detector
         virtual void Initialize() = 0;

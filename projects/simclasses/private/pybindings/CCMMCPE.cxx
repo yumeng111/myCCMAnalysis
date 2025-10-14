@@ -50,4 +50,9 @@ void register_CCMMCPE() {
         .def(dataclass_suite<CCMMCPESeriesMap>())
         ;
     register_pointer_conversions<CCMMCPESeriesMap>();
+
+    class_<CCMMCPESeriesMapByID, CCMMCPESeriesMapByIDPtr, bases<I3FrameObject> >("CCMMCPESeriesMapByID")
+        .def(dataclass_suite<CCMMCPESeriesMapByID>())
+        ;
+    register_pointer_conversions<CCMMCPESeriesMapByID>();
 }

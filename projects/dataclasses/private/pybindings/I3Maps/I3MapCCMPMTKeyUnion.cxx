@@ -20,6 +20,6 @@ void register_CCMRecoPulseSeriesMapUnion()
 		.def(bp::dataclass_suite<CCMRecoPulseSeriesMapUnion>())
 	    ;
 	;
-	
+
 	register_pointer_conversions<CCMRecoPulseSeriesMapUnion>();
 }

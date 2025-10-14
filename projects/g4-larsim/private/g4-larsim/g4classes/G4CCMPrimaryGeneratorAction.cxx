@@ -14,30 +14,36 @@ G4CCMParticleList::G4CCMParticleList() : particle_list_(), current_particle_ (0)
 }
 
 void G4CCMParticleList::AddParticle(I3Particle p) {
+    used_.push_back(false);
     particle_list_.push_back(p);
 }
 
 void G4CCMParticleList::AddParticles(std::vector<I3Particle> p) {
+    used_.insert(used_.end(), p.size(), false);
     particle_list_.insert(particle_list_.end(), p.begin(), p.end());
 }
 
 void G4CCMParticleList::SetParticles(std::vector<I3Particle> p) {
     particle_list_ = p;
     current_particle_ = 0;
+    used_.clear();
+    used_.insert(used_.end(), p.size(), false);
 }
 
 void G4CCMParticleList::Clear() {
     particle_list_.clear();
+    used_.clear();
     current_particle_ = 0;
 }
 
-I3Particle G4CCMParticleList::GetNextParticle() {
+I3Particle G4CCMParticleList::GetParticle(size_t i) {
     std::lock_guard<std::mutex> const lock(mutex);
-    if(current_particle_ >= particle_list_.size())
-        return I3Particle();
-    if(current_particle_ >= particle_list_.size())
-        log_fatal("current_particle_ >= particle_list_.size()");
-    return particle_list_[current_particle_++];
+    if(i >= particle_list_.size())
+        log_fatal("i >= particle_list_.size()");
+    if(used_[i])
+        log_fatal("particle %zu already used", i);
+    used_[i] = true;
+    return particle_list_[i];
 }
 
 G4CCMPrimaryGeneratorAction::G4CCMPrimaryGeneratorAction(G4CCMParticleList * particle_list) {
@@ -45,7 +51,7 @@ G4CCMPrimaryGeneratorAction::G4CCMPrimaryGeneratorAction(G4CCMParticleList * par
 }
 
 void G4CCMPrimaryGeneratorAction::GeneratePrimaries(G4Event * evt) {
-    I3Particle p = particle_list_->GetNextParticle();
+    I3Particle p = particle_list_->GetParticle(evt->GetEventID());
 
     if( std::isnan(p.GetTime()) ) {
         p.SetTime(0.);
@@ -67,7 +73,7 @@ G4PrimaryVertex * CreatePrimaryVertex(I3Particle const & particle) {
                             particle.GetDir().GetY(),
                             particle.GetDir().GetZ());
 
-    G4double time = particle.GetTime() / I3Units::ns * CLHEP::ns;
+    G4double time = 0.0;
 
     G4PrimaryVertex * vertex = new G4PrimaryVertex(x, y, z, time);
     G4ParticleTable * particleTable = G4ParticleTable::GetParticleTable();

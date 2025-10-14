@@ -13,6 +13,7 @@ class G4Event;
 
 class G4CCMParticleList {
     std::mutex mutex;
+    std::vector<bool> used_;
     std::vector<I3Particle> particle_list_;
     unsigned int current_particle_;
 public:
@@ -23,7 +24,7 @@ public:
     void AddParticles(std::vector<I3Particle> p);
     void SetParticles(std::vector<I3Particle> p);
     void Clear();
-    I3Particle GetNextParticle();
+    I3Particle GetParticle(size_t i);
 };
 
 class G4CCMPrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction {

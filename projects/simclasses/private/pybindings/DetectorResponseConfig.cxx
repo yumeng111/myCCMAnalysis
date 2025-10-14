@@ -1,45 +1,3 @@
-
-//class DetectorResponseConfig : public I3FrameObject {
-//public:
-//    double rayleigh_scattering_length_;
-//    bool enable_uv_absorption_;
-//    double uv_absorption_a_;
-//    double uv_absorption_b_;
-//    double uv_absorption_d_;
-//    double uv_absorption_scaling_;
-//    double pmt_tpb_qe_;
-//    double endcap_tpb_qe_;
-//    double side_tpb_qe_;
-//    double pmt_tpb_thickness_;
-//    double endcap_tpb_thickness_;
-//    double side_tpb_thickness_;
-//    double tpb_abs_tau_;
-//    double tpb_abs_norm_;
-//    double tpb_abs_scale_;
-//    double mie_gg_;
-//    double mie_ratio_;
-//    double normalization_;
-//    double photon_sampling_factor_;
-//
-//    DetectorResponseConfig() = default;
-//    virtual ~DetectorResponseConfig() override = default;
-//
-//    std::ostream& Print(std::ostream&) const;
-//
-//    bool operator==(const DetectorResponseConfig& rhs) const;
-//private:
-//    friend class icecube::serialization::access;
-//    template<class Archive> void save(Archive& ar, unsigned version) const;
-//    template<class Archive> void load(Archive& ar, unsigned version);
-//    I3_SERIALIZATION_SPLIT_MEMBER();
-//};
-//
-//std::ostream& operator<<(std::ostream& oss, DetectorResponseConfig const & bcm);
-//std::ostream& operator<<(std::ostream& oss, DetectorResponseConfig & bcm);
-
-#include <vector>
-#include <iostream>
-
 #include <simclasses/DetectorResponseConfig.h>
 
 #include <icetray/python/dataclass_suite.hpp>
@@ -51,6 +9,7 @@ void register_DetectorResponseConfig() {
     class_<DetectorResponseConfig>("DetectorResponseConfig")
         .def(dataclass_suite<DetectorResponseConfig>())
         .def(init<>())
+        .def(self == self)
         .def_readwrite("rayleigh_scattering_length", &DetectorResponseConfig::rayleigh_scattering_length_)
         .def_readwrite("enable_uv_absorption", &DetectorResponseConfig::enable_uv_absorption_)
         .def_readwrite("uv_absorption_a", &DetectorResponseConfig::uv_absorption_a_)
@@ -70,6 +29,16 @@ void register_DetectorResponseConfig() {
         .def_readwrite("mie_ratio", &DetectorResponseConfig::mie_ratio_)
         .def_readwrite("normalization", &DetectorResponseConfig::normalization_)
         .def_readwrite("photon_sampling_factor", &DetectorResponseConfig::photon_sampling_factor_)
+        .def_readwrite("mie_scattering_length_200nm", &DetectorResponseConfig::mie_scattering_length_200nm_)
+        .def_readwrite("mie_scattering_cutoff", &DetectorResponseConfig::mie_scattering_cutoff_)
+        .def_readwrite("refractive_index_a0", &DetectorResponseConfig::refractive_index_a0_)
+        .def_readwrite("refractive_index_aUV", &DetectorResponseConfig::refractive_index_aUV_)
+        .def_readwrite("refractive_index_gamma_UV", &DetectorResponseConfig::refractive_index_gamma_UV_)
+        .def_readwrite("refractive_index_wavelength_UV", &DetectorResponseConfig::refractive_index_wavelength_UV_)
+        .def_readwrite("rayleigh_scattering_length_128nm", &DetectorResponseConfig::rayleigh_scattering_length_128nm_)
+        .def_readwrite("birks_constant", &DetectorResponseConfig::birks_constant_)
+        .def_readwrite("mean_excitation_energy", &DetectorResponseConfig::mean_excitation_energy_)
+        .def_readwrite("tpb_wls_time_constant", &DetectorResponseConfig::tpb_wls_time_constant_)
         .add_property("__str__", make_function(&DetectorResponseConfig::Print, return_internal_reference<>()))
     ;
 }

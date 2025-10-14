@@ -352,11 +352,11 @@ namespace detail {
         {-2, 75.00 * I3Units::cm},
         {-1, 65.00 * I3Units::cm},
         {0,  58.00 * I3Units::cm},
-        {1,  46.22 * I3Units::cm},
-        {2,  23.11 * I3Units::cm},
+        {1,  46.00 * I3Units::cm},
+        {2,  23.00 * I3Units::cm},
         {3,   0.00 * I3Units::cm},
-        {4, -23.11 * I3Units::cm},
-        {5, -46.22 * I3Units::cm},
+        {4, -23.00 * I3Units::cm},
+        {5, -46.00 * I3Units::cm},
         {6, -58.00 * I3Units::cm},
         {7, -65.00 * I3Units::cm},
         {8, -75.00 * I3Units::cm},
@@ -365,10 +365,10 @@ namespace detail {
     // The radii of rings of pmts
     std::map<int, double> ring_radii = {
         {0,  96.0 * I3Units::cm}, // Outer wall
-        {1,  20.0 * I3Units::cm}, // Inner ring on top/bottom
-        {2,  42.0 * I3Units::cm}, //
-        {3,  64.2 * I3Units::cm}, //
-        {4,  85.5 * I3Units::cm}, // Outer ring on top/bottom
+        {1,  24.0 * I3Units::cm}, // Inner ring on top/bottom
+        {2,  45.0 * I3Units::cm}, //
+        {3,  66.0 * I3Units::cm}, //
+        {4,  87.0 * I3Units::cm}, // Outer ring on top/bottom
         {5, 101.6 * I3Units::cm},  // Veto VT and VB rings
         {6, 111.6 * I3Units::cm}  // Veto VCT and VCB rings
     };
