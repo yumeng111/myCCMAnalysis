@@ -503,12 +503,8 @@ void CCMSimulator::DAQMultiThreaded() {
         I3FramePtr &frame = daq_frames.at(i);
         if(final_edep_trees.at(i) != nullptr)
             frame->Put(LArMCTreeName_, final_edep_trees.at(i));
-        if(final_veto_trees.at(i) != nullptr) {
-            log_info("Saving veto tree with %zu particles", final_veto_trees.at(i)->size());
+        if(final_veto_trees.at(i) != nullptr)
             frame->Put("VetoLArMCTree", final_veto_trees.at(i));
-        } else {
-            log_info("No veto tree to save");
-        }
         if(final_inner_trees.at(i) != nullptr)
             frame->Put("InnerLArMCTree", final_inner_trees.at(i));
         if(final_veto_vectors.at(i) != nullptr)

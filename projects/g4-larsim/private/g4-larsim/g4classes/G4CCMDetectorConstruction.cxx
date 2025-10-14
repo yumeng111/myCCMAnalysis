@@ -313,16 +313,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     double b_param = detectorConfig_.uv_absorption_b_;// / CLHEP::nm; // nm
     double d_param = detectorConfig_.uv_absorption_d_;// / CLHEP::cm; // cm
     double scaling_param = detectorConfig_.uv_absorption_scaling_; // dimensionless
-    for(size_t i=0; i<10; ++i) {
-        std::cout << "######################################################################################################################" << std::endl;
-    }
-    std::cout << "a_param = " << a_param / (1.0 / CLHEP::nm) << " [1/nm]" << std::endl;
-    std::cout << "b_param = " << b_param / CLHEP::nm << " [nm]" << std::endl;
-    std::cout << "d_param = " << d_param / CLHEP::cm << " [cm]" << std::endl;
-    std::cout << "scaling_param = " << scaling_param << std::endl;
-    for(size_t i=0; i<10; ++i) {
-        std::cout << "######################################################################################################################" << std::endl;
-    }
 
     double large_abs_length = 100000.0 * CLHEP::cm; // cm
 
@@ -370,7 +360,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     if(detectorConfig_.enable_uv_absorption_)
         fLAr_mt->AddProperty("ABSLENGTH", uv_abs_energy, uv_abs_length);
 
-    std::cout << "using normalization = " << detectorConfig_.normalization_ << " for scintillation yields" << std::endl;
     G4double scint_yeild = detectorConfig_.normalization_ * (1.0/(19.5*eV)) * detectorConfig_.photon_sampling_factor_; // scintillation yield: 51 per keV.
     fLAr_mt->AddConstProperty("SCINTILLATIONYIELD", scint_yeild);
     fLAr_mt->AddConstProperty("RESOLUTIONSCALE", std::sqrt(detectorConfig_.photon_sampling_factor_));
@@ -561,7 +550,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBFoilSides_mt = new G4MaterialPropertiesTable();
     fTPBFoilSides_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoilSides_mt->AddConstProperty("WLSTIMECONSTANT", detectorConfig_.tpb_wls_time_constant_); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << detectorConfig_.side_tpb_qe_ << " for side tpb foils" << std::endl;
     fTPBFoilSides_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", detectorConfig_.side_tpb_qe_);
     fTPBFoilSides_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilSides_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
@@ -576,7 +564,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBFoilTopBottom_mt = new G4MaterialPropertiesTable();
     fTPBFoilTopBottom_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBFoilTopBottom_mt->AddConstProperty("WLSTIMECONSTANT", detectorConfig_.tpb_wls_time_constant_); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << detectorConfig_.endcap_tpb_qe_ << " for top/bottom tpb foils" << std::endl;
     fTPBFoilTopBottom_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", detectorConfig_.endcap_tpb_qe_);
     fTPBFoilTopBottom_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBFoilTopBottom_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
@@ -591,7 +578,6 @@ void G4CCMDetectorConstruction::DefineMaterials() {
     G4MaterialPropertiesTable* fTPBPMT_mt = new G4MaterialPropertiesTable();
     fTPBPMT_mt->AddProperty("WLSCOMPONENT", TPB_Emission_Energy, TPB_Emission);
     fTPBPMT_mt->AddConstProperty("WLSTIMECONSTANT", detectorConfig_.tpb_wls_time_constant_); // setting to very small at the moment
-    std::cout << "setting wls mean number of photons to " << detectorConfig_.pmt_tpb_qe_ << " for pmt tpb foils" << std::endl;
     fTPBPMT_mt->AddConstProperty("WLSMEANNUMBERPHOTONS", detectorConfig_.pmt_tpb_qe_);
     fTPBPMT_mt->AddProperty("WLSABSLENGTH", TPB_WLSAbsLength_Energy, TPB_WLSAbsLength);
     fTPBPMT_mt->AddProperty("RINDEX", tpb_rin_energy, tpb_rin);
