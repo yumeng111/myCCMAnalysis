@@ -10,79 +10,101 @@
 #endif
 
 std::ostream & CCMSimulationSettings::Print(std::ostream& oss) const {
-    oss << "CCMSimulationSettings: "
-        //<< "\n  Rayleigh Scattering Length :" << rayleigh_scattering_length_
-        << std::boolalpha
-        << "\n  Save All Energy Losses Tree :" << save_all_energy_losses_tree_
-        << "\n  Veto SD Save Energy Losses Vector :" << veto_sd_save_energy_losses_vector_
-        << "\n  Veto SD Save Energy Losses Tree :" << veto_sd_save_energy_losses_tree_
-        << "\n  Veto SD Prune Tree :" << veto_sd_prune_tree_
-        << "\n  Interior SD Save Energy Losses Vector :" << interior_sd_save_energy_losses_vector_
-        << "\n  Interior SD Save Energy Losses Tree :" << interior_sd_save_energy_losses_tree_
-        << "\n  Interior SD Prune Tree :" << interior_sd_prune_tree_
-        << "\n  Kill Neutrinos :" << kill_neutrinos_
-        << "\n  Kill Photons :" << kill_photons_
-        << "\n  Kill Scintillation :" << kill_scintillation_
-        << "\n  Kill Cherenkov :" << kill_cherenkov_
-        << "\n  Do Time Cut :" << do_time_cut_
-        << "\n  Time Cut :" << time_cut_
-        << "\n  Detailed Photon Tracking :" << detailed_photon_tracking_
-        << "\n  Track Particles :" << track_particles_
-        << "\n  Track Energy Losses :" << track_energy_losses_
-        << "\n  Simulate Nuclear Recoils :" << simulate_nuclear_recoils_
-        << "\n  G4 Range Cut :" << g4_range_cut_
-        << "\n  G4 Edep Min :" << g4_edep_min_
-        << "\n  G4 E Tracking Min :" << g4_e_tracking_min_
-        << "\n  Record Hits :" << record_hits_
-        << "\n  Source Rod In :" << source_rod_in_
-        << "\n  Source Rod Location :" << source_rod_location_
-        << "\n  Cobalt Source Run :" << cobalt_source_run_
-        << "\n  Sodium Source Run :" << sodium_source_run_
-        << "\n  Training Source :" << training_source_
-        << "\n  Decay X :" << decay_x_
-        << "\n  Decay Y :" << decay_y_
-        << "\n  Decay Z :" << decay_z_
-        << "\n  Random Seed :" << random_seed_
 #ifdef CCM_HAS_G4
-        << "\n  Use G4 Units :" << use_g4_units_
+    CCMSimulationSettings x = *this;
+    if(use_g4_units_) {
+        x.to_i3_units();
+    }
+#endif
+    oss << "CCMSimulationSettings: "
+        << std::boolalpha
+        << "\n  Save All Energy Losses Tree: " << x.save_all_energy_losses_tree_
+        << "\n  Veto SD Save Energy Losses Vector: " << x.veto_sd_save_energy_losses_vector_
+        << "\n  Veto SD Save Energy Losses Tree: " << x.veto_sd_save_energy_losses_tree_
+        << "\n  Veto SD Prune Tree: " << x.veto_sd_prune_tree_
+        << "\n  Interior SD Save Energy Losses Vector: " << x.interior_sd_save_energy_losses_vector_
+        << "\n  Interior SD Save Energy Losses Tree: " << x.interior_sd_save_energy_losses_tree_
+        << "\n  Interior SD Prune Tree: " << x.interior_sd_prune_tree_
+        << "\n  Kill Neutrinos: " << x.kill_neutrinos_
+        << "\n  Kill Photons: " << x.kill_photons_
+        << "\n  Kill Scintillation: " << x.kill_scintillation_
+        << "\n  Kill Cherenkov: " << x.kill_cherenkov_
+        << "\n  Do Time Cut: " << x.do_time_cut_
+        << "\n  Time Cut: " << x.time_cut_ << " ns"
+        << "\n  Detailed Photon Tracking: " << x.detailed_photon_tracking_
+        << "\n  Track Particles: " << x.track_particles_
+        << "\n  Track Energy Losses: " << x.track_energy_losses_
+        << "\n  Simulate Nuclear Recoils: " << x.simulate_nuclear_recoils_
+        << "\n  G4 Range Cut: " << x.g4_range_cut_ / I3Units::mm << " mm"
+        << "\n  G4 Edep Min: " << x.g4_edep_min_ / I3Units::keV << " keV"
+        << "\n  G4 E Tracking Min: " << x.g4_e_tracking_min_ / I3Units::keV << " keV"
+        << "\n  Record Hits: " << x.record_hits_
+        << "\n  Reset Time for Radioactivation: " << x.reset_time_for_radioactivation_
+        << "\n  Source Rod In: " << x.source_rod_in_
+        << "\n  Source Rod Location: " << x.source_rod_location_ / I3Units::cm << " cm"
+        << "\n  Cobalt Source Run: " << x.cobalt_source_run_
+        << "\n  Sodium Source Run: " << x.sodium_source_run_
+        << "\n  Training Source: " << x.training_source_
+        << "\n  Decay X: " << x.decay_x_ / I3Units::cm << " cm"
+        << "\n  Decay Y: " << x.decay_y_ / I3Units::cm << " cm"
+        << "\n  Decay Z: " << x.decay_z_ / I3Units::cm << " cm"
+        << "\n  Random Seed: " << x.random_seed_
+#ifdef CCM_HAS_G4
+        << "\n  Use G4 Units: " << use_g4_units_
+#else
+        << "\n  Use G4 Units: False (not compiled with Geant4)"
 #endif
         << std::noboolalpha
         << std::endl;
     return oss;
 }
 
-bool CCMSimulationSettings::operator==(const CCMSimulationSettings& rhs) const {
+bool CCMSimulationSettings::operator==(CCMSimulationSettings const & r) const {
+#ifdef CCM_HAS_G4
+    CCMSimulationSettings lhs = *this;
+    if(use_g4_units_) {
+        lhs.to_i3_units();
+    }
+    CCMSimulationSettings rhs = r;
+    if(rhs.use_g4_units_) {
+        rhs.to_i3_units();
+    }
+#else
+    CCMSimulationSettings const & lhs = *this;
+    CCMSimulationSettings const & rhs = r;
+#endif
     return (
-        save_all_energy_losses_tree_ == rhs.save_all_energy_losses_tree_ &&
-        veto_sd_save_energy_losses_vector_ == rhs.veto_sd_save_energy_losses_vector_ &&
-        veto_sd_save_energy_losses_tree_ == rhs.veto_sd_save_energy_losses_tree_ &&
-        veto_sd_prune_tree_ == rhs.veto_sd_prune_tree_ &&
-        interior_sd_save_energy_losses_vector_ == rhs.interior_sd_save_energy_losses_vector_ &&
-        interior_sd_save_energy_losses_tree_ == rhs.interior_sd_save_energy_losses_tree_ &&
-        interior_sd_prune_tree_ == rhs.interior_sd_prune_tree_ &&
-        kill_neutrinos_ == rhs.kill_neutrinos_ &&
-        kill_photons_ == rhs.kill_photons_ &&
-        kill_scintillation_ == rhs.kill_scintillation_ &&
-        kill_cherenkov_ == rhs.kill_cherenkov_ &&
-        do_time_cut_ == rhs.do_time_cut_ &&
-        time_cut_ == rhs.time_cut_ &&
-        detailed_photon_tracking_ == rhs.detailed_photon_tracking_ &&
-        track_particles_ == rhs.track_particles_ &&
-        track_energy_losses_ == rhs.track_energy_losses_ &&
-        simulate_nuclear_recoils_ == rhs.simulate_nuclear_recoils_ &&
-        g4_range_cut_ == rhs.g4_range_cut_ &&
-        g4_edep_min_ == rhs.g4_edep_min_ &&
-        g4_e_tracking_min_ == rhs.g4_e_tracking_min_ &&
-        record_hits_ == rhs.record_hits_ &&
-        source_rod_in_ == rhs.source_rod_in_ &&
-        source_rod_location_ == rhs.source_rod_location_ &&
-        cobalt_source_run_ == rhs.cobalt_source_run_ &&
-        sodium_source_run_ == rhs.sodium_source_run_ &&
-        training_source_ == rhs.training_source_ &&
-        decay_x_ == rhs.decay_x_ &&
-        decay_y_ == rhs.decay_y_ &&
-        decay_z_ == rhs.decay_z_ &&
-        random_seed_ == rhs.random_seed_
+        lhs.save_all_energy_losses_tree_ == rhs.save_all_energy_losses_tree_ &&
+        lhs.veto_sd_save_energy_losses_vector_ == rhs.veto_sd_save_energy_losses_vector_ &&
+        lhs.veto_sd_save_energy_losses_tree_ == rhs.veto_sd_save_energy_losses_tree_ &&
+        lhs.veto_sd_prune_tree_ == rhs.veto_sd_prune_tree_ &&
+        lhs.interior_sd_save_energy_losses_vector_ == rhs.interior_sd_save_energy_losses_vector_ &&
+        lhs.interior_sd_save_energy_losses_tree_ == rhs.interior_sd_save_energy_losses_tree_ &&
+        lhs.interior_sd_prune_tree_ == rhs.interior_sd_prune_tree_ &&
+        lhs.kill_neutrinos_ == rhs.kill_neutrinos_ &&
+        lhs.kill_photons_ == rhs.kill_photons_ &&
+        lhs.kill_scintillation_ == rhs.kill_scintillation_ &&
+        lhs.kill_cherenkov_ == rhs.kill_cherenkov_ &&
+        lhs.do_time_cut_ == rhs.do_time_cut_ &&
+        lhs.time_cut_ == rhs.time_cut_ &&
+        lhs.detailed_photon_tracking_ == rhs.detailed_photon_tracking_ &&
+        lhs.track_particles_ == rhs.track_particles_ &&
+        lhs.track_energy_losses_ == rhs.track_energy_losses_ &&
+        lhs.simulate_nuclear_recoils_ == rhs.simulate_nuclear_recoils_ &&
+        lhs.g4_range_cut_ == rhs.g4_range_cut_ &&
+        lhs.g4_edep_min_ == rhs.g4_edep_min_ &&
+        lhs.g4_e_tracking_min_ == rhs.g4_e_tracking_min_ &&
+        lhs.record_hits_ == rhs.record_hits_ &&
+        lhs.reset_time_for_radioactivation_ == rhs.reset_time_for_radioactivation_ &&
+        lhs.source_rod_in_ == rhs.source_rod_in_ &&
+        lhs.source_rod_location_ == rhs.source_rod_location_ &&
+        lhs.cobalt_source_run_ == rhs.cobalt_source_run_ &&
+        lhs.sodium_source_run_ == rhs.sodium_source_run_ &&
+        lhs.training_source_ == rhs.training_source_ &&
+        lhs.decay_x_ == rhs.decay_x_ &&
+        lhs.decay_y_ == rhs.decay_y_ &&
+        lhs.decay_z_ == rhs.decay_z_ &&
+        lhs.random_seed_ == rhs.random_seed_
     );
 }
 
