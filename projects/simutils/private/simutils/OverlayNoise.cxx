@@ -209,12 +209,12 @@ std::tuple<bool, std::string> AddDummyPulseSeries(I3FramePtr frame, std::string 
 
 std::map<CCMPMTKey, double> GetDataBoardOffsets(CCMRecoPulseSeriesMapConstPtr pulses) {
     std::map<CCMPMTKey, double> data_board_time_offsets;
-    for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
-        if(it->second.empty()) {
+    for(auto const & [key, series] : *pulses) {
+        if(series.empty()) {
             continue;
         }
-        double offset = -(it->second.front().GetTime());
-        data_board_time_offsets.insert(std::make_pair(it->first, offset));
+        double offset = -(series.front().GetTime());
+        data_board_time_offsets.insert(std::make_pair(key, offset));
     }
     return data_board_time_offsets;
 }
@@ -228,13 +228,13 @@ std::tuple<double, double> GetPulsesTimeRange(CCMRecoPulseSeriesMapConstPtr puls
         min_time = std::numeric_limits<double>::max();
         max_time = -std::numeric_limits<double>::max();
 
-        for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
-            if(it->second.empty()) {
+        for(auto const & [key, series] : *pulses) {
+            if(series.empty()) {
                 continue;
             }
             found_valid_pulse = true;
-            double const & start_time = it->second.front().GetTime();
-            double const & end_time = it->second.back().GetTime();
+            double const & start_time = series.front().GetTime();
+            double const & end_time = series.back().GetTime();
             if(start_time < min_time) {
                 min_time = start_time;
             }
@@ -245,13 +245,13 @@ std::tuple<double, double> GetPulsesTimeRange(CCMRecoPulseSeriesMapConstPtr puls
     } else {
         min_time = -std::numeric_limits<double>::max();
         max_time = std::numeric_limits<double>::max();
-        for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
-            if(it->second.empty()) {
+        for(auto const & [key, series] : *pulses) {
+            if(series.empty()) {
                 continue;
             }
             found_valid_pulse = true;
-            double const & start_time = it->second.front().GetTime();
-            double const & end_time = it->second.back().GetTime();
+            double const & start_time = series.front().GetTime();
+            double const & end_time = series.back().GetTime();
             if(start_time > min_time) {
                 min_time = start_time;
             }
@@ -302,8 +302,8 @@ std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3Frame
     CCMRecoPulseSeries dummy_series{first_pulse, last_pulse};
 
     CCMRecoPulseSeriesMapConstPtr pulses = dummy_frame->Get<CCMRecoPulseSeriesMapConstPtr>(source_pulse_series_name);
-    for(CCMRecoPulseSeriesMap::const_iterator it = pulses->begin(); it != pulses->end(); ++it) {
-        dummy_pulses->insert(std::make_pair(it->first, dummy_series));
+    for(auto & [key, _] : *pulses) {
+        dummy_pulses->insert(std::make_pair(key, dummy_series));
     }
 
     std::stringstream ss;
@@ -322,8 +322,8 @@ std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3Frame
     double max_time = std::get<1>(range);
     double mod = min_time - std::floor(min_time / 2) * 2;
     min_time = min_time - mod;
-    for(std::map<CCMPMTKey, double>::iterator it = data_board_time_offsets.begin(); it != data_board_time_offsets.end(); ++it) {
-        it->second = it->second - min_time;
+    for(auto & [key, offset] : data_board_time_offsets) {
+        offset = offset - min_time;
     }
 
     return {std::get<0>(range), std::get<1>(range), data_board_time_offsets};
@@ -331,8 +331,8 @@ std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3Frame
 
 std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double> const & from, std::map<CCMPMTKey, double> const & to, double mod) {
     std::map<CCMPMTKey, double> board_offset_corrections;
-    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
-        board_offset_corrections.insert({from_it->first, 0.0});
+    for(auto const & [key, from_offset] : from) {
+        board_offset_corrections.insert({key, 0.0});
     }
     if(to.size() == 0)
         return board_offset_corrections;
@@ -340,13 +340,14 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
     size_t count = 0;
     double to_avg = 0.0;
     double from_avg = 0.0;
-    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
-        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(from_it->first);
+    for(auto const & [key, from_offset] : from) {
+        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(key);
         if(to_it == to.end()) {
             continue;
         }
-        to_avg += to_it->second;
-        from_avg += from_it->second;
+        double const & to_offset = to_it->second;
+        to_avg += to_offset;
+        from_avg += from_offset;
         ++count;
     }
     to_avg /= count;
@@ -354,17 +355,18 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
 
     double min_diff = std::numeric_limits<double>::max();
     CCMPMTKey min_diff_key;
-    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
-        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(from_it->first);
+    for(auto const & [key, from_offset] : from) {
+        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(key);
         if(to_it == to.end()) {
             continue;
         }
-        double to_diff = std::abs(to_it->second - to_avg);
-        double from_diff = std::abs(from_it->second - from_avg);
+        double const & to_offset = to_it->second;
+        double to_diff = std::abs(to_offset - to_avg);
+        double from_diff = std::abs(from_offset - from_avg);
         double min = std::min(to_diff, from_diff);
         if(min < min_diff) {
             min_diff = min;
-            min_diff_key = to_it->first;
+            min_diff_key = key;
         }
     }
 
@@ -374,13 +376,14 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
         to_mod += mod;
     to_reference_time -= to_mod;
 
-    for(std::map<CCMPMTKey, double>::const_iterator from_it = from.begin(); from_it != from.end(); ++from_it) {
-        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(from_it->first);
+    for(auto const & [key, from_offset] : from) {
+        std::map<CCMPMTKey, double>::const_iterator to_it = to.find(key);
         if(to_it == to.end()) {
             continue;
         }
-        double offset = from_it->second - (to_it->second - to_reference_time);
-        board_offset_corrections.at(to_it->first) = offset;
+        double const & to_offset = to_it->second;
+        double offset = from_offset - (to_offset - to_reference_time);
+        board_offset_corrections.at(key) = offset;
     }
     return board_offset_corrections;
 }
@@ -486,21 +489,21 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
         boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
         double random_start_time = randomService_->Uniform(current_start_time, current_end_time - duration);
         double random_end_time = random_start_time + duration;
-        for(CCMRecoPulseSeriesMap::const_iterator it = current_noise_pulses->begin(); it != current_noise_pulses->end(); ++it) {
-            if(it->second.empty()) {
+        for(auto const & [key, current_noise_series] : *current_noise_pulses) {
+            if(current_noise_series.empty()) {
                 continue;
             }
             CCMRecoPulseSeries noise_series;
-            for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                double time = it2->GetTime();
+            for(CCMRecoPulse const & pulse : current_noise_series) {
+                double const & time = pulse.GetTime();
                 if(time >= random_start_time and time < random_end_time) {
-                    noise_series.push_back(*it2);
+                    noise_series.push_back(pulse);
                     CCMRecoPulse & noise = noise_series.back();
                     noise.SetTime(time - random_start_time + zero_time);
                     noise.SetWidth(noise.GetWidth() * zero_out_width);
                 }
             }
-            noise_pulses->insert(std::make_pair(it->first, noise_series));
+            noise_pulses->insert(std::make_pair(key, noise_series));
         }
         current_start_time = random_start_time;
         return {noise_pulses, current_frame_data_board_time_offsets};
@@ -528,25 +531,25 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
                 std::max(current_start_time, current_end_time - (duration - accumulated_time))
         );
         double random_end_time = std::min(current_end_time, random_start_time + std::min(remaining_time, duration - accumulated_time));
-        for(CCMRecoPulseSeriesMap::const_iterator it = current_noise_pulses->begin(); it != current_noise_pulses->end(); ++it) {
-            if(not noise_pulses->count(it->first)) {
-                noise_pulses->insert(std::make_pair(it->first, CCMRecoPulseSeries()));
+        for(auto const & [key, current_noise_series] : *current_noise_pulses) {
+            if(not noise_pulses->count(key)) {
+                noise_pulses->insert(std::make_pair(key, CCMRecoPulseSeries()));
             }
             double offset_correction = 0;
-            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(it->first);
+            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(key);
             if(offset_it != board_offset_corrections.end()) {
                 offset_correction = offset_it->second;
             }
 
-            CCMRecoPulseSeries & noise_series = noise_pulses->at(it->first);
-            for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                double time = it2->GetTime();
+            CCMRecoPulseSeries & noise_series = noise_pulses->at(key);
+            for(CCMRecoPulse const & pulse : current_noise_series) {
+                double const & time = pulse.GetTime();
                 if(time >= random_start_time and time < random_end_time) {
-                    noise_series.push_back(*it2);
+                    noise_series.push_back(pulse);
                     noise_series.back().SetTime(time - random_start_time + accumulated_time + zero_time + offset_correction);
                 }
             }
-            noise_pulses->insert(std::make_pair(it->first, noise_series));
+            noise_pulses->insert(std::make_pair(key, noise_series));
         }
         accumulated_time += random_end_time - random_start_time;
         current_start_time = random_end_time;
@@ -589,55 +592,53 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
     }
 
     if(match_times_to_simulation_) {
-        for(CCMRecoPulseSeriesMap::iterator it = combined_pulses->begin(); it != combined_pulses->end(); ++it) {
-            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(it->first);
+        for(auto & [key, pulses] : *combined_pulses) {
+            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(key);
             if(offset_it == board_offset_corrections.end()) {
                 continue;
             }
             double const & offset = offset_it->second;
-            for(CCMRecoPulseSeries::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                double time = it2->GetTime();
-                it2->SetTime(time + offset);
+            for(CCMRecoPulse & pulse : pulses) {
+                pulse.SetTime(pulse.GetTime() + offset);
             }
         }
     }
 
     // Copy the event pulses into the destination map
-    for(CCMRecoPulseSeriesMap::const_iterator it = input_reco_pulses->begin(); it != input_reco_pulses->end(); ++it) {
+    for(auto const & [key, source_series] : *input_reco_pulses) {
         // Find the corresponding PMT in the destination map
-        CCMRecoPulseSeriesMap::iterator it_dest = combined_pulses->find(it->first);
+        CCMRecoPulseSeriesMap::iterator it_dest = combined_pulses->find(key);
 
         // If the PMT is not in the destination, then insert an empty vector
         if(it_dest == combined_pulses->end()) {
-            combined_pulses->insert(std::make_pair(it->first, CCMRecoPulseSeries()));
+            combined_pulses->insert(std::make_pair(key, CCMRecoPulseSeries()));
             // Update the iterator so it points to our new entry
-            it_dest = combined_pulses->find(it->first);
+            it_dest = combined_pulses->find(key);
         }
 
         // Reference to the destination
         CCMRecoPulseSeries & dest_series = it_dest->second;
 
         if(match_times_to_data_) {
-            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(it->first);
+            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(key);
             if(offset_it != board_offset_corrections.end()) {
                 double const & offset = offset_it->second;
-                for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                    CCMRecoPulse pulse = *it2;
+                for(CCMRecoPulse pulse : source_series) { // Copy the pulse so we can modify it
                     double time = pulse.GetTime();
                     pulse.SetTime(time + offset);
                     dest_series.push_back(pulse);
                 }
             } else {
-                for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                    dest_series.push_back(*it2);
+                for(CCMRecoPulse const & pulse : source_series) {
+                    dest_series.push_back(pulse);
                 }
             }
         } else {
             // Iterate over the vector of CCMRecoPulse in the source map for this PMT
-            for(CCMRecoPulseSeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
-                dest_series.push_back(*it2);
+            for(CCMRecoPulse const & pulse : source_series) {
+                dest_series.push_back(pulse);
+            }
         }
-
 
         // Done combining pulse series! Let's sort according to time
         std::sort(dest_series.begin(), dest_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });

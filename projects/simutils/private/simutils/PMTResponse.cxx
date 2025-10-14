@@ -180,19 +180,17 @@ int PMTResponse::CheckForDetailedPhotonTracking(I3FramePtr frame) const {
     boost::shared_ptr<CCMMCPESeriesMapByID const> mcpeseries_source_by_id = frame->Get<boost::shared_ptr<CCMMCPESeriesMapByID const>>(input_hits_map_name_);
     bool has_photon = false;
     if(mcpeseries_source) {
-        for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it)
-            for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                CCMMCPE const & pe = *it2;
+        for(auto const & [key, series] : *mcpeseries_source)
+            for(CCMMCPE const & pe : series) {
                 if(pe.distance_uv > 0.0 or pe.distance_visible > 0.0)
                     return true;
                 else
                     has_photon = true;
             }
     } else if(mcpeseries_source_by_id) {
-        for(CCMMCPESeriesMapByID::const_iterator id_it = mcpeseries_source_by_id->begin(); id_it != mcpeseries_source_by_id->end(); ++id_it) {
-            for(CCMMCPESeriesMap::const_iterator it = id_it->second.begin(); it != id_it->second.end(); ++it) {
-                for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                    CCMMCPE const & pe = *it2;
+        for(auto const & [particle_id, mcpe_series_map] : *mcpeseries_source_by_id) {
+            for(auto const & [key, series] : mcpe_series_map) {
+                for(CCMMCPE const & pe : series) {
                     if(pe.distance_uv > 0.0 or pe.distance_visible > 0.0)
                         return true;
                     else
@@ -631,12 +629,12 @@ void PMTResponse::DAQ(I3FramePtr frame) {
     std::map<I3ParticleID, std::reference_wrapper<std::map<CCMPMTKey, CCMRecoPulseSeries>>> outputs;
     if(multiparticle) {
         mcpeseries_dest_by_id_ptr = boost::make_shared<CCMRecoPulseSeriesMapByID>();
-        for(CCMMCPESeriesMapByID::const_iterator it = mcpeseries_source_by_id->begin(); it != mcpeseries_source_by_id->end(); ++it) {
-            all_ids.insert(it->first);
-            inputs.insert(std::make_pair(it->first, std::ref(it->second)));
-            outputs.insert(std::make_pair(it->first, std::ref((*mcpeseries_dest_by_id_ptr)[it->first])));
-            for(CCMMCPESeriesMap::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                all_pmts.insert(it2->first);
+        for(auto const & [particle_id, mcpe_series_map] : *mcpeseries_source_by_id) {
+            all_ids.insert(particle_id);
+            inputs.insert(std::make_pair(particle_id, std::ref(mcpe_series_map)));
+            outputs.insert(std::make_pair(particle_id, std::ref((*mcpeseries_dest_by_id_ptr)[particle_id])));
+            for(auto const & [key, series] : mcpe_series_map) {
+                all_pmts.insert(key);
             }
         }
     } else {
@@ -644,8 +642,8 @@ void PMTResponse::DAQ(I3FramePtr frame) {
         all_ids.insert(I3ParticleID());
         inputs.insert(std::make_pair(I3ParticleID(), std::ref(*mcpeseries_source)));
         outputs.insert(std::make_pair(I3ParticleID(), std::ref(*mcpeseries_dest_ptr)));
-        for(CCMMCPESeriesMap::const_iterator it = mcpeseries_source->begin(); it != mcpeseries_source->end(); ++it) {
-            all_pmts.insert(it->first);
+        for(auto const & [key, series] : *mcpeseries_source) {
+            all_pmts.insert(key);
         }
     }
 
@@ -690,8 +688,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
 
             // Iterate over the vector of CCMMCPE in the source map for this PMT
             std::vector<CCMRecoPulse> temp_series; temp_series.reserve(size_t(it->second.size() * 0.5));
-            for(CCMMCPESeries::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                CCMMCPE const & pe = *it2;
+            for(CCMMCPE const & pe : it->second) {
 
                 // If we want to remove cherenkov photons, do so now
                 if(remove_cherenkov_ and pe.photon_source == CCMMCPE::PhotonSource::Cherenkov) {
@@ -850,13 +847,15 @@ void PMTResponse::DAQ(I3FramePtr frame) {
             // Sort and merge the pulses
             std::sort(temp_series.begin(), temp_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
             dest_series.push_back(temp_series.front());
-            for(CCMRecoPulseSeries::const_iterator it = temp_series.begin() + 1; it != temp_series.end(); ++it) {
+            size_t temp_size = temp_series.size();
+            for(size_t i=1; i<temp_size; ++i) {
+                CCMRecoPulse const & source_pulse = temp_series[i];
                 CCMRecoPulse & dest_pulse = dest_series.back();
-                if(it->GetTime() == dest_pulse.GetTime()) {
-                    dest_pulse.SetCharge(dest_pulse.GetCharge() + it->GetCharge());
-                    dest_pulse.SetWidth(dest_pulse.GetWidth() + it->GetWidth());
+                if(source_pulse.GetTime() == dest_pulse.GetTime()) {
+                    dest_pulse.SetCharge(dest_pulse.GetCharge() + source_pulse.GetCharge());
+                    dest_pulse.SetWidth(dest_pulse.GetWidth() + source_pulse.GetWidth());
                 } else {
-                    dest_series.push_back(*it);
+                    dest_series.push_back(source_pulse);
                 }
             }
         }
