@@ -140,10 +140,11 @@ void G4CCMTreeTracker::AddNewPhoton(int parent_id, int track_id, double time, do
     PhotonSummary & s = std::get<1>(it.first->second);
     s.distance_uv = distance;
     s.original_wavelength = wavelength;
-    // s.distance_visible = 0.0;
+
+    // The photon time is stored relative to the input particle's time.
+    // Add the input particle's time offset to the simulation time to ensure all photon times
+    // are in the global event reference frame.
     s.time = time + primary_.GetTime();
-    //s.n_photons_per_wls = std::vector<size_t>();
-    //s.wls_loc = WLSLocationSeries();
     s.photon_source = processNameToPhotonSource.at(creation_process_name);
     s.current_process = s.photon_source;
 }
