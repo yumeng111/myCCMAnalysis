@@ -35,7 +35,7 @@ inline bool is_sorted(std::vector<CCMRecoPulse> const & vec) {
 }
 
 inline bool time_equal(CCMRecoPulse const & a, CCMRecoPulse const & b) {
-    return a.GetTime() == b.GetTime();
+    return std::abs(a.GetTime() - b.GetTime()) < 1e-3;
 }
 
 inline void compact_by_time(std::vector<CCMRecoPulse> & vec) {
@@ -160,19 +160,19 @@ inline void TwoWayMerge(
 
     size_t i = 0, j = 0;
     while(i < a.size() and j < b.size()) {
-        if(time_less(a[i], b[j])) {
-            dest.push_back(a[i]);
-            ++i;
-        } else if(time_less(b[j], a[i])) {
-            dest.push_back(b[j]);
-            ++j;
-        } else {
+        if(time_equal(a[i], b[j])) {
             // equal time
             CCMRecoPulse merged = a[i];
             merged.SetCharge(merged.GetCharge() + b[j].GetCharge());
             merged.SetWidth (merged.GetWidth()  + b[j].GetWidth());
             dest.push_back(merged);
             ++i; ++j;
+        } else if(time_less(a[i], b[j])) {
+            dest.push_back(a[i]);
+            ++i;
+        } else {
+            dest.push_back(b[j]);
+            ++j;
         }
     }
     while(i < a.size()) {
