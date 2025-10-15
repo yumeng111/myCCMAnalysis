@@ -51,13 +51,13 @@ class IntervalChargeSumQ: public I3ConditionalModule {
     std::string input_prefix_;
     std::string output_prefix_;
 
-    bool check_masked_pulses_;
-    bool check_raw_pulses_;
     std::string raw_pulses_name_;
-    std::string pulses_mask_name_;
 
     I3Vector<CCMOMGeo::OMType> pmt_types;
     std::set<CCMPMTKey> pmt_keys;
+
+    I3Vector<std::string> bad_keys_names_ = {"BadKeys"};
+    std::set<CCMPMTKey> bad_keys;
 
     public:
     void Geometry(I3FramePtr frame);
@@ -75,37 +75,41 @@ IntervalChargeSumQ::IntervalChargeSumQ(const I3Context& context) : I3Conditional
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
     AddParameter("TimeWindows", "Time window for charge estimate", default_time_windows);
-    AddParameter("InputPulsesMaskName", "Name of the input pulses mask", std::string(""));
     AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
     AddParameter("InputEventPrefix", "Prefix for the inputs", std::string(""));
     AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
+    AddParameter("BadKeysNames", "List of bad keys to exclude from event finding", bad_keys_names_);
 }
 
 void IntervalChargeSumQ::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("PMTTypes", pmt_types);
     GetParameter("TimeWindows", time_windows_);
-    GetParameter("InputPulsesMaskName", pulses_mask_name_);
     GetParameter("InputRawPulsesName", raw_pulses_name_);
     GetParameter("InputEventPrefix", input_prefix_);
     GetParameter("OutputPrefix", output_prefix_);
+    GetParameter("BadKeysNames", bad_keys_names_);
 
     std::sort(time_windows_.begin(), time_windows_.end());
 
-    check_masked_pulses_ = false;
-    check_raw_pulses_ = (raw_pulses_name_ != "");
-    check_masked_pulses_ = (pulses_mask_name_ != "");
-    if(not check_masked_pulses_) {
-        pulses_mask_name_ = input_prefix_ + "EventPulses";
-        if(not check_raw_pulses_) {
-            check_masked_pulses_ = true;
-        }
+    if(raw_pulses_name_ == "") {
+        raw_pulses_name_ = input_prefix_ + "EventPulses";
     }
 }
 
 void IntervalChargeSumQ::Geometry(I3FramePtr frame) {
     if(not frame->Has(geometry_name_)) {
         log_fatal("Could not find CCMGeometry object with the key named \"%s\" in the Geometry frame.", geometry_name_.c_str());
+    }
+    // check if frame has list of bad keys to exclude
+    bad_keys.clear();
+    for(std::string const & bad_keys_name : bad_keys_names_) {
+        if(frame->Has(bad_keys_name)) {
+            boost::shared_ptr<const I3Vector<CCMPMTKey>> keys = frame->Get<boost::shared_ptr<const I3Vector<CCMPMTKey>>>(bad_keys_name);
+            for(CCMPMTKey const & k : *keys) {
+                bad_keys.insert(k);
+            }
+        }
     }
     geo = frame->Get<CCMGeometryConstPtr>(geometry_name_);
     geo_seen = bool(geo);
@@ -114,6 +118,8 @@ void IntervalChargeSumQ::Geometry(I3FramePtr frame) {
         std::set<CCMOMGeo::OMType> allowed_pmt_types(pmt_types.begin(), pmt_types.end());
         for(std::pair<CCMPMTKey const, CCMOMGeo> const & p : geo->pmt_geo) {
             if(allowed_pmt_types.count(p.second.omtype) == 0)
+                continue;
+            if(bad_keys.count(p.first) != 0)
                 continue;
             pmt_keys.insert(p.first);
         }
@@ -126,88 +132,115 @@ void IntervalChargeSumQ::DAQ(I3FramePtr frame) {
         log_fatal("No Geometry frame seen yet.");
     }
 
-    bool raw_pulses = false;
-    CCMRecoPulseSeriesMapConstPtr pulses;
-    if(check_raw_pulses_) {
-        pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(raw_pulses_name_);
-        raw_pulses = bool(pulses);
-    }
-    if(check_masked_pulses_) {
-        CCMRecoPulseSeriesMapMaskConstPtr mask = frame->Get<CCMRecoPulseSeriesMapMaskConstPtr>(pulses_mask_name_);
-        if(mask) {
-            raw_pulses = false;
-            pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulses_mask_name_);
-        }
-    }
+    CCMRecoPulseSeriesMapConstPtr input_pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(raw_pulses_name_);
+    boost::shared_ptr<I3Map<I3ParticleID, CCMRecoPulseSeriesMap>const> input_by_particle = frame->Get<boost::shared_ptr<I3Map<I3ParticleID, CCMRecoPulseSeriesMap>const>> (raw_pulses_name_);
+    std::map<I3ParticleID, std::reference_wrapper<CCMRecoPulseSeriesMap const>> inputs;
 
-    if(not pulses) {
-        std::stringstream ss;
-        ss << "Could not find ";
-        if(check_raw_pulses_) {
-            ss << raw_pulses_name_;
-            if(check_masked_pulses_) {
-                ss << " or ";
+    std::vector<I3VectorDoublePtr> output_charges;
+    std::vector<boost::shared_ptr<I3Map<I3ParticleID, std::vector<double>>>> output_by_particle;
+    std::map<I3ParticleID, std::vector<std::reference_wrapper<std::vector<double>>>> outputs;
+
+    I3VectorDoubleConstPtr event_start_times = frame->Get<I3VectorDoubleConstPtr>(input_prefix_ + "EventStartTimes");
+    I3VectorDoubleConstPtr event_end_times = frame->Get<I3VectorDoubleConstPtr>(input_prefix_ + "EventEndTimes");
+
+    if(input_pulses) {
+        // Map the pulses into the "inputs" object
+        inputs.insert({I3ParticleID(), *input_pulses});
+
+        // Allocating memory for the final output
+        for(auto const & time_window : time_windows_) {
+            I3VectorDoublePtr event_charge = boost::make_shared<I3VectorDouble>(event_start_times->size(), 0.0);
+            output_charges.push_back(event_charge);
+        }
+
+        // Map the final output locations into the "outputs" object
+        std::vector<std::reference_wrapper<std::vector<double>>> & output = outputs[I3ParticleID()];
+        for(size_t i=0; i<time_windows_.size(); ++i) {
+            output.push_back(*output_charges[i]);
+        }
+    } else if(input_by_particle) {
+        // Map the pulses for each particle into the "inputs" object
+        for(auto const & [particleID, pulses] : *input_by_particle) {
+            inputs.insert({particleID, pulses});
+        }
+
+        // Allocating memory for the final output
+        for(auto const & time_window : time_windows_) {
+            boost::shared_ptr<I3Map<I3ParticleID, std::vector<double>>> map_of_event_charge = boost::make_shared<I3Map<I3ParticleID, std::vector<double>>>();
+            for(auto const & [particleID, pulses] : *input_by_particle) {
+                (*map_of_event_charge)[particleID] = std::vector<double>(event_start_times->size(), 0.0);
+            }
+            output_by_particle.push_back(map_of_event_charge);
+        }
+
+        // Map the final output locations into the "outputs" object
+        for(auto const & [particleID, pulses] : *input_by_particle) {
+            std::vector<std::reference_wrapper<std::vector<double>>> & output = outputs[particleID];
+            for(size_t i=0; i<time_windows_.size(); ++i) {
+                output.push_back((*output_by_particle[i])[particleID]);
             }
         }
-        if(check_masked_pulses_) {
-            ss << pulses_mask_name_;
-        }
+    } else {
+        std::stringstream ss;
+        ss << "Could not find ";
+        ss << raw_pulses_name_;
         ss << " in the DAQ frame.";
         log_fatal("%s", ss.str().c_str());
         PushFrame(frame);
         return;
     }
 
-    I3VectorDoubleConstPtr event_start_times = frame->Get<I3VectorDoubleConstPtr>(input_prefix_ + "EventStartTimes");
-    I3VectorDoubleConstPtr event_end_times = frame->Get<I3VectorDoubleConstPtr>(input_prefix_ + "EventEndTimes");
-
-    PMTKeyPulseVector pulse_list;
-    for (CCMRecoPulseSeriesMap::const_iterator i = pulses->begin();
-            i != pulses->end(); i++) {
-        if(pmt_keys.count(i->first) == 0)
-            continue;
-        for(CCMRecoPulse const & pulse: i->second) {
-            pulse_list.push_back(PMTKeyPulsePair(i->first, pulse));
-        }
-    }
-
-    std::sort(pulse_list.begin(), pulse_list.end(), [](auto const & t0, auto const & t1){return std::get<1>(t0).GetTime() < std::get<1>(t1).GetTime();});
-
-    std::vector<I3VectorDoublePtr> event_charge_list;
-    for (size_t i = 0; i < time_windows_.size(); ++i) {
-        I3VectorDoublePtr event_charge = boost::make_shared<I3VectorDouble>(event_start_times->size(), 0.0);
-        event_charge_list.push_back(event_charge);
-    }
-
-    size_t event_idx = 0;
-    for (PMTKeyPulseVector::const_iterator i = pulse_list.begin(); i != pulse_list.end() and event_idx < event_start_times->size(); ++i) {
-        if(event_start_times->at(event_idx) > std::get<1>(*i).GetTime()) {
-            continue;
-        }
-        size_t time_bin = 0;
-        double total_charge = 0.0;
-        double start_time = event_start_times->at(event_idx);
-        double end_time = event_end_times->at(event_idx);
-        for (PMTKeyPulseVector::const_iterator j = i; j != pulse_list.end(); ++j) {
-            double time = std::get<1>(*j).GetTime();
-            if(time - start_time > time_windows_[time_bin] or time > end_time) {
-                event_charge_list[time_bin]->at(event_idx) = total_charge;
-                ++time_bin;
-                if(time_bin == time_windows_.size()) {
-                    break;
-                }
+    for(auto const & [particleID, pulses_ref] : inputs) {
+        CCMRecoPulseSeriesMap const & pulses = pulses_ref.get();
+        std::vector<std::reference_wrapper<std::vector<double>>> & output = outputs[particleID];
+        PMTKeyPulseVector pulse_list;
+        for(auto const & [pmt_key, pulse_series] : pulses) {
+            if(pmt_keys.count(pmt_key) == 0)
+                continue;
+            for(CCMRecoPulse const & pulse : pulse_series) {
+                pulse_list.push_back(PMTKeyPulsePair(pmt_key, pulse));
             }
-            total_charge += std::get<1>(*j).GetCharge();
         }
-        if(time_bin < time_windows_.size())
-            event_charge_list[time_bin]->at(event_idx) = total_charge;
-        time_bin = 0;
-        ++event_idx;
+
+        std::sort(pulse_list.begin(), pulse_list.end(), [](auto const & t0, auto const & t1){return std::get<1>(t0).GetTime() < std::get<1>(t1).GetTime();});
+
+        size_t event_idx = 0;
+        for (PMTKeyPulseVector::const_iterator i = pulse_list.begin(); i != pulse_list.end() and event_idx < event_start_times->size(); ++i) {
+            if(event_start_times->at(event_idx) > std::get<1>(*i).GetTime()) {
+                continue;
+            }
+            size_t time_bin = 0;
+            double total_charge = 0.0;
+            double start_time = event_start_times->at(event_idx);
+            double end_time = event_end_times->at(event_idx);
+            for (PMTKeyPulseVector::const_iterator j = i; j != pulse_list.end(); ++j) {
+                double time = std::get<1>(*j).GetTime();
+                if(time - start_time > time_windows_[time_bin] or time > end_time) {
+                    output[time_bin].get().at(event_idx) = total_charge;
+                    ++time_bin;
+                    if(time_bin == time_windows_.size()) {
+                        break;
+                    }
+                }
+                total_charge += std::get<1>(*j).GetCharge();
+            }
+            if(time_bin < time_windows_.size())
+                output[time_bin].get().at(event_idx) = total_charge;
+            time_bin = 0;
+            ++event_idx;
+        }
     }
 
-    for (size_t i = 0; i < time_windows_.size(); ++i) {
-        std::string output_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_[i])) + "NS";
-        frame->Put(output_key, event_charge_list[i]);
+    if(input_pulses) {
+        for(size_t i = 0; i < time_windows_.size(); ++i) {
+            std::string output_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_[i])) + "NS";
+            frame->Put(output_key, output_charges[i]);
+        }
+    } else if(input_by_particle) {
+        for(size_t i = 0; i < time_windows_.size(); ++i) {
+            std::string output_key = output_prefix_ + "EventCharges" + std::to_string(int(time_windows_[i])) + "NS";
+            frame->Put(output_key, output_by_particle[i]);
+        }
     }
 
     PushFrame(frame);
