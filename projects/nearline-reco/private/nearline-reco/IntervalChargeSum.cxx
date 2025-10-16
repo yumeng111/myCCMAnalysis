@@ -10,11 +10,7 @@
 #include <set>
 #include <tuple>
 #include <cctype>
-#include <limits>
 #include <string>
-#include <fstream>
-#include <numeric>
-#include <iostream>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
