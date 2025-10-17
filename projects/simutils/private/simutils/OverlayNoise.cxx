@@ -395,6 +395,8 @@ bool OverlayNoise::NextFrame() {
     size_t n_skipped = 0;
     bool do_warn = false;
     I3FramePtr frame;
+    I3FramePtr extent_frame;
+    std::string extent_pulse_series_name;
     // Grab frames until we get a DAQ frame
     while(true) {
         if(n_skipped == 10) {
@@ -416,6 +418,7 @@ bool OverlayNoise::NextFrame() {
             ++n_skipped;
             continue;
         }
+        extent_frame = boost::make_shared<I3Frame>(*frame);
 
         if(make_noise_into_beam_time_pulses_) {
             // Check if the beam time pulses are already in the frame
@@ -431,6 +434,7 @@ bool OverlayNoise::NextFrame() {
                 }
                 // If so, go ahead and use them as is
                 current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+                extent_pulse_series_name = noise_pulse_name_;
                 log_warn("Input noise pulses \"%s\" are already in the frame as beam time pulses, skipping conversion. Consider setting MakeNoiseIntoBeamTimePulses to false.", noise_pulse_name_.c_str());
             } else {
                 // First check if the BCMSummary is in the frame
@@ -460,6 +464,8 @@ bool OverlayNoise::NextFrame() {
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusBeamTimePtr beam_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry", "BCMSummary");
                 current_noise_pulses = beam_pulses_view->Apply(*frame);
+                extent_pulse_series_name = "DummpyBeamTimePulsesView";
+                extent_frame->Put(extent_pulse_series_name, beam_pulses_view);
             }
         } else if(make_noise_into_trigger_time_pulses_) {
             // Check if the trigger time pulses are already in the frame
@@ -489,6 +495,8 @@ bool OverlayNoise::NextFrame() {
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimePtr trigger_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry");
                 current_noise_pulses = trigger_pulses_view->Apply(*frame);
+                extent_pulse_series_name = "DummpyTriggerTimePulsesView";
+                extent_frame->Put(extent_pulse_series_name, trigger_pulses_view);
             }
         } else {
             if(not frame->Has(noise_pulse_name_)) {
@@ -498,12 +506,13 @@ bool OverlayNoise::NextFrame() {
                 continue;
             }
             current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+            extent_pulse_series_name = noise_pulse_name_;
         }
 
         break;
     }
 
-    std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(frame, noise_pulse_name_, false);
+    std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(extent_frame, extent_pulse_series_name, false);
     current_start_time = std::get<0>(noise_extent);
     current_end_time = std::get<1>(noise_extent);
     current_frame_data_board_time_offsets = std::get<2>(noise_extent);
