@@ -392,9 +392,15 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
 
 bool OverlayNoise::NextFrame() {
     bool failed = false;
+    size_t n_skipped = 0;
+    bool do_warn = false;
     I3FramePtr frame;
     // Grab frames until we get a DAQ frame
     while(true) {
+        if(n_skipped == 10) {
+            log_warn("Skipped 10 frames while searching for DAQ frames, enabling warnings...");
+            do_warn = true;
+        }
         // Fail if we do not have any more frames
         if(not frame_sequences->more()) {
             if(failed) {
@@ -407,6 +413,7 @@ bool OverlayNoise::NextFrame() {
         frame = frame_sequences->pop_frame();
         if(frame->GetStop() != I3Frame::DAQ) {
             // Skip non-DAQ frames
+            ++n_skipped;
             continue;
         }
 
@@ -417,7 +424,9 @@ bool OverlayNoise::NextFrame() {
                 // First check if the BCMSummary is in the frame
                 std::string const bcm_summary_key = beam_pulses->GetBCMSummarySource();
                 if(not frame->Has(bcm_summary_key)) {
-                    log_warn("Frame does not have \"%s\", skipping frame.", bcm_summary_key.c_str());
+                    if(do_warn)
+                        log_warn("Frame does not have \"%s\", skipping frame.", bcm_summary_key.c_str());
+                    ++n_skipped;
                     continue;
                 }
                 // If so, go ahead and use them as is
@@ -426,7 +435,9 @@ bool OverlayNoise::NextFrame() {
             } else {
                 // First check if the BCMSummary is in the frame
                 if(not frame->Has("BCMSummary")) {
-                    log_warn("Frame does not have \"BCMSummary\", skipping frame.");
+                    if(do_warn)
+                        log_warn("Frame does not have \"BCMSummary\", skipping frame.");
+                    ++n_skipped;
                     continue;
                 }
                 // We need to convert the existing pulse series into beam time pulses
@@ -442,7 +453,9 @@ bool OverlayNoise::NextFrame() {
                     name = noise_pulse_name_;
                 }
                 if(not frame->Has(name)) {
-                    log_warn("Frame does not have \"%s\", skipping frame.", name.c_str());
+                    if(do_warn)
+                        log_warn("Frame does not have \"%s\", skipping frame.", name.c_str());
+                    ++n_skipped;
                     continue;
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusBeamTimePtr beam_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry", "BCMSummary");
@@ -469,7 +482,9 @@ bool OverlayNoise::NextFrame() {
                     name = noise_pulse_name_;
                 }
                 if(not frame->Has(name)) {
-                    log_warn("Frame does not have \"%s\", skipping frame.", name.c_str());
+                    if(do_warn)
+                        log_warn("Frame does not have \"%s\", skipping frame.", name.c_str());
+                    ++n_skipped;
                     continue;
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimePtr trigger_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry");
@@ -477,7 +492,9 @@ bool OverlayNoise::NextFrame() {
             }
         } else {
             if(not frame->Has(noise_pulse_name_)) {
-                log_warn("Frame does not have \"%s\", skipping frame.", noise_pulse_name_.c_str());
+                if(do_warn)
+                    log_warn("Frame does not have \"%s\", skipping frame.", noise_pulse_name_.c_str());
+                ++n_skipped;
                 continue;
             }
             current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
@@ -507,7 +524,7 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
         while(remaining_time < duration) {
             bool looped = NextFrame();
             if(already_looped and looped) {
-                log_fatal("Not enough noise pulses to cover the duration");
+                log_fatal("Not enough noise pulses to cover the duration of %.2f ns [%.2f, %.2f] without stitching.", duration, current_start_time, current_end_time);
             }
             already_looped |= looped;
             remaining_time = current_end_time - current_start_time;
