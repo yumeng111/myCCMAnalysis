@@ -336,6 +336,8 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
     }
     if(to.size() == 0)
         return board_offset_corrections;
+    if(from.size() == 0)
+        return board_offset_corrections;
 
     size_t count = 0;
     double to_avg = 0.0;
