@@ -521,13 +521,18 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
     if(not allow_stitching_) {
         double remaining_time = current_end_time - current_start_time;
         bool already_looped = false;
+        size_t n_attempts = 0;
         while(remaining_time < duration) {
+            if(n_attempts >= 100) {
+                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns [%.2f, %.2f] without stitching after %lu attempts, trying again anyway.", duration, current_start_time, current_end_time, n_attempts);
+            }
             bool looped = NextFrame();
             if(already_looped and looped) {
                 log_fatal("Not enough noise pulses to cover the duration of %.2f ns [%.2f, %.2f] without stitching.", duration, current_start_time, current_end_time);
             }
             already_looped |= looped;
             remaining_time = current_end_time - current_start_time;
+            ++n_attempts;
         }
         boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
         double random_start_time = randomService_->Uniform(current_start_time, current_end_time - duration);
