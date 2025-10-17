@@ -535,8 +535,12 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
         bool already_looped = false;
         size_t n_attempts = 0;
         while(remaining_time < duration) {
+            if(max_noise_time_ - min_noise_time_ < duration) {
+                log_fatal("Restricted noise pulse time range [%.2f, %.2f] is smaller than the requested duration of %.2f ns.", min_noise_time_, max_noise_time_, duration);
+            }
             if(n_attempts >= 100) {
-                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns [%.2f, %.2f] without stitching after %lu attempts, trying again anyway.", duration, current_start_time, current_end_time, n_attempts);
+                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns without stitching after %lu attempts, trying again anyway.", duration, n_attempts);
+                log_warn("Current noise pulse time range is [%.2f, %.2f] but we need %.2f ns", current_start_time, current_end_time, remaining_time);
             }
             bool looped = NextFrame();
             if(already_looped and looped) {
