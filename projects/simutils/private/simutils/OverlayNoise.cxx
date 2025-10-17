@@ -116,7 +116,6 @@ void OverlayNoise::Configure() {
             log_fatal("Input noise pulses is set to \"TriggerTimePulses\" and MakeNoiseIntoBeamTimePulses is true. We can't double up on conversions and you probably want to pick the right one.");
         } else {
             log_info("Converting input noise pulses \"%s\" into beam time pulses.", noise_pulse_name_.c_str());
-            log_info("Frames without BCMSummary will be skipped.");
         }
     }
 
