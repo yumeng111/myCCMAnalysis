@@ -511,6 +511,9 @@ bool OverlayNoise::NextFrame() {
     if(restrict_range_) {
         current_start_time = std::max(current_start_time, min_noise_time_);
         current_end_time = std::min(current_end_time, max_noise_time_);
+        if(current_end_time <= current_start_time) {
+            log_warn("Restricted noise pulse time range [%.2f, %.2f] is invalid. This ocurred because the allowed time range is [%.2f, %.2f] while the time range for this pulse series is [%.2f, %.2f]", current_start_time, current_end_time, min_noise_time_, max_noise_time_, std::get<0>(noise_extent), std::get<1>(noise_extent));
+        }
     }
     return failed;
 }
