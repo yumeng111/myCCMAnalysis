@@ -464,7 +464,7 @@ bool OverlayNoise::NextFrame() {
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusBeamTimePtr beam_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry", "BCMSummary");
                 current_noise_pulses = beam_pulses_view->Apply(*frame);
-                extent_pulse_series_name = "DummpyBeamTimePulsesView";
+                extent_pulse_series_name = "DummyBeamTimePulsesView";
                 extent_frame->Put(extent_pulse_series_name, beam_pulses_view);
             }
         } else if(make_noise_into_trigger_time_pulses_) {
@@ -495,7 +495,7 @@ bool OverlayNoise::NextFrame() {
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimePtr trigger_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry");
                 current_noise_pulses = trigger_pulses_view->Apply(*frame);
-                extent_pulse_series_name = "DummpyTriggerTimePulsesView";
+                extent_pulse_series_name = "DummyTriggerTimePulsesView";
                 extent_frame->Put(extent_pulse_series_name, trigger_pulses_view);
             }
         } else {
@@ -521,7 +521,7 @@ bool OverlayNoise::NextFrame() {
         current_start_time = std::max(current_start_time, min_noise_time_);
         current_end_time = std::min(current_end_time, max_noise_time_);
         if(current_end_time <= current_start_time) {
-            log_warn("Restricted noise pulse time range [%.2f, %.2f] is invalid. This ocurred because the allowed time range is [%.2f, %.2f] while the time range for this pulse series is [%.2f, %.2f]", current_start_time, current_end_time, min_noise_time_, max_noise_time_, std::get<0>(noise_extent), std::get<1>(noise_extent));
+            log_warn("Restricted noise pulse time range [%.2f, %.2f] is invalid. This occurred because the allowed time range is [%.2f, %.2f] while the time range for this pulse series is [%.2f, %.2f]", current_start_time, current_end_time, min_noise_time_, max_noise_time_, std::get<0>(noise_extent), std::get<1>(noise_extent));
         }
     }
     return failed;
@@ -539,7 +539,7 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
                 log_fatal("Restricted noise pulse time range [%.2f, %.2f] is smaller than the requested duration of %.2f ns.", min_noise_time_, max_noise_time_, duration);
             }
             if(n_attempts >= 100) {
-                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns without stitching after %lu attempts, trying again anyway.", duration, n_attempts);
+                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns without stitching after %z attempts, trying again anyway.", duration, n_attempts);
                 log_warn("Current noise pulse time range is [%.2f, %.2f] but we need %.2f ns", current_start_time, current_end_time, remaining_time);
             }
             bool looped = NextFrame();
