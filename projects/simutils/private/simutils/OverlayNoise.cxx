@@ -336,6 +336,8 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
     }
     if(to.size() == 0)
         return board_offset_corrections;
+    if(from.size() == 0)
+        return board_offset_corrections;
 
     size_t count = 0;
     double to_avg = 0.0;
@@ -390,9 +392,17 @@ std::map<CCMPMTKey, double> GetBoardOffsetCorrections(std::map<CCMPMTKey, double
 
 bool OverlayNoise::NextFrame() {
     bool failed = false;
+    size_t n_skipped = 0;
+    bool do_warn = false;
     I3FramePtr frame;
+    I3FramePtr extent_frame;
+    std::string extent_pulse_series_name;
     // Grab frames until we get a DAQ frame
     while(true) {
+        if(n_skipped == 10) {
+            log_warn("Skipped 10 frames while searching for DAQ frames, enabling warnings...");
+            do_warn = true;
+        }
         // Fail if we do not have any more frames
         if(not frame_sequences->more()) {
             if(failed) {
@@ -405,62 +415,104 @@ bool OverlayNoise::NextFrame() {
         frame = frame_sequences->pop_frame();
         if(frame->GetStop() != I3Frame::DAQ) {
             // Skip non-DAQ frames
+            ++n_skipped;
             continue;
         }
+        extent_frame = boost::make_shared<I3Frame>(*frame);
+
+        if(make_noise_into_beam_time_pulses_) {
+            // Check if the beam time pulses are already in the frame
+            CCMRecoPulseSeriesMapApplySPECalPlusBeamTimeConstPtr beam_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime const>>(noise_pulse_name_);
+            if(beam_pulses != nullptr) {
+                // First check if the BCMSummary is in the frame
+                std::string const bcm_summary_key = beam_pulses->GetBCMSummarySource();
+                if(not frame->Has(bcm_summary_key)) {
+                    if(do_warn)
+                        log_warn("Frame does not have \"%s\", skipping frame.", bcm_summary_key.c_str());
+                    ++n_skipped;
+                    continue;
+                }
+                // If so, go ahead and use them as is
+                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+                extent_pulse_series_name = noise_pulse_name_;
+                log_warn("Input noise pulses \"%s\" are already in the frame as beam time pulses, skipping conversion. Consider setting MakeNoiseIntoBeamTimePulses to false.", noise_pulse_name_.c_str());
+            } else {
+                // First check if the BCMSummary is in the frame
+                if(not frame->Has("BCMSummary")) {
+                    if(do_warn)
+                        log_warn("Frame does not have \"BCMSummary\", skipping frame.");
+                    ++n_skipped;
+                    continue;
+                }
+                // We need to convert the existing pulse series into beam time pulses
+                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+                std::string name;
+                if(current_noise_pulses == nullptr and noise_pulse_name_ == "BeamTimePulses") {
+                    log_warn("Defaulting to \"%s\" for noise pulses and converting to beam time pulses", default_noise_pulse_base_.c_str());
+                    name = default_noise_pulse_base_;
+                } else {
+                    if(noise_pulse_name_ == "BeamTimePulses") {
+                        log_fatal("Found a \"BeamTimePulses\" key that is not a CCMRecoPulseSeriesMapApplySPECalPlusBeamTime. This is unexpected and likely bad if you're trying to re-apply the corrections, please check your input.");
+                    }
+                    name = noise_pulse_name_;
+                }
+                if(not frame->Has(name)) {
+                    if(do_warn)
+                        log_warn("Frame does not have \"%s\", skipping frame.", name.c_str());
+                    ++n_skipped;
+                    continue;
+                }
+                CCMRecoPulseSeriesMapApplySPECalPlusBeamTimePtr beam_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry", "BCMSummary");
+                current_noise_pulses = beam_pulses_view->Apply(*frame);
+                extent_pulse_series_name = "DummyBeamTimePulsesView";
+                extent_frame->Put(extent_pulse_series_name, beam_pulses_view);
+            }
+        } else if(make_noise_into_trigger_time_pulses_) {
+            // Check if the trigger time pulses are already in the frame
+            CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr trigger_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime const>>(noise_pulse_name_);
+            if(trigger_pulses != nullptr) {
+                // If so, go ahead and use them as is
+                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+                log_warn("Input noise pulses \"%s\" are already in the frame as trigger time pulses, skipping conversion. Consider setting MakeNoiseIntoTriggerTimePulses to false.", noise_pulse_name_.c_str());
+            } else {
+                // We need to convert the existing pulse series into trigger time pulses
+                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+                std::string name;
+                if(current_noise_pulses == nullptr and noise_pulse_name_ == "TriggerTimePulses") {
+                    log_warn("Defaulting to \"%s\" for noise pulses and converting to trigger time pulses", default_noise_pulse_base_.c_str());
+                    name = default_noise_pulse_base_;
+                } else {
+                    if(noise_pulse_name_ == "TriggerTimePulses") {
+                        log_fatal("Found a \"TriggerTimePulses\" key that is not a CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime. This is unexpected and likely bad if you're trying to re-apply the corrections, please check your input.");
+                    }
+                    name = noise_pulse_name_;
+                }
+                if(not frame->Has(name)) {
+                    if(do_warn)
+                        log_warn("Frame does not have \"%s\", skipping frame.", name.c_str());
+                    ++n_skipped;
+                    continue;
+                }
+                CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimePtr trigger_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry");
+                current_noise_pulses = trigger_pulses_view->Apply(*frame);
+                extent_pulse_series_name = "DummyTriggerTimePulsesView";
+                extent_frame->Put(extent_pulse_series_name, trigger_pulses_view);
+            }
+        } else {
+            if(not frame->Has(noise_pulse_name_)) {
+                if(do_warn)
+                    log_warn("Frame does not have \"%s\", skipping frame.", noise_pulse_name_.c_str());
+                ++n_skipped;
+                continue;
+            }
+            current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+            extent_pulse_series_name = noise_pulse_name_;
+        }
+
         break;
     }
 
-    if(make_noise_into_beam_time_pulses_) {
-        // Check if the beam time pulses are already in the frame
-        CCMRecoPulseSeriesMapApplySPECalPlusBeamTimeConstPtr beam_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime const>>(noise_pulse_name_);
-        if(beam_pulses != nullptr) {
-            // If so, go ahead and use them as is
-            current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-            log_warn("Input noise pulses \"%s\" are already in the frame as beam time pulses, skipping conversion. Consider setting MakeNoiseIntoBeamTimePulses to false.", noise_pulse_name_.c_str());
-        } else {
-            // We need to convert the existing pulse series into beam time pulses
-            current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-            std::string name;
-            if(current_noise_pulses == nullptr and noise_pulse_name_ == "BeamTimePulses") {
-                log_warn("Defaulting to \"%s\" for noise pulses and converting to beam time pulses", default_noise_pulse_base_.c_str());
-                name = default_noise_pulse_base_;
-            } else {
-                if(noise_pulse_name_ == "BeamTimePulses") {
-                    log_fatal("Found a \"BeamTimePulses\" key that is not a CCMRecoPulseSeriesMapApplySPECalPlusBeamTime. This is unexpected and likely bad if you're trying to re-apply the corrections, please check your input.");
-                }
-                name = noise_pulse_name_;
-            }
-            CCMRecoPulseSeriesMapApplySPECalPlusBeamTimePtr beam_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry", "BCMSummary");
-            current_noise_pulses = beam_pulses_view->Apply(*frame);
-        }
-    } else if(make_noise_into_trigger_time_pulses_) {
-        // Check if the trigger time pulses are already in the frame
-        CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr trigger_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime const>>(noise_pulse_name_);
-        if(trigger_pulses != nullptr) {
-            // If so, go ahead and use them as is
-            current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-            log_warn("Input noise pulses \"%s\" are already in the frame as trigger time pulses, skipping conversion. Consider setting MakeNoiseIntoTriggerTimePulses to false.", noise_pulse_name_.c_str());
-        } else {
-            // We need to convert the existing pulse series into trigger time pulses
-            current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-            std::string name;
-            if(current_noise_pulses == nullptr and noise_pulse_name_ == "TriggerTimePulses") {
-                log_warn("Defaulting to \"%s\" for noise pulses and converting to trigger time pulses", default_noise_pulse_base_.c_str());
-                name = default_noise_pulse_base_;
-            } else {
-                if(noise_pulse_name_ == "TriggerTimePulses") {
-                    log_fatal("Found a \"TriggerTimePulses\" key that is not a CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime. This is unexpected and likely bad if you're trying to re-apply the corrections, please check your input.");
-                }
-                name = noise_pulse_name_;
-            }
-            CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimePtr trigger_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry");
-            current_noise_pulses = trigger_pulses_view->Apply(*frame);
-        }
-    } else {
-        current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-    }
-
-    std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(frame, noise_pulse_name_, false);
+    std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(extent_frame, extent_pulse_series_name, false);
     current_start_time = std::get<0>(noise_extent);
     current_end_time = std::get<1>(noise_extent);
     current_frame_data_board_time_offsets = std::get<2>(noise_extent);
@@ -468,6 +520,9 @@ bool OverlayNoise::NextFrame() {
     if(restrict_range_) {
         current_start_time = std::max(current_start_time, min_noise_time_);
         current_end_time = std::min(current_end_time, max_noise_time_);
+        if(current_end_time <= current_start_time) {
+            log_warn("Restricted noise pulse time range [%.2f, %.2f] is invalid. This occurred because the allowed time range is [%.2f, %.2f] while the time range for this pulse series is [%.2f, %.2f]", current_start_time, current_end_time, min_noise_time_, max_noise_time_, std::get<0>(noise_extent), std::get<1>(noise_extent));
+        }
     }
     return failed;
 }
@@ -478,13 +533,22 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
     if(not allow_stitching_) {
         double remaining_time = current_end_time - current_start_time;
         bool already_looped = false;
+        size_t n_attempts = 0;
         while(remaining_time < duration) {
+            if(max_noise_time_ - min_noise_time_ < duration) {
+                log_fatal("Restricted noise pulse time range [%.2f, %.2f] is smaller than the requested duration of %.2f ns.", min_noise_time_, max_noise_time_, duration);
+            }
+            if(n_attempts >= 100) {
+                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns without stitching after %z attempts, trying again anyway.", duration, n_attempts);
+                log_warn("Current noise pulse time range is [%.2f, %.2f] but we need %.2f ns", current_start_time, current_end_time, remaining_time);
+            }
             bool looped = NextFrame();
             if(already_looped and looped) {
-                log_fatal("Not enough noise pulses to cover the duration");
+                log_fatal("Not enough noise pulses to cover the duration of %.2f ns [%.2f, %.2f] without stitching.", duration, current_start_time, current_end_time);
             }
             already_looped |= looped;
             remaining_time = current_end_time - current_start_time;
+            ++n_attempts;
         }
         boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
         double random_start_time = randomService_->Uniform(current_start_time, current_end_time - duration);
