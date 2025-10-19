@@ -8,15 +8,12 @@
 #include <boost/make_shared.hpp>
 #include <boost/math/special_functions/erf.hpp>
 
-#include <set>
 #include <tuple>
 #include <cctype>
 #include <string>
-#include <fstream>
 #include <iostream>
 #include <limits>
 #include <cmath>
-#include <filesystem>
 
 #include <icetray/open.h>
 #include <icetray/I3Frame.h>
@@ -26,6 +23,8 @@
 #include <icetray/CCMPMTKey.h>
 #include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusBeamTime.h>
 #include <dataclasses/CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime.h>
+#include <dataclasses/CCMRecoPulseSeriesMapApplyOffsets.h>
+#include <dataclasses/I3MapCCMPMTKeyUnion.h>
 #include <dataclasses/I3MapCCMPMTKeyMask.h>
 #include <dataclasses/geometry/CCMGeometry.h>
 #include <dataclasses/physics/CCMRecoPulse.h>
@@ -539,7 +538,7 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
                 log_fatal("Restricted noise pulse time range [%.2f, %.2f] is smaller than the requested duration of %.2f ns.", min_noise_time_, max_noise_time_, duration);
             }
             if(n_attempts >= 100) {
-                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns without stitching after %z attempts, trying again anyway.", duration, n_attempts);
+                log_warn("Could not find enough noise pulses to cover the duration of %.2f ns without stitching after %lu attempts, trying again anyway.", duration, n_attempts);
                 log_warn("Current noise pulse time range is [%.2f, %.2f] but we need %.2f ns", current_start_time, current_end_time, remaining_time);
             }
             bool looped = NextFrame();
@@ -644,19 +643,18 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
     double noise_duration = event_duration + noise_pre_padding + noise_post_padding;
 
     // Get noise pulses with the correct time offset
-    CCMRecoPulseSeriesMapPtr combined_pulses;
+    CCMRecoPulseSeriesMapPtr noise_pulses;
     std::map<CCMPMTKey, double> data_board_time_offsets;
-    std::tie(combined_pulses, data_board_time_offsets) = GetNoisePulses(noise_duration, event_start_time, true);
-
-    std::map<CCMPMTKey, double> board_offset_corrections;
-    if(match_times_to_simulation_) {
-        board_offset_corrections = GetBoardOffsetCorrections(data_board_time_offsets, *sim_board_time_offsets_ptr, 2.0);
-    } else if(match_times_to_data_) {
-        board_offset_corrections = GetBoardOffsetCorrections(*sim_board_time_offsets_ptr, data_board_time_offsets, 2.0);
-    }
+    std::tie(noise_pulses, data_board_time_offsets) = GetNoisePulses(noise_duration, event_start_time, true);
 
     if(match_times_to_simulation_) {
-        for(auto & [key, pulses] : *combined_pulses) {
+        // Just shift the noise pulse series before storing it
+
+        // Calculate offsets
+        std::map<CCMPMTKey, double> board_offset_corrections = GetBoardOffsetCorrections(data_board_time_offsets, *sim_board_time_offsets_ptr, 2.0);
+
+        // Apply offsets
+        for(auto & [key, pulses] : *noise_pulses) {
             std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(key);
             if(offset_it == board_offset_corrections.end()) {
                 continue;
@@ -668,51 +666,33 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
         }
     }
 
-    // Copy the event pulses into the destination map
-    for(auto const & [key, source_series] : *input_reco_pulses) {
-        // Find the corresponding PMT in the destination map
-        CCMRecoPulseSeriesMap::iterator it_dest = combined_pulses->find(key);
+    // Store noise pulses in the frame
+    frame->Put(noise_pulse_name_, noise_pulses);
 
-        // If the PMT is not in the destination, then insert an empty vector
-        if(it_dest == combined_pulses->end()) {
-            combined_pulses->insert(std::make_pair(key, CCMRecoPulseSeries()));
-            // Update the iterator so it points to our new entry
-            it_dest = combined_pulses->find(key);
-        }
+    std::string sim_pulses_key_for_union = input_reco_pulse_name_;
 
-        // Reference to the destination
-        CCMRecoPulseSeries & dest_series = it_dest->second;
+    if(match_times_to_data_) {
+        // Store the offsets for the simulation so they can be applied later
+        std::string const corrections_key = input_reco_pulse_name_ + "_BoardTimeOffsetCorrections";
 
-        if(match_times_to_data_) {
-            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(key);
-            if(offset_it != board_offset_corrections.end()) {
-                double const & offset = offset_it->second;
-                for(CCMRecoPulse pulse : source_series) { // Copy the pulse so we can modify it
-                    double time = pulse.GetTime();
-                    pulse.SetTime(time + offset);
-                    dest_series.push_back(pulse);
-                }
-            } else {
-                for(CCMRecoPulse const & pulse : source_series) {
-                    dest_series.push_back(pulse);
-                }
-            }
-        } else {
-            // Iterate over the vector of CCMRecoPulse in the source map for this PMT
-            for(CCMRecoPulse const & pulse : source_series) {
-                dest_series.push_back(pulse);
-            }
-        }
+        // Calculate offsets and store them in the frame
+        I3MapPMTKeyDoublePtr board_offset_corrections = boost::make_shared<I3MapPMTKeyDouble>();
+        *(static_cast<std::map<CCMPMTKey, double>*>(board_offset_corrections.get())) =
+            GetBoardOffsetCorrections(*sim_board_time_offsets_ptr, data_board_time_offsets, 2.0);
+        frame->Put(corrections_key, board_offset_corrections);
 
-        // Done combining pulse series! Let's sort according to time
-        std::sort(dest_series.begin(), dest_series.end(), [](const CCMRecoPulse& a, const CCMRecoPulse& b) { return a.GetTime() < b.GetTime(); });
+        sim_pulses_key_for_union = input_reco_pulse_name_ + "_OffsetView";
+
+        // Create offset view of the simulation pulses and store it in the frame
+        CCMRecoPulseSeriesMapApplyOffsetsPtr offset_view = boost::make_shared<CCMRecoPulseSeriesMapApplyOffsets>(input_reco_pulse_name_, corrections_key);
+        frame->Put(sim_pulses_key_for_union, offset_view);
     }
 
-    // Save
-    //TODO save the noise series
-    //TODO Add a charge cut on stitched frames
-    frame->Put(output_reco_pulse_name_, combined_pulses);
-    PushFrame(frame);
+    // Create the union of noise+simulation pulses and store it in the frame
+    std::vector<std::string> union_inputs = {sim_pulses_key_for_union, noise_pulse_name_};
+    CCMRecoPulseSeriesMapUnionPtr union_view = boost::make_shared<CCMRecoPulseSeriesMapUnion>(*frame, union_inputs);
+    frame->Put(output_reco_pulse_name_, union_view);
 
+    PushFrame(frame);
 }
 
