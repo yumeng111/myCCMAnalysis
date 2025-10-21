@@ -32,17 +32,45 @@
 #include <dataio/I3FrameSequence.h>
 #include <CCMAnalysis/CCMBinary/BinaryFormat.h>
 
+struct PulsesSegment {
+    CCMRecoPulseSeries original_pulses;
+    double original_offset;
+    double original_start_time;
+    double target_offset;
+    double target_start_time;
+};
+
+struct PulsesMapSegment {
+    boost::shared_ptr<CCMRecoPulseSeriesMap const> pulses = nullptr;
+    std::map<CCMPMTKey, double> offsets;
+    double start_time = 0;
+    double end_time = 0;
+    double target_start_time = 0;
+
+    PulsesMapSegment() = default;
+    PulsesMapSegment(PulsesMapSegment const & other) = default;
+    PulsesMapSegment(PulsesMapSegment const & other, double target_start_time) :
+        PulsesMapSegment(other) {
+        this->target_start_time = target_start_time;
+    }
+    double duration() const {
+        return end_time - start_time;
+    }
+};
+
 class OverlayNoise: public I3Module {
     std::string const default_noise_pulse_base_ = "WavedeformPulses";
 
-    std::string input_reco_pulse_name_;
-    std::string output_reco_pulse_name_;
-    std::string noise_pulse_name_;
+    std::string input_sim_pulses_name_;
+    std::string input_sim_offsets_name_;
+
+    std::string input_noise_pulses_name_;
+
+    std::string output_pulses_name_;
 
     bool make_noise_into_beam_time_pulses_ = false;
     bool make_noise_into_trigger_time_pulses_ = false;
 
-    std::string input_simulated_board_time_offsets_name_;
 
     bool match_times_to_data_ = true;
     bool match_times_to_simulation_ = false;
@@ -60,29 +88,79 @@ class OverlayNoise: public I3Module {
     std::deque<I3FramePtr> frame_cache;
     std::vector<std::string> file_lists;
 
-    boost::shared_ptr<CCMRecoPulseSeriesMap const> current_noise_pulses = nullptr;
-    std::map<CCMPMTKey, double> current_frame_data_board_time_offsets;
-    double current_start_time;
-    double current_end_time;
+    PulsesMapSegment current_noise_segment;
+
+    //boost::shared_ptr<CCMRecoPulseSeriesMap const> current_noise_pulses = nullptr;
+    //std::map<CCMPMTKey, double> current_frame_data_board_time_offsets;
+    //double current_start_time;
+    //double current_end_time;
 public:
     OverlayNoise(const I3Context&);
     void Configure();
     void DAQ(I3FramePtr frame);
     bool NextFrame();
-    std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>> GetNoisePulses(double duration, double zero_time, bool zero_out_width = false);
+    std::tuple<std::vector<PulsesMapSegment>, std::map<CCMPMTKey, double>> GetNoisePulses(double duration, double zero_time, bool zero_out_width = false);
+    static void PulsesFromSegments(std::vector<PulsesMapSegment> const & segments, std::map<CCMPMTKey, double> const & target_offsets, std::map<CCMPMTKey, CCMRecoPulseSeries> & output, bool zero_out_width = false);
+    static inline double Mod(double x, double mod) {
+        double result = std::fmod(x, mod);
+        result += (result < 0) ? mod : 0;
+        return result;
+    }
+    static inline double SnapToMod(double sum, double original_offset, double target, double mod) {
+        double sum_remainder = Mod(sum, mod);
+        double original_remainder = Mod(original_offset, mod);
+        // First snap the result to the original offset's modulo class
+        // This ensures we remove any finer timing differences
+        double snapped = sum - sum_remainder + original_remainder;
+        snapped += (sum_remainder > original_remainder) ? 0 : -mod;
+
+        // Now adjust the result to match the target's modulo class with minimal change
+        double target_remainder = Mod(target, mod);
+        double delta = target_remainder - original_remainder;
+        if(std::abs(delta) > std::abs(delta - mod)) {
+            delta = delta - mod;
+        }
+        snapped += delta;
+        return snapped;
+    }
+
+    static inline void SnapPulsesToMod(std::vector<CCMRecoPulse> & pulses, double shift, double original_offset, double target, double mod, bool zero_out_width=false) {
+        // Pre-compute which direction we need to shift in order to match the target modulo class
+        double snapped_remainder = Mod(original_offset + shift, mod);
+        double target_remainder = Mod(target, mod);
+        double delta = target_remainder - snapped_remainder;
+        if(std::abs(delta) > std::abs(delta - mod)) {
+            delta = delta - mod;
+        }
+
+        double original_remainder = Mod(original_offset, mod);
+
+        for(CCMRecoPulse & pulse : pulses) {
+            // First snap the pulse to the original offset's modulo class
+            double sum = pulse.GetTime() + shift;
+            double sum_remainder = Mod(sum, mod);
+            double snapped = sum - sum_remainder + original_remainder;
+            snapped += (sum_remainder > original_remainder) ? 0 : -mod;
+
+            // Now adjust the pulse to match the target's modulo class
+            snapped += delta;
+            pulse.SetTime(snapped);
+            pulse.SetWidth(pulse.GetWidth() * (1 - zero_out_width));
+        }
+    }
 };
 
 I3_MODULE(OverlayNoise);
 
 OverlayNoise::OverlayNoise(const I3Context& context) : I3Module(context),
-    input_reco_pulse_name_("MCRecoPulses"), output_reco_pulse_name_("MCRecoPulsesPlusNoise"), noise_pulse_name_("TriggerTimePulses"),
-    input_simulated_board_time_offsets_name_("SimulatedBoardTimeOffsets") {
-    AddParameter("InputRecoPulseName", "Simulated reco pulse series name", input_reco_pulse_name_);
-    AddParameter("OutputRecoPulseName", "Output reco pulse series name", output_reco_pulse_name_);
-    AddParameter("NoisePulseName", "Data reco pulse series name", noise_pulse_name_);
+    input_sim_pulses_name_("MCRecoPulses"), output_pulses_name_("MCRecoPulsesPlusNoise"), input_noise_pulses_name_("TriggerTimePulses"),
+    input_sim_offsets_name_("SimulatedBoardTimeOffsets") {
+    AddParameter("InputRecoPulseName", "Simulated reco pulse series name", input_sim_pulses_name_);
+    AddParameter("OutputRecoPulseName", "Output reco pulse series name", output_pulses_name_);
+    AddParameter("NoisePulseName", "Data reco pulse series name", input_noise_pulses_name_);
     AddParameter("MakeNoiseIntoBeamTimePulses", "Convert noise pulses into beam time pulses", false);
     AddParameter("MakeNoiseIntoTriggerTimePulses", "Convert noise pulses into trigger time pulses", false);
-    AddParameter("InputSimulatedBoardTimeOffsetsName", "Key for map of simulated board time offsets", input_simulated_board_time_offsets_name_);
+    AddParameter("InputSimulatedBoardTimeOffsetsName", "Key for map of simulated board time offsets", input_sim_offsets_name_);
     AddParameter("MatchTimesToData", "Match times to data", match_times_to_data_);
     AddParameter("MatchTimesToSimulation", "Match times to simulation", match_times_to_simulation_);
 
@@ -98,9 +176,9 @@ OverlayNoise::OverlayNoise(const I3Context& context) : I3Module(context),
 }
 
 void OverlayNoise::Configure() {
-    GetParameter("InputRecoPulseName", input_reco_pulse_name_);
-    GetParameter("OutputRecoPulseName", output_reco_pulse_name_);
-    GetParameter("NoisePulseName", noise_pulse_name_);
+    GetParameter("InputRecoPulseName", input_sim_pulses_name_);
+    GetParameter("OutputRecoPulseName", output_pulses_name_);
+    GetParameter("NoisePulseName", input_noise_pulses_name_);
     GetParameter("MakeNoiseIntoBeamTimePulses", make_noise_into_beam_time_pulses_);
     GetParameter("MakeNoiseIntoTriggerTimePulses", make_noise_into_trigger_time_pulses_);
 
@@ -109,26 +187,26 @@ void OverlayNoise::Configure() {
         log_fatal("Cannot make noise pulses into both beam time and trigger time pulses");
 
     if(make_noise_into_beam_time_pulses_) {
-        if(noise_pulse_name_ == "BeamTimePulses") {
+        if(input_noise_pulses_name_ == "BeamTimePulses") {
             log_warn("Input noise pulses is set to \"BeamTimePulses\" and MakeNoiseIntoBeamTimePulses is true. The input will default to \"%s\" and be converted to beam time pulses", default_noise_pulse_base_.c_str());
-        } else if( noise_pulse_name_ == "TriggerTimePulses") {
+        } else if( input_noise_pulses_name_ == "TriggerTimePulses") {
             log_fatal("Input noise pulses is set to \"TriggerTimePulses\" and MakeNoiseIntoBeamTimePulses is true. We can't double up on conversions and you probably want to pick the right one.");
         } else {
-            log_info("Converting input noise pulses \"%s\" into beam time pulses.", noise_pulse_name_.c_str());
+            log_info("Converting input noise pulses \"%s\" into beam time pulses.", input_noise_pulses_name_.c_str());
         }
     }
 
     if(make_noise_into_trigger_time_pulses_) {
-        if(noise_pulse_name_ == "TriggerTimePulses") {
+        if(input_noise_pulses_name_ == "TriggerTimePulses") {
             log_warn("Input noise pulses is set to \"TriggerTimePulses\" and MakeNoiseIntoTriggerTimePulses is true. The input will default to \"%s\" and be converted to trigger time pulses", default_noise_pulse_base_.c_str());
-        } else if( noise_pulse_name_ == "BeamTimePulses") {
+        } else if( input_noise_pulses_name_ == "BeamTimePulses") {
             log_fatal("Input noise pulses is set to \"BeamTimePulses\" and MakeNoiseIntoTriggerTimePulses is true. We can't double up on conversions and you probably want to pick the right one.");
         } else {
-            log_info("Converting input noise pulses \"%s\" into trigger time pulses.", noise_pulse_name_.c_str());
+            log_info("Converting input noise pulses \"%s\" into trigger time pulses.", input_noise_pulses_name_.c_str());
         }
     }
 
-    GetParameter("InputSimulatedBoardTimeOffsetsName", input_simulated_board_time_offsets_name_);
+    GetParameter("InputSimulatedBoardTimeOffsetsName", input_sim_offsets_name_);
     GetParameter("MatchTimesToData", match_times_to_data_);
     GetParameter("MatchTimesToSimulation", match_times_to_simulation_);
 
@@ -317,14 +395,6 @@ std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3Frame
     std::tuple<double, double> range = GetPulsesTimeRange(corrected_pulses, expansive);
     std::map<CCMPMTKey, double> data_board_time_offsets = GetDataBoardOffsets(corrected_pulses);
 
-    double min_time = std::get<0>(range);
-    double max_time = std::get<1>(range);
-    double mod = min_time - std::floor(min_time / 2) * 2;
-    min_time = min_time - mod;
-    for(auto & [key, offset] : data_board_time_offsets) {
-        offset = offset - min_time;
-    }
-
     return {std::get<0>(range), std::get<1>(range), data_board_time_offsets};
 }
 
@@ -421,7 +491,7 @@ bool OverlayNoise::NextFrame() {
 
         if(make_noise_into_beam_time_pulses_) {
             // Check if the beam time pulses are already in the frame
-            CCMRecoPulseSeriesMapApplySPECalPlusBeamTimeConstPtr beam_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime const>>(noise_pulse_name_);
+            CCMRecoPulseSeriesMapApplySPECalPlusBeamTimeConstPtr beam_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime const>>(input_noise_pulses_name_);
             if(beam_pulses != nullptr) {
                 // First check if the BCMSummary is in the frame
                 std::string const bcm_summary_key = beam_pulses->GetBCMSummarySource();
@@ -432,9 +502,9 @@ bool OverlayNoise::NextFrame() {
                     continue;
                 }
                 // If so, go ahead and use them as is
-                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-                extent_pulse_series_name = noise_pulse_name_;
-                log_warn("Input noise pulses \"%s\" are already in the frame as beam time pulses, skipping conversion. Consider setting MakeNoiseIntoBeamTimePulses to false.", noise_pulse_name_.c_str());
+                current_noise_segment.pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_noise_pulses_name_);
+                extent_pulse_series_name = input_noise_pulses_name_;
+                log_warn("Input noise pulses \"%s\" are already in the frame as beam time pulses, skipping conversion. Consider setting MakeNoiseIntoBeamTimePulses to false.", input_noise_pulses_name_.c_str());
             } else {
                 // First check if the BCMSummary is in the frame
                 if(not frame->Has("BCMSummary")) {
@@ -444,16 +514,16 @@ bool OverlayNoise::NextFrame() {
                     continue;
                 }
                 // We need to convert the existing pulse series into beam time pulses
-                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+                current_noise_segment.pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_noise_pulses_name_);
                 std::string name;
-                if(current_noise_pulses == nullptr and noise_pulse_name_ == "BeamTimePulses") {
+                if(current_noise_segment.pulses == nullptr and input_noise_pulses_name_ == "BeamTimePulses") {
                     log_warn("Defaulting to \"%s\" for noise pulses and converting to beam time pulses", default_noise_pulse_base_.c_str());
                     name = default_noise_pulse_base_;
                 } else {
-                    if(noise_pulse_name_ == "BeamTimePulses") {
+                    if(input_noise_pulses_name_ == "BeamTimePulses") {
                         log_fatal("Found a \"BeamTimePulses\" key that is not a CCMRecoPulseSeriesMapApplySPECalPlusBeamTime. This is unexpected and likely bad if you're trying to re-apply the corrections, please check your input.");
                     }
-                    name = noise_pulse_name_;
+                    name = input_noise_pulses_name_;
                 }
                 if(not frame->Has(name)) {
                     if(do_warn)
@@ -462,29 +532,29 @@ bool OverlayNoise::NextFrame() {
                     continue;
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusBeamTimePtr beam_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusBeamTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry", "BCMSummary");
-                current_noise_pulses = beam_pulses_view->Apply(*frame);
+                current_noise_segment.pulses = beam_pulses_view->Apply(*frame);
                 extent_pulse_series_name = "DummyBeamTimePulsesView";
                 extent_frame->Put(extent_pulse_series_name, beam_pulses_view);
             }
         } else if(make_noise_into_trigger_time_pulses_) {
             // Check if the trigger time pulses are already in the frame
-            CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr trigger_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime const>>(noise_pulse_name_);
+            CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimeConstPtr trigger_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime const>>(input_noise_pulses_name_);
             if(trigger_pulses != nullptr) {
                 // If so, go ahead and use them as is
-                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-                log_warn("Input noise pulses \"%s\" are already in the frame as trigger time pulses, skipping conversion. Consider setting MakeNoiseIntoTriggerTimePulses to false.", noise_pulse_name_.c_str());
+                current_noise_segment.pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_noise_pulses_name_);
+                log_warn("Input noise pulses \"%s\" are already in the frame as trigger time pulses, skipping conversion. Consider setting MakeNoiseIntoTriggerTimePulses to false.", input_noise_pulses_name_.c_str());
             } else {
                 // We need to convert the existing pulse series into trigger time pulses
-                current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
+                current_noise_segment.pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_noise_pulses_name_);
                 std::string name;
-                if(current_noise_pulses == nullptr and noise_pulse_name_ == "TriggerTimePulses") {
+                if(current_noise_segment.pulses == nullptr and input_noise_pulses_name_ == "TriggerTimePulses") {
                     log_warn("Defaulting to \"%s\" for noise pulses and converting to trigger time pulses", default_noise_pulse_base_.c_str());
                     name = default_noise_pulse_base_;
                 } else {
-                    if(noise_pulse_name_ == "TriggerTimePulses") {
+                    if(input_noise_pulses_name_ == "TriggerTimePulses") {
                         log_fatal("Found a \"TriggerTimePulses\" key that is not a CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime. This is unexpected and likely bad if you're trying to re-apply the corrections, please check your input.");
                     }
-                    name = noise_pulse_name_;
+                    name = input_noise_pulses_name_;
                 }
                 if(not frame->Has(name)) {
                     if(do_warn)
@@ -493,44 +563,68 @@ bool OverlayNoise::NextFrame() {
                     continue;
                 }
                 CCMRecoPulseSeriesMapApplySPECalPlusTriggerTimePtr trigger_pulses_view = boost::make_shared<CCMRecoPulseSeriesMapApplySPECalPlusTriggerTime>(name, "CCMCalibration", "NIMPulses", "CCMGeometry");
-                current_noise_pulses = trigger_pulses_view->Apply(*frame);
+                current_noise_segment.pulses = trigger_pulses_view->Apply(*frame);
                 extent_pulse_series_name = "DummyTriggerTimePulsesView";
                 extent_frame->Put(extent_pulse_series_name, trigger_pulses_view);
             }
         } else {
-            if(not frame->Has(noise_pulse_name_)) {
+            if(not frame->Has(input_noise_pulses_name_)) {
                 if(do_warn)
-                    log_warn("Frame does not have \"%s\", skipping frame.", noise_pulse_name_.c_str());
+                    log_warn("Frame does not have \"%s\", skipping frame.", input_noise_pulses_name_.c_str());
                 ++n_skipped;
                 continue;
             }
-            current_noise_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(noise_pulse_name_);
-            extent_pulse_series_name = noise_pulse_name_;
+            current_noise_segment.pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_noise_pulses_name_);
+            extent_pulse_series_name = input_noise_pulses_name_;
         }
 
         break;
     }
 
     std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(extent_frame, extent_pulse_series_name, false);
-    current_start_time = std::get<0>(noise_extent);
-    current_end_time = std::get<1>(noise_extent);
-    current_frame_data_board_time_offsets = std::get<2>(noise_extent);
+    current_noise_segment.start_time = std::get<0>(noise_extent);
+    current_noise_segment.end_time = std::get<1>(noise_extent);
+    current_noise_segment.offsets = std::get<2>(noise_extent);
 
     if(restrict_range_) {
-        current_start_time = std::max(current_start_time, min_noise_time_);
-        current_end_time = std::min(current_end_time, max_noise_time_);
-        if(current_end_time <= current_start_time) {
-            log_warn("Restricted noise pulse time range [%.2f, %.2f] is invalid. This occurred because the allowed time range is [%.2f, %.2f] while the time range for this pulse series is [%.2f, %.2f]", current_start_time, current_end_time, min_noise_time_, max_noise_time_, std::get<0>(noise_extent), std::get<1>(noise_extent));
+        current_noise_segment.start_time = std::max(current_noise_segment.start_time, min_noise_time_);
+        current_noise_segment.end_time = std::min(current_noise_segment.end_time, max_noise_time_);
+        if(current_noise_segment.end_time <= current_noise_segment.start_time) {
+            log_warn("Restricted noise pulse time range [%.2f, %.2f] is invalid. This occurred because the allowed time range is [%.2f, %.2f] while the time range for this pulse series is [%.2f, %.2f]", current_noise_segment.start_time, current_noise_segment.end_time, min_noise_time_, max_noise_time_, std::get<0>(noise_extent), std::get<1>(noise_extent));
         }
     }
     return failed;
 }
 
-std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>> OverlayNoise::GetNoisePulses(double duration, double zero_time, bool zero_out_width) {
+void OverlayNoise::PulsesFromSegments(std::vector<PulsesMapSegment> const & segments, std::map<CCMPMTKey, double> const & target_offsets, std::map<CCMPMTKey, CCMRecoPulseSeries> & output, bool zero_out_width) {
+    for(PulsesMapSegment const & segment : segments) {
+        if(segment.pulses == nullptr) {
+            continue;
+        }
+        double shift = segment.target_start_time - segment.start_time;
+        for(auto const & [key, series] : *segment.pulses) {
+            if(series.empty())
+                continue;
+            std::map<CCMPMTKey, double>::const_iterator target_it = target_offsets.find(key);
+            std::map<CCMPMTKey, double>::const_iterator segment_it = segment.offsets.find(key);
+            CCMRecoPulseSeries & output_series = output[key];
+            for(CCMRecoPulse const & pulse : series) {
+                if(pulse.GetTime() < segment.start_time)
+                    continue;
+                if(pulse.GetTime() >= segment.end_time)
+                    break;
+                output_series.push_back(pulse);
+            }
+            SnapPulsesToMod(output_series, shift, segment_it->second, target_it->second, 2.0);
+        }
+    }
+}
+
+std::tuple<std::vector<PulsesMapSegment>, std::map<CCMPMTKey, double>> OverlayNoise::GetNoisePulses(double duration, double zero_time, bool zero_out_width) {
     zero_out_width = not zero_out_width;
 
     if(not allow_stitching_) {
-        double remaining_time = current_end_time - current_start_time;
+        double remaining_time = current_noise_segment.duration();
         bool already_looped = false;
         size_t n_attempts = 0;
         while(remaining_time < duration) {
@@ -539,98 +633,80 @@ std::tuple<boost::shared_ptr<CCMRecoPulseSeriesMap>, std::map<CCMPMTKey, double>
             }
             if(n_attempts >= 100) {
                 log_warn("Could not find enough noise pulses to cover the duration of %.2f ns without stitching after %lu attempts, trying again anyway.", duration, n_attempts);
-                log_warn("Current noise pulse time range is [%.2f, %.2f] but we need %.2f ns", current_start_time, current_end_time, remaining_time);
+                log_warn("Current noise pulse time range is [%.2f, %.2f] but we need %.2f ns", current_noise_segment.start_time, current_noise_segment.end_time, duration);
             }
             bool looped = NextFrame();
             if(already_looped and looped) {
-                log_fatal("Not enough noise pulses to cover the duration of %.2f ns [%.2f, %.2f] without stitching.", duration, current_start_time, current_end_time);
+                log_fatal("Not enough noise pulses to cover the duration of %.2f ns [%.2f, %.2f] without stitching.", duration, current_noise_segment.start_time, current_noise_segment.end_time);
             }
             already_looped |= looped;
-            remaining_time = current_end_time - current_start_time;
+            remaining_time = current_noise_segment.duration();
             ++n_attempts;
         }
-        boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
-        double random_start_time = randomService_->Uniform(current_start_time, current_end_time - duration);
-        double random_end_time = random_start_time + duration;
-        for(auto const & [key, current_noise_series] : *current_noise_pulses) {
-            if(current_noise_series.empty()) {
-                continue;
-            }
-            CCMRecoPulseSeries noise_series;
-            for(CCMRecoPulse const & pulse : current_noise_series) {
-                double const & time = pulse.GetTime();
-                if(time >= random_start_time and time < random_end_time) {
-                    noise_series.push_back(pulse);
-                    CCMRecoPulse & noise = noise_series.back();
-                    noise.SetTime(time - random_start_time + zero_time);
-                    noise.SetWidth(noise.GetWidth() * zero_out_width);
-                }
-            }
-            noise_pulses->insert(std::make_pair(key, noise_series));
-        }
-        current_start_time = random_start_time;
-        return {noise_pulses, current_frame_data_board_time_offsets};
+
+        // Make the resulting pulses
+        std::vector<PulsesMapSegment> segments; segments.reserve(1);
+        segments.emplace_back(current_noise_segment);
+        PulsesMapSegment & segment = segments.back();
+        double random_start_time = randomService_->Uniform(
+                current_noise_segment.start_time,
+                std::max(current_noise_segment.start_time, current_noise_segment.end_time - duration)
+        );
+        segment.start_time = random_start_time;
+        segment.end_time = segment.start_time + duration;
+        segment.target_start_time = zero_time;
+
+        // Update the current segment start time
+        current_noise_segment.start_time = random_start_time;
+
+        return {segments, current_noise_segment.offsets};
     }
 
+    // Handle the stitching case
 
     double accumulated_time = 0.0;
-    boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
 
     std::map<CCMPMTKey, double> target_board_time_offsets;
-    if(current_noise_pulses != nullptr) {
-        target_board_time_offsets = current_frame_data_board_time_offsets;
+    if(current_noise_segment.pulses != nullptr) {
+        target_board_time_offsets = current_noise_segment.offsets;
     }
 
     std::map<CCMPMTKey, double> board_offset_corrections;
 
-    while(accumulated_time < duration) {
-        if(current_noise_pulses == nullptr) {
-            NextFrame();
-            target_board_time_offsets = current_frame_data_board_time_offsets;
-        }
-        double remaining_time = current_end_time - current_start_time;
-        double random_start_time = randomService_->Uniform(
-                current_start_time,
-                std::max(current_start_time, current_end_time - (duration - accumulated_time))
-        );
-        double random_end_time = std::min(current_end_time, random_start_time + std::min(remaining_time, duration - accumulated_time));
-        for(auto const & [key, current_noise_series] : *current_noise_pulses) {
-            if(not noise_pulses->count(key)) {
-                noise_pulses->insert(std::make_pair(key, CCMRecoPulseSeries()));
-            }
-            double offset_correction = 0;
-            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(key);
-            if(offset_it != board_offset_corrections.end()) {
-                offset_correction = offset_it->second;
-            }
+    std::vector<PulsesMapSegment> segments;
 
-            CCMRecoPulseSeries & noise_series = noise_pulses->at(key);
-            for(CCMRecoPulse const & pulse : current_noise_series) {
-                double const & time = pulse.GetTime();
-                if(time >= random_start_time and time < random_end_time) {
-                    noise_series.push_back(pulse);
-                    noise_series.back().SetTime(time - random_start_time + accumulated_time + zero_time + offset_correction);
-                }
-            }
-            noise_pulses->insert(std::make_pair(key, noise_series));
-        }
-        accumulated_time += random_end_time - random_start_time;
-        current_start_time = random_end_time;
-        if(random_end_time >= current_end_time) {
+    while(accumulated_time < duration) {
+        if(current_noise_segment.pulses == nullptr) {
             NextFrame();
-            board_offset_corrections.clear();
-            board_offset_corrections = GetBoardOffsetCorrections(current_frame_data_board_time_offsets, target_board_time_offsets, 2.0);
+            target_board_time_offsets = current_noise_segment.offsets;
+        }
+        double remaining_time = current_noise_segment.end_time - current_noise_segment.start_time;
+        double random_start_time = randomService_->Uniform(
+                current_noise_segment.start_time,
+                std::max(current_noise_segment.start_time, current_noise_segment.end_time - (duration - accumulated_time))
+        );
+        double random_end_time = std::min(current_noise_segment.end_time, random_start_time + std::min(remaining_time, duration - accumulated_time));
+        segments.emplace_back(current_noise_segment);
+        PulsesMapSegment & segment = segments.back();
+        segment.start_time = random_start_time;
+        segment.end_time = random_end_time;
+        segment.target_start_time = accumulated_time + zero_time;
+
+        accumulated_time += random_end_time - random_start_time;
+        current_noise_segment.start_time = random_end_time;
+        if(random_end_time >= current_noise_segment.end_time) {
+            NextFrame();
         }
     }
 
-    return {noise_pulses, target_board_time_offsets};
+    return {segments, target_board_time_offsets};
 }
 
 void OverlayNoise::DAQ(I3FramePtr frame) {
 
     // read in our reco pulse series
-    boost::shared_ptr<CCMRecoPulseSeriesMap const> input_reco_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_reco_pulse_name_);
-    I3MapPMTKeyDoubleConstPtr sim_board_time_offsets_ptr = frame->Get<I3MapPMTKeyDoubleConstPtr>(input_simulated_board_time_offsets_name_);
+    boost::shared_ptr<CCMRecoPulseSeriesMap const> input_reco_pulses = frame->Get<boost::shared_ptr<CCMRecoPulseSeriesMap const>>(input_sim_pulses_name_);
+    I3MapPMTKeyDoubleConstPtr sim_board_time_offsets_ptr = frame->Get<I3MapPMTKeyDoubleConstPtr>(input_sim_offsets_name_);
 
     std::tuple<double, double> event_time_range = GetPulsesTimeRange(input_reco_pulses, true);
 
@@ -643,55 +719,44 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
     double noise_duration = event_duration + noise_pre_padding + noise_post_padding;
 
     // Get noise pulses with the correct time offset
-    CCMRecoPulseSeriesMapPtr noise_pulses;
+    std::vector<PulsesMapSegment> noise_segments;
     std::map<CCMPMTKey, double> data_board_time_offsets;
-    std::tie(noise_pulses, data_board_time_offsets) = GetNoisePulses(noise_duration, event_start_time, true);
+    std::tie(noise_segments, data_board_time_offsets) = GetNoisePulses(noise_duration, event_start_time, true);
 
+    boost::shared_ptr<CCMRecoPulseSeriesMap> noise_pulses = boost::make_shared<CCMRecoPulseSeriesMap>();
     if(match_times_to_simulation_) {
         // Just shift the noise pulse series before storing it
-
-        // Calculate offsets
-        std::map<CCMPMTKey, double> board_offset_corrections = GetBoardOffsetCorrections(data_board_time_offsets, *sim_board_time_offsets_ptr, 2.0);
-
-        // Apply offsets
-        for(auto & [key, pulses] : *noise_pulses) {
-            std::map<CCMPMTKey, double>::const_iterator offset_it = board_offset_corrections.find(key);
-            if(offset_it == board_offset_corrections.end()) {
-                continue;
-            }
-            double const & offset = offset_it->second;
-            for(CCMRecoPulse & pulse : pulses) {
-                pulse.SetTime(pulse.GetTime() + offset);
-            }
-        }
+        PulsesFromSegments(noise_segments, *sim_board_time_offsets_ptr, *noise_pulses, true);
+    } else {
+        PulsesFromSegments(noise_segments, data_board_time_offsets, *noise_pulses, true);
     }
 
     // Store noise pulses in the frame
-    frame->Put(noise_pulse_name_, noise_pulses);
+    frame->Put(input_noise_pulses_name_, noise_pulses);
 
-    std::string sim_pulses_key_for_union = input_reco_pulse_name_;
+    std::string sim_pulses_key_for_union = input_sim_pulses_name_;
 
     if(match_times_to_data_) {
         // Store the offsets for the simulation so they can be applied later
-        std::string const corrections_key = input_reco_pulse_name_ + "_BoardTimeOffsetCorrections";
+        std::string const target_offsets_key = input_noise_pulses_name_ + "_BoardTimeOffsets";
 
         // Calculate offsets and store them in the frame
         I3MapPMTKeyDoublePtr board_offset_corrections = boost::make_shared<I3MapPMTKeyDouble>();
         *(static_cast<std::map<CCMPMTKey, double>*>(board_offset_corrections.get())) =
             GetBoardOffsetCorrections(*sim_board_time_offsets_ptr, data_board_time_offsets, 2.0);
-        frame->Put(corrections_key, board_offset_corrections);
+        frame->Put(target_offsets_key, board_offset_corrections);
 
-        sim_pulses_key_for_union = input_reco_pulse_name_ + "_OffsetView";
+        sim_pulses_key_for_union = input_sim_pulses_name_ + "_OffsetView";
 
         // Create offset view of the simulation pulses and store it in the frame
-        CCMRecoPulseSeriesMapApplyOffsetsPtr offset_view = boost::make_shared<CCMRecoPulseSeriesMapApplyOffsets>(input_reco_pulse_name_, corrections_key);
+        CCMRecoPulseSeriesMapApplyOffsetsPtr offset_view = boost::make_shared<CCMRecoPulseSeriesMapApplyOffsets>(input_sim_pulses_name_, input_sim_offsets_name_, target_offsets_key, 2.0);
         frame->Put(sim_pulses_key_for_union, offset_view);
     }
 
     // Create the union of noise+simulation pulses and store it in the frame
-    std::vector<std::string> union_inputs = {sim_pulses_key_for_union, noise_pulse_name_};
+    std::vector<std::string> union_inputs = {sim_pulses_key_for_union, input_noise_pulses_name_};
     CCMRecoPulseSeriesMapUnionPtr union_view = boost::make_shared<CCMRecoPulseSeriesMapUnion>(*frame, union_inputs);
-    frame->Put(output_reco_pulse_name_, union_view);
+    frame->Put(output_pulses_name_, union_view);
 
     PushFrame(frame);
 }

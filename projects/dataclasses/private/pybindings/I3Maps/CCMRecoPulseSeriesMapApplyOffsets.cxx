@@ -14,10 +14,12 @@ void register_CCMRecoPulseSeriesMapApplyOffsets()
 {
   bp::class_<CCMRecoPulseSeriesMapApplyOffsets, bp::bases<I3FrameObject>,
       CCMRecoPulseSeriesMapApplyOffsetsPtr>("CCMRecoPulseSeriesMapApplyOffsets",
-      bp::init<const std::string &, const std::string &>(bp::args("pulses_key", "offsets_key")))
+      bp::init<std::string const &, std::string const &, std::string const &, double const &>(bp::args("pulses_key", "orignal_offsets_key", "target_offsets_key", "mod")))
     .def("apply", &underhanded_apply, "Apply the correction to an I3Frame, returning an CCMRecoPulseSeries.")
     .add_property("pulses_source", &CCMRecoPulseSeriesMapApplyOffsets::GetPulsesSource)
-    .add_property("offsets_source", &CCMRecoPulseSeriesMapApplyOffsets::GetOffsetsSource)
+    .add_property("original_offsets_source", &CCMRecoPulseSeriesMapApplyOffsets::GetOriginalOffsetsSource)
+    .add_property("target_offsets_source", &CCMRecoPulseSeriesMapApplyOffsets::GetTargetOffsetsSource)
+    .add_property("mod", &CCMRecoPulseSeriesMapApplyOffsets::GetMod)
     .def(bp::dataclass_suite<CCMRecoPulseSeriesMapApplyOffsets>())
     ;
   ;
