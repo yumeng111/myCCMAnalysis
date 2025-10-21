@@ -65,7 +65,7 @@ inline void SnapPulsesToMod(std::vector<CCMRecoPulse> & pulses, double shift, do
 }
 
 CCMRecoPulseSeriesMapApplyOffsets::CCMRecoPulseSeriesMapApplyOffsets()
-    : pulses_key_(), original_offsets_key_(), target_offsets_key_(), shifted_() {}
+    : pulses_key_(), original_offsets_key_(), target_offsets_key_(), mod_(0.0), shifted_() {}
 
 CCMRecoPulseSeriesMapApplyOffsets::CCMRecoPulseSeriesMapApplyOffsets(
         std::string const & pulses_key,
