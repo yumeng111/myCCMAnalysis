@@ -82,6 +82,8 @@ class OverlayNoise: public I3Module {
     double min_padding_time_ = 500;
     double max_padding_time_ = 1000;
 
+    static constexpr double reco_bin_width_ = 2.0; // ns
+
     std::string randomServiceName_;
     I3RandomServicePtr randomService_;
     dataio::I3FrameSequencePtr frame_sequences;
@@ -344,7 +346,7 @@ std::tuple<double, double> GetPulsesTimeRange(CCMRecoPulseSeriesMapConstPtr puls
     return {min_time, max_time};
 }
 
-std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3FramePtr frame, std::string pulse_series_name, bool expansive = false) {
+std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3FramePtr frame, std::string pulse_series_name, double bin_width, bool expansive = false) {
     if(not frame->Has(pulse_series_name)) {
         log_fatal("Frame does not have %s", pulse_series_name.c_str());
     }
@@ -375,7 +377,7 @@ std::tuple<double, double, std::map<CCMPMTKey, double>> GetTriggerExtent(I3Frame
     CCMRecoPulse first_pulse;
     CCMRecoPulse last_pulse;
     first_pulse.SetTime(0);
-    last_pulse.SetTime(daq_config->machine_configurations[0].num_samples * 2);
+    last_pulse.SetTime(daq_config->machine_configurations[0].num_samples * bin_width);
     CCMRecoPulseSeries dummy_series{first_pulse, last_pulse};
 
     CCMRecoPulseSeriesMapConstPtr pulses = dummy_frame->Get<CCMRecoPulseSeriesMapConstPtr>(source_pulse_series_name);
@@ -581,7 +583,7 @@ bool OverlayNoise::NextFrame() {
         break;
     }
 
-    std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(extent_frame, extent_pulse_series_name, false);
+    std::tuple<double, double, std::map<CCMPMTKey, double>> noise_extent = GetTriggerExtent(extent_frame, extent_pulse_series_name, reco_bin_width_, false);
     current_noise_segment.start_time = std::get<0>(noise_extent);
     current_noise_segment.end_time = std::get<1>(noise_extent);
     current_noise_segment.offsets = std::get<2>(noise_extent);
@@ -615,7 +617,7 @@ void OverlayNoise::PulsesFromSegments(std::vector<PulsesMapSegment> const & segm
                     break;
                 output_series.push_back(pulse);
             }
-            SnapPulsesToMod(output_series, shift, segment_it->second, target_it->second, 2.0);
+            SnapPulsesToMod(output_series, shift, segment_it->second, target_it->second, reco_bin_width_);
         }
     }
 }
@@ -743,13 +745,13 @@ void OverlayNoise::DAQ(I3FramePtr frame) {
         // Calculate offsets and store them in the frame
         I3MapPMTKeyDoublePtr board_offset_corrections = boost::make_shared<I3MapPMTKeyDouble>();
         *(static_cast<std::map<CCMPMTKey, double>*>(board_offset_corrections.get())) =
-            GetBoardOffsetCorrections(*sim_board_time_offsets_ptr, data_board_time_offsets, 2.0);
+            GetBoardOffsetCorrections(*sim_board_time_offsets_ptr, data_board_time_offsets, reco_bin_width_);
         frame->Put(target_offsets_key, board_offset_corrections);
 
         sim_pulses_key_for_union = input_sim_pulses_name_ + "_OffsetView";
 
         // Create offset view of the simulation pulses and store it in the frame
-        CCMRecoPulseSeriesMapApplyOffsetsPtr offset_view = boost::make_shared<CCMRecoPulseSeriesMapApplyOffsets>(input_sim_pulses_name_, input_sim_offsets_name_, target_offsets_key, 2.0);
+        CCMRecoPulseSeriesMapApplyOffsetsPtr offset_view = boost::make_shared<CCMRecoPulseSeriesMapApplyOffsets>(input_sim_pulses_name_, input_sim_offsets_name_, target_offsets_key, reco_bin_width_);
         frame->Put(sim_pulses_key_for_union, offset_view);
     }
 
