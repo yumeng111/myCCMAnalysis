@@ -143,6 +143,8 @@ class PMTResponse: public I3Module {
        {18, {-2.32866528, 0.07812655}}
     };
 
+    double reco_bin_width_ = 0.2; // ns
+
 public:
     PMTResponse(const I3Context&);
     void Configure();
@@ -326,6 +328,7 @@ PMTResponse::PMTResponse(const I3Context& context) : I3Module(context),
     AddParameter("RemoveCherenkov", "true removes cherenkov photons, false keeps them all", remove_cherenkov_);
     AddParameter("FlatEfficiency", "true to use flat efficiency", flat_eff_);
     AddParameter("WeightUVAbsorption", "true to add uv absorption via reweighting", weight_uv_absorption_);
+    AddParameter("RecoBinWidth", "Width of the bins in the reco pulses [ns]. Defaults to 0.2 ns so that subsequent time corrections will have more precision available.", reco_bin_width_);
 }
 
 
@@ -357,6 +360,7 @@ void PMTResponse::Configure() {
     GetParameter("RemoveCherenkov", remove_cherenkov_);
     GetParameter("FlatEfficiency", flat_eff_);
     GetParameter("WeightUVAbsorption", weight_uv_absorption_);
+    GetParameter("RecoBinWidth", reco_bin_width_);
 }
 
 void PMTResponse::Simulation(I3FramePtr frame) {
@@ -810,7 +814,7 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 total_time_offset += this_tube_transit_time + this_tube_board_time_offset + this_tube_board_time_error;
 
                 // bin
-                double binned_reco_time = static_cast<int>(total_time_offset / 2.0) * 2.0;
+                double binned_reco_time = static_cast<int>(total_time_offset / reco_bin_width_) * reco_bin_width_;
 
                 // and now subtract off our transit time with error
                 binned_reco_time -= this_tube_transit_time + this_tube_board_time_offset;

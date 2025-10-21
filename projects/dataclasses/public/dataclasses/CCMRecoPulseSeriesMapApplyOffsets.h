@@ -25,7 +25,9 @@ public:
      */
     CCMRecoPulseSeriesMapApplyOffsets(
             std::string const & pulses_key,
-            std::string const & offsets_key
+            std::string const & original_offsets_key,
+            std::string const & target_offsets_key,
+            double const & mod = 0.0
     );
     CCMRecoPulseSeriesMapApplyOffsets();
 
@@ -33,13 +35,17 @@ public:
 
     CCMRecoPulseSeriesMapConstPtr Apply(const I3Frame&) const;
     std::string GetPulsesSource() const { return pulses_key_; }
-    std::string GetOffsetsSource() const { return offsets_key_; }
+    std::string GetOriginalOffsetsSource() const { return original_offsets_key_; }
+    std::string GetTargetOffsetsSource() const { return target_offsets_key_; }
+    double GetMod() const { return mod_; }
 
     bool operator==(const CCMRecoPulseSeriesMapApplyOffsets&) const;
     bool operator!=(const CCMRecoPulseSeriesMapApplyOffsets&) const;
 private:
     std::string pulses_key_;
-    std::string offsets_key_;
+    std::string original_offsets_key_;
+    std::string target_offsets_key_;
+    double mod_;
     mutable CCMRecoPulseSeriesMapPtr shifted_;
 
     friend class icecube::serialization::access;
