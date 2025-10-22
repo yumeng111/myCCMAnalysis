@@ -5,12 +5,12 @@
 
 using namespace boost::python;
 
-void register_I3MapI3ParticleID()
+void register_I3MapI3ParticleIDDouble()
 {
 	class_<I3MapI3ParticleIDDouble, bases<I3FrameObject>,
 	    boost::shared_ptr<I3MapI3ParticleIDDouble> >("I3MapI3ParticleIDDouble")
 	    .def(dataclass_suite<I3MapI3ParticleIDDouble >())
 	;
-	    
+
 	register_pointer_conversions<I3MapI3ParticleIDDouble>();
 }
