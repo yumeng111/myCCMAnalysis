@@ -171,7 +171,7 @@ set(_CURSES_ALL_LIBS "${_libs}")
 list(REMOVE_ITEM _CURSES_ALL_LIBS "")
 
 # Cache in the "tool" style your build uses
-set(NCURSES_FOUND TRUE CACHE BOOL "Curses tool found" FORCE)
+set(NCURSES_FOUND TRUE CACHE BOOL "NCurses tool found" FORCE)
 set(NCURSES_INCLUDE_DIR "${CURSES_INCLUDE_DIR}" CACHE PATH "Curses include dir" FORCE)
 set(NCURSES_LIBRARIES   "${_CURSES_ALL_LIBS}"   CACHE PATH "Curses libs (+form/panel/menu/tinfo) — single prefix" FORCE)
 set(NCURSES_PREFIX      "${_prefix}"            CACHE PATH "Prefix where curses libs were found" FORCE)

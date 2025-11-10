@@ -50,7 +50,7 @@ i3_add_pybindings(dataio
   USE_TOOLS boost python
   )
 
-if(CDK_FOUND AND CURSES_FOUND)
+if(CDK_FOUND AND NCURSES_FOUND)
   i3_executable(shovel private/shovel/*.cxx
     USE_PROJECTS dataio
     USE_TOOLS ncurses cdk libarchive
