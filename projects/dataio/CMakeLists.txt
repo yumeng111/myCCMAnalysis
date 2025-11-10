@@ -53,7 +53,7 @@ i3_add_pybindings(dataio
 if(CDK_FOUND AND CURSES_FOUND)
   i3_executable(shovel private/shovel/*.cxx
     USE_PROJECTS dataio
-    USE_TOOLS cdk curses libarchive
+    USE_TOOLS ncurses cdk libarchive
     )  
 else()
   colormsg(CYAN "+-- dataio-shovel *not* included (missing CDK or ncurses libraries)")
