@@ -1,48 +1,102 @@
-#
-#  $Id$
-#  
-#  Copyright (C) 2007   Troy D. Straszheim  <troy@icecube.umd.edu>
-#  and the IceCube Collaboration <http://www.icecube.wisc.edu>
-#  
-#  Redistribution and use in source and binary forms, with or without
-#  modification, are permitted provided that the following conditions
-#  are met:
-#  1. Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#  2. Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#  
-#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
-#  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-#  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
-#  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-#  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-#  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-#  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-#  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-#  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-#  SUCH DAMAGE.
-#  
-#  SPDX-License-Identifier: BSD-2-Clause
-#  
-#  
-tooldef (cdk
-    include
-    cdk/cdk.h 
-    lib/cdk
-    NONE
-    cdk
-)
-if (CDK_FOUND)
-    LIST(APPEND CDK_INCLUDE_DIR ${CDK_INCLUDE_DIR}/cdk)
-else (CDK_FOUND)
-    tooldef (cdk
-        include
-        cdk.h 
-        lib
-        NONE
-        cdk
+set(_CDK_HINT_PREFIXES ${CMAKE_PREFIX_PATH})
+
+# Prefer wide library name first.
+set(_CDK_LIBNAMES cdkw cdk)
+
+# Find library path (absolute) and choose name/dir.
+set(_CDK_LIB_PATH "")
+set(_CDK_LIB_NAME "")
+foreach(_name IN LISTS _CDK_LIBNAMES)
+  find_library(_try_LIB
+    NAMES ${_name}
+    HINTS ${_CDK_HINT_PREFIXES}
+    PATH_SUFFIXES lib lib64 lib/cdk
+    NO_DEFAULT_PATH
+  )
+  if(NOT _try_LIB STREQUAL "_try_LIB-NOTFOUND")
+    set(_CDK_LIB_PATH "${_try_LIB}")
+    set(_CDK_LIB_NAME "${_name}")
+    break()
+  endif()
+endforeach()
+
+# Derive a candidate prefix from the found library (…/prefix/lib*/libcdk*.so)
+set(_CDK_PREFIX "")
+set(_CDK_LIB_DIR "")
+if(_CDK_LIB_PATH)
+  get_filename_component(_CDK_LIB_DIR "${_CDK_LIB_PATH}" DIRECTORY)
+  # prefix should be parent of lib/lib64
+  get_filename_component(_CDK_PREFIX "${_CDK_LIB_DIR}" DIRECTORY)
+endif()
+
+# Try headers under the same prefix first; prefer include/cdk/cdk.h, then include/cdk.h
+set(_CDK_INC_DIR "")
+set(_CDK_INC_FILE "")
+if(_CDK_PREFIX)
+  if(EXISTS "${_CDK_PREFIX}/include/cdk/cdk.h")
+    set(_CDK_INC_DIR  "${_CDK_PREFIX}/include")
+    set(_CDK_INC_FILE "cdk/cdk.h")
+  elseif(EXISTS "${_CDK_PREFIX}/include/cdk.h")
+    set(_CDK_INC_DIR  "${_CDK_PREFIX}/include")
+    set(_CDK_INC_FILE "cdk.h")
+  endif()
+endif()
+
+# If still unknown (library not found yet or headers not in same prefix), do a broader search.
+if(NOT _CDK_INC_DIR)
+  # Try hierarchical header first
+  find_path(_try_INC_DIR
+    NAMES cdk/cdk.h
+    HINTS ${_CDK_HINT_PREFIXES}
+    PATH_SUFFIXES include
+    NO_DEFAULT_PATH
+  )
+  if(NOT _try_INC_DIR STREQUAL "_try_INC_DIR-NOTFOUND")
+    set(_CDK_INC_DIR  "${_try_INC_DIR}")
+    set(_CDK_INC_FILE "cdk/cdk.h")
+  else()
+    find_path(_try_INC_DIR2
+      NAMES cdk.h
+      HINTS ${_CDK_HINT_PREFIXES}
+      PATH_SUFFIXES include
+      NO_DEFAULT_PATH
     )
-endif (CDK_FOUND)
+    if(NOT _try_INC_DIR2 STREQUAL "_try_INC_DIR2-NOTFOUND")
+      set(_CDK_INC_DIR  "${_try_INC_DIR2}")
+      set(_CDK_INC_FILE "cdk.h")
+    endif()
+  endif()
+endif()
+
+# Fallbacks if nothing was discovered: keep legacy defaults so tooldef will print a single failure report.
+if(NOT _CDK_INC_DIR)
+  set(_CDK_INC_DIR "include")
+  # Try hierarchical header first; tooldef will report whichever fails.
+  set(_CDK_INC_FILE "cdk/cdk.h")
+endif()
+if(NOT _CDK_LIB_DIR)
+  set(_CDK_LIB_DIR "lib/cdk")  # legacy first
+endif()
+if(NOT _CDK_LIB_NAME)
+  set(_CDK_LIB_NAME "cdk")     # legacy first; tooldef will say not found if only wide exists
+endif()
+
+# Single tooldef call to get user printouts
+
+tooldef (cdk
+  ${_CDK_INC_DIR}
+  ${_CDK_INC_FILE}
+  ${_CDK_LIB_DIR}
+  NONE
+  ${_CDK_LIB_NAME}
+)
+
+if (CDK_FOUND)
+  # If headers live under include/cdk/, add that subdir too.
+  if (EXISTS "${CDK_INCLUDE_DIR}/cdk")
+    list(APPEND CDK_INCLUDE_DIR "${CDK_INCLUDE_DIR}/cdk")
+    # de-duplicate
+    list(REMOVE_DUPLICATES CDK_INCLUDE_DIR)
+  endif()
+endif()
+
