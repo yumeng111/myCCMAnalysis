@@ -179,16 +179,28 @@ colormsg("")
 
 set(I3_PROJECTS "" CACHE STRING "List of projects to build (if empty, glob for CMakeLists.txt and use all")
 
+set(BUILD_LEGACY_PROJECTS OFF CACHE BOOL "Set to build legacy CCM projects from CCM120 and CCM200 2021")
+set(LEGACY_PROJECT_NAMES "CCMAnalysis" "CCMDataStructures" "CCMDetectorSimulation" "CCMFitDM" "CCMFramework" "CCMIO" "CCMModuleTemplate" "CCMNearline" "CCMPlots" "CCMReco" "CCMSimulationUtils" "CCMSPE" "CCMUtils")
 if (NOT I3_PROJECTS)
   #
   #  Glob together a list of subdirectories containing a CMakeLists.txt
   #
   file(GLOB cmake_projects RELATIVE ${CMAKE_BINARY_DIR} ${I3_SRC}/*/CMakeLists.txt)
   file(GLOB hidden_projects RELATIVE ${CMAKE_BINARY_DIR} ${I3_SRC}/.*/CMakeLists.txt)
+  set(legacy_projects "")
+  foreach(l ${LEGACY_PROJECT_NAMES})
+    file(GLOB legacy_project RELATIVE ${CMAKE_BINARY_DIR} ${I3_SRC}/${l}/CMakeLists.txt)
+    if(legacy_project)
+      list(APPEND legacy_projects ${legacy_project})
+    endif(legacy_project)
+  endforeach(l ${LEGACY_PROJECT_NAMES})
 
   if(hidden_projects)
     list(REMOVE_ITEM cmake_projects ${hidden_projects})
   endif(hidden_projects)
+  if(NOT BUILD_LEGACY_PROJECTS)
+    list(REMOVE_ITEM cmake_projects ${legacy_projects})
+  endif(NOT BUILD_LEGACY_PROJECTS)
 
   foreach(d ${cmake_projects})
     get_filename_component(proj ${d} PATH)
