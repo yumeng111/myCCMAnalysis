@@ -193,7 +193,7 @@ if (NOT I3_PROJECTS)
     if(legacy_project)
       list(APPEND legacy_projects ${legacy_project})
     endif(legacy_project)
-  endforeach(l ${LEGACY_PROJECTS})
+  endforeach(l ${LEGACY_PROJECT_NAMES})
 
   if(hidden_projects)
     list(REMOVE_ITEM cmake_projects ${hidden_projects})
