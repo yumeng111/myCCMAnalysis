@@ -190,7 +190,9 @@ void LargestPMTFraction::Physics(I3FramePtr frame) {
 
             charge += i->GetCharge();
 
-            if(time_windows_[time_bin] < time) {
+            double dt = time - start_time;
+
+            if(time_windows_[time_bin] < dt) {
                 max_charge[time_bin] = std::max(max_charge[time_bin], charge);
                 total_charge[time_bin] += charge;
                 ++time_bin;
