@@ -51,10 +51,7 @@ class LargestPMTFraction: public I3ConditionalModule {
     std::string input_prefix_;
     std::string output_prefix_;
 
-    bool check_masked_pulses_;
-    bool check_raw_pulses_;
-    std::string raw_pulses_name_;
-    std::string pulses_mask_name_;
+    std::string pulses_name_;
 
     I3Vector<CCMOMGeo::OMType> pmt_types;
     std::set<CCMPMTKey> pmt_keys;
@@ -75,8 +72,7 @@ LargestPMTFraction::LargestPMTFraction(const I3Context& context) : I3Conditional
     AddParameter("CCMGeometryName", "Key for CCMGeometry", std::string(I3DefaultName<CCMGeometry>::value()));
     AddParameter("PMTTypes", "PMT types to use for event finding", pmt_types);
     AddParameter("TimeWindows", "Time window for charge estimate", default_time_windows);
-    AddParameter("InputPulsesMaskName", "Name of the input pulses mask", std::string(""));
-    AddParameter("InputRawPulsesName", "Name of the input raw pulses", std::string(""));
+    AddParameter("InputPulsesName", "Name of the input pulses", std::string(""));
     AddParameter("InputEventPrefix", "Prefix for the inputs", std::string(""));
     AddParameter("OutputPrefix", "Prefix for the outputs", std::string(""));
 }
@@ -85,22 +81,11 @@ void LargestPMTFraction::Configure() {
     GetParameter("CCMGeometryName", geometry_name_);
     GetParameter("PMTTypes", pmt_types);
     GetParameter("TimeWindows", time_windows_);
-    GetParameter("InputPulsesMaskName", pulses_mask_name_);
-    GetParameter("InputRawPulsesName", raw_pulses_name_);
+    GetParameter("InputPulsesName", pulses_name_);
     GetParameter("InputEventPrefix", input_prefix_);
     GetParameter("OutputPrefix", output_prefix_);
 
     std::sort(time_windows_.begin(), time_windows_.end());
-
-    check_masked_pulses_ = false;
-    check_raw_pulses_ = (raw_pulses_name_ != "");
-    check_masked_pulses_ = (pulses_mask_name_ != "");
-    if(not check_masked_pulses_) {
-        pulses_mask_name_ = input_prefix_ + "EventPulses";
-        if(not check_raw_pulses_) {
-            check_masked_pulses_ = true;
-        }
-    }
 }
 
 void LargestPMTFraction::Geometry(I3FramePtr frame) {
@@ -126,36 +111,10 @@ void LargestPMTFraction::Physics(I3FramePtr frame) {
         log_fatal("No Geometry frame seen yet.");
     }
 
-    bool raw_pulses = false;
-    CCMRecoPulseSeriesMapConstPtr pulses;
-    if(check_raw_pulses_) {
-        pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(raw_pulses_name_);
-        raw_pulses = bool(pulses);
-    }
-    if(check_masked_pulses_) {
-        CCMRecoPulseSeriesMapMaskConstPtr mask = frame->Get<CCMRecoPulseSeriesMapMaskConstPtr>(pulses_mask_name_);
-        if(mask) {
-            raw_pulses = false;
-            pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulses_mask_name_);
-        }
-    }
+    CCMRecoPulseSeriesMapConstPtr pulses = frame->Get<CCMRecoPulseSeriesMapConstPtr>(pulses_name_);
 
     if(not pulses) {
-        std::stringstream ss;
-        ss << "Could not find ";
-        if(check_raw_pulses_) {
-            ss << raw_pulses_name_;
-            if(check_masked_pulses_) {
-                ss << " or ";
-            }
-        }
-        if(check_masked_pulses_) {
-            ss << pulses_mask_name_;
-        }
-        ss << " in the DAQ frame.";
-        log_fatal("%s", ss.str().c_str());
-        PushFrame(frame);
-        return;
+        log_fatal("Could not find CCMRecoPulseSeriesMap with the key named \"%s\" in the Physics frame.", pulses_name_.c_str());
     }
 
     I3DoubleConstPtr start_time_ptr = frame->Get<I3DoubleConstPtr>(input_prefix_ + "EventStartTime");
@@ -185,24 +144,28 @@ void LargestPMTFraction::Physics(I3FramePtr frame) {
             double const & time = i->GetTime();
             if(start_time > time)
                 continue;
-            if(end_time < time)
-                break;
 
-            charge += i->GetCharge();
+            double dt = time - start_time;
 
-            if(time_windows_[time_bin] < time) {
+            if(time_windows_[time_bin] < dt) {
                 max_charge[time_bin] = std::max(max_charge[time_bin], charge);
                 total_charge[time_bin] += charge;
                 ++time_bin;
                 if(time_bin == time_windows_.size())
                     break;
             }
+
+            charge += i->GetCharge();
         }
+
         if(time_bin < time_windows_.size()) {
-            max_charge[time_bin] = std::max(max_charge[time_bin], charge);
-            total_charge[time_bin] += charge;
+            for(; time_bin < time_windows_.size(); ++time_bin) {
+                max_charge[time_bin] = std::max(max_charge[time_bin], charge);
+                total_charge[time_bin] += charge;
+            }
         }
     }
+
     for(size_t time_bin = 0; time_bin < time_windows_.size(); ++time_bin) {
         if(total_charge[time_bin] > 0.0) {
             fractions[time_bin] = max_charge[time_bin] / total_charge[time_bin];
