@@ -241,6 +241,16 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     // very important for retaining time structure of scintillation photons!!!
     G4Track* track = aStep->GetTrack();
 
+    // let's also grab parent id
+    // if parent id == 0, that's our primary injected particle
+    G4int parent_id = track->GetParentID();
+    G4int track_id  = track->GetTrackID();
+
+    // Seed immediately so later secondaries always have a parent anchor.
+    if(parent_id == 0) {
+        DaughterParticleMap.emplace(track_id, primary_.GetID());
+    }
+
     // Check if the particle has decayed
     // Check if it's a primary particle (ParentID == 0)
     if(track->GetParentID() == 0 and track->GetTrackStatus() == fStopAndKill) {
@@ -495,12 +505,6 @@ G4bool G4CCMTreeTracker::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
     // length
     double length = aStep->GetStepLength() / mm * I3Units::mm;
-
-    // let's also grab parent id
-    // if parent id == 0, that's our primary injected particle
-    G4int parent_id = aStep->GetTrack()->GetParentID();
-    G4int track_id = aStep->GetTrack()->GetTrackID();
-
 
     G4VProcess const * process = aStep->GetPostStepPoint()->GetProcessDefinedStep();
     std::string processName = (process) ? process->GetProcessName() : "Unknown";
