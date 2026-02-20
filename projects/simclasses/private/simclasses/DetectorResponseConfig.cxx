@@ -39,8 +39,8 @@ std::ostream & DetectorResponseConfig::Print(std::ostream& oss) const {
         << "\n  Mie Scattering Length at 200nm: " << x.mie_scattering_length_200nm_ / I3Units::cm << " cm"
         << "\n  Mie Scattering Cutoff: " << x.mie_scattering_cutoff_ / I3Units::nanometer << " nm"
         << "\n  Refractive Index a0: " << x.refractive_index_a0_
-        << "\n  Refractive Index aUV: " << x.refractive_index_aUV_
-        << "\n  Refractive Index gamma_UV: " << x.refractive_index_gamma_UV_
+        << "\n  Refractive Index aUV: " << x.refractive_index_aUV_ / (1.0 / (I3Units::nanometer * I3Units::nanometer)) << " 1/nm^2"
+        << "\n  Refractive Index gamma_UV: " << x.refractive_index_gamma_UV_ / (1.0 / I3Units::nanometer) << " 1/nm"
         << "\n  Refractive Index wavelength_UV: " << x.refractive_index_wavelength_UV_ / I3Units::nanometer << " nm"
         << "\n  Rayleigh Scattering Length at 128nm: " << x.rayleigh_scattering_length_128nm_ / I3Units::cm << " cm"
         << "\n  Birks Constant: " << x.birks_constant_ / (I3Units::cm/I3Units::MeV) << " cm/MeV"
@@ -126,6 +126,8 @@ void DetectorResponseConfig::to_g4_units() {
     tpb_abs_norm_ = tpb_abs_norm_ / I3Units::nanometer * CLHEP::nanometer;
     mie_scattering_length_200nm_ = mie_scattering_length_200nm_ / I3Units::cm * CLHEP::cm;
     mie_scattering_cutoff_ = mie_scattering_cutoff_ / I3Units::nanometer * CLHEP::nanometer;
+    refractive_index_aUV_ = refractive_index_aUV_ / (1.0 / (I3Units::nanometer * I3Units::nanometer)) * (1.0 / (CLHEP::nanometer * CLHEP::nanometer));
+    refractive_index_gamma_UV_ = refractive_index_gamma_UV_ / (1.0 / I3Units::nanometer) * (1.0 / CLHEP::nanometer);
     refractive_index_wavelength_UV_ = refractive_index_wavelength_UV_ / I3Units::nanometer * CLHEP::nanometer;
     rayleigh_scattering_length_128nm_ = rayleigh_scattering_length_128nm_ / I3Units::cm * CLHEP::cm;
     birks_constant_ = birks_constant_ / (I3Units::cm/I3Units::MeV) * (CLHEP::cm/CLHEP::MeV);
@@ -148,6 +150,8 @@ void DetectorResponseConfig::to_i3_units() {
     tpb_abs_norm_ = tpb_abs_norm_ / CLHEP::nanometer * I3Units::nanometer;
     mie_scattering_length_200nm_ = mie_scattering_length_200nm_ / CLHEP::cm * I3Units::cm;
     mie_scattering_cutoff_ = mie_scattering_cutoff_ / CLHEP::nanometer * I3Units::nanometer;
+    refractive_index_aUV_ = refractive_index_aUV_ / (1.0 / (CLHEP::nanometer * CLHEP::nanometer)) * (1.0 / (I3Units::nanometer * I3Units::nanometer));
+    refractive_index_gamma_UV_ = refractive_index_gamma_UV_ / (1.0 / CLHEP::nanometer) * (1.0 / I3Units::nanometer);
     refractive_index_wavelength_UV_ = refractive_index_wavelength_UV_ / CLHEP::nanometer * I3Units::nanometer;
     rayleigh_scattering_length_128nm_ = rayleigh_scattering_length_128nm_ / CLHEP::cm * I3Units::cm;
     birks_constant_ = birks_constant_ / (CLHEP::cm/CLHEP::MeV) * (I3Units::cm/I3Units::MeV);

@@ -42,8 +42,8 @@ public:
 
     // Refractive index parameters in harmonic oscillator model
     double refractive_index_a0_ = 1.10232;
-    double refractive_index_aUV_ = 0.00001058;
-    double refractive_index_gamma_UV_ = 0.0018280705;
+    double refractive_index_aUV_ = 0.00001058 * (1.0 / (I3Units::nanometer * I3Units::nanometer));
+    double refractive_index_gamma_UV_ = 0.0018280705 * (1.0 / I3Units::nanometer);
     double refractive_index_wavelength_UV_ = 106.6 * I3Units::nanometer;
 
     // Mie scattering parameters
@@ -209,8 +209,8 @@ void DetectorResponseConfig::load(Archive& ar, unsigned version) {
 
         // Set refractive index parameters to some reasonable values
         refractive_index_a0_ = 1.10232;
-        refractive_index_aUV_ = 0.00001058;
-        refractive_index_gamma_UV_ = 0.0018280705;
+        refractive_index_aUV_ = 0.00001058 * (1.0 / (I3Units::nanometer * I3Units::nanometer));
+        refractive_index_gamma_UV_ = 0.0018280705 * (1.0 / I3Units::nanometer);
         refractive_index_wavelength_UV_ = 106.6 * I3Units::nanometer;
 
         // Set Rayleigh scattering length at 128nm

@@ -269,11 +269,11 @@ void CCM200Response::Configure() {
         if(c.photon_sampling_factor_ != defaultDetectorConfig_.photon_sampling_factor_)
             log_info("  PhotonSampling : %f", c.photon_sampling_factor_);
         if(c.refractive_index_gamma_UV_ != defaultDetectorConfig_.refractive_index_gamma_UV_)
-            log_info("  RindexGamma : %f", c.refractive_index_gamma_UV_);
+            log_info("  RindexGamma : %f nm^-1", c.refractive_index_gamma_UV_ / (1.0/I3Units::nanometer));
         if(c.refractive_index_a0_ != defaultDetectorConfig_.refractive_index_a0_)
             log_info("  RefractiveIndexA0 : %f", c.refractive_index_a0_);
         if(c.refractive_index_aUV_ != defaultDetectorConfig_.refractive_index_aUV_)
-            log_info("  RefractiveIndexAUV : %e", c.refractive_index_aUV_);
+            log_info("  RefractiveIndexAUV : %e nm^-2", c.refractive_index_aUV_ / (1.0/(I3Units::nanometer * I3Units::nanometer)));
         if(c.refractive_index_wavelength_UV_ != defaultDetectorConfig_.refractive_index_wavelength_UV_)
             log_info("  RefractiveIndexWavelengthUV : %f nm", c.refractive_index_wavelength_UV_/I3Units::nanometer);
         if(c.mie_scattering_length_200nm_ != defaultDetectorConfig_.mie_scattering_length_200nm_)
