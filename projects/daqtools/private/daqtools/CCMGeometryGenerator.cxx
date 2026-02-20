@@ -321,6 +321,8 @@ namespace detail {
             int pmt_number,
             double start_pmt_number = default_start_pmt_number,
             int num_pmts = default_num_pmts) {
+        if (num_pmts <= 0)
+            throw std::runtime_error("num_pmts must be > 0");
         return double(pmt_number - start_pmt_number) / double(num_pmts) * 2.0 * M_PI;
     }
 
@@ -375,13 +377,13 @@ namespace detail {
 
     // The number of possible pmt positions in each ring (not all positions will be filled)
     std::map<int, int> ring_pmt_pos_count = {
-        {0, 24 * I3Units::cm}, // Outer wall
-        {1,  5 * I3Units::cm}, // Inner ring on top/bottom
-        {2, 10 * I3Units::cm}, //
-        {3, 15 * I3Units::cm}, //
-        {4, 20 * I3Units::cm}, // Outer ring on top/bottom
-        {5, 24 * I3Units::cm},  // Veto VT and VB rings
-        {6, 24 * I3Units::cm}  // Veto VCT and VCB rings
+        {0, 24}, // Outer wall
+        {1,  5}, // Inner ring on top/bottom
+        {2, 10}, //
+        {3, 15}, //
+        {4, 20}, // Outer ring on top/bottom
+        {5, 24},  // Veto VT and VB rings
+        {6, 24}  // Veto VCT and VCB rings
     };
 
     std::set<std::tuple<int, int, int>> cap_uncoated_pmts = {
@@ -790,7 +792,7 @@ void CCMGeometryGenerator::Process() {
                     std::string::size_type suffix_pos = id.rfind(suffix);
                     if(prefix_pos != 0) {
                         log_warn("Channel labeled \"Cosmic Watch Trigger\" does not match the pattern: Cosmic Watch Pair \\d* Trigger");
-                    } else if(suffix_pos != id.size() - prefix.size()) {
+                    } else if(suffix_pos != id.size() - suffix.size()) {
                         log_warn("Channel labeled \"Cosmic Watch Trigger\" does not match the pattern: Cosmic Watch Pair \\d* Trigger");
                     }
                     std::string str_trigger_num = id.substr(prefix.size(), id.size() - (prefix.size() + suffix.size()));
@@ -811,12 +813,24 @@ void CCMGeometryGenerator::Process() {
                 geometry->trigger_channel_map.insert({trigger_key, absolute_idx});
                 board_trigger_keys.push_back(trigger_key);
             } else if(is_sensor) {
-                geometry->pmt_channel_map.insert({pmt_key, absolute_idx});
+                auto [it_ch, ok_ch] = geometry->pmt_channel_map.insert({pmt_key, absolute_idx});
+                if (!ok_ch) {
+                    log_error("Duplicate pmt_channel_map key region=%d sensor=%u from board=%s chan=%zu id=%s",
+                              pmt_key.GetRegion(), pmt_key.GetSensor(),
+                              board.physical_board_id.c_str(), channel_idx, id.c_str());
+                }
                 CCMOMGeo om;
                 om.position = position;
                 om.orientation = orientation;
                 om.omtype = omtype;
-                geometry->pmt_geo.insert({pmt_key, om});
+                auto [it_geo, ok_geo] = geometry->pmt_geo.insert({pmt_key, om});
+                if (!ok_geo) {
+                    log_error("Duplicate pmt_geo key region=%d sensor=%u from board=%s chan=%zu pos=%f,%f,%f id=%s",
+                              pmt_key.GetRegion(), pmt_key.GetSensor(),
+                              board.physical_board_id.c_str(), channel_idx,
+                              om.position.GetX(), om.position.GetY(), om.position.GetZ(),
+                              id.c_str());
+                }
                 board_pmt_keys.push_back(pmt_key);
             } else {
                 throw std::runtime_error("Channel must be either trigger or sensor: " + channel.physical_channel_type);
