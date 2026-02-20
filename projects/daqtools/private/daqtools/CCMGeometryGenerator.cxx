@@ -322,7 +322,7 @@ namespace detail {
             double start_pmt_number = default_start_pmt_number,
             int num_pmts = default_num_pmts) {
         if (num_pmts <= 0)
-            throw std::runtime_error("num_pmts must be > 0 (ring_pmt_pos_count is broken)");
+            throw std::runtime_error("num_pmts must be > 0");
         return double(pmt_number - start_pmt_number) / double(num_pmts) * 2.0 * M_PI;
     }
 
@@ -815,7 +815,7 @@ void CCMGeometryGenerator::Process() {
             } else if(is_sensor) {
                 auto [it_ch, ok_ch] = geometry->pmt_channel_map.insert({pmt_key, absolute_idx});
                 if (!ok_ch) {
-                    log_error("Duplicate pmt_channel_map key region=%d sensor=%d from board=%s chan=%zu id=%s",
+                    log_error("Duplicate pmt_channel_map key region=%d sensor=%u from board=%s chan=%zu id=%s",
                               pmt_key.GetRegion(), pmt_key.GetSensor(),
                               board.physical_board_id.c_str(), channel_idx, id.c_str());
                 }
@@ -825,7 +825,7 @@ void CCMGeometryGenerator::Process() {
                 om.omtype = omtype;
                 auto [it_geo, ok_geo] = geometry->pmt_geo.insert({pmt_key, om});
                 if (!ok_geo) {
-                    log_error("Duplicate pmt_geo key region=%d sensor=%d from board=%s chan=%zu pos=%f,%f,%f id=%s",
+                    log_error("Duplicate pmt_geo key region=%d sensor=%u from board=%s chan=%zu pos=%f,%f,%f id=%s",
                               pmt_key.GetRegion(), pmt_key.GetSensor(),
                               board.physical_board_id.c_str(), channel_idx,
                               om.position.GetX(), om.position.GetY(), om.position.GetZ(),
