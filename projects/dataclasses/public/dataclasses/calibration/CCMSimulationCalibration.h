@@ -20,7 +20,7 @@
 
 #include <icetray/CCMPMTKey.h>
 
-static const unsigned ccmsimulationcalibration_version_ = 4;
+static const unsigned ccmsimulationcalibration_version_ = 5;
 static const unsigned ccmsimulationpmtcalibration_version_ = 0;
 static const unsigned ccmlatepulseparameters_version_ = 0;
 
@@ -100,18 +100,18 @@ class CCMSimulationCalibration: public I3FrameObject {
 public:
     CCMSimulationPMTCalibrationMap pmt_calibration;
 
-    double Rs;
-    double Rt;
-    double tau_s;
-    double tau_t;
-    double tau_other;
+    double Rs = 0.367163;
+    double Rt = 0.632837;
+    double tau_s = 4.38135 * I3Units::ns;
+    double tau_t = 588.8 * I3Units::ns;
+    double tau_other = 10.0 * I3Units::ns;
 
-    double uv_absorption_a;
-    double uv_absorption_b;
-    double uv_absorption_d;
-    double uv_absorption_scaling;
+    double uv_absorption_a = 0.3 * (1.0/I3Units::nanometer);
+    double uv_absorption_b = 113.0 * I3Units::nanometer;
+    double uv_absorption_d = 5.8 * I3Units::cm;
+    double uv_absorption_scaling = 0.03356;
 
-    double normalization;
+    double normalization = 1.0;
 
     SET_LOGGER("CCMSimulationCalibration");
 

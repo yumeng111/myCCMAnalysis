@@ -723,8 +723,8 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 // Check if survive uv absorption cuts
                 double uv_abs_probability = 1.0;
                 if(weight_uv_absorption_) {
-                    double original_wavelength = pe.original_wavelength / I3Units::nanometer;
-                    double wavelength = pe.wavelength / I3Units::nanometer;
+                    double original_wavelength = pe.original_wavelength; // Stored in I3Units of m
+                    double wavelength = pe.wavelength; // Stored in I3Units of m
                     double distance_travelled_before_wls = pe.distance_uv;
                     double distance_travelled_after_wls = pe.distance_visible;
 
