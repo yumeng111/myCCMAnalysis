@@ -380,10 +380,10 @@ void PMTResponse::Simulation(I3FramePtr frame) {
     simulated_uv_absorption_min_wavelength_ = simulated_uv_absorption_b_ + 0.1 * I3Units::nanometer;
     simulated_uv_absorption_max_wavelength_ = 200.0 * I3Units::nanometer;
     double min_wavelength_function_T = 1.0 - std::exp( - simulated_uv_absorption_a_ * (simulated_uv_absorption_min_wavelength_ - simulated_uv_absorption_b_));
-    simulated_uv_absorption_min_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / min_wavelength_function_T)); // units of cm!
+    simulated_uv_absorption_min_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / min_wavelength_function_T)); // uses I3Units [m]
     simulated_uv_absorption_min_abs_length_ *= simulated_uv_absorption_scaling_;
     double max_wavelength_function_T = 1.0 - std::exp( - simulated_uv_absorption_a_ * (simulated_uv_absorption_max_wavelength_ - simulated_uv_absorption_b_));
-    simulated_uv_absorption_max_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / max_wavelength_function_T)); // units of cm!
+    simulated_uv_absorption_max_abs_length_ = (simulated_uv_absorption_d_ / std::log(1.0 / max_wavelength_function_T)); // uses I3Units [m]
     simulated_uv_absorption_max_abs_length_ *= simulated_uv_absorption_scaling_;
 
     PushFrame(frame);
@@ -699,42 +699,42 @@ void PMTResponse::DAQ(I3FramePtr frame) {
                 double survival = randomService_->Uniform(0.0, 1.0);
 
                 // Check if we surive wavelength response of the tube
-                double wavelength = pe.wavelength / I3Units::nanometer;
+                double wavelength_nm = pe.wavelength / I3Units::nanometer;
 
                 // find the first element in wavelength_qe_wavelength that is greater than or equal to wavelength
                 double wavelength_qe_weighting;
-                std::vector<double>::iterator lower_it = std::lower_bound(wavelength_qe_wavelength.begin(), wavelength_qe_wavelength.end(), wavelength);
+                std::vector<double>::iterator lower_it = std::lower_bound(wavelength_qe_wavelength.begin(), wavelength_qe_wavelength.end(), wavelength_nm);
                 if(lower_it == wavelength_qe_wavelength.begin() or lower_it == wavelength_qe_wavelength.end()) {
                     wavelength_qe_weighting = 0.0;
                 } else {
                     size_t lower_index = std::distance(wavelength_qe_wavelength.begin(), lower_it);
                     double wl_below = *lower_it;
                     double wlqe_below = wavelength_qe_efficiency.at(lower_index);
-                    if(wl_below > wavelength) {
+                    if(wl_below > wavelength_nm) {
                         lower_index -= 1;
                         wl_below = wavelength_qe_wavelength.at(lower_index);
                         wlqe_below = wavelength_qe_efficiency.at(lower_index);
                     }
                     double wl_above =  wavelength_qe_wavelength.at(lower_index + 1);
                     double wlqe_above =  wavelength_qe_efficiency.at(lower_index + 1);
-                    wavelength_qe_weighting = wlqe_below + (wavelength - wl_below) * ((wlqe_above - wlqe_below) / (wl_above - wl_below));
+                    wavelength_qe_weighting = wlqe_below + (wavelength_nm - wl_below) * ((wlqe_above - wlqe_below) / (wl_above - wl_below));
                 }
 
                 // Check if survive uv absorption cuts
                 double uv_abs_probability = 1.0;
                 if(weight_uv_absorption_) {
-                    double original_wavelength = pe.original_wavelength; // Stored in I3Units of m
-                    double wavelength = pe.wavelength; // Stored in I3Units of m
+                    double original_wavelength_m = pe.original_wavelength; // Stored in I3Units of m
+                    double wavelength_m = pe.wavelength; // Stored in I3Units of m
                     double distance_travelled_before_wls = pe.distance_uv;
                     double distance_travelled_after_wls = pe.distance_visible;
 
-                    double scaling_before = ResponseUVAbsorptionScaling(original_wavelength, distance_travelled_before_wls);
-                    double scaling_after = ResponseUVAbsorptionScaling(wavelength, distance_travelled_after_wls);
+                    double scaling_before = ResponseUVAbsorptionScaling(original_wavelength_m, distance_travelled_before_wls);
+                    double scaling_after = ResponseUVAbsorptionScaling(wavelength_m, distance_travelled_after_wls);
                     uv_abs_probability *= scaling_before * scaling_after;
 
                     if(simulated_enable_uv_absorption_) {
-                        double simulated_scaling_before = SimulatedUVAbsorptionScaling(original_wavelength, distance_travelled_before_wls);
-                        double simulated_scaling_after = SimulatedUVAbsorptionScaling(wavelength, distance_travelled_after_wls);
+                        double simulated_scaling_before = SimulatedUVAbsorptionScaling(original_wavelength_m, distance_travelled_before_wls);
+                        double simulated_scaling_after = SimulatedUVAbsorptionScaling(wavelength_m, distance_travelled_after_wls);
                         uv_abs_probability /= (simulated_scaling_before * simulated_scaling_after);
                     }
                 }
