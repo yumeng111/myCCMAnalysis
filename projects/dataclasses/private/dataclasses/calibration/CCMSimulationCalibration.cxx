@@ -151,6 +151,14 @@ void CCMSimulationCalibration::load(Archive& ar, unsigned version) {
     } else {
         normalization = 1.0;
     }
+    if(version < 5) {
+        tau_s *= I3Units::ns;
+        tau_t *= I3Units::ns;
+        tau_other *= I3Units::ns;
+        uv_absorption_a *= (1.0/I3Units::nanometer);
+        uv_absorption_b *= I3Units::nanometer;
+        uv_absorption_d *= I3Units::cm;
+    }
 }
 
 std::ostream& operator<<(std::ostream& oss, const CCMPulseTimeDistributionParameters& c) {
@@ -200,12 +208,12 @@ std::ostream& CCMSimulationCalibration::Print(std::ostream& os) const{
     os << "[ CCMSimulationCalibration::"
         << "\n  Rs :" << Rs
         << "\n  Rt :" << Rt
-        << "\n  Tau_s :" << tau_s
-        << "\n  Tau_t :" << tau_t
-        << "\n  Tau_other :" << tau_other
-        << "\n  uv_absorption_a :" << uv_absorption_a
-        << "\n  uv_absorption_b :" << uv_absorption_b
-        << "\n  uv_absorption_d :" << uv_absorption_d
+        << "\n  Tau_s :" << tau_s / I3Units::ns << " ns"
+        << "\n  Tau_t :" << tau_t / I3Units::ns << " ns"
+        << "\n  Tau_other :" << tau_other / I3Units::ns << " ns"
+        << "\n  uv_absorption_a :" << uv_absorption_a / (1./I3Units::nanometer) << " 1/nm"
+        << "\n  uv_absorption_b :" << uv_absorption_b / I3Units::nanometer << " nm"
+        << "\n  uv_absorption_d :" << uv_absorption_d / I3Units::cm << " cm"
         << "\n  uv_absorption_scaling :" << uv_absorption_scaling
         << "\n  normalization :" << normalization
         << "\n  PMTCalibration :";
