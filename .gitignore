@@ -105,3 +105,43 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 Yumeng1/
+
+# Analysis outputs
+plots/
+output/
+results/
+tmp/
+
+# Large analysis / detector data
+*.zst
+*.i3
+*.i3.*
+*.hdf5
+*.h5
+*.npy
+*.npz
+*.parquet
+*.feather
+*.csv
+*.tsv
+
+# Batch / HPC job outputs
+*.err
+slurm-*
+condor_*
+
+# Jupyter / local environments
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# OS / editor junk
+.DS_Store
+Thumbs.db

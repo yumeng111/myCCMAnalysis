@@ -159,6 +159,8 @@ class GammaInjector(I3ConditionalModule):
         gamma.pos = dataclasses.I3Position(x, y, z)
         gamma.dir = dataclasses.I3Direction(zenith, azimuth)
         gamma.type = dataclasses.I3Particle.Gamma
+        #change
+        gamma.time = 0.0
 
         #3. Create an I3MCTree object that represents all the particles we want to simulate
         # monte_carlo_tree = dataclasses.I3MCTree()

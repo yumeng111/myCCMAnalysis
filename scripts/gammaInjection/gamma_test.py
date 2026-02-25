@@ -1,4 +1,4 @@
-#python3 gamma_test.py --file_name gamma_100evt --n 100
+#python3 gamma_test.py --file_name gamma_100evt --n 100 --outdir output
 
 #!/usr/bin/env python3
 import I3Tray
@@ -9,10 +9,11 @@ import logging #
 import sys
 import json
 import numpy as np 
-from icecube import icetray, dataclasses, dataio, phys_services, hdfwriter, daqtools
+from icecube import icetray, dataclasses, dataio, phys_services, hdfwriter, daqtools, nearline_reco
 from icecube.icetray import load
 from icecube.icetray import I3Frame, I3Module, I3ConditionalModule
 from icecube.icetray import I3Units
+from icecube.dataclasses import CCMEventHeader, I3Time
 # import monoMuons as injectorMuons
 #change
 import monoGammas as injectorGammas
@@ -34,11 +35,33 @@ def compute_total_deposited_energy_LAr(frame):
     total_deposited_energy_LAr = dataclasses.I3Double(total_deposited_energy_LAr)
     frame["TotalDepositedEnergyLAr"] = total_deposited_energy_LAr
 
-def compute_total_muon_length_LAr(frame):
-    tree = frame["InnerLArMCTreeVector"]
-    total_muon_length_LAr = np.sum([q.length for q in tree if (q.type == 13 or q.type ==-13)])
-    total_muon_length_LAr = dataclasses.I3Double(total_muon_length_LAr)
-    frame["TotalMuonLengthLAr"] = total_muon_length_LAr
+#change
+# def compute_total_muon_length_LAr(frame):
+#     tree = frame["InnerLArMCTreeVector"]
+#     total_muon_length_LAr = np.sum([q.length for q in tree if (q.type == 13 or q.type ==-13)])
+#     total_muon_length_LAr = dataclasses.I3Double(total_muon_length_LAr)
+#     frame["TotalMuonLengthLAr"] = total_muon_length_LAr
+
+def insert_fake_header(frame):
+    counter = getattr(insert_fake_header, "counter", None)
+    if counter is None:
+        insert_fake_header.counter = [0]  # mutable counter
+        counter = insert_fake_header.counter
+    event_id = counter[0]
+    counter[0] += 1
+    print(counter[0])
+
+    header = CCMEventHeader()
+    header.run_id = 0
+    header.event_id = event_id
+    header.sub_event_id = 0
+    header.start_time = I3Time(2025, 0)
+    header.end_time = I3Time(2025, 0)
+    frame["CCMEventHeader"] = header
+
+    #SubRunId by default is 4294967295
+    print("[insert_fake_header] CCMEventHeader keys in frame:", frame["CCMEventHeader"])
+    return True
 
 if __name__ == "__main__":
     return_code = 0
@@ -48,13 +71,16 @@ if __name__ == "__main__":
     # parser.add_argument("--file_name", default = "Muons", help = "name of file")
     #change
     parser.add_argument("--file_name", default = "Gammas", help = "name of file")
+    parser.add_argument( "--outdir", default="output",help="Output directory")
     args=parser.parse_args()
 
     job_file_name = str(args.file_name)
     # Config logging
     # log_filename = "MuonsG4.log"
     #change
-    log_filename = f"{job_file_name}G4.log"
+    output_dir = args.outdir
+    os.makedirs(output_dir, exist_ok=True)
+    log_filename = os.path.join(output_dir, f"{job_file_name}G4.log")
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
@@ -78,6 +104,7 @@ if __name__ == "__main__":
     tray.context["I3RandomService"] = randomService
     #Empty DAQ frames
     tray.Add("I3InfiniteSource", Prefix="sim_gcd_combined.i3.zst")
+    tray.AddModule(insert_fake_header, Streams=[icetray.I3Frame.DAQ])
 
     # tray.Add(injectorMuons.MuonInjector)
     #change
@@ -129,6 +156,7 @@ if __name__ == "__main__":
         DecayY = 0.0 * I3Units.cm, # The y position of the source in the detector (TrainingSource must be true)
         DecayZ = 0.0 * I3Units.cm, # The z position of the source in the detector (TrainingSource must be true)
 
+        #changed the blocks
         #Rayleigh128Length = 99.1 * I3Units.cm, # Rayleigh scattering length for 128nm photons
         EnableUVAbsorption = True,
         #UVAbsA = 0.0618 , # f_(Transmission) = 1- exp(-(a * lambda - b)) [1/nm]
@@ -149,6 +177,7 @@ if __name__ == "__main__":
         # L = Scale * Table(lambda)
         # Above this value it is defined by an exponential distribution
         # L = Scale * Norm * exp(lambda / Tau)
+        #changed the blocks
         #TPBAbsorptionTau = 0.13457,
         #TPBAbsorptionNorm = 8.13914e-21,
         #TPBAbsorptionScale = 1.0,
@@ -193,8 +222,11 @@ if __name__ == "__main__":
         FlatEfficiency=False, # Use flat efficiency
         WeightUVAbsorption=True, # UV absorption
     )
-    tray.Add(compute_total_deposited_energy_LAr, Streams = [icetray.I3Frame.DAQ])
-    #tray.Add(compute_total_charge, streams = [icetray.I3Frame.DAQ]) 
+    #change for plotting
+    #tray.Add(compute_total_deposited_energy_LAr, Streams = [icetray.I3Frame.DAQ])'
+    tray.Add(compute_total_deposited_energy_LAr,
+        Streams=[icetray.I3Frame.DAQ, icetray.I3Frame.Physics])
+
     #change
     # tray.Add(compute_total_muon_length_LAr, Streams = [icetray.I3Frame.DAQ])
 
@@ -202,6 +234,29 @@ if __name__ == "__main__":
     time_window = 10.0 * I3Units.ns
     event_prefix = f"RecoQ{int(charge_threshold):d}T{int(time_window):d}"
     event_stream_name = f"EventFinder{int(charge_threshold):d}PE{int(time_window):d}ns"
+
+    #normally will have one subevent for each trigger.
+    def prev_event_cut(frame):
+        if frame.Stop != icetray.I3Frame.Physics:
+            return True
+        
+        start_key   = event_prefix + "EventStartTime"
+        starts_key  = event_prefix + "EventStartTimes"
+        charges_key = "UncoatedAndCoated8inEventCharges90NS"
+
+        event_time = float(frame[start_key].value)
+        starts = frame[starts_key]
+        charges = frame[charges_key]
+
+        if len(starts) != len(charges):
+            raise RuntimeError(f"Length mismatch: {len(starts)} vs {len(charges)}")
+
+        for prev_t, q in zip(starts, charges):
+            prev_t = float(prev_t)
+            q = float(q)
+            if (event_time - 2000.0) <= prev_t < event_time and q > 10.0:
+                return False
+        return True
 
     tray.Add("Dump")
     
@@ -222,25 +277,54 @@ if __name__ == "__main__":
     SubEventStreamName=event_stream_name,
     #If=has_pulses_for_splitter #I added this, it was exploding
     )
+    
+    time_windows = [10, 30, 90]  # ns
 
     tray.Add(
-        hdfwriter.CCMSimHDFWriter,
-        # Output="test.h5",
-        #change
-        Output=f"{job_file_name}.h5",
-        # Keys=[
-        #    "CCMEventHeader", "TotalDepositedEnergyLAr", "I3MCTree", "TotalMuonLengthLAr"]
-        #change
-        Keys=[
-           "CCMEventHeader", "TotalDepositedEnergyLAr", "I3MCTree"]
+        nearline_reco.IntervalChargeSum,
+        CCMGeometryName="CCMGeometry",
+        InputRawPulsesName="MCRecoPulses",
+        InputEventPrefix=event_prefix,  #RecoQ10T10
+        PMTTypes=[dataclasses.CCMOMGeo.OMType.CCM8inUncoated,
+                dataclasses.CCMOMGeo.OMType.CCM8inCoated],
+        OutputPrefix="UncoatedAndCoated8in",
+        BadKeysNames=["KeysExcludedFromFit", "KeysIncompleteSPE", "KeysHighNoise"],
+        TimeWindows=time_windows,
+        ProcessDAQFrames=True,
+        ProcessPhysicsFrames=True,
     )
+
 
     tray.AddModule("I3Writer", 
         "writer",
         # FileName ="test.i3.zst",
         #change
-        FileName =f"{job_file_name}.i3.zst",
-        Streams=[icetray.I3Frame.DAQ, icetray.I3Frame.Simulation, icetray.I3Frame.Physics])
+        FileName = os.path.join(output_dir, f"{job_file_name}.i3.zst"),
+        Streams=[icetray.I3Frame.DAQ, icetray.I3Frame.Simulation, icetray.I3Frame.Physics],
+        If=prev_event_cut,
+    )
+
+    tray.Add(
+        hdfwriter.CCMSimHDFWriter,
+        # Output="test.h5",
+        #change
+        Output=os.path.join(output_dir, f"{job_file_name}.h5"),
+        # Keys=[
+        #    "CCMEventHeader", "TotalDepositedEnergyLAr", "I3MCTree", "TotalMuonLengthLAr"]
+        #change for plotting
+        #SubEventStreams=[event_stream_name],
+        Keys=[
+            "CCMEventHeader",
+            event_prefix + "EventEndTime",
+            event_prefix + "EventStartTime",
+            event_prefix + "MaxEventCharge",
+            event_prefix + "MaxEventChargeTime",
+            #event_prefix + "EventTotalCharge",
+            "TotalDepositedEnergyLAr",
+        ]
+        + [f"UncoatedAndCoated8inEventCharge{int(tw):d}NS" for tw in time_windows],
+        If=prev_event_cut,
+    )
 
     try:
         tray.Execute(args.n + 2)
