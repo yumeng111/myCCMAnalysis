@@ -1,4 +1,4 @@
-#   python3 plot_truthVSdetector1.py --i3 gamma_1000evt_charge.i3.zst --count --out_prefix gammas_2d 
+#   python3 plot_truthVSdetector.py --i3 output/gamma_1000evt_charge.i3.zst --count --out_prefix gammas_2d 
 
 #!/usr/bin/env python3
 
@@ -86,7 +86,8 @@ def has_nonempty_pulses(frame, use_per_particle=True):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--i3", required=True, help="Input .i3/.i3.zst file")
-    ap.add_argument("--out_prefix",default="output/plots",help="Output file prefix (default: input filename)")
+    ap.add_argument("--out_dir", default="output/plots", help="Output directory (default: output/plots)")
+    ap.add_argument("--out_prefix", default=None, help="Output filename prefix (default: input basename)")
     ap.add_argument("--bins", type=int, default=120)
     ap.add_argument("--bins1d", type=int, default=100)
     ap.add_argument("--count", action="store_true", help="Compute Q->P counts and efficiency")
@@ -99,7 +100,7 @@ def main():
     else:
         base_name = in_path.stem
 
-    out_dir = Path(args.out_prefix) / base_name
+    out_dir = Path(args.out_dir) / base_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     out_prefix = args.out_prefix if args.out_prefix else base_name
@@ -188,6 +189,11 @@ def main():
         plt.title("Truth deposited energy distribution")
         plt.tight_layout()
         plt.savefig(out_dir / f"{out_prefix}_1dtruthE_dist.png", dpi=200)
+
+        #DEBUG
+        print("[DEBUG] N =", len(E_truth_MeV))
+        print("[DEBUG] min/max E_truth_MeV =", np.min(E_truth_MeV), np.max(E_truth_MeV))
+        print("[DEBUG] N(E>15 MeV) =", np.sum(E_truth_MeV > 15))
 
     # Plot 2: 1D distribution of total pulse charge
     common_evt_pulse = sorted(set(edep_by_evt) & set(qtot_by_evt))
